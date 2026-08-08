@@ -113,10 +113,12 @@ void main() {
   group('buildStackedTooltipItems', () {
     const egg = StackedSeries(name: '鸡蛋', color: Colors.amber, spots: []);
     const tomato = StackedSeries(name: '番茄', color: Colors.red, spots: []);
+    // 面积图倒序绘制：lineBarsData = [顶层番茄(b0), 底层鸡蛋(b1)]，
+    // barIndex 与序列顺序相反（底层序列 barIndex 最大）
     final eggSpot = LineBarSpot(
-        LineChartBarData(spots: const [FlSpot(0, 2)]), 0, const FlSpot(0, 2));
+        LineChartBarData(spots: const [FlSpot(0, 2)]), 1, const FlSpot(0, 2));
     final tomatoSpot = LineBarSpot(
-        LineChartBarData(spots: const [FlSpot(0, 5)]), 1, const FlSpot(0, 5));
+        LineChartBarData(spots: const [FlSpot(0, 5)]), 0, const FlSpot(0, 5));
 
     test('乱序输入按 barIndex 重排，差值逆推成本，日期/合计并入首尾条', () {
       // fl_chart 传入顺序按到触点距离（番茄线在上先列出），须重排为序列顺序
@@ -133,7 +135,11 @@ void main() {
     });
 
     test('单序列：日期与合计都并入同一条', () {
-      final items = buildStackedTooltipItems([egg], [eggSpot], '07-02');
+      // 单序列时 lineBarsData 仅一条，barIndex 恒为 0（不可复用双序列
+      // 反序构造的 eggSpot，其 barIndex=1 会越界）
+      final singleSpot = LineBarSpot(
+          LineChartBarData(spots: const [FlSpot(0, 2)]), 0, const FlSpot(0, 2));
+      final items = buildStackedTooltipItems([egg], [singleSpot], '07-02');
       expect(items.length, 1);
       expect(items[0].text, '07-02\n');
       expect(items[0].children!.length, 2);
@@ -154,10 +160,11 @@ void main() {
       // fl_chart 对每条线独立按「到触点像素距离」取最近点：触点在第 0 天，
       // 相邻天像素宽小 + 番茄线 y 差大时，远线（番茄）会取到第 1 天
       // （x=1 与触点错位）。输入按距离序：最近线在前（鸡蛋 day0）。
+      // barIndex 随倒序绘制反置：鸡蛋(底层)=1、番茄(顶层)=0
       final eggSpot = LineBarSpot(
-          LineChartBarData(spots: eggSeries.spots), 0, const FlSpot(0, 2));
+          LineChartBarData(spots: eggSeries.spots), 1, const FlSpot(0, 2));
       final tomatoSpot = LineBarSpot(
-          LineChartBarData(spots: tomatoSeries.spots), 1, const FlSpot(1, 15));
+          LineChartBarData(spots: tomatoSeries.spots), 0, const FlSpot(1, 15));
       final items = buildStackedTooltipItems(
           const [eggSeries, tomatoSeries], [eggSpot, tomatoSpot], '07-01');
       expect(items.length, 2);
@@ -173,14 +180,15 @@ void main() {
       // 落在第1天（x=1）。touchedSpots.first = 番茄(day0) → 触点天 day0；
       // 若误用 barIndex 重排后 sorted.first（=鸡蛋，x=1）→ 明细/合计全取
       // day1、日期却显示触点天 day0 → 日期与数值错日。
+      // barIndex 随倒序绘制反置：番茄(顶层)=0、鸡蛋(底层)=1
       const eggSeries = StackedSeries(
           name: '鸡蛋', color: Colors.amber, spots: [FlSpot(0, 2), FlSpot(1, 10)]);
       const tomatoSeries = StackedSeries(
           name: '番茄', color: Colors.red, spots: [FlSpot(0, 5), FlSpot(1, 15)]);
       final eggSpot = LineBarSpot(
-          LineChartBarData(spots: eggSeries.spots), 0, const FlSpot(1, 10));
+          LineChartBarData(spots: eggSeries.spots), 1, const FlSpot(1, 10));
       final tomatoSpot = LineBarSpot(
-          LineChartBarData(spots: tomatoSeries.spots), 1, const FlSpot(0, 5));
+          LineChartBarData(spots: tomatoSeries.spots), 0, const FlSpot(0, 5));
       final items = buildStackedTooltipItems(
           const [eggSeries, tomatoSeries], [tomatoSpot, eggSpot], '07-01');
       // 触点天 day0：鸡蛋 2、番茄 5-2=3、合计 5
@@ -201,7 +209,7 @@ void main() {
   });
 
   group('CostTrendStackedChart 筛选下拉与点击提示', () {
-    CostHistoryPoint _p(String date,
+    CostHistoryPoint point(String date,
             {List<CostHistoryBreakdownItem> breakdown = const []}) =>
         CostHistoryPoint(
             date: date,
@@ -216,12 +224,12 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              _p('07-01',
+              point('07-01',
                   breakdown: const [
                     CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
                     CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
                   ]),
-              _p('07-02',
+              point('07-02',
                   breakdown: const [
                     CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
                     CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
@@ -231,15 +239,92 @@ void main() {
           ),
         ),
       ));
-      // 默认「季」
-      expect(find.text('季'), findsOneWidget);
+      // 默认「月」（用户要求对齐详情页初始，非 web 的「季」）
+      expect(find.text('月'), findsOneWidget);
       await tester.tap(find.byKey(const Key('filter_dropdown')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('年').last);
       await tester.pumpAndSettle();
       expect(got, 'year');
       expect(find.text('年'), findsOneWidget);
-      expect(find.text('季'), findsNothing);
+      expect(find.text('月'), findsNothing);
+    });
+
+    testWidgets('堆叠面积倒序绘制：顶层序列在 lineBarsData 首位（填充层间可见）', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CostTrendStackedChart(
+            points: [
+              point('07-01',
+                  breakdown: const [
+                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
+                  ]),
+              point('07-02',
+                  breakdown: const [
+                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
+                  ]),
+            ],
+          ),
+        ),
+      ));
+      // 面积图要求底层填充最后画（覆盖出层间色带）：lineBarsData 必须与
+      // 序列顺序相反——首条是顶层（番茄累加 y=5），末条是底层（鸡蛋 y=2）。
+      // 若正序绘制（现状），所有填充都叠到 x 轴上，用户反馈「颜色难分辨」。
+      final renderChart = tester.renderObject<RenderLineChart>(
+          find.byElementPredicate((e) => e.widget is LineChartLeaf));
+      final lineBars = renderChart.data.lineBarsData;
+      expect(lineBars.length, 2);
+      expect(lineBars.first.spots.first.y, 5); // 番茄（顶层，累计 2+3）
+      expect(lineBars.last.spots.first.y, 2); // 鸡蛋（底层，自身 2）
+      // 每条线都带填充（面积色带）
+      expect(lineBars.every((b) => b.belowBarData.show), isTrue);
+      // 色带不透明（用户要求「各项做成不透明的」）：正常态纯色，层间颜色可辨
+      expect(lineBars.every((b) => b.belowBarData.color!.a == 1.0), isTrue);
+    });
+
+    testWidgets('点食材标签高亮：焦点色带不透明、非焦点淡化', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CostTrendStackedChart(
+            points: [
+              point('07-01',
+                  breakdown: const [
+                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
+                  ]),
+              point('07-02',
+                  breakdown: const [
+                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
+                  ]),
+            ],
+          ),
+        ),
+      ));
+      // 默认不高亮：两条色带都不透明
+      var renderChart = tester.renderObject<RenderLineChart>(
+          find.byElementPredicate((e) => e.widget is LineChartLeaf));
+      expect(
+          renderChart.data.lineBarsData
+              .every((b) => b.belowBarData.color!.a == 1.0),
+          isTrue);
+      // 点「鸡蛋」标签高亮：鸡蛋（底层，lineBars.last）保持不透明，
+      // 番茄（顶层，lineBars.first）淡化凸显焦点。
+      // 注意不能 tap Text 本身：M3 InkWell 命中区域拦截了 label Text 的
+      // hit test（tap(Text) 有 warnIfMissed 警告且不触发 onPressed），
+      // 须 tap ActionChip 本体。
+      await tester.tap(
+          find.ancestor(of: find.text('鸡蛋'), matching: find.byType(ActionChip)));
+      // fl_chart 150ms 数据动画：须走完动画才读到目标色带（同 tooltip 测试经验）
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+      renderChart = tester.renderObject<RenderLineChart>(
+          find.byElementPredicate((e) => e.widget is LineChartLeaf));
+      expect(renderChart.data.lineBarsData.last.belowBarData.color!.a, 1.0);
+      expect(renderChart.data.lineBarsData.first.belowBarData.color!.a,
+          lessThan(1.0));
     });
 
     testWidgets('点击图表显示 tooltip（食材成本明细）', (tester) async {
@@ -247,12 +332,12 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              _p('07-01',
+              point('07-01',
                   breakdown: const [
                     CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
                     CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
                   ]),
-              _p('07-02',
+              point('07-02',
                   breakdown: const [
                     CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
                     CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
@@ -289,7 +374,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: CostTrendStackedChart(
-            points: [_p('07-01'), _p('07-02'), _p('07-03')],
+            points: [point('07-01'), point('07-02'), point('07-03')],
           ),
         ),
       ));

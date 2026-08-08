@@ -30,6 +30,42 @@ void main() {
       expect(find.text('月'), findsNothing);
     });
 
+    testWidgets('范围下拉含「年」：选「年」回调 365 天', (tester) async {
+      int? got;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CostTrendChart(
+            points: [_point('07-01', 5)],
+            onRangeChange: (days) => got = days,
+          ),
+        ),
+      ));
+      await tester.tap(find.byKey(const Key('range_dropdown')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('年').last);
+      await tester.pumpAndSettle();
+      expect(got, 365);
+      expect(find.text('年'), findsOneWidget);
+    });
+
+    testWidgets('切换范围加载中：有旧数据时顶部显示进度条', (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: CostTrendChart(
+            points: [_point('07-01', 5), _point('07-02', 6)],
+            loading: true,
+          ),
+        ),
+      ));
+      // loading 且已有数据：图表保留旧数据 + 顶部细进度条（用户能感知在刷新）
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      final chartPaint = find.descendant(
+        of: find.byType(CostTrendChart),
+        matching: find.byType(CustomPaint),
+      );
+      expect(chartPaint, findsWidgets);
+    });
+
     testWidgets('点击图表显示 tooltip（均价+区间），无需拖动', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(

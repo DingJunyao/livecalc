@@ -23,7 +23,7 @@ class CostTrendChart extends StatefulWidget {
   State<CostTrendChart> createState() => _CostTrendChartState();
 }
 
-enum _Range { week, month, quarter }
+enum _Range { week, month, quarter, year }
 
 class _CostTrendChartState extends State<CostTrendChart> {
   _Range _selected = _Range.month;
@@ -47,15 +47,34 @@ class _CostTrendChartState extends State<CostTrendChart> {
           ],
         ),
         const SizedBox(height: 8),
-        SizedBox(height: 200, child: _buildBody(theme)),
+        SizedBox(
+          height: 200,
+          child: Stack(children: [
+            _buildBody(theme),
+            // 切换范围加载中：保留旧数据 + 顶部细进度条，避免用户误以为
+            // 「选什么都没反应」（慢查询时旧图要一直显示到新数据到达）
+            if (widget.loading && widget.points.isNotEmpty)
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(minHeight: 2),
+              ),
+          ]),
+        ),
       ],
     );
   }
 
-  // 范围切换用 DropdownButton 而非 SegmentedButton：3 段按钮在窄屏标题行
+  // 范围切换用 DropdownButton 而非 SegmentedButton：多段按钮在窄屏标题行
   // 会撑爆报 RIGHT OVERFLOWED，下拉宽度自适应当前选中项根治溢出
   Widget _buildRangeToggle() {
-    const labels = {'week': '周', 'month': '月', 'quarter': '季'};
+    const labels = {
+      'week': '周',
+      'month': '月',
+      'quarter': '季',
+      'year': '年',
+    };
     return DropdownButton<_Range>(
       key: const Key('range_dropdown'),
       value: _selected,
@@ -72,6 +91,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
           _Range.week => 7,
           _Range.month => 30,
           _Range.quarter => 90,
+          _Range.year => 365,
         };
         widget.onRangeChange?.call(days);
       },

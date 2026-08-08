@@ -68,14 +68,17 @@ List<StackedSeries> buildStackedSeries(List<CostHistoryPoint> points) {
 }
 
 /// 构建 tooltip 明细项：日期 + 每食材「名: ¥成本」+「合计: ¥x」。
-/// fl_chart 传入的 touchedSpots 按到触点距离排序（非序列顺序），
-/// 必须先按 barIndex（序列顺序）重排，再逆推每食材本日成本 = 累加值差值。
+/// fl_chart 传入的 touchedSpots 按到触点距离排序（非序列顺序）。
+/// 面积图倒序绘制（顶层先画、底层最后覆盖出层间色带，见 _buildStackedChart），
+/// lineBarsData 与序列顺序相反：barIndex i 对应 series[n-1-i]（底层序列
+/// barIndex 最大）。须先按 barIndex 降序重排（= 原序列底部→顶部），
+/// 再逆推每食材本日成本 = 累加值差值。
 /// fl_chart 对每条线独立按「到触点像素距离」取最近 spot（x 相同但 y 不同，
 /// 相邻天像素宽过小、线间 y 差大时，远线会取到 i±1 天）——逆推必须统一到
 /// 触点这一天（dayIndex = touchedSpots.first.x，fl_chart painter 已按距离
 /// 升序返回），用各线该天堆叠值差值，否则混日会出现负数成本、Σ明细≠合计。
-/// 注意不能用 barIndex 重排后的 sorted.first 做锚点：那是底部线（barIndex=0）
-/// 的最近点，可能与触点天错位（日期显示触点天、明细却是邻天）。
+/// 注意不能用 barIndex 重排后的 sorted.first 做锚点：那是底部线（barIndex
+/// 最大）的最近点，可能与触点天错位（日期显示触点天、明细却是邻天）。
 /// 调用约束：touchedSpots 必须来自本图 lineBarsData（barIndex 恒 <
 /// series.length、spot.bar.spots 与序列同长同引用），此处不做代码守卫——
 /// 守卫会破坏 1:1 契约（条数必须与 spots 一致，fl_chart painter 校验
@@ -87,23 +90,25 @@ List<LineTooltipItem> buildStackedTooltipItems(
   if (touchedSpots.isEmpty) return [];
   // 锚点须先取（touchedSpots 未重排时 first 即距触点最近线 = 触点天）
   final dayIndex = touchedSpots.first.x.toInt();
+  // barIndex 降序 = 原序列底部→顶部（倒序绘制后底部线 barIndex 最大）
   final sorted = [...touchedSpots]
-    ..sort((a, b) => a.barIndex.compareTo(b.barIndex));
+    ..sort((a, b) => b.barIndex.compareTo(a.barIndex));
   const plain = TextStyle(color: Colors.white);
   const bold = TextStyle(fontWeight: FontWeight.bold, color: Colors.white);
   final items = <LineTooltipItem>[];
   var prev = 0.0;
   for (final spot in sorted) {
     final stackedY = spot.bar.spots[dayIndex].y;
+    final seriesIndex = series.length - 1 - spot.barIndex;
     final line =
-        '${series[spot.barIndex].name}: ¥${(stackedY - prev).toStringAsFixed(2)}';
+        '${series[seriesIndex].name}: ¥${(stackedY - prev).toStringAsFixed(2)}';
     items.add(LineTooltipItem(line, plain));
     prev = stackedY;
   }
   // 日期行并入第一条
   items[0] = LineTooltipItem('$date\n', bold,
       children: [TextSpan(text: items[0].text, style: plain)]);
-  // 合计行并入最后一条（触点天堆叠总值）
+  // 合计行并入最后一条（触点天堆叠总值 = 最顶层累加值）
   items.last = LineTooltipItem(items.last.text, items.last.textStyle, children: [
     ...(items.last.children ?? const []),
     TextSpan(
@@ -131,7 +136,8 @@ class CostTrendStackedChart extends StatefulWidget {
 }
 
 class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
-  String _filter = 'quarter';
+  // 默认「月」：与详情页初始一致（用户要求，非 web 的「季」）
+  String _filter = 'month';
   int? _highlightIndex;
   // 自定义 touch 处理下的 tooltip 展示状态（驱动画布绘制 tooltip）
   List<ShowingTooltipIndicators> _tooltipSpots = [];
@@ -273,12 +279,18 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
 
   Widget _buildStackedChart(ThemeData theme, List<StackedSeries> series) {
     final isHighlighted = _highlightIndex != null;
-    final lineBars = series.asMap().entries.map((e) {
-      final i = e.key;
-      final s = e.value;
+    // 面积图：lineBarsData 必须与序列顺序相反（顶层先画、底层最后覆盖）。
+    // fl_chart 每条线的 belowBarData 都从自身曲线填到 x 轴（无逐点下边界），
+    // 正序时所有填充叠在底部（下层区域被上层填充盖死 → 用户反馈「折线原点
+    // 都在 x 轴上、颜色难分辨」）；倒序后底层填充最后画，自然覆盖出
+    // [y_{j-1}, y_j] 层间色带，即 echarts stack:'total' 面积图效果。
+    // 代价：barIndex 与序列顺序相反，tooltip 需映射（见 buildStackedTooltipItems）。
+    final lineBars = <LineChartBarData>[];
+    for (var i = series.length - 1; i >= 0; i--) {
+      final s = series[i];
       final highlight = _highlightIndex == i;
       final dimmed = isHighlighted && !highlight;
-      return LineChartBarData(
+      lineBars.add(LineChartBarData(
         spots: s.spots,
         color: s.color,
         barWidth: highlight ? 2.5 : 1.5,
@@ -287,10 +299,12 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
         dotData: const FlDotData(show: false),
         belowBarData: BarAreaData(
           show: true,
-          color: s.color.withValues(alpha: dimmed ? 0.05 : 0.30),
+          // 色带不透明（用户要求）：正常态纯色，层间颜色可辨；仅点食材标签
+          // 高亮时非焦点淡出（alpha 0.2）凸显焦点项
+          color: dimmed ? s.color.withValues(alpha: 0.2) : s.color,
         ),
-      );
-    }).toList();
+      ));
+    }
 
     return LineChart(
       // 挂到 RenderLineChart，供 _onPointerGlobal 计算命中 spot

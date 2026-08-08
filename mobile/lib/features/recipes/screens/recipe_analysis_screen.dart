@@ -26,11 +26,12 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
     super.initState();
     Future.microtask(() {
       final notifier = ref.read(recipeDetailPageProvider(widget.id).notifier);
-      // 趋势初始天数由 load(initialDays: 90) 单次请求传入，对齐 web
-      // loadCostHistory('quarter')；不再额外 reloadHistory，避免与 load()
-      // 内部 _loadHistory 双请求竞态（load 整态重建会清空先写入的 history）。
-      // _loadHistory 默认 30 天保证详情页「月」初始一致。
-      notifier.load(initialDays: 90);
+      // 趋势初始天数由 load(initialDays: 30) 单次请求传入，默认「月」
+      // （用户要求与详情页初始一致，非 web 的 loadCostHistory('quarter')）；
+      // 不再额外 reloadHistory，避免与 load() 内部 _loadHistory 双请求竞态
+      // （load 整态重建会清空先写入的 history）。_loadHistory 默认 30 天
+      // 保证详情页「月」初始一致。
+      notifier.load(initialDays: 30);
     });
   }
 

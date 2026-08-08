@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../repositories/recipe_repository.dart';
 
 /// 按商家预估成本：横向滚动卡片（对齐 web MerchantCostCards）。
-class MerchantCostCards extends StatelessWidget {
+/// 桌面端支持鼠标滚轮水平滚动（见 MouseWheelHorizontalScroll）。
+class MerchantCostCards extends StatefulWidget {
   final List<MerchantCostItem> merchants;
   final bool loading;
   const MerchantCostCards(
       {super.key, required this.merchants, this.loading = false});
+
+  @override
+  State<MerchantCostCards> createState() => _MerchantCostCardsState();
+}
+
+class _MerchantCostCardsState extends State<MerchantCostCards> {
+  final ScrollController _controller = ScrollController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,12 +38,12 @@ class MerchantCostCards extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.bold)),
         ]),
         const SizedBox(height: 12),
-        if (loading && merchants.isEmpty)
+        if (widget.loading && widget.merchants.isEmpty)
           const SizedBox(
             height: 140,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
-        else if (merchants.isEmpty)
+        else if (widget.merchants.isEmpty)
           SizedBox(
             height: 140,
             child: Center(
@@ -47,14 +62,18 @@ class MerchantCostCards extends StatelessWidget {
         else
           MediaQuery.withClampedTextScaling(
             maxScaleFactor: 1.3,
-            child: SizedBox(
-              height: 168,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: merchants.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (context, i) =>
-                    _buildCard(context, theme, merchants[i]),
+            child: MouseWheelHorizontalScroll(
+              controller: _controller,
+              child: SizedBox(
+                height: 168,
+                child: ListView.separated(
+                  controller: _controller,
+                  scrollDirection: Axis.horizontal,
+                  itemCount: widget.merchants.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, i) =>
+                      _buildCard(context, theme, widget.merchants[i]),
+                ),
               ),
             ),
           ),

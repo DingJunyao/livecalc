@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
 
@@ -103,7 +104,8 @@ String _fmt(double v) => v == v.roundToDouble()
     : v.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
 
 /// 商家比价推荐矩阵：横向滚动表（行=食材，列=商家），最低价橙色加粗、缺失「—」。
-class MerchantPriceMatrix extends StatelessWidget {
+/// 桌面端支持鼠标滚轮水平滚动（见 MouseWheelHorizontalScroll）。
+class MerchantPriceMatrix extends StatefulWidget {
   final List<RecipeIngredient> ingredients;
   final List<MerchantPriceItem> prices;
   final bool loading;
@@ -115,9 +117,25 @@ class MerchantPriceMatrix extends StatelessWidget {
   });
 
   @override
+  State<MerchantPriceMatrix> createState() => _MerchantPriceMatrixState();
+}
+
+class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
+  final ScrollController _controller = ScrollController();
+  // 统一行高：冻结列与滚动列拆成两个 Table，只有行高固定才能逐行对齐
+  static const double _rowHeight = 44;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rows = buildMatrixRows(ingredients: ingredients, prices: prices);
+    final rows =
+        buildMatrixRows(ingredients: widget.ingredients, prices: widget.prices);
     final names = <String>[];
     for (final r in rows) {
       for (final name in r.cells.keys) {
@@ -137,7 +155,7 @@ class MerchantPriceMatrix extends StatelessWidget {
                   ?.copyWith(fontWeight: FontWeight.bold)),
         ]),
         const SizedBox(height: 12),
-        if (loading && rows.isEmpty)
+        if (widget.loading && rows.isEmpty)
           const SizedBox(
             height: 100,
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -164,28 +182,126 @@ class MerchantPriceMatrix extends StatelessWidget {
               border: Border.all(color: theme.colorScheme.outlineVariant),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: _buildTable(context, theme, rows, names),
+            clipBehavior: Clip.antiAlias,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 冻结列：食材/用量（web .vue:176 sticky-col 语义，横向滚动不参与）
+                _buildFrozenColumn(context, theme, rows),
+                Expanded(
+                  child: MouseWheelHorizontalScroll(
+                    controller: _controller,
+                    child: SingleChildScrollView(
+                      controller: _controller,
+                      scrollDirection: Axis.horizontal,
+                      child: _buildPriceTable(context, theme, rows, names),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
       ],
     );
   }
 
-  Widget _buildTable(BuildContext context, ThemeData theme,
+  // 冻结列：surface 背景盖住下层滚动内容 + 右侧 1px 分隔线，滚动时首列不动
+  Widget _buildFrozenColumn(
+      BuildContext context, ThemeData theme, List<MatrixRow> rows) {
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          right: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+      ),
+      child: Table(
+        columnWidths: const {0: FixedColumnWidth(150)},
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        border: TableBorder(
+          horizontalInside:
+              BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+        ),
+        children: [
+          TableRow(
+            decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest),
+            children: [
+              SizedBox(height: _rowHeight, child: _headerCell(theme, '食材 / 用量')),
+            ],
+          ),
+          for (final row in rows)
+            TableRow(children: [
+              SizedBox(
+                height: _rowHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(children: [
+                    Expanded(
+                      child: Text(row.name,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                    // 用量 badge（web .vue:31 qty-badge 灰色小字）
+                    if (row.quantityDisplay.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Text(row.quantityDisplay,
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.outline)),
+                      ),
+                    if (row.fallbackChain != null &&
+                        row.fallbackChain!.isNotEmpty)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints:
+                            const BoxConstraints(minWidth: 20, minHeight: 20),
+                        padding: EdgeInsets.zero,
+                        iconSize: 14,
+                        icon: Icon(Icons.info_outline,
+                            color: theme.colorScheme.primary),
+                        onPressed: () => showDialog<void>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('根据以下食材计算价格：'),
+                            scrollable: true,
+                            content: Text(row.fallbackChain!,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold)),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('知道了'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ]),
+                ),
+              ),
+            ]),
+        ],
+      ),
+    );
+  }
+
+  // 滚动列：商家价格（行高与冻结列一致的 _rowHeight）
+  Widget _buildPriceTable(BuildContext context, ThemeData theme,
       List<MatrixRow> rows, List<String> names) {
     return Table(
       columnWidths: {
-        for (var i = 0; i < names.length + 1; i++)
-          i: const FixedColumnWidth(110),
+        for (var i = 0; i < names.length; i++) i: const FixedColumnWidth(110),
       },
       defaultVerticalAlignment: TableCellVerticalAlignment.middle,
       border: TableBorder(
-        horizontalInside: BorderSide(
-            color: theme.colorScheme.outlineVariant, width: 0.5),
-        verticalInside: BorderSide(
-            color: theme.colorScheme.outlineVariant, width: 0.5),
+        horizontalInside:
+            BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
+        verticalInside:
+            BorderSide(color: theme.colorScheme.outlineVariant, width: 0.5),
       ),
       children: [
         // 表头
@@ -193,79 +309,44 @@ class MerchantPriceMatrix extends StatelessWidget {
           decoration: BoxDecoration(
               color: theme.colorScheme.surfaceContainerHighest),
           children: [
-            _headerCell(theme, '食材 / 用量'),
-            for (final n in names) _headerCell(theme, n, right: true),
+            for (final n in names)
+              SizedBox(height: _rowHeight, child: _headerCell(theme, n, right: true)),
           ],
         ),
         for (final row in rows)
           TableRow(children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-              child: Row(children: [
-                Expanded(
-                  child: Text(row.name,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                ),
-                if (row.fallbackChain != null && row.fallbackChain!.isNotEmpty)
-                  IconButton(
-                    visualDensity: VisualDensity.compact,
-                    constraints: const BoxConstraints(
-                        minWidth: 20, minHeight: 20),
-                    padding: EdgeInsets.zero,
-                    iconSize: 14,
-                    icon: Icon(Icons.info_outline,
-                        color: theme.colorScheme.primary),
-                    onPressed: () => showDialog<void>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: const Text('根据以下食材计算价格：'),
-                        scrollable: true,
-                        content: Text(row.fallbackChain!,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.of(context).pop(),
-                            child: const Text('知道了'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-              ]),
-            ),
             for (final n in names)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        // ¥ 前缀（对齐 web .vue:46 与 Task 8：¥3.50 而非 3.50 ¥）
-                        row.cells[n]!.hasPrice
-                            ? '¥${row.cells[n]!.display}'
-                            : row.cells[n]!.display,
-                        textAlign: TextAlign.right,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: !row.cells[n]!.hasPrice
-                              ? theme.colorScheme.outlineVariant
-                              : row.cells[n]!.isLowest
-                                  ? const Color(0xFFE65100)
-                                  : null,
-                          fontWeight: row.cells[n]!.isLowest
-                              ? FontWeight.bold
-                              : null,
+              SizedBox(
+                height: _rowHeight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          // ¥ 前缀（对齐 web .vue:46 与 Task 8：¥3.50 而非 3.50 ¥）
+                          row.cells[n]!.hasPrice
+                              ? '¥${row.cells[n]!.display}'
+                              : row.cells[n]!.display,
+                          textAlign: TextAlign.right,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: !row.cells[n]!.hasPrice
+                                ? theme.colorScheme.outlineVariant
+                                : row.cells[n]!.isLowest
+                                    ? const Color(0xFFE65100)
+                                    : null,
+                            fontWeight: row.cells[n]!.isLowest
+                                ? FontWeight.bold
+                                : null,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
           ]),
@@ -274,14 +355,18 @@ class MerchantPriceMatrix extends StatelessWidget {
   }
 
   Widget _headerCell(ThemeData theme, String text, {bool right = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Text(text,
-          textAlign: right ? TextAlign.right : TextAlign.left,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.labelMedium
-              ?.copyWith(fontWeight: FontWeight.w600)),
+    // Align 撑满外层 SizedBox(height: _rowHeight) 保证垂直居中：直接 Padding
+    // 会在 tight 高度约束下把 Text 顶对齐（表头贴行顶的根因）
+    return Align(
+      alignment: right ? Alignment.centerRight : Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Text(text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelMedium
+                ?.copyWith(fontWeight: FontWeight.w600)),
+      ),
     );
   }
 }
