@@ -65,7 +65,7 @@
             <v-list-item-subtitle>
               <span>{{ pendingCategory(item) }}</span>
               <span v-if="item.latest_price != null" class="text-tertiary font-weight-bold ms-2">
-                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis">/{{ item.latest_price_unit }}</span>
+                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </span>
             </v-list-item-subtitle>
 
@@ -131,7 +131,7 @@
                 {{ pendingCategory(item) }}
               </v-chip>
               <div v-if="item.latest_price != null" class="text-subtitle-1 font-weight-bold text-tertiary mb-1">
-                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis">/{{ item.latest_price_unit }}</span>
+                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </div>
             </v-card-text>
             <v-divider />

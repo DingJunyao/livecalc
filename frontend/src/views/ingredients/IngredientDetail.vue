@@ -110,7 +110,7 @@
                 <v-icon size="small" color="medium-emphasis">mdi-scale-balance</v-icon>
               </template>
               <v-list-item-title>成品基准量</v-list-item-title>
-              <v-list-item-subtitle>{{ overlaidServingWeight }}{{ overlaidServingWeightUnitName || 'g' }}/份</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ overlaidServingWeight }} {{ overlaidServingWeightUnitName || 'g' }} / 份</v-list-item-subtitle>
             </v-list-item>
 
             <v-list-item>
@@ -224,14 +224,14 @@
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              ¥{{ formatPrice(latestPrice) }}<span class="text-h6 font-weight-regular">/{{ massUnitName }}</span>
+              ¥{{ formatPrice(latestPrice) }}<span class="text-h6 font-weight-regular"> / {{ massUnitName }}</span>
             </div>
             <template v-if="latestChartTrend">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">区间</div>
                 <div class="text-subtitle-1 font-weight-bold">
-                  ¥{{ latestChartTrend.min.toFixed(2) }} - ¥{{ latestChartTrend.max.toFixed(2) }}/{{ chartUnit }}
+                  ¥{{ latestChartTrend.min.toFixed(2) }} - ¥{{ latestChartTrend.max.toFixed(2) }} / {{ chartUnit }}
                 </div>
               </div>
               <div v-if="latestChartTrend.count" class="text-center">
@@ -306,7 +306,7 @@
             <div v-if="latestPrice" class="d-flex justify-space-between align-center px-1 pt-2">
               <span class="text-caption text-medium-emphasis">商品加权综合价</span>
               <span class="font-weight-bold text-tertiary">
-                ¥{{ formatPrice(latestPrice) }}<span class="text-caption font-weight-regular">/{{ massUnitName }}</span>
+                ¥{{ formatPrice(latestPrice) }}<span class="text-caption font-weight-regular"> / {{ massUnitName }}</span>
               </span>
             </div>
           </v-card-text>
@@ -459,7 +459,7 @@
               {{ record.product_name }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              <div>¥{{ formatPrice(record.price) }} / {{ record.original_quantity }}{{ record.original_unit }}
+              <div>¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
               <template v-if="record.merchant_name"> · {{ record.merchant_name }}</template></div>
               <div class="text-caption text-medium-emphasis mt-1">
                 {{ formatToLocalDate(record.recorded_at) }}

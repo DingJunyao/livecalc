@@ -113,7 +113,7 @@
                               label
                               variant="outlined"
                             >
-                              ~{{ unit.default_estimate }}{{ getBaseUnitAbbr(unit) }}
+                              ~{{ unit.default_estimate }}{{ getBaseUnitAbbr(unit) ? ' ' + getBaseUnitAbbr(unit) : '' }}
                             </v-chip>
                           </div>
                         </v-card-text>

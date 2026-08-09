@@ -546,10 +546,11 @@ const formatUnitPrice = (price: any) => {
   return Number(num.toFixed(2)).toString()
 }
 
-// 后端 label 形如 "元/斤"，主行已有 ¥ 前缀，去掉"元"只保留单位后缀
+// 后端 label 形如 "元/斤"，主行已有 ¥ 前缀，去掉"元"并规范为 " / 单位" 后缀
 const formatUnitSuffix = (label: string | null) => {
   if (!label) return ''
-  return label.replace(/^元/, '')
+  const unit = label.replace(/^元/, '').replace(/^[\s/]+/, '').trim()
+  return unit ? ` / ${unit}` : ''
 }
 
 onMounted(() => {

@@ -115,7 +115,7 @@ const displayNutrients = computed<NutrientDisplay[]>(() => {
     const unit = nData.unit || ''
     // all_nutrients 的 nrp_pct 为 null，从 core_nutrients 的 key 映射中查找
     const nrpPct = nData.nrp_pct != null ? Math.round(nData.nrp_pct) : (nrpPctMap[key] ?? null)
-    const totalText = `${totalValue}${unit}`
+    const totalText = `${totalValue}${unit ? ` ${unit}` : ''}`
 
     const ingredientItems: { name: string; value: number; color: string }[] = []
     for (const detail of nutrition.ingredient_details) {
@@ -185,7 +185,7 @@ function renderDonuts() {
         trigger: 'item',
         formatter: (p: any) => {
           const pct = p.percent != null ? `${Math.round(p.percent)}%` : ''
-          return `<b>${p.name}</b><br/>${nutrient.label}: ${p.value.toFixed(2)}${nutrient.unit}${pct ? ' (' + pct + ')' : ''}`
+          return `<b>${p.name}</b><br/>${nutrient.label}: ${p.value.toFixed(2)} ${nutrient.unit}${pct ? ' (' + pct + ')' : ''}`
         },
       },
       series: [{

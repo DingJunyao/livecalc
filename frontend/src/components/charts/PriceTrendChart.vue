@@ -121,7 +121,7 @@ const filters = [
 ]
 
 // 单位后缀
-const unitSuffix = computed(() => props.unit ? `/${props.unit}` : '')
+const unitSuffix = computed(() => props.unit ? ` / ${props.unit}` : '')
 
 // 过滤数据
 const chartData = computed(() => {

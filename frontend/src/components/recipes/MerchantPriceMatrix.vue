@@ -127,14 +127,14 @@ const tableRows = computed<TableRow[]>(() => {
       let qtyDisplay = priceItem?.qtyDisplay || ''
       if (!qtyDisplay) {
         if (ing.quantity) {
-          qtyDisplay = `${ing.quantity}${ing.unit || ''}`
+          qtyDisplay = `${ing.quantity}${ing.unit ? ` ${ing.unit}` : ''}`
         } else if (ing.quantity_range) {
           let qr = ing.quantity_range
           if (typeof qr === 'string') {
             try { qr = JSON.parse(qr) } catch { /* ignore */ }
           }
           if (qr && typeof qr === 'object' && qr.min != null && qr.max != null) {
-            qtyDisplay = `${qr.min}-${qr.max}${ing.unit || ''}`
+            qtyDisplay = `${qr.min}-${qr.max}${ing.unit ? ` ${ing.unit}` : ''}`
           }
         }
       }

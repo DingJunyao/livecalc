@@ -186,7 +186,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
 
   if (ingredient.quantity) {
     qty = parseFloat(ingredient.quantity)
-    qtyDisplay = `${ingredient.quantity}${qtyUnit}`
+    qtyDisplay = `${ingredient.quantity}${qtyUnit ? ` ${qtyUnit}` : ''}`
   } else if (ingredient.quantity_range) {
     let qr = ingredient.quantity_range
     if (typeof qr === 'string') {
@@ -196,7 +196,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
       const min = parseFloat(qr.min) || 0
       const max = parseFloat(qr.max) || 0
       qty = (min + max) / 2
-      qtyDisplay = `${qr.min}-${qr.max}${qtyUnit}`
+      qtyDisplay = `${qr.min}-${qr.max}${qtyUnit ? ` ${qtyUnit}` : ''}`
     }
   }
 

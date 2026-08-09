@@ -275,14 +275,14 @@
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              ¥{{ formatPrice(product.latest_price) }}<span v-if="product.latest_price_unit" class="text-h6 font-weight-regular">/{{ product.latest_price_unit }}</span>
+              ¥{{ formatPrice(product.latest_price) }}<span v-if="product.latest_price_unit" class="text-h6 font-weight-regular"> / {{ product.latest_price_unit }}</span>
             </div>
             <template v-if="latestChartTrend">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">区间</div>
                 <div class="text-subtitle-1 font-weight-bold">
-                  ¥{{ latestChartTrend.min.toFixed(2) }} - ¥{{ latestChartTrend.max.toFixed(2) }}/{{ chartUnit }}
+                  ¥{{ latestChartTrend.min.toFixed(2) }} - ¥{{ latestChartTrend.max.toFixed(2) }} / {{ chartUnit }}
                 </div>
               </div>
               <div v-if="latestChartTrend.count" class="text-center">
@@ -564,7 +564,7 @@
             </template>
 
             <v-list-item-title>
-              ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }}{{ record.original_unit }}
+              ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
             </v-list-item-title>
             <v-list-item-subtitle>
               <template v-if="record.merchant_name">
@@ -1139,7 +1139,7 @@
                   <span>{{ sibling.name }}</span>
                   <span v-if="sibling.brand" class="text-caption text-medium-emphasis">({{ sibling.brand }})</span>
                   <span v-if="sibling.latest_price" class="text-caption text-medium-emphasis">
-                    — ¥{{ Number(sibling.latest_price).toFixed(2) }}{{ sibling.latest_price_unit ? '/' + sibling.latest_price_unit : '' }}
+                    — ¥{{ Number(sibling.latest_price).toFixed(2) }}{{ sibling.latest_price_unit ? ' / ' + sibling.latest_price_unit : '' }}
                   </span>
                 </div>
               </template>
