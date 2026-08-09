@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -85,6 +86,51 @@ List<StackedSeries> buildStackedSeries(List<CostHistoryPoint> points) {
 /// tooltipItems.length == showingSpots.length，不一致直接 throw）。
 /// 日期行并入第一条、合计行并入最后一条的 children（TextSpan 渲染时
 /// text 与 children 相连，文本各放一份不重复）。
+/// y axis value range with "nice" integer/0.5/0.2 steps so that axis labels
+/// align with grid lines and never duplicate after rounding.
+class _YAxisRange {
+  final double min;
+  final double max;
+  final double interval;
+  const _YAxisRange(this.min, this.max, this.interval);
+
+  bool get isIntegerInterval =>
+      (interval - interval.roundToDouble()).abs() < 1e-9;
+
+  factory _YAxisRange.fromData(double dataMin, double dataMax) {
+    if (!dataMax.isFinite || dataMax < dataMin) {
+      dataMax = dataMin + 1;
+    }
+    final span = dataMax - dataMin;
+    final pad = span == 0 ? 0.5 : span * 0.08;
+    final rawStep = (span + pad * 2) / 4;
+    final mag = math
+        .pow(10, (math.log(rawStep) / math.ln10).floor())
+        .toDouble();
+    final norm = rawStep / mag;
+    // Use only integer steps (1/2/5/10) and never below 1 so that the left
+    // axis labels (v.toInt()) stay unique instead of duplicating (6,6,7,7...).
+    final step =
+        norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    final interval = math.max(step * mag, 1.0);
+    final min = (dataMin - pad) / interval;
+    final max = (dataMax + pad) / interval;
+    final computedMin = min.floorToDouble() * interval;
+    return _YAxisRange(
+      dataMin >= 0 ? math.max(0, computedMin) : computedMin,
+      max.ceilToDouble() * interval,
+      interval,
+    );
+  }
+}
+
+String _formatYAxisLabel(double v, _YAxisRange range) {
+  if (range.isIntegerInterval) {
+    return '¥${v.round()}';
+  }
+  return '¥${v.toStringAsFixed(1)}';
+}
+
 List<LineTooltipItem> buildStackedTooltipItems(
     List<StackedSeries> series, List<LineBarSpot> touchedSpots, String date) {
   if (touchedSpots.isEmpty) return [];
@@ -279,6 +325,19 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
 
   Widget _buildStackedChart(ThemeData theme, List<StackedSeries> series) {
     final isHighlighted = _highlightIndex != null;
+    var dataMin = double.infinity;
+    var dataMax = double.negativeInfinity;
+    for (final s in series) {
+      for (final spot in s.spots) {
+        if (spot.y < dataMin) dataMin = spot.y;
+        if (spot.y > dataMax) dataMax = spot.y;
+      }
+    }
+    if (series.isEmpty) {
+      dataMin = 0;
+      dataMax = 1;
+    }
+    final yRange = _YAxisRange.fromData(dataMin, dataMax);
     // 面积图：lineBarsData 必须与序列顺序相反（顶层先画、底层最后覆盖）。
     // fl_chart 每条线的 belowBarData 都从自身曲线填到 x 轴（无逐点下边界），
     // 正序时所有填充叠在底部（下层区域被上层填充盖死 → 用户反馈「折线原点
@@ -310,13 +369,17 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
       // 挂到 RenderLineChart，供 _onPointerGlobal 计算命中 spot
       chartRendererKey: _chartKey,
       LineChartData(
+        minY: yRange.min,
+        maxY: yRange.max,
+        // Clip at the chart rect so curved lines cannot cross the bottom edge.
+        clipData: const FlClipData.all(),
         // 自定义 touch 处理下的 tooltip 状态（内置 handleBuiltInTouches 在
         // 移动端 tap-up 清空 tooltip，导致「点击没有提示」）
         showingTooltipIndicators: _tooltipSpots,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
-          horizontalInterval: 1,
+          horizontalInterval: yRange.interval,
           getDrawingHorizontalLine: (v) => FlLine(
               color: theme.colorScheme.outlineVariant, strokeWidth: 0.5),
         ),
@@ -325,8 +388,11 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 44,
-              getTitlesWidget: (v, meta) => Text('¥${v.toInt()}',
-                  style: TextStyle(fontSize: 9, color: theme.colorScheme.outline)),
+              interval: yRange.interval,
+              getTitlesWidget: (v, meta) => Text(
+                  _formatYAxisLabel(v, yRange),
+                  style: TextStyle(
+                      fontSize: 9, color: theme.colorScheme.outline)),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -379,6 +445,17 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
   // 回退：avg/min/max 折线+区间（对齐 web 无 breakdown 时的回退图）
   Widget _buildFallbackLineChart(ThemeData theme) {
     final points = widget.points;
+    var dataMin = double.infinity;
+    var dataMax = double.negativeInfinity;
+    for (final p in points) {
+      if (p.minCost < dataMin) dataMin = p.minCost;
+      if (p.maxCost > dataMax) dataMax = p.maxCost;
+    }
+    if (!dataMax.isFinite) {
+      dataMin = 0;
+      dataMax = 1;
+    }
+    final yRange = _YAxisRange.fromData(dataMin, dataMax);
     final avg = LineChartBarData(
       spots: [
         for (var i = 0; i < points.length; i++)
@@ -404,11 +481,16 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
       // 挂到 RenderLineChart，供 _onPointerGlobal 计算命中 spot
       chartRendererKey: _chartKey,
       LineChartData(
+        minY: yRange.min,
+        maxY: yRange.max,
+        // Clip at the chart rect so curved lines cannot cross the bottom edge.
+        clipData: const FlClipData.all(),
         // 同主图：自定义 touch 处理下的 tooltip 状态
         showingTooltipIndicators: _tooltipSpots,
         gridData: FlGridData(
           show: true,
           drawVerticalLine: false,
+          horizontalInterval: yRange.interval,
           getDrawingHorizontalLine: (v) =>
               FlLine(color: theme.colorScheme.outlineVariant, strokeWidth: 0.5),
         ),
@@ -417,8 +499,11 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
             sideTitles: SideTitles(
               showTitles: true,
               reservedSize: 44,
-              getTitlesWidget: (v, meta) => Text('¥${v.toInt()}',
-                  style: TextStyle(fontSize: 9, color: theme.colorScheme.outline)),
+              interval: yRange.interval,
+              getTitlesWidget: (v, meta) => Text(
+                  _formatYAxisLabel(v, yRange),
+                  style: TextStyle(
+                      fontSize: 9, color: theme.colorScheme.outline)),
             ),
           ),
           bottomTitles: AxisTitles(

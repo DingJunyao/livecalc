@@ -157,6 +157,12 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             builder: (_, __) => const MerchantListScreen(),
           ),
           GoRoute(
+            path: '/merchants/map',
+            name: 'merchant-map',
+            builder: (_, __) =>
+                const MerchantListScreen(initialShowMap: true),
+          ),
+          GoRoute(
             path: '/merchants/:id',
             name: 'merchant-detail',
             builder: (_, state) => MerchantDetailScreen(

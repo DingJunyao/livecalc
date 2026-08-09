@@ -6,20 +6,32 @@ class Merchant {
   final double? longitude;
   final String? phone;
   final int? productCount;
+  final bool isOpen;
+  final String? createdAt;
 
   const Merchant({
-    required this.id, required this.name, this.address,
-    this.latitude, this.longitude, this.phone, this.productCount,
+    required this.id,
+    required this.name,
+    this.address,
+    this.latitude,
+    this.longitude,
+    this.phone,
+    this.productCount,
+    this.isOpen = true,
+    this.createdAt,
   });
 
   factory Merchant.fromJson(Map<String, dynamic> json) {
     return Merchant(
-      id: json['id'] as int, name: json['name'] as String? ?? '',
+      id: json['id'] as int,
+      name: json['name'] as String? ?? '',
       address: json['address'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       phone: json['phone'] as String?,
       productCount: json['product_count'] as int?,
+      isOpen: json['is_open'] as bool? ?? true,
+      createdAt: json['created_at'] as String?,
     );
   }
 }

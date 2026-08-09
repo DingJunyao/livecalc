@@ -20,19 +20,24 @@ class PriceRepository {
   Future<PriceRecordsResult> getRecords({
     String? search,
     int? merchantId,
+    int? ingredientId,
+    int? productId,
     String? recordTypes,
     String? startDate,
     String? endDate,
+    int? limit,
     int page = 1,
     int pageSize = 20,
   }) async {
     final skip = (page - 1) * pageSize;
     final params = <String, dynamic>{
       'skip': skip,
-      'limit': pageSize,
+      'limit': limit ?? pageSize,
     };
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (merchantId != null) params['merchant_ids'] = merchantId.toString();
+    if (ingredientId != null) params['ingredient_id'] = ingredientId.toString();
+    if (productId != null) params['product_id'] = productId.toString();
     if (recordTypes != null) params['record_types'] = recordTypes;
     if (startDate != null) params['start_date'] = startDate;
     if (endDate != null) params['end_date'] = endDate;
@@ -87,5 +92,26 @@ class PriceRepository {
 
     final response = await _client.dio.post('/products', data: data);
     return PriceRecord.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// 更新价格记录（PUT /products/{id}）。
+  Future<void> updateRecord(
+    int id, {
+    required double price,
+    required double quantity,
+    required String unit,
+    int? merchantId,
+  }) async {
+    final data = <String, dynamic>{
+      'price': price,
+      'original_quantity': quantity,
+      'original_unit': unit,
+    };
+    if (merchantId != null) data['merchant_id'] = merchantId;
+    await _client.dio.put('/products/$id', data: data);
+  }
+
+  Future<void> deleteRecord(int id) async {
+    await _client.dio.delete('/products/$id');
   }
 }

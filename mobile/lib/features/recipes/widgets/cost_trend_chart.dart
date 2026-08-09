@@ -23,7 +23,7 @@ class CostTrendChart extends StatefulWidget {
   State<CostTrendChart> createState() => _CostTrendChartState();
 }
 
-enum _Range { week, month, quarter, year }
+enum _Range { week, month, quarter, year, all }
 
 class _CostTrendChartState extends State<CostTrendChart> {
   _Range _selected = _Range.month;
@@ -74,6 +74,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
       'month': '月',
       'quarter': '季',
       'year': '年',
+      'all': '全部',
     };
     return DropdownButton<_Range>(
       key: const Key('range_dropdown'),
@@ -92,6 +93,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
           _Range.month => 30,
           _Range.quarter => 90,
           _Range.year => 365,
+          _Range.all => 3650,
         };
         widget.onRangeChange?.call(days);
       },
@@ -274,11 +276,14 @@ class _TrendPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 0.5;
+    // 镙囩鏍煎眰闂撮殧灏忎簬 1 鏃朵繚鐣欎竴浣嶅皬鏁帮紝閬垮厤鍥涜垗浜斿叆鍚庡嚭鐜?6,6,7,7 杩欐牱鐨勯噸澶嶆爣绛?
+    final gridStep = (maxV - minV) / 4;
     for (var i = 0; i <= 4; i++) {
       final v = minV + (maxV - minV) * i / 4;
       final y = yAt(v);
       canvas.drawLine(Offset(plotLeft, y), Offset(plotRight, y), gridPaint);
-      _text(canvas, '¥${v.toStringAsFixed(0)}', Offset(2, y - 7), gridColor, 9);
+      final label = gridStep < 1 ? '¥${v.toStringAsFixed(1)}' : '¥${v.round()}';
+      _text(canvas, label, Offset(2, y - 7), gridColor, 9);
     }
 
     // min/max 区间带
