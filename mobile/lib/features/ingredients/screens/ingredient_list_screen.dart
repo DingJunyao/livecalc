@@ -449,7 +449,7 @@ class _IngredientCard extends StatelessWidget {
                           Flexible(
                             child: Text(
                               '¥${price.toStringAsFixed(2)}'
-                              '${unit == null ? '' : '/$unit'}',
+                              '${unit == null ? '' : ' / $unit'}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(

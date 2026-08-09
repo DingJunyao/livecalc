@@ -117,7 +117,8 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
     result.add(NutrientDisplay(
       key: key,
       label: label,
-      totalText: '${_fmt(item.value)}${item.unit}',
+      totalText: '${_fmt(item.value)}'
+          '${item.unit.isEmpty ? '' : ' ${item.unit}'}',
       // 兜底分支受合并顺序影响当前不可达（perServing 条目必先命中
       // item.nrpPct 分支），保留与 web 对齐
       nrpPct: item.nrpPct > 0
@@ -347,7 +348,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodyMedium),
               ),
-              Text('${_fmt(c.value)}${c.unit}',
+              Text('${_fmt(c.value)}${c.unit.isEmpty ? '' : ' ${c.unit}'}',
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(width: 12),

@@ -834,7 +834,7 @@ class _LatestPriceCard extends StatelessWidget {
             else ...[
               Text(
                 '¥${latest!.price!.toStringAsFixed(2)}'
-                '${latest!.unit == null ? '' : '/${latest!.unit}'}',
+                '${latest!.unit == null ? '' : ' / ${latest!.unit}'}',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.tertiary,
@@ -1024,7 +1024,7 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
             if (latest != null && latest.price != null)
               Text(
                 '¥${latest.price!.toStringAsFixed(2)}'
-                '${latest.unit == null ? '' : '/${latest.unit}'}',
+                '${latest.unit == null ? '' : ' / ${latest.unit}'}',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.tertiary,
                   fontWeight: FontWeight.bold,
@@ -1175,7 +1175,8 @@ class _RecordRow extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
-                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}${r.unit}',
+                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}'
+                  '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,

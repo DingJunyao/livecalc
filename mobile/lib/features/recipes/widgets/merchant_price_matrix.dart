@@ -89,10 +89,14 @@ String _merchantLabel(MerchantPriceRecord pr) =>
 
 String _qtyText(RecipeIngredient ing) {
   if (ing.quantityRange != null && ing.quantityRange!.min > 0) {
-    return '${_fmt(ing.quantityRange!.min)}-${_fmt(ing.quantityRange!.max)}${ing.unit ?? ''}';
+    return '${_fmt(ing.quantityRange!.min)}-${_fmt(ing.quantityRange!.max)}'
+        '${ing.unit == null || ing.unit!.isEmpty ? '' : ' ${ing.unit}'}';
   }
   final q = ing.quantity;
-  if (q != null && q.isNotEmpty) return '$q${ing.unit ?? ''}';
+  if (q != null && q.isNotEmpty) {
+    return '$q'
+        '${ing.unit == null || ing.unit!.isEmpty ? '' : ' ${ing.unit}'}';
+  }
   if (ing.originalQuantity != null && ing.originalQuantity!.isNotEmpty) {
     return ing.originalQuantity!;
   }

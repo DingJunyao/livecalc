@@ -381,7 +381,7 @@ class _ProductCard extends StatelessWidget {
                           const Spacer(),
                           Text(
                             '¥${price.toStringAsFixed(2)}'
-                            '${unit == null ? '' : '/$unit'}',
+                            '${unit == null ? '' : ' / $unit'}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodyMedium?.copyWith(

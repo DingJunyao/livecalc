@@ -354,9 +354,9 @@ class _UnitRow extends StatelessWidget {
     final theme = Theme.of(context);
     final detail = <String>[
       if (unit.conversionFactor != null)
-        '1${unit.unitName} = ${_fmtNum(unit.conversionFactor!)}个',
+        '1 ${unit.unitName} = ${_fmtNum(unit.conversionFactor!)} 个',
       if (unit.weightPerUnit != null)
-        '${_fmtNum(unit.weightPerUnit!)}g/个',
+        '${_fmtNum(unit.weightPerUnit!)} g / 个',
     ].join(' · ');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

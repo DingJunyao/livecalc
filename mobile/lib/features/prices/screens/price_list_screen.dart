@@ -269,7 +269,8 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                     const SizedBox(height: 4),
                     Text(
                       '¥${r.price.toStringAsFixed(2)}'
-                      ' / ${_fmtQty(r.quantity)}${r.unit}',
+                      ' / ${_fmtQty(r.quantity)}'
+                      '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,

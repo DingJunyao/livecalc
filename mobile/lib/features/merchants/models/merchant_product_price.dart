@@ -40,11 +40,12 @@ class MerchantProductPrice {
   /// 展示单价：优先标准单价（元/斤、元/L），否则总价。
   double get displayPrice => standardUnitPrice ?? price;
 
-  /// 展示单位后缀（如 “/斤”），没有时为空。
+  /// 展示单位后缀（如 “ / 斤”），没有时为空。
   String get displayUnit {
     final label = standardUnitLabel ?? '';
-    return label.startsWith('元')
-        ? '/${label.substring(1)}'
-        : (label.isEmpty ? '' : '/$label');
+    if (label.isEmpty) return '';
+    var unit = label.startsWith('元') ? label.substring(1) : label;
+    unit = unit.replaceFirst(RegExp(r'^[\s/]+'), '').trim();
+    return unit.isEmpty ? '' : ' / $unit';
   }
 }

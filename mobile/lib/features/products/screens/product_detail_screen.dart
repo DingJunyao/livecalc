@@ -630,7 +630,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
             else ...[
               Text(
                 '¥${latest!.price!.toStringAsFixed(2)}'
-                '${latest!.unit == null ? '' : '/${latest!.unit}'}',
+                '${latest!.unit == null ? '' : ' / ${latest!.unit}'}',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: theme.colorScheme.tertiary,
@@ -769,7 +769,8 @@ class _ProductRecordRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}${r.unit}',
+                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}'
+                  '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.bold,

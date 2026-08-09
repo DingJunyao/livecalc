@@ -107,7 +107,8 @@ class _MerchantPriceCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '¥${price.price.toStringAsFixed(2)}${unit.isEmpty ? '' : '/$unit'}',
+                '¥${price.price.toStringAsFixed(2)}'
+                '${unit.isEmpty ? '' : ' / $unit'}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodyMedium?.copyWith(

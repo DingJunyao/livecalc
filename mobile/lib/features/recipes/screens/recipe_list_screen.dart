@@ -175,7 +175,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (hasCost) {
       children.add(
         Text(
-          '¥${r.estimatedCost!.toStringAsFixed(2)}/$servings人份',
+          '¥${r.estimatedCost!.toStringAsFixed(2)} / $servings 人份',
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,

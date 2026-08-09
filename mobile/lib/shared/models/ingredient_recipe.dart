@@ -29,7 +29,7 @@ class RecipeUsage {
         ? q.toInt().toString()
         : q.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '')
             .replaceFirst(RegExp(r'\.$'), '');
-    return '$qs${unit ?? ''}';
+    return '$qs${(unit?.isNotEmpty ?? false) ? ' $unit' : ''}';
   }
 }
 
