@@ -709,8 +709,14 @@ def get_product_latest_price_by_merchant(
         if not product:
             return {"prices": [], "unit": None}
 
-        # 原料默认单位字段已迁移至用户级偏好；目标单位留空，下游按记录原单位处理
-        target_unit_abbr = None
+        # 按当前用户的质量偏好单位折算（fallback 斤）
+        target_unit_abbr = "斤"
+        _mui = getattr(current_user, "default_mass_unit_id", None)
+        if _mui:
+            from app.models.unit import Unit as _U
+            _mu = db.query(_U).filter(_U.id == _mui).first()
+            if _mu and _mu.abbreviation:
+                target_unit_abbr = _mu.abbreviation
 
         # P2：跨用户公开查询价格记录（不按 user_id 过滤）
         records = db.query(ProductRecord).options(

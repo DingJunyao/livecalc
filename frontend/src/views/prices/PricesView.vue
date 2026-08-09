@@ -52,7 +52,7 @@
 
             <v-list-item-title>{{ record.product_name }}</v-list-item-title>
             <v-list-item-subtitle>
-              ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }}{{ record.original_unit }}
+              ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
             </v-list-item-subtitle>
             <v-list-item-subtitle>
               <span v-if="record.merchant_id"
@@ -100,7 +100,7 @@
                 <div class="text-body-2 font-weight-medium text-truncate">{{ record.product_name }}</div>
               </div>
               <div class="text-h6 font-weight-bold text-tertiary mb-1">
-                ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }}{{ record.original_unit }}
+                ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
               </div>
               <div class="d-flex flex-wrap align-center ga-2">
                 <v-chip size="x-small"

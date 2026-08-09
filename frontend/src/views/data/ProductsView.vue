@@ -75,7 +75,7 @@
               </template>
               <span>{{ item.brand || '无品牌' }}</span>
               <span v-if="item.latest_price != null" class="text-tertiary font-weight-bold ms-2">
-                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis">/{{ item.latest_price_unit }}</span>
+                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </span>
             </v-list-item-subtitle>
 
@@ -142,7 +142,7 @@
               </div>
               <div class="text-caption text-medium-emphasis">{{ item.brand || '无品牌' }}</div>
               <div v-if="item.latest_price != null" class="text-subtitle-1 font-weight-bold text-tertiary">
-                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis">/{{ item.latest_price_unit }}</span>
+                ¥{{ formatUnitPrice(item.latest_price) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </div>
             </v-card-text>
             <v-divider />

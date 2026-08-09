@@ -65,7 +65,7 @@
                   <div class="paste-inline-panel">
                     <div class="d-flex align-center justify-space-between mb-1">
                       <span class="text-body-2 font-weight-medium">{{ row.name }}</span>
-                      <span class="text-caption text-medium-emphasis">{{ row.price ?? '—' }} · {{ row.quantity }}{{ row.unit }}</span>
+                      <span class="text-caption text-medium-emphasis">{{ row.price ?? '—' }} · {{ row.quantity }}{{ row.unit ? ' ' + row.unit : '' }}</span>
                     </div>
                     <v-autocomplete
                       v-model:search="row.productSearch"

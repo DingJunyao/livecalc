@@ -535,10 +535,10 @@ async def get_merchant_product_prices(
             if unit_price is None and std_qty > 0:
                 if r.standard_unit_type == "mass":
                     unit_price = price / std_qty * 500
-                    unit_label = "元/斤"
+                    unit_label = "元 / 斤"
                 elif r.standard_unit_type == "volume":
                     unit_price = price / std_qty * 1000
-                    unit_label = "元/L"
+                    unit_label = "元 / L"
 
             items.append({
                 "product_id": r.product_id,
