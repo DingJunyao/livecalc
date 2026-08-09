@@ -138,7 +138,7 @@ async function loadAllData() {
     loading.value = false
 
     // 并行加载成本和商家数据
-    loadCostHistory('quarter')
+    loadCostHistory('month')
     loadMerchantCosts()
     loadMerchantPrices()
 
