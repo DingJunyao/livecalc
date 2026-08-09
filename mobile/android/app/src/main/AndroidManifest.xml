@@ -1,7 +1,13 @@
 ﻿<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required for the release build to open network connections.
+         Flutter only adds this to the debug/profile manifests by default,
+         so a release APK has no internet access unless declared here. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
         android:label="生计"
         android:name="${applicationName}"
+        android:usesCleartextTraffic="true"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
