@@ -18,6 +18,7 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   bool _showAllNutrients = false;
+  int _selectedImageIndex = 0;
 
   @override
   void initState() {
@@ -50,33 +51,81 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
 
     final ratio = state.displayServings / detail.servings;
+    final imageUrls = detail.imageUrls;
+    final hasImages = imageUrls.isNotEmpty;
+    final appBarActions = [
+      IconButton(
+        icon: const Icon(Icons.analytics_outlined),
+        tooltip: '菜谱分析',
+        onPressed: () => context.push('/recipes/${widget.id}/analysis'),
+      ),
+    ];
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            title: Text(detail.name),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.analytics_outlined),
-                tooltip: '菜谱分析',
-                onPressed: () => context.push('/recipes/${widget.id}/analysis'),
+          if (hasImages)
+            SliverAppBar(
+              expandedHeight: 260,
+              pinned: true,
+              title: Text(detail.name),
+              actions: appBarActions,
+              flexibleSpace: FlexibleSpaceBar(
+                background: GestureDetector(
+                  onTap: () =>
+                      _openLightbox(context, imageUrls, _selectedImageIndex),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(imageUrls[_selectedImageIndex],
+                          fit: BoxFit.cover),
+                      if (imageUrls.length > 1)
+                        Positioned(
+                          right: 12,
+                          bottom: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.photo_library_outlined,
+                                    size: 14, color: Colors.white),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${imageUrls.length}',
+                                  style: const TextStyle(
+                                      color: Colors.white, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
-            ],
-            flexibleSpace: FlexibleSpaceBar(
-              background: detail.imageUrl != null
-                  ? Image.network(detail.imageUrl!, fit: BoxFit.cover)
-                  : Container(color: theme.colorScheme.primaryContainer),
+            )
+          else
+            SliverAppBar(
+              pinned: true,
+              title: Text(detail.name),
+              actions: appBarActions,
             ),
-          ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (imageUrls.length > 1) ...[
+                    _buildImageGallery(theme, imageUrls, _selectedImageIndex),
+                    const SizedBox(height: 16),
+                  ],
                   _buildHeader(theme, detail),
                   const SizedBox(height: 16),
                   _buildCostCard(theme, state, ratio),
@@ -97,6 +146,63 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ---- 图片缩略图 + 灯箱 ----
+  Widget _buildImageGallery(
+      ThemeData theme, List<String> urls, int selectedIndex) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              for (var i = 0; i < urls.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedImageIndex = i),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: i == selectedIndex
+                                ? theme.colorScheme.primary
+                                : Colors.transparent,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Image.network(
+                          urls[i],
+                          width: 88,
+                          height: 88 * 0.33,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openLightbox(
+      BuildContext context, List<String> urls, int initialIndex) async {
+    await showGeneralDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '关闭',
+      barrierColor: Colors.black.withValues(alpha: 0.92),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (ctx, _, __) =>
+          _RecipeLightbox(urls: urls, initialIndex: initialIndex),
     );
   }
 
@@ -127,9 +233,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(detail.name,
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold)),
         if (detail.description != null && detail.description!.isNotEmpty) ...[
           const SizedBox(height: 8),
           Text(detail.description!,
@@ -766,6 +869,199 @@ class _ServingsStepper extends StatelessWidget {
         onTap: disabled ? null : onTap,
         child: Padding(
             padding: const EdgeInsets.all(4), child: Icon(icon, size: 18)),
+      ),
+    );
+  }
+}
+
+// ---- 图片灯箱（支持左右切换 + 双指缩放）----
+class _RecipeLightbox extends StatefulWidget {
+  final List<String> urls;
+  final int initialIndex;
+  const _RecipeLightbox({required this.urls, required this.initialIndex});
+
+  @override
+  State<_RecipeLightbox> createState() => _RecipeLightboxState();
+}
+
+class _RecipeLightboxState extends State<_RecipeLightbox> {
+  late final PageController _controller;
+  late int _index = widget.initialIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _prev() {
+    if (_index > 0) {
+      _controller.previousPage(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _controller.jumpToPage(widget.urls.length - 1);
+    }
+  }
+
+  void _next() {
+    if (_index < widget.urls.length - 1) {
+      _controller.nextPage(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    } else {
+      _controller.jumpToPage(0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: PageView.builder(
+              controller: _controller,
+              itemCount: widget.urls.length,
+              onPageChanged: (i) => setState(() => _index = i),
+              itemBuilder: (ctx, i) => InteractiveViewer(
+                maxScale: 4,
+                child: Center(
+                  child: Image.network(
+                    widget.urls[i],
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Center(
+                      child: Icon(Icons.broken_image_outlined,
+                          size: 64, color: Colors.white54),
+                    ),
+                    loadingBuilder: (ctx, child, progress) =>
+                        progress == null
+                            ? child
+                            : const Center(
+                                child: CircularProgressIndicator(
+                                    color: Colors.white54),
+                              ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // 关闭按钮
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            right: 12,
+            child: IconButton(
+              icon: const Icon(Icons.close, color: Colors.white, size: 28),
+              tooltip: '关闭',
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          // 图片计数
+          if (widget.urls.length > 1)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 16,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${_index + 1} / ${widget.urls.length}',
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
+          // 左右切换
+          if (widget.urls.length > 1) ...[
+            Positioned(
+              left: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_left,
+                      color: Colors.white, size: 36),
+                  tooltip: '上一张',
+                  onPressed: _prev,
+                ),
+              ),
+            ),
+            Positioned(
+              right: 8,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: IconButton(
+                  icon: const Icon(Icons.chevron_right,
+                      color: Colors.white, size: 36),
+                  tooltip: '下一张',
+                  onPressed: _next,
+                ),
+              ),
+            ),
+          ],
+          // 底部缩略图导航
+          if (widget.urls.length > 1)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: MediaQuery.of(context).padding.bottom + 12,
+              child: SizedBox(
+                height: 56,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: widget.urls.length,
+                  itemBuilder: (ctx, i) => GestureDetector(
+                    onTap: () => _controller.jumpToPage(i),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: i == _index
+                              ? Colors.white
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: Image.network(
+                          widget.urls[i],
+                          width: 52,
+                          height: 52,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 52,
+                            height: 52,
+                            color: Colors.white12,
+                            child: const Icon(Icons.broken_image_outlined,
+                                size: 20, color: Colors.white38),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -40,9 +40,6 @@ class IngredientQuantity {
   });
 }
 
-String _fmtNum(double v) =>
-    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
-
 /// Extract effective quantity from quantity / quantity_range / original_quantity.
 /// Logic mirrors Web getEffectiveQuantity.
 IngredientQuantity resolveIngredientQuantity(RecipeIngredient ingredient) {
@@ -82,25 +79,66 @@ class RecipeRepository {
   RecipeRepository({ApiClient? client})
       : _client = client ?? ApiClient.instance;
 
-  Future<List<RecipeSummary>> getRecipes(
-      {String? search, int page = 1, int pageSize = 50}) async {
+  Future<RecipePage> getRecipes({
+    String? search,
+    List<String>? categories,
+    List<String>? difficulties,
+    List<int>? ingredientIds,
+    List<String>? conditions,
+    int page = 1,
+    int pageSize = 20,
+  }) async {
     final params = <String, dynamic>{
       'skip': (page - 1) * pageSize,
       'limit': pageSize,
     };
-    if (search != null) params['search'] = search;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    if (categories != null && categories.isNotEmpty) {
+      params['categories'] = categories.join(',');
+    }
+    if (difficulties != null && difficulties.isNotEmpty) {
+      params['difficulties'] = difficulties.join(',');
+    }
+    if (ingredientIds != null && ingredientIds.isNotEmpty) {
+      params['ingredient_ids'] = ingredientIds.join(',');
+    }
+    for (final cond in conditions ?? const <String>[]) {
+      params[cond] = 'true';
+    }
     final response = await _client.dio.get('/recipes', queryParameters: params);
-    final list = (response.data is List)
-        ? response.data as List
-        : (response.data['items'] as List);
-    return list
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data['items'] as List?) ?? const []);
+    final items = list
         .map((e) => RecipeSummary.fromJson(e as Map<String, dynamic>))
         .toList();
+    final total =
+        (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
+    return RecipePage(items: items, total: total);
   }
 
   Future<RecipeDetail> getRecipe(int id) async {
     final response = await _client.dio.get('/recipes/$id');
     return RecipeDetail.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// 菜谱筛选用的食材选项（对齐 Web 端 /ingredients?limit=1000）
+  Future<List<IngredientOption>> getIngredientOptions(String query) async {
+    final params = <String, dynamic>{'limit': 1000, 'sort_by': 'name'};
+    if (query.isNotEmpty) params['q'] = query;
+    final response = await _client.dio.get('/ingredients', queryParameters: params);
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data['items'] as List?) ?? const []);
+    return [
+      for (final e in list.whereType<Map<String, dynamic>>())
+        IngredientOption(
+          id: _toIntOrNull(e['id']) ?? 0,
+          name: _str(e['name']) ?? '',
+        ),
+    ];
   }
 
   Future<RecipeCost> getRecipeCost(int id) async {
@@ -181,6 +219,20 @@ class RecipeRepository {
           : item.ingredientName,
     );
   }
+}
+
+/// 菜谱分页结果（对齐 Web / 后端 PaginatedResponse）
+class RecipePage {
+  final List<RecipeSummary> items;
+  final int total;
+  const RecipePage({required this.items, this.total = 0});
+}
+
+/// 食材选项（菜谱筛选弹窗搜索用）
+class IngredientOption {
+  final int id;
+  final String name;
+  const IngredientOption({required this.id, required this.name});
 }
 
 /// batch-cost 接口返回的单条成本/热量信息

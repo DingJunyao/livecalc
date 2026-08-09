@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/recipe_summary.dart';
 import '../models/recipe_detail.dart';
@@ -6,31 +7,64 @@ import '../repositories/recipe_repository.dart';
 class RecipeListState {
   final List<RecipeSummary> recipes;
   final bool loading;
+  final bool loadingMore;
   final bool loadingCosts;
   final String? error;
-  final String? searchQuery;
+  final String searchQuery;
+  final List<String> filterCategories;
+  final List<String> filterDifficulties;
+  final List<int> filterIngredientIds;
+  final List<String> filterConditions;
+  final int total;
+  final int currentPage;
+  final bool hasMore;
 
   const RecipeListState({
     this.recipes = const [],
     this.loading = false,
+    this.loadingMore = false,
     this.loadingCosts = false,
     this.error,
-    this.searchQuery,
+    this.searchQuery = '',
+    this.filterCategories = const [],
+    this.filterDifficulties = const [],
+    this.filterIngredientIds = const [],
+    this.filterConditions = const [],
+    this.total = 0,
+    this.currentPage = 1,
+    this.hasMore = true,
   });
 
   RecipeListState copyWith({
     List<RecipeSummary>? recipes,
     bool? loading,
+    bool? loadingMore,
     bool? loadingCosts,
     String? error,
+    bool clearError = false,
     String? searchQuery,
+    List<String>? filterCategories,
+    List<String>? filterDifficulties,
+    List<int>? filterIngredientIds,
+    List<String>? filterConditions,
+    int? total,
+    int? currentPage,
+    bool? hasMore,
   }) {
     return RecipeListState(
       recipes: recipes ?? this.recipes,
       loading: loading ?? this.loading,
+      loadingMore: loadingMore ?? this.loadingMore,
       loadingCosts: loadingCosts ?? this.loadingCosts,
-      error: error ?? this.error,
+      error: clearError ? null : (error ?? this.error),
       searchQuery: searchQuery ?? this.searchQuery,
+      filterCategories: filterCategories ?? this.filterCategories,
+      filterDifficulties: filterDifficulties ?? this.filterDifficulties,
+      filterIngredientIds: filterIngredientIds ?? this.filterIngredientIds,
+      filterConditions: filterConditions ?? this.filterConditions,
+      total: total ?? this.total,
+      currentPage: currentPage ?? this.currentPage,
+      hasMore: hasMore ?? this.hasMore,
     );
   }
 }
@@ -39,20 +73,90 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
   final RecipeRepository _repository;
   // 防止旧请求的成本数据覆盖新搜索结果
   int _costToken = 0;
+  Timer? _debounce;
 
   RecipeListNotifier(this._repository) : super(const RecipeListState());
 
-  Future<void> loadRecipes({String? search}) async {
-    state = state.copyWith(loading: true, error: null, searchQuery: search);
+  static const int pageSize = 20;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  int get activeFilterCount =>
+      (state.filterCategories.isNotEmpty ? 1 : 0) +
+      (state.filterDifficulties.isNotEmpty ? 1 : 0) +
+      (state.filterIngredientIds.isNotEmpty ? 1 : 0) +
+      (state.filterConditions.isNotEmpty ? 1 : 0);
+
+  bool get canLoadMore =>
+      state.hasMore && !state.loading && !state.loadingMore;
+
+  Future<void> loadRecipes({bool loadMore = false, String? search}) async {
+    if (loadMore && !canLoadMore) return;
+    final page = loadMore ? state.currentPage + 1 : 1;
+    state = state.copyWith(
+      loading: !loadMore,
+      loadingMore: loadMore,
+      clearError: true,
+      searchQuery: search,
+    );
     try {
       // 第一阶段：尽快展示列表（不含价格/热量）
-      final recipes = await _repository.getRecipes(search: search);
-      state = RecipeListState(recipes: recipes, searchQuery: search);
+      final result = await _repository.getRecipes(
+        search: search ?? state.searchQuery,
+        categories: state.filterCategories,
+        difficulties: state.filterDifficulties,
+        ingredientIds: state.filterIngredientIds,
+        conditions: state.filterConditions,
+        page: page,
+        pageSize: pageSize,
+      );
+      final recipes =
+          loadMore ? [...state.recipes, ...result.items] : result.items;
+      state = RecipeListState(
+        recipes: recipes,
+        searchQuery: search ?? state.searchQuery,
+        filterCategories: state.filterCategories,
+        filterDifficulties: state.filterDifficulties,
+        filterIngredientIds: state.filterIngredientIds,
+        filterConditions: state.filterConditions,
+        total: result.total,
+        currentPage: page,
+        hasMore: recipes.length < result.total,
+      );
       // 第二阶段：后台懒加载价格与热量
       _loadCosts(recipes);
     } on Exception catch (e) {
-      state = state.copyWith(loading: false, error: e.toString());
+      state = state.copyWith(
+        loading: false,
+        loadingMore: false,
+        error: e.toString(),
+      );
     }
+  }
+
+  void setSearch(String query) {
+    state = state.copyWith(searchQuery: query);
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () => loadRecipes());
+  }
+
+  void applyFilters({
+    required List<String> categories,
+    required List<String> difficulties,
+    required List<int> ingredientIds,
+    required List<String> conditions,
+  }) {
+    state = state.copyWith(
+      filterCategories: categories,
+      filterDifficulties: difficulties,
+      filterIngredientIds: ingredientIds,
+      filterConditions: conditions,
+    );
+    loadRecipes();
   }
 
   Future<void> _loadCosts(List<RecipeSummary> recipes) async {
@@ -86,6 +190,14 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
 final recipeListProvider =
     StateNotifierProvider<RecipeListNotifier, RecipeListState>((ref) {
   return RecipeListNotifier(RecipeRepository());
+});
+
+/// 菜谱筛选“所用食材”选项：按关键词搜索食材（对齐 Web 端自动补全）
+final recipeIngredientOptionsProvider =
+    FutureProvider.autoDispose.family<List<IngredientOption>, String>(
+        (ref, query) async {
+  final repo = RecipeRepository();
+  return repo.getIngredientOptions(query);
 });
 
 // Individual recipe detail

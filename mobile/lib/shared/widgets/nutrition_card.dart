@@ -93,7 +93,7 @@ class NutritionCard extends StatelessWidget {
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(width: 6),
-                Text('（每${info?.baseUnit ?? '100g'}）',
+                Text('（每${_baseLabel(info)}）',
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.outline)),
                 const Spacer(),
@@ -187,58 +187,115 @@ class _NutritionEditResult {
   const _NutritionEditResult(this.nutrients, {this.clear = false});
 }
 
-class _NutritionTable extends StatelessWidget {
+String _baseLabel(NutritionInfo? info) {
+  final qty = info?.baseQuantity ?? 100;
+  final unit = (info?.baseUnit ?? 'g').trim();
+  final qtyStr =
+      qty == qty.roundToDouble() ? qty.toInt().toString() : _fmtValue(qty);
+  return unit.isEmpty ? '${qtyStr}g' : '$qtyStr$unit';
+}
+
+class _NutritionTable extends StatefulWidget {
   final NutritionInfo info;
   const _NutritionTable({required this.info});
 
   @override
+  State<_NutritionTable> createState() => _NutritionTableState();
+}
+
+class _NutritionTableState extends State<_NutritionTable> {
+  bool _showAll = false;
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final nutrients = info.nutrients;
-    final coreCount = nutrients.length < 5 ? nutrients.length : 5;
-    final core = nutrients.take(coreCount).toList();
-    final others = nutrients.skip(coreCount).toList();
+    final nutrients = widget.info.nutrients;
+    final core = nutrients.length <= 5 ? nutrients : nutrients.take(5).toList();
+    final others = nutrients.length <= 5
+        ? <NutrientEntry>[]
+        : nutrients.skip(5).toList();
+    const valueW = 76.0;
+    const nrvW = 56.0;
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (final n in core) _row(theme, n),
-        if (others.isNotEmpty)
-          ExpansionTile(
-            dense: true,
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            title: Text('其他营养素（${others.length}）',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline)),
-            children: [for (final n in others) _row(theme, n)],
+        // 表头（对齐菜谱详情营养成分表样式）
+        Container(
+          color: theme.colorScheme.surfaceContainerHighest,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: const Row(
+            children: [
+              Expanded(child: Text('营养素')),
+              SizedBox(
+                  width: valueW, child: Text('数量', textAlign: TextAlign.right)),
+              SizedBox(
+                  width: nrvW, child: Text('NRV%', textAlign: TextAlign.right)),
+            ],
           ),
+        ),
+        ..._rows(theme, core, valueW, nrvW),
+        if (others.isNotEmpty)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () => setState(() => _showAll = !_showAll),
+              icon: Icon(_showAll ? Icons.expand_less : Icons.expand_more,
+                  size: 18),
+              label: Text(_showAll ? '收起' : '展开 +${others.length} 项'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ),
+          ),
+        if (_showAll) ..._rows(theme, others, valueW, nrvW),
+        const SizedBox(height: 8),
+        Text('NRV = 营养素参考值百分比',
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.outline)),
       ],
     );
   }
 
-  Widget _row(ThemeData theme, NutrientEntry n) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(n.label, style: theme.textTheme.bodyMedium),
+  List<Widget> _rows(ThemeData theme, List<NutrientEntry> items,
+      double valueW, double nrvW) {
+    return [
+      for (var i = 0; i < items.length; i++)
+        Container(
+          decoration: BoxDecoration(
+            border: i == items.length - 1
+                ? null
+                : Border(
+                    bottom: BorderSide(
+                        color: theme.colorScheme.outlineVariant, width: 0.5)),
           ),
-          Text(
-            '${_fmtValue(n.value)} ${n.unit}',
-            style: theme.textTheme.bodyMedium,
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(child: Text(items[i].label)),
+              SizedBox(
+                width: valueW,
+                child: Text(
+                  '${_fmtValue(items[i].value)} ${items[i].unit}',
+                  textAlign: TextAlign.right,
+                ),
+              ),
+              SizedBox(
+                width: nrvW,
+                child: Text(
+                  items[i].nrvPct == null
+                      ? ''
+                      : '${items[i].nrvPct!.toStringAsFixed(1)}%',
+                  textAlign: TextAlign.right,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              ),
+            ],
           ),
-          SizedBox(
-            width: 56,
-            child: Text(
-              n.nrvPct == null ? '' : '${n.nrvPct!.toStringAsFixed(1)}%',
-              textAlign: TextAlign.end,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline),
-            ),
-          ),
-        ],
-      ),
-    );
+        ),
+    ];
   }
 }
 

@@ -32,6 +32,20 @@ String? _firstImageUrl(Map<String, dynamic> json) {
   return base.isEmpty ? raw : '$base$raw';
 }
 
+/// 解析完整图片 URL 列表（image_urls 已是完整 URL；兼容 images 相对路径）
+List<String> _imageUrls(Map<String, dynamic> json) {
+  final List? urls = (json['image_urls'] is List)
+      ? json['image_urls'] as List
+      : (json['images'] is List ? json['images'] as List : null);
+  if (urls == null) return const [];
+  final base = ApiClient.instance.baseUrl;
+  return urls
+      .map((e) => e?.toString() ?? '')
+      .where((s) => s.isNotEmpty)
+      .map((s) => s.startsWith('http') ? s : (base.isEmpty ? s : '$base$s'))
+      .toList();
+}
+
 class QuantityRange {
   final double min;
   final double max;
@@ -133,6 +147,7 @@ class RecipeDetail {
   final int servings;
   final List<String> tags;
   final String? imageUrl;
+  final List<String> imageUrls;
   final List<RecipeIngredient> ingredients;
   final List<RecipeStep> steps;
   final List<String> tips;
@@ -147,6 +162,7 @@ class RecipeDetail {
     this.servings = 1,
     this.tags = const [],
     this.imageUrl,
+    this.imageUrls = const [],
     this.ingredients = const [],
     this.steps = const [],
     this.tips = const [],
@@ -175,6 +191,7 @@ class RecipeDetail {
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       imageUrl: _firstImageUrl(json),
+      imageUrls: _imageUrls(json),
       ingredients: (json['ingredients'] as List<dynamic>?)
               ?.map((e) => RecipeIngredient.fromJson(e as Map<String, dynamic>))
               .toList() ??
