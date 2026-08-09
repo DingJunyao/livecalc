@@ -1376,6 +1376,17 @@ class _RelatedRecipesCard extends StatelessWidget {
     required this.onLoadMore,
   });
 
+  /// 一个菜谱里该食材的全部用量文本，对齐 Web formatUsages：
+  /// 数值类（精确值或区间）加「/ N 份」，模糊量不加；多条用分号合并
+  String _usageText(IngredientRecipeRef r) {
+    final servings = r.servings > 0 ? r.servings : 1;
+    return r.usages.map((u) {
+      final text = u.display;
+      final isNumeric = u.quantity > 0 || u.quantityRange != null;
+      return isNumeric ? '$text / $servings 份' : text;
+    }).join('；');
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -1457,7 +1468,7 @@ class _RelatedRecipesCard extends StatelessWidget {
                                 Text(
                                   [
                                     if (r.usages.isNotEmpty)
-                                      '用量 ${r.usages.map((u) => u.display).join('、')}',
+                                      '用量 ${_usageText(r)}',
                                     r.category ?? '',
                                   ].where((s) => s.isNotEmpty).join(' · '),
                                   maxLines: 1,

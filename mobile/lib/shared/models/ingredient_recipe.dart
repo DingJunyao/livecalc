@@ -1,16 +1,26 @@
+import '../../features/recipes/models/recipe_detail.dart';
+
 double? _toDouble(dynamic v) {
   if (v == null) return null;
   if (v is num) return v.toDouble();
   return double.tryParse(v.toString());
 }
 
+/// 数字格式化：整数不带小数点，小数去掉多余 0
+String _fmtNum(double v) => v == v.truncateToDouble()
+    ? v.toInt().toString()
+    : v.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+
 class RecipeUsage {
   final double quantity;
+  final QuantityRange? quantityRange;
   final String? unit;
-  final double? originalQuantity;
+  final String? originalQuantity;
 
   const RecipeUsage({
     this.quantity = 0,
+    this.quantityRange,
     this.unit,
     this.originalQuantity,
   });
@@ -18,18 +28,34 @@ class RecipeUsage {
   factory RecipeUsage.fromJson(Map<String, dynamic> json) {
     return RecipeUsage(
       quantity: _toDouble(json['quantity']) ?? 0,
+      quantityRange: json['quantity_range'] != null
+          ? QuantityRange.fromJson(json['quantity_range'])
+          : null,
       unit: json['unit'] as String?,
-      originalQuantity: _toDouble(json['original_quantity']),
+      originalQuantity: json['original_quantity'] as String?,
     );
   }
 
+  /// 单条用量文本，对齐 Web IngredientDetail.formatUsageText：
+  /// 区间+精确 →「100~200 g（推荐 150 g）」；仅精确 →「150 g」；
+  /// 仅区间 →「100~200 g」；模糊量（适量/少许）原样；无 →「-」
   String get display {
-    final q = originalQuantity ?? quantity;
-    final qs = q == q.truncateToDouble()
-        ? q.toInt().toString()
-        : q.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '')
-            .replaceFirst(RegExp(r'\.$'), '');
-    return '$qs${(unit?.isNotEmpty ?? false) ? ' $unit' : ''}';
+    final hasQty = quantity > 0;
+    final range = quantityRange;
+    final hasRange = range != null && (range.min > 0 || range.max > 0);
+    final unitText = (unit?.isNotEmpty ?? false) ? ' $unit' : '';
+    if (hasQty && hasRange) {
+      return '${_fmtNum(range.min)}~${_fmtNum(range.max)}$unitText'
+          '（推荐 ${_fmtNum(quantity)}$unitText）';
+    }
+    if (hasQty) return '${_fmtNum(quantity)}$unitText';
+    if (hasRange) {
+      return '${_fmtNum(range.min)}~${_fmtNum(range.max)}$unitText';
+    }
+    if (originalQuantity != null && originalQuantity!.isNotEmpty) {
+      return originalQuantity!;
+    }
+    return '-';
   }
 }
 

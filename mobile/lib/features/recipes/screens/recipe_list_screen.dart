@@ -173,94 +173,99 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
           const padding = 12.0;
           const spacing = 12.0;
           final columns = _columnCountFor(constraints.maxWidth);
-          final cardWidth = (constraints.maxWidth -
-                  padding * 2 -
-                  spacing * (columns - 1)) /
-              columns;
-          return SingleChildScrollView(
-            controller: _scrollController,
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(padding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  alignment: WrapAlignment.start,
-                  runAlignment: WrapAlignment.start,
-                  spacing: spacing,
-                  runSpacing: spacing,
-                  children: state.recipes.map((r) {
-                    return SizedBox(
-                      width: cardWidth,
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: InkWell(
-                          onTap: () => context.push('/recipes/${r.id}'),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              AspectRatio(
-                                aspectRatio: 4 / 3,
-                                child: Container(
-                                  width: double.infinity,
-                                  color: theme.colorScheme.primaryContainer
-                                      .withValues(alpha: 0.3),
-                                  child: r.imageUrl != null
-                                      ? Image.network(r.imageUrl!,
-                                          fit: BoxFit.cover,
-                                          width: double.infinity)
-                                      : Icon(Icons.restaurant,
-                                          size: 48,
-                                          color: theme.colorScheme.primary
-                                              .withValues(alpha: 0.5)),
+          final cardWidth =
+              (constraints.maxWidth - padding * 2 - spacing * (columns - 1)) /
+                  columns;
+          return SizedBox(
+            // 撑满横向可用宽度：否则内容不满一行时 SCSV 收缩到内容宽度，
+            // 被上层居中显示（列表项不足一行时整个网格居中）
+            width: double.infinity,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(padding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Wrap(
+                    alignment: WrapAlignment.start,
+                    runAlignment: WrapAlignment.start,
+                    spacing: spacing,
+                    runSpacing: spacing,
+                    children: state.recipes.map((r) {
+                      return SizedBox(
+                        width: cardWidth,
+                        child: Card(
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => context.push('/recipes/${r.id}'),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AspectRatio(
+                                  aspectRatio: 4 / 3,
+                                  child: Container(
+                                    width: double.infinity,
+                                    color: theme.colorScheme.primaryContainer
+                                        .withValues(alpha: 0.3),
+                                    child: r.imageUrl != null
+                                        ? Image.network(r.imageUrl!,
+                                            fit: BoxFit.cover,
+                                            width: double.infinity)
+                                        : Icon(Icons.restaurant,
+                                            size: 48,
+                                            color: theme.colorScheme.primary
+                                                .withValues(alpha: 0.5)),
+                                  ),
                                 ),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(r.name,
-                                        style: theme.textTheme.titleSmall,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis),
-                                    const SizedBox(height: 4),
-                                    _buildPriceCalories(
-                                        theme, r, state.loadingCosts),
-                                  ],
+                                Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(r.name,
+                                          style: theme.textTheme.titleSmall,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis),
+                                      const SizedBox(height: 4),
+                                      _buildPriceCalories(
+                                          theme, r, state.loadingCosts),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                if (state.hasMore || state.loadingMore) ...[
-                  const SizedBox(height: 8),
-                  Center(
-                    child: state.loadingMore
-                        ? const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12),
-                            child: SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : TextButton(
-                            onPressed: () => ref
-                                .read(recipeListProvider.notifier)
-                                .loadRecipes(loadMore: true),
-                            child: const Text('加载更多'),
-                          ),
+                      );
+                    }).toList(),
                   ),
+                  if (state.hasMore || state.loadingMore) ...[
+                    const SizedBox(height: 8),
+                    Center(
+                      child: state.loadingMore
+                          ? const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 12),
+                              child: SizedBox(
+                                width: 24,
+                                height: 24,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : TextButton(
+                              onPressed: () => ref
+                                  .read(recipeListProvider.notifier)
+                                  .loadRecipes(loadMore: true),
+                              child: const Text('加载更多'),
+                            ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           );
         },
@@ -357,8 +362,8 @@ class _RecipeFilterSheet extends ConsumerStatefulWidget {
   final List<String> initialDifficulties;
   final List<int> initialIngredientIds;
   final List<String> initialConditions;
-  final void Function(
-      List<String>, List<String>, List<int>, List<String>) onApply;
+  final void Function(List<String>, List<String>, List<int>, List<String>)
+      onApply;
 
   const _RecipeFilterSheet({
     required this.initialCategories,
@@ -369,8 +374,7 @@ class _RecipeFilterSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_RecipeFilterSheet> createState() =>
-      _RecipeFilterSheetState();
+  ConsumerState<_RecipeFilterSheet> createState() => _RecipeFilterSheetState();
 }
 
 class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
@@ -417,10 +421,9 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final options = ref
-            .watch(recipeIngredientOptionsProvider(_ingredientQuery))
-            .value ??
-        const <IngredientOption>[];
+    final options =
+        ref.watch(recipeIngredientOptionsProvider(_ingredientQuery)).value ??
+            const <IngredientOption>[];
     final selectedNames = <int, String>{
       for (final id in _ingredientIds)
         id: options
@@ -558,8 +561,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                                   : theme.colorScheme.outline,
                             ),
                             title: Text(o.name,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
                             onTap: () => setState(() {
                               if (!_ingredientIds.add(o.id)) {
                                 _ingredientIds.remove(o.id);

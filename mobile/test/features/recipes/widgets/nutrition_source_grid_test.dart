@@ -105,8 +105,8 @@ void main() {
       // 蛋白质 NRV 10%（移到标题行，带 NRV 前缀）
       expect(find.text('NRV 10%'), findsOneWidget);
       expect(find.text('蛋白质'), findsOneWidget);
-      // 总量文本（perServing protein value 6g，标题行右侧）
-      expect(find.text('6g'), findsOneWidget);
+      // 总量文本（perServing protein value 6g，标题行右侧，数字与单位间空格）
+      expect(find.text('6 g'), findsOneWidget);
       // 多色段进度条存在，首段 = Top1 贡献食材（鸡蛋 id 1）色
       expect(find.byKey(const Key('nrv_bar')), findsWidgets);
       final firstSegment = tester.widget<ColoredBox>(find

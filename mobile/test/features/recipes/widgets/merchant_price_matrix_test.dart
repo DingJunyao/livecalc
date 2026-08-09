@@ -61,7 +61,8 @@ void main() {
         ],
         prices: const [],
       );
-      expect(rows.single.quantityDisplay, '100-200g');
+      // 对齐 Web 端 MerchantPriceMatrix.vue:137「100-200 g」（数字与单位间空格）
+      expect(rows.single.quantityDisplay, '100-200 g');
     });
 
     test('空 merchantName 回退商家 id 列标签', () {
@@ -121,8 +122,8 @@ void main() {
       expect(find.text('¥3.50'), findsOneWidget);
       expect(find.text('盒马'), findsOneWidget);
       expect(find.text('鸡蛋'), findsOneWidget);
-      // 用量显示在食材列（web .vue:31 qty-badge「100g」灰色小字）
-      expect(find.text('100g'), findsOneWidget);
+      // 用量显示在食材列（web .vue:31 qty-badge「100 g」灰色小字，数字与单位间空格）
+      expect(find.text('100 g'), findsOneWidget);
     });
 
     testWidgets('食材/用量列冻结：横向滚动时首列不动', (tester) async {
