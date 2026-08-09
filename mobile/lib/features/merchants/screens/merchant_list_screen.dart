@@ -27,6 +27,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   final _mapController = MapController();
   late bool _showMap;
   Merchant? _selectedMerchant;
+  List<LatLng> _allCoordinates = const [];
 
   @override
   void initState() {
@@ -37,6 +38,26 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       ref.read(merchantListProvider.notifier).loadFavorites();
     });
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _loadCoordinates(MerchantListState state) async {
+    try {
+      final coords = await MerchantRepository().getAllCoordinates(
+        search: state.searchQuery.isEmpty ? null : state.searchQuery,
+        includeClosed: state.includeClosed,
+      );
+      if (mounted) {
+        setState(() {
+          _allCoordinates = [
+            for (final c in coords)
+              if (c.latitude != 0 && c.longitude != 0)
+                LatLng(c.latitude, c.longitude),
+          ];
+        });
+      }
+    } catch (_) {
+      // 坐标加载失败不影响列表
+    }
   }
 
   @override
@@ -64,17 +85,22 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       _selectedMerchant = item;
       _showMap = true;
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        _mapController.move(LatLng(item.latitude!, item.longitude!), 14);
-      }
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(merchantListProvider);
+    ref.listen(merchantListProvider, (prev, next) {
+      if (prev == null ||
+          (prev.items.isEmpty && next.items.isNotEmpty) ||
+          prev.searchQuery != next.searchQuery ||
+          prev.includeClosed != next.includeClosed ||
+          prev.favoritesOnly != next.favoritesOnly ||
+          prev.noPrice != next.noPrice) {
+        _loadCoordinates(next);
+      }
+    });
 
     return Scaffold(
       appBar: AppBar(
@@ -107,6 +133,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                   merchants: state.items,
                   selectedId: _selectedMerchant?.id,
                   controller: _mapController,
+                  allCoordinates: _allCoordinates,
                 ),
               ),
             ),
@@ -188,10 +215,12 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       );
     }
     if (state.items.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.store,
-        title: '暂无商家',
-        subtitle: '点击右下角按钮添加第一个商家',
+        title: state.favoritesOnly ? '暂无收藏商家' : '暂无商家',
+        subtitle: state.favoritesOnly
+            ? '收藏的商家会显示在这里'
+            : '点击右下角按钮添加第一个商家',
       );
     }
     return RefreshIndicator(
@@ -240,6 +269,9 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 
   void _showFilterSheet(ThemeData theme) {
     final state = ref.read(merchantListProvider);
+    var includeClosed = state.includeClosed;
+    var favoritesOnly = state.favoritesOnly;
+    var noPrice = state.noPrice;
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -248,9 +280,6 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       builder: (ctx) => SafeArea(
         child: StatefulBuilder(
           builder: (ctx, setSheetState) {
-            var includeClosed = state.includeClosed;
-            var favoritesOnly = state.favoritesOnly;
-            var noPrice = state.noPrice;
             void update() {
               setSheetState(() {});
             }
@@ -570,13 +599,12 @@ class _MerchantCard extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 6, vertical: 1),
                             decoration: BoxDecoration(
-                              color: theme.colorScheme.tertiary
-                                  .withValues(alpha: 0.15),
+                              color: Colors.orange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text('已关闭',
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                    color: theme.colorScheme.tertiary,
+                                    color: Colors.orange.shade800,
                                     fontWeight: FontWeight.w600)),
                           ),
                         ],

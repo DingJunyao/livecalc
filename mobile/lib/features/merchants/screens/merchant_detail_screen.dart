@@ -265,8 +265,6 @@ class _BasicInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasLocation =
-        merchant.latitude != null && merchant.longitude != null;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -294,15 +292,6 @@ class _BasicInfoCard extends StatelessWidget {
             _row(theme, Icons.store_outlined, '名称', merchant.name),
             if (merchant.address != null)
               _row(theme, Icons.map_outlined, '地址', merchant.address!),
-            _row(
-              theme,
-              Icons.near_me_outlined,
-              '坐标',
-              hasLocation
-                  ? '${merchant.latitude!.toStringAsFixed(4)}, '
-                      '${merchant.longitude!.toStringAsFixed(4)}'
-                  : '未设置位置',
-            ),
             if (merchant.createdAt != null)
               _row(theme, Icons.calendar_today_outlined, '创建时间',
                   _fmtDateTime(merchant.createdAt!)),

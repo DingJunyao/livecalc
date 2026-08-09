@@ -95,13 +95,15 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
       clearError: true,
     );
     try {
-      final result = await _repo.search(
-        search: state.searchQuery.isEmpty ? null : state.searchQuery,
-        includeClosed: state.includeClosed,
-        noPrice: state.noPrice,
-        skip: (page - 1) * merchantPageSize,
-        limit: merchantPageSize,
-      );
+      final result = state.favoritesOnly
+          ? await _searchFavorites(page)
+          : await _repo.search(
+              search: state.searchQuery.isEmpty ? null : state.searchQuery,
+              includeClosed: state.includeClosed,
+              noPrice: state.noPrice,
+              skip: (page - 1) * merchantPageSize,
+              limit: merchantPageSize,
+            );
       final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
@@ -118,6 +120,29 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
         error: e.toString(),
       );
     }
+  }
+
+  /// 「仅看我的收藏」：后端列表接口不支持 favorites 过滤，
+  /// 与网页端一致，全量拉取收藏后在客户端做营业状态/搜索/分页过滤。
+  Future<MerchantPage> _searchFavorites(int page) async {
+    final favs = await _repo.getFavorites();
+    var filtered = favs
+        .where((m) => state.includeClosed || m.isOpen)
+        .toList();
+    final query = state.searchQuery.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      filtered = filtered
+          .where((m) =>
+              m.name.toLowerCase().contains(query) ||
+              (m.address?.toLowerCase().contains(query) ?? false))
+          .toList();
+    }
+    final start = (page - 1) * merchantPageSize;
+    final end = (start + merchantPageSize).clamp(0, filtered.length).toInt();
+    final items = start >= filtered.length
+        ? const <Merchant>[]
+        : filtered.sublist(start, end);
+    return MerchantPage(items: items, total: filtered.length);
   }
 
   void setSearch(String query) {

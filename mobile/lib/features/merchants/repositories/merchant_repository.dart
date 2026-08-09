@@ -1,5 +1,6 @@
 import '../../../core/api/api_client.dart';
 import '../models/merchant.dart';
+import '../models/merchant_coordinate.dart';
 import '../models/merchant_product_price.dart';
 
 class MerchantPage {
@@ -112,6 +113,26 @@ class MerchantRepository {
 
   Future<void> removeFavorite(int id) async {
     await _client.dio.delete('/merchants/$id/favorite');
+  }
+
+  /// 全部商家坐标（不分页，供地图 fit 范围用）。
+  Future<List<MerchantCoordinate>> getAllCoordinates({
+    String? search,
+    bool includeClosed = false,
+  }) async {
+    final response = await _client.dio.get(
+      '/merchants/coordinates',
+      queryParameters: {
+        if (search != null && search.isNotEmpty) 'search': search,
+        'include_closed': includeClosed,
+      },
+    );
+    final data = response.data;
+    final list = (data is List) ? data : const [];
+    return list
+        .map((e) =>
+            MerchantCoordinate.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// 商家各商品最新价格（GET /merchants/{id}/product-prices）。

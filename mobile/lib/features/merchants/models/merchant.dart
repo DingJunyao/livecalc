@@ -30,8 +30,19 @@ class Merchant {
       longitude: (json['longitude'] as num?)?.toDouble(),
       phone: json['phone'] as String?,
       productCount: json['product_count'] as int?,
-      isOpen: json['is_open'] as bool? ?? true,
+      isOpen: _parseBool(json['is_open']),
       createdAt: json['created_at'] as String?,
     );
   }
+}
+
+bool _parseBool(dynamic v) {
+  if (v is bool) return v;
+  if (v is num) return v != 0;
+  if (v is String) {
+    final s = v.trim().toLowerCase();
+    if (s == 'true' || s == '1') return true;
+    if (s == 'false' || s == '0') return false;
+  }
+  return true;
 }
