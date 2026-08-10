@@ -17,8 +17,11 @@ class AuthInterceptor extends Interceptor {
       RequestOptions options, RequestInterceptorHandler handler) async {
     options.headers['X-Timezone'] = _formatUtcOffset();
     try {
-      final token = await _storage.read(key: _tokenKey);
-      if (token != null) options.headers['Authorization'] = 'Bearer $token';
+      // 刷新接口不带 Authorization，避免过期的 access token 让刷新请求也 401。
+      if (!_isRefreshRequest(options)) {
+        final token = await _storage.read(key: _tokenKey);
+        if (token != null) options.headers['Authorization'] = 'Bearer $token';
+      }
     } catch (_) {}
     handler.next(options);
   }
@@ -28,6 +31,14 @@ class AuthInterceptor extends Interceptor {
     if (err.response?.statusCode == 401) {
       final refreshToken = await _storage.read(key: _refreshTokenKey);
       if (refreshToken != null) {
+        // 刷新请求本身 401（refresh token 已失效/被重置）时直接清 token 结束，
+        // 不再触发新的刷新，避免无限递归刷新死循环。
+        if (_isRefreshRequest(err.requestOptions)) {
+          await _storage.delete(key: _tokenKey);
+          await _storage.delete(key: _refreshTokenKey);
+          handler.next(err);
+          return;
+        }
         try {
           final resp = await _dio.post('/auth/refresh', data: {
             'refresh_token': refreshToken,
@@ -46,6 +57,12 @@ class AuthInterceptor extends Interceptor {
       }
     }
     handler.next(err);
+  }
+
+  /// 是否为 token 刷新请求（/auth/refresh 或带 baseUrl 前缀的完整路径）。
+  bool _isRefreshRequest(RequestOptions options) {
+    final path = options.path;
+    return path == '/auth/refresh' || path.endsWith('/auth/refresh');
   }
 
   /// Formats timezone offset as ASCII-safe UTC+HH:mm (e.g. UTC+08:00, UTC-05:00).

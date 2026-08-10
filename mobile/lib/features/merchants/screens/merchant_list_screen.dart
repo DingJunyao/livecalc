@@ -64,7 +64,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   }
 
   /// 加载我的地点并初始化当前选中：
-  /// 上次记忆（SharedPreferences）→ 默认地点 → null（全部商家）。
+  /// 上次记忆（SharedPreferences）→ 否则 null（全部商家）。
   Future<void> _loadPlaces() async {
     try {
       final places =
@@ -72,16 +72,10 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       if (!mounted) return;
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getInt(_currentPlacePrefsKey);
-      int? defaultId;
-      for (final p in places) {
-        if (p.isDefault) {
-          defaultId = p.id;
-          break;
-        }
-      }
       setState(() {
         _places = places;
-        _currentPlaceId = saved ?? defaultId;
+        // 默认「全部商家」（null），仅在已有记忆时恢复具体地点。
+        _currentPlaceId = saved;
       });
     } catch (_) {
       // 地点加载失败不阻塞列表

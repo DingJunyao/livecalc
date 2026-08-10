@@ -25,7 +25,7 @@ String _shortName(String name) =>
 /// （flutter_map 6 的已知问题：底图初始化不出现，用户缩放/拖动后才加载）。
 ///
 /// [mapConfig] 提供底图列表与默认图层；[places]/[currentPlaceId]/[onPlaceChanged]
-/// 是「我的地点」下拉；[showControls] 控制右上控件列（底图/地点/定位）。
+/// 是「常用地点」弹出菜单；[showControls] 控制右上控件列（底图/地点/定位）。
 class MerchantMapView extends StatefulWidget {
   final List<Merchant> merchants;
   final int? selectedId;
@@ -60,6 +60,10 @@ class _MerchantMapViewState extends State<MerchantMapView> {
   static const LatLng _defaultCenter = LatLng(39.9042, 116.4074);
   static const double _defaultZoom = 11.0;
   static const double _pointZoom = 15.0;
+
+  /// 「全部商家」（不选择任何常用地点）的哨兵值。
+  /// PopupMenuButton 选中 null 值不会回调 onSelected（视为取消），故用 -1 占位。
+  static const int _allMerchantsPlaceId = -1;
 
   late final MapController _internalController;
 
@@ -111,7 +115,15 @@ class _MerchantMapViewState extends State<MerchantMapView> {
         oldWidget.places != widget.places ||
         oldWidget.currentPlaceId != widget.currentPlaceId) {
       // 首次初始化交给 initialCameraFit；这里只处理挂载后的数据变化。
-      WidgetsBinding.instance.addPostFrameCallback((_) => _fitView());
+      // initialCameraFit 通过 postFrame 异步应用（flutter_map 内部），可能晚于本帧；
+      // 再等一帧重新应用视角，避免 fit-all 覆盖地点聚焦。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _fitView();
+          });
+        }
+      });
     }
   }
 
@@ -205,7 +217,8 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       initialZoom: center != null
           ? (focus != null ? focusZoom : _pointZoom)
           : _defaultZoom,
-      initialCameraFit: _boundsFit,
+      // 有地点聚焦时以地点为初始视角，不传 fit，避免 fit-all 覆盖地点中心。
+      initialCameraFit: focus != null ? null : _boundsFit,
       backgroundColor: const Color(0xFFE8EAED),
     );
   }
@@ -213,6 +226,8 @@ class _MerchantMapViewState extends State<MerchantMapView> {
   void _fitView() {
     final controller = _controller;
     if (!mounted) return;
+    // 定位开启时视角由定位控制，避免清除地点触发的 rebuild 把镜头拉走。
+    if (_currentLocation != null) return;
     final (focus, focusZoom) = _focusPlace;
     if (focus != null) {
       controller.move(_toDisplay(focus), focusZoom);
@@ -273,6 +288,10 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       if (!mounted) return;
       final loc = LatLng(pos.latitude, pos.longitude);
       setState(() => _currentLocation = loc);
+      // 开启定位与选择常用地点互斥：开启定位时清除已选地点。
+      if (widget.currentPlaceId != null) {
+        widget.onPlaceChanged?.call(null);
+      }
       _controller.move(_toDisplay(loc), _pointZoom);
     } on TimeoutException {
       _toast('定位超时，请重试');
@@ -290,6 +309,16 @@ class _MerchantMapViewState extends State<MerchantMapView> {
 
   // ---- 控件 ----
 
+  /// 当前选中的「常用地点」名称（未选中或找不到时返回 null）。
+  String? get _selectedPlaceName {
+    final id = widget.currentPlaceId;
+    if (id == null) return null;
+    for (final p in widget.places) {
+      if (p.id == id) return p.name;
+    }
+    return null;
+  }
+
   Widget _buildControls() {
     final theme = Theme.of(context);
     final layer = _layer;
@@ -297,7 +326,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       color: theme.colorScheme.surface,
       elevation: 2,
       borderRadius: BorderRadius.circular(8),
-      child: Column(mainAxisSize: MainAxisSize.min, children: [
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
         // 底图切换
         PopupMenuButton<MapLayerOption>(
           key: const ValueKey('layer-switch'),
@@ -317,29 +346,49 @@ class _MerchantMapViewState extends State<MerchantMapView> {
           ],
         ),
         if (widget.places.isNotEmpty) ...[
-          const Divider(height: 1),
-          // 我的地点下拉
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: DropdownButton<int?>(
-              key: const ValueKey('place-dropdown'),
-              value: widget.currentPlaceId,
-              isDense: true,
-              underline: const SizedBox.shrink(),
-              hint: const SizedBox(
-                width: 100,
-                child: Text('我的地点', overflow: TextOverflow.ellipsis),
-              ),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('全部商家')),
-                for (final p in widget.places)
-                  DropdownMenuItem(value: p.id, child: Text(p.name)),
-              ],
-              onChanged: widget.onPlaceChanged,
+          // 常用地点：单个图标按钮，弹出菜单选择；选中时高亮
+          PopupMenuButton<int?>(
+            key: const ValueKey('place-menu'),
+            tooltip: _selectedPlaceName ?? '选择常用地点',
+            icon: Icon(
+              widget.currentPlaceId != null ? Icons.star : Icons.star_border,
+              color: widget.currentPlaceId != null
+                  ? theme.colorScheme.primary
+                  : null,
             ),
+            // PopupMenuButton 选中 null 不会回调 onSelected（视为取消），
+            // 因此「全部商家」用哨兵值 -1，回调时再转回 null。
+            onSelected: (v) {
+              final id = v == _allMerchantsPlaceId ? null : v;
+              // 选择常用地点与开启定位互斥：选中地点时清除定位。
+              if (id != null && _currentLocation != null) {
+                setState(() => _currentLocation = null);
+              }
+              widget.onPlaceChanged?.call(id);
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem<int?>(
+                value: _allMerchantsPlaceId,
+                child: Row(children: [
+                  if (widget.currentPlaceId == null)
+                    const Icon(Icons.check, size: 16),
+                  const SizedBox(width: 8),
+                  const Text('全部商家'),
+                ]),
+              ),
+              for (final p in widget.places)
+                PopupMenuItem<int?>(
+                  value: p.id,
+                  child: Row(children: [
+                    if (widget.currentPlaceId == p.id)
+                      const Icon(Icons.check, size: 16),
+                    const SizedBox(width: 8),
+                    Text(p.name),
+                  ]),
+                ),
+            ],
           ),
         ],
-        const Divider(height: 1),
         // 定位
         IconButton(
           key: const ValueKey('locate-button'),
@@ -350,9 +399,14 @@ class _MerchantMapViewState extends State<MerchantMapView> {
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Icon(_currentLocation != null
-                  ? Icons.my_location
-                  : Icons.my_location_outlined),
+              : Icon(
+                  _currentLocation != null
+                      ? Icons.my_location
+                      : Icons.my_location_outlined,
+                  color: _currentLocation != null
+                      ? theme.colorScheme.primary
+                      : null,
+                ),
           onPressed: _locating ? null : _locate,
         ),
       ]),

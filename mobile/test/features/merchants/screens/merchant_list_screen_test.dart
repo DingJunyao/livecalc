@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
+import 'package:com_a4ding_livecalc/features/merchants/models/merchant_coordinate.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/map_config_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/merchant_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
@@ -112,9 +113,6 @@ void main() {
     ));
     await tester.pumpAndSettle();
   }
-
-  DropdownButton<int?> placeDropdown(WidgetTester tester) => tester
-      .widget<DropdownButton<int?>>(find.byKey(const ValueKey('place-dropdown')));
 
   testWidgets('筛选弹窗：三个控件可切换，点确定后提交到 provider', (tester) async {
     await pumpList(tester);
@@ -239,25 +237,71 @@ void main() {
     });
   });
 
-  group('地图地点下拉', () {
-    testWidgets('无记忆：默认地点（is_default）作为当前选中', (tester) async {
+  group('地图常用地点', () {
+    testWidgets('无记忆：默认选中「全部商家」', (tester) async {
       await pumpList(tester);
 
-      expect(placeDropdown(tester).value, 1); // 家 isDefault
-      expect(find.text('家'), findsWidgets);
+      // 未保存记忆时默认「全部商家」：按钮显示未选中文案
+      expect(find.byTooltip('选择常用地点'), findsOneWidget);
     });
 
-    testWidgets('有记忆：SharedPreferences 优先于默认地点', (tester) async {
+    testWidgets('有记忆：使用 SharedPreferences 选中的地点', (tester) async {
       SharedPreferences.setMockInitialValues(
           {'merchants_map_current_place_id': 2});
       await pumpList(tester);
 
-      expect(placeDropdown(tester).value, 2); // 公司，而非默认的家
+      // 公司：tooltip 显示选中地点
+      expect(find.byTooltip('公司'), findsOneWidget);
+    });
+
+    testWidgets('有记忆：进入地图后镜头聚焦到记忆的地点', (tester) async {
+      SharedPreferences.setMockInitialValues(
+          {'merchants_map_current_place_id': 2});
+      await pumpList(tester);
+
+      final map = tester.widget<FlutterMap>(find.byType(FlutterMap).first);
+      final center = map.mapController!.camera.center;
+      // 公司 (31.25, 121.5)，OSM 底图不做坐标转换
+      expect(center.latitude, closeTo(31.25, 1e-4));
+      expect(center.longitude, closeTo(121.5, 1e-4));
+    });
+
+    testWidgets('有记忆（多商家）：镜头聚焦到记忆地点，不被 fit-all 覆盖', (tester) async {
+      SharedPreferences.setMockInitialValues(
+          {'merchants_map_current_place_id': 2});
+      // 覆盖 mock：多个商家 → 初始会 fit 全部，验证地点聚焦仍生效
+      when(() => repo.search(
+            search: any(named: 'search'),
+            includeClosed: any(named: 'includeClosed'),
+            noPrice: any(named: 'noPrice'),
+            skip: any(named: 'skip'),
+            limit: any(named: 'limit'),
+          )).thenAnswer((_) async => const MerchantPage(
+                items: [
+                  // 中点 (31.2, 121.2)，与记忆地点「公司」(31.25, 121.5) 区分开
+                  Merchant(id: 1, name: '商家A', latitude: 31.0, longitude: 121.0),
+                  Merchant(id: 2, name: '商家B', latitude: 31.4, longitude: 121.4),
+                ],
+                total: 2,
+              ));
+      when(() => repo.getAllCoordinates(
+            search: any(named: 'search'),
+            includeClosed: any(named: 'includeClosed'),
+          )).thenAnswer((_) async => const [
+            MerchantCoordinate(id: 1, latitude: 31.0, longitude: 121.0),
+            MerchantCoordinate(id: 2, latitude: 31.4, longitude: 121.4),
+          ]);
+      await pumpList(tester);
+
+      final map = tester.widget<FlutterMap>(find.byType(FlutterMap).first);
+      final center = map.mapController!.camera.center;
+      expect(center.latitude, closeTo(31.25, 1e-4));
+      expect(center.longitude, closeTo(121.5, 1e-4));
     });
 
     testWidgets('切换地点：持久化到 SharedPreferences', (tester) async {
       await pumpList(tester);
-      await tester.tap(find.byKey(const ValueKey('place-dropdown')));
+      await tester.tap(find.byKey(const ValueKey('place-menu')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('公司').last);
       await tester.pumpAndSettle();
@@ -271,7 +315,7 @@ void main() {
           {'merchants_map_current_place_id': 2});
       await pumpList(tester);
 
-      await tester.tap(find.byKey(const ValueKey('place-dropdown')));
+      await tester.tap(find.byKey(const ValueKey('place-menu')));
       await tester.pumpAndSettle();
       await tester.tap(find.text('全部商家').last);
       await tester.pumpAndSettle();

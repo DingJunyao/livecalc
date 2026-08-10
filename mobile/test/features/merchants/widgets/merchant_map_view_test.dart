@@ -96,6 +96,14 @@ Future<void> pumpMap(
 MarkerLayer merchantLayer(WidgetTester tester) =>
     tester.widgetList<MarkerLayer>(find.byType(MarkerLayer)).last;
 
+/// 定位按钮当前显示的 Icon（定位中显示进度圈，不适用）。
+Icon locateIcon(WidgetTester tester) => tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('locate-button')),
+        matching: find.byType(Icon),
+      ),
+    );
+
 void main() {
   late GeolocatorPlatform original;
 
@@ -134,7 +142,7 @@ void main() {
     expect(point.longitude, closeTo(_shanghai.longitude, 1e-9));
   });
 
-  testWidgets('地点下拉：含「全部商家」与地点名，选择后回调 + 视角移动', (tester) async {
+  testWidgets('常用地点菜单：含「全部商家」与地点名，选择后回调 + 视角移动', (tester) async {
     final controller = MapController();
     int? changedTo;
     await pumpMap(
@@ -144,7 +152,7 @@ void main() {
       onPlaceChanged: (id) => changedTo = id,
     );
 
-    await tester.tap(find.byKey(const ValueKey('place-dropdown')));
+    await tester.tap(find.byKey(const ValueKey('place-menu')));
     await tester.pumpAndSettle();
     expect(find.text('全部商家'), findsWidgets);
     await tester.tap(find.text('公司').last);
@@ -187,8 +195,8 @@ void main() {
     ));
     await tester.pump(const Duration(milliseconds: 100));
 
-    // 下拉选「公司」→ 父组件 setState → didUpdateWidget 聚焦
-    await tester.tap(find.byKey(const ValueKey('place-dropdown')));
+    // 菜单选「公司」→ 父组件 setState → didUpdateWidget 聚焦
+    await tester.tap(find.byKey(const ValueKey('place-menu')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('公司').last);
     await tester.pumpAndSettle();
@@ -209,20 +217,70 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
+    // 开启定位后按钮图标变主题色
+    expect(locateIcon(tester).color, isNotNull);
     // 定位点 (31.25, 121.5) 在高德底图上同样转换
     final (expLat, expLng) = wgs84ToGcj02(31.25, 121.5);
     final center = controller.camera.center;
     expect(center.latitude, closeTo(expLat, 1e-6));
 
-    // 再点一次清除
+    // 再点一次清除：图标还原
     await tester.tap(find.byKey(const ValueKey('locate-button')));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byKey(const ValueKey('current-location-marker')), findsNothing);
+    expect(locateIcon(tester).color, isNull);
   });
 
-  testWidgets('places 为空：隐藏地点下拉', (tester) async {
+  testWidgets('互斥：开启定位清除已选地点，选择地点清除定位', (tester) async {
+    final controller = MapController();
+    int? selected = 1;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 500,
+            height: 300,
+            child: StatefulBuilder(builder: (ctx, setState) {
+              return MerchantMapView(
+                merchants: const [
+                  Merchant(id: 1, name: '盒马鲜生', latitude: 31.2304, longitude: 121.4737),
+                ],
+                controller: controller,
+                mapConfig: _mapConfig,
+                places: _places,
+                currentPlaceId: selected,
+                onPlaceChanged: (id) => setState(() => selected = id),
+                showControls: true,
+                tileProvider: _MemoryTileProvider(),
+              );
+            }),
+          ),
+        ),
+      ),
+    ));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // 开启定位：清除已选地点（回调 null），出现定位标记
+    await tester.tap(find.byKey(const ValueKey('locate-button')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
+    expect(selected, isNull);
+    expect(find.byTooltip('选择常用地点'), findsOneWidget);
+
+    // 选择「公司」：清除定位标记，选中地点
+    await tester.tap(find.byKey(const ValueKey('place-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('公司').last);
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(selected, 2);
+    expect(find.byKey(const ValueKey('current-location-marker')), findsNothing);
+  });
+
+  testWidgets('places 为空：隐藏常用地点按钮', (tester) async {
     await pumpMap(tester, places: const []);
-    expect(find.byKey(const ValueKey('place-dropdown')), findsNothing);
+    expect(find.byKey(const ValueKey('place-menu')), findsNothing);
   });
 
   testWidgets('showControls=false：不显示控件列', (tester) async {
