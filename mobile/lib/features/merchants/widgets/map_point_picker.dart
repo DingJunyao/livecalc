@@ -139,6 +139,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
                     TileLayer(
                       urlTemplate: layer.urlTemplate,
                       subdomains: layer.subdomains,
+                      tms: layer.tms,
                       userAgentPackageName: 'livecalc_mobile',
                       tileProvider: widget.tileProvider,
                     ),

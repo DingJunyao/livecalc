@@ -294,4 +294,20 @@ void main() {
     expect(find.text('暂无商家位置'), findsOneWidget);
     expect(find.byKey(const ValueKey('layer-switch')), findsNothing);
   });
+
+  testWidgets('腾讯底图：TileLayer tms=true（TMS y 轴翻转），高德/OSM 为 false', (tester) async {
+    const tencent = MapConfigState(
+      layers: [tencentLayer],
+      defaultId: 'tencent',
+    );
+    await pumpMap(tester, mapConfig: tencent);
+    expect(
+      tester.widget<TileLayer>(find.byType(TileLayer)).tms,
+      isTrue,
+      reason: '腾讯瓦片 y 轴从南到北（TMS），不翻转则北半球显示南半球（如中国变印尼）',
+    );
+
+    await pumpMap(tester); // 默认高德
+    expect(tester.widget<TileLayer>(find.byType(TileLayer)).tms, isFalse);
+  });
 }

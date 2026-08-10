@@ -24,12 +24,16 @@ Future<void> pumpPicker(
   LatLng? initialValue,
   ValueChanged<LatLng>? onChanged,
 }) async {
-  await tester.pumpWidget(ProviderScope(
-    overrides: [
-      mapConfigProvider.overrideWith(
-        (ref) => MapConfigNotifier(MockRepo().._stub(mapConfig)),
-      ),
-    ],
+  // 先触发 load()：MapPointPicker 在 initState 读取 provider 状态，
+  // 不 load 则永远是初始兜底（仅 OSM），高德/腾讯底图断言会静默走错路径
+  final container = ProviderContainer(overrides: [
+    mapConfigProvider.overrideWith(
+      (ref) => MapConfigNotifier(MockRepo().._stub(mapConfig)),
+    ),
+  ]);
+  await container.read(mapConfigProvider.notifier).load();
+  await tester.pumpWidget(UncontrolledProviderScope(
+    container: container,
     child: MaterialApp(
       home: Scaffold(
         body: Center(
@@ -138,7 +142,7 @@ void main() {
     expect(find.textContaining('121.473700'), findsOneWidget);
   });
 
-  testWidgets('切底图到 OSM 后点击：onChanged 收到原样 WGS84', (tester) async {
+  testWidgets('切底图到 OSM 后点击：onChanged 收到显示坐标原样（不逆转换）', (tester) async {
     LatLng? picked;
     await pumpPicker(tester, mapConfig: _mapConfig, onChanged: (v) => picked = v);
 
@@ -155,7 +159,24 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(picked!.latitude, closeTo(39.9042, 1e-6));
-    expect(picked!.longitude, closeTo(116.4074, 1e-6));
+    // 切底图不移动视角：中心仍是高德时的 GCJ02 北京，OSM 下显示坐标即该位置的
+    // WGS84 表示，点击原样返回（无逆转换）
+    final (gcjLat, gcjLng) = wgs84ToGcj02(39.9042, 116.4074);
+    expect(picked!.latitude, closeTo(gcjLat, 1e-6));
+    expect(picked!.longitude, closeTo(gcjLng, 1e-6));
+  });
+
+  testWidgets('腾讯底图：TileLayer tms=true（TMS y 轴翻转）', (tester) async {
+    const tencent = MapConfigState(
+      layers: [tencentLayer],
+      defaultId: 'tencent',
+    );
+    await pumpPicker(tester, mapConfig: tencent);
+
+    expect(
+      tester.widget<TileLayer>(find.byType(TileLayer)).tms,
+      isTrue,
+      reason: '腾讯瓦片 y 轴从南到北（TMS），不翻转则北半球显示南半球（如中国变印尼）',
+    );
   });
 }

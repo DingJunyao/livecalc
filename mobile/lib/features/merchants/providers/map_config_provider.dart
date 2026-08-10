@@ -8,6 +8,8 @@ class MapLayerOption {
   final String urlTemplate;
   final List<String> subdomains;
   final bool gcj02;
+  /// 瓦片 y 轴是否为 TMS（从南到北）。腾讯是 TMS，不翻转则北半球取到南半球瓦片。
+  final bool tms;
 
   const MapLayerOption({
     required this.id,
@@ -15,6 +17,7 @@ class MapLayerOption {
     required this.urlTemplate,
     this.subdomains = const [],
     required this.gcj02,
+    this.tms = false,
   });
 }
 
@@ -29,10 +32,13 @@ const amapLayer = MapLayerOption(
 const tencentLayer = MapLayerOption(
   id: 'tencent',
   label: '腾讯',
+  // 样式参数对齐 web leaflet.chinatmsproviders（styleid=3 带标注、无 version）
   urlTemplate:
-      'https://rt{s}.map.gtimg.com/tile?z={z}&x={x}&y={y}&styleid=1&version=207',
+      'https://rt{s}.map.gtimg.com/tile?z={z}&x={x}&y={y}&type=vector&styleid=3',
   subdomains: ['0', '1', '2'],
   gcj02: true,
+  // 腾讯瓦片 y 轴从南到北（TMS），与高德/OSM 相反，须翻转
+  tms: true,
 );
 const osmLayer = MapLayerOption(
   id: 'osm',

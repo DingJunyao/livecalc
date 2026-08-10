@@ -435,6 +435,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
               TileLayer(
                 urlTemplate: layer.urlTemplate,
                 subdomains: layer.subdomains,
+                tms: layer.tms,
                 userAgentPackageName: 'livecalc_mobile',
                 tileProvider: widget.tileProvider,
               ),
