@@ -233,5 +233,45 @@ void main() {
       expect(notifier.state.serverUnreachable, false);
       expect(notifier.state.status, AuthStatus.unauthenticated);
     });
+
+    test('refreshUser 拉取最新用户并更新状态', () async {
+      when(() => mockRepo.getCurrentUser()).thenAnswer((_) async =>
+          const User(
+              id: 1,
+              username: 'test',
+              email: 't@test.com',
+              nickname: '新昵称'));
+      final notifier = AuthNotifier(mockRepo);
+      notifier.state = const AuthState(
+          status: AuthStatus.authenticated,
+          user: User(id: 1, username: 'test', email: 't@test.com'));
+
+      await notifier.refreshUser();
+
+      expect(notifier.state.status, AuthStatus.authenticated);
+      expect(notifier.state.user?.nickname, '新昵称');
+    });
+
+    test('refreshUser 请求失败保持旧状态', () async {
+      when(() => mockRepo.getCurrentUser())
+          .thenThrow(Exception('network'));
+      final notifier = AuthNotifier(mockRepo);
+      const oldUser =
+          User(id: 1, username: 'test', email: 't@test.com');
+      notifier.state =
+          const AuthState(status: AuthStatus.authenticated, user: oldUser);
+
+      await notifier.refreshUser();
+
+      expect(notifier.state.user?.username, 'test');
+    });
+
+    test('applyUser 直接用响应覆盖用户状态', () {
+      final notifier = AuthNotifier(mockRepo);
+      notifier.applyUser(
+          const User(id: 1, username: 'new', email: 'n@test.com'));
+      expect(notifier.state.status, AuthStatus.authenticated);
+      expect(notifier.state.user?.username, 'new');
+    });
   });
 }

@@ -1,8 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/geo/coordinate_transform.dart';
+import '../../../core/geo/map_zoom.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
+import '../providers/map_config_provider.dart';
 
 bool _isValidCoordinate(double? lat, double? lng) {
   if (lat == null || lng == null) return false;
@@ -17,11 +23,20 @@ String _shortName(String name) =>
 /// 初始视角直接通过 [MapOptions.initialCameraFit] / [initialCenter] 计算，
 /// 避免在 onMapReady 里调用 fitCamera/move 导致首帧底图瓦片不加载
 /// （flutter_map 6 的已知问题：底图初始化不出现，用户缩放/拖动后才加载）。
+///
+/// [mapConfig] 提供底图列表与默认图层；[places]/[currentPlaceId]/[onPlaceChanged]
+/// 是「我的地点」下拉；[showControls] 控制右上控件列（底图/地点/定位）。
 class MerchantMapView extends StatefulWidget {
   final List<Merchant> merchants;
   final int? selectedId;
   final MapController? controller;
   final List<LatLng> allCoordinates;
+  final MapConfigState mapConfig;
+  final List<UserPlace> places;
+  final int? currentPlaceId;
+  final ValueChanged<int?>? onPlaceChanged;
+  final bool showControls;
+  final TileProvider? tileProvider; // 测试注入内存瓦片，避免网络噪音
 
   const MerchantMapView({
     super.key,
@@ -29,6 +44,12 @@ class MerchantMapView extends StatefulWidget {
     this.selectedId,
     this.controller,
     this.allCoordinates = const [],
+    this.mapConfig = const MapConfigState(),
+    this.places = const [],
+    this.currentPlaceId,
+    this.onPlaceChanged,
+    this.showControls = false,
+    this.tileProvider,
   });
 
   @override
@@ -44,10 +65,15 @@ class _MerchantMapViewState extends State<MerchantMapView> {
 
   MapController get _controller => widget.controller ?? _internalController;
 
+  MapLayerOption? _layer;
+  LatLng? _currentLocation;
+  bool _locating = false;
+
   @override
   void initState() {
     super.initState();
     _internalController = MapController();
+    _layer = _pickLayer(widget.mapConfig);
   }
 
   @override
@@ -58,12 +84,32 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     super.dispose();
   }
 
+  MapLayerOption? _pickLayer(MapConfigState cfg) {
+    for (final o in cfg.layers) {
+      if (o.id == cfg.defaultId) return o;
+    }
+    return cfg.layers.isNotEmpty ? cfg.layers.first : null;
+  }
+
   @override
   void didUpdateWidget(MerchantMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 底图配置变化：当前图层不在新列表时重置为默认。
+    if (oldWidget.mapConfig.layers != widget.mapConfig.layers ||
+        oldWidget.mapConfig.defaultId != widget.mapConfig.defaultId) {
+      final layer = _layer;
+      if (layer == null ||
+          !widget.mapConfig.layers.contains(layer) ||
+          (oldWidget.mapConfig.defaultId != widget.mapConfig.defaultId &&
+              layer.id == oldWidget.mapConfig.defaultId)) {
+        _layer = _pickLayer(widget.mapConfig);
+      }
+    }
     if (oldWidget.merchants != widget.merchants ||
         oldWidget.selectedId != widget.selectedId ||
-        oldWidget.allCoordinates != widget.allCoordinates) {
+        oldWidget.allCoordinates != widget.allCoordinates ||
+        oldWidget.places != widget.places ||
+        oldWidget.currentPlaceId != widget.currentPlaceId) {
       // 首次初始化交给 initialCameraFit；这里只处理挂载后的数据变化。
       WidgetsBinding.instance.addPostFrameCallback((_) => _fitView());
     }
@@ -89,6 +135,19 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       if (m.id == id) return LatLng(m.latitude!, m.longitude!);
     }
     return null;
+  }
+
+  /// 当前选中的「我的地点」坐标与聚焦缩放（优先级最高）。
+  (LatLng?, double) get _focusPlace {
+    final id = widget.currentPlaceId;
+    if (id == null) return (null, 12);
+    for (final p in widget.places) {
+      if (p.id == id) {
+        return (LatLng(p.latitude, p.longitude),
+            radiusKmToZoom(p.viewRadiusKm ?? 5));
+      }
+    }
+    return (null, 12);
   }
 
   /// 单点视角：选中商家、只有一个坐标点，或所有点重合。
@@ -122,17 +181,30 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     final points = _points;
     if (points.length < 2) return null;
     return CameraFit.bounds(
-      bounds: LatLngBounds.fromPoints(points),
+      bounds: LatLngBounds.fromPoints(
+          points.map(_toDisplay).toList()),
       padding: const EdgeInsets.all(48),
       maxZoom: 16,
     );
   }
 
+  /// 统一坐标出口：GCJ02 底图（高德/腾讯）把 WGS84 转 GCJ02，OSM 原样。
+  /// 所有进 MarkerLayer/CircleLayer/move/fit/initialCenter 的坐标都必须过这里。
+  LatLng _toDisplay(LatLng wgs) {
+    final layer = _layer;
+    if (layer == null || !layer.gcj02) return wgs;
+    final (lat, lng) = wgs84ToGcj02(wgs.latitude, wgs.longitude);
+    return LatLng(lat, lng);
+  }
+
   MapOptions _buildOptions() {
-    final center = _singleCenter;
+    final (focus, focusZoom) = _focusPlace;
+    final center = focus ?? _singleCenter;
     return MapOptions(
-      initialCenter: center ?? _defaultCenter,
-      initialZoom: center != null ? _pointZoom : _defaultZoom,
+      initialCenter: _toDisplay(center ?? _defaultCenter),
+      initialZoom: center != null
+          ? (focus != null ? focusZoom : _pointZoom)
+          : _defaultZoom,
       initialCameraFit: _boundsFit,
       backgroundColor: const Color(0xFFE8EAED),
     );
@@ -141,9 +213,14 @@ class _MerchantMapViewState extends State<MerchantMapView> {
   void _fitView() {
     final controller = _controller;
     if (!mounted) return;
+    final (focus, focusZoom) = _focusPlace;
+    if (focus != null) {
+      controller.move(_toDisplay(focus), focusZoom);
+      return;
+    }
     final center = _singleCenter;
     if (center != null) {
-      controller.move(center, _pointZoom);
+      controller.move(_toDisplay(center), _pointZoom);
       return;
     }
     final fit = _boundsFit;
@@ -151,13 +228,135 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     try {
       controller.fitCamera(fit);
     } catch (_) {
-      final points = _points;
+      final points = _points.map(_toDisplay).toList();
       final lat =
           points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
       final lng = points.map((p) => p.longitude).reduce((a, b) => a + b) /
           points.length;
       controller.move(LatLng(lat, lng), 12);
     }
+  }
+
+  // ---- 定位 ----
+
+  Future<void> _locate() async {
+    // 已定位：再次点击清除蓝点并回到原视角（web toggle 语义）。
+    if (_currentLocation != null) {
+      setState(() => _currentLocation = null);
+      _fitView();
+      return;
+    }
+    setState(() => _locating = true);
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        _toast('定位服务未开启，请在系统设置中打开');
+        return;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied) {
+        _toast('位置权限被拒绝');
+        return;
+      }
+      if (perm == LocationPermission.deniedForever) {
+        _toast('位置权限已被永久拒绝，请到系统设置中开启');
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 10),
+        ),
+      );
+      if (!mounted) return;
+      final loc = LatLng(pos.latitude, pos.longitude);
+      setState(() => _currentLocation = loc);
+      _controller.move(_toDisplay(loc), _pointZoom);
+    } on TimeoutException {
+      _toast('定位超时，请重试');
+    } catch (_) {
+      _toast('定位失败，请重试');
+    } finally {
+      if (mounted) setState(() => _locating = false);
+    }
+  }
+
+  void _toast(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
+
+  // ---- 控件 ----
+
+  Widget _buildControls() {
+    final theme = Theme.of(context);
+    final layer = _layer;
+    return Material(
+      color: theme.colorScheme.surface,
+      elevation: 2,
+      borderRadius: BorderRadius.circular(8),
+      child: Column(mainAxisSize: MainAxisSize.min, children: [
+        // 底图切换
+        PopupMenuButton<MapLayerOption>(
+          key: const ValueKey('layer-switch'),
+          tooltip: '切换底图',
+          icon: const Icon(Icons.layers_outlined),
+          onSelected: (v) => setState(() => _layer = v),
+          itemBuilder: (ctx) => [
+            for (final o in widget.mapConfig.layers)
+              PopupMenuItem(
+                value: o,
+                child: Row(children: [
+                  if (layer?.id == o.id) const Icon(Icons.check, size: 16),
+                  const SizedBox(width: 8),
+                  Text(o.label),
+                ]),
+              ),
+          ],
+        ),
+        if (widget.places.isNotEmpty) ...[
+          const Divider(height: 1),
+          // 我的地点下拉
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            child: DropdownButton<int?>(
+              key: const ValueKey('place-dropdown'),
+              value: widget.currentPlaceId,
+              isDense: true,
+              underline: const SizedBox.shrink(),
+              hint: const SizedBox(
+                width: 100,
+                child: Text('我的地点', overflow: TextOverflow.ellipsis),
+              ),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('全部商家')),
+                for (final p in widget.places)
+                  DropdownMenuItem(value: p.id, child: Text(p.name)),
+              ],
+              onChanged: widget.onPlaceChanged,
+            ),
+          ),
+        ],
+        const Divider(height: 1),
+        // 定位
+        IconButton(
+          key: const ValueKey('locate-button'),
+          tooltip: _currentLocation != null ? '清除定位' : '定位当前位置',
+          icon: _locating
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Icon(_currentLocation != null
+                  ? Icons.my_location
+                  : Icons.my_location_outlined),
+          onPressed: _locating ? null : _locate,
+        ),
+      ]),
+    );
   }
 
   @override
@@ -170,36 +369,72 @@ class _MerchantMapViewState extends State<MerchantMapView> {
         subtitle: '商家缺少坐标信息时无法在地图显示',
       );
     }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: FlutterMap(
-        mapController: _controller,
-        options: _buildOptions(),
-        children: [
-          TileLayer(
-            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: 'livecalc_mobile',
-          ),
-          MarkerLayer(
-            markers: [
-              for (final m in markers)
+    final layer = _layer;
+    return Stack(children: [
+      ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: FlutterMap(
+          mapController: _controller,
+          options: _buildOptions(),
+          children: [
+            if (layer != null)
+              TileLayer(
+                urlTemplate: layer.urlTemplate,
+                subdomains: layer.subdomains,
+                userAgentPackageName: 'livecalc_mobile',
+                tileProvider: widget.tileProvider,
+              ),
+            if (_currentLocation != null) ...[
+              CircleLayer(circles: [
+                CircleMarker(
+                  point: _toDisplay(_currentLocation!),
+                  radius: 5000,
+                  useRadiusInMeter: true,
+                  color: Colors.blue.withValues(alpha: 0.12),
+                  borderColor: Colors.blue.withValues(alpha: 0.3),
+                ),
+              ]),
+              MarkerLayer(markers: [
                 Marker(
-                  point: LatLng(m.latitude!, m.longitude!),
-                  width: 110,
-                  height: 56,
-                  alignment: Alignment.topCenter,
-                  child: _MerchantMarker(
-                    name: m.name,
-                    address: m.address,
-                    isOpen: m.isOpen,
-                    selected: m.id == widget.selectedId,
+                  key: const ValueKey('current-location-marker'),
+                  point: _toDisplay(_currentLocation!),
+                  width: 18,
+                  height: 18,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1976D2),
+                      shape: BoxShape.circle,
+                      border: Border.fromBorderSide(
+                        BorderSide(color: Colors.white, width: 3),
+                      ),
+                    ),
                   ),
                 ),
+              ]),
             ],
-          ),
-        ],
+            MarkerLayer(
+              markers: [
+                for (final m in markers)
+                  Marker(
+                    point: _toDisplay(LatLng(m.latitude!, m.longitude!)),
+                    width: 110,
+                    height: 56,
+                    alignment: Alignment.topCenter,
+                    child: _MerchantMarker(
+                      name: m.name,
+                      address: m.address,
+                      isOpen: m.isOpen,
+                      selected: m.id == widget.selectedId,
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
-    );
+      if (widget.showControls)
+        Positioned(top: 8, right: 8, child: _buildControls()),
+    ]);
   }
 }
 

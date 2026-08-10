@@ -3,18 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../profile/models/user_place.dart';
+import '../../profile/repositories/profile_repository.dart';
 import '../models/merchant.dart';
+import '../providers/map_config_provider.dart';
 import '../providers/merchant_provider.dart';
 import '../repositories/merchant_repository.dart';
+import '../widgets/map_point_picker.dart';
 import '../widgets/merchant_map_view.dart';
 
 class MerchantListScreen extends ConsumerStatefulWidget {
   final bool initialShowMap;
-  const MerchantListScreen({super.key, this.initialShowMap = false});
+  final ProfileRepository? profileRepository;
+  final MerchantRepository? merchantRepository;
+
+  /// 测试注入内存瓦片，避免对话框地图的网络噪音。
+  final TileProvider? mapTileProvider;
+
+  const MerchantListScreen({
+    super.key,
+    this.initialShowMap = false,
+    this.profileRepository,
+    this.merchantRepository,
+    this.mapTileProvider,
+  });
 
   @override
   ConsumerState<MerchantListScreen> createState() =>
@@ -22,12 +39,16 @@ class MerchantListScreen extends ConsumerStatefulWidget {
 }
 
 class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
+  static const _currentPlacePrefsKey = 'merchants_map_current_place_id';
+
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
   final _mapController = MapController();
   late bool _showMap;
   Merchant? _selectedMerchant;
   List<LatLng> _allCoordinates = const [];
+  List<UserPlace> _places = const [];
+  int? _currentPlaceId;
 
   @override
   void initState() {
@@ -36,13 +57,51 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     Future.microtask(() {
       ref.read(merchantListProvider.notifier).load();
       ref.read(merchantListProvider.notifier).loadFavorites();
+      ref.read(mapConfigProvider.notifier).load();
     });
+    _loadPlaces();
     _scrollController.addListener(_onScroll);
+  }
+
+  /// 加载我的地点并初始化当前选中：
+  /// 上次记忆（SharedPreferences）→ 默认地点 → null（全部商家）。
+  Future<void> _loadPlaces() async {
+    try {
+      final places =
+          await (widget.profileRepository ?? ProfileRepository()).getPlaces();
+      if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getInt(_currentPlacePrefsKey);
+      int? defaultId;
+      for (final p in places) {
+        if (p.isDefault) {
+          defaultId = p.id;
+          break;
+        }
+      }
+      setState(() {
+        _places = places;
+        _currentPlaceId = saved ?? defaultId;
+      });
+    } catch (_) {
+      // 地点加载失败不阻塞列表
+    }
+  }
+
+  Future<void> _onPlaceChanged(int? id) async {
+    setState(() => _currentPlaceId = id);
+    final prefs = await SharedPreferences.getInstance();
+    if (id == null) {
+      await prefs.remove(_currentPlacePrefsKey);
+    } else {
+      await prefs.setInt(_currentPlacePrefsKey, id);
+    }
   }
 
   Future<void> _loadCoordinates(MerchantListState state) async {
     try {
-      final coords = await MerchantRepository().getAllCoordinates(
+      final coords = await (widget.merchantRepository ?? MerchantRepository())
+          .getAllCoordinates(
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
         includeClosed: state.includeClosed,
       );
@@ -134,6 +193,11 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                   selectedId: _selectedMerchant?.id,
                   controller: _mapController,
                   allCoordinates: _allCoordinates,
+                  mapConfig: ref.watch(mapConfigProvider),
+                  places: _places,
+                  currentPlaceId: _currentPlaceId,
+                  onPlaceChanged: _onPlaceChanged,
+                  showControls: true,
                 ),
               ),
             ),
@@ -384,12 +448,10 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     final nameController = TextEditingController(text: item?.name ?? '');
     final addressController =
         TextEditingController(text: item?.address ?? '');
-    final latController = TextEditingController(
-      text: item?.latitude == null ? '' : '${item!.latitude}',
-    );
-    final lngController = TextEditingController(
-      text: item?.longitude == null ? '' : '${item!.longitude}',
-    );
+    // 地图选中的位置（WGS84）；未选时商家无坐标（地图上不显示）。
+    LatLng? picked = (item?.latitude == null || item?.longitude == null)
+        ? null
+        : LatLng(item!.latitude!, item.longitude!);
     var isOpen = item?.isOpen ?? true;
     final saved = await showDialog<bool>(
       context: context,
@@ -423,33 +485,16 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                   value: isOpen,
                   onChanged: (v) => setDialogState(() => isOpen = v),
                 ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: latController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
-                        decoration: const InputDecoration(
-                          labelText: '纬度（可选）',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: lngController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
-                        decoration: const InputDecoration(
-                          labelText: '经度（可选）',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 12),
+                const Text('位置（点击地图选择，可选）',
+                    style: TextStyle(fontWeight: FontWeight.w500)),
+                const SizedBox(height: 8),
+                MapPointPicker(
+                  // 固定宽度：短路 AlertDialog 的 intrinsic 宽度查询
+                  width: 300,
+                  initialValue: picked,
+                  onChanged: (v) => setDialogState(() => picked = v),
+                  tileProvider: widget.mapTileProvider,
                 ),
               ],
             ),
@@ -473,8 +518,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       _toast('请输入商家名称');
       return;
     }
-    final lat = double.tryParse(latController.text.trim());
-    final lng = double.tryParse(lngController.text.trim());
+    final lat = picked?.latitude;
+    final lng = picked?.longitude;
     final notifier = ref.read(merchantListProvider.notifier);
     try {
       if (item == null) {
@@ -487,7 +532,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
         );
         _toast('已创建商家');
       } else {
-        await MerchantRepository().updateMerchant(
+        await (widget.merchantRepository ?? MerchantRepository())
+            .updateMerchant(
           item.id,
           name: name,
           address: addressController.text.trim(),

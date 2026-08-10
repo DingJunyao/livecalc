@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/router/app_router.dart';
@@ -58,6 +59,11 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
       darkTheme: AppTheme.darkTheme,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
+      // 中文 localization：系统组件（返回按钮 tooltip、长按复制粘贴菜单等）
+      // 全部显示中文，否则 Material 内置文案走默认英文。
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      supportedLocales: const [Locale('zh', 'CN')],
+      locale: const Locale('zh', 'CN'),
     );
   }
 }

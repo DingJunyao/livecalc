@@ -164,6 +164,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// 重新拉取当前用户（头像/昵称/设置变更后刷新，web fetchUser 对应物）。
+  Future<void> refreshUser() async {
+    try {
+      final user = await _repository.getCurrentUser();
+      if (state.status == AuthStatus.authenticated) {
+        state = AuthState(status: AuthStatus.authenticated, user: user);
+      }
+    } on Exception catch (_) {
+      // 刷新失败保持旧状态，不打扰当前会话
+    }
+  }
+
+  /// 用 PATCH/PUT 响应直接覆盖用户状态（省一次 GET）。
+  void applyUser(User user) {
+    state = AuthState(status: AuthStatus.authenticated, user: user);
+  }
+
   /// Logs in and persists the session (tokens + credentials) so the next
   /// launch can skip the login screen entirely.
   Future<void> _authenticate(String username, String password) async {

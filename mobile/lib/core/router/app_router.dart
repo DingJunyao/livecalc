@@ -16,12 +16,15 @@ import '../../features/merchants/screens/merchant_detail_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/my_proposals_screen.dart';
 import '../../features/profile/screens/my_places_screen.dart';
+import '../../features/profile/screens/unit_preferences_screen.dart';
+import '../../features/profile/screens/nutrition_goals_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/providers/server_provider.dart';
 import '../../features/auth/screens/server_config_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
+import '../../features/auth/screens/edit_account_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -175,6 +178,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             builder: (_, __) => const ProfileScreen(),
           ),
           GoRoute(
+            path: '/profile/account',
+            name: RouteNames.editAccount,
+            builder: (_, __) => const EditAccountScreen(),
+          ),
+          GoRoute(
             path: '/profile/proposals',
             name: RouteNames.myProposals,
             builder: (_, __) => const MyProposalsScreen(),
@@ -183,6 +191,16 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             path: '/profile/places',
             name: RouteNames.myPlaces,
             builder: (_, __) => const MyPlacesScreen(),
+          ),
+          GoRoute(
+            path: '/profile/settings/unit-preferences',
+            name: 'unit-preferences',
+            builder: (_, __) => const UnitPreferencesScreen(),
+          ),
+          GoRoute(
+            path: '/profile/settings/nutrition-goals',
+            name: 'nutrition-goals',
+            builder: (_, __) => const NutritionGoalsScreen(),
           ),
         ],
       ),

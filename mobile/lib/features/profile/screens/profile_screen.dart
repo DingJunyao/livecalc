@@ -17,21 +17,32 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // User info card
+          // User info card：点击进入编辑页，显示昵称与头像
           Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                CircleAvatar(
-                  radius: 32,
-                  child: Text(user?.username.isNotEmpty == true ? user!.username[0].toUpperCase() : '?'),
-                ),
-                const SizedBox(width: 16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(user?.username ?? '用户', style: theme.textTheme.titleLarge),
-                  Text(user?.email ?? '', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
-                ])),
-              ]),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => context.push('/profile/account'),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  CircleAvatar(
+                    radius: 32,
+                    foregroundImage: user?.avatarUrl != null
+                        ? NetworkImage(user!.avatarUrl!)
+                        : null,
+                    onForegroundImageError:
+                        user?.avatarUrl == null ? null : (_, __) {},
+                    child: Text(user?.displayName.isNotEmpty == true ? user!.displayName[0] : '?',
+                        style: theme.textTheme.titleLarge),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(user?.displayName ?? '用户', style: theme.textTheme.titleLarge),
+                    Text(user?.email ?? '', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+                  ])),
+                  const Icon(Icons.chevron_right, color: Colors.grey),
+                ]),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -40,11 +51,17 @@ class ProfileScreen extends ConsumerWidget {
           Text('设置', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(height: 8),
           Card(child: Column(children: [
-            ListTile(leading: const Icon(Icons.scale), title: const Text('单位偏好'), onTap: () {}),
+            ListTile(
+              leading: const Icon(Icons.scale),
+              title: const Text('单位偏好'),
+              onTap: () => context.push('/profile/settings/unit-preferences'),
+            ),
             const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.restaurant), title: const Text('营养目标'), onTap: () {}),
-            const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.attach_money), title: const Text('预算设置'), onTap: () {}),
+            ListTile(
+              leading: const Icon(Icons.restaurant),
+              title: const Text('营养目标'),
+              onTap: () => context.push('/profile/settings/nutrition-goals'),
+            ),
           ])),
           const SizedBox(height: 24),
 

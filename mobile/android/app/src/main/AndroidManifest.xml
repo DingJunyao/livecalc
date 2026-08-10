@@ -3,6 +3,9 @@
          Flutter only adds this to the debug/profile manifests by default,
          so a release APK has no internet access unless declared here. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- 定位当前位置 -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 
     <application
         android:label="生计"

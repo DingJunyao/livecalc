@@ -59,6 +59,26 @@ class PlaceListNotifier extends StateNotifier<PlaceListState> {
       state = state.copyWith(loading: false, error: e.toString());
     }
   }
+
+  Future<void> add(Map<String, dynamic> body) async {
+    await _repo.createPlace(body);
+    await load();
+  }
+
+  Future<void> update(int id, Map<String, dynamic> body) async {
+    await _repo.updatePlace(id, body);
+    await load();
+  }
+
+  Future<void> remove(int id) async {
+    await _repo.deletePlace(id);
+    await load();
+  }
+
+  Future<void> setDefault(int id) async {
+    await _repo.setDefaultPlace(id);
+    await load();
+  }
 }
 
 final placeListProvider = StateNotifierProvider<PlaceListNotifier, PlaceListState>((ref) {

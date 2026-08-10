@@ -20,6 +20,13 @@ class MerchantRepository {
   MerchantRepository({ApiClient? client})
       : _client = client ?? ApiClient.instance;
 
+  /// 地图配置（GET /merchants/map-config），失败回退启用（对齐 web）。
+  Future<Map<String, dynamic>> getMapConfig() async {
+    final response = await _client.dio.get('/merchants/map-config');
+    final data = response.data;
+    return data is Map<String, dynamic> ? data : const {};
+  }
+
   /// 分页搜索商家（GET /merchants）。
   Future<MerchantPage> search({
     String? search,
