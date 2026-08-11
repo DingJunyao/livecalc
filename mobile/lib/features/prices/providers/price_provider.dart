@@ -192,6 +192,70 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
 
   bool get canLoadMore =>
       state.hasMore && !state.loading && !state.loadingMore;
+
+  /// 更新一条价格记录。
+  /// 成功后**局部更新** state.records 中对应 id（不调 loadRecords，避免丢滚动位置）。
+  ///
+  /// merchantName 同步策略：notifier 不持有 merchant 列表，无法由 merchantId 反查
+  /// 商家名，故由调用方（屏幕层）反查后通过 [merchantName] 传入；未传（null）则
+  /// 局部更新后卡片暂显「未知商家」直到下次刷新。
+  /// 成功返回 true，失败（repo 抛 Exception）返回 false。
+  Future<bool> updateRecord(
+    int id, {
+    required double price,
+    required double quantity,
+    required String unit,
+    int? merchantId,
+    String? merchantName,
+  }) async {
+    try {
+      await _repository.updateRecord(
+        id,
+        price: price,
+        quantity: quantity,
+        unit: unit,
+        merchantId: merchantId,
+      );
+      final newRecords = state.records.map((r) {
+        if (r.id != id) return r;
+        return PriceRecord(
+          id: r.id,
+          productId: r.productId,
+          productName: r.productName,
+          price: price,
+          quantity: quantity,
+          unit: unit,
+          merchantId: merchantId,
+          merchantName: merchantName, // 见方法注释：由调用方反查传入
+          recordedAt: r.recordedAt,
+          recordType: r.recordType,
+          notes: r.notes,
+        );
+      }).toList();
+      state = state.copyWith(records: newRecords);
+      return true;
+    } on Exception catch (_) {
+      return false;
+    }
+  }
+
+  /// 删除一条价格记录。成功后从 state.records 移除该 id 并按实际移除数递减 total
+  ///（不低于 0；删不存在的 id 不会误减）。成功返回 true，失败（repo 抛 Exception）
+  /// 返回 false。
+  Future<bool> deleteRecord(int id) async {
+    try {
+      await _repository.deleteRecord(id);
+      final newRecords = state.records.where((r) => r.id != id).toList();
+      final removed = state.records.length - newRecords.length;
+      state = state.copyWith(
+        records: newRecords,
+        total: state.total > 0 ? state.total - removed : 0,
+      );
+      return true;
+    } on Exception catch (_) {
+      return false;
+    }
+  }
 }
 
 final priceListProvider =

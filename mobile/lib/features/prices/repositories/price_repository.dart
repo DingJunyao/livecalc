@@ -114,4 +114,13 @@ class PriceRepository {
   Future<void> deleteRecord(int id) async {
     await _client.dio.delete('/products/$id');
   }
+
+  /// 粘贴导入时给商品加别名（POST /products/entity/{id}/add-import-alias）。
+  /// body 仅含 {name}，后端会去重并忽略主名重复。
+  Future<void> addImportAlias(int productId, String name) async {
+    await _client.dio.post(
+      '/products/entity/$productId/add-import-alias',
+      data: {'name': name},
+    );
+  }
 }

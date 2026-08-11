@@ -89,6 +89,7 @@ class _PriceRecordFormSheet extends StatefulWidget {
 class _PriceRecordFormSheetState extends State<_PriceRecordFormSheet> {
   late final TextEditingController _priceController;
   late final TextEditingController _quantityController;
+  late final TextEditingController _merchantController;
   late String _unit;
   int? _merchantId;
   int? _productId;
@@ -107,7 +108,12 @@ class _PriceRecordFormSheetState extends State<_PriceRecordFormSheet> {
           : _fmtQty(widget.initialQuantity!),
     );
     _unit = widget.initialUnit ?? '斤';
-    _merchantId = widget.initialMerchantId;
+    // 预填商家名：initialMerchantId 在 widget.merchants 中找到对应商家。
+    // 若 initialMerchantId 不在 merchants 列表里（找不到名字），_merchantId 置 null
+    // 防止 stale id 被悄悄提交。
+    final initialName = _findMerchantName(widget.initialMerchantId);
+    _merchantId = initialName.isEmpty ? null : widget.initialMerchantId;
+    _merchantController = TextEditingController(text: initialName);
     _productId = widget.fixedProductId ?? widget.products.firstOrNull?.id;
   }
 
@@ -115,7 +121,17 @@ class _PriceRecordFormSheetState extends State<_PriceRecordFormSheet> {
   void dispose() {
     _priceController.dispose();
     _quantityController.dispose();
+    _merchantController.dispose();
     super.dispose();
+  }
+
+  /// 在 widget.merchants 中按 id 查找商家名（未找到返回空串）
+  String _findMerchantName(int? id) {
+    if (id == null) return '';
+    for (final m in widget.merchants) {
+      if (m.id == id) return m.name;
+    }
+    return '';
   }
 
   String _fmtQty(double q) {
@@ -249,17 +265,42 @@ class _PriceRecordFormSheetState extends State<_PriceRecordFormSheet> {
             ),
             const SizedBox(height: 12),
             _label(theme, '商家'),
-            DropdownButtonFormField<int?>(
-              initialValue: _merchantId,
-              isExpanded: true,
-              hint: const Text('全部商家'),
-              decoration: _decoration(),
-              items: [
-                const DropdownMenuItem<int?>(value: null, child: Text('不指定')),
-                for (final m in widget.merchants)
-                  DropdownMenuItem<int?>(value: m.id, child: Text(m.name)),
-              ],
-              onChanged: (v) => setState(() => _merchantId = v),
+            Autocomplete<Merchant>(
+              optionsBuilder: (textEditingValue) {
+                final text = textEditingValue.text.toLowerCase();
+                if (text.isEmpty) return widget.merchants;
+                return widget.merchants
+                    .where((m) => m.name.toLowerCase().contains(text))
+                    .toList();
+              },
+              displayStringForOption: (m) => m.name,
+              onSelected: (m) {
+                _merchantController.text = m.name;
+                setState(() => _merchantId = m.id);
+              },
+              fieldViewBuilder:
+                  (ctx, controller, focusNode, onFieldSubmitted) {
+                // 同步外部 _merchantController 与 Autocomplete 内部 controller，
+                // 避免预填值被内部 controller 覆盖（对齐 quick_fill_screen 做法）。
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (_merchantController.text != controller.text) {
+                    controller.text = _merchantController.text;
+                  }
+                });
+                return TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  decoration: _decoration(),
+                  onSubmitted: (_) => onFieldSubmitted(),
+                  onChanged: (value) {
+                    // 文本被改动后不再信任 _merchantId；要保留必须重新点选
+                    // （onSelected 程序化赋值不会走 onChanged，选中流程不受影响）
+                    if (_merchantId != null) {
+                      setState(() => _merchantId = null);
+                    }
+                  },
+                );
+              },
             ),
             const SizedBox(height: 20),
             SizedBox(

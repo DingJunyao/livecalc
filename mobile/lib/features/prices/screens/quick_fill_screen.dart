@@ -44,7 +44,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   Future<void> _loadMerchants() async {
     try {
       final resp = await _repo.client.dio.get('/merchants');
-      // ?? /merchants ???? {items, total, ...}??????? List ???
+      // 响应可能是 List 或 {items, total, ...} 对象，统一取 items 列表
       final list = (resp.data is List)
           ? resp.data as List<dynamic>
           : (resp.data['items'] as List<dynamic>);
@@ -102,6 +102,25 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     }
   }
 
+  /// 记录本次导入商品顺序（POST /merchants/{id}/product-orders）。
+  /// sort_order = product_ids 数组索引（即粘贴文本顺序）；
+  /// 失败静默不阻断 —— 排序仅影响下次列表显示顺序（对齐 web onPasteImported 的 try/catch warn）。
+  Future<void> _saveProductOrders(List<int> productIds) async {
+    final merchantId = _selectedMerchantId;
+    if (merchantId == null || productIds.isEmpty) return;
+    final now = DateTime.now();
+    final sessionDate =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    try {
+      await _repo.client.dio.post(
+        '/merchants/$merchantId/product-orders',
+        data: {'product_ids': productIds, 'session_date': sessionDate},
+      );
+    } catch (_) {
+      // 排序记录失败不阻断导入主流程
+    }
+  }
+
   void _addRow({String? name, String? unit, int? productId}) {
     setState(() {
       _rows.add(_PriceRow(name: name ?? '', unit: unit ?? '个', productId: productId));
@@ -117,7 +136,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
       if (price == null || price <= 0) continue;
 
       final name = row.nameController.text.trim();
-      // ???? id ?????????
+      // 没有 productId 且名字为空则跳过
       if (row.productId == null && name.isEmpty) continue;
 
       try {
@@ -147,7 +166,35 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('快速填写')),
+      appBar: AppBar(
+        title: const Text('快速填写'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.paste),
+            tooltip: '粘贴导入',
+            // 仅选了商家后可用（对齐网页端 :disabled="!selectedMerchantId"）
+            onPressed: _selectedMerchantId == null
+                ? null
+                : () async {
+                    final savedIds = await context.push<List<int>>(
+                      '/prices/paste-import',
+                      extra: {
+                        'merchantId': _selectedMerchantId,
+                        'historyProductNames': _rows
+                            .map((r) => r.nameController.text)
+                            .where((n) => n.trim().isNotEmpty)
+                            .toList(),
+                      },
+                    );
+                    if (savedIds != null && savedIds.isNotEmpty && mounted) {
+                      // 先按导入顺序记录排序，再刷新历史列表（对齐 web onPasteImported）
+                      await _saveProductOrders(savedIds);
+                      _loadHistoryProducts();
+                    }
+                  },
+          ),
+        ],
+      ),
       body: Column(
         children: [
           // Step 1: Merchant selection

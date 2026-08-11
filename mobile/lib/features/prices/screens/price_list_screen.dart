@@ -9,6 +9,7 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/price_record_form_sheet.dart';
 
 class PriceListScreen extends ConsumerStatefulWidget {
   const PriceListScreen({super.key});
@@ -58,6 +59,87 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     final saved = await context.push<bool>('/prices/record');
     if (saved == true && mounted) {
       ref.read(priceListProvider.notifier).loadRecords();
+    }
+  }
+
+  /// 打开编辑表单（复用 showPriceRecordFormSheet），保存后局部更新对应记录。
+  /// 不调 loadRecords 以保留滚动位置。
+  Future<void> _openEditRecord(PriceRecord r) async {
+    final result = await showPriceRecordFormSheet(
+      context,
+      merchants: ref.read(merchantListProvider).items,
+      fixedProductId: r.productId,
+      fixedProductName: r.productName,
+      initialPrice: r.price,
+      initialQuantity: r.quantity,
+      initialUnit: r.unit,
+      initialMerchantId: r.merchantId,
+    );
+    if (result != null && mounted) {
+      // notifier 不持有 merchant 列表，由屏幕层反查商家名传入；
+      // 反查不到（如商家未加载）则 merchantName 为 null，卡片暂显「未知商家」。
+      String? merchantName;
+      if (result.merchantId != null) {
+        final m = ref
+            .read(merchantListProvider)
+            .items
+            .where((m) => m.id == result.merchantId)
+            .firstOrNull;
+        merchantName = m?.name;
+      }
+      final ok = await ref.read(priceListProvider.notifier).updateRecord(
+            r.id,
+            price: result.price,
+            quantity: result.quantity,
+            unit: result.unit,
+            merchantId: result.merchantId,
+            merchantName: merchantName,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(ok ? '已更新' : '更新失败，请重试')),
+        );
+      }
+    }
+  }
+
+  /// 二次确认后删除记录。
+  Future<void> _confirmDelete(PriceRecord r) async {
+    final theme = Theme.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除记录'),
+        content: Text(
+          '确定删除「${r.productName}」¥${r.price.toStringAsFixed(2)} 的记录吗？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _deleteRecord(r);
+    }
+  }
+
+  Future<void> _deleteRecord(PriceRecord r) async {
+    final ok = await ref.read(priceListProvider.notifier).deleteRecord(r.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ok ? '已删除' : '删除失败，请重试')),
+      );
     }
   }
 
@@ -330,7 +412,21 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                tooltip: '更多操作',
+                itemBuilder: (_) => const [
+                  PopupMenuItem<String>(value: 'edit', child: Text('编辑')),
+                  PopupMenuItem<String>(value: 'delete', child: Text('删除')),
+                ],
+                onSelected: (v) {
+                  if (v == 'edit') {
+                    _openEditRecord(r);
+                  } else if (v == 'delete') {
+                    _confirmDelete(r);
+                  }
+                },
+              ),
             ],
           ),
         ),

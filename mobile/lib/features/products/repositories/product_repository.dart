@@ -128,6 +128,24 @@ class ProductRepository {
         .toList();
   }
 
+  /// 商品自动完成搜索（GET /products/autocomplete）。
+  /// 返回原始 Map 列表，含 name/match_type/id/ingredient_id/aliases/
+  /// ingredient_aliases/ingredient_product_count 等字段（供粘贴导入匹配用）。
+  Future<List<Map<String, dynamic>>> autocomplete(String q,
+      {int limit = 20}) async {
+    final response = await _client.dio.get(
+      '/products/autocomplete',
+      queryParameters: {'q': q, 'limit': limit},
+    );
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data is Map ? data['items'] as List? : null) ?? const []);
+    return list
+        .map((e) => e as Map<String, dynamic>)
+        .toList(growable: false);
+  }
+
   /// 迷你图（GET /sparklines/products?ids=1,2,3）→ {id: [values]}。
   Future<Map<int, List<double>>> getSparklines(List<int> ids) async {
     if (ids.isEmpty) return const {};

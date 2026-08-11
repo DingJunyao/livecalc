@@ -92,4 +92,123 @@ void main() {
     expect(find.text('生计'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
   });
+
+  /// 「更多」二级菜单测试组：切窄屏触发 mobile 底栏（默认 800x600 走桌面）。
+  Future<void> pumpRouter(
+    WidgetTester tester, {
+    String startupPage = 'home',
+  }) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    SharedPreferences.setMockInitialValues({'startup_page': startupPage});
+    final notifier = AuthNotifier(MockAuthRepository());
+    await tester.pumpWidget(ProviderScope(
+      overrides: [authProvider.overrideWith((ref) => notifier)],
+      child: const _RouterHost(),
+    ));
+    await pumpPastAuth(tester, notifier);
+  }
+
+  /// 打开底栏「更多」二级菜单，并 pump 至 modal 滑入动画稳定。
+  /// 注意：modal 动画进度由 frame 驱动，单次 pump(Duration) 只推进一帧，
+  /// 多 pump 几次让 progress 到达 1.0（否则胶囊 hit test 在屏幕外）。
+  Future<void> openMoreMenu(WidgetTester tester) async {
+    await tester.tap(find.byKey(const ValueKey('tab-更多')));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  /// 选中态判断：_NavItem 选中时唯一 Container 带 BoxDecoration（secondaryContainer 胶囊）。
+  /// 注意：耦合 _NavItem 选中态实现（selected 时 Container.decoration = BoxDecoration），
+  /// 若改 _NavItem 选中渲染方式（如换成 Border/不同 widget），需同步更新此 helper。
+  Finder selectedBoxDecoration(Key key) => find.descendant(
+        of: find.byKey(key),
+        matching: find.byWidgetPredicate(
+          (w) => w is Container && w.decoration is BoxDecoration,
+        ),
+      );
+
+  testWidgets('「更多」菜单为横排胶囊网格（非纵向 ListTile）', (tester) async {
+    await pumpRouter(tester);
+    await openMoreMenu(tester);
+
+    // 4 个胶囊均存在（复用 _NavItem，key = more-<label>）
+    expect(find.byKey(const ValueKey('more-原料')), findsOneWidget);
+    expect(find.byKey(const ValueKey('more-商品')), findsOneWidget);
+    expect(find.byKey(const ValueKey('more-商家')), findsOneWidget);
+    expect(find.byKey(const ValueKey('more-我的')), findsOneWidget);
+
+    // 旧纵向 ListTile 不再存在：菜单内不再用 ListTile 承载这些项
+    expect(
+      find.ancestor(
+        of: find.text('原料'),
+        matching: find.byType(ListTile),
+      ),
+      findsNothing,
+    );
+  });
+
+  testWidgets('「更多」菜单中当前路由对应胶囊为选中态', (tester) async {
+    // 起始页只允许 home/prices/recipes（kStartupPages），到达 /ingredients 需先导航。
+    // 1) 在 home 打开菜单，点原料胶囊 → 跳到原料页
+    await pumpRouter(tester);
+    await openMoreMenu(tester);
+    await tester.tap(find.byKey(const ValueKey('more-原料')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // 2) 在原料页重新打开菜单，验证选中态
+    await openMoreMenu(tester);
+
+    expect(selectedBoxDecoration(const ValueKey('more-原料')),
+        findsOneWidget);
+    // 其他胶囊非选中态：Container.decoration 为 null（无 BoxDecoration）
+    expect(selectedBoxDecoration(const ValueKey('more-商品')), findsNothing);
+    expect(selectedBoxDecoration(const ValueKey('more-商家')), findsNothing);
+    expect(selectedBoxDecoration(const ValueKey('more-我的')), findsNothing);
+  });
+
+  testWidgets('点击「更多」菜单胶囊跳转到对应路由', (tester) async {
+    await pumpRouter(tester);
+    await openMoreMenu(tester);
+
+    // 点击「商品」胶囊 → 跳到商品页
+    await tester.tap(find.byKey(const ValueKey('more-商品')));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    // ProductListScreen AppBar 标题「商品」
+    expect(
+      find.descendant(
+        of: find.byType(AppBar),
+        matching: find.text('商品'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('「更多」菜单关闭按钮关闭 modal', (tester) async {
+    await pumpRouter(tester);
+    await openMoreMenu(tester);
+
+    // 右上角关闭按钮存在
+    final closeBtn = find.byWidgetPredicate(
+      (w) => w is IconButton && (w.icon as Icon).icon == Icons.close,
+    );
+    expect(closeBtn, findsOneWidget);
+
+    await tester.tap(closeBtn);
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // modal 关闭后胶囊消失
+    expect(find.byKey(const ValueKey('more-原料')), findsNothing);
+  });
 }

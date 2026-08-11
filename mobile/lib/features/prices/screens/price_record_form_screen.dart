@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/widgets/price_record_form_sheet.dart'
     show priceRecordUnits;
+import '../../merchants/models/merchant.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../products/models/product.dart';
 import '../../products/repositories/product_repository.dart';
@@ -32,6 +33,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   final _priceController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
+  final _merchantController = TextEditingController();
   String _unit = '斤';
   int? _merchantId;
   Product? _selectedProduct;
@@ -57,6 +59,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     _priceController.dispose();
     _quantityController.dispose();
     _notesController.dispose();
+    _merchantController.dispose();
     super.dispose();
   }
 
@@ -265,22 +268,47 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          DropdownButtonFormField<int?>(
-            initialValue: _merchantId,
-            isExpanded: true,
-            hint: const Text('不指定'),
-            decoration: InputDecoration(
-              labelText: '商家',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            items: [
-              const DropdownMenuItem<int?>(value: null, child: Text('不指定')),
-              for (final m in merchants)
-                DropdownMenuItem<int?>(value: m.id, child: Text(m.name)),
-            ],
-            onChanged: (v) => setState(() => _merchantId = v),
+          Autocomplete<Merchant>(
+            optionsBuilder: (textEditingValue) {
+              final text = textEditingValue.text.toLowerCase();
+              if (text.isEmpty) return merchants;
+              return merchants
+                  .where((m) => m.name.toLowerCase().contains(text))
+                  .toList();
+            },
+            displayStringForOption: (m) => m.name,
+            onSelected: (m) {
+              _merchantController.text = m.name;
+              setState(() => _merchantId = m.id);
+            },
+            fieldViewBuilder:
+                (ctx, controller, focusNode, onFieldSubmitted) {
+              // 同步外部 _merchantController 与 Autocomplete 内部 controller，
+              // 避免预填值被内部 controller 覆盖（对齐 quick_fill_screen 做法）。
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_merchantController.text != controller.text) {
+                  controller.text = _merchantController.text;
+                }
+              });
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                decoration: InputDecoration(
+                  labelText: '商家',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onSubmitted: (_) => onFieldSubmitted(),
+                onChanged: (value) {
+                  // 文本被改动后不再信任 _merchantId；要保留必须重新点选
+                  // （onSelected 程序化赋值不会走 onChanged，选中流程不受影响）
+                  if (_merchantId != null) {
+                    setState(() => _merchantId = null);
+                  }
+                },
+              );
+            },
           ),
           const SizedBox(height: 8),
           SwitchListTile(

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/prices/screens/price_list_screen.dart';
+import '../../features/prices/screens/paste_import_screen.dart';
 import '../../features/prices/screens/price_record_form_screen.dart';
 import '../../features/prices/screens/quick_fill_screen.dart';
 import '../../features/recipes/screens/recipe_list_screen.dart';
@@ -115,6 +116,20 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             path: '/prices/quick-fill',
             name: 'quick-fill',
             builder: (_, __) => const QuickFillScreen(),
+          ),
+          GoRoute(
+            path: '/prices/paste-import',
+            name: RouteNames.pasteImport,
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              return PasteImportScreen(
+                merchantId: extra?['merchantId'] as int?,
+                historyProductNames:
+                    (extra?['historyProductNames'] as List<dynamic>?)
+                            ?.cast<String>() ??
+                        const <String>[],
+              );
+            },
           ),
           GoRoute(
             path: '/prices/record',
@@ -397,6 +412,9 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   }
 
   void _showMoreMenu(BuildContext context) {
+    // 在 builder 外取当前路由（builder 内 ctx 在 Overlay 下，拿不到 GoRouterState）
+    final location = GoRouterState.of(context).matchedLocation;
+    final selectedIdx = _tabIndexFor(_moreMenuTabs, location);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -406,15 +424,48 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final t in _moreMenuTabs)
-              ListTile(
-                leading: Icon(t.selectedIcon),
-                title: Text(t.label),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  context.go(t.route!);
-                },
+            // 标题行：「更多」+ 右上角关闭按钮
+            // right: 4 用于抵消 IconButton 默认水平内边距，使 close 图标视觉右缘
+            // 距屏 16，与左侧「更多」Text 的 16 对称；调 IconButton 内边距时注意保持。
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+              child: Row(
+                children: [
+                  Text(
+                    '更多',
+                    style: Theme.of(ctx).textTheme.titleMedium,
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    tooltip: '关闭',
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
               ),
+            ),
+            // 横排胶囊网格：复用 _NavItem，与底栏外观完全一致
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+              child: Row(
+                children: [
+                  for (var i = 0; i < _moreMenuTabs.length; i++)
+                    Expanded(
+                      child: _NavItem(
+                        itemKey: ValueKey('more-${_moreMenuTabs[i].label}'),
+                        label: _moreMenuTabs[i].label,
+                        icon: _moreMenuTabs[i].icon,
+                        selectedIcon: _moreMenuTabs[i].selectedIcon,
+                        selected: i == selectedIdx,
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          context.go(_moreMenuTabs[i].route!);
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

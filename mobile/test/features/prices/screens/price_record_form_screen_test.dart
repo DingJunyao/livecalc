@@ -86,9 +86,13 @@ class _FakeMerchantRepository extends MerchantRepository {
     int skip = 0,
     int limit = 20,
   }) async {
+    // 返回多个商家以便测 Autocomplete 过滤
     return const MerchantPage(
-      items: [Merchant(id: 1, name: '超市')],
-      total: 1,
+      items: [
+        Merchant(id: 1, name: '超市'),
+        Merchant(id: 2, name: '便利店'),
+      ],
+      total: 2,
     );
   }
 }
@@ -262,14 +266,83 @@ void main() {
     expect(repo.lastProductName, '番茄酱');
   });
 
-  testWidgets('商家下拉显示已加载的商家（验证 load 被调用）', (tester) async {
+  testWidgets('商家 Autocomplete 显示并过滤已加载的商家', (tester) async {
     await pumpForm(tester);
 
-    // 未打开时菜单项处于 offstage，打开菜单断言可见的「超市」
-    await tester.tap(find.widgetWithText(DropdownButtonFormField<int?>, '商家'));
+    // 定位商家 Autocomplete<Merchant> 内的 TextField
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+
+    // 输入「超」触发过滤
+    await tester.enterText(merchantField, '超');
     await tester.pumpAndSettle();
 
+    // 浮层仅显示匹配的「超市」，不含「便利店」
     expect(find.text('超市'), findsOneWidget);
+    expect(find.text('便利店'), findsNothing);
+  });
+
+  testWidgets('选中商家后保存，携带 merchantId', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo);
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.createCount, 1);
+    expect(repo.lastMerchantId, 1);
+  });
+
+  testWidgets('不选商家（文本空）保存，merchantId 为 null', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo);
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastMerchantId, isNull);
+  });
+
+  testWidgets('选中商家后再编辑文本，merchantId 复位 null（防 stale id）', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo);
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    // 选中后继续编辑文本（非空），_merchantId 应被清空
+    await tester.enterText(merchantField, '超市X');
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastMerchantId, isNull);
   });
 
   testWidgets('双击保存只创建一次（在途守卫）', (tester) async {

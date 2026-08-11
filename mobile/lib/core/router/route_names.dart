@@ -7,6 +7,7 @@ class RouteNames {
   static const prices = 'prices';
   static const priceRecord = 'price-record';
   static const quickFill = 'quick-fill';
+  static const pasteImport = 'paste-import';
   static const recipes = 'recipes';
   static const ingredients = 'ingredients';
   static const products = 'products';
