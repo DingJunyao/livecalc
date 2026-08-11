@@ -7,11 +7,13 @@ name: 构建 iOS 应用（未签名，供 AltServer 侧载）
 # 为什么不签名：免费账号无法在 CI 生成正式签名证书；签名交给 AltServer 在本地完成。
 #               CI 只负责「把代码编成包」，不负责「给包盖章」。
 #
-# 产物：mobile/build/ios/iphoneos/Runner.ipa，artifact 名 livecalc-ios-ipa（保留 14 天）
+# 产物：mobile/build/ios/derived/Build/Products/Release-iphoneos/Runner.ipa，artifact 名 livecalc-ios-ipa（保留 14 天）
 #
-# 为什么用 flutter build ios 而非 flutter build ipa：
-#   flutter build ipa --no-codesign 虽然构建期不签名，但 export 阶段仍强制要求 Development Team（已知坑），
-#   改用 flutter build ios --no-codesign 产出 .app，再手动打成 IPA（Payload/Runner.app 结构）。
+# 为什么绕过 flutter build，直接 xcodebuild：
+#   flutter build ios/ipa --no-codesign 只让 Xcode 构建期不签名，但 Flutter 工具的后处理仍校验 .app 是否
+#   已签名（deployable 检查），无 Development Team 必挂——这是长期行为，非新版才有。
+#   改用 flutter build ios --config-only 仅生成配置 + pod install，再 xcodebuild 直出未签名 .app，手动打包
+#   成 IPA（Payload/Runner.app），交给 AltServer 重签。
 #
 # 触发：默认仅手动（Actions → Run workflow）；如需打 tag 自动构建，放开下方 push.tags
 #
@@ -55,23 +57,40 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: 构建 iOS（不签名）
+      - name: 生成 iOS 配置（不构建）
         working-directory: mobile
-        run: flutter build ios --release --no-codesign
+        # config-only 只生成 Generated.xcconfig + pod install，不触发 Flutter 的签名后处理
+        run: flutter build ios --config-only --no-codesign
+
+      - name: xcodebuild 构建未签名 .app
+        working-directory: mobile
+        # 绕过 flutter build 的 deployable 签名校验，直接 xcodebuild 出 .app
+        run: |
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -derivedDataPath build/ios/derived \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
 
       - name: 打包未签名 IPA
         working-directory: mobile
-        # .app → .ipa：建 Payload/ 放 Runner.app，zip 成标准 IPA（-y 保留符号链接）
+        # .app → .ipa：进产物目录，建 Payload/ 放 Runner.app，zip 成标准 IPA（-y 保留符号链接）
         run: |
-          mkdir -p Payload
-          cp -r build/ios/iphoneos/Runner.app Payload/
-          zip -qry build/ios/iphoneos/Runner.ipa Payload
-          rm -rf Payload
+          cd build/ios/derived/Build/Products/Release-iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -qry Runner.ipa Payload
 
       - name: 上传 IPA 产物
         uses: actions/upload-artifact@v4
         with:
           name: livecalc-ios-ipa
-          path: mobile/build/ios/iphoneos/Runner.ipa
+          path: mobile/build/ios/derived/Build/Products/Release-iphoneos/Runner.ipa
           retention-days: 14
           if-no-files-found: error
