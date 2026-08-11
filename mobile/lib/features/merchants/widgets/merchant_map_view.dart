@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -9,6 +10,8 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
 import '../providers/map_config_provider.dart';
+import 'apple_merchant_map.dart';
+import 'merchant_map_logic.dart';
 
 bool _isValidCoordinate(double? lat, double? lng) {
   if (lat == null || lng == null) return false;
@@ -58,8 +61,6 @@ class MerchantMapView extends StatefulWidget {
 
 class _MerchantMapViewState extends State<MerchantMapView> {
   static const LatLng _defaultCenter = LatLng(39.9042, 116.4074);
-  static const double _defaultZoom = 11.0;
-  static const double _pointZoom = 15.0;
 
   /// 「全部商家」（不选择任何常用地点）的哨兵值。
   /// PopupMenuButton 选中 null 值不会回调 onSelected（视为取消），故用 -1 占位。
@@ -162,44 +163,6 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     return (null, 12);
   }
 
-  /// 单点视角：选中商家、只有一个坐标点，或所有点重合。
-  LatLng? get _singleCenter {
-    final selected = _selectedPoint;
-    if (selected != null) return selected;
-    final points = _points;
-    if (points.length == 1) return points.first;
-    if (points.length > 1) {
-      final first = points.first;
-      var minLat = first.latitude;
-      var maxLat = first.latitude;
-      var minLng = first.longitude;
-      var maxLng = first.longitude;
-      for (final p in points.skip(1)) {
-        if (p.latitude < minLat) minLat = p.latitude;
-        if (p.latitude > maxLat) maxLat = p.latitude;
-        if (p.longitude < minLng) minLng = p.longitude;
-        if (p.longitude > maxLng) maxLng = p.longitude;
-      }
-      if (minLat == maxLat && minLng == maxLng) {
-        return LatLng(minLat, minLng);
-      }
-    }
-    return null;
-  }
-
-  /// 多点范围视角（fit 全部坐标）。
-  CameraFit? get _boundsFit {
-    if (_singleCenter != null) return null;
-    final points = _points;
-    if (points.length < 2) return null;
-    return CameraFit.bounds(
-      bounds: LatLngBounds.fromPoints(
-          points.map(_toDisplay).toList()),
-      padding: const EdgeInsets.all(48),
-      maxZoom: 16,
-    );
-  }
-
   /// 统一坐标出口：GCJ02 底图（高德/腾讯）把 WGS84 转 GCJ02，OSM 原样。
   /// 所有进 MarkerLayer/CircleLayer/move/fit/initialCenter 的坐标都必须过这里。
   LatLng _toDisplay(LatLng wgs) {
@@ -209,16 +172,31 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     return LatLng(lat, lng);
   }
 
-  MapOptions _buildOptions() {
+  /// 平台无关的视角决策（WGS84 层面），坐标转换与本平台 API 在此落地。
+  MapViewDecision _decision() {
     final (focus, focusZoom) = _focusPlace;
-    final center = focus ?? _singleCenter;
+    return computeMapView(
+      points: _points,
+      selectedPoint: _selectedPoint,
+      focusPlace: focus,
+      focusZoom: focusZoom,
+    );
+  }
+
+  MapOptions _buildOptions() {
+    final decision = _decision();
+    final bounds = decision.boundsPoints;
     return MapOptions(
-      initialCenter: _toDisplay(center ?? _defaultCenter),
-      initialZoom: center != null
-          ? (focus != null ? focusZoom : _pointZoom)
-          : _defaultZoom,
+      initialCenter: _toDisplay(decision.center ?? _defaultCenter),
+      initialZoom: decision.useDefaultCenter ? kDefaultZoom : decision.zoom,
       // 有地点聚焦时以地点为初始视角，不传 fit，避免 fit-all 覆盖地点中心。
-      initialCameraFit: focus != null ? null : _boundsFit,
+      initialCameraFit: bounds.isEmpty
+          ? null
+          : CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(bounds.map(_toDisplay).toList()),
+              padding: const EdgeInsets.all(48),
+              maxZoom: kBoundsMaxZoom,
+            ),
       backgroundColor: const Color(0xFFE8EAED),
     );
   }
@@ -228,22 +206,24 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     if (!mounted) return;
     // 定位开启时视角由定位控制，避免清除地点触发的 rebuild 把镜头拉走。
     if (_currentLocation != null) return;
-    final (focus, focusZoom) = _focusPlace;
-    if (focus != null) {
-      controller.move(_toDisplay(focus), focusZoom);
-      return;
-    }
-    final center = _singleCenter;
+    final decision = _decision();
+    final center = decision.center;
     if (center != null) {
-      controller.move(_toDisplay(center), _pointZoom);
+      controller.move(_toDisplay(center), decision.zoom);
       return;
     }
-    final fit = _boundsFit;
-    if (fit == null) return;
+    final bounds = decision.boundsPoints;
+    if (bounds.isEmpty) return;
     try {
-      controller.fitCamera(fit);
+      controller.fitCamera(
+        CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints(bounds.map(_toDisplay).toList()),
+          padding: const EdgeInsets.all(48),
+          maxZoom: kBoundsMaxZoom,
+        ),
+      );
     } catch (_) {
-      final points = _points.map(_toDisplay).toList();
+      final points = bounds.map(_toDisplay).toList();
       final lat =
           points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
       final lng = points.map((p) => p.longitude).reduce((a, b) => a + b) /
@@ -292,7 +272,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       if (widget.currentPlaceId != null) {
         widget.onPlaceChanged?.call(null);
       }
-      _controller.move(_toDisplay(loc), _pointZoom);
+      _controller.move(_toDisplay(loc), kPointZoom);
     } on TimeoutException {
       _toast('定位超时，请重试');
     } catch (_) {
@@ -415,6 +395,18 @@ class _MerchantMapViewState extends State<MerchantMapView> {
 
   @override
   Widget build(BuildContext context) {
+    // iOS 走原生 MapKit（apple_maps_flutter），Android 走 flutter_map 瓦片。
+    if (Platform.isIOS) {
+      return AppleMerchantMap(
+        merchants: widget.merchants,
+        selectedId: widget.selectedId,
+        allCoordinates: widget.allCoordinates,
+        places: widget.places,
+        currentPlaceId: widget.currentPlaceId,
+        onPlaceChanged: widget.onPlaceChanged,
+        showControls: widget.showControls,
+      );
+    }
     final markers = _validMerchants;
     if (markers.isEmpty) {
       return const EmptyState(

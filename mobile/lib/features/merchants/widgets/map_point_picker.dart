@@ -1,9 +1,11 @@
+import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
 import '../providers/map_config_provider.dart';
+import 'apple_map_picker.dart';
 
 /// 地图选点组件：点击地图选择位置，回调返回 **WGS84** 坐标。
 ///
@@ -111,6 +113,15 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
 
   @override
   Widget build(BuildContext context) {
+    // iOS 走原生 MapKit（apple_maps_flutter），Android 走 flutter_map 瓦片。
+    if (Platform.isIOS) {
+      return AppleMapPicker(
+        initialValue: widget.initialValue,
+        onChanged: widget.onChanged,
+        height: widget.height,
+        width: widget.width,
+      );
+    }
     final theme = Theme.of(context);
     final mapConfig = ref.watch(mapConfigProvider);
     final layer = _layer;

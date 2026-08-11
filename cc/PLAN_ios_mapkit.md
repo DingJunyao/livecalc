@@ -85,3 +85,38 @@ iOS 有免费的 MapKit（原生、矢量渲染、数据实时更新），可根
 - **新增**：iOS 地图 widget（`_AppleMerchantMap` / `_AppleMapPicker`）、共享 mixin（视角/坐标/定位逻辑提取）、定标测试/纯函数单测
 - **修改**：`merchant_map_view.dart`（顶层分流）、`map_point_picker.dart`（顶层分流）、`pubspec.yaml`（加 apple_maps_flutter 依赖）、`Info.plist`（权限 key）、`build-ios.yml`（验证）
 - **不动**：Android flutter_map 实现逻辑、`coordinate_transform.dart`（复用）
+
+---
+
+## 脚手架完成情况（2026-08-11）
+
+### 已完成
+
+- **依赖接入**：`pubspec.yaml` 加 `apple_maps_flutter: ^1.4.0`，pub get 解析成功、analyze 0 新增；`Info.plist` 确认已有 `NSLocationWhenInUseUsageDescription`（geolocator 在用），未加 `embedded_views_preview`（Flutter 3.5 不需要）
+- **视角纯函数提取**（[merchant_map_logic.dart](../mobile/lib/features/merchants/widgets/merchant_map_logic.dart)）：`computeMapView`（优先级 focusPlace > selectedPoint > 单点 > 多点重合 > 多点 bounds > 默认）+ `centroid` + 缩放常量，全部 WGS84 层面不含坐标转换。TDD 7 用例全绿
+- **Android 重构复用纯函数**：`merchant_map_view.dart` 的 `_singleCenter`/`_boundsFit` 删除，`_buildOptions`/`_fitView` 改走 `_decision()`，坐标转换与 flutter_map API 原样——merchant_map_view_test 全绿，行为不变
+- **iOS 商家地图骨架**（[apple_merchant_map.dart](../mobile/lib/features/merchants/widgets/apple_merchant_map.dart)）：AppleMap + 商家大头针（`_appleNeedsGcj02` 定标开关）+ 标准/卫星切换；EmptyState 空态兜底
+- **iOS 选点骨架**（[apple_map_picker.dart](../mobile/lib/features/merchants/widgets/apple_map_picker.dart)）：点击选点回调 WGS84（GCJ02 逆转换）、大头针显示、标准/卫星切换
+- **平台分流**：`merchant_map_view.dart` / `map_point_picker.dart` build 开头 `Platform.isIOS` 分流，Android 路径原样
+
+### 执行时修正（计划与源码不符处）
+
+- **LatLng 类型冲突**：apple_maps_flutter 用自己的 LatLng（非 latlong2），计划代码直传会编译错 → 两文件 `import ... as apple` 别名 + `_toApple` 边界转换
+- `AppleMerchantMap` 无 `mapConfig` 参数（iOS 不需要底图配置），分流处未传
+- 去掉未使用的 `_controller`/`onMapCreated`（YAGNI，定标后需要时再加）；`_focusPlace` 缩放改用 `radiusKmToZoom` 与 Android 行为一致（计划固定 12.0）
+- `AnnotationId` 构造非 const，去掉 const
+
+### 验证
+
+- `flutter analyze`：0 新增（剩 5 个预先存在 info）
+- `flutter test`：303/303 全绿（296 原有 + 7 新增 logic 用例）
+- `flutter build windows --debug`：通过
+- iOS 构建（`flutter build ios`）需 macOS，留给 build-ios.yml CI 或用户真机
+
+### 待定标（真机验证后处理）
+
+- `_appleNeedsGcj02` 方向验证（天安门 39.9042, 116.4074 对照，checklist 见上）
+- 定位蓝点 + 精度圈（依赖坐标方向）
+- selectedId 大头针高亮 / 选中态
+- 常用地点菜单（places 下拉）iOS 版
+- 地址搜索 / CLGeocoder（YAGNI）
