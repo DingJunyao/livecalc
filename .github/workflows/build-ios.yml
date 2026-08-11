@@ -7,7 +7,11 @@ name: 构建 iOS 应用（未签名，供 AltServer 侧载）
 # 为什么不签名：免费账号无法在 CI 生成正式签名证书；签名交给 AltServer 在本地完成。
 #               CI 只负责「把代码编成包」，不负责「给包盖章」。
 #
-# 产物：mobile/build/ios/ipa/*.ipa，artifact 名 livecalc-ios-ipa（保留 14 天）
+# 产物：mobile/build/ios/iphoneos/Runner.ipa，artifact 名 livecalc-ios-ipa（保留 14 天）
+#
+# 为什么用 flutter build ios 而非 flutter build ipa：
+#   flutter build ipa --no-codesign 虽然构建期不签名，但 export 阶段仍强制要求 Development Team（已知坑），
+#   改用 flutter build ios --no-codesign 产出 .app，再手动打成 IPA（Payload/Runner.app 结构）。
 #
 # 触发：默认仅手动（Actions → Run workflow）；如需打 tag 自动构建，放开下方 push.tags
 #
@@ -51,14 +55,23 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: 构建 IPA（不签名）
+      - name: 构建 iOS（不签名）
         working-directory: mobile
-        run: flutter build ipa --release --no-codesign
+        run: flutter build ios --release --no-codesign
+
+      - name: 打包未签名 IPA
+        working-directory: mobile
+        # .app → .ipa：建 Payload/ 放 Runner.app，zip 成标准 IPA（-y 保留符号链接）
+        run: |
+          mkdir -p Payload
+          cp -r build/ios/iphoneos/Runner.app Payload/
+          zip -qry build/ios/iphoneos/Runner.ipa Payload
+          rm -rf Payload
 
       - name: 上传 IPA 产物
         uses: actions/upload-artifact@v4
         with:
           name: livecalc-ios-ipa
-          path: mobile/build/ios/ipa/*.ipa
+          path: mobile/build/ios/iphoneos/Runner.ipa
           retention-days: 14
           if-no-files-found: error
