@@ -1,0 +1,101 @@
+name: 构建 iOS 应用（未签名，供 AltServer 侧载）
+
+# ──────────────────────────────────────────────────────────────────
+# 用途：在 GitHub Actions 上构建「未签名」iOS IPA，配合本地 AltServer
+#       用个人（免费）Apple ID 重签安装到自己的 iPhone，无需 Mac、无需 99 美元开发者账号。
+#
+# 为什么不签名：免费账号无法在 CI 生成正式签名证书；签名交给 AltServer 在本地完成。
+#               CI 只负责「把代码编成包」，不负责「给包盖章」。
+#
+# 产物：mobile/build/ios/derived/Build/Products/Release-iphoneos/Runner.ipa，artifact 名 livecalc-ios-ipa（保留 14 天）
+#
+# 为什么绕过 flutter build，直接 xcodebuild：
+#   flutter build ios/ipa --no-codesign 只让 Xcode 构建期不签名，但 Flutter 工具的后处理仍校验 .app 是否
+#   已签名（deployable 检查），无 Development Team 必挂——这是长期行为，非新版才有。
+#   改用 flutter build ios --config-only 仅生成配置 + pod install，再 xcodebuild 直出未签名 .app，手动打包
+#   成 IPA（Payload/Runner.app），交给 AltServer 重签。
+#
+# 触发：默认仅手动（Actions → Run workflow）；如需打 tag 自动构建，放开下方 push.tags
+#
+# 安装流程：
+#   1. Actions 页面手动触发 → 等待构建完成 → 下载 livecalc-ios-ipa artifact → 解压得 .ipa
+#   2. Windows 上安装 AltServer（需 Apple 官网版 iTunes + iCloud，非商店版）
+#   3. iPhone 插 USB，AltServer 托盘 → Sideload .ipa → 选刚下载的 .ipa → 输入 Apple ID
+#
+# 免费账号限制（务必知悉）：
+#   - App 有效期 7 天，过期需 AltStore 在同 WiFi + AltServer 运行时后台刷新
+#   - 同设备最多 3 个 sideloaded App
+#   - Bundle ID：com.livecalc.livecalcMobile（与 AltServer 内其他签名 App 冲突会报错）
+#
+# ⚠️ 计费提醒：macOS runner 倍率 10x；公开仓库免费，私有仓库消耗付费 minutes（免费计划不含）。
+# ──────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+  # 打 tag 自动构建（按需放开）：
+  # push:
+  #   tags:
+  #     - 'v*'
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 配置 Flutter（stable）
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: 打印 Flutter 版本
+        run: flutter --version
+
+      - name: 安装依赖
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: 生成代码（drift / riverpod）
+        working-directory: mobile
+        # *.g.dart 被 .gitignore 忽略、不进仓库，CI 须用 build_runner 现场生成
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: 生成 iOS 配置（不构建）
+        working-directory: mobile
+        # config-only 只生成 Generated.xcconfig + pod install，不触发 Flutter 的签名后处理
+        run: flutter build ios --config-only --no-codesign
+
+      - name: xcodebuild 构建未签名 .app
+        working-directory: mobile
+        # 绕过 flutter build 的 deployable 签名校验，直接 xcodebuild 出 .app
+        run: |
+          xcodebuild \
+            -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            -derivedDataPath build/ios/derived \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: 打包未签名 IPA
+        working-directory: mobile
+        # .app → .ipa：进产物目录，建 Payload/ 放 Runner.app，zip 成标准 IPA（-y 保留符号链接）
+        run: |
+          cd build/ios/derived/Build/Products/Release-iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -qry Runner.ipa Payload
+
+      - name: 上传 IPA 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: livecalc-ios-ipa
+          path: mobile/build/ios/derived/Build/Products/Release-iphoneos/Runner.ipa
+          retention-days: 14
+          if-no-files-found: error
