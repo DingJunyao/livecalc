@@ -53,6 +53,14 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     }
   }
 
+  /// 打开新增价格记录页；保存成功（pop true）后刷新列表。
+  Future<void> _openRecordForm() async {
+    final saved = await context.push<bool>('/prices/record');
+    if (saved == true && mounted) {
+      ref.read(priceListProvider.notifier).loadRecords();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -62,6 +70,11 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       appBar: AppBar(
         title: const Text('价格记录'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.bolt),
+            tooltip: '快速填写',
+            onPressed: () => context.push('/prices/quick-fill'),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: state.loading
@@ -78,7 +91,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push('/prices/quick-fill'),
+        onPressed: _openRecordForm,
         child: const Icon(Icons.add),
       ),
     );

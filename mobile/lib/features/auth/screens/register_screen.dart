@@ -2,6 +2,7 @@
  import 'package:flutter_riverpod/flutter_riverpod.dart';
  import 'package:go_router/go_router.dart';
  import '../providers/auth_provider.dart';
+import '../../profile/providers/startup_page_provider.dart';
  
  class RegisterScreen extends ConsumerStatefulWidget {
    const RegisterScreen({super.key});
@@ -38,7 +39,7 @@
        phone: _phoneController.text.trim().isEmpty ? null : _phoneController.text.trim(),
        inviteCode: _inviteCodeController.text.trim().isEmpty ? null : _inviteCodeController.text.trim(),
      );
-     if (success && mounted) context.go('/home');
+     if (success && mounted) context.go('/${ref.read(startupPageProvider)}');
    }
  
    @override

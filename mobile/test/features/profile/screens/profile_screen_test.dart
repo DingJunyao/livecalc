@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:com_a4ding_livecalc/core/api/api_client.dart';
 import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
@@ -65,7 +66,13 @@ void main() {
 
     final avatar = tester.widget<CircleAvatar>(find.byType(CircleAvatar).first);
     expect(avatar.foregroundImage, isA<NetworkImage>());
-    expect(find.byIcon(Icons.chevron_right), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(Card).first,
+        matching: find.byIcon(Icons.chevron_right),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('无头像时 CircleAvatar 显示首字母', (tester) async {
@@ -114,5 +121,38 @@ void main() {
     await tester.tap(find.text('单位偏好'));
     await tester.pumpAndSettle();
     expect(find.text('单位偏好页'), findsOneWidget);
+  });
+
+  testWidgets('启动时起始页：默认推荐，选计价后更新并持久化', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    notifier.state = const AuthState(
+      status: AuthStatus.authenticated,
+      user: User(id: 1, username: 'alice', email: 'a@test.com'),
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [authProvider.overrideWith((ref) => notifier)],
+      child: const MaterialApp(home: ProfileScreen()),
+    ));
+    await tester.pumpAndSettle();
+
+    // 设置区出现「启动时起始页」，trailing 显示当前值「推荐」
+    expect(find.text('启动时起始页'), findsOneWidget);
+    expect(find.text('推荐'), findsOneWidget);
+
+    // 打开对话框，三个选项都在
+    await tester.tap(find.text('启动时起始页'));
+    await tester.pumpAndSettle();
+    expect(find.text('计价'), findsOneWidget);
+    expect(find.text('菜谱'), findsOneWidget);
+
+    // 选「计价」→ 对话框关闭 → trailing 更新
+    await tester.tap(find.text('计价'));
+    await tester.pumpAndSettle();
+    expect(find.text('启动时起始页'), findsOneWidget);
+    expect(find.text('推荐'), findsNothing);
+    expect(find.text('计价'), findsOneWidget);
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('startup_page'), 'prices');
   });
 }

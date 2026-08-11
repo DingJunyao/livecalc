@@ -6,6 +6,7 @@ import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/providers/server_provider.dart';
+import 'features/profile/providers/startup_page_provider.dart';
 
 /// Thin [ChangeNotifier] wrapper so [GoRouter.refreshListenable] can be nudged
 /// from outside (notifyListeners is otherwise protected).
@@ -44,6 +45,9 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     // Restore the server address first (the auth check needs the base URL),
     // then restore the session / auto-login from saved credentials.
     await ref.read(serverConfigProvider.notifier).load();
+    // 起始页配置与服务器地址一样只存在本地，认证恢复前先加载，
+    // 保证认证后的首次 redirect 就能落到用户配置的起始页。
+    await ref.read(startupPageProvider.notifier).load();
     await ref.read(authProvider.notifier).checkAuth();
   }
 

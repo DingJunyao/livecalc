@@ -2,6 +2,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../providers/startup_page_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -52,6 +53,16 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           Card(child: Column(children: [
             ListTile(
+              leading: const Icon(Icons.home_outlined),
+              title: const Text('启动时起始页'),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(startupPageDisplayName(ref.watch(startupPageProvider))),
+                const Icon(Icons.chevron_right, color: Colors.grey),
+              ]),
+              onTap: () => _showStartupPageDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.scale),
               title: const Text('单位偏好'),
               onTap: () => context.push('/profile/settings/unit-preferences'),
@@ -90,6 +101,36 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+/// 启动时起始页单选对话框：点选即生效并关闭。
+Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
+  final current = ref.read(startupPageProvider);
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('启动时起始页'),
+      children: [
+        RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final page in kStartupPages)
+                RadioListTile<String>(
+                  value: page,
+                  title: Text(startupPageDisplayName(page)),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected != null && selected != current) {
+    await ref.read(startupPageProvider.notifier).setPage(selected);
   }
 }
 

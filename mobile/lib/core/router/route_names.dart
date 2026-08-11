@@ -5,6 +5,7 @@ class RouteNames {
   static const register = 'register';
   static const home = 'home';
   static const prices = 'prices';
+  static const priceRecord = 'price-record';
   static const quickFill = 'quick-fill';
   static const recipes = 'recipes';
   static const ingredients = 'ingredients';
