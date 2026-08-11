@@ -57,6 +57,11 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
+      - name: 生成代码（drift / riverpod）
+        working-directory: mobile
+        # *.g.dart 被 .gitignore 忽略、不进仓库，CI 须用 build_runner 现场生成
+        run: dart run build_runner build --delete-conflicting-outputs
+
       - name: 生成 iOS 配置（不构建）
         working-directory: mobile
         # config-only 只生成 Generated.xcconfig + pod install，不触发 Flutter 的签名后处理
