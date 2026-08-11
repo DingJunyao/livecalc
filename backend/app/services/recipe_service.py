@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from typing import Dict, List, Optional, Tuple
 import json
 from datetime import datetime, timedelta, timezone
-from collections import defaultdict
 from app.models.recipe import Recipe, RecipeIngredient
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
@@ -13,6 +12,9 @@ from app.services.unit_conversion_service import UnitConversionService
 from app.models.unit import Unit
 from decimal import Decimal
 from app.utils.date_range_utils import local_date_range_to_utc_range, utc_datetime_to_local_date
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _get_price_record_with_fallback(
@@ -459,6 +461,155 @@ def _get_aggregated_cost_from_children(
     return weighted_avg, chain
 
 
+def _get_child_price_per_gram_range(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    visited: Optional[List[int]] = None,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """获取食材每克价格三档 (min_ppg, max_ppg, avg_ppg)，单位元/克。全失败返 None。
+
+    降级链与 _get_child_price_per_gram 1:1 对齐（不含 name_match/recipe，
+    否则 avg 会与既有 single 版漂移）：
+    1. 直接商品
+    2. FALLBACK/SUBSTITUTABLE 回退
+    3. CONTAINS 子食材聚合（递归）
+
+    direct 层三档同源：min/max/avg 全取 clean 集极值与均值（与 _direct_cost_range_ppg 一致，
+    保证 min≤avg≤max）；fallback 仅单条记录，三档塌缩。
+    """
+    if not ingredient:
+        return None
+    if visited is None:
+        visited = []
+    if ingredient.id in visited:
+        return None
+    visited = visited + [ingredient.id]
+
+    # 1. 尝试直接商品
+    products = db.query(Product).filter(
+        Product.ingredient_id == ingredient.id, Product.is_active == True
+    ).all()
+    for p in products:
+        # 单数版拿代表记录（与既有 _get_child_price_per_gram 同款）
+        record = _get_price_record_with_fallback(
+            db=db, user_id=user_id, product_id=p.id,
+            as_of_date=as_of_date, tz=tz,
+        )
+        if record:
+            avg_ppg = _convert_record_to_price_per_gram(db, record, ingredient.id)
+            # 对齐既有：convert 成功（非 None）即命中，不拦 ≤0
+            if avg_ppg is not None:
+                # min/max：复数版取该商品当天全部记录极值（过滤脏数据）
+                recs = _get_price_records_with_fallback(
+                    db, user_id, p.id, as_of_date, tz
+                )
+                ppgs: list[Decimal] = []
+                for r in recs or []:
+                    if _is_dirty_record(r):
+                        continue
+                    ppgs.append(_convert_record_to_price_per_gram(db, r, ingredient.id))
+                rng = _ppgs_to_range(ppgs)
+                if rng is not None:
+                    # 三档同源（与 _direct_cost_range_ppg 一致）：min/max/avg 全取 clean 集极值与均值，
+                    # 避免「代表记录脏（price≤0）但同日有 clean 记录」时 avg<min。
+                    return rng
+                # 极值集空（罕见：代表记录折克成功但逐条折克全失败/全脏）
+                # 三档塌缩为唯一可用代表记录
+                return (avg_ppg, avg_ppg, avg_ppg)
+
+    # 2. 尝试 FALLBACK/SUBSTITUTABLE 回退
+    # _get_ingredient_fallback 不接 as_of/tz，只给单条全局最新记录
+    fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited)
+    if fallback_result:
+        fallback_ingredient, fallback_price_record, _ = fallback_result
+        avg_ppg = _convert_record_to_price_per_gram(
+            db, fallback_price_record, fallback_ingredient.id
+        )
+        if avg_ppg is not None:
+            # 既有 fallback 只给单条（无 as_of 锚点日），三档塌缩
+            return (avg_ppg, avg_ppg, avg_ppg)
+
+    # 3. 尝试 CONTAINS 子食材聚合（递归）
+    agg_result = _contains_cost_range_ppg(
+        db, ingredient, user_id, as_of_date, visited, tz=tz
+    )
+    if agg_result:
+        mn, mx, av, _ = agg_result
+        return (mn, mx, av)
+
+    return None
+
+
+def _contains_cost_range_ppg(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    visited: Optional[List[int]] = None,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal, str]]:
+    """CONTAINS 子食材按 strength 加权的三档 (min,max,avg) ppg + chain。
+
+    与 _get_aggregated_cost_from_children 1:1 对齐：遍历 CONTAINS 子食材
+    （strength 降序），每个调 _get_child_price_per_gram_range 拿 (min,max,avg)，
+    按 strength 各档独立加权求和（非取极值子食材）。total_strength==0 时
+    退化为简单平均（对齐既有 else 分支）。
+
+    数学保证：每个子食材 min_i≤avg_i≤max_i，加权（凸组合）后总体
+    min≤avg≤max 恒成立。avg_w 严格等于既有 weighted_avg。
+
+    visited 透传给 _get_child_price_per_gram_range 做循环检测。
+    """
+    if not ingredient:
+        return None
+
+    hierarchies = db.query(IngredientHierarchy).filter(
+        IngredientHierarchy.parent_id == ingredient.id,
+        IngredientHierarchy.relation_type == HierarchyRelationType.CONTAINS.value
+    ).order_by(IngredientHierarchy.strength.desc()).all()
+    if not hierarchies:
+        return None
+
+    # (cmin, cmax, cavg, strength, name)
+    children_ranges: list[tuple[Decimal, Decimal, Decimal, int, str]] = []
+    total_strength = 0
+
+    for hierarchy in hierarchies:
+        if not hierarchy or not hierarchy.child:
+            continue
+        child_rng = _get_child_price_per_gram_range(
+            db, hierarchy.child, user_id, as_of_date, visited, tz=tz
+        )
+        if child_rng is not None:
+            cmin, cmax, cavg = child_rng
+            strength = hierarchy.strength or 50  # 默认 strength 为 50，对齐既有
+            children_ranges.append((cmin, cmax, cavg, strength, hierarchy.child.name))
+            total_strength += strength
+
+    if not children_ranges:
+        return None
+
+    # 各档独立加权（凸组合：Σstrength_i/Σstrength = 1）
+    if total_strength > 0:
+        denom = Decimal(str(total_strength))
+        min_w = sum(cmin * Decimal(str(s)) for cmin, _, _, s, _ in children_ranges) / denom
+        max_w = sum(cmax * Decimal(str(s)) for _, cmax, _, s, _ in children_ranges) / denom
+        avg_w = sum(cavg * Decimal(str(s)) for _, _, cavg, s, _ in children_ranges) / denom
+    else:
+        # 全 strength=0 退化为简单平均（对齐既有 else 分支）
+        n = Decimal(len(children_ranges))
+        min_w = sum(cmin for cmin, _, _, _, _ in children_ranges) / n
+        max_w = sum(cmax for _, cmax, _, _, _ in children_ranges) / n
+        avg_w = sum(cavg for _, _, cavg, _, _ in children_ranges) / n
+
+    child_names = ", ".join(name for _, _, _, _, name in children_ranges)
+    chain = f"{ingredient.name} ← 子食材({child_names})"
+    return (min_w, max_w, avg_w, chain)
+
+
 def _serving_weight_to_grams(db: Session, ingredient: Ingredient) -> Optional[Decimal]:
     """将原料的成品基准量 serving_weight 折算为克。无法转换返回 None。"""
     if not ingredient or ingredient.serving_weight is None:
@@ -542,6 +693,61 @@ def _get_cost_from_recipe(
     ppg = total_cost / total_yield_g
     chain = f"{ingredient.name} ← 制作自「{recipe.name}」"
     return ppg, recipe, chain
+
+
+def _get_cost_from_recipe_range(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    visited: Optional[List[int]] = None,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal, str]]:
+    """半成品推导的 (min_ppg, max_ppg, avg_ppg, chain)，单位元/克。
+
+    无制作菜谱/循环返 None。与 _get_cost_from_recipe 同骨架（1:1 对齐）：
+    找制作菜谱 → visited 循环检测 → servings × serving_weight 算产量克 →
+    递归 calculate_recipe_cost_range_as_of 拿三档总成本 → ÷ 产量克 得每克三档单价。
+
+    visited 为菜谱 ID 列表（区间版专用；单点版 _get_cost_from_recipe 用 set，
+    因 calculate_recipe_cost_as_of 的 visited 是 set）。
+    """
+    if not ingredient:
+        return None
+    # 反查制作菜谱（哪个菜谱把我当成品产出）
+    recipe = db.query(Recipe).filter(
+        Recipe.result_ingredient_id == ingredient.id,
+        Recipe.is_active == True,
+    ).first()
+    if not recipe:
+        return None
+    # 循环检测：链上已见过的菜谱直接放弃
+    if visited is None:
+        visited = []
+    if recipe.id in visited:
+        return None
+    # 份重桥接 → 总产量(克)
+    sw_g = _serving_weight_to_grams(db, ingredient)
+    if sw_g is None or sw_g <= 0:
+        return None
+    servings = recipe.servings or 1
+    if servings <= 0:
+        return None
+    # 递归算制作菜谱三档成本（支持套娃），visited 透传；
+    # calculate_recipe_cost_range_as_of 入口会自己把 recipe.id 加进 visited
+    rng = calculate_recipe_cost_range_as_of(
+        db, recipe.id, user_id, as_of_date, visited=visited, tz=tz
+    )
+    if not rng:
+        return None
+    total_yield_g = Decimal(str(servings)) * sw_g
+    if total_yield_g <= 0:
+        return None
+    mn_ppg = Decimal(str(rng.get("min_cost") or 0)) / total_yield_g
+    mx_ppg = Decimal(str(rng.get("max_cost") or 0)) / total_yield_g
+    av_ppg = Decimal(str(rng.get("avg_cost") or 0)) / total_yield_g
+    chain = f"{ingredient.name} ← 制作自「{recipe.name}」"
+    return mn_ppg, mx_ppg, av_ppg, chain
 
 
 def _get_ingredient_nutrition(
@@ -770,127 +976,43 @@ async def calculate_recipe_cost(
         product = None
         weighted_participants = None  # 直接商品加权明细（透明追溯）
 
-        # 直接商品：加权平均（取代「遍历取第一个有记录商品 + 前向填充」）
+        # 直接商品：与 range 版对齐，使用 _direct_cost_range_ppg 取每克单价
+        # （走 original 口径，对 standard_quantity 数据异常鲁棒）
         if products:
-            from app.services.ingredient_price_service import resolve_direct_weighted_for_cost
-            _dw = resolve_direct_weighted_for_cost(db, ingredient.id, user_id=user_id, as_of_date=now, tz=tz)
-            if _dw is not None:
-                unit_price, weighted_participants, _std_uid = _dw
-                # 构造占位 day_records 供下方单位转换段读 standard_unit_id
-                class _StdHolder:
-                    def __init__(self, uid):
-                        self.standard_unit_id = uid
-                day_records = [_StdHolder(_std_uid)] if _std_uid else []
-            # 加权无价时 day_records 仍空，由下方食材回退链接管（保留原回退链）
+            dr_ppg = _direct_cost_range_ppg(db, ingredient, user_id, now, tz)
+            if dr_ppg is not None:
+                _min_ppg, _max_ppg, unit_price = dr_ppg
+                # unit_price = avg_ppg，单位元/克
 
-            # 如果直接商品的前向填充也没找到，再尝试食材回退机制
-            if not day_records:
-                fallback_result = _get_ingredient_fallback(db, ingredient, user_id)
-                if fallback_result:
-                    fallback_ingredient, fallback_price_record, fallback_chain = fallback_result
-                    # 查找回退食材的商品
-                    fallback_products = db.query(Product).filter(
-                        Product.ingredient_id == fallback_ingredient.id,
-                        Product.is_active == True
-                    ).all()
+        # 回退食材：与 range 版对齐，用 _fallback_cost_range_ppg
+        # （取 fallback 食材全部记录的每克单价均值）
+        if unit_price is None:
+            fb_range = _fallback_cost_range_ppg(db, ingredient, user_id, now, tz)
+            if fb_range is not None:
+                _fb_min, _fb_max, unit_price = fb_range
+                fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                if fb_full:
+                    _, _, fallback_chain = fb_full
 
-                    if fallback_products:
-                        # 查找回退食材当天的价格记录（遍历所有商品）
-                        for fp in fallback_products:
-                            day_records = _get_price_records_for_date(db, user_id, fallback_ingredient.id, now, product_id=fp.id, tz=tz)
-                            if day_records:
-                                product = fp
-                                break
-
-                        # 如果回退食材也没有当天记录，使用前向填充（获取同日所有记录取平均）
-                        if not day_records:
-                            for fp in fallback_products:
-                                day_records = _get_price_records_with_fallback(
-                                    db=db,
-                                    user_id=user_id,
-                                    product_id=fp.id,
-                                    as_of_date=now,
-                                    tz=tz
-                                )
-                                if day_records:
-                                    product = fp
-                                    break
-                            if day_records:
-                                ingredient = fallback_ingredient
-                        else:
-                            ingredient = fallback_ingredient
-        else:
-            # 如果找不到商品，尝试使用回退食材
-            fallback_result = _get_ingredient_fallback(db, ingredient, user_id)
-            if fallback_result:
-                fallback_ingredient, fallback_price_record, fallback_chain = fallback_result
-                # 查找回退食材的所有商品
-                fallback_products = db.query(Product).filter(
-                    Product.ingredient_id == fallback_ingredient.id,
-                    Product.is_active == True
-                ).all()
-
-                if fallback_products:
-                    # 遍历所有商品，查找当天的价格记录
-                    for fp in fallback_products:
-                        day_records = _get_price_records_for_date(db, user_id, fallback_ingredient.id, now, product_id=fp.id, tz=tz)
-                        if day_records:
-                            break
-
-                    # 如果回退食材也没有当天记录，使用前向填充（获取同日所有记录取平均）
-                    if not day_records:
-                        for fp in fallback_products:
-                            day_records = _get_price_records_with_fallback(
-                                db=db,
-                                user_id=user_id,
-                                product_id=fp.id,
-                                as_of_date=now
-                            )
-                            if day_records:
-                                break
-
-                    ingredient = fallback_ingredient
-
-            # 如果仍然没有记录，尝试通过名称匹配
-            if not day_records:
-                latest_record = db.query(ProductRecord).filter(
-                    ProductRecord.product_name.contains(original_ingredient_name)
-                ).order_by(ProductRecord.recorded_at.desc()).first()
-
-                if latest_record:
-                    day_records = [latest_record]
+        # 名称匹配：与 range 版对齐，用 _name_match_cost_range_ppg
+        if unit_price is None:
+            nm_range = _name_match_cost_range_ppg(db, ingredient, user_id, now, tz)
+            if nm_range is not None:
+                _nm_min, _nm_max, unit_price = nm_range
 
         # 尝试从制作菜谱推导成本（半成品，优先于子食材聚合）
-        if not day_records and unit_price is None:
+        if unit_price is None:
             recipe_result = _get_cost_from_recipe(db, ingredient, user_id, now, visited, tz=tz)
             if recipe_result:
                 unit_price, _mk_recipe, recipe_chain = recipe_result
                 # unit_price 已经是元/克
 
         # 如果上述途径全部失败，尝试从包含关系的子食材中聚合成本
-        if not day_records and unit_price is None:
+        if unit_price is None:
             child_agg = _get_aggregated_cost_from_children(db, ingredient, user_id, now, tz=tz)
             if child_agg:
                 unit_price, aggregation_chain = child_agg
                 # unit_price 已经是元/克
-
-        if unit_price is None and (day_records or aggregation_chain is not None or recipe_chain is not None):
-            # 计算当天所有记录的平均单价（仅在 day_records 有真实记录时计算）
-            # 加权直取时 unit_price 已设，跳过本段（避免对占位 day_records 重算）
-            unit_prices = []
-            for record in day_records:
-                record_price = Decimal(str(record.price))
-                std_qty = record.standard_quantity
-                if std_qty is None or std_qty == 0:
-                    unit_price_temp = record_price
-                else:
-                    record_quantity = Decimal(str(std_qty))
-                    unit_price_temp = record_price / record_quantity
-                unit_prices.append(unit_price_temp)
-
-            # 使用平均单价
-            if unit_prices:
-                unit_price = sum(unit_prices) / len(unit_prices)
 
         if unit_price is not None:
             # 计算成本：单价 × 菜谱中的数量 = 成本
@@ -901,8 +1023,8 @@ async def calculate_recipe_cost(
             # 单位转换：将菜谱用量转换为价格记录的单位
             # price_record 的单价是基于 standard_unit_id，菜谱用量基于 effective_unit_id
             if quantity and effective_unit_id:
-                if aggregation_chain is not None or recipe_chain is not None:
-                    # 子食材聚合 或 制作菜谱 的 unit_price 是元/克，需要将菜谱用量转换为克
+                if aggregation_chain is not None or recipe_chain is not None or (unit_price is not None and not day_records):
+                    # 子食材聚合 / 制作菜谱 / range 版直接商品：unit_price 是元/克，将菜谱用量转换为克
                     if effective_unit_id != 3:
                         recipe_unit = db.query(Unit).filter(Unit.id == effective_unit_id).first()
                         gram_unit = db.query(Unit).filter(Unit.id == 3).first()
@@ -998,193 +1120,304 @@ async def calculate_recipe_cost(
     }
 
 
+def _is_dirty_record(record) -> bool:
+    """检查价格记录是否脏（price/standard_quantity 缺失或 ≤0）。"""
+    if record is None:
+        return True
+    if record.price is None or Decimal(str(record.price)) <= 0:
+        return True
+    if record.standard_quantity is None or Decimal(str(record.standard_quantity)) <= 0:
+        return True
+    return False
+
+
+def _qty_unit_to_grams(
+    db: Session,
+    ingredient: Ingredient,
+    qty: Decimal,
+    unit_id: Optional[int],
+) -> Optional[Decimal]:
+    """将 (数量, 单位) 折算为克。
+
+    unit_id 为 None 或 3(克) 时直接返回 qty；
+    通过 UnitConversionService 换算其他单位到克。
+    qty 为 None/≤0 或转换失败时返回 None。
+    """
+    if qty is None or qty <= 0:
+        return None
+    if unit_id is None or unit_id == 3:
+        return qty
+    unit = db.query(Unit).filter(Unit.id == unit_id).first()
+    gram_unit = db.query(Unit).filter(Unit.id == 3).first()
+    if not unit or not gram_unit:
+        return None
+    ucs = UnitConversionService(db)
+    converted = ucs.convert(
+        qty,
+        unit.abbreviation,
+        gram_unit.abbreviation,
+        entity_type="ingredient",
+        entity_id=ingredient.id,
+    )
+    if converted:
+        grams = Decimal(str(converted[0]))
+        return grams if grams > 0 else None
+    return None
+
+
+def _direct_cost_range_ppg(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """直接商品的 (min_ppg, max_ppg, avg_ppg) 元/克。无可用记录返 None。
+
+    三档全部来自参与商品当天有效记录的逐条每克单价（_convert_record_to_price_per_gram），
+    经 _ppgs_to_range 得同源极值与均值，数学上保证 min ≤ avg ≤ max。
+    participants（参与商品集）取自 resolve_direct_weighted_for_cost 的筛选。
+
+    不再用 resolve_direct_weighted_for_cost 的 unit_price 折克做 avg override：
+    该路径经 _product_unit_price 依赖记录的 standard_quantity，当该字段数据质量异常
+    （如 original 与 standard 单位转换未落地）会把价格放大数十倍，导致 avg > max。
+    逐条 _convert_record_to_price_per_gram 走 original_quantity/original_unit 折克，
+    对数据质量鲁棒，且与 _records_cost_range_ppg 等其它层级同口径。
+    """
+    from app.services.ingredient_price_service import resolve_direct_weighted_for_cost
+    dw = resolve_direct_weighted_for_cost(
+        db, ingredient.id, user_id=user_id, as_of_date=as_of_date, tz=tz
+    )
+    if dw is None:
+        return None
+    _, participants, _ = dw
+
+    ppgs: list[Decimal] = []
+    for p in participants:
+        pid = p.get("product_id")
+        if not pid:
+            continue
+        recs = _get_price_records_with_fallback(
+            db=db, user_id=user_id, product_id=pid, as_of_date=as_of_date, tz=tz
+        )
+        for r in recs or []:
+            if _is_dirty_record(r):
+                continue
+            ppgs.append(_convert_record_to_price_per_gram(db, r, ingredient.id))
+    return _ppgs_to_range(ppgs)
+
+
+def _ppgs_to_range(ppgs):
+    """一组每克单价 → (min, max, avg)，池空返回 None。
+
+    过滤 None 与 ≤0 脏数据（防 min=0 等）。纯函数（不吃 db），
+    便于单测；被 _records_cost_range_ppg / _direct_cost_range_ppg /
+    _get_child_price_per_gram_range 共用。
+    """
+    clean = [Decimal(str(p)) for p in ppgs if p is not None and Decimal(str(p)) > 0]
+    if not clean:
+        return None
+    avg = sum(clean) / Decimal(len(clean))
+    return (min(clean), max(clean), avg)
+
+
+def _records_cost_range_ppg(
+    records,
+    db: Session,
+    ingredient_id: int,
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """一组记录 → (min_ppg, max_ppg, avg_ppg) 元/克，过滤脏数据。池空返 None。
+
+    avg 取记录 per_gram 简单平均；min/max 是同一记录集极值，故 min≤avg≤max 必然成立。
+    ingredient_id 用于 _convert_record_to_price_per_gram 的单位转换上下文（entity 级 override）。
+    """
+    ppgs: list[Decimal] = []
+    for r in records or []:
+        if _is_dirty_record(r):
+            continue
+        ppgs.append(_convert_record_to_price_per_gram(db, r, ingredient_id))
+    return _ppgs_to_range(ppgs)
+
+
+def _fallback_cost_range_ppg(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """fallback 链（含 substitutable）：回退食材当天记录集的 (min,max,avg) ppg。
+
+    _get_ingredient_fallback 内部已处理 fallback + substitutable 双向关系，
+    返回的 fb_ingredient 是第一个「有任何价格记录」的回退源；这里再按 as_of_date
+    前向填充取该回退食材当天所有商品的有效记录极值。
+    """
+    fb = _get_ingredient_fallback(db, ingredient, user_id)
+    if not fb:
+        return None
+    fb_ingredient, _latest, _chain = fb
+    products = db.query(Product).filter(
+        Product.ingredient_id == fb_ingredient.id, Product.is_active == True
+    ).all()
+    all_recs: list[ProductRecord] = []
+    for p in products:
+        recs = _get_price_records_with_fallback(
+            db=db, user_id=user_id, product_id=p.id, as_of_date=as_of_date, tz=tz
+        )
+        all_recs.extend(recs or [])
+    # ingredient_id 用回退食材 id：记录的 unit override 上下文属于回退食材
+    return _records_cost_range_ppg(all_recs, db, fb_ingredient.id)
+
+
+def _name_match_cost_range_ppg(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """按食材名作 product_name_contains 匹配的记录集 (min,max,avg) ppg。
+
+    注意：_get_price_records_with_fallback（复数）只接 product_id 不接 name_contains，
+    所以先用单数版 _get_price_record_with_fallback 拿前向填充锚点，
+    再以锚点所在本地日 + product_name.contains 取该日全部同名记录（对齐复数版的
+    「锚点日全记录集」范式）。
+    """
+    anchor = _get_price_record_with_fallback(
+        db=db, user_id=user_id, product_name_contains=ingredient.name,
+        as_of_date=as_of_date, tz=tz,
+    )
+    if not anchor:
+        return None
+    fill_date = utc_datetime_to_local_date(anchor.recorded_at, tz)
+    day_start, day_end = local_date_range_to_utc_range(fill_date, fill_date, tz)
+    recs = db.query(ProductRecord).filter(
+        ProductRecord.product_name.contains(ingredient.name),
+        ProductRecord.recorded_at >= day_start,
+        ProductRecord.recorded_at <= day_end,
+    ).all()
+    return _records_cost_range_ppg(recs, db, ingredient.id)
+
+
+def _ingredient_cost_range(
+    db: Session,
+    recipe_ingredient: RecipeIngredient,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    visited: Optional[List[int]] = None,
+    tz: str = "UTC",
+) -> tuple[Decimal, Decimal, Decimal, str]:
+    """单个食材成本三档 + 来源标签。返回 (min, max, avg, cost_source)。
+
+    全无价返 (0, 0, 0, "no_price")；无法归克返 (0, 0, 0, "no_quantity")。
+    降级链与 calculate_recipe_cost_as_of 对齐：
+    direct → fallback → name_match → recipe → contains。
+    （direct/fallback/name_match 已接入；recipe/contains 在 Task 4/5 接入）
+    """
+    qty_decimal, qty_unit_id = _get_effective_quantity(recipe_ingredient)
+    qty_g = _qty_unit_to_grams(db, ingredient, qty_decimal, qty_unit_id)
+    if qty_g is None or qty_g <= 0:
+        return Decimal("0"), Decimal("0"), Decimal("0"), "no_quantity"
+
+    # 来源 1：direct
+    direct = _direct_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+    if direct is not None:
+        mn, mx, av = direct
+        return (mn * qty_g, mx * qty_g, av * qty_g, "direct")
+
+    # 来源 2：fallback（含 substitutable）
+    fb = _fallback_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+    if fb is not None:
+        mn, mx, av = fb
+        return (mn * qty_g, mx * qty_g, av * qty_g, "fallback")
+
+    # 来源 3：name_match（按食材名匹配 product_name）
+    nm = _name_match_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+    if nm is not None:
+        mn, mx, av = nm
+        return (mn * qty_g, mx * qty_g, av * qty_g, "name_match")
+
+    # 来源 4：recipe 半成品递归（与 calculate_recipe_cost_as_of 对齐）
+    rc = _get_cost_from_recipe_range(db, ingredient, user_id, as_of_date, visited, tz)
+    if rc is not None:
+        mn_ppg, mx_ppg, av_ppg, _chain = rc
+        return (mn_ppg * qty_g, mx_ppg * qty_g, av_ppg * qty_g, "recipe")
+
+    # 来源 5: contains 子食材聚合（与 calculate_recipe_cost_as_of 对齐）
+    # 注意：contains 聚合的循环检测是食材级（visited 为食材 id 列表），
+    # 与上层菜谱级 visited（菜谱 id 列表）独立，故传 None 从空开始——
+    # 对齐既有 single 版 calculate_recipe_cost_as_of @2435 的调用方式
+    contains = _contains_cost_range_ppg(db, ingredient, user_id, as_of_date, None, tz)
+    if contains is not None:
+        mn_ppg, mx_ppg, av_ppg, _chain = contains
+        return (mn_ppg * qty_g, mx_ppg * qty_g, av_ppg * qty_g, "contains_aggregation")
+
+    return Decimal("0"), Decimal("0"), Decimal("0"), "no_price"
+
+
 def calculate_recipe_cost_range_as_of(
+    db: Session,
     recipe_id: int,
     user_id: int,
     as_of_date: datetime,
-    db: Session,
-    tz: str = "UTC"
-) -> Dict:
-    """
-    计算菜谱在指定日期的成本区间
+    visited: Optional[List[int]] = None,
+    tz: str = "UTC",
+) -> Optional[Dict]:
+    """计算菜谱在指定日期的成本三档（min/max/avg），三档基于同一组价格源。
 
-    Args:
-        recipe_id: 菜谱ID
-        user_id: 用户ID
-        as_of_date: 指定日期
-        db: 数据库会话
+    返回 {min_cost, max_cost, avg_cost, currency, cost_breakdown} 或 None。
+    保证 min ≤ avg ≤ max（数学上：min/max 取记录极值、avg 取加权均价，
+    两者源自同一批参与商品的有效记录，加权值必在极值闭区间内）。
+    降级链与 calculate_recipe_cost_as_of 1:1 对齐：
+    direct → fallback → name_match → recipe → contains。
 
-    Returns:
-        成本区间数据，包含 min_cost, max_cost, avg_cost（单位：元）
+    visited 为菜谱 ID 列表（循环检测，半成品递归用）。
     """
-    from app.models.product_entity import Product
+    if visited is None:
+        visited = []
+    if recipe_id in visited:
+        return None  # 循环检测
+    visited = visited + [recipe_id]
 
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if not recipe:
         return None
 
-    total_min_cost = Decimal("0.00")
-    total_max_cost = Decimal("0.00")
-    total_avg_cost = Decimal("0.00")
-    valid_ingredients = 0
+    total_min = Decimal("0")
+    total_max = Decimal("0")
+    total_avg = Decimal("0")
+    breakdown: list[dict] = []
 
-    # 获取菜谱中的所有食材（包括可选食材）
-    for recipe_ingredient in recipe.ingredients:
-        ingredient = recipe_ingredient.ingredient
-
-        # 检查食材是否已被合并，如果是，使用合并后的目标食材
-        if ingredient and ingredient.is_merged and ingredient.merged_into_id:
-            ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient.merged_into_id).first()
-
-        if not ingredient:
+    for ri in recipe.ingredients:
+        ing = ri.ingredient
+        # 检查食材是否已被合并，使用合并后的目标食材
+        if ing and ing.is_merged and ing.merged_into_id:
+            ing = db.query(Ingredient).filter(Ingredient.id == ing.merged_into_id).first()
+        if not ing:
             continue
 
-        # 获取食材对应的所有商品（可能有多个品牌商品）
-        products = db.query(Product).filter(
-            Product.ingredient_id == ingredient.id,
-            Product.is_active == True
-        ).all()
-
-        if not products:
-            continue
-
-        # 直接商品：加权平均（取代「遍历取第一个有记录商品」）
-        # 加权成功：min/max 取参与商品单价范围，avg 取加权价；跳过原区间遍历逻辑
-        from app.services.ingredient_price_service import resolve_direct_weighted_for_cost
-        _dw = resolve_direct_weighted_for_cost(db, ingredient.id, user_id=user_id, as_of_date=as_of_date, tz=tz)
-        if _dw is not None:
-            _wp_avg, _wp_parts, _ = _dw
-            quantity, _eff_uid = _get_effective_quantity(recipe_ingredient)
-            if quantity:
-                _pcts = [Decimal(str(p["unit_price"])) for p in _wp_parts]
-                _q = Decimal(str(quantity))
-                total_min_cost += min(_pcts) * _q
-                total_max_cost += max(_pcts) * _q
-                total_avg_cost += Decimal(str(_wp_avg)) * _q
-                valid_ingredients += 1
-            continue
-        # 加权无价，回退到原「遍历取第一个 + 区间」逻辑
-        # 遍历所有商品，查找当天有价格记录的商品
-        day_records = []
-        product = None
-        for p in products:
-            day_records = _get_price_records_for_date(db, user_id, ingredient.id, as_of_date, product_id=p.id, tz=tz)
-            if day_records:
-                product = p
-                break
-
-        # 如果当天无记录，使用前向填充
-        if not day_records:
-            # 先尝试使用食材回退机制
-            fallback_result = _get_ingredient_fallback(db, ingredient, user_id)
-            if fallback_result:
-                fallback_ingredient, fallback_price_record, fallback_chain = fallback_result
-                # 查找回退食材的所有商品
-                fallback_products = db.query(Product).filter(
-                    Product.ingredient_id == fallback_ingredient.id,
-                    Product.is_active == True
-                ).all()
-
-                if fallback_products:
-                    # 遍历回退食材的所有商品，查找价格记录
-                    for fp in fallback_products:
-                        fallback_record = _get_price_record_with_fallback(
-                            db=db,
-                            user_id=user_id,
-                            product_id=fp.id,
-                            as_of_date=as_of_date, tz=tz
-                        )
-                        if fallback_record:
-                            day_records = [fallback_record]
-                            break
-
-            # 如果食材回退也没有，使用原食材前向填充（遍历所有商品）
-            if not day_records and products:
-                for p in products:
-                    fallback_record = _get_price_record_with_fallback(
-                        db=db,
-                        user_id=user_id,
-                        product_id=p.id,
-                        as_of_date=as_of_date, tz=tz
-                    )
-                    if fallback_record:
-                        day_records = [fallback_record]
-                        product = p
-                        break
-
-        # 如果上述途径全部失败，尝试从包含关系的子食材中聚合成本
-        if not day_records:
-            child_agg = _get_aggregated_cost_from_children(db, ingredient, user_id, as_of_date, tz=tz)
-            if child_agg:
-                child_unit_price, aggregation_chain = child_agg
-                # child_unit_price 是元/克，将菜谱用量转换为克后计算成本
-                quantity, effective_unit_id = _get_effective_quantity(recipe_ingredient)
-                if quantity and effective_unit_id:
-                    if effective_unit_id != 3:
-                        recipe_unit = db.query(Unit).filter(Unit.id == effective_unit_id).first()
-                        gram_unit = db.query(Unit).filter(Unit.id == 3).first()
-                        if recipe_unit and gram_unit:
-                            ucs = UnitConversionService(db)
-                            converted = ucs.convert(
-                                Decimal(str(quantity)),
-                                recipe_unit.abbreviation,
-                                gram_unit.abbreviation,
-                                entity_type="ingredient",
-                                entity_id=ingredient.id,
-                            )
-                            if converted:
-                                quantity = float(converted[0])
-                    if quantity:
-                        ingredient_cost = child_unit_price * Decimal(str(quantity))
-                        total_min_cost += ingredient_cost
-                        total_max_cost += ingredient_cost
-                        total_avg_cost += ingredient_cost
-                        valid_ingredients += 1
-            continue
-
-        # 计算当天的单价列表
-        unit_prices = []
-        for record in day_records:
-            record_price = Decimal(str(record.price))
-            std_qty = record.standard_quantity
-            if std_qty is None or std_qty == 0:
-                unit_price = record_price
-            else:
-                record_quantity = Decimal(str(std_qty))
-                unit_price = record_price / record_quantity
-            unit_prices.append(unit_price)
-
-        if not unit_prices:
-            continue
-
-        # 计算统计值
-        min_unit_price = min(unit_prices)
-        max_unit_price = max(unit_prices)
-        avg_unit_price = sum(unit_prices) / len(unit_prices)
-
-        # 计算该食材的成本
-        quantity, _effective_unit_id = _get_effective_quantity(recipe_ingredient)
-
-        if quantity:
-            try:
-                ingredient_min_cost = min_unit_price * quantity
-                ingredient_max_cost = max_unit_price * quantity
-                ingredient_avg_cost = avg_unit_price * quantity
-
-                total_min_cost += ingredient_min_cost
-                total_max_cost += ingredient_max_cost
-                total_avg_cost += ingredient_avg_cost
-                valid_ingredients += 1
-            except Exception as e:
-                # 数量解析失败，跳过该食材
-                continue
+        imin, imax, iavg, src = _ingredient_cost_range(
+            db, ri, ing, user_id, as_of_date, visited, tz
+        )
+        total_min += imin
+        total_max += imax
+        total_avg += iavg
+        breakdown.append({
+            "ingredient_id": ing.id,
+            "name": ing.name,
+            "min_cost": float(imin),
+            "max_cost": float(imax),
+            "avg_cost": float(iavg),
+            "cost_source": src,
+        })
 
     return {
-        "min_cost": float(total_min_cost),
-        "max_cost": float(total_max_cost),
-        "avg_cost": float(total_avg_cost),
+        "min_cost": total_min,
+        "max_cost": total_max,
+        "avg_cost": total_avg,
         "currency": "CNY",
-        "valid_ingredients": valid_ingredients
+        "cost_breakdown": breakdown,
     }
 
 
@@ -1199,9 +1432,9 @@ def calculate_recipe_cost_range_trend(
     """
     计算菜谱的成本区间趋势
 
-    对每一天：
-    - avg_cost 使用 calculate_recipe_cost_as_of（加权平均，与成本估算完全一致）
-    - min/max_cost 使用预加载的原始价格记录计算商家间最低/最高成本
+    对每一天统一调用 calculate_recipe_cost_range_as_of（单轨），min/max/avg
+    三档基于同一组价格源、走同一条 5 层降级链（direct → fallback →
+    name_match → recipe → contains），从数学上保证 min ≤ avg ≤ max。
 
     Args:
         recipe_id: 菜谱ID
@@ -1236,266 +1469,41 @@ def calculate_recipe_cost_range_trend(
         current_date += timedelta(days=1)
 
     # ═══════════════════════════════════════════════════════════
-    # 预加载：收集每个菜谱食材的所有价格记录，用于 min/max 计算
+    # 逐天计算：统一走 calculate_recipe_cost_range_as_of（单轨）
     # ═══════════════════════════════════════════════════════════
-
-    # 1. 收集菜谱食材（处理合并）
-    ri_list: list[RecipeIngredient] = list(recipe.ingredients)
-    ri_ing_map: dict[int, Ingredient] = {}       # recipe_ingredient_id → Ingredient
-    ri_eff_qty_cache: dict[int, tuple] = {}       # recipe_ingredient_id → (quantity, unit_id)
-
-    for ri in ri_list:
-        ing = ri.ingredient
-        if ing and ing.is_merged and ing.merged_into_id:
-            ing = db.query(Ingredient).filter(Ingredient.id == ing.merged_into_id).first()
-        if not ing:
-            continue
-        ri_ing_map[ri.id] = ing
-        # 缓存有效数量
-        qty, uid = _get_effective_quantity(ri)
-        if qty is not None and uid is not None:
-            ri_eff_qty_cache[ri.id] = (float(qty), uid)
-
-    recipe_ingredient_ids = set(ing.id for ing in ri_ing_map.values())
-
-    # 2. 加载所有回退关系
-    all_hierarchies = db.query(IngredientHierarchy).filter(
-        IngredientHierarchy.relation_type.in_([
-            HierarchyRelationType.FALLBACK.value,
-            HierarchyRelationType.SUBSTITUTABLE.value,
-            HierarchyRelationType.CONTAINS.value,
-        ])
-    ).all()
-
-    fallback_by_child: dict[int, list[IngredientHierarchy]] = defaultdict(list)
-    substitutable_by_parent: dict[int, list[IngredientHierarchy]] = defaultdict(list)
-    contains_by_parent: dict[int, list[IngredientHierarchy]] = defaultdict(list)
-    for h in all_hierarchies:
-        if h.relation_type in (HierarchyRelationType.FALLBACK.value,):
-            fallback_by_child[h.child_id].append(h)
-        elif h.relation_type == HierarchyRelationType.SUBSTITUTABLE.value:
-            fallback_by_child[h.child_id].append(h)       # 双向的，这里只收 child→parent
-            substitutable_by_parent[h.parent_id].append(h)  # parent→child 也收
-        elif h.relation_type == HierarchyRelationType.CONTAINS.value:
-            contains_by_parent[h.parent_id].append(h)
-
-    # 3. 展开「食材 → 所有关联商品 ID」映射（含 fallback 链）
-    def _collect_product_ids(ing_id: int, visited: set) -> set[int]:
-        """递归收集食材及其 fallback 链上所有商品的 ID"""
-        if ing_id in visited:
-            return set()
-        visited.add(ing_id)
-        pids = set()
-        for p in db.query(Product).filter(
-            Product.ingredient_id == ing_id, Product.is_active == True
-        ).all():
-            pids.add(p.id)
-        # 回退父级
-        for f in fallback_by_child.get(ing_id, []):
-            if f.parent_id:
-                pids |= _collect_product_ids(f.parent_id, visited)
-        # 反向可替代
-        for rs in substitutable_by_parent.get(ing_id, []):
-            if rs.child_id:
-                pids |= _collect_product_ids(rs.child_id, visited)
-        return pids
-
-    # 4. 为每个菜谱食材收集所有可达的商品 ID（直接 + fallback 链 + CONTAINS 子食材）
-    #    同时为 CONTAINS 子食材建单独的记录索引，用于 min/max 分支
-    ing_product_ids: dict[int, set[int]] = {}       # ingredient_id → product_ids
-    child_ingredient_ids: set[int] = set()           # CONTAINS 子食材 ID 集合
-
-    for ing_id in recipe_ingredient_ids:
-        pids = _collect_product_ids(ing_id, set())
-        # CONTAINS 子食材：无论直接商品有无记录，都收集
-        if contains_by_parent.get(ing_id):
-            for ch in contains_by_parent[ing_id]:
-                if ch.child_id:
-                    child_ids = _collect_product_ids(ch.child_id, set())
-                    pids |= child_ids
-                    child_ingredient_ids.add(ch.child_id)
-        ing_product_ids[ing_id] = pids
-
-    all_product_ids: set[int] = set()
-    for pids in ing_product_ids.values():
-        all_product_ids |= pids
-
-    if not all_product_ids:
-        return []
-
-    # 5. 批量加载所有价格记录，按 product_id 分组，组内按时间升序
-    all_records = db.query(ProductRecord).filter(
-        ProductRecord.product_id.in_(list(all_product_ids))
-    ).order_by(ProductRecord.product_id, ProductRecord.recorded_at.asc()).all()
-
-    records_by_product: dict[int, list[ProductRecord]] = defaultdict(list)
-    for r in all_records:
-        records_by_product[r.product_id].append(r)
-
-    # 6. 按商品分别存储记录（用于逐商品前向填充，保证 min/max 覆盖所有商品）
-    #     ingredient_id → {product_id: [sorted records]}
-    ing_product_records: dict[int, dict[int, list[ProductRecord]]] = defaultdict(dict)
-    for ing_id, pids in ing_product_ids.items():
-        for pid in pids:
-            recs = records_by_product.get(pid, [])
-            if recs:
-                ing_product_records[ing_id][pid] = sorted(
-                    recs, key=lambda r: r.recorded_at if r.recorded_at else datetime.min.replace(tzinfo=timezone.utc)
-                )
-
-    # 6b. 为 CONTAINS 子食材也建立记录索引
-    for child_id in child_ingredient_ids:
-        if child_id in ing_product_records:
-            continue
-        if child_id in ing_product_ids:
-            for pid in ing_product_ids[child_id]:
-                recs = records_by_product.get(pid, [])
-                if recs:
-                    ing_product_records[child_id][pid] = sorted(
-                        recs, key=lambda r: r.recorded_at if r.recorded_at else datetime.min.replace(tzinfo=timezone.utc)
-                    )
-
-    # ═══════════════════════════════════════════════════════════
-    # 逐天计算
-    # ═══════════════════════════════════════════════════════════
-    import bisect
-
-    def _records_on_date(recs: list, target_date) -> list:
-        """查找某天所有记录（日期内记录，不做前向填充）"""
-        day_start, day_end = local_date_range_to_utc_range(target_date, target_date, tz)
-        dates = [
-            r.recorded_at.replace(tzinfo=None) if r.recorded_at and r.recorded_at.tzinfo
-            else r.recorded_at
-            for r in recs if r.recorded_at is not None
-        ]
-        left = bisect.bisect_left(dates, day_start)
-        right = bisect.bisect_right(dates, day_end)
-        return recs[left:right] if left < right else []
-
-    def _forward_fill(recs: list, target_date) -> list:
-        """前向填充：截至当天的最新记录所在日期的所有记录"""
-        _, as_of = local_date_range_to_utc_range(target_date, target_date, tz)
-        valid = [r for r in recs if r.recorded_at is not None]
-        if not valid:
-            return []
-        dates = [
-            r.recorded_at.replace(tzinfo=None) if r.recorded_at.tzinfo
-            else r.recorded_at
-            for r in valid
-        ]
-        idx = bisect.bisect_right(dates, as_of) - 1
-        if idx < 0:
-            return [valid[0]]
-        fill_date = utc_datetime_to_local_date(valid[idx].recorded_at, tz)
-        return _records_on_date(valid, fill_date) or [valid[idx]]
-
     cost_range_trend = []
 
     for date in date_list:
         _, as_of_datetime = local_date_range_to_utc_range(date, date, tz)
 
-        # ── avg_cost：复用与成本估算一致的加权计算 ──
         try:
-            cost_result = calculate_recipe_cost_as_of(
-                recipe_id, user_id, as_of_datetime, db, tz=tz
+            result = calculate_recipe_cost_range_as_of(
+                db, recipe_id, user_id, as_of_datetime, tz=tz
             )
-        except Exception:
+        except Exception as e:
+            logger.debug("calculate_recipe_cost_range_as_of 失败 recipe=%s date=%s: %s", recipe_id, date, e)
             continue
 
-        if not cost_result or not cost_result.get("total_cost"):
+        # 跳过无有效成本的日子（avg 为 0/None）
+        if not result or not result.get("avg_cost") or result["avg_cost"] <= 0:
             continue
 
-        avg_total = float(cost_result["total_cost"])
-
-        # ── 提取 breakdown（与 API 格式对齐） ──
+        # breakdown 字段映射：
+        # range 版 {ingredient_id, name, min_cost, max_cost, avg_cost, cost_source}
+        # → 旧 trend {ingredient_id, ingredient_name, cost}
+        # 旧 trend 的 cost 即单点成本，对应 range 版 avg_cost（保持前端兼容）
         breakdown_items = []
-        for bi in cost_result.get("cost_breakdown", []) or []:
+        for bi in result.get("cost_breakdown", []) or []:
             try:
                 breakdown_items.append({
                     "ingredient_id": bi["ingredient_id"],
-                    "ingredient_name": bi["ingredient_name"],
-                    "cost": float(bi["cost"]) if bi.get("cost") is not None else 0.0,
+                    "ingredient_name": bi["name"],
+                    "cost": float(bi["avg_cost"]) if bi.get("avg_cost") is not None else 0.0,
                 })
             except (KeyError, TypeError):
                 continue
 
-        # ── min/max_cost：逐食材取当天（或前向填充）记录的单价极值 ──
-        total_min = 0.0
-        total_max = 0.0
-
-        for ri in ri_list:
-            ing = ri_ing_map.get(ri.id)
-            if not ing:
-                continue
-            eff = ri_eff_qty_cache.get(ri.id)
-            if not eff:
-                continue
-            qty, eff_unit_id = eff
-
-            # ── 统一归算到「元/克 × 克」 ──
-            qty_grams = qty
-            if eff_unit_id and eff_unit_id != 3:
-                ru = db.query(Unit).filter(Unit.id == eff_unit_id).first()
-                gu = db.query(Unit).filter(Unit.id == 3).first()
-                if ru and gu:
-                    conv = UnitConversionService(db).convert(
-                        Decimal(str(qty)), ru.abbreviation, gu.abbreviation,
-                        entity_type="ingredient", entity_id=ing.id,
-                    )
-                    if conv:
-                        qty_grams = float(conv[0])
-
-            # ── 逐商品前向填充后汇总（保证 min/max 覆盖所有商品/商家） ──
-            product_records_map = ing_product_records.get(ing.id, {})
-            all_filled_recs: list[ProductRecord] = []
-
-            if product_records_map:
-                for pid, precs in product_records_map.items():
-                    day_recs = _records_on_date(precs, date)
-                    if not day_recs:
-                        day_recs = _forward_fill(precs, date)
-                    if day_recs:
-                        all_filled_recs.extend(day_recs)
-
-            if not all_filled_recs:
-                # 尝试从子食材聚合（CONTAINS）——也按商品分别前向填充
-                children = contains_by_parent.get(ing.id, [])
-                child_costs = []
-                for ch in children:
-                    if not ch.child_id:
-                        continue
-                    ch_prod_recs = ing_product_records.get(ch.child_id, {})
-                    ch_filled = []
-                    for pid, precs in ch_prod_recs.items():
-                        ch_day = _records_on_date(precs, date) or _forward_fill(precs, date)
-                        if ch_day:
-                            ch_filled.extend(ch_day)
-                    for cr in ch_filled:
-                        ppg = _convert_record_to_price_per_gram(db, cr, ch.child_id)
-                        if ppg is not None:
-                            child_costs.append(float(ppg) * qty_grams)
-                if child_costs:
-                    total_min += min(child_costs)
-                    total_max += max(child_costs)
-                continue
-
-            record_costs = []
-            for rec in all_filled_recs:
-                try:
-                    ppg = _convert_record_to_price_per_gram(db, rec, ing.id)
-                    if ppg is not None:
-                        record_costs.append(float(ppg) * qty_grams)
-                except Exception:
-                    continue
-
-            if record_costs:
-                total_min += min(record_costs)
-                total_max += max(record_costs)
-
-        # 兜底：如果极值全为 0（没有任何记录），跳过该日
-        if total_max <= 0:
-            continue
-
+        # recorded_at 时间戳（保留旧逻辑：当天中午 UTC 时间戳）
         recorded_at = int((
             local_date_range_to_utc_range(date, date, tz)[0] + timedelta(hours=12)
         ).replace(tzinfo=timezone.utc).timestamp())
@@ -1503,9 +1511,9 @@ def calculate_recipe_cost_range_trend(
         cost_range_trend.append({
             "date": date.strftime("%Y-%m-%d"),
             "recorded_at": recorded_at,
-            "min_cost": round(total_min, 4),
-            "max_cost": round(total_max, 4),
-            "avg_cost": round(avg_total, 4),
+            "min_cost": round(float(result["min_cost"]), 4),
+            "max_cost": round(float(result["max_cost"]), 4),
+            "avg_cost": round(float(result["avg_cost"]), 4),
             "breakdown": breakdown_items,
         })
 
@@ -1992,99 +2000,48 @@ def calculate_recipe_cost_as_of(
         weighted_participants = None  # 直接商品加权明细（透明追溯）
 
         if products:
-            # 直接商品：加权平均（取代「遍历取第一个有记录商品」）
-            from app.services.ingredient_price_service import resolve_direct_weighted_for_cost
-            _dw = resolve_direct_weighted_for_cost(db, ingredient.id, user_id=user_id, as_of_date=as_of_date, tz=tz)
-            if _dw is not None:
-                unit_price, weighted_participants, _std_uid = _dw
-                # 构造占位 latest_record 供下方单位转换段读 standard_unit_id
-                class _StdHolder:
-                    def __init__(self, uid):
-                        self.standard_unit_id = uid
-                latest_record = _StdHolder(_std_uid) if _std_uid else None
+            # 直接商品：与 range 版对齐，使用 _direct_cost_range_ppg 取每克单价
+            # （走 _convert_record_to_price_per_gram 的 original 口径，
+            #  对 standard_quantity 数据异常鲁棒；
+            #  resolve 加权路径依赖 standard_quantity 可能放大数十倍导致成本虚高）
+            dr_ppg = _direct_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+            if dr_ppg is not None:
+                _min_ppg, _max_ppg, unit_price = dr_ppg
+                # unit_price = avg_ppg，单位元/克；latest_record 留 None，
+                # 下方单位转换走克路径（同 recipe_chain/aggregation_chain）
             else:
-                # 加权无价，回退到原「遍历取第一个」
-                for p in products:
-                    latest_record = _get_price_record_with_fallback(
-                        db=db,
-                        user_id=user_id,
-                        product_id=p.id,
-                        as_of_date=as_of_date, tz=tz,
-                    )
-                    if latest_record:
-                        product = p
-                        break
+                # dr_ppg 返回 None 时不做 iterate 回退——
+                # 让下方降级链 (fallback→name_match→recipe→contains) 统一处理，
+                # 与 range 版 _ingredient_cost_range 对齐
+                pass
 
-            # 如果找不到价格记录，尝试使用回退食材
-            if not latest_record:
-                fallback_result = _get_ingredient_fallback(db, ingredient, user_id)
-                if fallback_result:
-                    fallback_ingredient, fallback_price_record, fallback_chain = fallback_result
-                    # 直接使用回退的价格记录
-                    latest_record = fallback_price_record
-                    # 更新ingredient为回退食材，用于成本计算
-                    ingredient = fallback_ingredient
-
-            if latest_record and unit_price is None:
-                # 计算单价：总价 ÷ 数量（加权直取时 unit_price 已设，跳过）
-                record_price = Decimal(str(latest_record.price))
-
-                # 修复：检查 standard_quantity 是否为 None 或 0，避免除零错误
-                std_qty = latest_record.standard_quantity
-                if std_qty is None or std_qty == 0:
-                    # 如果标准数量未知，使用原始价格作为单位价格（这种情况很少见）
-                    unit_price = record_price
-                else:
-                    record_quantity = Decimal(str(std_qty))
-                    unit_price = record_price / record_quantity
+            # 回退食材：与 range 版对齐，用 _fallback_cost_range_ppg
+            # （取 fallback 食材全部记录的每克单价均值，而非单条记录）
+            if unit_price is None:
+                fb_range = _fallback_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+                if fb_range is not None:
+                    _fb_min, _fb_max, unit_price = fb_range
+                    # unit_price = avg_ppg，单位元/克
+                    # 取 fallback_chain 用于前端展示
+                    fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                    if fb_full:
+                        _, _, fallback_chain = fb_full
         else:
-            # 如果找不到商品，尝试使用回退食材
-            fallback_result = _get_ingredient_fallback(db, ingredient, user_id)
-            if fallback_result:
-                fallback_ingredient, fallback_price_record, fallback_chain = fallback_result
-                # 查找回退食材的所有商品
-                fallback_products = db.query(Product).filter(
-                    Product.ingredient_id == fallback_ingredient.id,
-                    Product.is_active == True
-                ).all()
+            # 没有商品：与 range 版对齐，用 _fallback_cost_range_ppg
+            if unit_price is None:
+                fb_range = _fallback_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+                if fb_range is not None:
+                    _fb_min, _fb_max, unit_price = fb_range
+                    fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                    if fb_full:
+                        _, _, fallback_chain = fb_full
 
-                if fallback_products:
-                    # 遍历回退食材的所有商品，查找价格记录
-                    for fp in fallback_products:
-                        latest_record = _get_price_record_with_fallback(
-                            db=db,
-                            user_id=user_id,
-                            product_id=fp.id,
-                            as_of_date=as_of_date, tz=tz
-                        )
-                        if latest_record:
-                            product = fp
-                            break
-                    # 更新ingredient为回退食材
-                    ingredient = fallback_ingredient
-
-            if not latest_record:
-                # 如果找不到回退食材的价格记录，尝试通过名称匹配
-                # 使用带前向填充机制的价格查找函数
-                latest_record = _get_price_record_with_fallback(
-                    db=db,
-                    user_id=user_id,
-                    product_name_contains=original_ingredient_name,
-                    as_of_date=as_of_date, tz=tz
-                )
-
-            if latest_record:
-                # 同样需要计算单价
-                record_price = Decimal(str(latest_record.price))
-
-                # 修复：检查 standard_quantity 是否为 None 或 0，避免除零错误
-                std_qty = latest_record.standard_quantity
-                if std_qty is None or std_qty == 0:
-                    # 如果标准数量未知，使用原始价格作为单位价格
-                    unit_price = record_price
-                else:
-                    record_quantity = Decimal(str(std_qty))
-                    unit_price = record_price / record_quantity
+            # 名称匹配：与 range 版对齐，用 _name_match_cost_range_ppg
+            if unit_price is None:
+                nm_range = _name_match_cost_range_ppg(db, ingredient, user_id, as_of_date, tz)
+                if nm_range is not None:
+                    _nm_min, _nm_max, unit_price = nm_range
+                    # unit_price = avg_ppg，单位元/克
 
         # 尝试从制作菜谱推导成本（半成品，优先于子食材聚合）
         if not latest_record and unit_price is None:
@@ -2100,7 +2057,7 @@ def calculate_recipe_cost_as_of(
                 unit_price, aggregation_chain = child_agg
                 # unit_price 已经是元/克
 
-        if latest_record or aggregation_chain is not None or recipe_chain is not None:
+        if latest_record or unit_price is not None or aggregation_chain is not None or recipe_chain is not None:
             # 计算成本：单价 × 菜谱中的数量 = 成本
             # 计算成本：单价 × 菜谱中的数量 = 成本
             # 优先使用 quantity，如果为 None 则从 quantity_range 取平均值
@@ -2111,6 +2068,23 @@ def calculate_recipe_cost_as_of(
             if quantity and effective_unit_id:
                 if aggregation_chain is not None or recipe_chain is not None:
                     # 子食材聚合 或 制作菜谱 的 unit_price 是元/克，需要将菜谱用量转换为克
+                    if effective_unit_id != 3:
+                        recipe_unit = db.query(Unit).filter(Unit.id == effective_unit_id).first()
+                        gram_unit = db.query(Unit).filter(Unit.id == 3).first()
+                        if recipe_unit and gram_unit:
+                            ucs = UnitConversionService(db)
+                            converted = ucs.convert(
+                                Decimal(str(quantity)),
+                                recipe_unit.abbreviation,
+                                gram_unit.abbreviation,
+                                entity_type="ingredient",
+                                entity_id=ingredient.id,
+                            )
+                            if converted:
+                                quantity = float(converted[0])
+                elif latest_record is None and unit_price is not None:
+                    # 直接商品 range 版：unit_price 是元/克（同 recipe_chain/aggregation_chain），
+                    # 将菜谱用量转换为克
                     if effective_unit_id != 3:
                         recipe_unit = db.query(Unit).filter(Unit.id == effective_unit_id).first()
                         gram_unit = db.query(Unit).filter(Unit.id == 3).first()
