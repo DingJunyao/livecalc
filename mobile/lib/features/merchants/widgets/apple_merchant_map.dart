@@ -129,7 +129,12 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
         oldWidget.allCoordinates != widget.allCoordinates ||
         oldWidget.places != widget.places ||
         oldWidget.currentPlaceId != widget.currentPlaceId) {
-      _refitCamera();
+      // 延迟到帧末：apple.AppleMap 可能在 build 中重建原生 MapKit 视图，
+      // 此时 onMapCreated 尚未回调，_mapController 是旧值或 null；
+      // postFrame 后 controller 已就绪。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refitCamera();
+      });
     }
   }
 
