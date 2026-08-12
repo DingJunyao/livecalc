@@ -34,6 +34,9 @@ import 'route_names.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
 
+/// 上次 shell 路由位置，用于计算 tab 切换动画的滑动方向。
+String? _lastShellLocation;
+
 GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
@@ -105,12 +108,20 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/home',
             name: RouteNames.home,
-            builder: (_, __) => const HomeScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const HomeScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/prices',
             name: RouteNames.prices,
-            builder: (_, __) => const PriceListScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const PriceListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/prices/quick-fill',
@@ -139,7 +150,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/recipes',
             name: RouteNames.recipes,
-            builder: (_, __) => const RecipeListScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const RecipeListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/recipes/:id',
@@ -158,7 +173,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/ingredients',
             name: RouteNames.ingredients,
-            builder: (_, __) => const IngredientListScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const IngredientListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/ingredients/:id',
@@ -170,7 +189,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/products',
             name: RouteNames.products,
-            builder: (_, __) => const ProductListScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const ProductListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/products/:id',
@@ -182,7 +205,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/merchants',
             name: RouteNames.merchants,
-            builder: (_, __) => const MerchantListScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const MerchantListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/merchants/map',
@@ -200,7 +227,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/profile',
             name: RouteNames.profile,
-            builder: (_, __) => const ProfileScreen(),
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const ProfileScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
           ),
           GoRoute(
             path: '/profile/account',
@@ -324,6 +355,49 @@ int _tabIndexFor(List<_Tab> tabs, String location) {
     }
   }
   return -1;
+}
+
+/// 路由位置在桌面版 tab 顺序中的索引（用于计算 tab 间滑动方向）。
+int _tabRouteIndex(String location) {
+  for (var i = 0; i < _desktopTabs.length; i++) {
+    if (_desktopTabs[i].prefixes
+        .any((p) => location == p || location.startsWith('$p/'))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/// Shell route 分支过渡页：根据目标 tab 与当前 tab 的索引差决定滑动方向。
+/// 往右切（newIdx > prevIdx）→ 从右滑入；往左切 → 从左滑入。
+CustomTransitionPage<void> _shellTransitionPage({
+  required Widget child,
+  required LocalKey key,
+  required String location,
+}) {
+  final prev = _lastShellLocation;
+  _lastShellLocation = location;
+
+  final prevIdx = prev != null ? _tabRouteIndex(prev) : -1;
+  final currIdx = _tabRouteIndex(location);
+  final goLeft = prevIdx >= 0 && currIdx >= 0 && currIdx < prevIdx;
+
+  return CustomTransitionPage<void>(
+    key: key,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SlideTransition(
+        position: Tween<Offset>(
+          begin: goLeft ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeInOut,
+        )),
+        child: child,
+      );
+    },
+  );
 }
 
 class ScaffoldWithNavBar extends ConsumerStatefulWidget {
