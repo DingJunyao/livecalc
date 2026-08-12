@@ -995,8 +995,9 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
               radius: 18,
               child: Text(
                 p.name.isNotEmpty ? p.name.characters.first : '?',
-                style: theme.textTheme.labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w600),
+                style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(width: 12),
@@ -1445,8 +1446,9 @@ class _RelatedRecipesCard extends StatelessWidget {
                           radius: 18,
                           child: Text(
                             r.name.isNotEmpty ? r.name.characters.first : '?',
-                            style: theme.textTheme.labelLarge
-                                ?.copyWith(fontWeight: FontWeight.w600),
+                            style: theme.textTheme.labelLarge?.copyWith(
+                                color: theme.colorScheme.onPrimaryContainer,
+                                fontWeight: FontWeight.w600),
                           ),
                         ),
                         const SizedBox(width: 12),
