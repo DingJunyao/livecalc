@@ -12,7 +12,11 @@ import '../utils/ingredient_colors.dart';
 
 /// 趋势筛选天数映射：周/月/季/年/全部（对齐 web 常量）
 const costHistoryDays = <String, int>{
-  'week': 7, 'month': 30, 'quarter': 90, 'year': 365, 'all': 3650,
+  'week': 7,
+  'month': 30,
+  'quarter': 90,
+  'year': 365,
+  'all': 3650,
 };
 
 /// 堆叠面积图单条序列
@@ -104,14 +108,18 @@ class _YAxisRange {
     final span = dataMax - dataMin;
     final pad = span == 0 ? 0.5 : span * 0.08;
     final rawStep = (span + pad * 2) / 4;
-    final mag = math
-        .pow(10, (math.log(rawStep) / math.ln10).floor())
-        .toDouble();
+    final mag =
+        math.pow(10, (math.log(rawStep) / math.ln10).floor()).toDouble();
     final norm = rawStep / mag;
     // Use only integer steps (1/2/5/10) and never below 1 so that the left
     // axis labels (v.toInt()) stay unique instead of duplicating (6,6,7,7...).
-    final step =
-        norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    final step = norm <= 1
+        ? 1
+        : norm <= 2
+            ? 2
+            : norm <= 5
+                ? 5
+                : 10;
     final interval = math.max(step * mag, 1.0);
     final min = (dataMin - pad) / interval;
     final max = (dataMax + pad) / interval;
@@ -155,7 +163,8 @@ List<LineTooltipItem> buildStackedTooltipItems(
   items[0] = LineTooltipItem('$date\n', bold,
       children: [TextSpan(text: items[0].text, style: plain)]);
   // 合计行并入最后一条（触点天堆叠总值 = 最顶层累加值）
-  items.last = LineTooltipItem(items.last.text, items.last.textStyle, children: [
+  items.last =
+      LineTooltipItem(items.last.text, items.last.textStyle, children: [
     ...(items.last.children ?? const []),
     TextSpan(
         text: '\n合计: ¥${sorted.last.bar.spots[dayIndex].y.toStringAsFixed(2)}',
@@ -241,7 +250,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(children: [
-              Icon(Icons.show_chart, color: theme.colorScheme.tertiary, size: 20),
+              Icon(Icons.show_chart,
+                  color: theme.colorScheme.tertiary, size: 20),
               const SizedBox(width: 8),
               Text('成本趋势',
                   style: theme.textTheme.titleMedium
@@ -282,7 +292,13 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
   }
 
   Widget _buildFilterToggle(ThemeData theme) {
-    const labels = {'week': '周', 'month': '月', 'quarter': '季', 'year': '年', 'all': '全部'};
+    const labels = {
+      'week': '周',
+      'month': '月',
+      'quarter': '季',
+      'year': '年',
+      'all': '全部'
+    };
     return DropdownButton<String>(
       key: const Key('filter_dropdown'),
       value: _filter,
@@ -380,8 +396,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           show: true,
           drawVerticalLine: false,
           horizontalInterval: yRange.interval,
-          getDrawingHorizontalLine: (v) => FlLine(
-              color: theme.colorScheme.outlineVariant, strokeWidth: 0.5),
+          getDrawingHorizontalLine: (v) =>
+              FlLine(color: theme.colorScheme.outlineVariant, strokeWidth: 0.5),
         ),
         titlesData: FlTitlesData(
           leftTitles: AxisTitles(
@@ -389,10 +405,9 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(
-                  _formatYAxisLabel(v, yRange),
-                  style: TextStyle(
-                      fontSize: 9, color: theme.colorScheme.outline)),
+              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.outline)),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -404,14 +419,19 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                 if (i < 0 || i >= widget.points.length) {
                   return const SizedBox.shrink();
                 }
-                final idxList = {0, widget.points.length ~/ 2, widget.points.length - 1};
+                final idxList = {
+                  0,
+                  widget.points.length ~/ 2,
+                  widget.points.length - 1
+                };
                 if (!idxList.contains(i)) return const SizedBox.shrink();
                 final date = widget.points[i].date;
                 final label = date.length >= 5 ? date.substring(5) : date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(label,
-                      style: TextStyle(fontSize: 9, color: theme.colorScheme.outline)),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.outline)),
                 );
               },
             ),
@@ -431,10 +451,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           // 点击/悬停全部由外层 Listener 处理（见 _onPointerGlobal 注释）。
           handleBuiltInTouches: false,
           touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) => buildStackedTooltipItems(
-                series,
-                touchedSpots,
-                widget.points[touchedSpots.first.x.toInt()].date),
+            getTooltipItems: (touchedSpots) => buildStackedTooltipItems(series,
+                touchedSpots, widget.points[touchedSpots.first.x.toInt()].date),
           ),
         ),
         lineBarsData: lineBars,
@@ -500,10 +518,9 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(
-                  _formatYAxisLabel(v, yRange),
-                  style: TextStyle(
-                      fontSize: 9, color: theme.colorScheme.outline)),
+              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange),
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.outline)),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -521,13 +538,16 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Text(label,
-                      style: TextStyle(fontSize: 9, color: theme.colorScheme.outline)),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.outline)),
                 );
               },
             ),
           ),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          topTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          rightTitles:
+              const AxisTitles(sideTitles: SideTitles(showTitles: false)),
         ),
         borderData: FlBorderData(show: false),
         lineTouchData: LineTouchData(
