@@ -59,9 +59,8 @@ class _IngredientDetailScreenState
         appBar: AppBar(title: const Text('原料详情')),
         body: ErrorDisplay(
           message: state.error!,
-          onRetry: () => ref
-              .read(ingredientDetailPageProvider(widget.id).notifier)
-              .load(),
+          onRetry: () =>
+              ref.read(ingredientDetailPageProvider(widget.id).notifier).load(),
         ),
       );
     }
@@ -105,9 +104,8 @@ class _IngredientDetailScreenState
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: '刷新',
-            onPressed: state.loading
-                ? null
-                : () => notifier.load(initialDays: 30),
+            onPressed:
+                state.loading ? null : () => notifier.load(initialDays: 30),
           ),
         ],
       ),
@@ -146,8 +144,7 @@ class _IngredientDetailScreenState
               loading: state.loadingProducts,
               onLoadPrice: notifier.loadProductPrice,
               onAdd: () => _showAddProductDialog(notifier, ingredient),
-              onEdit: (p) =>
-                  _showEditProductDialog(notifier, ingredient, p),
+              onEdit: (p) => _showEditProductDialog(notifier, ingredient, p),
               onDelete: (p) => _confirmDeleteProduct(notifier, p),
             ),
             const SizedBox(height: 16),
@@ -186,8 +183,7 @@ class _IngredientDetailScreenState
               onDeleteUnit: (id) => _confirmDeleteUnit(notifier, id),
               onQuickAddUnmapped: notifier.quickAddUnmappedUnit,
               onAddDensity: notifier.addDensity,
-              onDeleteDensity: (id) =>
-                  _confirmDeleteDensity(notifier, id),
+              onDeleteDensity: (id) => _confirmDeleteDensity(notifier, id),
             ),
             const SizedBox(height: 16),
             _HierarchyCard(
@@ -351,8 +347,7 @@ class _IngredientDetailScreenState
     final categories =
         ref.read(ingredientCategoriesProvider).value ?? <IngredientCategory>[];
     if (!mounted) return;
-    final nameController =
-        TextEditingController(text: ingredient.name);
+    final nameController = TextEditingController(text: ingredient.name);
     final aliasController = TextEditingController(
       text: ingredient.aliases.join(', '),
     );
@@ -543,7 +538,8 @@ class _IngredientDetailScreenState
   Future<void> _showAddHierarchyDialog(
     IngredientDetailPageNotifier notifier,
   ) async {
-    final ingredient = ref.read(ingredientDetailPageProvider(widget.id)).ingredient;
+    final ingredient =
+        ref.read(ingredientDetailPageProvider(widget.id)).ingredient;
     if (ingredient == null || !mounted) return;
     final result = await showDialog<_HierarchyFormResult>(
       context: context,
@@ -929,8 +925,8 @@ class _RelatedProductsCard extends StatelessWidget {
                           size: 40, color: theme.colorScheme.outlineVariant),
                       const SizedBox(height: 8),
                       Text('暂无关联商品',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.outline)),
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.colorScheme.outline)),
                     ],
                   ),
                 ),
@@ -999,7 +995,8 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
               radius: 18,
               child: Text(
                 p.name.isNotEmpty ? p.name.characters.first : '?',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                style: theme.textTheme.labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(width: 12),
@@ -1085,8 +1082,7 @@ class _PriceRecordsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.history,
-                    color: theme.colorScheme.primary, size: 20),
+                Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text('价格记录',
                     style: theme.textTheme.titleMedium
@@ -1449,8 +1445,8 @@ class _RelatedRecipesCard extends StatelessWidget {
                           radius: 18,
                           child: Text(
                             r.name.isNotEmpty ? r.name.characters.first : '?',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w600),
+                            style: theme.textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1463,8 +1459,7 @@ class _RelatedRecipesCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                   style: theme.textTheme.bodyMedium
                                       ?.copyWith(fontWeight: FontWeight.w600)),
-                              if (r.usages.isNotEmpty ||
-                                  r.category != null)
+                              if (r.usages.isNotEmpty || r.category != null)
                                 Text(
                                   [
                                     if (r.usages.isNotEmpty)
@@ -1592,8 +1587,8 @@ class _HierarchyCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               '${r.typeLabel} · 强度 ${r.strength}',
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.outline),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: theme.colorScheme.outline),
                             ),
                           ],
                         ),
@@ -1686,9 +1681,8 @@ class _HierarchyFormDialogState extends ConsumerState<_HierarchyFormDialog> {
             await IngredientRepository().search(search: q, limit: 20);
         if (mounted) {
           setState(() {
-            _options = result.items
-                .where((i) => i.id != widget.excludeId)
-                .toList();
+            _options =
+                result.items.where((i) => i.id != widget.excludeId).toList();
             _searching = false;
           });
         }
@@ -1782,12 +1776,10 @@ class _HierarchyFormDialogState extends ConsumerState<_HierarchyFormDialog> {
               ),
               items: const [
                 DropdownMenuItem(value: 'contains', child: Text('包含')),
-                DropdownMenuItem(
-                    value: 'substitutable', child: Text('可替代')),
+                DropdownMenuItem(value: 'substitutable', child: Text('可替代')),
                 DropdownMenuItem(value: 'fallback', child: Text('回退')),
               ],
-              onChanged: (v) =>
-                  setState(() => _relationType = v ?? 'contains'),
+              onChanged: (v) => setState(() => _relationType = v ?? 'contains'),
             ),
             const SizedBox(height: 8),
             Row(

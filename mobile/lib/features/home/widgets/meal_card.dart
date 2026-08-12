@@ -73,7 +73,10 @@ class MealCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (hasImage) _buildImageHeader(theme) else _buildTitleHeader(theme),
+            if (hasImage)
+              _buildImageHeader(theme)
+            else
+              _buildTitleHeader(theme),
             if (hasBody)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -198,14 +201,14 @@ class MealCard extends StatelessWidget {
                 children: [
                   Text(
                     _mealLabel(meal.mealType),
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     meal.recipeName ?? '未设置',
-                    style: const TextStyle(
+                    style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.white,
-                      fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

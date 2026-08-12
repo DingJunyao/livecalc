@@ -119,8 +119,8 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                                 color: theme.colorScheme.error,
                                 fontWeight: FontWeight.bold)),
                         Text(effectiveError,
-                            style: TextStyle(
-                                color: theme.colorScheme.error, fontSize: 12))
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: theme.colorScheme.error))
                       ],
                     ),
                   const SizedBox(height: 24),

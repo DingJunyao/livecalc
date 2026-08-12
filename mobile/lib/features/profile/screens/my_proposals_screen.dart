@@ -99,10 +99,8 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
             ),
             child: Text(
               _statusLabel(p.status),
-              style: TextStyle(
-                  color: _statusColor(p.status),
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold),
+              style: Theme.of(ctx).textTheme.labelMedium?.copyWith(
+                  color: _statusColor(p.status), fontWeight: FontWeight.bold),
             ),
           ),
         ]),
@@ -112,13 +110,14 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (p.title.isNotEmpty)
-                Text(p.title,
-                    style: Theme.of(ctx).textTheme.titleMedium),
+                Text(p.title, style: Theme.of(ctx).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
                 '${_typeLabel(p.entityType)} · ${_actionLabel(p.action)} · ${p.createdAt}',
-                style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(ctx).colorScheme.outline),
+                style: Theme.of(ctx)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: Theme.of(ctx).colorScheme.outline),
               ),
               if (p.entityId != null) ...[
                 const SizedBox(height: 4),
@@ -199,8 +198,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
           : state.error != null && state.items.isEmpty
               ? ErrorDisplay(
                   message: state.error!,
-                  onRetry: () =>
-                      ref.read(proposalListProvider.notifier).load())
+                  onRetry: () => ref.read(proposalListProvider.notifier).load())
               : state.items.isEmpty
                   ? const EmptyState(
                       icon: Icons.rate_review_outlined,
@@ -230,9 +228,8 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                               ),
                               child: Text(
                                 _statusLabel(p.status),
-                                style: TextStyle(
+                                style: theme.textTheme.labelMedium?.copyWith(
                                     color: _statusColor(p.status),
-                                    fontSize: 12,
                                     fontWeight: FontWeight.bold),
                               ),
                             ),

@@ -156,8 +156,10 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     if (id == null) return (null, 12);
     for (final p in widget.places) {
       if (p.id == id) {
-        return (LatLng(p.latitude, p.longitude),
-            radiusKmToZoom(p.viewRadiusKm ?? 5));
+        return (
+          LatLng(p.latitude, p.longitude),
+          radiusKmToZoom(p.viewRadiusKm ?? 5)
+        );
       }
     }
     return (null, 12);
@@ -501,6 +503,7 @@ class _MerchantMarker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bg = !isOpen
         ? const Color(0xFF757575)
         : selected
@@ -541,9 +544,8 @@ class _MerchantMarker extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 softWrap: false,
-                style: const TextStyle(
+                style: theme.textTheme.labelSmall?.copyWith(
                   color: Colors.white,
-                  fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
               ),
