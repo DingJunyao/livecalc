@@ -66,7 +66,10 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
 
   List<Merchant> get _validMerchants => widget.merchants
       .where((m) =>
-          m.latitude != null && m.longitude != null && m.latitude != 0 && m.longitude != 0)
+          m.latitude != null &&
+          m.longitude != null &&
+          m.latitude != 0 &&
+          m.longitude != 0)
       .toList();
 
   List<LatLng> get _points {
@@ -80,8 +83,10 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
     if (id == null) return null;
     for (final p in widget.places) {
       if (p.id == id) {
-        return (LatLng(p.latitude, p.longitude),
-            radiusKmToZoom(p.viewRadiusKm ?? 5));
+        return (
+          LatLng(p.latitude, p.longitude),
+          radiusKmToZoom(p.viewRadiusKm ?? 5)
+        );
       }
     }
     return null;
@@ -227,8 +232,10 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
           icon: const Icon(Icons.layers_outlined),
           onSelected: (v) => setState(() => _mapType = v),
           itemBuilder: (_) => [
-            PopupMenuItem(value: apple.MapType.standard, child: Text('标准')),
-            PopupMenuItem(value: apple.MapType.satellite, child: Text('卫星')),
+            const PopupMenuItem(
+                value: apple.MapType.standard, child: Text('标准')),
+            const PopupMenuItem(
+                value: apple.MapType.satellite, child: Text('卫星')),
           ],
         ),
         // 常用地点菜单
@@ -279,7 +286,8 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
           tooltip: _currentLocation != null ? '清除定位' : '定位当前位置',
           icon: _locating
               ? const SizedBox(
-                  width: 18, height: 18,
+                  width: 18,
+                  height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : Icon(

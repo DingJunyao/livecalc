@@ -13,15 +13,11 @@ void main() {
   setUp(() {
     repo = MockRepo();
     // 菜谱带一个鸡蛋原料（100g），使 _loadMerchantPrices 真正走到并发加载路径
-    when(() => repo.getRecipe(1)).thenAnswer((_) async => const RecipeDetail(
-        id: 1,
-        name: '番茄炒蛋',
-        servings: 2,
-        ingredients: [
+    when(() => repo.getRecipe(1)).thenAnswer((_) async =>
+        const RecipeDetail(id: 1, name: '番茄炒蛋', servings: 2, ingredients: [
           RecipeIngredient(
               id: 10, ingredientId: 5, name: '鸡蛋', quantity: '100', unit: 'g'),
-        ],
-        steps: []));
+        ], steps: []));
     notifier = RecipeDetailPageNotifier(repo, 1);
   });
 
@@ -29,20 +25,18 @@ void main() {
   Future<void> settle() => Future<void>.delayed(Duration.zero);
 
   test('load 后并行加载 merchant 两路数据', () async {
-    final merchantCost = RecipeMerchantCost(
-        currency: 'CNY',
-        merchants: [
-          MerchantCostItem(
-              merchantId: 2,
-              merchantName: '盒马',
-              coveredCost: 8,
-              externalCost: 0,
-              totalCost: 8,
-              coveredCount: 3,
-              totalIngredients: 3,
-              isRecommended: true)
-        ]);
-    final priceItem = MerchantPriceItem(
+    const merchantCost = RecipeMerchantCost(currency: 'CNY', merchants: [
+      MerchantCostItem(
+          merchantId: 2,
+          merchantName: '盒马',
+          coveredCost: 8,
+          externalCost: 0,
+          totalCost: 8,
+          coveredCount: 3,
+          totalIngredients: 3,
+          isRecommended: true)
+    ]);
+    const priceItem = MerchantPriceItem(
         recipeIngredientId: 10,
         ingredientId: 5,
         ingredientName: '鸡蛋',
@@ -51,20 +45,16 @@ void main() {
         const RecipeCost(totalCost: 12, costPerServing: 6, breakdown: []));
     when(() => repo.getRecipeNutrition(1)).thenAnswer((_) async =>
         const RecipeNutrition(
-            totalCalories: 300,
-            totalProtein: 10,
-            totalFat: 8,
-            totalCarbs: 20));
+            totalCalories: 300, totalProtein: 10, totalFat: 8, totalCarbs: 20));
     when(() => repo.getRecipeCostHistory(1, days: 30))
         .thenAnswer((_) async => const []);
     when(() => repo.getRecipeMerchantCosts(1))
         .thenAnswer((_) async => merchantCost);
     when(() => repo.getIngredientMerchantPrice(5,
-            recipeIngredientId: 10,
-            ingredientName: '鸡蛋',
-            quantity: 100,
-            quantityUnit: 'g'))
-        .thenAnswer((_) async => priceItem);
+        recipeIngredientId: 10,
+        ingredientName: '鸡蛋',
+        quantity: 100,
+        quantityUnit: 'g')).thenAnswer((_) async => priceItem);
 
     await notifier.load();
     await settle();
@@ -105,17 +95,13 @@ void main() {
 
   test('部分原料比价失败只保留成功结果', () async {
     // 覆盖 getRecipe 返回 2 个原料（鸡蛋 id:5 + 番茄 id:6）
-    when(() => repo.getRecipe(1)).thenAnswer((_) async => const RecipeDetail(
-        id: 1,
-        name: '番茄炒蛋',
-        servings: 2,
-        ingredients: [
+    when(() => repo.getRecipe(1)).thenAnswer((_) async =>
+        const RecipeDetail(id: 1, name: '番茄炒蛋', servings: 2, ingredients: [
           RecipeIngredient(
               id: 10, ingredientId: 5, name: '鸡蛋', quantity: '100', unit: 'g'),
           RecipeIngredient(
               id: 11, ingredientId: 6, name: '番茄', quantity: '200', unit: 'g'),
-        ],
-        steps: []));
+        ], steps: []));
     // 其余四路接口 stub 为抛异常：未 stub 的调用会抛 MissingStubError，而它
     // extends Error 而非 Exception，_load* 的 on Exception catch 吞不掉，
     // fire-and-forget 的未处理异步错误会直接判测试失败
@@ -133,15 +119,12 @@ void main() {
             quantity: 100,
             quantityUnit: 'g'))
         .thenAnswer((_) async => const MerchantPriceItem(
-            recipeIngredientId: 10,
-            ingredientId: 5,
-            ingredientName: '鸡蛋'));
+            recipeIngredientId: 10, ingredientId: 5, ingredientName: '鸡蛋'));
     when(() => repo.getIngredientMerchantPrice(6,
-            recipeIngredientId: 11,
-            ingredientName: '番茄',
-            quantity: 200,
-            quantityUnit: 'g'))
-        .thenAnswer((_) async => throw Exception('boom'));
+        recipeIngredientId: 11,
+        ingredientName: '番茄',
+        quantity: 200,
+        quantityUnit: 'g')).thenAnswer((_) async => throw Exception('boom'));
 
     await notifier.load();
     await settle();
@@ -153,11 +136,8 @@ void main() {
 
   test('超过 3 个原料按每批 3 个分批并保持顺序', () async {
     // 覆盖 getRecipe 返回 5 个原料（ingredientId 1-5，id 101-105）
-    when(() => repo.getRecipe(1)).thenAnswer((_) async => const RecipeDetail(
-        id: 1,
-        name: '五料菜谱',
-        servings: 2,
-        ingredients: [
+    when(() => repo.getRecipe(1)).thenAnswer((_) async =>
+        const RecipeDetail(id: 1, name: '五料菜谱', servings: 2, ingredients: [
           RecipeIngredient(
               id: 101, ingredientId: 1, name: 'A', quantity: '10', unit: 'g'),
           RecipeIngredient(
@@ -168,8 +148,7 @@ void main() {
               id: 104, ingredientId: 4, name: 'D', quantity: '10', unit: 'g'),
           RecipeIngredient(
               id: 105, ingredientId: 5, name: 'E', quantity: '10', unit: 'g'),
-        ],
-        steps: []));
+        ], steps: []));
     // 其余四路接口 stub 为抛异常，避免 MissingStubError 成为未处理异步错误
     when(() => repo.getRecipeCost(1))
         .thenAnswer((_) async => throw Exception('boom'));
@@ -195,8 +174,7 @@ void main() {
     await settle();
 
     expect(notifier.state.merchantPrices.length, 5);
-    expect(
-        notifier.state.merchantPrices.map((p) => p.ingredientName).toList(),
+    expect(notifier.state.merchantPrices.map((p) => p.ingredientName).toList(),
         ['A', 'B', 'C', 'D', 'E']);
     expect(notifier.state.loadingMerchantPrices, false);
   });
