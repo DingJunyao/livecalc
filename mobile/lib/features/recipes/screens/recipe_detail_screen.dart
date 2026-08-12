@@ -407,12 +407,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               children: [
                 Row(
                   children: [
-                    if (canNavigate)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 2),
-                        child: Icon(Icons.chevron_right,
-                            size: 16, color: theme.colorScheme.outline),
-                      ),
                     Flexible(
                       child: Text(ing.name,
                           maxLines: 1,
@@ -420,6 +414,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           style: theme.textTheme.bodyLarge
                               ?.copyWith(fontWeight: FontWeight.w500)),
                     ),
+                    if (canNavigate)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 2),
+                        child: Icon(Icons.chevron_right,
+                            size: 16, color: theme.colorScheme.outline),
+                      ),
                     if (ing.isOptional) ...[
                       const SizedBox(width: 6),
                       Container(
@@ -448,39 +448,33 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           ),
         ),
         // 用量
-        InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Text(qtyText,
-                textAlign: TextAlign.right,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline)),
-          ),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Text(qtyText,
+              textAlign: TextAlign.right,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline)),
         ),
-        // 价格
-        InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 7),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (hasFallback)
-                  Tooltip(
-                    message: '根据以下食材计算成本：\n${cb.fallbackChain}',
-                    child: Icon(Icons.info_outline,
-                        size: 14, color: theme.colorScheme.tertiary),
-                  ),
-                if (cb != null && cb.cost > 0) ...[
-                  if (hasFallback) const SizedBox(width: 4),
-                  Text('¥${(cb.cost * ratio).toStringAsFixed(2)}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.bold)),
-                ],
+        // 价格（tooltip 长按查看，不跳转）
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (hasFallback)
+                Tooltip(
+                  message: '根据以下食材计算成本：\n${cb.fallbackChain}',
+                  child: Icon(Icons.info_outline,
+                      size: 14, color: theme.colorScheme.tertiary),
+                ),
+              if (cb != null && cb.cost > 0) ...[
+                if (hasFallback) const SizedBox(width: 4),
+                Text('¥${(cb.cost * ratio).toStringAsFixed(2)}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.bold)),
               ],
-            ),
+            ],
           ),
         ),
       ],
