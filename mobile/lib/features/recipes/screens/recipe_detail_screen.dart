@@ -98,8 +98,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                 const SizedBox(width: 4),
                                 Text(
                                   '${imageUrls.length}',
-                                  style: const TextStyle(
-                                      color: Colors.white, fontSize: 12),
+                                  style: theme.textTheme.labelMedium
+                                      ?.copyWith(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -430,8 +430,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             borderRadius: BorderRadius.circular(4)),
                         child: Text('可选',
                             style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSecondaryContainer,
-                                fontSize: 10)),
+                                color: theme.colorScheme.onSecondaryContainer)),
                       ),
                     ],
                   ],
@@ -545,10 +544,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             shape: BoxShape.circle),
                         child: Center(
                             child: Text('$num',
-                                style: TextStyle(
+                                style: theme.textTheme.labelLarge?.copyWith(
                                     color: theme.colorScheme.onPrimary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14))),
+                                    fontWeight: FontWeight.bold))),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -800,7 +798,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       ),
                       const SizedBox(width: 10),
                       Expanded(
-                          child: Text(tip, style: theme.textTheme.bodyMedium)),
+                          child: Text(tip, style: theme.textTheme.bodyLarge)),
                     ],
                   ),
                 )),
@@ -918,6 +916,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -937,13 +936,12 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                       child: Icon(Icons.broken_image_outlined,
                           size: 64, color: Colors.white54),
                     ),
-                    loadingBuilder: (ctx, child, progress) =>
-                        progress == null
-                            ? child
-                            : const Center(
-                                child: CircularProgressIndicator(
-                                    color: Colors.white54),
-                              ),
+                    loadingBuilder: (ctx, child, progress) => progress == null
+                        ? child
+                        : const Center(
+                            child: CircularProgressIndicator(
+                                color: Colors.white54),
+                          ),
                   ),
                 ),
               ),
@@ -975,7 +973,8 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                   ),
                   child: Text(
                     '${_index + 1} / ${widget.urls.length}',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    style: theme.textTheme.labelLarge
+                        ?.copyWith(color: Colors.white),
                   ),
                 ),
               ),
@@ -1027,9 +1026,8 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                       margin: const EdgeInsets.symmetric(horizontal: 4),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: i == _index
-                              ? Colors.white
-                              : Colors.transparent,
+                          color:
+                              i == _index ? Colors.white : Colors.transparent,
                           width: 2,
                         ),
                         borderRadius: BorderRadius.circular(6),
