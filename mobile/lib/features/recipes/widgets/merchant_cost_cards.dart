@@ -112,17 +112,14 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
             ),
             if (m.isRecommended)
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFF9800),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: const Text('最实惠 ✓',
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
+                child: Text('最实惠 ✓',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ),
           ]),
           const SizedBox(height: 4),
@@ -156,20 +153,21 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
           Text.rich(TextSpan(children: [
             TextSpan(
                 text: '本店 ¥${m.coveredCost.toStringAsFixed(2)}',
-                style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF2E7D32),
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF2E7D32),
                     fontWeight: FontWeight.w600)),
             if (m.externalCost > 0)
               TextSpan(
                 text: '  外部 ¥${m.externalCost.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 12, color: Color(0xFFEF6C00)),
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: const Color(0xFFEF6C00)),
               ),
           ])),
           if (m.missingIngredients.isNotEmpty) ...[
             const SizedBox(height: 2),
             Text('⚠ 需外购 ${m.missingIngredients.join('、')}',
-                style: const TextStyle(fontSize: 11, color: Color(0xFFF9A825)),
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: const Color(0xFFF9A825)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
           ],
