@@ -78,7 +78,8 @@ class _MerchantPriceCard extends StatelessWidget {
         color: containerColor,
         borderRadius: BorderRadius.circular(10),
         border: price.isLowest
-            ? Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.35))
+            ? Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.35))
             : null,
       ),
       child: Stack(
@@ -128,8 +129,8 @@ class _MerchantPriceCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text('最低',
-                      style: theme.textTheme.labelSmall?.copyWith(
-                          color: theme.colorScheme.onPrimary, fontSize: 9)),
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.onPrimary)),
                 ),
             ],
           ),

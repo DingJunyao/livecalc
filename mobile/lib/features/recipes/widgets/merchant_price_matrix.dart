@@ -41,46 +41,43 @@ List<MatrixRow> buildMatrixRows({
     }
   }
 
-  return ingredients
-      .where((ing) => ing.ingredientId != null)
-      .map((ing) {
-        // 显式循环查找（避免 firstOrNull 额外依赖）
-        MerchantPriceItem? item;
-        for (final p in prices) {
-          if (p.recipeIngredientId == ing.id) {
-            item = p;
-            break;
-          }
+  return ingredients.where((ing) => ing.ingredientId != null).map((ing) {
+    // 显式循环查找（避免 firstOrNull 额外依赖）
+    MerchantPriceItem? item;
+    for (final p in prices) {
+      if (p.recipeIngredientId == ing.id) {
+        item = p;
+        break;
+      }
+    }
+    final cells = <String, MatrixCell>{};
+    for (final name in names) {
+      MerchantPriceRecord? match;
+      for (final pr in item?.prices ?? const <MerchantPriceRecord>[]) {
+        final n = _merchantLabel(pr);
+        if (n == name) {
+          match = pr;
+          break;
         }
-        final cells = <String, MatrixCell>{};
-        for (final name in names) {
-          MerchantPriceRecord? match;
-          for (final pr in item?.prices ?? const <MerchantPriceRecord>[]) {
-            final n = _merchantLabel(pr);
-            if (n == name) {
-              match = pr;
-              break;
-            }
-          }
-          if (match != null) {
-            final displayVal = match.totalCost ?? match.price;
-            cells[name] = MatrixCell(
-              display: displayVal.toStringAsFixed(2),
-              isLowest: match.isLowest,
-            );
-          } else {
-            cells[name] = const MatrixCell(
-                display: '—', isLowest: false, hasPrice: false);
-          }
-        }
-        return MatrixRow(
-          name: ing.name,
-          quantityDisplay: _qtyText(ing),
-          fallbackChain: item?.fallbackChain,
-          cells: cells,
+      }
+      if (match != null) {
+        final displayVal = match.totalCost ?? match.price;
+        cells[name] = MatrixCell(
+          display: displayVal.toStringAsFixed(2),
+          isLowest: match.isLowest,
         );
-      })
-      .toList();
+      } else {
+        cells[name] =
+            const MatrixCell(display: '—', isLowest: false, hasPrice: false);
+      }
+    }
+    return MatrixRow(
+      name: ing.name,
+      quantityDisplay: _qtyText(ing),
+      fallbackChain: item?.fallbackChain,
+      cells: cells,
+    );
+  }).toList();
 }
 
 /// 商家列标签：merchantName 为空时回退「商家{id}」
@@ -228,10 +225,11 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
         ),
         children: [
           TableRow(
-            decoration: BoxDecoration(
-                color: theme.colorScheme.surfaceContainerHighest),
+            decoration:
+                BoxDecoration(color: theme.colorScheme.surfaceContainerHighest),
             children: [
-              SizedBox(height: _rowHeight, child: _headerCell(theme, '食材 / 用量')),
+              SizedBox(
+                  height: _rowHeight, child: _headerCell(theme, '食材 / 用量')),
             ],
           ),
           for (final row in rows)
@@ -253,9 +251,8 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                       Padding(
                         padding: const EdgeInsets.only(left: 6),
                         child: Text(row.quantityDisplay,
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: theme.colorScheme.outline)),
+                            style: theme.textTheme.bodySmall
+                                ?.copyWith(color: theme.colorScheme.outline)),
                       ),
                     if (row.fallbackChain != null &&
                         row.fallbackChain!.isNotEmpty)
@@ -310,11 +307,13 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
       children: [
         // 表头
         TableRow(
-          decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest),
+          decoration:
+              BoxDecoration(color: theme.colorScheme.surfaceContainerHighest),
           children: [
             for (final n in names)
-              SizedBox(height: _rowHeight, child: _headerCell(theme, n, right: true)),
+              SizedBox(
+                  height: _rowHeight,
+                  child: _headerCell(theme, n, right: true)),
           ],
         ),
         for (final row in rows)
@@ -336,16 +335,14 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                           textAlign: TextAlign.right,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
+                          style: theme.textTheme.labelLarge?.copyWith(
                             color: !row.cells[n]!.hasPrice
                                 ? theme.colorScheme.outlineVariant
                                 : row.cells[n]!.isLowest
                                     ? const Color(0xFFE65100)
                                     : null,
-                            fontWeight: row.cells[n]!.isLowest
-                                ? FontWeight.bold
-                                : null,
+                            fontWeight:
+                                row.cells[n]!.isLowest ? FontWeight.bold : null,
                           ),
                         ),
                       ),
