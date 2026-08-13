@@ -42,12 +42,11 @@
         选商家后自动列出历史所有商品，只保存填了价格的
       </div>
 
-      <!-- 历史商品（按分类分组） -->
-      <div v-if="groupedHistoryRows.length > 0" class="mb-4">
+      <!-- 历史商品（按填写顺序） -->
+      <div v-if="orderedHistoryRows.length > 0" class="mb-4">
         <div class="text-subtitle-2 mb-2">历史商品</div>
-        <v-list v-for="group in groupedHistoryRows" :key="group.categoryName" class="fill-list" density="compact">
-          <div class="text-caption text-medium-emphasis px-4 py-1 font-weight-medium">{{ group.categoryName }}</div>
-          <v-list-item v-for="(row, i) in group.rows" :key="'h-' + group.categoryName + '-' + i">
+        <v-list class="fill-list" density="compact">
+          <v-list-item v-for="(row, i) in orderedHistoryRows" :key="'h-' + i">
             <div class="fill-row">
               <div class="fill-row__name">{{ row.productName }}</div>
               <div class="fill-row__inputs">
@@ -117,7 +116,7 @@
       <div v-else-if="allHistoryRows.length === 0" class="text-center py-4 text-medium-emphasis">
         该商家暂无历史商品
       </div>
-      <div v-else-if="groupedHistoryRows.length === 0" class="text-center py-4 text-medium-emphasis">
+      <div v-else-if="orderedHistoryRows.length === 0" class="text-center py-4 text-medium-emphasis">
         本期所有商品已填写完成
       </div>
 
@@ -250,6 +249,8 @@ interface FillRow {
   categoryId: number | null
   categoryName: string
   filledAt?: number  // 首次填上有效价格的时间戳，保存时按此排序（填写顺序）
+  fillSortOrder?: number | null  // 后端返回的最近填写会话排序号
+  fillSessionDate?: string | null  // 该排序号所属的会话日期
 }
 
 interface HiddenItem {
@@ -350,25 +351,31 @@ const visibleHistoryRows = computed(() => {
 
 const allHistoryRows = computed(() => historyRows.value)
 
-// 历史商品按分类分组（组内已按拼音排序）
-const groupedHistoryRows = computed(() => {
+// 填写顺序比较：有填写记录的在前（最近会话优先），无记录的按拼音
+function fillOrderCompare(a: FillRow, b: FillRow): number {
+  const aHas = a.fillSortOrder != null
+  const bHas = b.fillSortOrder != null
+  if (aHas !== bHas) return aHas ? -1 : 1
+  if (aHas) {
+    const dc = (b.fillSessionDate || '').localeCompare(a.fillSessionDate || '')
+    if (dc !== 0) return dc
+    return (a.fillSortOrder ?? 0) - (b.fillSortOrder ?? 0)
+  }
+  return zhCollator.compare(String(a.productName ?? ''), String(b.productName ?? ''))
+}
+
+// 全部历史商品按填写顺序排序（不过滤隐藏），供列表展示与「复制模板」使用
+const sortedHistoryRows = computed(() => [...historyRows.value].sort(fillOrderCompare))
+
+// 可见历史行（过滤掉已隐藏的，按填写顺序排列）
+const orderedHistoryRows = computed(() => {
   const hiddenIds = selectedMerchantId.value
     ? getHiddenProductIds(selectedMerchantId.value)
     : new Set<number>()
-  const groups: Array<{ categoryName: string; rows: FillRow[] }> = []
-  const groupMap = new Map<string, typeof groups[0]>()
-  for (const row of historyRows.value) {
-    const pid = getRowProductId(row)
-    if (pid && hiddenIds.has(pid)) continue
-    const name = row.categoryName || '其他'
-    if (!groupMap.has(name)) {
-      const g = { categoryName: name, rows: [] }
-      groupMap.set(name, g)
-      groups.push(g)
-    }
-    groupMap.get(name)!.rows.push(row)
-  }
-  return groups
+  return sortedHistoryRows.value.filter(r => {
+    const pid = getRowProductId(r)
+    return !pid || !hiddenIds.has(pid)
+  })
 })
 
 const hiddenCount = computed(() => {
@@ -381,10 +388,10 @@ const hiddenCount = computed(() => {
   }).length
 })
 
-// 全部历史商品名（按页面顺序：分类序 + 组内拼音，不过滤隐藏），
+// 全部历史商品名（按填写顺序，不过滤隐藏），
 // 供「粘贴导入」对话框的「复制模板」使用——模板要完整清单。
 const historyProductNames = computed(() =>
-  historyRows.value
+  sortedHistoryRows.value
     .map(r => r.productName)
     .filter((n): n is string => !!n && n.trim().length > 0)
 )
@@ -426,19 +433,7 @@ const onMerchantChange = async (val: number | null) => {
       params: { skip: 0, limit: 200 },
     })
     const items = (res as any).items || (res as any[]) || []
-    // 后端已按 category sort_order 排序；前端在组内按拼音/字母顺序重排
-    items.sort((a: any, b: any) => {
-      const aScore = a.custom_sort_score
-      const bScore = b.custom_sort_score
-      // 有分数的排前面，没分数的排后面
-      if (aScore != null && bScore == null) return -1
-      if (aScore == null && bScore != null) return 1
-      if (aScore != null && bScore != null) return aScore - bScore
-      // 都没分数 → 默认分类 > 拼音
-      const catCmp = (a.category_sort_order ?? 999999) - (b.category_sort_order ?? 999999)
-      if (catCmp !== 0) return catCmp
-      return zhCollator.compare(String(a.product_name ?? ''), String(b.product_name ?? ''))
-    })
+    // 后端已按填写顺序（最近会话 + sort_order）返回；前端再按 fillOrderCompare 排序
     historyRows.value = items.map((item: any) => ({
       productId: item.product_id,
       productName: item.product_name,
@@ -449,6 +444,8 @@ const onMerchantChange = async (val: number | null) => {
       isNew: false,
       categoryId: item.category_id ?? null,
       categoryName: item.category_display_name ?? '其他',
+      fillSortOrder: item.fill_sort_order ?? null,
+      fillSessionDate: item.fill_session_date ?? null,
     }))
   } catch {
     historyRows.value = []
@@ -703,26 +700,29 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   width: 100%;
+  transition: box-shadow 0.15s ease;
+}
+.fill-row:hover {
+  box-shadow: inset 0 -2px 0 0 rgb(var(--v-theme-primary));
 }
 .fill-row__name {
-  flex-shrink: 0;
-  width: 72px;
+  flex: 1 1 auto;
+  min-width: 80px;
   font-size: 14px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .fill-row__product-search {
-  width: 120px;
-  flex-shrink: 0;
+  flex: 1 1 auto;
+  min-width: 120px;
 }
 .fill-row__product-search :deep(input) { font-size: 16px; }
 .fill-row__inputs {
   display: flex;
   align-items: center;
   gap: 4px;
-  flex: 1;
-  justify-content: flex-end;
+  flex-shrink: 0;
 }
 .fill-row__price { max-width: 100px; min-width: 80px; }
 .fill-row__price :deep(input) { font-size: 16px; }
