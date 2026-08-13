@@ -14,7 +14,6 @@ class QuickFillScreen extends ConsumerStatefulWidget {
 
 class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   final _repo = PriceRepository();
-  String? _selectedMerchantName;
   int? _selectedMerchantId;
 
   // Pricing rows
@@ -22,9 +21,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   bool _loading = false;
 
   // Merchant search / selection
-  final _merchantSearchController = TextEditingController();
   List<Map<String, dynamic>> _merchants = [];
-  List<Map<String, dynamic>> _filteredMerchants = [];
 
   @override
   void initState() {
@@ -34,7 +31,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
 
   @override
   void dispose() {
-    _merchantSearchController.dispose();
     for (final r in _rows) {
       r.nameController.dispose();
       r.priceController.dispose();
@@ -51,25 +47,13 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
           : (resp.data['items'] as List<dynamic>);
       setState(() {
         _merchants = list.cast<Map<String, dynamic>>();
-        _filteredMerchants = _merchants;
       });
     } catch (_) {}
-  }
-
-  void _filterMerchants(String query) {
-    setState(() {
-      _filteredMerchants = _merchants.where((m) {
-        final name = (m['name'] as String? ?? '').toLowerCase();
-        return name.contains(query.toLowerCase());
-      }).toList();
-    });
   }
 
   void _selectMerchant(Map<String, dynamic> merchant) {
     setState(() {
       _selectedMerchantId = merchant['id'] as int?;
-      _selectedMerchantName = merchant['name'] as String?;
-      _merchantSearchController.text = _selectedMerchantName ?? '';
     });
     _loadHistoryProducts();
   }
@@ -204,31 +188,29 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
               children: [
                 Text('选择商家', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.outline)),
                 const SizedBox(height: 8),
-                Autocomplete<Map<String, dynamic>>(
-                  optionsBuilder: (textEditingValue) {
-                    if (textEditingValue.text.isEmpty) return _merchants;
-                    return _filteredMerchants;
-                  },
-                  displayStringForOption: (m) => m['name'] as String? ?? '',
-                  onSelected: _selectMerchant,
-                  fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (_merchantSearchController.text != controller.text) {
-                        controller.text = _merchantSearchController.text;
-                      }
-                    });
-                    return TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      decoration: const InputDecoration(
-                        hintText: '搜索或选择商家',
-                        prefixIcon: Icon(Icons.search),
-                      ),
-                      onChanged: _filterMerchants,
-                      onSubmitted: (_) => onSubmitted(),
-                    );
-                  },
-                ),
+              Autocomplete<Map<String, dynamic>>(
+                optionsBuilder: (textEditingValue) {
+                  final query = textEditingValue.text.toLowerCase();
+                  if (query.isEmpty) return _merchants;
+                  return _merchants.where((m) {
+                    final name = (m['name'] as String? ?? '').toLowerCase();
+                    return name.contains(query);
+                  }).toList();
+                },
+                displayStringForOption: (m) => m['name'] as String? ?? '',
+                onSelected: _selectMerchant,
+                fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: const InputDecoration(
+                      hintText: '搜索或选择商家',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                    onSubmitted: (_) => onSubmitted(),
+                  );
+                },
+              ),
               ],
             ),
           ),

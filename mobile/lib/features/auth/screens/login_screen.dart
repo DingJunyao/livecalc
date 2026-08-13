@@ -1,7 +1,8 @@
  import 'package:flutter/material.dart';
  import 'package:flutter_riverpod/flutter_riverpod.dart';
- import 'package:go_router/go_router.dart';
- import '../providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
+import '../providers/auth_provider.dart';
+import '../providers/server_provider.dart';
 import '../../profile/providers/startup_page_provider.dart';
  
  class LoginScreen extends ConsumerStatefulWidget {
@@ -33,10 +34,11 @@ import '../../profile/providers/startup_page_provider.dart';
  
    @override
    Widget build(BuildContext context) {
-     final theme = Theme.of(context);
-     final authState = ref.watch(authProvider);
- 
-     return Scaffold(
+    final theme = Theme.of(context);
+    final authState = ref.watch(authProvider);
+    final serverUrl = ref.watch(serverConfigProvider);
+
+    return Scaffold(
        body: SafeArea(
          child: Center(
            child: SingleChildScrollView(
@@ -76,9 +78,26 @@ import '../../profile/providers/startup_page_provider.dart';
                          : const Text('登录'),
                    ),
                    const SizedBox(height: 16),
-                   TextButton(onPressed: () => context.go('/register'), child: const Text('没有账号？去注册')),
-                   TextButton(onPressed: () => context.go('/server-config'), child: const Text('更换服务器')),
-                 ],
+                  TextButton(onPressed: () => context.go('/register'), child: const Text('没有账号？去注册')),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.dns_outlined, size: 13, color: theme.colorScheme.outline),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          serverUrl ?? '未配置服务器',
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.outline),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    ],
+                  ),
+                  TextButton(onPressed: () => context.go('/server-config'), child: const Text('更换服务器')),
+                ],
                ),
              ),
            ),
