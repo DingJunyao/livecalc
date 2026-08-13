@@ -145,15 +145,15 @@ class TestSaveProductOrders:
         assert [r.sort_order for r in records] == [0, 1, 2]
 
     def test_save_orders_upsert(self, db, test_data):
-        """同一天同商品再次保存应更新 sort_order。"""
+        """同一天同商品再次保存：新顺序追加到末尾，sort_order 不碰撞。"""
         mid = test_data["merchant_id"]
 
-        # 第一次保存
+        # 第一次保存 [1,2,3] → sort_order 0,1,2
         client.post(f"/api/v1/merchants/{mid}/product-orders", json={
             "product_ids": [1, 2, 3],
             "session_date": "2026-06-23",
         })
-        # 第二次保存相同商品但顺序不同
+        # 第二次保存相同商品但顺序不同 → 追加到 3,4,5
         client.post(f"/api/v1/merchants/{mid}/product-orders", json={
             "product_ids": [3, 2, 1],
             "session_date": "2026-06-23",
@@ -164,7 +164,30 @@ class TestSaveProductOrders:
             UserMerchantProductOrder.session_date == date(2026, 6, 23),
         ).order_by(UserMerchantProductOrder.sort_order).all()
         assert len(records) == 3
-        assert [(r.product_id, r.sort_order) for r in records] == [(3, 0), (2, 1), (1, 2)]
+        # 按 sort_order 排序后，商品顺序为最近一次填写的顺序 [3, 2, 1]
+        assert [r.product_id for r in records] == [3, 2, 1]
+        assert [r.sort_order for r in records] == [3, 4, 5]
+
+    def test_save_orders_append_no_collision(self, db, test_data):
+        """同一天分批保存不同商品：第二批追加到第一批之后，sort_order 不碰撞。"""
+        mid = test_data["merchant_id"]
+
+        client.post(f"/api/v1/merchants/{mid}/product-orders", json={
+            "product_ids": [1, 2],
+            "session_date": "2026-06-23",
+        })
+        client.post(f"/api/v1/merchants/{mid}/product-orders", json={
+            "product_ids": [3],
+            "session_date": "2026-06-23",
+        })
+
+        records = db.query(UserMerchantProductOrder).filter(
+            UserMerchantProductOrder.merchant_id == mid,
+            UserMerchantProductOrder.session_date == date(2026, 6, 23),
+        ).order_by(UserMerchantProductOrder.sort_order).all()
+        assert len(records) == 3
+        assert [r.product_id for r in records] == [1, 2, 3]
+        assert [r.sort_order for r in records] == [0, 1, 2]
 
     def test_save_orders_invalid_date(self, db, test_data):
         mid = test_data["merchant_id"]
@@ -182,13 +205,12 @@ class TestSaveProductOrders:
         assert resp.status_code == 404
 
 
-class TestCustomSortScore:
-    """测试 GET product-prices 返回 custom_sort_score。"""
+class TestFillOrder:
+    """测试 GET product-prices 返回 fill_sort_order / fill_session_date。"""
 
-    def test_custom_sort_score_in_response(self, db, test_data):
-        """验证设置了排序分的商品有 custom_sort_score 字段。"""
+    def test_fill_order_in_response(self, db, test_data):
+        """设置了排序记录的商品有 fill_sort_order 与 fill_session_date 字段。"""
         mid = test_data["merchant_id"]
-        pids = test_data["product_ids"]
 
         _create_price_record(db, 1, mid, 1)
         _create_price_record(db, 1, mid, 2)
@@ -201,30 +223,31 @@ class TestCustomSortScore:
 
         resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
         assert resp.status_code == 200
-        data = resp.json()
-        items = data["items"]
-        scored = [i for i in items if i["custom_sort_score"] is not None]
-        assert len(scored) == 3
-        scored_sorted = sorted(scored, key=lambda i: i["custom_sort_score"])
-        assert [s["product_id"] for s in scored_sorted] == [2, 1, 3]
+        items = resp.json()["items"]
+        filled = [i for i in items if i["fill_sort_order"] is not None]
+        assert len(filled) == 3
+        # 后端已按填写顺序排序：2, 1, 3
+        assert [i["product_id"] for i in items] == [2, 1, 3]
+        for i in filled:
+            assert i["fill_session_date"] == "2026-06-23"
 
-    def test_no_custom_score_by_default(self, db, test_data):
-        """没有排序记录时 custom_sort_score 为 null。"""
+    def test_no_fill_order_by_default(self, db, test_data):
+        """没有排序记录时 fill_sort_order 为 null。"""
         mid = test_data["merchant_id"]
         _create_price_record(db, 1, mid, 1)
 
         resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
         assert resp.status_code == 200
-        data = resp.json()
-        for item in data["items"]:
-            assert item["custom_sort_score"] is None
+        for item in resp.json()["items"]:
+            assert item["fill_sort_order"] is None
+            assert item["fill_session_date"] is None
 
 
-class TestWeightedSorting:
-    """测试加权排序算法。"""
+class TestMostRecentSessionOrder:
+    """测试按最近填写会话排序。"""
 
-    def test_three_day_weighted(self, db, test_data):
-        """最近 3 天加权后，今天权重最大。"""
+    def test_most_recent_session_wins(self, db, test_data):
+        """每个商品取最近一次填写会话的排序号；最近会话的商品排在最前。"""
         mid = test_data["merchant_id"]
 
         for pid in [1, 2, 3]:
@@ -232,12 +255,10 @@ class TestWeightedSorting:
 
         today = date.today()
         yesterday = today - timedelta(days=1)
-        day_before = today - timedelta(days=2)
 
         orders_data = [
-            (1, day_before, 0), (2, day_before, 1),
-            (3, yesterday, 0), (1, yesterday, 1),
-            (2, today, 0),
+            (1, yesterday, 0), (2, yesterday, 1),   # 昨天: 1→0, 2→1
+            (3, today, 0), (1, today, 1),            # 今天: 3→0, 1→1
         ]
         for pid, sess_date, sort_order in orders_data:
             rec = UserMerchantProductOrder(
@@ -250,12 +271,14 @@ class TestWeightedSorting:
         resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
         assert resp.status_code == 200
         items = resp.json()["items"]
-        scored = [(i["product_id"], i["custom_sort_score"]) for i in items if i["custom_sort_score"] is not None]
 
-        score_map = {pid: score for pid, score in scored}
-        assert score_map[1] == pytest.approx(0.666, abs=0.01)
-        assert score_map[2] == pytest.approx(0.25, abs=0.01)
-        assert score_map[3] == pytest.approx(0, abs=0.01)
+        # 今天的商品在前（按今天的 sort_order）：3, 1；昨天的在后：2
+        assert [i["product_id"] for i in items] == [3, 1, 2]
 
-        scored_sorted = sorted(scored, key=lambda x: x[1])
-        assert [p[0] for p in scored_sorted] == [3, 2, 1]
+        item1 = next(i for i in items if i["product_id"] == 1)
+        assert item1["fill_session_date"] == today.isoformat()
+        assert item1["fill_sort_order"] == 1
+
+        item2 = next(i for i in items if i["product_id"] == 2)
+        assert item2["fill_session_date"] == yesterday.isoformat()
+        assert item2["fill_sort_order"] == 1

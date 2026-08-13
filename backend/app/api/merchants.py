@@ -455,6 +455,19 @@ async def get_merchant_product_prices(
                        ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY recorded_at DESC) AS rn
                 FROM product_records
                 WHERE user_id = :uid AND merchant_id = :mid
+            ),
+            recent_orders AS (
+                SELECT product_id, session_date, sort_order
+                FROM (
+                    SELECT product_id, session_date, sort_order,
+                           ROW_NUMBER() OVER (
+                               PARTITION BY product_id
+                               ORDER BY session_date DESC, sort_order ASC
+                           ) AS orn
+                    FROM user_merchant_product_orders
+                    WHERE user_id = :uid AND merchant_id = :mid
+                ) sub
+                WHERE sub.orn = 1
             )
             SELECT l.product_id, l.price, l.original_quantity, l.standard_quantity,
                    l.recorded_at,
@@ -463,14 +476,22 @@ async def get_merchant_product_prices(
                    p.name,
                    ic.id            AS category_id,
                    ic.display_name  AS category_display_name,
-                   ic.sort_order    AS category_sort_order
+                   ic.sort_order    AS category_sort_order,
+                   ro.session_date  AS fill_session_date,
+                   ro.sort_order    AS fill_sort_order
             FROM latest l
             JOIN units su ON su.id = l.standard_unit_id
             JOIN products p ON p.id = l.product_id
             LEFT JOIN ingredients i ON i.id = p.ingredient_id
             LEFT JOIN ingredient_categories ic ON ic.id = i.category_id
+            LEFT JOIN recent_orders ro ON ro.product_id = l.product_id
             WHERE l.rn = 1
-            ORDER BY COALESCE(ic.sort_order, 999999) ASC, p.name ASC
+            ORDER BY
+                (ro.product_id IS NULL) ASC,
+                ro.session_date DESC,
+                ro.sort_order ASC,
+                COALESCE(ic.sort_order, 999999) ASC,
+                p.name ASC
             LIMIT :limit OFFSET :skip
         """)
 
@@ -491,37 +512,6 @@ async def get_merchant_product_prices(
             ) AS subq WHERE rn = 1
         """)
         total = db.execute(count_sql, {"uid": current_user.id, "mid": merchant_id}).scalar() or 0
-
-        # 计算自定义排序分（最近 3 天加权）
-        from datetime import timedelta, date as date_type
-        custom_scores: dict[int, float] = {}
-        score_records = db.query(UserMerchantProductOrder).filter(
-            UserMerchantProductOrder.user_id == current_user.id,
-            UserMerchantProductOrder.merchant_id == merchant_id,
-            UserMerchantProductOrder.session_date >= date_type.today() - timedelta(days=2),
-        ).all()
-
-        if score_records:
-            # 按 session_date 分组加权（今天×3，昨天×2，前天×1）
-            today = date_type.today()
-            weights: dict[date_type, int] = {}
-            for offset, w in [(0, 3), (1, 2), (2, 1)]:
-                d = today - timedelta(days=offset)
-                weights[d] = w
-
-            product_weights: dict[int, float] = {}
-            product_counts: dict[int, float] = {}
-
-            for rec in score_records:
-                w = weights.get(rec.session_date, 0)
-                if w > 0:
-                    pid = rec.product_id
-                    product_weights[pid] = product_weights.get(pid, 0) + rec.sort_order * w
-                    product_counts[pid] = product_counts.get(pid, 0) + w
-
-            for pid in product_weights:
-                custom_scores[pid] = product_weights[pid] / product_counts[pid]
-
         unit_service = UnitConversionService(db)
         items = []
         for r in rows:
@@ -551,7 +541,8 @@ async def get_merchant_product_prices(
                 "category_id": r.category_id,
                 "category_display_name": r.category_display_name,
                 "category_sort_order": r.category_sort_order,
-                "custom_sort_score": custom_scores.get(r.product_id),
+                "fill_sort_order": r.fill_sort_order,
+                "fill_session_date": str(r.fill_session_date) if r.fill_session_date else None,
             })
 
         page = (skip // limit) + 1 if limit else 1
@@ -617,13 +608,15 @@ async def save_product_orders(
             ).all()
         }
 
-        # seen 登记本轮新增的记录。请求体内若出现重复 product_id（如粘贴导入时
-        # 两行匹配到同一商品），第二次遇到时直接更新已有对象的 sort_order，
-        # 而非再次 db.add —— 否则同 (user, merchant, product, date) 会触发
-        # UNIQUE 约束冲突，整批 500 回滚，排序记录一条也写不进去。
+        # 新批次追加到当天已记录顺序的末尾，避免多次保存时 sort_order 碰撞。
+        # 例如先存 [A,B,C] 再存 [D,E]，D、E 应排在 A,B,C 之后（sort_order 3、4）
+        # 而非从 0 重新开始——否则与第一批碰撞，导致顺序错乱。
+        # 请求体内若出现重复 product_id（如粘贴导入时两行匹配到同一商品），
+        # 第二次遇到时更新已有对象的 sort_order（移到末尾），而非再次 db.add。
+        next_sort = max((r.sort_order for r in existing.values()), default=-1) + 1
         seen: dict[int, UserMerchantProductOrder] = {}
 
-        for idx, pid in enumerate(body.product_ids):
+        for pid in body.product_ids:
             record = seen.get(pid) or existing.get(pid)
             if record is None:
                 record = UserMerchantProductOrder(
@@ -631,13 +624,14 @@ async def save_product_orders(
                     merchant_id=merchant_id,
                     product_id=pid,
                     session_date=sess_date,
-                    sort_order=idx,
+                    sort_order=next_sort,
                 )
                 db.add(record)
                 seen[pid] = record
             else:
-                # 同一商品重复出现：后者覆盖前者的排序位置
-                record.sort_order = idx
+                record.sort_order = next_sort
+                seen[pid] = record
+            next_sort += 1
 
         db.commit()
         return {"message": f"已保存 {len(body.product_ids)} 条排序记录"}
@@ -814,5 +808,3 @@ async def get_merchants(
             status_code=500,
             detail="获取商家列表时发生未知错误"
         )
-
-
