@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../repositories/price_repository.dart';
+import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/widgets/numeric_keypad.dart';
 
 class QuickFillScreen extends ConsumerStatefulWidget {
@@ -73,26 +74,24 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     _loadHistoryProducts();
   }
 
-  Future<void> _loadHistoryProducts() async {
+ Future<void> _loadHistoryProducts() async {
    setState(() => _loading = true);
    try {
-      final result = await _repo.getRecords(merchantId: _selectedMerchantId, pageSize: 20);
-      final records = result.records;
-      final seen = <String>{};
-      final products = <Map<String, dynamic>>[];
-      for (final r in records) {
-        final key = '${r.productId}_${r.productName}';
-        if (seen.add(key)) {
-          products.add({'id': r.productId, 'name': r.productName, 'unit': r.unit});
-        }
-      }
+      // 对齐 web 端：用 /merchants/{id}/product-prices（limit 200）获取全部商品，
+      // 而非 /products 分页 20 条记录去重（商品多时会截断）。
+      final merchantRepo = MerchantRepository();
+      final page = await merchantRepo.getProductPrices(
+        _selectedMerchantId!,
+        skip: 0,
+        limit: 200,
+      );
       setState(() {
         _rows.clear();
-        for (final p in products) {
+        for (final p in page.items) {
           _rows.add(_PriceRow(
-            name: p['name'] as String,
-            unit: p['unit'] as String? ?? '个',
-            productId: p['id'] as int?,
+            name: p.productName,
+            unit: '斤',
+            productId: p.productId,
           ));
         }
         _loading = false;
@@ -342,16 +341,24 @@ class _PriceRowWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-              Expanded(
-                child: TextField(
-                  controller: row.nameController,
-                  decoration: const InputDecoration(
-                    labelText: '商品名',
-                    border: InputBorder.none,
-                    isDense: true,
-                  ),
-                ),
-              ),
+             Expanded(
+               child: row.productId != null
+                   ? Padding(
+                       padding: const EdgeInsets.symmetric(vertical: 10),
+                       child: Text(
+                         row.nameController.text,
+                         style: Theme.of(context).textTheme.bodyLarge,
+                       ),
+                     )
+                   : TextField(
+                       controller: row.nameController,
+                       decoration: const InputDecoration(
+                         labelText: '商品名',
+                         border: InputBorder.none,
+                         isDense: true,
+                       ),
+                     ),
+             ),
               const SizedBox(width: 8),
               SizedBox(
                 width: 100,

@@ -25,8 +25,14 @@ class _ImportRow {
   /// 由 _openEditor 创建、_cancelEdit/_chooseExisting/_chooseNewSame 释放。
   TextEditingController? searchController;
 
-  /// _onExistingSearch 的请求序号，用于丢弃过期的异步响应（竞态保护）。
+ /// _onExistingSearch 的请求序号，用于丢弃过期的异步响应（竞态保护）。
   int searchSeq = 0;
+
+  /// 原料搜索的状态（new_attach 模式：新建商品并关联到原料）。
+  String ingredientSearch = '';
+  List<Map<String, dynamic>> ingredientSuggestions = const [];
+  TextEditingController? ingredientSearchController;
+  int ingredientSearchSeq = 0;
 
   _ImportRow({required this.parsed, required this.status});
 }
@@ -263,19 +269,21 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
   // -------- 手动三分支 --------
 
   void _openEditor(_ImportRow row) {
-    // 持久 controller：仅首次展开时创建，避免 rebuild 时光标被强制跳末尾
+    // 持久 controller：仅首次展开时创建，避免 rebuild 时光标被强制跳末尾。
+    // 不预填商品名：用户手动匹配时应从空白开始搜索，避免误关联同名商品。
     if (row.searchController == null) {
-      row.searchController = TextEditingController(text: row.parsed.name);
-      row.productSearch = row.parsed.name;
+      row.searchController = TextEditingController();
+      row.productSearch = '';
     }
+    row.ingredientSearchController ??= TextEditingController();
     setState(() => row.editing = true);
-    // 预填后立即触发一次搜索
-    _onExistingSearch(row, row.parsed.name);
   }
 
   void _releaseEditor(_ImportRow row) {
     row.searchController?.dispose();
     row.searchController = null;
+    row.ingredientSearchController?.dispose();
+    row.ingredientSearchController = null;
   }
 
   void _cancelEdit(_ImportRow row) {
@@ -325,8 +333,47 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
     });
   }
 
-  // new_attach 分支首版未实现入口 UI（原料搜索异步下拉需额外组件，
-  // 且需求允许简化）；保留模式枚举以备后续扩展。
+  // -------- 原料搜索（new_attach 模式） --------
+
+  Future<void> _onIngredientSearch(_ImportRow row, String query) async {
+    setState(() => row.ingredientSearch = query);
+    if (query.isEmpty) {
+      setState(() => row.ingredientSuggestions = const []);
+      return;
+    }
+    final mySeq = ++row.ingredientSearchSeq;
+    try {
+      final resp = await _priceRepo.client.dio.get(
+        '/ingredients',
+        queryParameters: {'q': query, 'limit': 20},
+      );
+      if (!mounted || mySeq != row.ingredientSearchSeq) return;
+      final data = resp.data;
+      final list = (data is List)
+          ? data
+          : ((data['items'] as List?) ?? const []);
+      final items = list.cast<Map<String, dynamic>>();
+      setState(() {
+        row.ingredientSuggestions = items
+            .map((e) => {'id': e['id'], 'name': e['name']})
+            .toList();
+      });
+    } on Exception {
+      if (!mounted || mySeq != row.ingredientSearchSeq) return;
+      setState(() => row.ingredientSuggestions = const []);
+    }
+  }
+
+  void _chooseAttach(_ImportRow row, Map<String, dynamic> opt) {
+    setState(() {
+      row.productId = null;
+      row.ingredientId = _toInt(opt['id']);
+      row.mode = _MatchMode.newAttach;
+      row.status = _RowStatus.matched;
+      row.editing = false;
+      _releaseEditor(row);
+    });
+  }
 
   // -------- 导入 --------
 
@@ -675,28 +722,54 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.only(top: 4),
                   children: [
-                    for (final s in row.suggestions)
-                      ListTile(
-                        key: Key('paste-suggestion-${s['id']}'),
-                        dense: true,
-                        title: Text('${s['name']}'),
-                        subtitle: s['match_type'] != null
-                            ? Text('#${s['id']} · ${s['match_type']}',
-                                style: theme.textTheme.bodySmall)
-                            : Text('#${s['id']}',
-                                style: theme.textTheme.bodySmall),
-                        onTap: () => _chooseExisting(row, s),
-                      ),
+                   for (final s in row.suggestions)
+                     ListTile(
+                       key: Key('paste-suggestion-${s['id']}'),
+                       dense: true,
+                       title: Text('${s['name']}'),
+                       onTap: () => _chooseExisting(row, s),
+                     ),
                   ],
                 ),
               ),
-            const SizedBox(height: 8),
-            // 创建同名商品
-            FilledButton.tonalIcon(
-              onPressed: () => _chooseNewSame(row),
-              icon: const Icon(Icons.add),
-              label: const Text('创建同名商品'),
-            ),
+           const SizedBox(height: 8),
+           // 搜索原料：新建商品并关联到该原料（new_attach 模式）
+           TextField(
+             key: const Key('paste-ingredient-search'),
+             decoration: const InputDecoration(
+               labelText: '关联到原料',
+               hintText: '搜索原料…',
+               border: OutlineInputBorder(),
+               isDense: true,
+               prefixIcon: Icon(Icons.eco_outlined),
+             ),
+             onChanged: (v) => _onIngredientSearch(row, v),
+             controller: row.ingredientSearchController,
+           ),
+           if (row.ingredientSuggestions.isNotEmpty)
+             ConstrainedBox(
+               constraints: const BoxConstraints(maxHeight: 200),
+               child: ListView(
+                 shrinkWrap: true,
+                 padding: const EdgeInsets.only(top: 4),
+                 children: [
+                   for (final s in row.ingredientSuggestions)
+                    ListTile(
+                      key: Key('paste-ingredient-${s['id']}'),
+                      dense: true,
+                      title: Text('${s['name']}'),
+                      onTap: () => _chooseAttach(row, s),
+                    ),
+                 ],
+               ),
+             ),
+           const SizedBox(height: 8),
+           // 创建同名商品
+           FilledButton.tonalIcon(
+             onPressed: () => _chooseNewSame(row),
+             icon: const Icon(Icons.add),
+             label: const Text('创建同名原料 + 商品'),
+           ),
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
