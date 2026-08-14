@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/utils/smooth_path.dart';
 import '../repositories/recipe_repository.dart';
 
 /// 成本趋势图表：min/max 区间带 + avg 折线 + 触摸 tooltip + 区间筛选。
@@ -82,8 +83,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
       isDense: true,
       underline: const SizedBox.shrink(),
       items: _Range.values
-          .map((r) =>
-              DropdownMenuItem(value: r, child: Text(labels[r.name]!)))
+          .map((r) => DropdownMenuItem(value: r, child: Text(labels[r.name]!)))
           .toList(),
       onChanged: (r) {
         if (r == null) return;
@@ -288,18 +288,21 @@ class _TrendPainter extends CustomPainter {
 
     // min/max 区间带
     final bandPath = Path();
-    for (var i = 0; i < points.length; i++) {
-      final x = xAt(i);
-      final y = yAt(points[i].maxCost);
-      if (i == 0) {
-        bandPath.moveTo(x, y);
-      } else {
-        bandPath.lineTo(x, y);
-      }
-    }
-    for (var i = points.length - 1; i >= 0; i--) {
-      bandPath.lineTo(xAt(i), yAt(points[i].minCost));
-    }
+    appendSmoothSegments(
+      bandPath,
+      [
+        for (var i = 0; i < points.length; i++)
+          Offset(xAt(i), yAt(points[i].maxCost)),
+      ],
+    );
+    appendSmoothSegments(
+      bandPath,
+      [
+        for (var i = points.length - 1; i >= 0; i--)
+          Offset(xAt(i), yAt(points[i].minCost)),
+      ],
+      moveToFirst: false,
+    );
     bandPath.close();
     canvas.drawPath(
       bandPath,
@@ -352,17 +355,9 @@ class _TrendPainter extends CustomPainter {
 
   Path _pathOf(List<CostHistoryPoint> pts, double Function(int) xAt,
       double Function(CostHistoryPoint) sel, double Function(double) yAt) {
-    final path = Path();
-    for (var i = 0; i < pts.length; i++) {
-      final x = xAt(i);
-      final y = yAt(sel(pts[i]));
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    return path;
+    return buildSmoothPath([
+      for (var i = 0; i < pts.length; i++) Offset(xAt(i), yAt(sel(pts[i]))),
+    ]);
   }
 
   void _drawDashed(Canvas canvas, Path path, Paint paint) {

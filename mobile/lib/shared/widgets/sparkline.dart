@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/smooth_path.dart';
 
 /// 迷你趋势线（列表行尾展示，对应 Web SparklineBackground）。
 class Sparkline extends StatelessWidget {
@@ -39,18 +40,15 @@ class _SparklinePainter extends CustomPainter {
       maxV += 1;
       minV -= 1;
     }
-    final path = Path();
+    final points = <Offset>[];
     for (var i = 0; i < data.length; i++) {
       final x = size.width * i / (data.length - 1);
       final y = size.height -
           (data[i] - minV) / (maxV - minV) * (size.height - 2) -
           1;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
+      points.add(Offset(x, y));
     }
+    final path = buildSmoothPath(points);
     final line = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
