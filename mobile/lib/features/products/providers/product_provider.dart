@@ -439,7 +439,10 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         pageSize: 500,
       );
       state = state.copyWith(
-        chartPoints: buildPriceTrendPoints(result.records),
+        chartPoints: buildPriceTrendPoints(
+          result.records,
+          useStandardQuantity: true,
+        ),
         loadingChart: false,
       );
     } on Exception {

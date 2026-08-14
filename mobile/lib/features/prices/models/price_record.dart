@@ -22,6 +22,8 @@ class PriceRecord {
   final double price; // 记录总价（后端 price，Decimal → double）
   final double quantity; // 原始数量（后端 original_quantity）
   final String unit; // 原始单位（后端 original_unit）
+  final double? standardQuantity; // 后端标准化后的数量
+  final String? standardUnit; // 后端标准化后的单位
   final int? merchantId;
   final String? merchantName;
   final String recordedAt;
@@ -35,6 +37,8 @@ class PriceRecord {
     required this.price,
     required this.quantity,
     required this.unit,
+    this.standardQuantity,
+    this.standardUnit,
     this.merchantId,
     this.merchantName,
     required this.recordedAt,
@@ -54,6 +58,10 @@ class PriceRecord {
       unit: (json['original_unit'] as String?) ??
           (json['unit'] as String?) ??
           '个',
+      standardQuantity: json['standard_quantity'] == null
+          ? null
+          : _toDouble(json['standard_quantity']),
+      standardUnit: json['standard_unit'] as String?,
       merchantId: json['merchant_id'] as int?,
       merchantName: json['merchant_name'] as String?,
       recordedAt: json['recorded_at'] as String? ??
