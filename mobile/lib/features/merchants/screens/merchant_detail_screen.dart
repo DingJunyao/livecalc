@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../models/merchant.dart';
 import '../models/merchant_product_price.dart';
+import '../providers/map_config_provider.dart';
 import '../providers/merchant_provider.dart';
 import '../widgets/merchant_map_view.dart';
 
@@ -24,6 +27,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(merchantDetailPageProvider(widget.id).notifier).load();
+      if (!Platform.isIOS) ref.read(mapConfigProvider.notifier).load();
     });
   }
 
@@ -31,6 +35,8 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(merchantDetailPageProvider(widget.id));
+    final mapConfig = ref.watch(mapConfigProvider);
+    final mapReady = Platform.isIOS || mapConfig.loaded;
     final merchant = state.merchant;
 
     if (state.error != null && merchant == null) {
@@ -117,10 +123,28 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
                       const Divider(height: 12),
                       SizedBox(
                         height: 260,
-                        child: MerchantMapView(
-                          merchants: [merchant],
-                          selectedId: merchant.id,
-                        ),
+                        child: mapReady
+                            ? MerchantMapView(
+                                merchants: [merchant],
+                                selectedId: merchant.id,
+                                mapConfig: mapConfig,
+                              )
+                            : DecoratedBox(
+                                decoration: BoxDecoration(
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
                       ),
                     ],
                   ),
@@ -314,8 +338,8 @@ class _BasicInfoCard extends StatelessWidget {
                           ?.copyWith(color: theme.colorScheme.outline)),
                   const SizedBox(width: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
                       color: (merchant.isOpen
                               ? theme.colorScheme.primary
@@ -439,13 +463,12 @@ class _ProductPricesCard extends StatelessWidget {
                     child: Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor:
-                              theme.colorScheme.tertiaryContainer,
+                          backgroundColor: theme.colorScheme.tertiaryContainer,
                           foregroundColor:
                               theme.colorScheme.onTertiaryContainer,
                           radius: 18,
-                          child: const Icon(Icons.inventory_2_outlined,
-                              size: 18),
+                          child:
+                              const Icon(Icons.inventory_2_outlined, size: 18),
                         ),
                         const SizedBox(width: 12),
                         Expanded(

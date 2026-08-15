@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -34,8 +36,7 @@ class MerchantListScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<MerchantListScreen> createState() =>
-      _MerchantListScreenState();
+  ConsumerState<MerchantListScreen> createState() => _MerchantListScreenState();
 }
 
 class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
@@ -57,7 +58,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     Future.microtask(() {
       ref.read(merchantListProvider.notifier).load();
       ref.read(merchantListProvider.notifier).loadFavorites();
-      ref.read(mapConfigProvider.notifier).load();
+      if (!Platform.isIOS) ref.read(mapConfigProvider.notifier).load();
     });
     _loadPlaces();
     _scrollController.addListener(_onScroll);
@@ -144,6 +145,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(merchantListProvider);
+    final mapConfig = ref.watch(mapConfigProvider);
+    final mapReady = Platform.isIOS || mapConfig.loaded;
     ref.listen(merchantListProvider, (prev, next) {
       if (prev == null ||
           (prev.items.isEmpty && next.items.isNotEmpty) ||
@@ -182,17 +185,32 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
               child: SizedBox(
                 height: 260,
-                child: MerchantMapView(
-                  merchants: state.items,
-                  selectedId: _selectedMerchant?.id,
-                  controller: _mapController,
-                  allCoordinates: _allCoordinates,
-                  mapConfig: ref.watch(mapConfigProvider),
-                  places: _places,
-                  currentPlaceId: _currentPlaceId,
-                  onPlaceChanged: _onPlaceChanged,
-                  showControls: true,
-                ),
+                child: mapReady
+                    ? MerchantMapView(
+                        merchants: state.items,
+                        selectedId: _selectedMerchant?.id,
+                        controller: _mapController,
+                        allCoordinates: _allCoordinates,
+                        mapConfig: mapConfig,
+                        places: _places,
+                        currentPlaceId: _currentPlaceId,
+                        onPlaceChanged: _onPlaceChanged,
+                        showControls: true,
+                        tileProvider: widget.mapTileProvider,
+                      )
+                    : DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      ),
               ),
             ),
           Expanded(child: _buildBody(theme, state)),
@@ -276,9 +294,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       return EmptyState(
         icon: Icons.store,
         title: state.favoritesOnly ? '暂无收藏商家' : '暂无商家',
-        subtitle: state.favoritesOnly
-            ? '收藏的商家会显示在这里'
-            : '点击右下角按钮添加第一个商家',
+        subtitle: state.favoritesOnly ? '收藏的商家会显示在这里' : '点击右下角按钮添加第一个商家',
       );
     }
     return RefreshIndicator(
@@ -440,8 +456,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 
   Future<void> _showMerchantDialog({Merchant? item}) async {
     final nameController = TextEditingController(text: item?.name ?? '');
-    final addressController =
-        TextEditingController(text: item?.address ?? '');
+    final addressController = TextEditingController(text: item?.address ?? '');
     // 地图选中的位置（WGS84）；未选时商家无坐标（地图上不显示）。
     LatLng? picked = (item?.latitude == null || item?.longitude == null)
         ? null

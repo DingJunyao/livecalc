@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,7 @@ import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 
 class MockRepo extends Mock implements MerchantRepository {}
+
 class MockProfileRepo extends Mock implements ProfileRepository {}
 
 /// 内存瓦片：消除测试里真实网络请求的噪音。
@@ -54,16 +57,16 @@ void main() {
           skip: any(named: 'skip'),
           limit: any(named: 'limit'),
         )).thenAnswer((_) async => const MerchantPage(
-              items: [
-                Merchant(
-                  id: 1,
-                  name: '盒马鲜生',
-                  latitude: 31.2304,
-                  longitude: 121.4737,
-                ),
-              ],
-              total: 1,
-            ));
+          items: [
+            Merchant(
+              id: 1,
+              name: '盒马鲜生',
+              latitude: 31.2304,
+              longitude: 121.4737,
+            ),
+          ],
+          total: 1,
+        ));
     when(() => repo.getFavorites()).thenAnswer((_) async => const [
           Merchant(id: 1, name: '盒马鲜生', isOpen: true),
           Merchant(id: 2, name: '千禧量贩', isOpen: false),
@@ -93,7 +96,8 @@ void main() {
           longitude: any(named: 'longitude'),
         )).thenAnswer((_) async => const Merchant(id: 1, name: '盒马鲜生'));
     profileRepo = MockProfileRepo();
-    when(() => profileRepo.getPlaces()).thenAnswer((_) async => [_home, _office]);
+    when(() => profileRepo.getPlaces())
+        .thenAnswer((_) async => [_home, _office]);
   });
 
   Future<void> pumpList(WidgetTester tester) async {
@@ -113,6 +117,41 @@ void main() {
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('embedded map waits for map config before rendering layers',
+      (tester) async {
+    final response = Completer<Map<String, dynamic>>();
+    when(() => repo.getMapConfig()).thenAnswer((_) => response.future);
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        merchantListProvider.overrideWith((ref) => MerchantListNotifier(repo)),
+        mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
+      ],
+      child: MaterialApp(
+        home: MerchantListScreen(
+          initialShowMap: true,
+          profileRepository: profileRepo,
+          merchantRepository: repo,
+          mapTileProvider: _MemoryTileProvider(),
+        ),
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byType(FlutterMap), findsNothing);
+    expect(find.byKey(const ValueKey('layer-switch')), findsNothing);
+
+    response.complete({
+      'available_maps': ['amap', 'tencent', 'osm'],
+      'default_map': 'amap',
+      'map_enabled': true,
+    });
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TileLayer>(find.byType(TileLayer)).urlTemplate,
+      amapLayer.urlTemplate,
+    );
+  });
 
   testWidgets('筛选弹窗：三个控件可切换，点确定后提交到 provider', (tester) async {
     await pumpList(tester);
@@ -147,8 +186,8 @@ void main() {
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
-    final container =
-        ProviderScope.containerOf(tester.element(find.byType(MerchantListScreen)));
+    final container = ProviderScope.containerOf(
+        tester.element(find.byType(MerchantListScreen)));
     final state = container.read(merchantListProvider);
     expect(state.includeClosed, isTrue);
     expect(state.favoritesOnly, isTrue);
@@ -184,8 +223,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('添加商家'), findsOneWidget);
 
-      await tester.enterText(
-          find.widgetWithText(TextField, '商家名称 *'), '社区超市');
+      await tester.enterText(find.widgetWithText(TextField, '商家名称 *'), '社区超市');
       // 对话框自动滚到地图可见；OSM 底图点中心 = 北京，坐标原样
       // （页面地图 MerchantMapView 也在树里，须限定对话框范围）
       await tester.tap(find.descendant(
@@ -277,13 +315,13 @@ void main() {
             skip: any(named: 'skip'),
             limit: any(named: 'limit'),
           )).thenAnswer((_) async => const MerchantPage(
-                items: [
-                  // 中点 (31.2, 121.2)，与记忆地点「公司」(31.25, 121.5) 区分开
-                  Merchant(id: 1, name: '商家A', latitude: 31.0, longitude: 121.0),
-                  Merchant(id: 2, name: '商家B', latitude: 31.4, longitude: 121.4),
-                ],
-                total: 2,
-              ));
+            items: [
+              // 中点 (31.2, 121.2)，与记忆地点「公司」(31.25, 121.5) 区分开
+              Merchant(id: 1, name: '商家A', latitude: 31.0, longitude: 121.0),
+              Merchant(id: 2, name: '商家B', latitude: 31.4, longitude: 121.4),
+            ],
+            total: 2,
+          ));
       when(() => repo.getAllCoordinates(
             search: any(named: 'search'),
             includeClosed: any(named: 'includeClosed'),

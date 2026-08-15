@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -21,6 +23,32 @@ void main() {
     await container.read(mapConfigProvider.notifier).load();
     return container.read(mapConfigProvider);
   }
+
+  test('load merges concurrent requests and caches the completed config',
+      () async {
+    final response = Completer<Map<String, dynamic>>();
+    when(() => repo.getMapConfig()).thenAnswer((_) => response.future);
+    final container = ProviderContainer(overrides: [
+      mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
+    ]);
+    addTearDown(container.dispose);
+    final notifier = container.read(mapConfigProvider.notifier);
+
+    final first = notifier.load();
+    final second = notifier.load();
+    expect(container.read(mapConfigProvider).loading, isTrue);
+
+    response.complete({
+      'available_maps': ['amap', 'tencent', 'osm'],
+      'default_map': 'amap',
+      'map_enabled': true,
+    });
+    await Future.wait([first, second]);
+
+    expect(container.read(mapConfigProvider).loaded, isTrue);
+    await notifier.load();
+    verify(() => repo.getMapConfig()).called(1);
+  });
 
   test('available_maps 过滤：仅保留 高德/腾讯/OSM，去掉 baidu/tianditu', () async {
     when(() => repo.getMapConfig()).thenAnswer((_) async => {

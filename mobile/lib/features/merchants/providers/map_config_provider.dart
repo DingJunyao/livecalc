@@ -8,6 +8,7 @@ class MapLayerOption {
   final String urlTemplate;
   final List<String> subdomains;
   final bool gcj02;
+
   /// 瓦片 y 轴是否为 TMS（从南到北）。腾讯是 TMS，不翻转则北半球取到南半球瓦片。
   final bool tms;
 
@@ -58,12 +59,14 @@ class MapConfigState {
   final String defaultId;
   final bool mapEnabled;
   final bool loading;
+  final bool loaded;
 
   const MapConfigState({
     this.layers = osmOnlyLayers,
     this.defaultId = 'osm',
     this.mapEnabled = true,
     this.loading = false,
+    this.loaded = false,
   });
 
   MapConfigState copyWith({
@@ -71,31 +74,39 @@ class MapConfigState {
     String? defaultId,
     bool? mapEnabled,
     bool? loading,
+    bool? loaded,
   }) {
     return MapConfigState(
       layers: layers ?? this.layers,
       defaultId: defaultId ?? this.defaultId,
       mapEnabled: mapEnabled ?? this.mapEnabled,
       loading: loading ?? this.loading,
+      loaded: loaded ?? this.loaded,
     );
   }
 }
 
 class MapConfigNotifier extends StateNotifier<MapConfigState> {
   final MerchantRepository _repo;
+  Future<void>? _loadFuture;
+
   MapConfigNotifier(this._repo) : super(const MapConfigState());
 
-  /// 加载底图配置：available_maps 与三常量交集，default_map 取交集内的，
-  /// 否则 amap；请求失败兜底仅 OSM（web 同：失败回退启用）。
-  Future<void> load() async {
+  /// 加载底图配置：available_maps 与三常量交集，default_map 取交集内的。
+  /// 成功后缓存，避免多个地图入口同时渲染时重复请求或暴露初始兜底。
+  Future<void> load() {
+    if (super.state.loaded) return Future.value();
+    return _loadFuture ??= _fetch();
+  }
+
+  Future<void> _fetch() async {
     state = state.copyWith(loading: true);
     try {
       final data = await _repo.getMapConfig();
       final available =
           (data['available_maps'] as List?)?.cast<String>() ?? const [];
-      final layers = mapLayerOptions
-          .where((o) => available.contains(o.id))
-          .toList();
+      final layers =
+          mapLayerOptions.where((o) => available.contains(o.id)).toList();
       final defaultId = layers.any((o) => o.id == data['default_map'])
           ? data['default_map'] as String
           : (layers.isNotEmpty ? layers.first.id : 'osm');
@@ -103,12 +114,21 @@ class MapConfigNotifier extends StateNotifier<MapConfigState> {
         layers: layers.isEmpty ? osmOnlyLayers : layers,
         defaultId: defaultId,
         mapEnabled: data['map_enabled'] != false,
+        loaded: true,
       );
     } catch (_) {
-      // 失败回退仅 OSM + 启用（对齐 web 保守策略）
-      state = const MapConfigState();
+      // 失败回退仅 OSM + 启用（对齐 web 保守策略）。
+      state = state.copyWith(
+        layers: osmOnlyLayers,
+        defaultId: 'osm',
+        mapEnabled: true,
+        loading: false,
+        loaded: true,
+      );
+      return;
     } finally {
-      state = state.copyWith(loading: false);
+      _loadFuture = null;
+      if (state.loading) state = state.copyWith(loading: false);
     }
   }
 }

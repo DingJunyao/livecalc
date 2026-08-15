@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -70,9 +71,52 @@ const _mapConfig = MapConfigState(
 );
 
 void main() {
+  testWidgets('auto-loads map config before exposing tile layers',
+      (tester) async {
+    final response = Completer<Map<String, dynamic>>();
+    final repo = MockRepo();
+    when(() => repo.getMapConfig()).thenAnswer((_) => response.future);
+    final container = ProviderContainer(overrides: [
+      mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: MapPointPicker(tileProvider: _MemoryTileProvider()),
+          ),
+        ),
+      ),
+    ));
+
+    expect(find.byType(FlutterMap), findsNothing);
+    expect(find.byKey(const ValueKey('picker-layer-switch')), findsNothing);
+
+    response.complete({
+      'available_maps': ['amap', 'tencent', 'osm'],
+      'default_map': 'amap',
+      'map_enabled': true,
+    });
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TileLayer>(find.byType(TileLayer)).urlTemplate,
+      amapLayer.urlTemplate,
+    );
+    await tester.tap(find.byKey(const ValueKey('picker-layer-switch')));
+    await tester.pumpAndSettle();
+    expect(find.text(amapLayer.label), findsOneWidget);
+    expect(find.text(tencentLayer.label), findsOneWidget);
+    expect(find.text(osmLayer.label), findsOneWidget);
+  });
+
   testWidgets('点击地图：高德底图下 onChanged 收到 WGS84（已逆转换）', (tester) async {
     LatLng? picked;
-    await pumpPicker(tester, mapConfig: _mapConfig, onChanged: (v) => picked = v);
+    await pumpPicker(tester,
+        mapConfig: _mapConfig, onChanged: (v) => picked = v);
 
     await tester.tapAt(tester.getCenter(find.byType(FlutterMap)));
     await tester.pump();
@@ -144,7 +188,8 @@ void main() {
 
   testWidgets('切底图到 OSM 后点击：onChanged 收到显示坐标原样（不逆转换）', (tester) async {
     LatLng? picked;
-    await pumpPicker(tester, mapConfig: _mapConfig, onChanged: (v) => picked = v);
+    await pumpPicker(tester,
+        mapConfig: _mapConfig, onChanged: (v) => picked = v);
 
     await tester.tap(find.byKey(const ValueKey('picker-layer-switch')));
     await tester.pumpAndSettle();

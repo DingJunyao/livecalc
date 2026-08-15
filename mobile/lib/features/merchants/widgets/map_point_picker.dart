@@ -58,7 +58,11 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
     super.initState();
     _controller = MapController();
     _wgs = widget.initialValue;
-    _layer = _pickLayer(ref.read(mapConfigProvider));
+    final config = ref.read(mapConfigProvider);
+    _layer = config.loaded ? _pickLayer(config) : null;
+    if (!Platform.isIOS && !config.loaded) {
+      Future.microtask(() => ref.read(mapConfigProvider.notifier).load());
+    }
     // 对话框内容超高时地图在视口外：打开后自动滚到地图可见（选点是核心操作）。
     // 无 Scrollable 祖先（非对话框场景）时 ensureVisible 直接返回。
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -73,6 +77,11 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialValue != widget.initialValue) {
       _wgs = widget.initialValue;
+    }
+    final config = ref.read(mapConfigProvider);
+    final layer = _layer;
+    if (layer == null || !config.layers.contains(layer)) {
+      _layer = _pickLayer(config);
     }
   }
 
@@ -124,6 +133,35 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
     }
     final theme = Theme.of(context);
     final mapConfig = ref.watch(mapConfigProvider);
+    if (!mapConfig.loaded || mapConfig.loading) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            key: const ValueKey('picker-map-loading'),
+            height: widget.height,
+            width: widget.width,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Center(
+                child: SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    if (_layer == null || !mapConfig.layers.contains(_layer)) {
+      _layer = _pickLayer(mapConfig);
+    }
     final layer = _layer;
     final wgs = _wgs;
 
