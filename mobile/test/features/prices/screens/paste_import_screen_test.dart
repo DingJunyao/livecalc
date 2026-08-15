@@ -142,6 +142,24 @@ void main() {
     );
     expect(find.text('粘贴导入价格'), findsOneWidget); // AppBar 标题
     expect(find.text('复制模板'), findsOneWidget);
+    expect(find.byKey(const Key('paste-recorded-at-field')), findsOneWidget);
+
+    final rawFieldFinder = find.byKey(const Key('paste-raw-text-field'));
+    final rawField = tester.widget<TextField>(rawFieldFinder);
+    expect(rawField.maxLines, 4);
+    expect(rawField.minLines, 4);
+    expect(
+      find.text('粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）'),
+      findsOneWidget,
+    );
+
+    final initialSize = tester.getSize(rawFieldFinder);
+    await tester.enterText(
+      rawFieldFinder,
+      List.filled(40, '商品 1').join('\n'),
+    );
+    await tester.pump();
+    expect(tester.getSize(rawFieldFinder), initialSize);
   });
 
   testWidgets('复制模板写入剪贴板（每行商品名+空格）', (tester) async {
@@ -240,6 +258,7 @@ void main() {
     // 必须显式传 recordType='price'（默认是 purchase）
     expect(priceRepo.createCalls.single['record_type'], 'price');
     expect(priceRepo.createCalls.single['merchant_id'], 7);
+    expect(priceRepo.createCalls.single['recorded_at'], isA<DateTime>());
     // existing 成功后加别名
     expect(priceRepo.aliasCount, 1);
     expect(priceRepo.aliasCalls.single, (productId: 1, name: '芹菜'));
@@ -314,7 +333,10 @@ void main() {
     // unmatched 行点商品名展开内联面板
     await tester.tap(find.text('新菜'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('创建同名商品'));
+    final newSameButton = find.byKey(const Key('paste-new-same-button'));
+    await tester.ensureVisible(newSameButton);
+    await tester.pumpAndSettle();
+    await tester.tap(newSameButton);
     await tester.pumpAndSettle();
 
     // 状态变 matched（导入按钮可见且计数为 1）

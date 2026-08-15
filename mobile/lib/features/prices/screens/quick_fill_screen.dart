@@ -155,8 +155,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
           IconButton(
             icon: const Icon(Icons.paste),
             tooltip: '粘贴导入',
-            // 仅选了商家后可用（对齐网页端 :disabled="!selectedMerchantId"）
-            onPressed: _selectedMerchantId == null
+            key: const Key('quick-fill-paste-button'),
+            // 历史商品加载中也必须禁用：模板依赖加载完成的商品名列表。
+            onPressed: _selectedMerchantId == null || _loading
                 ? null
                 : () async {
                     final savedIds = await context.push<List<int>>(

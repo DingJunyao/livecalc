@@ -83,6 +83,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
   final _rawTextController = TextEditingController();
   final _scrollController = ScrollController();
 
+  DateTime _recordedAt = DateTime.now();
   List<_ImportRow> _rows = const [];
   bool _parsing = false;
   bool _importing = false;
@@ -133,6 +134,27 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('已复制模板')),
     );
+  }
+
+  Future<void> _pickRecordedAt() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _recordedAt,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (date == null || !mounted) return;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_recordedAt),
+    );
+    if (time == null || !mounted) return;
+
+    setState(() {
+      _recordedAt =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
   }
 
   // -------- 解析 + 自动匹配 --------
@@ -413,6 +435,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
               ingredientId:
                   row.mode == _MatchMode.newAttach ? row.ingredientId : null,
               recordType: 'price', // 必须显式传（默认 purchase）
+              recordedAt: _recordedAt,
             );
             // 成功后给商品加别名（existing→已有 id / new_attach→新建 id）
             // new_same 不加别名（用户本就想用此名）。
@@ -492,6 +515,20 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // 与新增价格记录页保持一致的记录时间选择器。
+              ListTile(
+                key: const Key('paste-recorded-at-field'),
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.schedule),
+                title: const Text('记录时间'),
+                trailing: Text(
+                  '${_recordedAt.year}-${_recordedAt.month.toString().padLeft(2, '0')}-${_recordedAt.day.toString().padLeft(2, '0')} '
+                  '${_recordedAt.hour.toString().padLeft(2, '0')}:${_recordedAt.minute.toString().padLeft(2, '0')}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                onTap: _pickRecordedAt,
+              ),
+              const SizedBox(height: 8),
               // 复制模板
               Align(
                 alignment: Alignment.centerRight,
@@ -507,12 +544,12 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
               TextField(
                 key: const Key('paste-raw-text-field'),
                 controller: _rawTextController,
-                maxLines: null,
+                maxLines: 4,
                 minLines: 4,
                 decoration: const InputDecoration(
                   hintText: '芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g',
                   border: OutlineInputBorder(),
-                  labelText: '粘贴价格文本（每行一条，格式：名称 价格[/单位]）',
+                  labelText: '粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）',
                 ),
               ),
               const SizedBox(height: 8),
@@ -766,6 +803,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
            const SizedBox(height: 8),
            // 创建同名商品
            FilledButton.tonalIcon(
+             key: const Key('paste-new-same-button'),
              onPressed: () => _chooseNewSame(row),
              icon: const Icon(Icons.add),
              label: const Text('创建同名原料 + 商品'),
