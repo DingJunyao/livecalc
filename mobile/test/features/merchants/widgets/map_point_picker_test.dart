@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:com_a4ding_livecalc/core/geo/coordinate_transform.dart';
@@ -11,6 +12,31 @@ import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_rep
 import 'package:com_a4ding_livecalc/features/merchants/widgets/map_point_picker.dart';
 
 class MockRepo extends Mock implements MerchantRepository {}
+
+class _FakeGeolocator extends GeolocatorPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.always;
+
+  @override
+  Future<Position> getCurrentPosition(
+          {LocationSettings? locationSettings}) async =>
+      Position(
+        latitude: 31.25,
+        longitude: 121.5,
+        timestamp: DateTime(2026, 8, 15),
+        accuracy: 10,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+}
 
 /// 内存瓦片：消除测试里真实网络请求的噪音。
 class _MemoryTileProvider extends TileProvider {
@@ -24,6 +50,7 @@ Future<void> pumpPicker(
   required MapConfigState mapConfig,
   LatLng? initialValue,
   ValueChanged<LatLng>? onChanged,
+  MapController? controller,
 }) async {
   // 先触发 load()：MapPointPicker 在 initState 读取 provider 状态，
   // 不 load 则永远是初始兜底（仅 OSM），高德/腾讯底图断言会静默走错路径
@@ -44,6 +71,7 @@ Future<void> pumpPicker(
             child: MapPointPicker(
               initialValue: initialValue,
               onChanged: onChanged,
+              mapController: controller,
               tileProvider: _MemoryTileProvider(),
             ),
           ),
@@ -71,6 +99,17 @@ const _mapConfig = MapConfigState(
 );
 
 void main() {
+  late GeolocatorPlatform originalGeolocator;
+
+  setUp(() {
+    originalGeolocator = GeolocatorPlatform.instance;
+    GeolocatorPlatform.instance = _FakeGeolocator();
+  });
+
+  tearDown(() {
+    GeolocatorPlatform.instance = originalGeolocator;
+  });
+
   testWidgets('auto-loads map config before exposing tile layers',
       (tester) async {
     final response = Completer<Map<String, dynamic>>();
@@ -223,5 +262,39 @@ void main() {
       isTrue,
       reason: '腾讯瓦片 y 轴从南到北（TMS），不翻转则北半球显示南半球（如中国变印尼）',
     );
+  });
+
+  testWidgets('定位按钮：选当前为 WGS84 坐标并移动视角', (tester) async {
+    final controller = MapController();
+    LatLng? picked;
+    await pumpPicker(
+      tester,
+      mapConfig: _mapConfig,
+      onChanged: (v) => picked = v,
+      controller: controller,
+    );
+
+    final layerRect = tester.getRect(
+      find.byKey(const ValueKey('picker-layer-switch')),
+    );
+    final locateRect = tester.getRect(
+      find.byKey(const ValueKey('map-locate-button')),
+    );
+    expect(locateRect.left, greaterThanOrEqualTo(layerRect.right));
+
+    await tester.tap(find.byKey(const ValueKey('map-locate-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(picked, isNotNull);
+    expect(picked!.latitude, closeTo(31.25, 1e-9));
+    expect(picked!.longitude, closeTo(121.5, 1e-9));
+    expect(find.byIcon(Icons.location_pin), findsOneWidget);
+    expect(find.textContaining('31.250000'), findsOneWidget);
+    expect(find.textContaining('121.500000'), findsOneWidget);
+
+    final (displayLat, displayLng) = wgs84ToGcj02(31.25, 121.5);
+    expect(controller.camera.center.latitude, closeTo(displayLat, 1e-6));
+    expect(controller.camera.center.longitude, closeTo(displayLng, 1e-6));
   });
 }

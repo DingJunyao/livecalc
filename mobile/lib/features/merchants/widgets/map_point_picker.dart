@@ -6,6 +6,8 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
 import '../providers/map_config_provider.dart';
 import 'apple_map_picker.dart';
+import 'map_locate_button.dart';
+import 'merchant_map_logic.dart';
 
 /// 地图选点组件：点击地图选择位置，回调返回 **WGS84** 坐标。
 ///
@@ -31,6 +33,9 @@ class MapPointPicker extends ConsumerStatefulWidget {
   /// 测试注入内存瓦片，避免网络噪音。
   final TileProvider? tileProvider;
 
+  /// 外部地图控制器；不传时组件内部创建并在销毁时释放。
+  final MapController? mapController;
+
   const MapPointPicker({
     super.key,
     this.initialValue,
@@ -38,6 +43,7 @@ class MapPointPicker extends ConsumerStatefulWidget {
     this.height = 240,
     this.width = double.infinity,
     this.tileProvider,
+    this.mapController,
   });
 
   @override
@@ -48,6 +54,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
   static const LatLng _defaultCenter = LatLng(39.9042, 116.4074);
 
   late final MapController _controller;
+  late final bool _ownsController;
 
   /// 选中点（WGS84）。
   LatLng? _wgs;
@@ -56,7 +63,8 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
   @override
   void initState() {
     super.initState();
-    _controller = MapController();
+    _controller = widget.mapController ?? MapController();
+    _ownsController = widget.mapController == null;
     _wgs = widget.initialValue;
     final config = ref.read(mapConfigProvider);
     _layer = config.loaded ? _pickLayer(config) : null;
@@ -87,7 +95,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    if (_ownsController) _controller.dispose();
     super.dispose();
   }
 
@@ -118,6 +126,12 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
     final wgs = _toWgs84(latLng);
     setState(() => _wgs = wgs);
     widget.onChanged?.call(wgs);
+  }
+
+  void _selectLocated(LatLng point) {
+    setState(() => _wgs = point);
+    widget.onChanged?.call(point);
+    _controller.move(_toDisplay(point), kPointZoom);
   }
 
   @override
@@ -215,22 +229,28 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
                   color: theme.colorScheme.surface,
                   elevation: 2,
                   borderRadius: BorderRadius.circular(8),
-                  child: PopupMenuButton<MapLayerOption>(
-                    key: const ValueKey('picker-layer-switch'),
-                    tooltip: '切换底图',
-                    icon: const Icon(Icons.layers_outlined, size: 20),
-                    onSelected: (v) => setState(() => _layer = v),
-                    itemBuilder: (ctx) => [
-                      for (final o in mapConfig.layers)
-                        PopupMenuItem(
-                          value: o,
-                          child: Row(children: [
-                            if (layer?.id == o.id)
-                              const Icon(Icons.check, size: 16),
-                            const SizedBox(width: 8),
-                            Text(o.label),
-                          ]),
-                        ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PopupMenuButton<MapLayerOption>(
+                        key: const ValueKey('picker-layer-switch'),
+                        tooltip: '切换底图',
+                        icon: const Icon(Icons.layers_outlined, size: 20),
+                        onSelected: (v) => setState(() => _layer = v),
+                        itemBuilder: (ctx) => [
+                          for (final o in mapConfig.layers)
+                            PopupMenuItem(
+                              value: o,
+                              child: Row(children: [
+                                if (layer?.id == o.id)
+                                  const Icon(Icons.check, size: 16),
+                                const SizedBox(width: 8),
+                                Text(o.label),
+                              ]),
+                            ),
+                        ],
+                      ),
+                      MapLocateButton(onLocated: _selectLocated),
                     ],
                   ),
                 ),

@@ -2,6 +2,8 @@ import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
+import 'map_locate_button.dart';
+import 'merchant_map_logic.dart';
 
 /// iOS 原生 MapKit 版选点组件（仅 iOS 运行时实例化）。回调返回 WGS84。
 ///
@@ -33,6 +35,7 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
 
   LatLng? _wgs;
   apple.MapType _mapType = apple.MapType.standard;
+  apple.AppleMapController? _mapController;
 
   @override
   void initState() {
@@ -69,6 +72,19 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
     widget.onChanged?.call(wgs);
   }
 
+  void _selectLocated(LatLng point) {
+    setState(() => _wgs = point);
+    widget.onChanged?.call(point);
+    _mapController?.animateCamera(
+      apple.CameraUpdate.newCameraPosition(
+        apple.CameraPosition(
+          target: _toApple(_toDisplay(point)),
+          zoom: kPointZoom,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -90,6 +106,7 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
                 ),
                 mapType: _mapType,
                 onTap: _onTap,
+                onMapCreated: (controller) => _mapController = controller,
                 annotations: wgs == null
                     ? null
                     : {
@@ -107,16 +124,23 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
                   color: theme.colorScheme.surface,
                   elevation: 2,
                   borderRadius: BorderRadius.circular(8),
-                  child: PopupMenuButton<apple.MapType>(
-                    key: const ValueKey('apple-picker-layer-switch'),
-                    tooltip: '切换底图样式',
-                    icon: const Icon(Icons.layers_outlined, size: 20),
-                    onSelected: (v) => setState(() => _mapType = v),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(
-                          value: apple.MapType.standard, child: Text('标准')),
-                      PopupMenuItem(
-                          value: apple.MapType.satellite, child: Text('卫星')),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PopupMenuButton<apple.MapType>(
+                        key: const ValueKey('apple-picker-layer-switch'),
+                        tooltip: '切换底图样式',
+                        icon: const Icon(Icons.layers_outlined, size: 20),
+                        onSelected: (v) => setState(() => _mapType = v),
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(
+                              value: apple.MapType.standard, child: Text('标准')),
+                          PopupMenuItem(
+                              value: apple.MapType.satellite,
+                              child: Text('卫星')),
+                        ],
+                      ),
+                      MapLocateButton(onLocated: _selectLocated),
                     ],
                   ),
                 ),
