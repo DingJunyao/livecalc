@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/home/screens/home_screen.dart';
+import '../../features/ingredients/models/ingredient.dart';
 import '../../features/prices/screens/price_list_screen.dart';
 import '../../features/prices/screens/paste_import_screen.dart';
 import '../../features/prices/screens/price_record_form_screen.dart';
@@ -11,8 +12,11 @@ import '../../features/recipes/screens/recipe_detail_screen.dart';
 import '../../features/recipes/screens/recipe_analysis_screen.dart';
 import '../../features/ingredients/screens/ingredient_list_screen.dart';
 import '../../features/ingredients/screens/ingredient_detail_screen.dart';
+import '../../features/ingredients/screens/ingredient_form_screen.dart';
 import '../../features/products/screens/product_list_screen.dart';
 import '../../features/products/screens/product_detail_screen.dart';
+import '../../features/products/screens/product_form_screen.dart';
+import '../../features/products/models/product.dart';
 import '../../features/merchants/screens/merchant_list_screen.dart';
 import '../../features/merchants/screens/merchant_detail_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
@@ -180,10 +184,25 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/ingredients/new',
+            name: RouteNames.ingredientForm,
+            builder: (_, __) => const IngredientFormScreen(),
+          ),
+          GoRoute(
             path: '/ingredients/:id',
             name: 'ingredient-detail',
             builder: (_, state) => IngredientDetailScreen(
               id: int.parse(state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/ingredients/:id/edit',
+            name: 'ingredient-edit',
+            builder: (_, state) => IngredientFormScreen(
+              ingredient: state.extra is Ingredient
+                  ? state.extra as Ingredient
+                  : null,
+              ingredientId: int.tryParse(state.pathParameters['id']!),
             ),
           ),
           GoRoute(
@@ -196,11 +215,32 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/products/new',
+            name: RouteNames.productForm,
+            builder: (_, state) => ProductFormScreen(
+              fixedIngredient:
+                  state.extra is Ingredient ? state.extra as Ingredient : null,
+            ),
+          ),
+          GoRoute(
             path: '/products/:id',
             name: 'product-detail',
             builder: (_, state) => ProductDetailScreen(
               id: int.parse(state.pathParameters['id']!),
             ),
+          ),
+          GoRoute(
+            path: '/products/:id/edit',
+            name: 'product-edit',
+            builder: (_, state) {
+              final id = int.tryParse(state.pathParameters['id']!);
+              final extra = state.extra;
+              return ProductFormScreen(
+                product: extra is Product
+                    ? extra
+                    : (id == null ? null : Product(id: id, name: '')),
+              );
+            },
           ),
           GoRoute(
             path: '/merchants',

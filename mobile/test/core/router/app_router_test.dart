@@ -211,4 +211,15 @@ void main() {
     // modal 关闭后胶囊消失
     expect(find.byKey(const ValueKey('more-原料')), findsNothing);
   });
+
+  testWidgets('新增商品入口是独立路由页面', (tester) async {
+    await pumpRouter(tester);
+    final context = tester.element(find.text('生计'));
+    context.push('/products/new');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.widgetWithText(AppBar, '添加商品'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+  });
 }

@@ -12,7 +12,6 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../products/repositories/product_repository.dart';
 import '../models/ingredient.dart';
-import '../models/ingredient_category.dart';
 import '../providers/ingredient_provider.dart';
 
 const _specialConditions = <(String, String)>[
@@ -92,7 +91,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDialog(theme),
+        onPressed: _openAddForm,
         child: const Icon(Icons.add),
       ),
     );
@@ -286,89 +285,10 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
   }
 
   // ---- 添加原料 ----
-  Future<void> _showAddDialog(ThemeData theme) async {
-    final categories =
-        ref.read(ingredientCategoriesProvider).value ?? <IngredientCategory>[];
-    if (!mounted) return;
-    final nameController = TextEditingController();
-    final aliasController = TextEditingController();
-    int? categoryId;
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('添加原料'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    labelText: '原料名称',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: aliasController,
-                  decoration: const InputDecoration(
-                    labelText: '别名（逗号或空格分隔）',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<int?>(
-                  initialValue: categoryId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(
-                    labelText: '分类',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: [
-                    const DropdownMenuItem<int?>(value: null, child: Text('未分类')),
-                    for (final c in categories)
-                      DropdownMenuItem<int?>(
-                        value: c.id,
-                        child: Text(c.displayName),
-                      ),
-                  ],
-                  onChanged: (v) => setDialogState(() => categoryId = v),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (result != true || !mounted) return;
-    final name = nameController.text.trim();
-    if (name.isEmpty) return;
-    final aliases = aliasController.text
-        .split(RegExp(r'[,，\s]+'))
-        .where((s) => s.isNotEmpty)
-        .toList();
-    try {
-      await ref
-          .read(ingredientListProvider.notifier)
-          .addIngredient(name: name, categoryId: categoryId, aliases: aliases);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
-        );
-      }
+  Future<void> _openAddForm() async {
+    final saved = await context.push<bool>('/ingredients/new');
+    if (saved == true && mounted) {
+      ref.read(ingredientListProvider.notifier).load();
     }
   }
 }

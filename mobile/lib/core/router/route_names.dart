@@ -10,7 +10,9 @@ class RouteNames {
   static const pasteImport = 'paste-import';
   static const recipes = 'recipes';
   static const ingredients = 'ingredients';
+  static const ingredientForm = 'ingredient-form';
   static const products = 'products';
+  static const productForm = 'product-form';
   static const merchants = 'merchants';
   static const profile = 'profile';
   static const myProposals = 'my-proposals';

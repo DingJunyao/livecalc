@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,8 +10,6 @@ import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/widgets/nutrition_card.dart';
 import '../../../shared/widgets/price_record_form_sheet.dart';
-import '../../ingredients/models/ingredient.dart';
-import '../../ingredients/repositories/ingredient_repository.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/models/price_record.dart';
 import '../../recipes/widgets/cost_trend_chart.dart';
@@ -100,7 +97,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           PopupMenuButton<String>(
             onSelected: (v) {
               if (v == 'edit') {
-                _showEditBasicDialog(notifier, product);
+                _openEditBasicPage(notifier, product);
               } else if (v == 'delete') {
                 _confirmDelete(notifier, product);
               }
@@ -125,7 +122,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           children: [
             _ProductBasicInfoCard(
               product: product,
-              onEdit: () => _showEditBasicDialog(notifier, product),
+              onEdit: () => _openEditBasicPage(notifier, product),
               onIngredientTap: product.ingredientId == null
                   ? null
                   : () => context.push('/ingredients/${product.ingredientId}'),
@@ -302,22 +299,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 
   // ---- 编辑基本信息 ----
-  Future<void> _showEditBasicDialog(
+  Future<void> _openEditBasicPage(
     ProductDetailPageNotifier notifier,
     Product product,
   ) async {
-    final result = await showDialog<Product>(
-      context: context,
-      builder: (_) => _ProductEditDialog(product: product),
+    final saved = await context.push<bool>(
+      '/products/${product.id}/edit',
+      extra: product,
     );
-    if (result != null && mounted) {
-      await notifier.updateBasic(
-        name: result.name,
-        ingredientId: result.ingredientId,
-        brand: result.brand,
-        barcode: result.barcode,
-        aliases: result.aliases,
-      );
+    if (saved == true && mounted) {
+      await notifier.load(initialDays: 30);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('基本信息已保存')),
@@ -798,289 +789,6 @@ class _ProductRecordRow extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-// ---- 商品编辑对话框 ----
-
-class _ProductEditDialog extends ConsumerStatefulWidget {
-  final Product product;
-  const _ProductEditDialog({required this.product});
-
-  @override
-  ConsumerState<_ProductEditDialog> createState() =>
-      _ProductEditDialogState();
-}
-
-class _ProductEditDialogState extends ConsumerState<_ProductEditDialog> {
-  late final TextEditingController _nameController;
-  late final TextEditingController _brandController;
-  late final TextEditingController _barcodeController;
-  late final TextEditingController _aliasController;
-  late final TextEditingController _tagController;
-  late final TextEditingController _ingredientSearchController;
-  Timer? _debounce;
-  List<Ingredient> _ingredientOptions = const [];
-  bool _searching = false;
-  Ingredient? _selectedIngredient;
-  List<String> _tags = const [];
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final p = widget.product;
-    _nameController = TextEditingController(text: p.name);
-    _brandController = TextEditingController(text: p.brand ?? '');
-    _barcodeController = TextEditingController(text: p.barcode ?? '');
-    _aliasController =
-        TextEditingController(text: p.aliases.join(', '));
-    _tagController = TextEditingController();
-    _tags = List.of(p.tags);
-    _ingredientSearchController = TextEditingController(
-      text: p.ingredientName ?? '',
-    );
-    _selectedIngredient = p.ingredientId == null
-        ? null
-        : Ingredient(
-            id: p.ingredientId!,
-            name: p.ingredientName ?? '',
-          );
-    _ingredientSearchController.addListener(_onIngredientSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _nameController.dispose();
-    _brandController.dispose();
-    _barcodeController.dispose();
-    _aliasController.dispose();
-    _tagController.dispose();
-    _ingredientSearchController.dispose();
-    super.dispose();
-  }
-
-  void _onIngredientSearchChanged() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final q = _ingredientSearchController.text.trim();
-      if (q.isEmpty) {
-        setState(() {
-          _ingredientOptions = const [];
-          _searching = false;
-        });
-        return;
-      }
-      setState(() => _searching = true);
-      try {
-        final result =
-            await IngredientRepository().search(search: q, limit: 20);
-        if (mounted) {
-          setState(() {
-            _ingredientOptions = result.items;
-            _searching = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _searching = false);
-      }
-    });
-  }
-
-  Future<void> _save() async {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      _toast('请输入商品名称');
-      return;
-    }
-    if (_selectedIngredient == null) {
-      _toast('请选择关联的原料');
-      return;
-    }
-    setState(() => _saving = true);
-    final aliases = _aliasController.text
-        .split(RegExp(r'[,，\s]+'))
-        .where((s) => s.isNotEmpty)
-        .toList();
-    try {
-      final updated = await ProductRepository().updateProduct(
-        widget.product.id,
-        name: name,
-        ingredientId: _selectedIngredient!.id,
-        brand: _brandController.text.trim(),
-        barcode: _barcodeController.text.trim(),
-        aliases: aliases,
-        tags: _tags,
-      );
-      if (mounted) Navigator.of(context).pop(updated);
-    } catch (_) {
-      if (mounted) {
-        setState(() => _saving = false);
-        _toast('保存失败，请重试');
-      }
-    }
-  }
-
-  void _toast(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('编辑基本信息'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: '商品名称 *',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _ingredientSearchController,
-              decoration: InputDecoration(
-                labelText: '搜索并选择关联原料 *',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searching
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            if (_selectedIngredient != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Chip(
-                    avatar: const Icon(Icons.check_circle, size: 16),
-                    label: Text(_selectedIngredient!.name),
-                    onDeleted: () =>
-                        setState(() => _selectedIngredient = null),
-                  ),
-                ),
-              ),
-            if (_ingredientOptions.isNotEmpty)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 180),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _ingredientOptions.length,
-                  itemBuilder: (ctx, i) {
-                    final ing = _ingredientOptions[i];
-                    return ListTile(
-                      dense: true,
-                      title: Text(ing.name),
-                      subtitle:
-                          ing.category == null ? null : Text(ing.category!),
-                      onTap: () {
-                        setState(() {
-                          _selectedIngredient = ing;
-                          _ingredientSearchController.text = ing.name;
-                          _ingredientOptions = const [];
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _brandController,
-              decoration: const InputDecoration(
-                labelText: '品牌',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _barcodeController,
-              decoration: const InputDecoration(
-                labelText: '条码',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _aliasController,
-              decoration: const InputDecoration(
-                labelText: '别名（逗号或空格分隔）',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _tagController,
-                    onSubmitted: (_) => _addTag(),
-                    decoration: const InputDecoration(
-                      labelText: '添加标签',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filledTonal(
-                  onPressed: _addTag,
-                  icon: const Icon(Icons.add),
-                ),
-              ],
-            ),
-            if (_tags.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final t in _tags)
-                        Chip(
-                          label: Text(t),
-                          visualDensity: VisualDensity.compact,
-                          onDeleted: () =>
-                              setState(() => _tags = _tags.where((x) => x != t).toList()),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: const Text('保存'),
-        ),
-      ],
-    );
-  }
-
-  void _addTag() {
-    final tag = _tagController.text.trim();
-    if (tag.isEmpty) return;
-    setState(() {
-      if (!_tags.contains(tag)) _tags = [..._tags, tag];
-      _tagController.clear();
-    });
   }
 }
 

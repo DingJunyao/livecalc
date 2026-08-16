@@ -102,7 +102,7 @@ class IngredientRepository {
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
-    if (categoryId != null) payload['category_id'] = categoryId;
+    payload['category_id'] = categoryId;
     if (aliases != null) payload['aliases'] = aliases;
     final response = await _client.dio.put('/ingredients/$id', data: payload);
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
