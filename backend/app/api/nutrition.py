@@ -1053,6 +1053,58 @@ async def get_ingredient_latest_price(
         raise HTTPException(status_code=500, detail=f"获取最近价格失败: {str(e)}")
 
 
+@router.get("/ingredients/latest-price/batch")
+async def get_ingredient_latest_prices_batch(
+    ingredient_ids: str = Query(..., description="原料ID列表，逗号分隔"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """批量获取原料最近一天平均价格。
+
+    列表页一次展示约 20 个原料。逐个请求会让每个原料各占一个请求级
+    Session，在 SQLite 高并发下放大 QueuePool 压力；批量接口复用同一个
+    Session，单原料接口继续保持原有行为。
+    """
+    try:
+        ids = _parse_ingredient_ids(ingredient_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    items = {}
+    for ingredient_id in ids:
+        items[str(ingredient_id)] = await get_ingredient_latest_price(
+            ingredient_id=ingredient_id,
+            db=db,
+            current_user=current_user,
+            tz=tz,
+        )
+    return {"items": items}
+
+
+def _parse_ingredient_ids(raw: str) -> list[int]:
+    values: list[int] = []
+    seen: set[int] = set()
+    for part in raw.split(","):
+        text = part.strip()
+        if not text:
+            continue
+        try:
+            value = int(text)
+        except ValueError as exc:
+            raise ValueError("ingredient_ids 包含无效ID") from exc
+        if value <= 0:
+            raise ValueError("ingredient_ids 中的ID必须为正整数")
+        if value not in seen:
+            seen.add(value)
+            values.append(value)
+    if not values:
+        raise ValueError("ingredient_ids 不能为空")
+    if len(values) > 50:
+        raise ValueError("ingredient_ids 一次最多支持50个ID")
+    return values
+
+
 @router.get("/ingredients/{ingredient_id}/latest-price-by-merchant")
 async def get_ingredient_latest_price_by_merchant(
     ingredient_id: int,
