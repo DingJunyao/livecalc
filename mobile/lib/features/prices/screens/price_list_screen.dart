@@ -9,7 +9,7 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart';
+import '../../../shared/screens/price_record_edit_screen.dart';
 
 class PriceListScreen extends ConsumerStatefulWidget {
   const PriceListScreen({super.key});
@@ -62,18 +62,20 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     }
   }
 
-  /// 打开编辑表单（复用 showPriceRecordFormSheet），保存后局部更新对应记录。
+  /// 打开编辑页，保存后局部更新对应记录。
   /// 不调 loadRecords 以保留滚动位置。
   Future<void> _openEditRecord(PriceRecord r) async {
-    final result = await showPriceRecordFormSheet(
-      context,
-      merchants: ref.read(merchantListProvider).items,
-      fixedProductId: r.productId,
-      fixedProductName: r.productName,
-      initialPrice: r.price,
-      initialQuantity: r.quantity,
-      initialUnit: r.unit,
-      initialMerchantId: r.merchantId,
+    final result = await context.push<PriceRecordFormResult>(
+      '/prices/record/edit',
+      extra: PriceRecordFormArguments(
+        merchants: ref.read(merchantListProvider).items,
+        fixedProductId: r.productId,
+        fixedProductName: r.productName,
+        initialPrice: r.price,
+        initialQuantity: r.quantity,
+        initialUnit: r.unit,
+        initialMerchantId: r.merchantId,
+      ),
     );
     if (result != null && mounted) {
       // notifier 不持有 merchant 列表，由屏幕层反查商家名传入；
@@ -253,7 +255,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       builder: (ctx) => _FilterSheet(
         theme: theme,
         state: state,
-       merchants: merchantState.items,
+        merchants: merchantState.items,
         onApply: ({
           required int? merchantId,
           required String? recordType,
@@ -507,9 +509,9 @@ class _FilterSheetState extends State<_FilterSheet> {
   }
 
   Future<void> _pickDate(bool isStart) async {
-    final initial = DateTime.tryParse(
-            isStart ? (_startDate ?? '') : (_endDate ?? '')) ??
-        DateTime.now();
+    final initial =
+        DateTime.tryParse(isStart ? (_startDate ?? '') : (_endDate ?? '')) ??
+            DateTime.now();
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
@@ -604,8 +606,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                             ),
                           ),
                         ],
-                        onChanged: (v) =>
-                            setState(() => _merchantId = v),
+                        onChanged: (v) => setState(() => _merchantId = v),
                       ),
                     ),
                   ),
@@ -619,18 +620,14 @@ class _FilterSheetState extends State<_FilterSheet> {
                       FilterChip(
                         label: const Text('购买'),
                         selected: _recordType == 'purchase',
-                        onSelected: (_) => setState(() =>
-                            _recordType = _recordType == 'purchase'
-                                ? null
-                                : 'purchase'),
+                        onSelected: (_) => setState(() => _recordType =
+                            _recordType == 'purchase' ? null : 'purchase'),
                       ),
                       FilterChip(
                         label: const Text('比价'),
                         selected: _recordType == 'price',
-                        onSelected: (_) => setState(() =>
-                            _recordType = _recordType == 'price'
-                                ? null
-                                : 'price'),
+                        onSelected: (_) => setState(() => _recordType =
+                            _recordType == 'price' ? null : 'price'),
                       ),
                     ],
                   ),
@@ -646,14 +643,12 @@ class _FilterSheetState extends State<_FilterSheet> {
                           label: '开始',
                           value: _startDate,
                           onTap: () => _pickDate(true),
-                          onClear: () =>
-                              setState(() => _startDate = null),
+                          onClear: () => setState(() => _startDate = null),
                         ),
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text('~',
-                            style: theme.textTheme.bodyMedium),
+                        child: Text('~', style: theme.textTheme.bodyMedium),
                       ),
                       Expanded(
                         child: _buildDateField(
@@ -661,8 +656,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                           label: '结束',
                           value: _endDate,
                           onTap: () => _pickDate(false),
-                          onClear: () =>
-                              setState(() => _endDate = null),
+                          onClear: () => setState(() => _endDate = null),
                         ),
                       ),
                     ],

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
-import 'package:com_a4ding_livecalc/shared/widgets/price_record_form_sheet.dart';
+import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
 
 /// 宿主：触发底部表单并通过 Text 暴露结果，便于断言。
 class _FormHost extends StatefulWidget {
@@ -26,10 +26,15 @@ class _FormHostState extends State<_FormHost> {
             children: [
               TextButton(
                 onPressed: () async {
-                  result = await showPriceRecordFormSheet(
-                    ctx,
-                    merchants: widget.merchants,
-                    initialMerchantId: widget.initialMerchantId,
+                  result = await Navigator.of(ctx).push<PriceRecordFormResult>(
+                    MaterialPageRoute(
+                      builder: (_) => PriceRecordEditScreen(
+                        arguments: PriceRecordFormArguments(
+                          merchants: widget.merchants,
+                          initialMerchantId: widget.initialMerchantId,
+                        ),
+                      ),
+                    ),
                   );
                   setState(() {});
                 },
@@ -69,6 +74,10 @@ void main() {
     ));
     await tester.tap(find.text('打开表单'));
     await tester.pumpAndSettle();
+
+    expect(find.byType(PriceRecordEditScreen), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.widgetWithText(AppBar, '记录价格'), findsOneWidget);
   }
 
   /// 价格 TextField 通过 prefixIcon(Icons.payments) 定位（无 labelText）

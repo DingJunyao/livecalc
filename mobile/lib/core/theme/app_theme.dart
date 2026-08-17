@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// 全 app 唯一字号刻度常量。新增字号一律从此取，禁止散落 magic number。
 ///
@@ -20,21 +20,21 @@ abstract final class AppFontSizes {
 class AppTheme {
   static const Color _primaryColor = Color(0xFF558B2F);
   static const Color _secondaryColor = Color(0xFF547C8C);
- static const Color _errorColor = Color(0xFFBA1A1A);
+  static const Color _errorColor = Color(0xFFBA1A1A);
 
   /// 中文字体回退链：按平台优先级，确保 CJK 字形使用设备原生高质量字体，
   /// 而非 Flutter 默认 Roboto 的位图兜底。Latin 仍用默认 Roboto。
   static const _cjkFontFallback = [
-    'Noto Sans CJK SC',   // Android / Linux
+    'Noto Sans CJK SC', // Android / Linux
     'Source Han Sans SC', // 别名
     'Source Han Sans CN',
-    'PingFang SC',        // iOS / macOS
-    'Microsoft YaHei',    // Windows
+    'PingFang SC', // iOS / macOS
+    'Microsoft YaHei', // Windows
     '微软雅黑',
     'sans-serif',
   ];
 
- static ThemeData get lightTheme {
+  static ThemeData get lightTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: _primaryColor,
       secondary: _secondaryColor,
@@ -54,9 +54,9 @@ class AppTheme {
     return _buildTheme(colorScheme);
   }
 
- static ThemeData _buildTheme(ColorScheme colorScheme) {
-   final base = ThemeData(
-     useMaterial3: true,
+  static ThemeData _buildTheme(ColorScheme colorScheme) {
+    final base = ThemeData(
+      useMaterial3: true,
       colorScheme: colorScheme,
       appBarTheme: AppBarTheme(
         centerTitle: true,
@@ -77,19 +77,19 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-       border: OutlineInputBorder(
-         borderRadius: BorderRadius.circular(12),
-       ),
-     ),
-   );
-   // 全局应用中文字体回退，保证中文渲染清晰、行高一致
-   return base.copyWith(
-     textTheme: _withLockedFontSizes(
-         base.textTheme.apply(fontFamilyFallback: _cjkFontFallback)),
-     primaryTextTheme: _withLockedFontSizes(
-         base.primaryTextTheme.apply(fontFamilyFallback: _cjkFontFallback)),
-   );
- }
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+    // 全局应用中文字体回退，保证中文渲染清晰、行高一致
+    return base.copyWith(
+      textTheme: _withLockedFontSizes(
+          base.textTheme.apply(fontFamilyFallback: _cjkFontFallback)),
+      primaryTextTheme: _withLockedFontSizes(
+          base.primaryTextTheme.apply(fontFamilyFallback: _cjkFontFallback)),
+    );
+  }
 
   /// 将 textTheme 各档位字号锁死到 [AppFontSizes] 刻度，
   /// 使全 app 字号唯一可调、免受 Material 默认值漂移影响。

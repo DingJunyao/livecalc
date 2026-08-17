@@ -22,8 +22,8 @@ void main() {
 
   group('getRecipeMerchantCosts', () {
     test('解析 merchant-costs 响应', () async {
-      when(() => mockDio.get('/recipes/1/merchant-costs',
-              options: any(named: 'options')))
+      when(() => mockDio
+              .get('/recipes/1/merchant-costs', options: any(named: 'options')))
           .thenAnswer((_) async => Response(
                 requestOptions: RequestOptions(path: ''),
                 statusCode: 200,
@@ -63,8 +63,8 @@ void main() {
     });
 
     test('空 merchants 不崩', () async {
-      when(() => mockDio.get('/recipes/9/merchant-costs',
-              options: any(named: 'options')))
+      when(() => mockDio
+              .get('/recipes/9/merchant-costs', options: any(named: 'options')))
           .thenAnswer((_) async => Response(
                 requestOptions: RequestOptions(path: ''),
                 statusCode: 200,
@@ -82,33 +82,35 @@ void main() {
             '/nutrition/ingredients/5/latest-price-by-merchant',
             queryParameters: {'quantity': 100.0, 'quantity_unit': 'g'},
           )).thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(path: ''),
-                statusCode: 200,
-                data: {
-                  'prices': [
-                    {
-                      'merchant_id': 2,
-                      'merchant_name': '盒马',
-                      'price': '3.50',
-                      'unit': 'g',
-                      'total_cost': '3.50',
-                      'is_lowest': true,
-                    },
-                    {
-                      'merchant_id': 3,
-                      'merchant_name': '永辉',
-                      'price': '4.20',
-                      'unit': 'g',
-                    },
-                  ],
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {
+              'prices': [
+                {
+                  'merchant_id': 2,
+                  'merchant_name': '盒马',
+                  'price': '3.50',
                   'unit': 'g',
-                  'fallback_chain': '用面粉代替',
+                  'total_cost': '3.50',
+                  'is_lowest': true,
                 },
-              ));
+                {
+                  'merchant_id': 3,
+                  'merchant_name': '永辉',
+                  'price': '4.20',
+                  'unit': 'g',
+                },
+              ],
+              'unit': 'g',
+              'fallback_chain': '用面粉代替',
+            },
+          ));
 
       final res = await repository.getIngredientMerchantPrice(5,
-          recipeIngredientId: 10, ingredientName: '鸡蛋',
-          quantity: 100, quantityUnit: 'g');
+          recipeIngredientId: 10,
+          ingredientName: '鸡蛋',
+          quantity: 100,
+          quantityUnit: 'g');
       expect(res.prices.length, 2);
       expect(res.prices.first.merchantName, '盒马');
       expect(res.prices.first.totalCost, 3.5);
@@ -129,10 +131,10 @@ void main() {
             '/nutrition/ingredients/5/latest-price-by-merchant',
             queryParameters: <String, dynamic>{},
           )).thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(path: ''),
-                statusCode: 200,
-                data: {'prices': []},
-              ));
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {'prices': []},
+          ));
       final res = await repository.getIngredientMerchantPrice(5, quantity: 0);
       expect(res.prices, isEmpty);
       expect(res.ingredientId, 5);
@@ -143,10 +145,10 @@ void main() {
             '/nutrition/ingredients/5/latest-price-by-merchant',
             queryParameters: <String, dynamic>{},
           )).thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(path: ''),
-                statusCode: 200,
-                data: {'prices': []},
-              ));
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {'prices': []},
+          ));
       final res = await repository.getIngredientMerchantPrice(5);
       expect(res.prices, isEmpty);
       expect(res.ingredientId, 5);

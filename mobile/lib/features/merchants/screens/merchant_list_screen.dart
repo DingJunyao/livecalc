@@ -12,11 +12,12 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../profile/models/user_place.dart';
 import '../../profile/repositories/profile_repository.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/merchant.dart';
 import '../providers/map_config_provider.dart';
 import '../providers/merchant_provider.dart';
 import '../repositories/merchant_repository.dart';
-import '../widgets/map_point_picker.dart';
+import '../screens/merchant_form_screen.dart';
 import '../widgets/merchant_map_view.dart';
 
 class MerchantListScreen extends ConsumerStatefulWidget {
@@ -217,7 +218,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => _showMerchantDialog(),
+        onPressed: () => _openMerchantForm(),
         child: const Icon(Icons.add),
       ),
     );
@@ -331,7 +332,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
             onFavorite: () =>
                 ref.read(merchantListProvider.notifier).toggleFavorite(item.id),
             onLocate: () => _locateMerchant(item),
-            onEdit: () => _showMerchantDialog(item: item),
+            onEdit: () => _openMerchantForm(item: item),
             onDelete: () => _confirmDelete(item),
           );
         },
@@ -454,107 +455,23 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 
   // ---- 添加/编辑商家 ----
 
-  Future<void> _showMerchantDialog({Merchant? item}) async {
-    final nameController = TextEditingController(text: item?.name ?? '');
-    final addressController = TextEditingController(text: item?.address ?? '');
-    // 地图选中的位置（WGS84）；未选时商家无坐标（地图上不显示）。
-    LatLng? picked = (item?.latitude == null || item?.longitude == null)
-        ? null
-        : LatLng(item!.latitude!, item.longitude!);
-    var isOpen = item?.isOpen ?? true;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(item == null ? '添加商家' : '编辑商家'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  autofocus: item == null,
-                  decoration: const InputDecoration(
-                    labelText: '商家名称 *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: '地址',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('营业中'),
-                  value: isOpen,
-                  onChanged: (v) => setDialogState(() => isOpen = v),
-                ),
-                const SizedBox(height: 12),
-                const Text('位置（点击地图选择，可选）',
-                    style: TextStyle(fontWeight: FontWeight.w500)),
-                const SizedBox(height: 8),
-                MapPointPicker(
-                  // 固定宽度：短路 AlertDialog 的 intrinsic 宽度查询
-                  width: 300,
-                  initialValue: picked,
-                  onChanged: (v) => setDialogState(() => picked = v),
-                  tileProvider: widget.mapTileProvider,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
-        ),
+  Future<void> _openMerchantForm({Merchant? item}) async {
+    final result = await context.push<MerchantFormResult>(
+      item == null ? '/merchants/new' : '/merchants/${item.id}/edit',
+      extra: MerchantFormArguments(
+        merchant: item,
+        isAdmin: ref.read(authProvider).user?.isAdmin == true,
+        repository: widget.merchantRepository,
+        mapTileProvider: widget.mapTileProvider,
       ),
     );
-    if (saved != true || !mounted) return;
-    final name = nameController.text.trim();
-    if (name.isEmpty) {
-      _toast('请输入商家名称');
-      return;
-    }
-    final lat = picked?.latitude;
-    final lng = picked?.longitude;
-    final notifier = ref.read(merchantListProvider.notifier);
-    try {
-      if (item == null) {
-        await notifier.addMerchant(
-          name: name,
-          address: addressController.text.trim(),
-          isOpen: isOpen,
-          latitude: lat,
-          longitude: lng,
-        );
-        _toast('已创建商家');
-      } else {
-        await (widget.merchantRepository ?? MerchantRepository())
-            .updateMerchant(
-          item.id,
-          name: name,
-          address: addressController.text.trim(),
-          isOpen: isOpen,
-          latitude: lat,
-          longitude: lng,
-        );
-        await notifier.load();
-        _toast('已保存');
-      }
-    } catch (_) {
-      _toast('保存失败，请重试');
+    if (result?.saved == true && mounted) {
+      await ref.read(merchantListProvider.notifier).load();
+      _toast(
+        result!.pending
+            ? (result.message.isEmpty ? '已提交，待管理员审核' : result.message)
+            : (result.message.isEmpty ? '已保存' : result.message),
+      );
     }
   }
 
@@ -581,8 +498,13 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     );
     if (ok != true || !mounted) return;
     try {
-      await ref.read(merchantListProvider.notifier).deleteMerchant(item.id);
-      _toast('已删除');
+      final review =
+          await ref.read(merchantListProvider.notifier).deleteMerchant(item.id);
+      _toast(
+        review.pending
+            ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
+            : '已删除',
+      );
     } catch (_) {
       _toast('删除失败，请重试');
     }

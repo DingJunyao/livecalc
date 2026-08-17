@@ -30,26 +30,31 @@ class NumericKeypad extends StatelessWidget {
 
   Widget _buildRow(List<String> keys) {
     return Row(
-      children: keys.map((key) => _KeyButton(
-        label: key,
-        isAction: key == '⌫' || key == 'C' || key == '✓',
-        isConfirm: key == '✓',
-        onTap: () => onKeyTap(key),
-      )).toList(),
+      children: keys
+          .map((key) => _KeyButton(
+                label: key,
+                isAction: key == '⌫' || key == 'C' || key == '✓',
+                isConfirm: key == '✓',
+                onTap: () => onKeyTap(key),
+              ))
+          .toList(),
     );
   }
 
   Widget _buildBottomRow() {
     return Row(
       children: [
-        Expanded(flex: 2, child: _KeyButton(label: '0', onTap: () => onKeyTap('0'))),
+        Expanded(
+            flex: 2, child: _KeyButton(label: '0', onTap: () => onKeyTap('0'))),
         _KeyButton(label: '.', onTap: () => onKeyTap('.')),
-        Expanded(flex: 1, child: _KeyButton(
-          label: '✓',
-          isAction: true,
-          isConfirm: true,
-          onTap: onConfirm,
-        )),
+        Expanded(
+            flex: 1,
+            child: _KeyButton(
+              label: '✓',
+              isAction: true,
+              isConfirm: true,
+              onTap: onConfirm,
+            )),
       ],
     );
   }
@@ -76,9 +81,8 @@ class _KeyButton extends StatelessWidget {
         : isAction
             ? theme.colorScheme.surfaceContainerHigh
             : theme.colorScheme.surface;
-    final fgColor = isConfirm
-        ? theme.colorScheme.onPrimary
-        : theme.colorScheme.onSurface;
+    final fgColor =
+        isConfirm ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
 
     return Expanded(
       child: AspectRatio(

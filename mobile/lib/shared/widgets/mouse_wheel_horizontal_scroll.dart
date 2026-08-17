@@ -22,8 +22,7 @@ class MouseWheelHorizontalScroll extends StatelessWidget {
   });
 
   void _handlePointerSignal(PointerSignalEvent event) {
-    if (event is! PointerScrollEvent ||
-        event.kind != PointerDeviceKind.mouse) {
+    if (event is! PointerScrollEvent || event.kind != PointerDeviceKind.mouse) {
       return;
     }
     if (!controller.hasClients || controller.position.maxScrollExtent <= 0) {

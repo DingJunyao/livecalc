@@ -4,6 +4,7 @@ import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient.dart'
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
+import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
 
 class _FakeProductRepository extends ProductRepository {
@@ -34,8 +35,9 @@ class _FakeProductRepository extends ProductRepository {
   }
 
   @override
-  Future<Product> updateProduct(
+  Future<ProductMutationResult> updateProduct(
     int id, {
+    required bool isAdmin,
     String? name,
     int? ingredientId,
     String? brand,
@@ -46,7 +48,15 @@ class _FakeProductRepository extends ProductRepository {
     lastName = name;
     lastAliases = aliases;
     lastTags = tags;
-    return existing;
+    return ProductMutationResult(
+      product: existing,
+      review: const MutationReviewResult(
+        applied: true,
+        pending: false,
+        message: '',
+        raw: {},
+      ),
+    );
   }
 }
 

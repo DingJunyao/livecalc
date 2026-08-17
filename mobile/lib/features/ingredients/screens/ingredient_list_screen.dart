@@ -6,12 +6,12 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart';
 import '../../../shared/widgets/sparkline.dart';
 import '../../merchants/providers/merchant_provider.dart';
-import '../../prices/repositories/price_repository.dart';
+import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/repositories/product_repository.dart';
 import '../models/ingredient.dart';
+import 'ingredient_form_screen.dart' show IngredientFormResult;
 import '../providers/ingredient_provider.dart';
 
 const _specialConditions = <(String, String)>[
@@ -230,30 +230,19 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
         orElse: () => products.first,
       );
       if (!mounted) return;
-      final merchants = ref.read(merchantListProvider).items;
-      final formResult = await showPriceRecordFormSheet(
-        context,
-        merchants: merchants,
-        products: [
-          for (final p in products) ProductOption(p.id, p.name),
-        ],
-        fixedProductId: matched.id,
-        fixedProductName: matched.name,
+      final saved = await context.push<bool>(
+        '/prices/record',
+        extra: PriceRecordFormPrefill(
+          product: matched,
+          ingredientId: item.id,
+        ),
       );
-      if (formResult == null || !mounted) return;
-      await PriceRepository().createRecord(
-        productId: formResult.productId ?? matched.id,
-        price: formResult.price,
-        quantity: formResult.quantity,
-        unit: formResult.unit,
-        merchantId: formResult.merchantId,
-      );
-      if (mounted) {
+      if (saved == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('价格已记录')),
         );
+        ref.read(ingredientListProvider.notifier).load();
       }
-      ref.read(ingredientListProvider.notifier).load();
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -286,8 +275,8 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
 
   // ---- 添加原料 ----
   Future<void> _openAddForm() async {
-    final saved = await context.push<bool>('/ingredients/new');
-    if (saved == true && mounted) {
+    final saved = await context.push<IngredientFormResult>('/ingredients/new');
+    if (saved?.saved == true && mounted) {
       ref.read(ingredientListProvider.notifier).load();
     }
   }
@@ -430,8 +419,7 @@ class _IngredientFilterSheetState
     _conditions = widget.initialConditions.toSet();
   }
 
-  bool get _hasActive =>
-      _categoryIds.isNotEmpty || _conditions.isNotEmpty;
+  bool get _hasActive => _categoryIds.isNotEmpty || _conditions.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {

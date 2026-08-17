@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -33,14 +33,23 @@ class ProfileScreen extends ConsumerWidget {
                         : null,
                     onForegroundImageError:
                         user?.avatarUrl == null ? null : (_, __) {},
-                    child: Text(user?.displayName.isNotEmpty == true ? user!.displayName[0] : '?',
+                    child: Text(
+                        user?.displayName.isNotEmpty == true
+                            ? user!.displayName[0]
+                            : '?',
                         style: theme.textTheme.titleLarge),
                   ),
                   const SizedBox(width: 16),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(user?.displayName ?? '用户', style: theme.textTheme.titleLarge),
-                    Text(user?.email ?? '', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
-                  ])),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Text(user?.displayName ?? '用户',
+                            style: theme.textTheme.titleLarge),
+                        Text(user?.email ?? '',
+                            style: theme.textTheme.bodyMedium
+                                ?.copyWith(color: theme.colorScheme.outline)),
+                      ])),
                   const Icon(Icons.chevron_right, color: Colors.grey),
                 ]),
               ),
@@ -49,9 +58,12 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Settings section
-          Text('设置', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.outline)),
+          Text('设置',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(height: 8),
-          Card(child: Column(children: [
+          Card(
+              child: Column(children: [
             ListTile(
               leading: const Icon(Icons.home_outlined),
               title: const Text('启动时起始页'),
@@ -77,12 +89,21 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // My data section
-          Text('我的数据', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.outline)),
+          Text('我的数据',
+              style: theme.textTheme.titleSmall
+                  ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(height: 8),
-          Card(child: Column(children: [
-            ListTile(leading: const Icon(Icons.rate_review_outlined), title: const Text('我的提议'), onTap: () => context.push('/profile/proposals')),
+          Card(
+              child: Column(children: [
+            ListTile(
+                leading: const Icon(Icons.rate_review_outlined),
+                title: const Text('我的提议'),
+                onTap: () => context.push('/profile/proposals')),
             const Divider(height: 1),
-            ListTile(leading: const Icon(Icons.place_outlined), title: const Text('我的地点'), onTap: () => context.push('/profile/places')),
+            ListTile(
+                leading: const Icon(Icons.place_outlined),
+                title: const Text('我的地点'),
+                onTap: () => context.push('/profile/places')),
           ])),
           const SizedBox(height: 32),
 
@@ -95,7 +116,8 @@ class ProfileScreen extends ConsumerWidget {
               },
               icon: const Icon(Icons.logout),
               label: const Text('退出登录'),
-              style: OutlinedButton.styleFrom(foregroundColor: theme.colorScheme.error),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: theme.colorScheme.error),
             ),
           ),
         ],
@@ -133,5 +155,3 @@ Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
     await ref.read(startupPageProvider.notifier).setPage(selected);
   }
 }
-
-

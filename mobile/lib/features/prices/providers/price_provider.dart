@@ -109,9 +109,8 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         page: page,
         pageSize: _pageSize,
       );
-      final records = loadMore
-          ? [...state.records, ...result.records]
-          : result.records;
+      final records =
+          loadMore ? [...state.records, ...result.records] : result.records;
       final hasMore = records.length < result.total;
       state = state.copyWith(
         records: records,
@@ -150,9 +149,10 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
   }
 
   void setDateFilter(String? start, String? end) {
-   state = state.copyWith(filterStartDate: start, filterEndDate: end);
-   loadRecords();
- }
+    state = state.copyWith(filterStartDate: start, filterEndDate: end);
+    loadRecords();
+  }
+
   /// Apply all filter changes at once, then reload a single time.
   void applyFilters({
     required int? merchantId,
@@ -190,8 +190,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
     loadRecords();
   }
 
-  bool get canLoadMore =>
-      state.hasMore && !state.loading && !state.loadingMore;
+  bool get canLoadMore => state.hasMore && !state.loading && !state.loadingMore;
 
   /// 更新一条价格记录。
   /// 成功后**局部更新** state.records 中对应 id（不调 loadRecords，避免丢滚动位置）。

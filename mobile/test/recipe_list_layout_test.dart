@@ -47,6 +47,21 @@ Widget _wrap(List<RecipeSummary> items) {
 const _gridLeft = 12.0;
 
 void main() {
+  testWidgets('recipe create action uses an icon-only button', (tester) async {
+    await tester.pumpWidget(_wrap(const []));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byIcon(Icons.add), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(FloatingActionButton),
+        matching: find.byType(Text),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('单个结果靠左而不是居中', (tester) async {
     tester.view.physicalSize = const Size(800, 1200);
     tester.view.devicePixelRatio = 1.0;
@@ -79,8 +94,7 @@ void main() {
     expect(cards, findsNWidgets(2));
     final first = tester.getTopLeft(cards.first);
     final second = tester.getTopLeft(cards.last);
-    expect(first.dx, _gridLeft,
-        reason: '第一行首个卡片应靠左，dx=${first.dx}');
+    expect(first.dx, _gridLeft, reason: '第一行首个卡片应靠左，dx=${first.dx}');
     expect(first.dx, lessThan(second.dx));
     expect(first.dy, second.dy);
   });
@@ -105,8 +119,7 @@ void main() {
       return rect.top;
     }).toSet();
     expect(yPositions.length, 1, reason: '1400px 宽下 4 个卡片应在同一行');
-    expect(tester.getTopLeft(cards.first).dx, _gridLeft,
-        reason: '首行卡片应靠左');
+    expect(tester.getTopLeft(cards.first).dx, _gridLeft, reason: '首行卡片应靠左');
   });
 
   testWidgets('宽屏下单结果仍靠左', (tester) async {

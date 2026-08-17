@@ -5,27 +5,65 @@ import '../utils/ingredient_colors.dart';
 
 /// NRV 指标白名单（对齐 web NRV_KEYS）
 const nrvKeys = <String>{
-  'energy', 'protein', 'fat', 'carbohydrate', 'fiber',
-  'calcium', 'iron', 'sodium', 'potassium',
-  'vitamin_a_rae', 'vitamin_c', 'vitamin_b1', 'vitamin_b2',
-  'vitamin_b12', 'vitamin_d', 'vitamin_e', 'vitamin_k',
+  'energy',
+  'protein',
+  'fat',
+  'carbohydrate',
+  'fiber',
+  'calcium',
+  'iron',
+  'sodium',
+  'potassium',
+  'vitamin_a_rae',
+  'vitamin_c',
+  'vitamin_b1',
+  'vitamin_b2',
+  'vitamin_b12',
+  'vitamin_d',
+  'vitamin_e',
+  'vitamin_k',
 };
 
 /// NRV 中文名（对齐 web NRV_LABELS）
 const nrvLabels = <String, String>{
-  'energy': '能量', 'protein': '蛋白质', 'fat': '脂肪', 'carbohydrate': '碳水化合物',
-  'fiber': '膳食纤维', 'calcium': '钙', 'iron': '铁', 'sodium': '钠', 'potassium': '钾',
-  'vitamin_a_rae': '维生素A', 'vitamin_c': '维生素C', 'vitamin_b1': '维生素B1',
-  'vitamin_b2': '维生素B2', 'vitamin_b12': '维生素B12', 'vitamin_d': '维生素D',
-  'vitamin_e': '维生素E', 'vitamin_k': '维生素K',
+  'energy': '能量',
+  'protein': '蛋白质',
+  'fat': '脂肪',
+  'carbohydrate': '碳水化合物',
+  'fiber': '膳食纤维',
+  'calcium': '钙',
+  'iron': '铁',
+  'sodium': '钠',
+  'potassium': '钾',
+  'vitamin_a_rae': '维生素A',
+  'vitamin_c': '维生素C',
+  'vitamin_b1': '维生素B1',
+  'vitamin_b2': '维生素B2',
+  'vitamin_b12': '维生素B12',
+  'vitamin_d': '维生素D',
+  'vitamin_e': '维生素E',
+  'vitamin_k': '维生素K',
 };
 
 /// 营养排序（对齐 web nutrientSortOrder 前 17 项）
 const _nutrientSortOrder = [
-  '能量', '蛋白质', '脂肪', '碳水化合物', '钠',
-  '膳食纤维', '钙', '铁', '钾',
-  '维生素A', '维生素B1', '维生素B2', '维生素B12', '维生素C',
-  '维生素D', '维生素E', '维生素K',
+  '能量',
+  '蛋白质',
+  '脂肪',
+  '碳水化合物',
+  '钠',
+  '膳食纤维',
+  '钙',
+  '铁',
+  '钾',
+  '维生素A',
+  '维生素B1',
+  '维生素B2',
+  '维生素B12',
+  '维生素C',
+  '维生素D',
+  '维生素E',
+  '维生素K',
 ];
 
 int sortIndex(String label) {
@@ -96,8 +134,7 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
 
     final contributors = <NutrientContributor>[];
     for (final d in nutrition.ingredientDetails) {
-      final c = d.nutritionContribution[label] ??
-          d.nutritionContribution[key];
+      final c = d.nutritionContribution[label] ?? d.nutritionContribution[key];
       if (c != null && c.value > 0) {
         contributors.add(NutrientContributor(
           name: d.ingredientName.isEmpty ? '未知食材' : d.ingredientName,
@@ -111,8 +148,11 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
     contributors.sort((a, b) => b.value.compareTo(a.value));
 
     final total = contributors.fold<double>(0, (s, c) => s + c.value);
-    final top2 = contributors.take(2).map((c) =>
-        '${c.name} ${total > 0 ? (c.value / total * 100).round() : 0}%').join(' · ');
+    final top2 = contributors
+        .take(2)
+        .map((c) =>
+            '${c.name} ${total > 0 ? (c.value / total * 100).round() : 0}%')
+        .join(' · ');
 
     result.add(NutrientDisplay(
       key: key,
@@ -134,9 +174,8 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
   return result;
 }
 
-String _fmt(double v) => v == v.roundToDouble()
-    ? v.toStringAsFixed(0)
-    : v.toStringAsFixed(2);
+String _fmt(double v) =>
+    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
 
 /// 食材贡献总和（items 恒非空：buildNutrientDisplays 过滤了空贡献）
 double _contribTotal(List<NutrientContributor> items) =>
@@ -197,8 +236,8 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
             if (widget.loading)
               const SizedBox(
                   height: 120,
-                  child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2)))
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)))
             else if (widget.nutrition == null)
               SizedBox(
                 height: 120,
@@ -246,8 +285,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest
-            .withValues(alpha: 0.4),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
         borderRadius: BorderRadius.circular(8),
       ),
       child: InkWell(

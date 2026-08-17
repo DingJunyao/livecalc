@@ -2,11 +2,26 @@ import '../../../core/api/api_client.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../models/product.dart';
+import '../../nutrition/models/usda_models.dart';
 
 class ProductPage {
   final List<Product> items;
   final int total;
   const ProductPage({required this.items, this.total = 0});
+}
+
+class ProductMutationResult {
+  final Product? product;
+  final MutationReviewResult review;
+
+  const ProductMutationResult({
+    this.product,
+    required this.review,
+  });
+
+  bool get pending => review.pending;
+  bool get applied => !pending;
+  String get message => review.message;
 }
 
 class ProductRepository {
@@ -49,14 +64,11 @@ class ProductRepository {
     final response =
         await _client.dio.get('/products/entity', queryParameters: params);
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['items'] as List?) ?? const []);
-    final items = list
-        .map((e) => Product.fromJson(e as Map<String, dynamic>))
-        .toList();
-    final total = (data is Map ? (data['total'] as num?)?.toInt() : null) ??
-        items.length;
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
+    final items =
+        list.map((e) => Product.fromJson(e as Map<String, dynamic>)).toList();
+    final total =
+        (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
     return ProductPage(items: items, total: total);
   }
 
@@ -85,8 +97,9 @@ class ProductRepository {
     return Product.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Product> updateProduct(
+  Future<ProductMutationResult> updateProduct(
     int id, {
+    required bool isAdmin,
     String? name,
     int? ingredientId,
     String? brand,
@@ -101,28 +114,46 @@ class ProductRepository {
     if (barcode != null) payload['barcode'] = barcode;
     if (aliases != null) payload['aliases'] = aliases;
     if (tags != null) payload['tags'] = tags;
-    final response = await _client.dio.put('/products/entity/$id', data: payload);
-    return Product.fromJson(response.data as Map<String, dynamic>);
+    final response =
+        await _client.dio.put('/products/entity/$id', data: payload);
+    final data = response.data as Map<String, dynamic>;
+    return ProductMutationResult(
+      product: Product.fromJson(data),
+      review: isAdmin
+          ? MutationReviewResult(
+              applied: true,
+              pending: false,
+              message: '已保存',
+              raw: data,
+            )
+          : MutationReviewResult(
+              applied: false,
+              pending: true,
+              message: '已提交，待管理员审核',
+              raw: data,
+            ),
+    );
   }
 
-  Future<void> deleteProduct(int id) async {
-    await _client.dio.delete('/products/entity/$id');
+  Future<MutationReviewResult> deleteProduct(int id) async {
+    final response = await _client.dio.delete('/products/entity/$id');
+    final data = response.data;
+    return MutationReviewResult.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
   }
 
   Future<LatestPriceInfo> getLatestPrice(int id) async {
-    final response =
-        await _client.dio.get('/products/entity/$id/latest-price');
+    final response = await _client.dio.get('/products/entity/$id/latest-price');
     return LatestPriceInfo.fromJson(response.data as Map<String, dynamic>);
   }
 
   Future<List<MerchantPrice>> getLatestPricesByMerchant(int id) async {
-    final response = await _client
-        .dio
-        .get('/products/entity/$id/latest-price-by-merchant');
+    final response =
+        await _client.dio.get('/products/entity/$id/latest-price-by-merchant');
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['prices'] as List?) ?? const []);
+    final list =
+        (data is List) ? data : ((data['prices'] as List?) ?? const []);
     return list
         .map((e) => MerchantPrice.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -141,9 +172,7 @@ class ProductRepository {
     final list = (data is List)
         ? data
         : ((data is Map ? data['items'] as List? : null) ?? const []);
-    return list
-        .map((e) => e as Map<String, dynamic>)
-        .toList(growable: false);
+    return list.map((e) => e as Map<String, dynamic>).toList(growable: false);
   }
 
   /// 迷你图（GET /sparklines/products?ids=1,2,3）→ {id: [values]}。
@@ -157,7 +186,8 @@ class ProductRepository {
     if (data is! Map) return const {};
     return data.map((key, value) {
       final values = (value as List?)?.map((e) => (e as num).toDouble());
-      return MapEntry(int.tryParse(key.toString()) ?? 0, values?.toList() ?? []);
+      return MapEntry(
+          int.tryParse(key.toString()) ?? 0, values?.toList() ?? []);
     });
   }
 }

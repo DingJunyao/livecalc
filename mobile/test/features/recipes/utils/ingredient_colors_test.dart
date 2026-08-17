@@ -9,10 +9,10 @@ void main() {
     });
 
     test('不同 id 从 16 色板取色（abs % 16）', () {
-      expect(getIngredientColor(0), INGREDIENT_COLOR_PALETTE[0]);
-      expect(getIngredientColor(16), INGREDIENT_COLOR_PALETTE[0]);
-      expect(getIngredientColor(-1), INGREDIENT_COLOR_PALETTE[1]);
-      expect(getIngredientColor(7), INGREDIENT_COLOR_PALETTE[7]);
+      expect(getIngredientColor(0), ingredientColorPalette[0]);
+      expect(getIngredientColor(16), ingredientColorPalette[0]);
+      expect(getIngredientColor(-1), ingredientColorPalette[1]);
+      expect(getIngredientColor(7), ingredientColorPalette[7]);
     });
 
     test('null 返回灰色', () {

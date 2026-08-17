@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../nutrition/models/usda_models.dart';
 import '../models/merchant.dart';
 import '../models/merchant_product_price.dart';
 import '../repositories/merchant_repository.dart';
@@ -126,9 +127,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
   /// 与网页端一致，全量拉取收藏后在客户端做营业状态/搜索/分页过滤。
   Future<MerchantPage> _searchFavorites(int page) async {
     final favs = await _repo.getFavorites();
-    var filtered = favs
-        .where((m) => state.includeClosed || m.isOpen)
-        .toList();
+    var filtered = favs.where((m) => state.includeClosed || m.isOpen).toList();
     final query = state.searchQuery.trim().toLowerCase();
     if (query.isNotEmpty) {
       filtered = filtered
@@ -212,9 +211,10 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
     await load();
   }
 
-  Future<void> deleteMerchant(int id) async {
-    await _repo.deleteMerchant(id);
-    await load();
+  Future<MutationReviewResult> deleteMerchant(int id) async {
+    final review = await _repo.deleteMerchant(id);
+    if (review.applied) await load();
+    return review;
   }
 }
 
@@ -323,27 +323,31 @@ class MerchantDetailPageNotifier
     }
   }
 
-  Future<void> updateMerchant({
+  Future<MerchantMutationResult> updateMerchant({
+    required bool isAdmin,
     String? name,
     String? address,
     bool? isOpen,
     double? latitude,
     double? longitude,
   }) async {
-    final updated = await _repo.updateMerchant(
+    final result = await _repo.updateMerchant(
       merchantId,
+      isAdmin: isAdmin,
       name: name,
       address: address,
       isOpen: isOpen,
       latitude: latitude,
       longitude: longitude,
     );
-    state = state.copyWith(merchant: updated);
+    if (result.applied && result.merchant != null) {
+      state = state.copyWith(merchant: result.merchant);
+    }
+    return result;
   }
 }
 
-final merchantDetailPageProvider =
-    StateNotifierProvider.autoDispose.family<
-        MerchantDetailPageNotifier, MerchantDetailPageState, int>(
+final merchantDetailPageProvider = StateNotifierProvider.autoDispose
+    .family<MerchantDetailPageNotifier, MerchantDetailPageState, int>(
   (ref, id) => MerchantDetailPageNotifier(id),
 );

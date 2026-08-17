@@ -1,5 +1,6 @@
 import '../../../core/api/api_client.dart';
 import '../../../shared/models/nutrition.dart';
+import '../models/usda_models.dart';
 
 class NutritionRepository {
   final ApiClient _client;
@@ -10,9 +11,8 @@ class NutritionRepository {
   /// 404（无营养数据）时返回 null。
   Future<NutritionInfo?> getIngredientNutrition(int id) async {
     try {
-      final response = await _client
-          .dio
-          .get('/nutrition/ingredients/$id/nutrition');
+      final response =
+          await _client.dio.get('/nutrition/ingredients/$id/nutrition');
       return NutritionInfo.fromJson(response.data as Map<String, dynamic>);
     } on Exception catch (e) {
       if (e.toString().contains('404')) return null;
@@ -32,29 +32,45 @@ class NutritionRepository {
     }
   }
 
-  Future<void> saveIngredientNutrition(
+  Future<MutationReviewResult> saveIngredientNutrition(
     int id,
     List<NutrientEntry> nutrients,
   ) async {
-    await _client.dio.post(
+    final response = await _client.dio.post(
       '/nutrition/ingredients/$id/nutrition',
       data: _payload(nutrients),
     );
+    return MutationReviewResult.fromJson(
+      response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : {'success': true},
+    );
   }
 
-  Future<void> saveProductNutrition(
+  Future<MutationReviewResult> saveProductNutrition(
     int id,
     List<NutrientEntry> nutrients,
   ) async {
-    await _client.dio.post(
+    final response = await _client.dio.post(
       '/nutrition/products/$id/nutrition',
       data: _payload(nutrients),
+    );
+    return MutationReviewResult.fromJson(
+      response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : {'success': true},
     );
   }
 
   /// 清空商品自定义营养（回退到继承原料数据）。
-  Future<void> clearProductNutrition(int id) async {
-    await _client.dio.put('/products/entity/$id/nutrition', data: null);
+  Future<MutationReviewResult> clearProductNutrition(int id) async {
+    final response =
+        await _client.dio.put('/products/entity/$id/nutrition', data: null);
+    return MutationReviewResult.fromJson(
+      response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : {'success': true},
+    );
   }
 
   Map<String, dynamic> _payload(List<NutrientEntry> nutrients) {

@@ -6,6 +6,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/api/auth_interceptor.dart';
 import '../../../core/services/server_connection_checker.dart';
 import '../models/login_request.dart';
+import '../models/auth_config.dart';
 import '../models/user.dart';
 import '../repositories/auth_repository.dart';
 
@@ -144,7 +145,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on Exception catch (e) {
       state = AuthState(
         status: AuthStatus.error,
-        errorMessage: _friendlyLoginError(e),
+        errorMessage: _friendlyRegisterError(e),
       );
       return false;
     }
@@ -160,6 +161,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// successfully reconnected from the server-config screen.
   void clearConnectionError() {
     if (state.serverUnreachable) {
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
+  }
+
+  /// Entering registration should not inherit an old login error.
+  void clearError() {
+    if (state.status == AuthStatus.error) {
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
@@ -207,7 +215,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     state = AuthState(status: AuthStatus.authenticated, user: user);
   }
 
-  /// Maps raw login/register exceptions to short, user-facing messages.
+  /// Maps raw login exceptions to short, user-facing messages.
   String _friendlyLoginError(Exception e) {
     if (e is DioException) {
       final code = e.response?.statusCode;
@@ -218,10 +226,36 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     return '登录失败，请稍后重试';
   }
+
+  String _friendlyRegisterError(Exception e) {
+    if (e is DioException) {
+      final code = e.response?.statusCode;
+      final detail = _serverDetail(e);
+      final invalidRequest =
+          code == 400 || code == 401 || code == 403 || code == 409;
+      if (invalidRequest && detail != null) return '注册失败：$detail';
+      if (invalidRequest) return '注册失败，请检查注册信息';
+      if (code == 404) return '注册接口不存在，请确认服务器版本';
+      if (code != null && code >= 500) return '注册失败，请稍后重试';
+      return '注册失败，请检查网络后重试';
+    }
+    return '注册失败，请稍后重试';
+  }
+
+  String? _serverDetail(DioException e) {
+    final data = e.response?.data;
+    final detail = data is Map ? data['detail'] : null;
+    if (detail is String && detail.trim().isNotEmpty) return detail.trim();
+    return null;
+  }
 }
 
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(AuthRepository());
+});
+
+final authConfigProvider = FutureProvider.autoDispose<AuthConfig>((ref) async {
+  return AuthRepository().getConfig();
 });
 
 final isLoggedInProvider = Provider<bool>((ref) {

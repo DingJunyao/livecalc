@@ -13,7 +13,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: CostTrendChart(
-            points: [_point('07-01', 5), _point('07-02', 6), _point('07-03', 7)],
+            points: [
+              _point('07-01', 5),
+              _point('07-02', 6),
+              _point('07-03', 7)
+            ],
             onRangeChange: (days) => got = days,
           ),
         ),
@@ -70,7 +74,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: CostTrendChart(
-            points: [_point('07-01', 5), _point('07-02', 6), _point('07-03', 7)],
+            points: [
+              _point('07-01', 5),
+              _point('07-02', 6),
+              _point('07-03', 7)
+            ],
           ),
         ),
       ));

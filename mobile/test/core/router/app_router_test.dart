@@ -165,8 +165,7 @@ void main() {
     // 2) 在原料页重新打开菜单，验证选中态
     await openMoreMenu(tester);
 
-    expect(selectedBoxDecoration(const ValueKey('more-原料')),
-        findsOneWidget);
+    expect(selectedBoxDecoration(const ValueKey('more-原料')), findsOneWidget);
     // 其他胶囊非选中态：Container.decoration 为 null（无 BoxDecoration）
     expect(selectedBoxDecoration(const ValueKey('more-商品')), findsNothing);
     expect(selectedBoxDecoration(const ValueKey('more-商家')), findsNothing);

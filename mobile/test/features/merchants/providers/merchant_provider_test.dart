@@ -26,12 +26,12 @@ void main() {
           skip: any(named: 'skip'),
           limit: any(named: 'limit'),
         )).thenAnswer((_) async => const MerchantPage(
-              items: [
-                Merchant(id: 1, name: '盒马鲜生'),
-                Merchant(id: 3, name: '大润发'),
-              ],
-              total: 2,
-            ));
+          items: [
+            Merchant(id: 1, name: '盒马鲜生'),
+            Merchant(id: 3, name: '大润发'),
+          ],
+          total: 2,
+        ));
 
     await notifier.load();
     await settle();

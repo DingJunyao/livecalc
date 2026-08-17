@@ -76,13 +76,16 @@ void main() {
 
   group('CostProportionChart 进度条', () {
     const breakdown = [
-      CostBreakdownItem(ingredientName: '鸡蛋', ingredientId: 1, cost: 4, unitPrice: 0),
-      CostBreakdownItem(ingredientName: '番茄', ingredientId: 2, cost: 2, unitPrice: 0),
+      CostBreakdownItem(
+          ingredientName: '鸡蛋', ingredientId: 1, cost: 4, unitPrice: 0),
+      CostBreakdownItem(
+          ingredientName: '番茄', ingredientId: 2, cost: 2, unitPrice: 0),
     ];
 
     testWidgets('标题行显示总价，清单行显示 名称+金额+百分比', (tester) async {
       await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
+        home: Scaffold(
+            body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
       expect(find.text('¥6.00'), findsOneWidget); // 标题行总价
       expect(find.text('鸡蛋'), findsOneWidget);
@@ -93,30 +96,36 @@ void main() {
 
     testWidgets('点击进度条段高亮对应清单行', (tester) async {
       await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
+        home: Scaffold(
+            body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
       // 点第一段（鸡蛋 4/6 → 占左 2/3）
       final bar = find.byKey(const Key('cost_bar'));
       await tester.tapAt(tester.getTopLeft(bar) + const Offset(20, 5));
       await tester.pump();
       // 真断言高亮：清单第一行背景 = 鸡蛋色 alpha 0.2，第二行无高亮
-      final row0 = tester.widget<Container>(find.byKey(const Key('cost_row_0')));
+      final row0 =
+          tester.widget<Container>(find.byKey(const Key('cost_row_0')));
       expect((row0.decoration as BoxDecoration).color,
           getIngredientColor(1).withValues(alpha: 0.2));
-      final row1 = tester.widget<Container>(find.byKey(const Key('cost_row_1')));
+      final row1 =
+          tester.widget<Container>(find.byKey(const Key('cost_row_1')));
       expect((row1.decoration as BoxDecoration).color, isNull);
     });
 
     testWidgets('点击清单行高亮对应行', (tester) async {
       await tester.pumpWidget(const MaterialApp(
-        home: Scaffold(body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
+        home: Scaffold(
+            body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
       await tester.tap(find.text('番茄'));
       await tester.pump();
-      final row1 = tester.widget<Container>(find.byKey(const Key('cost_row_1')));
+      final row1 =
+          tester.widget<Container>(find.byKey(const Key('cost_row_1')));
       expect((row1.decoration as BoxDecoration).color,
           getIngredientColor(2).withValues(alpha: 0.2));
-      final row0 = tester.widget<Container>(find.byKey(const Key('cost_row_0')));
+      final row0 =
+          tester.widget<Container>(find.byKey(const Key('cost_row_0')));
       expect((row0.decoration as BoxDecoration).color, isNull);
     });
   });

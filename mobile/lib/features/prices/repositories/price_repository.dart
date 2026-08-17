@@ -42,7 +42,8 @@ class PriceRepository {
     if (startDate != null) params['start_date'] = startDate;
     if (endDate != null) params['end_date'] = endDate;
 
-    final response = await _client.dio.get('/products', queryParameters: params);
+    final response =
+        await _client.dio.get('/products', queryParameters: params);
     final data = response.data;
     List<dynamic> list;
     int total;

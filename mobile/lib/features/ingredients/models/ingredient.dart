@@ -1,3 +1,5 @@
+import '../../../shared/models/entity_pending_proposal.dart';
+
 class Ingredient {
   final int id;
   final String name;
@@ -9,6 +11,7 @@ class Ingredient {
   final List<String> aliases;
   final String? createdAt;
   final String? makingRecipeName;
+  final EntityPendingProposal? pendingProposal;
 
   const Ingredient({
     required this.id,
@@ -21,6 +24,7 @@ class Ingredient {
     this.aliases = const [],
     this.createdAt,
     this.makingRecipeName,
+    this.pendingProposal,
   });
 
   factory Ingredient.fromJson(Map<String, dynamic> json) {
@@ -32,12 +36,14 @@ class Ingredient {
       categoryPath: json['category_path'] as String?,
       latestPrice: (json['latest_price'] as num?)?.toDouble(),
       unit: json['default_unit'] as String?,
-      aliases: (json['aliases'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
+      aliases: (json['aliases'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       createdAt: json['created_at'] as String?,
       makingRecipeName: json['making_recipe_name'] as String?,
+      pendingProposal: json['pending_proposal'] is Map<String, dynamic>
+          ? EntityPendingProposal.fromJson(
+              json['pending_proposal'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

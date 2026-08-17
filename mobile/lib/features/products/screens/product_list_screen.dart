@@ -6,14 +6,14 @@ import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart';
 import '../../../shared/widgets/sparkline.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/providers/ingredient_provider.dart';
 import '../../merchants/providers/merchant_provider.dart';
-import '../../prices/repositories/price_repository.dart';
+import '../../prices/screens/price_record_form_screen.dart';
 import '../repositories/product_repository.dart';
 import '../models/product.dart';
+import '../screens/product_form_screen.dart' show ProductFormResult;
 import '../providers/product_provider.dart';
 
 const _productConditions = <(String, String)>[
@@ -26,8 +26,7 @@ class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key});
 
   @override
-  ConsumerState<ProductListScreen> createState() =>
-      _ProductListScreenState();
+  ConsumerState<ProductListScreen> createState() => _ProductListScreenState();
 }
 
 class _ProductListScreenState extends ConsumerState<ProductListScreen> {
@@ -231,34 +230,18 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
   Future<void> _quickPrice(Product item) async {
     if (!mounted) return;
-    final merchants = ref.read(merchantListProvider).items;
-    final formResult = await showPriceRecordFormSheet(
-      context,
-      merchants: merchants,
-      fixedProductId: item.id,
-      fixedProductName: item.name,
+    final saved = await context.push<bool>(
+      '/prices/record',
+      extra: PriceRecordFormPrefill(
+        product: item,
+        lockProduct: true,
+      ),
     );
-    if (formResult == null || !mounted) return;
-    try {
-      await PriceRepository().createRecord(
-        productId: item.id,
-        price: formResult.price,
-        quantity: formResult.quantity,
-        unit: formResult.unit,
-        merchantId: formResult.merchantId,
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('价格已记录')),
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('价格已记录')),
-        );
-      }
       ref.read(productListProvider.notifier).load();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('记录失败，请重试')),
-        );
-      }
     }
   }
 
@@ -289,8 +272,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 
   Future<void> _openAddForm() async {
-    final added = await context.push<bool>('/products/new');
-    if (added == true && mounted) {
+    final added = await context.push<ProductFormResult>('/products/new');
+    if (added?.saved == true && mounted) {
       ref.read(productListProvider.notifier).load();
     }
   }
@@ -436,8 +419,7 @@ class _ProductFilterSheet extends ConsumerStatefulWidget {
       _ProductFilterSheetState();
 }
 
-class _ProductFilterSheetState
-    extends ConsumerState<_ProductFilterSheet> {
+class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
   late int? _ingredientId;
   late Set<int> _categoryIds;
   late String? _brand;

@@ -32,7 +32,8 @@ class _FakeGeolocator extends GeolocatorPlatform {
       LocationPermission.always;
 
   @override
-  Future<Position> getCurrentPosition({LocationSettings? locationSettings}) async =>
+  Future<Position> getCurrentPosition(
+          {LocationSettings? locationSettings}) async =>
       Position(
         latitude: 31.25,
         longitude: 121.5,
@@ -52,8 +53,14 @@ const _mapConfig = MapConfigState(
   defaultId: 'amap',
 );
 const _places = [
-  UserPlace(id: 1, name: '家', latitude: 31.2304, longitude: 121.4737,
-      kind: 'home', isDefault: true, viewRadiusKm: 5),
+  UserPlace(
+      id: 1,
+      name: '家',
+      latitude: 31.2304,
+      longitude: 121.4737,
+      kind: 'home',
+      isDefault: true,
+      viewRadiusKm: 5),
   UserPlace(id: 2, name: '公司', latitude: 31.25, longitude: 121.5, kind: 'work'),
 ];
 
@@ -120,7 +127,8 @@ void main() {
     final controller = MapController();
     await pumpMap(tester, controller: controller);
 
-    final (expLat, expLng) = wgs84ToGcj02(_shanghai.latitude, _shanghai.longitude);
+    final (expLat, expLng) =
+        wgs84ToGcj02(_shanghai.latitude, _shanghai.longitude);
     final point = merchantLayer(tester).markers.single.point;
     expect(point.latitude, closeTo(expLat, 1e-6));
     expect(point.longitude, closeTo(expLng, 1e-6));
@@ -178,7 +186,11 @@ void main() {
             child: StatefulBuilder(builder: (ctx, setState) {
               return MerchantMapView(
                 merchants: const [
-                  Merchant(id: 1, name: '盒马鲜生', latitude: 31.2304, longitude: 121.4737),
+                  Merchant(
+                      id: 1,
+                      name: '盒马鲜生',
+                      latitude: 31.2304,
+                      longitude: 121.4737),
                 ],
                 controller: controller,
                 mapConfig: _mapConfig,
@@ -216,7 +228,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
 
-    expect(find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
     // 开启定位后按钮图标变主题色
     expect(locateIcon(tester).color, isNotNull);
     // 定位点 (31.25, 121.5) 在高德底图上同样转换
@@ -243,7 +256,11 @@ void main() {
             child: StatefulBuilder(builder: (ctx, setState) {
               return MerchantMapView(
                 merchants: const [
-                  Merchant(id: 1, name: '盒马鲜生', latitude: 31.2304, longitude: 121.4737),
+                  Merchant(
+                      id: 1,
+                      name: '盒马鲜生',
+                      latitude: 31.2304,
+                      longitude: 121.4737),
                 ],
                 controller: controller,
                 mapConfig: _mapConfig,
@@ -264,7 +281,8 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('locate-button')));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump(const Duration(milliseconds: 100));
-    expect(find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
+    expect(
+        find.byKey(const ValueKey('current-location-marker')), findsOneWidget);
     expect(selected, isNull);
     expect(find.byTooltip('选择常用地点'), findsOneWidget);
 
@@ -295,7 +313,8 @@ void main() {
     expect(find.byKey(const ValueKey('layer-switch')), findsNothing);
   });
 
-  testWidgets('腾讯底图：TileLayer tms=true（TMS y 轴翻转），高德/OSM 为 false', (tester) async {
+  testWidgets('腾讯底图：TileLayer tms=true（TMS y 轴翻转），高德/OSM 为 false',
+      (tester) async {
     const tencent = MapConfigState(
       layers: [tencentLayer],
       defaultId: 'tencent',

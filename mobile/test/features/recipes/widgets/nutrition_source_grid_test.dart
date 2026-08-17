@@ -14,8 +14,8 @@ RecipeNutrition _nutrition() => const RecipeNutrition(
       totalFat: 8,
       totalCarbs: 20,
       perServingNutrients: {
-        'protein': NutritionItem(
-            value: 6, unit: 'g', nrpPct: 10, key: 'protein'),
+        'protein':
+            NutritionItem(value: 6, unit: 'g', nrpPct: 10, key: 'protein'),
         'fat': NutritionItem(value: 5, unit: 'g', nrpPct: 7, key: 'fat'),
         // fiber 无任何食材贡献（ingredientDetails 不含 'fiber'/'膳食纤维'），
         // 用于钉住 contributors.isEmpty → continue 过滤语义
@@ -125,8 +125,8 @@ void main() {
       // 跳过段间 1px surface 细缝（Container 内部同为 ColoredBox，按色排除）
       final surface = Theme.of(tester.element(bar)).colorScheme.surface;
       final segments = tester
-          .widgetList<ColoredBox>(find.descendant(
-              of: bar, matching: find.byType(ColoredBox)))
+          .widgetList<ColoredBox>(
+              find.descendant(of: bar, matching: find.byType(ColoredBox)))
           .where((w) => w.color != surface)
           .toList();
       // 蛋白质 items=[鸡蛋6, 番茄1] → 两段，色 = 各自 getIngredientColor

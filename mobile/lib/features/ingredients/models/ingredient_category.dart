@@ -15,9 +15,8 @@ class IngredientCategory {
     return IngredientCategory(
       id: json['id'] as int? ?? 0,
       name: json['name'] as String? ?? '',
-      displayName: json['display_name'] as String? ??
-          json['name'] as String? ??
-          '',
+      displayName:
+          json['display_name'] as String? ?? json['name'] as String? ?? '',
       description: json['description'] as String?,
     );
   }

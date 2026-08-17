@@ -115,6 +115,35 @@ void main() {
       expect(notifier.state.serverUnreachable, false);
     });
 
+    test('注册失败显示后端原因而非登录错误', () async {
+      when(() => mockRepo.register(
+            username: any(named: 'username'),
+            email: any(named: 'email'),
+            passwordHash: any(named: 'passwordHash'),
+            phone: any(named: 'phone'),
+            inviteCode: any(named: 'inviteCode'),
+          )).thenThrow(DioException(
+        requestOptions: RequestOptions(path: '/auth/register'),
+        response: Response(
+          requestOptions: RequestOptions(path: '/auth/register'),
+          statusCode: 400,
+          data: {'detail': '需要邀请码'},
+        ),
+        type: DioExceptionType.badResponse,
+      ));
+
+      final notifier = AuthNotifier(mockRepo);
+      final success = await notifier.register(
+        username: 'alice',
+        email: 'a@test.com',
+        password: '123456',
+      );
+
+      expect(success, false);
+      expect(notifier.state.status, AuthStatus.error);
+      expect(notifier.state.errorMessage, '注册失败：需要邀请码');
+    });
+
     test('登录成功后保存凭据与 token，便于下次自动登录', () async {
       when(() => mockRepo.login(any())).thenAnswer((_) async =>
           const LoginResponse(accessToken: 'tok', refreshToken: 'ref'));
@@ -235,12 +264,8 @@ void main() {
     });
 
     test('refreshUser 拉取最新用户并更新状态', () async {
-      when(() => mockRepo.getCurrentUser()).thenAnswer((_) async =>
-          const User(
-              id: 1,
-              username: 'test',
-              email: 't@test.com',
-              nickname: '新昵称'));
+      when(() => mockRepo.getCurrentUser()).thenAnswer((_) async => const User(
+          id: 1, username: 'test', email: 't@test.com', nickname: '新昵称'));
       final notifier = AuthNotifier(mockRepo);
       notifier.state = const AuthState(
           status: AuthStatus.authenticated,
@@ -253,11 +278,9 @@ void main() {
     });
 
     test('refreshUser 请求失败保持旧状态', () async {
-      when(() => mockRepo.getCurrentUser())
-          .thenThrow(Exception('network'));
+      when(() => mockRepo.getCurrentUser()).thenThrow(Exception('network'));
       final notifier = AuthNotifier(mockRepo);
-      const oldUser =
-          User(id: 1, username: 'test', email: 't@test.com');
+      const oldUser = User(id: 1, username: 'test', email: 't@test.com');
       notifier.state =
           const AuthState(status: AuthStatus.authenticated, user: oldUser);
 
@@ -268,8 +291,8 @@ void main() {
 
     test('applyUser 直接用响应覆盖用户状态', () {
       final notifier = AuthNotifier(mockRepo);
-      notifier.applyUser(
-          const User(id: 1, username: 'new', email: 'n@test.com'));
+      notifier
+          .applyUser(const User(id: 1, username: 'new', email: 'n@test.com'));
       expect(notifier.state.status, AuthStatus.authenticated);
       expect(notifier.state.user?.username, 'new');
     });

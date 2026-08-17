@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../screens/merchant_form_screen.dart';
 import '../models/merchant.dart';
 import '../models/merchant_product_price.dart';
 import '../providers/map_config_provider.dart';
@@ -84,7 +86,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
           IconButton(
             icon: const Icon(Icons.edit_outlined),
             tooltip: '编辑商家',
-            onPressed: () => _showEditDialog(notifier, merchant),
+            onPressed: () => _editMerchant(),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -100,8 +102,12 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
           children: [
             _BasicInfoCard(
               merchant: merchant,
-              onEdit: () => _showEditDialog(notifier, merchant),
+              onEdit: _editMerchant,
             ),
+            if (merchant.pendingProposal != null) ...[
+              const SizedBox(height: 12),
+              _PendingProposalBanner(proposal: merchant.pendingProposal!),
+            ],
             if (merchant.latitude != null && merchant.longitude != null) ...[
               const SizedBox(height: 16),
               Card(
@@ -164,118 +170,59 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     );
   }
 
-  Future<void> _showEditDialog(
-    MerchantDetailPageNotifier notifier,
-    Merchant merchant,
-  ) async {
-    final nameController = TextEditingController(text: merchant.name);
-    final addressController =
-        TextEditingController(text: merchant.address ?? '');
-    final latController = TextEditingController(
-      text: merchant.latitude == null ? '' : '${merchant.latitude}',
-    );
-    final lngController = TextEditingController(
-      text: merchant.longitude == null ? '' : '${merchant.longitude}',
-    );
-    var isOpen = merchant.isOpen;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('编辑商家'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: '商家名称 *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: addressController,
-                  decoration: const InputDecoration(
-                    labelText: '地址',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: const Text('营业中'),
-                  value: isOpen,
-                  onChanged: (v) => setDialogState(() => isOpen = v),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: latController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
-                        decoration: const InputDecoration(
-                          labelText: '纬度（可选）',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: lngController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true, signed: true),
-                        decoration: const InputDecoration(
-                          labelText: '经度（可选）',
-                          border: OutlineInputBorder(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
-        ),
+  Future<void> _editMerchant() async {
+    final state = ref.read(merchantDetailPageProvider(widget.id));
+    final merchant = state.merchant;
+    if (merchant == null) return;
+    final result = await context.push<MerchantFormResult>(
+      '/merchants/${widget.id}/edit',
+      extra: MerchantFormArguments(
+        merchant: merchant,
+        isAdmin: ref.read(authProvider).user?.isAdmin == true,
       ),
     );
-    if (saved != true || !mounted) return;
-    final name = nameController.text.trim();
-    if (name.isEmpty) {
-      _toast('请输入商家名称');
-      return;
-    }
-    try {
-      await notifier.updateMerchant(
-        name: name,
-        address: addressController.text.trim(),
-        isOpen: isOpen,
-        latitude: double.tryParse(latController.text.trim()),
-        longitude: double.tryParse(lngController.text.trim()),
-      );
-      _toast('已保存');
-    } catch (_) {
-      _toast('保存失败，请重试');
-    }
+    if (result?.saved != true || !mounted) return;
+    final message = result!.pending
+        ? (result.message.isEmpty ? '已提交，待管理员审核' : result.message)
+        : (result.message.isEmpty ? '已保存' : result.message);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+    await ref.read(merchantDetailPageProvider(widget.id).notifier).load();
   }
+}
 
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+class _PendingProposalBanner extends StatelessWidget {
+  final MerchantPendingProposal proposal;
+
+  const _PendingProposalBanner({required this.proposal});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.hourglass_top_outlined,
+            color: theme.colorScheme.onSecondaryContainer,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              proposal.action == 'delete' ? '删除提议待管理员审核' : '修改待管理员审核',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

@@ -7,11 +7,24 @@ import '../../ingredients/repositories/ingredient_repository.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
 
+class ProductFormResult {
+  final bool saved;
+  final bool pending;
+  final String message;
+
+  const ProductFormResult({
+    required this.saved,
+    required this.pending,
+    required this.message,
+  });
+}
+
 class ProductFormScreen extends StatefulWidget {
   final Ingredient? fixedIngredient;
   final Product? product;
   final ProductRepository? repository;
   final IngredientRepository? ingredientRepository;
+  final bool isAdmin;
 
   const ProductFormScreen({
     super.key,
@@ -19,6 +32,7 @@ class ProductFormScreen extends StatefulWidget {
     this.product,
     this.repository,
     this.ingredientRepository,
+    this.isAdmin = false,
   });
 
   @override
@@ -148,9 +162,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _error = null;
     });
     try {
+      ProductMutationResult? result;
       if (_isEdit) {
-        await _productRepository.updateProduct(
+        result = await _productRepository.updateProduct(
           widget.product!.id,
+          isAdmin: widget.isAdmin,
           name: name,
           ingredientId: _selectedIngredient!.id,
           brand: _brandController.text.trim(),
@@ -168,7 +184,24 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           tags: _tags,
         );
       }
-      if (mounted) Navigator.of(context).pop(true);
+      if (!mounted) return;
+      if (!_isEdit) {
+        Navigator.of(context).pop(
+          const ProductFormResult(
+            saved: true,
+            pending: false,
+            message: '已创建商品',
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).pop(
+        ProductFormResult(
+          saved: true,
+          pending: result!.pending,
+          message: result.message,
+        ),
+      );
     } catch (_) {
       if (mounted) {
         setState(() {

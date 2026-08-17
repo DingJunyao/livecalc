@@ -95,7 +95,8 @@ class User {
       nutritionGoals: goals,
       dailyBudget: (json['daily_budget'] as num?)?.toDouble(),
       unitPreferences: json['unit_preferences'] is Map<String, dynamic>
-          ? UnitPreferences.fromJson(json['unit_preferences'] as Map<String, dynamic>)
+          ? UnitPreferences.fromJson(
+              json['unit_preferences'] as Map<String, dynamic>)
           : null,
     );
   }

@@ -13,7 +13,8 @@ class UnitPreferencesScreen extends ConsumerStatefulWidget {
   final ProfileRepository? repository;
   final AuthRepository? authRepository;
 
-  const UnitPreferencesScreen({super.key, this.repository, this.authRepository});
+  const UnitPreferencesScreen(
+      {super.key, this.repository, this.authRepository});
 
   @override
   ConsumerState<UnitPreferencesScreen> createState() =>
@@ -105,8 +106,8 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
 
     setState(() => _saving = true);
     try {
-      final user = await (widget.authRepository ?? AuthRepository())
-          .updateMe(body);
+      final user =
+          await (widget.authRepository ?? AuthRepository()).updateMe(body);
       ref.read(authProvider.notifier).applyUser(user);
       if (mounted) {
         _toast('已保存');
@@ -147,7 +148,8 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
                     children: [
                       Text(_loadError!),
                       const SizedBox(height: 8),
-                      OutlinedButton(onPressed: _loadUnits, child: const Text('重试')),
+                      OutlinedButton(
+                          onPressed: _loadUnits, child: const Text('重试')),
                     ],
                   ),
                 )
@@ -165,7 +167,8 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
                       hint: '千卡（kcal）',
                       value: _energyUnit,
                       items: const [
-                        DropdownMenuItem(value: 'kcal', child: Text('千卡（kcal）')),
+                        DropdownMenuItem(
+                            value: 'kcal', child: Text('千卡（kcal）')),
                         DropdownMenuItem(value: 'kJ', child: Text('千焦（kJ）')),
                       ],
                       onChanged: (v) => setState(() => _energyUnit = v),

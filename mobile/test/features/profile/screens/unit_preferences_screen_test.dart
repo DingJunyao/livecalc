@@ -11,6 +11,7 @@ import 'package:com_a4ding_livecalc/features/profile/repositories/profile_reposi
 import 'package:com_a4ding_livecalc/features/profile/screens/unit_preferences_screen.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
+
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 const _units = [

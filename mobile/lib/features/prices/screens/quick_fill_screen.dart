@@ -58,9 +58,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     _loadHistoryProducts();
   }
 
- Future<void> _loadHistoryProducts() async {
-   setState(() => _loading = true);
-   try {
+  Future<void> _loadHistoryProducts() async {
+    setState(() => _loading = true);
+    try {
       // 对齐 web 端：用 /merchants/{id}/product-prices（limit 200）获取全部商品，
       // 而非 /products 分页 20 条记录去重（商品多时会截断）。
       final merchantRepo = MerchantRepository();
@@ -106,7 +106,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
 
   void _addRow({String? name, String? unit, int? productId}) {
     setState(() {
-      _rows.add(_PriceRow(name: name ?? '', unit: unit ?? '个', productId: productId));
+      _rows.add(
+          _PriceRow(name: name ?? '', unit: unit ?? '个', productId: productId));
     });
   }
 
@@ -130,9 +131,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
           quantity: 1,
           unit: row.unit,
           merchantId: _selectedMerchantId,
-         recordType: 'price',
+          recordType: 'price',
         );
-         saved++;
+        saved++;
       } catch (_) {}
     }
 
@@ -187,31 +188,33 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('选择商家', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.outline)),
+                Text('选择商家',
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(color: theme.colorScheme.outline)),
                 const SizedBox(height: 8),
-              Autocomplete<Map<String, dynamic>>(
-                optionsBuilder: (textEditingValue) {
-                  final query = textEditingValue.text.toLowerCase();
-                  if (query.isEmpty) return _merchants;
-                  return _merchants.where((m) {
-                    final name = (m['name'] as String? ?? '').toLowerCase();
-                    return name.contains(query);
-                  }).toList();
-                },
-                displayStringForOption: (m) => m['name'] as String? ?? '',
-                onSelected: _selectMerchant,
-                fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: const InputDecoration(
-                      hintText: '搜索或选择商家',
-                      prefixIcon: Icon(Icons.search),
-                    ),
-                    onSubmitted: (_) => onSubmitted(),
-                  );
-                },
-              ),
+                Autocomplete<Map<String, dynamic>>(
+                  optionsBuilder: (textEditingValue) {
+                    final query = textEditingValue.text.toLowerCase();
+                    if (query.isEmpty) return _merchants;
+                    return _merchants.where((m) {
+                      final name = (m['name'] as String? ?? '').toLowerCase();
+                      return name.contains(query);
+                    }).toList();
+                  },
+                  displayStringForOption: (m) => m['name'] as String? ?? '',
+                  onSelected: _selectMerchant,
+                  fieldViewBuilder: (ctx, controller, focusNode, onSubmitted) {
+                    return TextField(
+                      controller: controller,
+                      focusNode: focusNode,
+                      decoration: const InputDecoration(
+                        hintText: '搜索或选择商家',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onSubmitted: (_) => onSubmitted(),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -238,12 +241,17 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                           children: [
                             // Price rows header
                             const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
                               child: Row(
                                 children: [
-                                  Text('商品', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text('商品',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
                                   Spacer(),
-                                  Text('单价', style: TextStyle(fontWeight: FontWeight.bold)),
+                                  Text('单价',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold)),
                                   SizedBox(width: 80),
                                 ],
                               ),
@@ -252,7 +260,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                             // Scrollable rows
                             Expanded(
                               child: ListView.builder(
-                                itemCount: _rows.length + 1, // +1 for add button
+                                itemCount:
+                                    _rows.length + 1, // +1 for add button
                                 itemBuilder: (ctx, i) {
                                   if (i == _rows.length) {
                                     return Padding(
@@ -324,24 +333,24 @@ class _PriceRowWidget extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: Row(
             children: [
-             Expanded(
-               child: row.productId != null
-                   ? Padding(
-                       padding: const EdgeInsets.symmetric(vertical: 10),
-                       child: Text(
-                         row.nameController.text,
-                         style: Theme.of(context).textTheme.bodyLarge,
-                       ),
-                     )
-                   : TextField(
-                       controller: row.nameController,
-                       decoration: const InputDecoration(
-                         labelText: '商品名',
-                         border: InputBorder.none,
-                         isDense: true,
-                       ),
-                     ),
-             ),
+              Expanded(
+                child: row.productId != null
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Text(
+                          row.nameController.text,
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
+                      )
+                    : TextField(
+                        controller: row.nameController,
+                        decoration: const InputDecoration(
+                          labelText: '商品名',
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
+                      ),
+              ),
               const SizedBox(width: 8),
               SizedBox(
                 width: 100,
@@ -363,13 +372,16 @@ class _PriceRowWidget extends StatelessWidget {
               ),
               PopupMenuButton<String>(
                 onSelected: (u) => row.unit = u,
-                itemBuilder: (_) => '个,斤,克,千克,升,毫升,包,瓶,袋,箱'.split(',').map((u) =>
-                  PopupMenuItem(value: u, child: Text(u))
-                ).toList(),
+                itemBuilder: (_) => '个,斤,克,千克,升,毫升,包,瓶,袋,箱'
+                    .split(',')
+                    .map((u) => PopupMenuItem(value: u, child: Text(u)))
+                    .toList(),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).colorScheme.outline),
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.outline),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(row.unit),
@@ -403,7 +415,9 @@ class _PriceInputSheetState extends State<_PriceInputSheet> {
   void _onKeyTap(String key) {
     setState(() {
       if (key == '⌫') {
-        if (_display.isNotEmpty) _display = _display.substring(0, _display.length - 1);
+        if (_display.isNotEmpty) {
+          _display = _display.substring(0, _display.length - 1);
+        }
       } else if (key == 'C') {
         _display = '';
       } else if (key == '✓') {
@@ -421,7 +435,8 @@ class _PriceInputSheetState extends State<_PriceInputSheet> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -430,7 +445,10 @@ class _PriceInputSheetState extends State<_PriceInputSheet> {
             alignment: Alignment.centerRight,
             child: Text(
               '¥$_display',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
           ),
           NumericKeypad(

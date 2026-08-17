@@ -1,4 +1,5 @@
 import '../../../core/api/api_client.dart';
+import '../../nutrition/models/usda_models.dart';
 import '../models/recipe_summary.dart';
 import '../models/recipe_detail.dart';
 import 'package:dio/dio.dart';
@@ -26,7 +27,10 @@ int? _toIntOrNull(dynamic v) {
 }
 
 /// Vague quantity words -> estimated grams (aligned with Web VAGUE_QUANTITY_GRAM_MAP)
-const _vagueQuantityGram = <String, double>{'\u9002\u91cf': 100, '\u5c11\u8bb8': 5};
+const _vagueQuantityGram = <String, double>{
+  '\u9002\u91cf': 100,
+  '\u5c11\u8bb8': 5
+};
 
 /// Effective ingredient quantity for merchant price estimation
 class IngredientQuantity {
@@ -107,9 +111,7 @@ class RecipeRepository {
     }
     final response = await _client.dio.get('/recipes', queryParameters: params);
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['items'] as List?) ?? const []);
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
     final items = list
         .map((e) => RecipeSummary.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -123,15 +125,63 @@ class RecipeRepository {
     return RecipeDetail.fromJson(response.data as Map<String, dynamic>);
   }
 
+  Future<RecipeMutationResult> createRecipe(Map<String, dynamic> data) async {
+    final response =
+        await _client.dio.post('/recipes', data: _encodePayload(data));
+    return _mutationResult(response.data);
+  }
+
+  Future<RecipeMutationResult> updateRecipe(
+    int id,
+    Map<String, dynamic> data,
+  ) async {
+    final response =
+        await _client.dio.put('/recipes/$id', data: _encodePayload(data));
+    return _mutationResult(response.data);
+  }
+
+  Future<MutationReviewResult> publishRecipe(int id) async {
+    final response = await _client.dio.post('/recipes/$id/publish');
+    return MutationReviewResult.fromJson(
+      response.data is Map
+          ? Map<String, dynamic>.from(response.data as Map)
+          : const {},
+    );
+  }
+
+  RecipeMutationResult _mutationResult(dynamic data) {
+    if (data is! Map) {
+      throw FormatException('Invalid recipe response', data);
+    }
+    final map = Map<String, dynamic>.from(data);
+    final review = MutationReviewResult.fromJson(map);
+    if (review.pending) return RecipeMutationResult.pending(review);
+    return RecipeMutationResult.applied(
+      RecipeDetail.fromJson(map),
+      review.message,
+    );
+  }
+
+  Map<String, dynamic> _encodePayload(Map<String, dynamic> data) {
+    return {
+      for (final entry in data.entries)
+        entry.key: entry.value is List<RecipeIngredientInput>
+            ? [
+                for (final item in entry.value as List<RecipeIngredientInput>)
+                  item.toJson(),
+              ]
+            : entry.value,
+    };
+  }
+
   /// 菜谱筛选用的食材选项（对齐 Web 端 /ingredients?limit=1000）
   Future<List<IngredientOption>> getIngredientOptions(String query) async {
     final params = <String, dynamic>{'limit': 1000, 'sort_by': 'name'};
     if (query.isNotEmpty) params['q'] = query;
-    final response = await _client.dio.get('/ingredients', queryParameters: params);
+    final response =
+        await _client.dio.get('/ingredients', queryParameters: params);
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['items'] as List?) ?? const []);
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
     return [
       for (final e in list.whereType<Map<String, dynamic>>())
         IngredientOption(
@@ -139,6 +189,27 @@ class RecipeRepository {
           name: _str(e['name']) ?? '',
         ),
     ];
+  }
+
+  Future<List<RecipeUnitOption>> getUnitOptions() async {
+    final response = await _client.dio.get('/units/');
+    final data = response.data;
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
+    return [
+      for (final e in list.whereType<Map<String, dynamic>>())
+        RecipeUnitOption.fromJson(e),
+    ];
+  }
+
+  Future<String?> getIngredientName(int id) async {
+    final response = await _client.dio.get('/ingredients/$id');
+    final data = response.data;
+    if (data is Map<String, dynamic>) return _str(data['name']);
+    return null;
+  }
+
+  Future<void> deleteRecipe(int id) async {
+    await _client.dio.delete('/recipes/$id');
   }
 
   Future<RecipeCost> getRecipeCost(int id) async {
@@ -228,11 +299,97 @@ class RecipePage {
   const RecipePage({required this.items, this.total = 0});
 }
 
+class RecipeMutationResult {
+  final RecipeDetail? detail;
+  final MutationReviewResult review;
+
+  const RecipeMutationResult._({
+    required this.detail,
+    required this.review,
+  });
+
+  factory RecipeMutationResult.applied(RecipeDetail detail, String message) {
+    return RecipeMutationResult._(
+      detail: detail,
+      review: MutationReviewResult(
+        applied: true,
+        pending: false,
+        message: message,
+        raw: const {},
+      ),
+    );
+  }
+
+  factory RecipeMutationResult.pending(MutationReviewResult review) {
+    return RecipeMutationResult._(detail: null, review: review);
+  }
+
+  bool get pending => review.pending;
+  bool get applied => !pending;
+  String get message => review.message;
+}
+
+/// 菜谱原料编辑载荷。后端要求整行替换，未填字段不进 JSON。
+class RecipeIngredientInput {
+  final String ingredientName;
+  final String? quantity;
+  final double? quantityMin;
+  final double? quantityMax;
+  final int? unitId;
+  final bool isOptional;
+  final String? note;
+  final String? originalQuantity;
+
+  const RecipeIngredientInput({
+    required this.ingredientName,
+    this.quantity,
+    this.quantityMin,
+    this.quantityMax,
+    this.unitId,
+    this.isOptional = false,
+    this.note,
+    this.originalQuantity,
+  });
+
+  Map<String, dynamic> toJson() {
+    final range = quantityMin != null && quantityMax != null
+        ? {'min': quantityMin, 'max': quantityMax}
+        : null;
+    return {
+      'ingredient_name': ingredientName,
+      if (quantity != null && quantity!.isNotEmpty) 'quantity': quantity,
+      if (range != null) 'quantity_range': range,
+      if (unitId != null) 'unit_id': unitId,
+      'is_optional': isOptional,
+      if (note != null && note!.isNotEmpty) 'note': note,
+      if (originalQuantity != null && originalQuantity!.isNotEmpty)
+        'original_quantity': originalQuantity,
+    };
+  }
+}
+
 /// 食材选项（菜谱筛选弹窗搜索用）
 class IngredientOption {
   final int id;
   final String name;
   const IngredientOption({required this.id, required this.name});
+}
+
+class RecipeUnitOption {
+  final int id;
+  final String label;
+
+  const RecipeUnitOption({
+    required this.id,
+    required this.label,
+  });
+
+  factory RecipeUnitOption.fromJson(Map<String, dynamic> json) {
+    return RecipeUnitOption(
+      id: _toIntOrNull(json['id']) ?? 0,
+      label: _str(json['abbreviation']) ?? _str(json['name']) ?? '',
+    );
+  }
 }
 
 /// batch-cost 接口返回的单条成本/热量信息
@@ -428,9 +585,8 @@ class CostHistoryPoint {
         minCost: minCost * ratio,
         maxCost: maxCost * ratio,
         avgCost: avgCost * ratio,
-        breakdown: breakdown
-            .map((b) => b.copyWith(cost: b.cost * ratio))
-            .toList(),
+        breakdown:
+            breakdown.map((b) => b.copyWith(cost: b.cost * ratio)).toList(),
       );
   factory CostHistoryPoint.fromJson(Map<String, dynamic> json) {
     return CostHistoryPoint(
@@ -439,7 +595,8 @@ class CostHistoryPoint {
       maxCost: _toDouble(json['max_cost']),
       avgCost: _toDouble(json['avg_cost']),
       breakdown: ((json['breakdown'] as List?) ?? const [])
-          .map((e) => CostHistoryBreakdownItem.fromJson(e as Map<String, dynamic>))
+          .map((e) =>
+              CostHistoryBreakdownItem.fromJson(e as Map<String, dynamic>))
           .toList(),
     );
   }

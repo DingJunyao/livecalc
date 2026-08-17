@@ -35,8 +35,7 @@ void main() {
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        EditAccountScreen(repository: mockRepo),
+                    builder: (_) => EditAccountScreen(repository: mockRepo),
                   ),
                 ),
                 child: const Text('进入编辑'),
@@ -63,16 +62,18 @@ void main() {
   });
 
   testWidgets('改昵称保存，只传变化字段', (tester) async {
-    when(() => mockRepo.updateAccount(any())).thenAnswer((_) async =>
-        const UserAccountResponse(
-          user: User(
-              id: 1, username: 'alice', email: 'a@test.com', nickname: '小艾'),
-        ));
+    when(() => mockRepo.updateAccount(any()))
+        .thenAnswer((_) async => const UserAccountResponse(
+              user: User(
+                  id: 1,
+                  username: 'alice',
+                  email: 'a@test.com',
+                  nickname: '小艾'),
+            ));
 
     await pumpScreen(tester);
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '昵称'), '小艾');
+    await tester.enterText(find.widgetWithText(TextFormField, '昵称'), '小艾');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
@@ -89,8 +90,7 @@ void main() {
   testWidgets('校验失败不发请求（用户名过短）', (tester) async {
     await pumpScreen(tester);
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '用户名 *'), 'ab');
+    await tester.enterText(find.widgetWithText(TextFormField, '用户名 *'), 'ab');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
@@ -123,8 +123,7 @@ void main() {
 
     await pumpScreen(tester);
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '用户名 *'), 'bob2');
+    await tester.enterText(find.widgetWithText(TextFormField, '用户名 *'), 'bob2');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 

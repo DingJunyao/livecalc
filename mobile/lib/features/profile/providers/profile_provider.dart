@@ -9,9 +9,14 @@ class ProposalListState {
   final List<Proposal> items;
   final bool loading;
   final String? error;
-  const ProposalListState({this.items = const [], this.loading = false, this.error});
-  ProposalListState copyWith({List<Proposal>? items, bool? loading, String? error}) {
-    return ProposalListState(items: items ?? this.items, loading: loading ?? this.loading, error: error ?? this.error);
+  const ProposalListState(
+      {this.items = const [], this.loading = false, this.error});
+  ProposalListState copyWith(
+      {List<Proposal>? items, bool? loading, String? error}) {
+    return ProposalListState(
+        items: items ?? this.items,
+        loading: loading ?? this.loading,
+        error: error ?? this.error);
   }
 }
 
@@ -30,7 +35,8 @@ class ProposalListNotifier extends StateNotifier<ProposalListState> {
   }
 }
 
-final proposalListProvider = StateNotifierProvider<ProposalListNotifier, ProposalListState>((ref) {
+final proposalListProvider =
+    StateNotifierProvider<ProposalListNotifier, ProposalListState>((ref) {
   return ProposalListNotifier(ProfileRepository());
 });
 
@@ -40,9 +46,14 @@ class PlaceListState {
   final List<UserPlace> items;
   final bool loading;
   final String? error;
-  const PlaceListState({this.items = const [], this.loading = false, this.error});
-  PlaceListState copyWith({List<UserPlace>? items, bool? loading, String? error}) {
-    return PlaceListState(items: items ?? this.items, loading: loading ?? this.loading, error: error ?? this.error);
+  const PlaceListState(
+      {this.items = const [], this.loading = false, this.error});
+  PlaceListState copyWith(
+      {List<UserPlace>? items, bool? loading, String? error}) {
+    return PlaceListState(
+        items: items ?? this.items,
+        loading: loading ?? this.loading,
+        error: error ?? this.error);
   }
 }
 
@@ -81,6 +92,7 @@ class PlaceListNotifier extends StateNotifier<PlaceListState> {
   }
 }
 
-final placeListProvider = StateNotifierProvider<PlaceListNotifier, PlaceListState>((ref) {
+final placeListProvider =
+    StateNotifierProvider<PlaceListNotifier, PlaceListState>((ref) {
   return PlaceListNotifier(ProfileRepository());
 });

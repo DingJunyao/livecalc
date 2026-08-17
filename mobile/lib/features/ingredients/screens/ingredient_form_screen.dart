@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../models/ingredient.dart';
 import '../providers/ingredient_provider.dart';
 import '../repositories/ingredient_repository.dart';
+
+class IngredientFormResult {
+  final bool saved;
+  final bool pending;
+  final String message;
+
+  const IngredientFormResult({
+    required this.saved,
+    required this.pending,
+    required this.message,
+  });
+}
 
 class IngredientFormScreen extends ConsumerStatefulWidget {
   final Ingredient? ingredient;
@@ -85,9 +98,11 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
       _error = null;
     });
     try {
+      IngredientMutationResult? result;
       if (_isEdit) {
-        await _repository.updateIngredient(
+        result = await _repository.updateIngredient(
           _editId!,
+          isAdmin: ref.read(authProvider).user?.isAdmin == true,
           name: name,
           categoryId: _categoryId,
           aliases: _aliases,
@@ -99,7 +114,24 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
           aliases: _aliases,
         );
       }
-      if (mounted) Navigator.of(context).pop(true);
+      if (!mounted) return;
+      if (!_isEdit) {
+        Navigator.of(context).pop(
+          const IngredientFormResult(
+            saved: true,
+            pending: false,
+            message: '已创建原料',
+          ),
+        );
+        return;
+      }
+      Navigator.of(context).pop(
+        IngredientFormResult(
+          saved: true,
+          pending: result!.pending,
+          message: result.message,
+        ),
+      );
     } catch (_) {
       if (mounted) {
         setState(() {

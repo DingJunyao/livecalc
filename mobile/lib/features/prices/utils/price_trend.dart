@@ -1,5 +1,6 @@
 import 'dart:math' as math;
-import '../../recipes/repositories/recipe_repository.dart' show CostHistoryPoint;
+import '../../recipes/repositories/recipe_repository.dart'
+    show CostHistoryPoint;
 import '../models/price_record.dart';
 
 /// 将价格记录按“本地日期”聚合为日均/最低/最高单价点，

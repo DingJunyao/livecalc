@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../models/recipe_detail.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/nutrition_labels.dart';
 import '../widgets/cost_trend_chart.dart';
+import 'recipe_form_screen.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 
@@ -19,6 +21,8 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   bool _showAllNutrients = false;
   int _selectedImageIndex = 0;
+  final RecipeRepository _repository = RecipeRepository();
+  bool _actionRunning = false;
 
   @override
   void initState() {
@@ -31,7 +35,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(recipeDetailPageProvider(widget.id));
-    final detail = state.detail;
+    final detail = state.detail?.mergedWithPending();
 
     if (state.error != null && detail == null) {
       return Scaffold(
@@ -53,11 +57,43 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final ratio = state.displayServings / detail.servings;
     final imageUrls = detail.imageUrls;
     final hasImages = imageUrls.isNotEmpty;
+    final isAdmin = ref.read(authProvider).user?.isAdmin == true;
     final appBarActions = [
+      IconButton(
+        icon: const Icon(Icons.edit_outlined),
+        tooltip: '编辑菜谱',
+        onPressed: _actionRunning ? null : _editRecipe,
+      ),
       IconButton(
         icon: const Icon(Icons.analytics_outlined),
         tooltip: '菜谱分析',
         onPressed: () => context.push('/recipes/${widget.id}/analysis'),
+      ),
+      PopupMenuButton<String>(
+        onSelected: (value) {
+          if (value == 'publish') _confirmPublish();
+          if (value == 'delete') _confirmDelete();
+        },
+        itemBuilder: (context) => [
+          if (!detail.isPublic)
+            const PopupMenuItem(
+              value: 'publish',
+              child: ListTile(
+                leading: Icon(Icons.cloud_upload_outlined),
+                title: Text('发布菜谱'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          if (isAdmin || !detail.isPublic)
+            const PopupMenuItem(
+              value: 'delete',
+              child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('删除菜谱'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+        ],
       ),
     ];
 
@@ -127,6 +163,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     const SizedBox(height: 16),
                   ],
                   _buildHeader(theme, detail),
+                  if (detail.pendingProposal != null) ...[
+                    _PendingProposalBanner(proposal: detail.pendingProposal!),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 16),
                   _buildCostCard(theme, state, ratio),
                   const SizedBox(height: 16),
@@ -147,6 +187,92 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _editRecipe() async {
+    final result = await context.push<RecipeFormResult>(
+      '/recipes/${widget.id}/edit',
+    );
+    if (result?.saved == true && mounted) {
+      await ref.read(recipeDetailPageProvider(widget.id).notifier).load();
+    }
+  }
+
+  Future<void> _confirmPublish() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('发布菜谱'),
+        content: const Text('发布后菜谱将对其他用户公开。普通用户提交后需管理员审核。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('提交发布'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _actionRunning = true);
+    try {
+      final result = await _repository.publishRecipe(widget.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.pending
+              ? (result.message.isEmpty ? '发布已提交，待管理员审核' : result.message)
+              : '菜谱已发布'),
+        ),
+      );
+      await ref.read(recipeDetailPageProvider(widget.id).notifier).load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _actionRunning = false);
+    }
+  }
+
+  Future<void> _confirmDelete() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('删除菜谱'),
+        content: const Text('确定要删除这个菜谱吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() => _actionRunning = true);
+    try {
+      await _repository.deleteRecipe(widget.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('菜谱已删除')));
+      context.pop();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _actionRunning = false);
+    }
   }
 
   // ---- 图片缩略图 + 灯箱 ----
@@ -804,6 +930,41 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 )),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PendingProposalBanner extends StatelessWidget {
+  final RecipePendingProposal proposal;
+
+  const _PendingProposalBanner({required this.proposal});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hourglass_top_outlined,
+              color: theme.colorScheme.onSecondaryContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              proposal.updateData.isEmpty
+                  ? '当前有修改待管理员审核'
+                  : '修改待管理员审核：${proposal.changeSummary}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

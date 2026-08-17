@@ -86,7 +86,9 @@ bool _allSame(List<LatLng> pts) {
 
 /// 多点质心（WGS84）。iOS 多点视角用（apple_maps_flutter 无 bounds fit）。
 LatLng centroid(List<LatLng> points) {
-  final lat = points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
-  final lng = points.map((p) => p.longitude).reduce((a, b) => a + b) / points.length;
+  final lat =
+      points.map((p) => p.latitude).reduce((a, b) => a + b) / points.length;
+  final lng =
+      points.map((p) => p.longitude).reduce((a, b) => a + b) / points.length;
   return LatLng(lat, lng);
 }

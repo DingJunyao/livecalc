@@ -91,8 +91,7 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
       (state.filterIngredientIds.isNotEmpty ? 1 : 0) +
       (state.filterConditions.isNotEmpty ? 1 : 0);
 
-  bool get canLoadMore =>
-      state.hasMore && !state.loading && !state.loadingMore;
+  bool get canLoadMore => state.hasMore && !state.loading && !state.loadingMore;
 
   Future<void> loadRecipes({bool loadMore = false, String? search}) async {
     if (loadMore && !canLoadMore) return;
@@ -193,9 +192,8 @@ final recipeListProvider =
 });
 
 /// 菜谱筛选“所用食材”选项：按关键词搜索食材（对齐 Web 端自动补全）
-final recipeIngredientOptionsProvider =
-    FutureProvider.autoDispose.family<List<IngredientOption>, String>(
-        (ref, query) async {
+final recipeIngredientOptionsProvider = FutureProvider.autoDispose
+    .family<List<IngredientOption>, String>((ref, query) async {
   final repo = RecipeRepository();
   return repo.getIngredientOptions(query);
 });
@@ -262,8 +260,7 @@ class RecipeDetailPageState {
       loadingHistory: loadingHistory ?? this.loadingHistory,
       merchantCosts: merchantCosts ?? this.merchantCosts,
       merchantPrices: merchantPrices ?? this.merchantPrices,
-      loadingMerchantCosts:
-          loadingMerchantCosts ?? this.loadingMerchantCosts,
+      loadingMerchantCosts: loadingMerchantCosts ?? this.loadingMerchantCosts,
       loadingMerchantPrices:
           loadingMerchantPrices ?? this.loadingMerchantPrices,
       displayServings: displayServings ?? this.displayServings,
@@ -280,6 +277,7 @@ class RecipeDetailPageNotifier extends StateNotifier<RecipeDetailPageState> {
   final int recipeId;
   RecipeDetailPageNotifier(this._repo, this.recipeId)
       : super(const RecipeDetailPageState());
+
   /// [initialDays] 指定趋势图初始天数：分析页传 90 对齐 web
   /// loadCostHistory('quarter')；详情页无参调用默认 30 保持「月」初始一致。
   /// 趋势初始由 load 内部单次请求完成，避免外部再发 reloadHistory 造成
@@ -371,8 +369,8 @@ class RecipeDetailPageNotifier extends StateNotifier<RecipeDetailPageState> {
         final settled = await Future.wait(futures);
         results.addAll(settled.whereType<MerchantPriceItem>());
       }
-      state = state.copyWith(
-          merchantPrices: results, loadingMerchantPrices: false);
+      state =
+          state.copyWith(merchantPrices: results, loadingMerchantPrices: false);
     } on Exception catch (_) {
       state = state.copyWith(loadingMerchantPrices: false);
     }

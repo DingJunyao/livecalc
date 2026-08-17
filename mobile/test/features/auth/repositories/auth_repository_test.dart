@@ -1,4 +1,4 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:dio/dio.dart';
@@ -27,12 +27,12 @@ void main() {
     test('返回 AuthConfig', () async {
       when(() => mockDio.get('/auth/config')).thenAnswer((_) async => Response(
             requestOptions: RequestOptions(path: ''),
-            data: {'require_invite_code': false, 'allow_registration': true},
+            data: {'registration_require_invite_code': true},
             statusCode: 200,
           ));
 
       final config = await repository.getConfig();
-      expect(config.requireInviteCode, false);
+      expect(config.requireInviteCode, true);
       expect(config.allowRegistration, true);
     });
   });
@@ -72,8 +72,7 @@ void main() {
                 statusCode: 200,
               ));
 
-      final user =
-          await repository.updateMe({'default_energy_unit': 'kJ'});
+      final user = await repository.updateMe({'default_energy_unit': 'kJ'});
       expect(user.nickname, '新昵称');
       expect(user.nutritionGoals['daily_calorie_target'], 1800);
     });
@@ -101,10 +100,10 @@ void main() {
   group('uploadAvatar', () {
     test('multipart 上传，Content-Type 覆盖为 multipart/form-data', () async {
       when(() => mockDio.post(
-        any(),
-        data: any(named: 'data'),
-        options: any(named: 'options'),
-      )).thenAnswer((_) async => Response(
+            any(),
+            data: any(named: 'data'),
+            options: any(named: 'options'),
+          )).thenAnswer((_) async => Response(
             requestOptions: RequestOptions(path: ''),
             data: {'avatar_key': 'avatars/x.jpg'},
             statusCode: 200,

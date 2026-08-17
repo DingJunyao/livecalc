@@ -24,9 +24,8 @@ class NutrientEntry {
     }
     return NutrientEntry(
       key: key,
-      label: (json['display_name'] as String?) ??
-          (json['name'] as String?) ??
-          key,
+      label:
+          (json['display_name'] as String?) ?? (json['name'] as String?) ?? key,
       value: _toDouble(json['value']) ?? 0,
       unit: json['unit'] as String? ?? '',
       nrvPct: _toDouble(json['nrp_pct']),
@@ -93,8 +92,8 @@ class NutritionInfo {
 
     return NutritionInfo(
       entityId: (json['ingredient_id'] ?? json['product_id'] ?? 0) as int,
-      entityName: json['ingredient_name'] as String? ??
-          json['product_name'] as String?,
+      entityName:
+          json['ingredient_name'] as String? ?? json['product_name'] as String?,
       baseQuantity: _toDouble(json['base_quantity']) ?? 100,
       baseUnit: json['base_unit'] as String? ?? json['unit'] as String? ?? 'g',
       source: json['source'] as String?,

@@ -58,9 +58,8 @@ void main() {
   Widget buildApp() {
     return ProviderScope(
       overrides: [
-        recipeDetailPageProvider(1).overrideWith(
-            (ref) => RecipeDetailPageNotifier(
-                RecipeRepository(client: mockClient), 1)),
+        recipeDetailPageProvider(1).overrideWith((ref) =>
+            RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: const MaterialApp(home: RecipeAnalysisScreen(id: 1)),
     );

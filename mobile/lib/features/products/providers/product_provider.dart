@@ -9,7 +9,8 @@ import '../../nutrition/repositories/nutrition_repository.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../prices/utils/price_trend.dart';
-import '../../recipes/repositories/recipe_repository.dart' show CostHistoryPoint;
+import '../../recipes/repositories/recipe_repository.dart'
+    show CostHistoryPoint;
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
 
@@ -126,16 +127,14 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
       final result = await _repo.search(
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
         ingredientId: state.filterIngredientId,
-        ingredientCategoryIds: state.filterCategoryIds.isEmpty
-            ? null
-            : state.filterCategoryIds,
+        ingredientCategoryIds:
+            state.filterCategoryIds.isEmpty ? null : state.filterCategoryIds,
         brands: state.filterBrand == null ? null : [state.filterBrand!],
         conditions: state.conditions.isEmpty ? null : state.conditions,
         skip: (page - 1) * productPageSize,
         limit: productPageSize,
       );
-      final items =
-          loadMore ? [...state.items, ...result.items] : result.items;
+      final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
         total: result.total,
@@ -216,8 +215,8 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   }
 }
 
-final productListProvider = StateNotifierProvider<ProductListNotifier,
-    ProductListState>((ref) {
+final productListProvider =
+    StateNotifierProvider<ProductListNotifier, ProductListState>((ref) {
   return ProductListNotifier(ProductRepository());
 });
 
@@ -417,8 +416,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       state = state.copyWith(
         records: [...state.records, ...result.records],
         recordsPage: next,
-        recordsHasMore: state.records.length + result.records.length <
-            result.total,
+        recordsHasMore:
+            state.records.length + result.records.length < result.total,
         loadingRecords: false,
       );
     } on Exception {
@@ -462,21 +461,24 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     }
   }
 
-  Future<void> saveNutrition(List<NutrientEntry> nutrients) async {
+  Future<Object?> saveNutrition(List<NutrientEntry> nutrients) async {
     state = state.copyWith(savingNutrition: true);
     try {
-      await _nutritionRepo.saveProductNutrition(productId, nutrients);
-      await _loadNutrition();
+      final result =
+          await _nutritionRepo.saveProductNutrition(productId, nutrients);
+      if (!result.pending) await _loadNutrition();
+      return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
     }
   }
 
-  Future<void> clearNutrition() async {
+  Future<Object?> clearNutrition() async {
     state = state.copyWith(savingNutrition: true);
     try {
-      await _nutritionRepo.clearProductNutrition(productId);
-      await _loadNutrition();
+      final result = await _nutritionRepo.clearProductNutrition(productId);
+      if (!result.pending) await _loadNutrition();
+      return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
     }
@@ -502,31 +504,35 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     }
   }
 
-  Future<void> addUnit({
+  Future<Object?> addUnit({
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
     bool isDefault = false,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.createUnit(
+    final result = await _entityRepo.createUnit(
       'product',
       productId,
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
       isDefault: isDefault,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> updateUnit(
+  Future<Object?> updateUnit(
     int unitId, {
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
     bool? isDefault,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.updateUnit(
+    final result = await _entityRepo.updateUnit(
       'product',
       productId,
       unitId,
@@ -534,41 +540,54 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
       isDefault: isDefault,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> deleteUnit(int unitId) async {
-    await _entityRepo.deleteUnit('product', productId, unitId);
-    await _loadUnits();
+  Future<Object?> deleteUnit(int unitId) async {
+    final result = await _entityRepo.deleteUnit('product', productId, unitId);
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> quickAddUnmappedUnit(UnmappedUnit unit) async {
-    await _entityRepo.createUnit(
+  Future<Object?> quickAddUnmappedUnit(
+    UnmappedUnit unit, {
+    bool isAdmin = true,
+  }) async {
+    final result = await _entityRepo.createUnit(
       'product',
       productId,
       unitName: unit.unitName,
       weightPerUnit: 100,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> addDensity({
+  Future<Object?> addDensity({
     required double density,
     String? condition,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.upsertDensity(
+    final result = await _entityRepo.upsertDensity(
       'product',
       productId,
       density: density,
       condition: condition,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> deleteDensity(int densityId) async {
-    await _entityRepo.deleteDensity('product', productId, densityId);
-    await _loadUnits();
+  Future<Object?> deleteDensity(int densityId) async {
+    final result =
+        await _entityRepo.deleteDensity('product', productId, densityId);
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
   Future<void> addRecord({
@@ -617,28 +636,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       _loadChart(days: 30),
     ]);
   }
-
-  Future<void> updateBasic({
-    String? name,
-    int? ingredientId,
-    String? brand,
-    String? barcode,
-    List<String>? aliases,
-  }) async {
-    final updated = await _productRepo.updateProduct(
-      productId,
-      name: name,
-      ingredientId: ingredientId,
-      brand: brand,
-      barcode: barcode,
-      aliases: aliases,
-    );
-    state = state.copyWith(product: updated);
-  }
 }
 
-final productDetailPageProvider =
-    StateNotifierProvider.autoDispose.family<
-        ProductDetailPageNotifier, ProductDetailPageState, int>(
+final productDetailPageProvider = StateNotifierProvider.autoDispose
+    .family<ProductDetailPageNotifier, ProductDetailPageState, int>(
   (ref, id) => ProductDetailPageNotifier(id),
 );

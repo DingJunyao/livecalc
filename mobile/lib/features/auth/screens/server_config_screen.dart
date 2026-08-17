@@ -102,6 +102,8 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                       prefixIcon: Icon(Icons.dns_outlined),
                     ),
                     keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _loading ? null : _connect(),
                     validator: (v) {
                       if (v == null || v.trim().isEmpty) return '请输入服务器地址';
                       if (!v.trim().startsWith('http')) {

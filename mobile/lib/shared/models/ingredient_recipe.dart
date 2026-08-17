@@ -9,7 +9,9 @@ double? _toDouble(dynamic v) {
 /// 数字格式化：整数不带小数点，小数去掉多余 0
 String _fmtNum(double v) => v == v.truncateToDouble()
     ? v.toInt().toString()
-    : v.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '')
+    : v
+        .toStringAsFixed(2)
+        .replaceFirst(RegExp(r'0+$'), '')
         .replaceFirst(RegExp(r'\.$'), '');
 
 class RecipeUsage {
@@ -88,8 +90,7 @@ class IngredientRecipeRef {
       category: json['category'] as String?,
       difficulty: json['difficulty'] as String?,
       servings: (json['servings'] as num?)?.toInt() ?? 1,
-      totalTimeMinutes:
-          (json['total_time_minutes'] as num?)?.toInt(),
+      totalTimeMinutes: (json['total_time_minutes'] as num?)?.toInt(),
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       usages: ((json['usages'] as List?) ?? const [])

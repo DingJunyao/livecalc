@@ -23,8 +23,8 @@ void main() {
   group('getProposals', () {
     test('传 scope=mine&limit=100，解析裸数组', () async {
       when(() => mockDio.get('/proposals',
-          queryParameters: any(named: 'queryParameters'))).thenAnswer(
-          (_) async => Response(
+              queryParameters: any(named: 'queryParameters')))
+          .thenAnswer((_) async => Response(
                 requestOptions: RequestOptions(path: ''),
                 data: [
                   {
@@ -44,8 +44,7 @@ void main() {
       expect(items.length, 1);
       expect(items.first.id, 1);
       final captured = verify(() => mockDio.get('/proposals',
-              queryParameters: captureAny(named: 'queryParameters')))
-          .captured;
+          queryParameters: captureAny(named: 'queryParameters'))).captured;
       final params = captured.first as Map<String, dynamic>;
       expect(params['scope'], 'mine');
       expect(params['limit'], 100);
@@ -119,11 +118,10 @@ void main() {
     });
 
     test('deletePlace DELETE /places/{id}', () async {
-      when(() => mockDio.delete('/places/9')).thenAnswer((_) async =>
-          Response(
-              requestOptions: RequestOptions(path: ''),
-              data: {'message': '已删除'},
-              statusCode: 200));
+      when(() => mockDio.delete('/places/9')).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          data: {'message': '已删除'},
+          statusCode: 200));
       await repository.deletePlace(9);
       verify(() => mockDio.delete('/places/9')).called(1);
     });

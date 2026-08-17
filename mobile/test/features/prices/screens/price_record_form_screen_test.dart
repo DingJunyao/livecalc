@@ -59,6 +59,7 @@ class _FakePriceRepository extends PriceRepository {
 
 class _FakeProductRepository extends ProductRepository {
   final List<Product> items;
+  int? lastIngredientId;
   _FakeProductRepository(this.items);
 
   @override
@@ -73,6 +74,7 @@ class _FakeProductRepository extends ProductRepository {
     int limit = 20,
     String sortBy = 'price_records',
   }) async {
+    lastIngredientId = ingredientId;
     return ProductPage(items: items, total: items.length);
   }
 }
@@ -124,9 +126,11 @@ void main() {
     WidgetTester tester, {
     _FakePriceRepository? priceRepo,
     _FakeProductRepository? productRepo,
+    PriceRecordFormPrefill? prefill,
+    double viewportHeight = 1400,
   }) async {
     // 表单整体超过默认 600 高视口，放大视口让底部保存按钮被构建。
-    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.physicalSize = Size(800, viewportHeight);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -143,6 +147,7 @@ void main() {
           form: PriceRecordFormScreen(
             priceRepository: priceRepo ?? _FakePriceRepository(),
             productRepository: productRepo ?? _FakeProductRepository(const []),
+            prefill: prefill,
           ),
         ),
       ),
@@ -164,6 +169,48 @@ void main() {
     expect(find.text('记录时间'), findsOneWidget);
     expect(find.text('备注'), findsOneWidget);
     expect(find.widgetWithText(FilledButton, '保存'), findsOneWidget);
+  });
+
+  testWidgets('prefills a product and searches within its ingredient', (
+    tester,
+  ) async {
+    final repo = _FakePriceRepository();
+    final productRepo = _FakeProductRepository(const [
+      Product(id: 7, name: '番茄'),
+    ]);
+    await pumpForm(
+      tester,
+      priceRepo: repo,
+      productRepo: productRepo,
+      prefill: const PriceRecordFormPrefill(
+        product: Product(id: 7, name: '番茄'),
+        ingredientId: 5,
+      ),
+      viewportHeight: 2200,
+    );
+
+    final nameField = tester.widget<TextField>(
+      find.widgetWithText(TextField, '商品名称'),
+    );
+    expect(nameField.controller?.text, '番茄');
+
+    final nameFieldFinder = find.byType(TextField).first;
+    await tester.enterText(nameFieldFinder, '');
+    await tester.pump();
+    await tester.enterText(nameFieldFinder, '番茄');
+    await tester.pumpAndSettle();
+    expect(productRepo.lastIngredientId, 5);
+    await tester.tap(find.widgetWithText(ListTile, '番茄'));
+    await tester.pumpAndSettle();
+
+    final priceField = find.byType(TextField).at(1);
+    await tester.enterText(priceField, '2.5');
+    await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.createCount, 1);
+    expect(repo.lastProductId, 7);
   });
 
   testWidgets('价格为空时提示且不保存', (tester) async {

@@ -1,4 +1,6 @@
 ﻿import 'package:dio/dio.dart';
+import 'dart:developer';
+
 import 'auth_interceptor.dart';
 
 class ApiClient {
@@ -17,7 +19,7 @@ class ApiClient {
       request: true,
       requestBody: true,
       responseBody: true,
-      logPrint: (obj) => print(obj.toString()),
+      logPrint: (obj) => log(obj.toString()),
     ));
   }
 

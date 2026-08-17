@@ -8,6 +8,7 @@ import 'package:com_a4ding_livecalc/features/prices/models/price_record.dart';
 import 'package:com_a4ding_livecalc/features/prices/providers/price_provider.dart';
 import 'package:com_a4ding_livecalc/features/prices/repositories/price_repository.dart';
 import 'package:com_a4ding_livecalc/features/prices/screens/price_list_screen.dart';
+import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
 
 class _FakePriceRepository extends PriceRepository {
   _FakePriceRepository({this.seed = const []});
@@ -125,6 +126,16 @@ void main() {
           ),
         ),
         GoRoute(
+          path: '/prices/record/edit',
+          builder: (_, state) => state.extra is PriceRecordFormArguments
+              ? PriceRecordEditScreen(
+                  arguments: state.extra! as PriceRecordFormArguments,
+                )
+              : const PriceRecordEditScreen(
+                  arguments: PriceRecordFormArguments(merchants: []),
+                ),
+        ),
+        GoRoute(
           path: '/prices/quick-fill',
           builder: (_, __) => const Scaffold(body: Text('快速填写页')),
         ),
@@ -219,8 +230,7 @@ void main() {
     expect(find.text('删除'), findsOneWidget);
   });
 
-  testWidgets('点「删除」→ 确认对话框 → 确认后调用 deleteRecord 且卡片消失',
-      (tester) async {
+  testWidgets('点「删除」→ 确认对话框 → 确认后调用 deleteRecord 且卡片消失', (tester) async {
     final repo = _FakePriceRepository(seed: [_seedRecord()]);
     await pumpList(tester, repo: repo);
 
@@ -235,13 +245,11 @@ void main() {
     expect(find.text('删除记录'), findsOneWidget);
     expect(find.text('确定删除「番茄」¥6.88 的记录吗？'), findsOneWidget);
     expect(
-      find.descendant(
-          of: find.byType(AlertDialog), matching: find.text('取消')),
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('取消')),
       findsOneWidget,
     );
     expect(
-      find.descendant(
-          of: find.byType(AlertDialog), matching: find.text('删除')),
+      find.descendant(of: find.byType(AlertDialog), matching: find.text('删除')),
       findsOneWidget,
     );
 
@@ -284,8 +292,7 @@ void main() {
     expect(find.text('番茄'), findsOneWidget);
   });
 
-  testWidgets('点「编辑」→ 底部表单弹出，标题为「编辑价格记录」且预填商品名可见',
-      (tester) async {
+  testWidgets('点「编辑」→ 打开整页表单且预填商品名可见', (tester) async {
     final repo = _FakePriceRepository(seed: [_seedRecord()]);
     await pumpList(tester, repo: repo);
 
@@ -295,19 +302,12 @@ void main() {
     await tester.tap(find.text('编辑').last);
     await tester.pumpAndSettle();
 
-    // 编辑模式标题
+    expect(find.byType(PriceRecordEditScreen), findsOneWidget);
+    expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('编辑价格记录'), findsOneWidget);
-    // 预填商品名（在 BottomSheet 内）
-    expect(
-      find.descendant(
-        of: find.byType(BottomSheet),
-        matching: find.text('番茄'),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('番茄'), findsOneWidget);
 
-    // 关闭底部表单以正常结束测试
-    await tester.tap(find.byIcon(Icons.close).last);
+    await tester.pageBack();
     await tester.pumpAndSettle();
   });
 }

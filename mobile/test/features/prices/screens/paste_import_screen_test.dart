@@ -241,8 +241,8 @@ void main() {
       ),
     );
     // push 后 _Host 在栈底（offstage），用 skipOffstage:false 才能定位
-    hostState = tester.state(find.byType(_Host, skipOffstage: false))
-        as _HostState;
+    hostState =
+        tester.state(find.byType(_Host, skipOffstage: false)) as _HostState;
 
     await tester.enterText(
       find.byKey(const Key('paste-raw-text-field')),
@@ -268,8 +268,7 @@ void main() {
     expect((hostState.poppedResult as List<int>), contains(1));
   });
 
-  testWidgets('导入失败统计：成功的仍导入，失败计数正确，页面不关闭',
-      (tester) async {
+  testWidgets('导入失败统计：成功的仍导入，失败计数正确，页面不关闭', (tester) async {
     // 「番茄」productId=2 → existing 模式按 productId 判定失败
     final priceRepo = _FakePriceRepository(failProductIds: {2});
     final productRepo = _FakeProductRepository({
@@ -320,8 +319,8 @@ void main() {
         productRepository: productRepo,
       ),
     );
-    hostState = tester.state(find.byType(_Host, skipOffstage: false))
-        as _HostState;
+    hostState =
+        tester.state(find.byType(_Host, skipOffstage: false)) as _HostState;
 
     await tester.enterText(
       find.byKey(const Key('paste-raw-text-field')),
@@ -403,8 +402,7 @@ void main() {
 
   // ---- 代码质量审查补强 ----
 
-  testWidgets('C1: 搜索框 controller 持久化（rebuild 不 new 新实例）',
-      (tester) async {
+  testWidgets('C1: 搜索框 controller 持久化（rebuild 不 new 新实例）', (tester) async {
     final productRepo = _FakeProductRepository({}); // 全 unmatched
     await pumpScreen(
       tester,
@@ -427,16 +425,16 @@ void main() {
     await tester.tap(find.text('番茄'));
     await tester.pumpAndSettle();
 
-    final field1 = tester.widget<TextField>(
-        find.byKey(const Key('paste-existing-search')));
+    final field1 = tester
+        .widget<TextField>(find.byKey(const Key('paste-existing-search')));
     final c1 = field1.controller;
 
     // 通过输入触发 _onExistingSearch → setState → rebuild
     await tester.enterText(
         find.byKey(const Key('paste-existing-search')), 'ABC');
     await tester.pumpAndSettle();
-    final field2 = tester.widget<TextField>(
-        find.byKey(const Key('paste-existing-search')));
+    final field2 = tester
+        .widget<TextField>(find.byKey(const Key('paste-existing-search')));
     final c2 = field2.controller;
     expect(identical(c1, c2), isTrue,
         reason: 'controller 应持久，rebuild 不应 new 新实例');
@@ -446,15 +444,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('番茄'));
     await tester.pumpAndSettle();
-    final field3 = tester.widget<TextField>(
-        find.byKey(const Key('paste-existing-search')));
+    final field3 = tester
+        .widget<TextField>(find.byKey(const Key('paste-existing-search')));
     final c3 = field3.controller;
     expect(identical(c1, c3), isFalse,
         reason: '取消 dispose 后重新展开应 new 新 controller');
   });
 
-  testWidgets('I1: _onExistingSearch 竞态——后请求先回不被旧结果覆盖',
-      (tester) async {
+  testWidgets('I1: _onExistingSearch 竞态——后请求先回不被旧结果覆盖', (tester) async {
     // '番' 故意延迟返回；'番茄' 立即返回
     final productRepo = _FakeProductRepository({
       '番': [

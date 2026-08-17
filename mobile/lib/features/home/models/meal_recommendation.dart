@@ -31,7 +31,8 @@ class MealRecommendation {
       recipeId: recipe?['id'] as int?,
       recipeName: recipe?['name'] as String?,
       estimatedCost: (recipe?['cost_estimate'] as num?)?.toDouble(),
-      imageUrl: (recipe?['image_urls'] as List<dynamic>?)?.firstOrNull?.toString(),
+      imageUrl:
+          (recipe?['image_urls'] as List<dynamic>?)?.firstOrNull?.toString(),
       calories: (nutrition?['calories'] as num?)?.toDouble(),
       proteinG: (nutrition?['protein_g'] as num?)?.toDouble(),
       carbsG: (nutrition?['carbs_g'] as num?)?.toDouble(),
@@ -61,7 +62,8 @@ class DailyRecommendation {
       date: json['date'] as String? ?? '',
       status: json['status'] as String? ?? 'ready',
       meals: (json['recommendations'] as List<dynamic>?)
-              ?.map((e) => MealRecommendation.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => MealRecommendation.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
       refreshingMeals: (json['refreshing_meals'] as List<dynamic>?)

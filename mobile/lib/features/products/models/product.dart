@@ -1,3 +1,5 @@
+import '../../../shared/models/entity_pending_proposal.dart';
+
 class Product {
   final int id;
   final String name;
@@ -11,6 +13,7 @@ class Product {
   final List<String> tags;
   final String? createdAt;
   final String? latestPriceDate;
+  final EntityPendingProposal? pendingProposal;
 
   const Product({
     required this.id,
@@ -25,6 +28,7 @@ class Product {
     this.tags = const [],
     this.createdAt,
     this.latestPriceDate,
+    this.pendingProposal,
   });
 
   factory Product.fromJson(Map<String, dynamic> json) {
@@ -37,16 +41,16 @@ class Product {
       unit: json['unit'] as String?,
       barcode: json['barcode'] as String?,
       brand: json['brand'] as String?,
-      aliases: (json['aliases'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
+      aliases: (json['aliases'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
-      tags: (json['tags'] as List?)
-              ?.map((e) => e.toString())
-              .toList() ??
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       createdAt: json['created_at'] as String?,
       latestPriceDate: json['latest_price_date'] as String?,
+      pendingProposal: json['pending_proposal'] is Map<String, dynamic>
+          ? EntityPendingProposal.fromJson(
+              json['pending_proposal'] as Map<String, dynamic>)
+          : null,
     );
   }
 }

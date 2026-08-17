@@ -18,10 +18,10 @@ double _transformLat(double lat, double lng) {
           20.0 * math.sin(2.0 * lat * math.pi)) *
       2.0 /
       3.0;
-  ret += (20.0 * math.sin(lng * math.pi) +
-          40.0 * math.sin(lng / 3.0 * math.pi)) *
-      2.0 /
-      3.0;
+  ret +=
+      (20.0 * math.sin(lng * math.pi) + 40.0 * math.sin(lng / 3.0 * math.pi)) *
+          2.0 /
+          3.0;
   ret += (160.0 * math.sin(lng / 12.0 * math.pi) +
           320.0 * math.sin(lng * math.pi / 30.0)) *
       2.0 /
@@ -40,10 +40,10 @@ double _transformLng(double lat, double lng) {
           20.0 * math.sin(2.0 * lat * math.pi)) *
       2.0 /
       3.0;
-  ret += (20.0 * math.sin(lat * math.pi) +
-          40.0 * math.sin(lat / 3.0 * math.pi)) *
-      2.0 /
-      3.0;
+  ret +=
+      (20.0 * math.sin(lat * math.pi) + 40.0 * math.sin(lat / 3.0 * math.pi)) *
+          2.0 /
+          3.0;
   ret += (150.0 * math.sin(lat / 12.0 * math.pi) +
           300.0 * math.sin(lat / 30.0 * math.pi)) *
       2.0 /

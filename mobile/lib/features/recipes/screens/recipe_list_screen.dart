@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/recipe_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../models/recipe_summary.dart';
+import 'recipe_form_screen.dart';
 import '../repositories/recipe_repository.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -72,6 +73,16 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     }
   }
 
+  Future<void> _openCreate() async {
+    final result = await context.push<RecipeFormResult>('/recipes/new');
+    if (result?.saved != true || !mounted) return;
+    ref.read(recipeListProvider.notifier).loadRecipes();
+    final id = result?.recipeId;
+    if (id != null && !result!.pending) {
+      await context.push('/recipes/$id');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -80,6 +91,11 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('菜谱'),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _openCreate,
+        tooltip: '创建菜谱',
+        child: const Icon(Icons.add),
       ),
       body: Column(
         children: [
@@ -161,7 +177,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       return const EmptyState(
         icon: Icons.restaurant,
         title: '暂无菜谱',
-        subtitle: '在 Web 端创建菜谱后即可查看',
+        subtitle: '点击右下角创建第一个菜谱',
       );
     }
 

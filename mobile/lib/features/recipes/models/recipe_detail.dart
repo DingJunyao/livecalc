@@ -140,33 +140,43 @@ class RecipeStep {
 
 class RecipeDetail {
   final int id;
+  final int? userId;
   final String name;
   final String? description;
   final String? category;
   final String? difficulty;
   final int servings;
+  final int? totalTimeMinutes;
   final List<String> tags;
   final String? imageUrl;
   final List<String> imageUrls;
+  final List<String> images;
   final List<RecipeIngredient> ingredients;
   final List<RecipeStep> steps;
   final List<String> tips;
   final bool isPublic;
+  final int? resultIngredientId;
+  final RecipePendingProposal? pendingProposal;
 
   const RecipeDetail({
     required this.id,
+    this.userId,
     required this.name,
     this.description,
     this.category,
     this.difficulty,
     this.servings = 1,
+    this.totalTimeMinutes,
     this.tags = const [],
     this.imageUrl,
     this.imageUrls = const [],
+    this.images = const [],
     this.ingredients = const [],
     this.steps = const [],
     this.tips = const [],
     this.isPublic = false,
+    this.resultIngredientId,
+    this.pendingProposal,
   });
 
   factory RecipeDetail.fromJson(Map<String, dynamic> json) {
@@ -183,15 +193,19 @@ class RecipeDetail {
     }
     return RecipeDetail(
       id: _asInt(json['id']),
+      userId: _toIntOrNull(json['user_id']),
       name: json['name'] as String? ?? '',
       description: _asString(json['description']),
       category: _asString(json['category']),
       difficulty: _asString(json['difficulty']),
       servings: _asInt(json['servings'], 1),
+      totalTimeMinutes: _toIntOrNull(json['total_time_minutes']),
       tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ??
           const [],
       imageUrl: _firstImageUrl(json),
       imageUrls: _imageUrls(json),
+      images: (json['images'] as List?)?.map((e) => e.toString()).toList() ??
+          const [],
       ingredients: (json['ingredients'] as List<dynamic>?)
               ?.map((e) => RecipeIngredient.fromJson(e as Map<String, dynamic>))
               .toList() ??
@@ -201,6 +215,96 @@ class RecipeDetail {
           .toList(),
       tips: tipsList,
       isPublic: _asBool(json['is_public']),
+      resultIngredientId: _toIntOrNull(json['result_ingredient_id']),
+      pendingProposal: json['pending_proposal'] is Map<String, dynamic>
+          ? RecipePendingProposal.fromJson(
+              json['pending_proposal'] as Map<String, dynamic>)
+          : null,
     );
   }
+
+  /// Web 详情页把 recipe_edit 的 update_data 覆盖到当前详情后展示。
+  RecipeDetail mergedWithPending() {
+    final proposal = pendingProposal;
+    if (proposal == null) return this;
+    final data = proposal.updateData;
+    return RecipeDetail(
+      id: id,
+      userId: userId,
+      name: data['name']?.toString() ?? name,
+      description: data.containsKey('description')
+          ? _asString(data['description'])
+          : description,
+      category:
+          data.containsKey('category') ? _asString(data['category']) : category,
+      difficulty: data.containsKey('difficulty')
+          ? _asString(data['difficulty'])
+          : difficulty,
+      servings: _toIntOrNull(data['servings']) ?? servings,
+      totalTimeMinutes: data.containsKey('total_time_minutes')
+          ? _toIntOrNull(data['total_time_minutes'])
+          : totalTimeMinutes,
+      tags: data['tags'] is List
+          ? (data['tags'] as List).map((e) => e.toString()).toList()
+          : tags,
+      imageUrl: imageUrl,
+      imageUrls: imageUrls,
+      images: data['images'] is List
+          ? (data['images'] as List).map((e) => e.toString()).toList()
+          : images,
+      ingredients: data['ingredients'] is List
+          ? [
+              for (final item in data['ingredients'] as List)
+                if (item is Map<String, dynamic>)
+                  RecipeIngredient.fromJson(item),
+            ]
+          : ingredients,
+      steps: data['cooking_steps'] is List
+          ? [
+              for (final item in data['cooking_steps'] as List)
+                if (item is Map<String, dynamic>) RecipeStep.fromJson(item),
+            ]
+          : steps,
+      tips: data['tips'] is List
+          ? (data['tips'] as List).map((e) => e.toString()).toList()
+          : tips,
+      isPublic: isPublic,
+      resultIngredientId: data.containsKey('result_ingredient_id')
+          ? _toIntOrNull(data['result_ingredient_id'])
+          : resultIngredientId,
+      pendingProposal: proposal,
+    );
+  }
+}
+
+class RecipePendingProposal {
+  final int id;
+  final String action;
+  final Map<String, dynamic> updateData;
+
+  const RecipePendingProposal({
+    required this.id,
+    required this.action,
+    required this.updateData,
+  });
+
+  factory RecipePendingProposal.fromJson(Map<String, dynamic> json) {
+    final payload = json['payload'];
+    Map<String, dynamic> updateData = {};
+    if (payload is Map<String, dynamic>) {
+      final nested = payload['update_data'];
+      if (nested is Map<String, dynamic>) {
+        updateData = nested;
+      } else {
+        updateData = payload;
+      }
+    }
+    return RecipePendingProposal(
+      id: _asInt(json['id']),
+      action: json['action']?.toString() ?? 'update',
+      updateData: updateData,
+    );
+  }
+
+  String get changeSummary => updateData.keys.join('、');
 }

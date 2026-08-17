@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
@@ -27,9 +27,11 @@ class EmptyState extends StatelessWidget {
             Text(title, style: Theme.of(context).textTheme.titleMedium),
             if (subtitle != null) ...[
               const SizedBox(height: 8),
-              Text(subtitle!, style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ), textAlign: TextAlign.center),
+              Text(subtitle!,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
+                  textAlign: TextAlign.center),
             ],
             if (action != null) ...[
               const SizedBox(height: 24),

@@ -1,10 +1,10 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../../shared/models/ingredient_recipe.dart';
+import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -12,15 +12,21 @@ import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/widgets/nutrition_card.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart';
+import '../../../shared/screens/price_record_edit_screen.dart';
 import '../../merchants/providers/merchant_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../prices/models/price_record.dart';
+import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/models/product.dart';
 import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/ingredient.dart';
 import '../models/ingredient_category.dart';
+import '../repositories/ingredient_repository.dart'
+    show IngredientHierarchyData;
+import '../widgets/hierarchy_graph.dart';
+import 'ingredient_form_screen.dart' show IngredientFormResult;
+import 'ingredient_hierarchy_screen.dart';
 import '../providers/ingredient_provider.dart';
-import '../repositories/ingredient_repository.dart';
 
 class IngredientDetailScreen extends ConsumerStatefulWidget {
   final int id;
@@ -71,6 +77,7 @@ class _IngredientDetailScreenState
     }
 
     final notifier = ref.read(ingredientDetailPageProvider(widget.id).notifier);
+    final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -118,6 +125,10 @@ class _IngredientDetailScreenState
               categoriesAsync: ref.watch(ingredientCategoriesProvider),
               onEdit: () => _openEditBasicPage(notifier, ingredient),
             ),
+            if (ingredient.pendingProposal != null) ...[
+              const SizedBox(height: 12),
+              _PendingProposalBanner(proposal: ingredient.pendingProposal!),
+            ],
             const SizedBox(height: 16),
             _LatestPriceCard(
               latest: state.latestPrice,
@@ -166,6 +177,9 @@ class _IngredientDetailScreenState
             ),
             const SizedBox(height: 16),
             NutritionCard(
+              entityType: 'ingredient',
+              entityId: widget.id,
+              entityName: ingredient.name,
               nutrition: state.nutrition,
               loading: state.loadingNutrition,
               saving: state.savingNutrition,
@@ -173,27 +187,49 @@ class _IngredientDetailScreenState
             ),
             const SizedBox(height: 16),
             EntityUnitsCard(
+              entityType: 'ingredient',
+              entityId: widget.id,
+              entityName: ingredient.name,
               units: state.units,
               unmappedUnits: state.unmappedUnits,
               densities: state.densities,
               loading: state.loadingUnits,
-              onAddUnit: notifier.addUnit,
-              onEditUnit: notifier.updateUnit,
-              onDeleteUnit: (id) => _confirmDeleteUnit(notifier, id),
-              onQuickAddUnmapped: notifier.quickAddUnmappedUnit,
-              onAddDensity: notifier.addDensity,
-              onDeleteDensity: (id) => _confirmDeleteDensity(notifier, id),
+              isAdmin: isAdmin,
+              onAddUnit: (input) => notifier.addUnit(
+                unitName: input.unitName,
+                conversionFactor: input.conversionFactor,
+                weightPerUnit: input.weightPerUnit,
+                isDefault: input.isDefault,
+                isAdmin: isAdmin,
+              ),
+              onEditUnit: (unitId, input) => notifier.updateUnit(
+                unitId,
+                unitName: input.unitName,
+                conversionFactor: input.conversionFactor,
+                weightPerUnit: input.weightPerUnit,
+                isDefault: input.isDefault,
+                isAdmin: isAdmin,
+              ),
+              onDeleteUnit: notifier.deleteUnit,
+              onQuickAddUnmapped: (unit) =>
+                  notifier.quickAddUnmappedUnit(unit, isAdmin: isAdmin),
+              onAddDensity: (input) => notifier.addDensity(
+                density: input.density,
+                condition: input.condition,
+                isAdmin: isAdmin,
+              ),
+              onDeleteDensity: notifier.deleteDensity,
             ),
             const SizedBox(height: 16),
             _HierarchyCard(
               currentId: widget.id,
+              currentName: ingredient.name,
               data: state.hierarchy,
               loading: state.loadingHierarchy,
-              onAdd: () => _showAddHierarchyDialog(notifier),
+              onAdd: () => _openHierarchyPage(notifier, isAdmin),
               onEditStrength: (relation) =>
-                  _showEditHierarchyDialog(notifier, relation),
-              onDelete: (relation) =>
-                  _confirmDeleteHierarchy(notifier, relation),
+                  _openHierarchyPage(notifier, isAdmin),
+              onDelete: (relation) => _openHierarchyPage(notifier, isAdmin),
             ),
           ],
         ),
@@ -224,32 +260,22 @@ class _IngredientDetailScreenState
     Ingredient ingredient,
   ) async {
     if (!mounted) return;
-    final merchants = ref.read(merchantListProvider).items;
-    final result = await showPriceRecordFormSheet(
-      context,
-      merchants: merchants,
-      products: [
-        for (final p in state.products) ProductOption(p.id, p.name),
-      ],
+    final matched = state.products.firstWhere(
+      (product) => product.name == ingredient.name,
+      orElse: () => state.products.first,
     );
-    if (result == null || result.productId == null || !mounted) return;
-    try {
-      await notifier.addRecord(
-        productId: result.productId!,
-        price: result.price,
-        quantity: result.quantity,
-        unit: result.unit,
-        merchantId: result.merchantId,
-      );
+    final saved = await context.push<bool>(
+      '/prices/record',
+      extra: PriceRecordFormPrefill(
+        product: matched,
+        ingredientId: widget.id,
+      ),
+    );
+    if (saved == true && mounted) {
+      await notifier.load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('价格已记录')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
         );
       }
     }
@@ -262,17 +288,19 @@ class _IngredientDetailScreenState
   ) async {
     if (!mounted) return;
     final merchants = ref.read(merchantListProvider).items;
-    final result = await showPriceRecordFormSheet(
-      context,
-      merchants: merchants,
-      products: [
-        for (final p in state.products) ProductOption(p.id, p.name),
-      ],
-      fixedProductId: record.productId,
-      initialPrice: record.price,
-      initialQuantity: record.quantity,
-      initialUnit: record.unit,
-      initialMerchantId: record.merchantId,
+    final result = await context.push<PriceRecordFormResult>(
+      '/prices/record/edit',
+      extra: PriceRecordFormArguments(
+        merchants: merchants,
+        products: [
+          for (final p in state.products) ProductOption(p.id, p.name),
+        ],
+        fixedProductId: record.productId,
+        initialPrice: record.price,
+        initialQuantity: record.quantity,
+        initialUnit: record.unit,
+        initialMerchantId: record.merchantId,
+      ),
     );
     if (result == null || !mounted) return;
     try {
@@ -343,15 +371,21 @@ class _IngredientDetailScreenState
     IngredientDetailPageNotifier notifier,
     Ingredient ingredient,
   ) async {
-    final saved = await context.push<bool>(
+    final result = await context.push<IngredientFormResult>(
       '/ingredients/${ingredient.id}/edit',
       extra: ingredient,
     );
-    if (saved == true && mounted) {
+    if (result?.saved == true && mounted) {
       await notifier.load(initialDays: 30);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('基本信息已保存')),
+          SnackBar(
+            content: Text(
+              result!.pending
+                  ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
+                  : '基本信息已保存',
+            ),
+          ),
         );
       }
     }
@@ -411,7 +445,17 @@ class _IngredientDetailScreenState
     );
     if (ok != true || !mounted) return;
     try {
-      await notifier.deleteProduct(product.id);
+      final review = await notifier.deleteProduct(product.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            review.pending
+                ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
+                : '商品已删除',
+          ),
+        ),
+      );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -421,150 +465,74 @@ class _IngredientDetailScreenState
     }
   }
 
-  Future<void> _confirmDeleteUnit(
-    IngredientDetailPageNotifier notifier,
-    int unitId,
-  ) async {
-    final ok = await _confirm('删除单位', '确定删除该自定义单位吗？');
-    if (ok != true || !mounted) return;
-    try {
-      await notifier.deleteUnit(unitId);
-    } catch (_) {
-      _toast('删除失败，请重试');
-    }
-  }
-
-  Future<void> _confirmDeleteDensity(
-    IngredientDetailPageNotifier notifier,
-    int densityId,
-  ) async {
-    final ok = await _confirm('删除密度', '确定删除该密度记录吗？');
-    if (ok != true || !mounted) return;
-    try {
-      await notifier.deleteDensity(densityId);
-    } catch (_) {
-      _toast('删除失败，请重试');
-    }
-  }
-
   // ---- 层级关系 ----
 
-  Future<void> _showAddHierarchyDialog(
+  Future<void> _openHierarchyPage(
     IngredientDetailPageNotifier notifier,
+    bool isAdmin,
   ) async {
-    final ingredient =
-        ref.read(ingredientDetailPageProvider(widget.id)).ingredient;
+    final state = ref.read(ingredientDetailPageProvider(widget.id));
+    final ingredient = state.ingredient;
     if (ingredient == null || !mounted) return;
-    final result = await showDialog<_HierarchyFormResult>(
-      context: context,
-      builder: (_) => _HierarchyFormDialog(
-        currentName: ingredient.name,
-        excludeId: ingredient.id,
-      ),
-    );
-    if (result == null || !mounted) return;
-    try {
-      await notifier.addHierarchyRelation(
-        parentId: widget.id,
-        childId: result.targetId,
-        relationType: result.relationType,
-        strength: result.strength,
-      );
-      _toast('已添加关系');
-    } catch (_) {
-      _toast('添加失败，请重试');
-    }
-  }
-
-  Future<void> _showEditHierarchyDialog(
-    IngredientDetailPageNotifier notifier,
-    HierarchyRelation relation,
-  ) async {
-    var strength = relation.strength;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('调整关系强度'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('${relation.parentName} → ${relation.childName}'
-                  '（${relation.typeLabel}）'),
-              const SizedBox(height: 8),
-              Text('强度：$strength'),
-              Slider(
-                value: strength.toDouble(),
-                min: 1,
-                max: 100,
-                divisions: 99,
-                label: '$strength',
-                onChanged: (v) => setDialogState(() => strength = v.round()),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('保存'),
-            ),
-          ],
+    await context.push<bool>(
+      '/ingredients/${widget.id}/hierarchy',
+      extra: IngredientHierarchyArguments(
+        ingredientId: widget.id,
+        ingredientName: ingredient.name,
+        hierarchyData: state.hierarchy,
+        loading: state.loadingHierarchy,
+        isAdmin: isAdmin,
+        onAdd: (input) => notifier.addHierarchyRelation(
+          parentId: widget.id,
+          childId: input.targetId,
+          relationType: input.relationType,
+          strength: input.strength,
+          isAdmin: isAdmin,
         ),
+        onUpdateStrength: (relationId, strength) =>
+            notifier.updateHierarchyRelation(
+          relationId,
+          strength: strength,
+          isAdmin: isAdmin,
+        ),
+        onDelete: notifier.deleteHierarchyRelation,
       ),
     );
-    if (saved != true || !mounted) return;
-    try {
-      await notifier.updateHierarchyRelation(relation.id, strength: strength);
-      _toast('已更新');
-    } catch (_) {
-      _toast('更新失败，请重试');
-    }
   }
+}
 
-  Future<void> _confirmDeleteHierarchy(
-    IngredientDetailPageNotifier notifier,
-    HierarchyRelation relation,
-  ) async {
-    final ok = await _confirm('删除关系', '确定删除该层级关系吗？');
-    if (ok != true || !mounted) return;
-    try {
-      await notifier.deleteHierarchyRelation(relation.id);
-      _toast('已删除');
-    } catch (_) {
-      _toast('删除失败，请重试');
-    }
-  }
+class _PendingProposalBanner extends StatelessWidget {
+  final EntityPendingProposal proposal;
 
-  Future<bool?> _confirm(String title, String content) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+  const _PendingProposalBanner({required this.proposal});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.hourglass_top_outlined,
+            color: theme.colorScheme.onSecondaryContainer,
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              proposal.action == 'delete' ? '删除提议待管理员审核' : '基本信息修改待管理员审核',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
           ),
         ],
       ),
     );
-  }
-
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
@@ -1263,6 +1231,7 @@ class _RelatedRecipesCard extends StatelessWidget {
 
 class _HierarchyCard extends StatelessWidget {
   final int currentId;
+  final String currentName;
   final IngredientHierarchyData? data;
   final bool loading;
   final VoidCallback onAdd;
@@ -1271,6 +1240,7 @@ class _HierarchyCard extends StatelessWidget {
 
   const _HierarchyCard({
     required this.currentId,
+    required this.currentName,
     required this.data,
     required this.loading,
     required this.onAdd,
@@ -1329,7 +1299,13 @@ class _HierarchyCard extends StatelessWidget {
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
               )
-            else
+            else ...[
+              HierarchyGraph(
+                ingredientId: currentId,
+                ingredientName: currentName,
+                hierarchyData: hierarchy,
+              ),
+              const SizedBox(height: 8),
               for (final r in relations) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1349,8 +1325,9 @@ class _HierarchyCard extends StatelessWidget {
                             const SizedBox(height: 2),
                             Text(
                               '${r.typeLabel} · 强度 ${r.strength}',
-                              style: theme.textTheme.bodySmall
-                                  ?.copyWith(color: theme.colorScheme.outline),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
                             ),
                           ],
                         ),
@@ -1373,202 +1350,10 @@ class _HierarchyCard extends StatelessWidget {
                 ),
                 const Divider(height: 1),
               ],
+            ],
           ],
         ),
       ),
-    );
-  }
-}
-
-class _HierarchyFormResult {
-  final int targetId;
-  final String relationType;
-  final int strength;
-  const _HierarchyFormResult({
-    required this.targetId,
-    required this.relationType,
-    required this.strength,
-  });
-}
-
-class _HierarchyFormDialog extends ConsumerStatefulWidget {
-  final String currentName;
-  final int excludeId;
-  const _HierarchyFormDialog({
-    required this.currentName,
-    required this.excludeId,
-  });
-
-  @override
-  ConsumerState<_HierarchyFormDialog> createState() =>
-      _HierarchyFormDialogState();
-}
-
-class _HierarchyFormDialogState extends ConsumerState<_HierarchyFormDialog> {
-  final _searchController = TextEditingController();
-  Timer? _debounce;
-  List<Ingredient> _options = const [];
-  bool _searching = false;
-  Ingredient? _selected;
-  String _relationType = 'contains';
-  int _strength = 50;
-
-  @override
-  void initState() {
-    super.initState();
-    _searchController.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _onSearchChanged() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final q = _searchController.text.trim();
-      if (q.isEmpty) {
-        setState(() {
-          _options = const [];
-          _searching = false;
-        });
-        return;
-      }
-      setState(() => _searching = true);
-      try {
-        final result =
-            await IngredientRepository().search(search: q, limit: 20);
-        if (mounted) {
-          setState(() {
-            _options =
-                result.items.where((i) => i.id != widget.excludeId).toList();
-            _searching = false;
-          });
-        }
-      } catch (_) {
-        if (mounted) setState(() => _searching = false);
-      }
-    });
-  }
-
-  void _save() {
-    if (_selected == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择关联原料')),
-      );
-      return;
-    }
-    Navigator.of(context).pop(_HierarchyFormResult(
-      targetId: _selected!.id,
-      relationType: _relationType,
-      strength: _strength,
-    ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return AlertDialog(
-      title: const Text('添加层级关系'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                labelText: '搜索关联原料 *',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searching
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : null,
-                border: const OutlineInputBorder(),
-              ),
-            ),
-            if (_selected != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Chip(
-                    avatar: const Icon(Icons.check_circle, size: 16),
-                    label: Text(_selected!.name),
-                    onDeleted: () => setState(() => _selected = null),
-                  ),
-                ),
-              ),
-            if (_options.isNotEmpty)
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxHeight: 160),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: _options.length,
-                  itemBuilder: (ctx, i) {
-                    final ing = _options[i];
-                    return ListTile(
-                      dense: true,
-                      title: Text(ing.name),
-                      subtitle:
-                          ing.category == null ? null : Text(ing.category!),
-                      onTap: () {
-                        setState(() {
-                          _selected = ing;
-                          _searchController.text = ing.name;
-                          _options = const [];
-                        });
-                      },
-                    );
-                  },
-                ),
-              ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _relationType,
-              isExpanded: true,
-              decoration: const InputDecoration(
-                labelText: '关系类型',
-                border: OutlineInputBorder(),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'contains', child: Text('包含')),
-                DropdownMenuItem(value: 'substitutable', child: Text('可替代')),
-                DropdownMenuItem(value: 'fallback', child: Text('回退')),
-              ],
-              onChanged: (v) => setState(() => _relationType = v ?? 'contains'),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text('强度：$_strength', style: theme.textTheme.bodyMedium),
-                Expanded(
-                  child: Slider(
-                    value: _strength.toDouble(),
-                    min: 1,
-                    max: 100,
-                    divisions: 99,
-                    label: '$_strength',
-                    onChanged: (v) => setState(() => _strength = v.round()),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
-        ),
-        FilledButton(onPressed: _save, child: const Text('保存')),
-      ],
     );
   }
 }

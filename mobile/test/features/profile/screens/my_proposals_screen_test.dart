@@ -58,10 +58,8 @@ void main() {
     // 缺失 entityLabel 回退
     expect(find.text('[#2] create unit'), findsOneWidget);
     // subtitle
-    expect(find.textContaining('食材 · 修改 · 2026-08-01 10:00'),
-        findsOneWidget);
-    expect(find.textContaining('单位 · 新增 · 2026-08-02 09:00'),
-        findsOneWidget);
+    expect(find.textContaining('食材 · 修改 · 2026-08-01 10:00'), findsOneWidget);
+    expect(find.textContaining('单位 · 新增 · 2026-08-02 09:00'), findsOneWidget);
     // 状态 chip
     expect(find.text('已生效'), findsOneWidget);
     expect(find.text('待审'), findsOneWidget);

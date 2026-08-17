@@ -40,7 +40,7 @@ void main() {
         recipeIngredientId: 10,
         ingredientId: 5,
         ingredientName: '鸡蛋',
-        prices: const []);
+        prices: []);
     when(() => repo.getRecipeCost(1)).thenAnswer((_) async =>
         const RecipeCost(totalCost: 12, costPerServing: 6, breakdown: []));
     when(() => repo.getRecipeNutrition(1)).thenAnswer((_) async =>

@@ -7,12 +7,14 @@ import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/nutrition.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../nutrition/repositories/nutrition_repository.dart';
+import '../../nutrition/models/usda_models.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../prices/utils/price_trend.dart';
 import '../../products/models/product.dart';
 import '../../products/repositories/product_repository.dart';
-import '../../recipes/repositories/recipe_repository.dart' show CostHistoryPoint;
+import '../../recipes/repositories/recipe_repository.dart'
+    show CostHistoryPoint;
 import '../models/ingredient.dart';
 import '../models/ingredient_category.dart';
 import '../repositories/ingredient_repository.dart';
@@ -89,7 +91,9 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   final IngredientRepository _repo;
   Timer? _debounce;
 
-  IngredientListNotifier(this._repo) : super(const IngredientListState());
+  IngredientListNotifier([IngredientRepository? repository])
+      : _repo = repository ?? IngredientRepository(),
+        super(const IngredientListState());
 
   @override
   void dispose() {
@@ -114,15 +118,13 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
     try {
       final result = await _repo.search(
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
-        categoryIds: state.filterCategoryIds.isEmpty
-            ? null
-            : state.filterCategoryIds,
+        categoryIds:
+            state.filterCategoryIds.isEmpty ? null : state.filterCategoryIds,
         conditions: state.conditions.isEmpty ? null : state.conditions,
         skip: (page - 1) * ingredientPageSize,
         limit: ingredientPageSize,
       );
-      final items =
-          loadMore ? [...state.items, ...result.items] : result.items;
+      final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
         total: result.total,
@@ -176,12 +178,9 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
     if (items.isEmpty) return;
     state = state.copyWith(loadingDetails: true);
     try {
-      final prices = await Future.wait(
-        items.map((i) => _repo.getLatestPrice(i.id)),
+      final priceMap = await _repo.getLatestPrices(
+        items.map((i) => i.id).toList(),
       );
-      final priceMap = <int, LatestPriceInfo>{
-        for (var i = 0; i < items.length; i++) items[i].id: prices[i],
-      };
       final sparkMap = await _repo.getSparklines(
         items.map((i) => i.id).toList(),
       );
@@ -196,8 +195,8 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   }
 }
 
-final ingredientListProvider = StateNotifierProvider<IngredientListNotifier,
-    IngredientListState>((ref) {
+final ingredientListProvider =
+    StateNotifierProvider<IngredientListNotifier, IngredientListState>((ref) {
   return IngredientListNotifier(IngredientRepository());
 });
 
@@ -211,8 +210,8 @@ final ingredientDetailProvider =
 });
 
 /// 原料下拉选项（商品筛选/添加表单共用，取前 100 条）。
-final ingredientOptionsProvider = FutureProvider.autoDispose<List<Ingredient>>(
-    (ref) async {
+final ingredientOptionsProvider =
+    FutureProvider.autoDispose<List<Ingredient>>((ref) async {
   final result = await IngredientRepository().search(
     limit: 100,
     sortBy: 'name',
@@ -484,8 +483,8 @@ class IngredientDetailPageNotifier
       state = state.copyWith(
         records: [...state.records, ...result.records],
         recordsPage: next,
-        recordsHasMore: state.records.length + result.records.length <
-            result.total,
+        recordsHasMore:
+            state.records.length + result.records.length < result.total,
         loadingRecords: false,
       );
     } on Exception {
@@ -526,11 +525,13 @@ class IngredientDetailPageNotifier
     }
   }
 
-  Future<void> saveNutrition(List<NutrientEntry> nutrients) async {
+  Future<Object?> saveNutrition(List<NutrientEntry> nutrients) async {
     state = state.copyWith(savingNutrition: true);
     try {
-      await _nutritionRepo.saveIngredientNutrition(ingredientId, nutrients);
-      await _loadNutrition();
+      final result =
+          await _nutritionRepo.saveIngredientNutrition(ingredientId, nutrients);
+      if (!result.pending) await _loadNutrition();
+      return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
     }
@@ -542,8 +543,8 @@ class IngredientDetailPageNotifier
     state = state.copyWith(loadingUnits: true);
     try {
       final units = await _entityRepo.listUnits('ingredient', ingredientId);
-      final unmapped = await _entityRepo
-          .listUnmappedUnits('ingredient', ingredientId);
+      final unmapped =
+          await _entityRepo.listUnmappedUnits('ingredient', ingredientId);
       final densities =
           await _entityRepo.listDensities('ingredient', ingredientId);
       state = state.copyWith(
@@ -557,31 +558,35 @@ class IngredientDetailPageNotifier
     }
   }
 
-  Future<void> addUnit({
+  Future<Object?> addUnit({
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
     bool isDefault = false,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.createUnit(
+    final result = await _entityRepo.createUnit(
       'ingredient',
       ingredientId,
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
       isDefault: isDefault,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> updateUnit(
+  Future<Object?> updateUnit(
     int unitId, {
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
     bool? isDefault,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.updateUnit(
+    final result = await _entityRepo.updateUnit(
       'ingredient',
       ingredientId,
       unitId,
@@ -589,42 +594,59 @@ class IngredientDetailPageNotifier
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
       isDefault: isDefault,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> deleteUnit(int unitId) async {
-    await _entityRepo.deleteUnit('ingredient', ingredientId, unitId);
-    await _loadUnits();
+  Future<Object?> deleteUnit(int unitId) async {
+    final result =
+        await _entityRepo.deleteUnit('ingredient', ingredientId, unitId);
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
   /// 快捷添加未映射单位（默认 1 个 = 100g）。
-  Future<void> quickAddUnmappedUnit(UnmappedUnit unit) async {
-    await _entityRepo.createUnit(
+  Future<Object?> quickAddUnmappedUnit(
+    UnmappedUnit unit, {
+    bool isAdmin = true,
+  }) async {
+    final result = await _entityRepo.createUnit(
       'ingredient',
       ingredientId,
       unitName: unit.unitName,
       weightPerUnit: 100,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> addDensity({
+  Future<Object?> addDensity({
     required double density,
     String? condition,
+    bool isAdmin = true,
   }) async {
-    await _entityRepo.upsertDensity(
+    final result = await _entityRepo.upsertDensity(
       'ingredient',
       ingredientId,
       density: density,
       condition: condition,
+      isAdmin: isAdmin,
     );
-    await _loadUnits();
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
-  Future<void> deleteDensity(int densityId) async {
-    await _entityRepo.deleteDensity('ingredient', ingredientId, densityId);
-    await _loadUnits();
+  Future<Object?> deleteDensity(int densityId) async {
+    final result = await _entityRepo.deleteDensity(
+      'ingredient',
+      ingredientId,
+      densityId,
+    );
+    if (result.applied) await _loadUnits();
+    return result;
   }
 
   // ---- 关联菜谱 ----
@@ -678,32 +700,42 @@ class IngredientDetailPageNotifier
     }
   }
 
-  Future<void> addHierarchyRelation({
+  Future<Object?> addHierarchyRelation({
     required int parentId,
     required int childId,
     required String relationType,
     int strength = 50,
+    bool isAdmin = true,
   }) async {
-    await _ingRepo.createHierarchyRelation(
+    final result = await _ingRepo.createHierarchyRelation(
       parentId: parentId,
       childId: childId,
       relationType: relationType,
       strength: strength,
+      isAdmin: isAdmin,
     );
-    await _loadHierarchy();
+    if (result.applied) await _loadHierarchy();
+    return result;
   }
 
-  Future<void> updateHierarchyRelation(
+  Future<Object?> updateHierarchyRelation(
     int relationId, {
     required int strength,
+    bool isAdmin = true,
   }) async {
-    await _ingRepo.updateHierarchyRelation(relationId, strength: strength);
-    await _loadHierarchy();
+    final result = await _ingRepo.updateHierarchyRelation(
+      relationId,
+      strength: strength,
+      isAdmin: isAdmin,
+    );
+    if (result.applied) await _loadHierarchy();
+    return result;
   }
 
-  Future<void> deleteHierarchyRelation(int relationId) async {
-    await _ingRepo.deleteHierarchyRelation(relationId);
-    await _loadHierarchy();
+  Future<Object?> deleteHierarchyRelation(int relationId) async {
+    final result = await _ingRepo.deleteHierarchyRelation(relationId);
+    if (result.applied) await _loadHierarchy();
+    return result;
   }
 
   Future<void> addRecord({
@@ -754,20 +786,6 @@ class IngredientDetailPageNotifier
     ]);
   }
 
-  Future<void> updateBasic({
-    required String name,
-    int? categoryId,
-    List<String> aliases = const [],
-  }) async {
-    final updated = await _ingRepo.updateIngredient(
-      ingredientId,
-      name: name,
-      categoryId: categoryId,
-      aliases: aliases,
-    );
-    state = state.copyWith(ingredient: updated);
-  }
-
   Future<void> addProduct({
     required String name,
     required int ingredientId,
@@ -785,31 +803,14 @@ class IngredientDetailPageNotifier
     await _loadProducts();
   }
 
-  Future<void> updateProduct(
-    int productId, {
-    String? name,
-    String? brand,
-    String? barcode,
-    List<String>? aliases,
-  }) async {
-    await _productRepo.updateProduct(
-      productId,
-      name: name,
-      brand: brand,
-      barcode: barcode,
-      aliases: aliases,
-    );
-    await _loadProducts();
-  }
-
-  Future<void> deleteProduct(int productId) async {
-    await _productRepo.deleteProduct(productId);
-    await _loadProducts();
+  Future<MutationReviewResult> deleteProduct(int productId) async {
+    final review = await _productRepo.deleteProduct(productId);
+    if (review.applied) await _loadProducts();
+    return review;
   }
 }
 
-final ingredientDetailPageProvider =
-    StateNotifierProvider.autoDispose.family<
-        IngredientDetailPageNotifier, IngredientDetailPageState, int>(
+final ingredientDetailPageProvider = StateNotifierProvider.autoDispose
+    .family<IngredientDetailPageNotifier, IngredientDetailPageState, int>(
   (ref, id) => IngredientDetailPageNotifier(id),
 );

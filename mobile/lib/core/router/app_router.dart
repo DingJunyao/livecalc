@@ -9,9 +9,12 @@ import '../../features/prices/screens/price_record_form_screen.dart';
 import '../../features/prices/screens/quick_fill_screen.dart';
 import '../../features/recipes/screens/recipe_list_screen.dart';
 import '../../features/recipes/screens/recipe_detail_screen.dart';
+import '../../features/recipes/screens/recipe_form_screen.dart';
 import '../../features/recipes/screens/recipe_analysis_screen.dart';
+import '../../features/recipes/models/recipe_detail.dart';
 import '../../features/ingredients/screens/ingredient_list_screen.dart';
 import '../../features/ingredients/screens/ingredient_detail_screen.dart';
+import '../../features/ingredients/screens/ingredient_hierarchy_screen.dart';
 import '../../features/ingredients/screens/ingredient_form_screen.dart';
 import '../../features/products/screens/product_list_screen.dart';
 import '../../features/products/screens/product_detail_screen.dart';
@@ -19,9 +22,11 @@ import '../../features/products/screens/product_form_screen.dart';
 import '../../features/products/models/product.dart';
 import '../../features/merchants/screens/merchant_list_screen.dart';
 import '../../features/merchants/screens/merchant_detail_screen.dart';
+import '../../features/merchants/screens/merchant_form_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/my_proposals_screen.dart';
 import '../../features/profile/screens/my_places_screen.dart';
+import '../../features/profile/screens/user_place_form_screen.dart';
 import '../../features/profile/screens/unit_preferences_screen.dart';
 import '../../features/profile/screens/nutrition_goals_screen.dart';
 import '../../features/profile/providers/startup_page_provider.dart';
@@ -33,6 +38,9 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/edit_account_screen.dart';
 import '../../features/prices/providers/price_provider.dart';
+import '../../shared/screens/entity_units_screen.dart';
+import '../../shared/screens/nutrition_edit_screen.dart';
+import '../../shared/screens/price_record_edit_screen.dart';
 import 'route_names.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -58,11 +66,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           location == '/server-config';
       final isSplash = location == '/splash';
 
-      // While the session is being restored (incl. the startup connectivity
-      // check), hold on the splash screen so we never flash the server-config
-      // or login pages before we know where to land.
+      // Startup/session restoration holds on splash. Login and registration
+      // also use loading state; keep those forms in place so a failed submit
+      // does not bounce the user to another auth page and lose context.
       if (status == AuthStatus.initial || status == AuthStatus.loading) {
-        return isSplash ? null : '/splash';
+        return (isSplash || isAuthRoute) ? null : '/splash';
       }
 
       if (status == AuthStatus.authenticated) {
@@ -110,6 +118,68 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
         builder: (_, __, child) => ScaffoldWithNavBar(child: child),
         routes: [
           GoRoute(
+            path: '/entities/:entityType/:entityId/units',
+            name: 'entity-units',
+            builder: (_, state) {
+              final args = state.extra;
+              if (args is EntityUnitsArguments) {
+                return EntityUnitsScreen(
+                  entityType: args.entityType,
+                  entityId: args.entityId,
+                  entityName: args.entityName,
+                  units: args.units,
+                  unmappedUnits: args.unmappedUnits,
+                  densities: args.densities,
+                  loading: args.loading,
+                  isAdmin: args.isAdmin,
+                  onAddUnit: args.onAddUnit,
+                  onEditUnit: args.onEditUnit,
+                  onDeleteUnit: args.onDeleteUnit,
+                  onQuickAddUnmapped: args.onQuickAddUnmapped,
+                  onAddDensity: args.onAddDensity,
+                  onDeleteDensity: args.onDeleteDensity,
+                );
+              }
+              return EntityUnitsScreen(
+                entityType: state.pathParameters['entityType'] ?? 'ingredient',
+                entityId:
+                    int.tryParse(state.pathParameters['entityId'] ?? '') ?? 0,
+                units: const [],
+                unmappedUnits: const [],
+                densities: const [],
+                onAddUnit: (_) async => null,
+                onEditUnit: (_, __) async => null,
+                onDeleteUnit: (_) async => null,
+                onQuickAddUnmapped: (_) async => null,
+                onAddDensity: (_) async => null,
+                onDeleteDensity: (_) async => null,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/entities/:entityType/:entityId/nutrition',
+            name: 'entity-nutrition-edit',
+            builder: (_, state) {
+              final args = state.extra;
+              if (args is NutritionEditArguments) {
+                return NutritionEditScreen(
+                  entityType: args.entityType,
+                  entityId: args.entityId,
+                  entityName: args.entityName,
+                  nutrition: args.nutrition,
+                  allowClear: args.allowClear,
+                  onSave: args.onSave,
+                  onClear: args.onClear,
+                );
+              }
+              return NutritionEditScreen(
+                entityType: state.pathParameters['entityType'] ?? 'ingredient',
+                entityId:
+                    int.tryParse(state.pathParameters['entityId'] ?? '') ?? 0,
+              );
+            },
+          ),
+          GoRoute(
             path: '/home',
             name: RouteNames.home,
             pageBuilder: (context, state) => _shellTransitionPage(
@@ -149,7 +219,22 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/prices/record',
             name: RouteNames.priceRecord,
-            builder: (_, __) => const PriceRecordFormScreen(),
+            builder: (_, state) => state.extra is PriceRecordFormPrefill
+                ? PriceRecordFormScreen(
+                    prefill: state.extra as PriceRecordFormPrefill,
+                  )
+                : const PriceRecordFormScreen(),
+          ),
+          GoRoute(
+            path: '/prices/record/edit',
+            name: 'price-record-edit',
+            builder: (_, state) => state.extra is PriceRecordFormArguments
+                ? PriceRecordEditScreen(
+                    arguments: state.extra as PriceRecordFormArguments,
+                  )
+                : const PriceRecordEditScreen(
+                    arguments: PriceRecordFormArguments(merchants: []),
+                  ),
           ),
           GoRoute(
             path: '/recipes',
@@ -161,10 +246,25 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/recipes/new',
+            name: 'recipe-form',
+            builder: (_, __) => const RecipeFormScreen(),
+          ),
+          GoRoute(
             path: '/recipes/:id',
             name: 'recipe-detail',
             builder: (_, state) => RecipeDetailScreen(
               id: int.parse(state.pathParameters['id']!),
+            ),
+          ),
+          GoRoute(
+            path: '/recipes/:id/edit',
+            name: 'recipe-edit',
+            builder: (_, state) => RecipeFormScreen(
+              recipe: state.extra is RecipeDetail
+                  ? state.extra as RecipeDetail
+                  : null,
+              recipeId: int.tryParse(state.pathParameters['id']!),
             ),
           ),
           GoRoute(
@@ -189,6 +289,35 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             builder: (_, __) => const IngredientFormScreen(),
           ),
           GoRoute(
+            path: '/ingredients/:id/hierarchy',
+            name: 'ingredient-hierarchy',
+            builder: (_, state) {
+              final args = state.extra;
+              if (args is IngredientHierarchyArguments) {
+                return IngredientHierarchyScreen(
+                  ingredientId: args.ingredientId,
+                  ingredientName: args.ingredientName,
+                  hierarchyData: args.hierarchyData,
+                  loading: args.loading,
+                  isAdmin: args.isAdmin,
+                  onAdd: args.onAdd,
+                  onUpdateStrength: args.onUpdateStrength,
+                  onDelete: args.onDelete,
+                );
+              }
+              return IngredientHierarchyScreen(
+                ingredientId:
+                    int.tryParse(state.pathParameters['id'] ?? '') ?? 0,
+                ingredientName: '',
+                hierarchyData: null,
+                isAdmin: true,
+                onAdd: (_) async => null,
+                onUpdateStrength: (_, __) async => null,
+                onDelete: (_) async => null,
+              );
+            },
+          ),
+          GoRoute(
             path: '/ingredients/:id',
             name: 'ingredient-detail',
             builder: (_, state) => IngredientDetailScreen(
@@ -199,9 +328,8 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             path: '/ingredients/:id/edit',
             name: 'ingredient-edit',
             builder: (_, state) => IngredientFormScreen(
-              ingredient: state.extra is Ingredient
-                  ? state.extra as Ingredient
-                  : null,
+              ingredient:
+                  state.extra is Ingredient ? state.extra as Ingredient : null,
               ingredientId: int.tryParse(state.pathParameters['id']!),
             ),
           ),
@@ -217,9 +345,10 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/products/new',
             name: RouteNames.productForm,
-            builder: (_, state) => ProductFormScreen(
+            builder: (context, state) => ProductFormScreen(
               fixedIngredient:
                   state.extra is Ingredient ? state.extra as Ingredient : null,
+              isAdmin: ref.read(authProvider).user?.isAdmin == true,
             ),
           ),
           GoRoute(
@@ -232,13 +361,14 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/products/:id/edit',
             name: 'product-edit',
-            builder: (_, state) {
+            builder: (context, state) {
               final id = int.tryParse(state.pathParameters['id']!);
               final extra = state.extra;
               return ProductFormScreen(
                 product: extra is Product
                     ? extra
                     : (id == null ? null : Product(id: id, name: '')),
+                isAdmin: ref.read(authProvider).user?.isAdmin == true,
               );
             },
           ),
@@ -254,8 +384,23 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
           GoRoute(
             path: '/merchants/map',
             name: 'merchant-map',
-            builder: (_, __) =>
-                const MerchantListScreen(initialShowMap: true),
+            builder: (_, __) => const MerchantListScreen(initialShowMap: true),
+          ),
+          GoRoute(
+            path: '/merchants/new',
+            name: 'merchant-form',
+            builder: (context, state) {
+              final args = state.extra;
+              return MerchantFormScreen(
+                isAdmin: args is MerchantFormArguments
+                    ? args.isAdmin
+                    : ref.read(authProvider).user?.isAdmin == true,
+                repository:
+                    args is MerchantFormArguments ? args.repository : null,
+                mapTileProvider:
+                    args is MerchantFormArguments ? args.mapTileProvider : null,
+              );
+            },
           ),
           GoRoute(
             path: '/merchants/:id',
@@ -263,6 +408,23 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             builder: (_, state) => MerchantDetailScreen(
               id: int.parse(state.pathParameters['id']!),
             ),
+          ),
+          GoRoute(
+            path: '/merchants/:id/edit',
+            name: 'merchant-edit',
+            builder: (context, state) {
+              final args = state.extra;
+              return MerchantFormScreen(
+                merchant: args is MerchantFormArguments ? args.merchant : null,
+                isAdmin: args is MerchantFormArguments
+                    ? args.isAdmin
+                    : ref.read(authProvider).user?.isAdmin == true,
+                repository:
+                    args is MerchantFormArguments ? args.repository : null,
+                mapTileProvider:
+                    args is MerchantFormArguments ? args.mapTileProvider : null,
+              );
+            },
           ),
           GoRoute(
             path: '/profile',
@@ -287,6 +449,32 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             path: '/profile/places',
             name: RouteNames.myPlaces,
             builder: (_, __) => const MyPlacesScreen(),
+          ),
+          GoRoute(
+            path: '/profile/places/new',
+            name: 'user-place-form',
+            builder: (_, state) {
+              final args = state.extra;
+              return UserPlaceFormScreen(
+                place: args is UserPlaceFormArguments ? args.place : null,
+                mapTileProvider: args is UserPlaceFormArguments
+                    ? args.mapTileProvider
+                    : null,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/profile/places/:id/edit',
+            name: 'user-place-edit',
+            builder: (_, state) {
+              final args = state.extra;
+              return UserPlaceFormScreen(
+                place: args is UserPlaceFormArguments ? args.place : null,
+                mapTileProvider: args is UserPlaceFormArguments
+                    ? args.mapTileProvider
+                    : null,
+              );
+            },
           ),
           GoRoute(
             path: '/profile/settings/unit-preferences',
@@ -389,7 +577,8 @@ const _moreMenuTabs = [
 /// 当前路由在哪个 tab 下：前缀精确相等或「前缀/」开头。
 int _tabIndexFor(List<_Tab> tabs, String location) {
   for (var i = 0; i < tabs.length; i++) {
-    if (tabs[i].prefixes
+    if (tabs[i]
+        .prefixes
         .any((p) => location == p || location.startsWith('$p/'))) {
       return i;
     }
@@ -400,7 +589,8 @@ int _tabIndexFor(List<_Tab> tabs, String location) {
 /// 路由位置在桌面版 tab 顺序中的索引（用于计算 tab 间滑动方向）。
 int _tabRouteIndex(String location) {
   for (var i = 0; i < _desktopTabs.length; i++) {
-    if (_desktopTabs[i].prefixes
+    if (_desktopTabs[i]
+        .prefixes
         .any((p) => location == p || location.startsWith('$p/'))) {
       return i;
     }
@@ -477,7 +667,8 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
           Expanded(child: widget.child),
         ],
       ),
-      bottomNavigationBar: wide ? null : _buildBottomNav(context, selectedIndex),
+      bottomNavigationBar:
+          wide ? null : _buildBottomNav(context, selectedIndex),
     );
   }
 

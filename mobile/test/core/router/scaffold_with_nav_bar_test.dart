@@ -13,15 +13,34 @@ GoRouter _router({String initial = '/home'}) {
       ShellRoute(
         builder: (_, __, child) => ScaffoldWithNavBar(child: child),
         routes: [
-          GoRoute(path: '/home', builder: (_, __) => const Scaffold(body: Text('推荐页'))),
-          GoRoute(path: '/prices', builder: (_, __) => const Scaffold(body: Text('计价页'))),
-          GoRoute(path: '/prices/record', builder: (_, __) => Scaffold(appBar: AppBar(), body: const Text('新增价格记录页'))),
-          GoRoute(path: '/recipes', builder: (_, __) => const Scaffold(body: Text('菜谱页'))),
-          GoRoute(path: '/recipes/123', builder: (_, __) => const Scaffold(body: Text('菜谱详情页'))),
-          GoRoute(path: '/ingredients', builder: (_, __) => const Scaffold(body: Text('原料页'))),
-          GoRoute(path: '/products', builder: (_, __) => const Scaffold(body: Text('商品页'))),
-          GoRoute(path: '/merchants', builder: (_, __) => const Scaffold(body: Text('商家页'))),
-          GoRoute(path: '/profile', builder: (_, __) => const Scaffold(body: Text('我的页'))),
+          GoRoute(
+              path: '/home',
+              builder: (_, __) => const Scaffold(body: Text('推荐页'))),
+          GoRoute(
+              path: '/prices',
+              builder: (_, __) => const Scaffold(body: Text('计价页'))),
+          GoRoute(
+              path: '/prices/record',
+              builder: (_, __) =>
+                  Scaffold(appBar: AppBar(), body: const Text('新增价格记录页'))),
+          GoRoute(
+              path: '/recipes',
+              builder: (_, __) => const Scaffold(body: Text('菜谱页'))),
+          GoRoute(
+              path: '/recipes/123',
+              builder: (_, __) => const Scaffold(body: Text('菜谱详情页'))),
+          GoRoute(
+              path: '/ingredients',
+              builder: (_, __) => const Scaffold(body: Text('原料页'))),
+          GoRoute(
+              path: '/products',
+              builder: (_, __) => const Scaffold(body: Text('商品页'))),
+          GoRoute(
+              path: '/merchants',
+              builder: (_, __) => const Scaffold(body: Text('商家页'))),
+          GoRoute(
+              path: '/profile',
+              builder: (_, __) => const Scaffold(body: Text('我的页'))),
         ],
       ),
     ],
@@ -93,7 +112,8 @@ void main() {
     // push('/prices/record') 打开表单页
     expect(find.text('新增价格记录页'), findsOneWidget);
     // 底层 tab 已切到计价（filled 图标选中态；底栏被覆盖 offstage，须跳过检测）
-    expect(find.byIcon(Icons.receipt_long, skipOffstage: false), findsOneWidget);
+    expect(
+        find.byIcon(Icons.receipt_long, skipOffstage: false), findsOneWidget);
 
     // 返回后落在计价页
     await tester.pageBack();

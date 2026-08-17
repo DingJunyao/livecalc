@@ -27,7 +27,12 @@ void main() {
             id: 1,
             username: 'alice',
             email: 'a@test.com',
-            nutritionGoals: {'daily_calorie_target': 2000, 'daily_protein_target': 60, 'daily_carb_target': 300, 'daily_fat_target': 65},
+            nutritionGoals: {
+              'daily_calorie_target': 2000,
+              'daily_protein_target': 60,
+              'daily_carb_target': 300,
+              'daily_fat_target': 65
+            },
           ),
     );
     await tester.pumpWidget(ProviderScope(
@@ -52,8 +57,8 @@ void main() {
   });
 
   testWidgets('kJ 偏好时热量显示 ×4.184，保存换算回 kcal', (tester) async {
-    when(() => mockAuth.updateMe(any())).thenAnswer((_) async =>
-        const User(id: 1, username: 'alice', email: 'a@test.com'));
+    when(() => mockAuth.updateMe(any())).thenAnswer(
+        (_) async => const User(id: 1, username: 'alice', email: 'a@test.com'));
 
     await pumpScreen(
       tester,
@@ -70,8 +75,7 @@ void main() {
     expect(find.widgetWithText(TextFormField, '8368'), findsOneWidget);
 
     // 输入 4184 kJ → 存回 1000 kcal
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '8368'), '4184');
+    await tester.enterText(find.widgetWithText(TextFormField, '8368'), '4184');
     await save(tester);
 
     final captured = verify(() => mockAuth.updateMe(captureAny())).captured;
@@ -80,8 +84,8 @@ void main() {
   });
 
   testWidgets('改蛋白质保存，4 字段全量提交', (tester) async {
-    when(() => mockAuth.updateMe(any())).thenAnswer((_) async =>
-        const User(id: 1, username: 'alice', email: 'a@test.com'));
+    when(() => mockAuth.updateMe(any())).thenAnswer(
+        (_) async => const User(id: 1, username: 'alice', email: 'a@test.com'));
 
     await pumpScreen(tester);
     await tester.enterText(find.widgetWithText(TextFormField, '60'), '80');
@@ -100,8 +104,7 @@ void main() {
   testWidgets('热量超范围提示且不发请求', (tester) async {
     await pumpScreen(tester);
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '2000'), '6000');
+    await tester.enterText(find.widgetWithText(TextFormField, '2000'), '6000');
     await save(tester);
 
     expect(find.text('每日热量需在 500-5000 千卡范围内'), findsOneWidget);
@@ -109,8 +112,8 @@ void main() {
   });
 
   testWidgets('空输入存 null 清除目标', (tester) async {
-    when(() => mockAuth.updateMe(any())).thenAnswer((_) async =>
-        const User(id: 1, username: 'alice', email: 'a@test.com'));
+    when(() => mockAuth.updateMe(any())).thenAnswer(
+        (_) async => const User(id: 1, username: 'alice', email: 'a@test.com'));
 
     await pumpScreen(tester);
     await tester.enterText(find.widgetWithText(TextFormField, '2000'), '');

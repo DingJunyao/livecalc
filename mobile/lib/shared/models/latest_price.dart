@@ -9,8 +9,7 @@ class LatestPriceInfo {
   factory LatestPriceInfo.fromJson(Map<String, dynamic> json) {
     return LatestPriceInfo(
       price: _toDouble(json['average_price'] ?? json['latest_price']),
-      unit: (json['unit'] as String?) ??
-          (json['latest_price_unit'] as String?),
+      unit: (json['unit'] as String?) ?? (json['latest_price_unit'] as String?),
       date: (json['recorded_at'] as String?) ??
           (json['latest_price_date'] as String?) ??
           (json['latest_date'] as String?),

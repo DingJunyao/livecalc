@@ -60,7 +60,8 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
     super.dispose();
   }
 
-  String _fmt(double v) => v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
+  String _fmt(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toString();
 
   double? _parse(TextEditingController c) {
     final t = c.text.trim();
@@ -102,8 +103,8 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
 
     setState(() => _saving = true);
     try {
-      final user = await (widget.authRepository ?? AuthRepository())
-          .updateMe(body);
+      final user =
+          await (widget.authRepository ?? AuthRepository()).updateMe(body);
       ref.read(authProvider.notifier).applyUser(user);
       if (mounted) {
         _toast('已保存');
@@ -140,8 +141,10 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
         children: [
           Text(
             '设置每日营养目标，用于饮食推荐。',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.outline),
+            style: Theme.of(context)
+                .textTheme
+                .bodySmall
+                ?.copyWith(color: Theme.of(context).colorScheme.outline),
           ),
           const SizedBox(height: 16),
           TextFormField(

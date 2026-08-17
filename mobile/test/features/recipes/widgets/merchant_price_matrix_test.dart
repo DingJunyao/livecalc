@@ -132,7 +132,11 @@ void main() {
           body: MerchantPriceMatrix(
             ingredients: const [
               RecipeIngredient(
-                  id: 10, ingredientId: 5, name: '鸡蛋', quantity: '100', unit: 'g'),
+                  id: 10,
+                  ingredientId: 5,
+                  name: '鸡蛋',
+                  quantity: '100',
+                  unit: 'g'),
             ],
             prices: [
               MerchantPriceItem(
@@ -156,8 +160,7 @@ void main() {
         matching: find.byType(Scrollable),
       );
       expect(
-        find.descendant(
-            of: scrollableFinder, matching: find.text('鸡蛋')),
+        find.descendant(of: scrollableFinder, matching: find.text('鸡蛋')),
         findsNothing,
       );
       // 滚动商家表后冻结列文本位置不变
@@ -212,7 +215,11 @@ void main() {
           body: MerchantPriceMatrix(
             ingredients: [
               RecipeIngredient(
-                  id: 10, ingredientId: 5, name: '鸡蛋', quantity: '100', unit: 'g'),
+                  id: 10,
+                  ingredientId: 5,
+                  name: '鸡蛋',
+                  quantity: '100',
+                  unit: 'g'),
             ],
             prices: [
               MerchantPriceItem(
@@ -239,7 +246,8 @@ void main() {
         final para = tester.renderObject<RenderParagraph>(f);
         final boxes = para.getBoxesForSelection(
             const TextSelection(baseOffset: 0, extentOffset: 1));
-        return tester.getTopLeft(f).dy + (boxes.first.top + boxes.first.bottom) / 2;
+        return tester.getTopLeft(f).dy +
+            (boxes.first.top + boxes.first.bottom) / 2;
       }
 
       // 表头若顶对齐（当前实现），视觉中心比居中时上移 ~14px：
@@ -252,7 +260,8 @@ void main() {
     testWidgets('空数据显示空态', (tester) async {
       await tester.pumpWidget(const MaterialApp(
         home: Scaffold(
-          body: MerchantPriceMatrix(ingredients: [], prices: [], loading: false),
+          body:
+              MerchantPriceMatrix(ingredients: [], prices: [], loading: false),
         ),
       ));
       expect(find.text('暂无比价数据'), findsOneWidget);
@@ -264,7 +273,11 @@ void main() {
           body: MerchantPriceMatrix(
             ingredients: const [
               RecipeIngredient(
-                  id: 10, ingredientId: 5, name: '鸡蛋', quantity: '100', unit: 'g'),
+                  id: 10,
+                  ingredientId: 5,
+                  name: '鸡蛋',
+                  quantity: '100',
+                  unit: 'g'),
             ],
             prices: [
               MerchantPriceItem(

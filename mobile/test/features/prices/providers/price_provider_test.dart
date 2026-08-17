@@ -136,8 +136,7 @@ void main() {
       expect(notifier.state.records.length, 1);
     });
 
-    test('成功：merchantName 传 null 时（反查不到商家），局部更新后为 null',
-        () async {
+    test('成功：merchantName 传 null 时（反查不到商家），局部更新后为 null', () async {
       final ok = await notifier.updateRecord(
         1,
         price: 1,
@@ -183,8 +182,8 @@ void main() {
       );
 
       expect(ok, isFalse);
-      expect(notifier.state.records.map((r) => r.price).toList(),
-          beforeSnapshot);
+      expect(
+          notifier.state.records.map((r) => r.price).toList(), beforeSnapshot);
     });
   });
 

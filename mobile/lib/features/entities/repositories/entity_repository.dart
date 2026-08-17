@@ -1,5 +1,20 @@
 import '../../../core/api/api_client.dart';
+import '../../nutrition/models/usda_models.dart';
 import '../../../shared/models/entity_unit.dart';
+
+class EntityWriteResult<T> {
+  final T? value;
+  final bool pending;
+  final String message;
+
+  const EntityWriteResult({
+    required this.value,
+    required this.pending,
+    this.message = '',
+  });
+
+  bool get applied => !pending;
+}
 
 /// 实体（原料/商品）自定义单位与密度管理。
 class EntityRepository {
@@ -8,9 +23,8 @@ class EntityRepository {
       : _client = client ?? ApiClient.instance;
 
   Future<List<EntityUnit>> listUnits(String entityType, int entityId) async {
-    final response = await _client
-        .dio
-        .get('/entities/$entityType/$entityId/units');
+    final response =
+        await _client.dio.get('/entities/$entityType/$entityId/units');
     final data = response.data;
     final list = (data is List) ? data : (data['items'] as List?) ?? const [];
     return list
@@ -18,13 +32,14 @@ class EntityRepository {
         .toList();
   }
 
-  Future<EntityUnit> createUnit(
+  Future<EntityWriteResult<EntityUnit>> createUnit(
     String entityType,
     int entityId, {
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
     bool isDefault = false,
+    bool isAdmin = true,
   }) async {
     final response = await _client.dio.post(
       '/entities/$entityType/$entityId/units',
@@ -36,10 +51,17 @@ class EntityRepository {
         'source': 'manual',
       },
     );
-    return EntityUnit.fromJson(response.data as Map<String, dynamic>);
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final value = EntityUnit.fromJson(data);
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: value,
+      pending: !isAdmin && value.id == 0 || review.pending,
+      message: review.message,
+    );
   }
 
-  Future<EntityUnit> updateUnit(
+  Future<EntityWriteResult<EntityUnit>> updateUnit(
     String entityType,
     int entityId,
     int unitId, {
@@ -47,29 +69,51 @@ class EntityRepository {
     double? conversionFactor,
     double? weightPerUnit,
     bool? isDefault,
+    bool isAdmin = true,
   }) async {
     final payload = <String, dynamic>{};
     if (unitName != null) payload['unit_name'] = unitName;
-    if (conversionFactor != null) payload['conversion_factor'] = conversionFactor;
+    if (conversionFactor != null) {
+      payload['conversion_factor'] = conversionFactor;
+    }
     if (weightPerUnit != null) payload['weight_per_unit'] = weightPerUnit;
     if (isDefault != null) payload['is_default'] = isDefault;
     final response = await _client.dio.put(
       '/entities/$entityType/$entityId/units/$unitId',
       data: payload,
     );
-    return EntityUnit.fromJson(response.data as Map<String, dynamic>);
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: EntityUnit.fromJson(data),
+      pending: !isAdmin || review.pending,
+      message: review.message,
+    );
   }
 
-  Future<void> deleteUnit(String entityType, int entityId, int unitId) async {
-    await _client.dio.delete('/entities/$entityType/$entityId/units/$unitId');
+  Future<EntityWriteResult<void>> deleteUnit(
+    String entityType,
+    int entityId,
+    int unitId,
+  ) async {
+    final response = await _client.dio
+        .delete('/entities/$entityType/$entityId/units/$unitId');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: null,
+      pending: review.pending,
+      message: review.message,
+    );
   }
 
   Future<List<UnmappedUnit>> listUnmappedUnits(
     String entityType,
     int entityId,
   ) async {
-    final response = await _client
-        .dio
+    final response = await _client.dio
         .get('/entities/$entityType/$entityId/units/unmapped-units');
     final data = response.data;
     final list = (data is List) ? data : const [];
@@ -82,9 +126,8 @@ class EntityRepository {
     String entityType,
     int entityId,
   ) async {
-    final response = await _client
-        .dio
-        .get('/entities/$entityType/$entityId/density');
+    final response =
+        await _client.dio.get('/entities/$entityType/$entityId/density');
     final data = response.data;
     final list = (data is List) ? data : (data['items'] as List?) ?? const [];
     return list
@@ -92,30 +135,46 @@ class EntityRepository {
         .toList();
   }
 
-  Future<EntityDensity> upsertDensity(
+  Future<EntityWriteResult<EntityDensity>> upsertDensity(
     String entityType,
     int entityId, {
     required double density,
     String? condition,
+    bool isAdmin = true,
   }) async {
     final response = await _client.dio.post(
       '/entities/$entityType/$entityId/density',
       data: {
         'density': density,
-        if (condition != null && condition.isNotEmpty)
-          'condition': condition,
+        if (condition != null && condition.isNotEmpty) 'condition': condition,
         'source': 'manual',
       },
     );
-    return EntityDensity.fromJson(response.data as Map<String, dynamic>);
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final value = EntityDensity.fromJson(data);
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: value,
+      pending: !isAdmin && value.id == 0 || review.pending,
+      message: review.message,
+    );
   }
 
-  Future<void> deleteDensity(
+  Future<EntityWriteResult<void>> deleteDensity(
     String entityType,
     int entityId,
     int densityId,
   ) async {
-    await _client.dio
+    final response = await _client.dio
         .delete('/entities/$entityType/$entityId/density/$densityId');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: null,
+      pending: review.pending,
+      message: review.message,
+    );
   }
 }

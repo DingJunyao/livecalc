@@ -110,8 +110,7 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     try {
       final resp = await _repo.updateAccount(body);
       if (resp.accessToken != null && resp.refreshToken != null) {
-        await AuthInterceptor.saveTokens(
-            resp.accessToken!, resp.refreshToken!);
+        await AuthInterceptor.saveTokens(resp.accessToken!, resp.refreshToken!);
       }
       ref.read(authProvider.notifier).applyUser(resp.user);
       if (mounted) {
@@ -145,9 +144,8 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final user = ref.watch(authProvider).user;
-    final initial = user?.displayName.isNotEmpty == true
-        ? user!.displayName[0]
-        : '?';
+    final initial =
+        user?.displayName.isNotEmpty == true ? user!.displayName[0] : '?';
 
     return Scaffold(
       appBar: AppBar(title: const Text('编辑个人信息')),
@@ -248,8 +246,7 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
               ),
               validator: (v) {
                 final t = v?.trim() ?? '';
-                if (t.isNotEmpty &&
-                    !RegExp(r'^1[3-9]\d{9}$').hasMatch(t)) {
+                if (t.isNotEmpty && !RegExp(r'^1[3-9]\d{9}$').hasMatch(t)) {
                   return '请输入有效的手机号';
                 }
                 return null;

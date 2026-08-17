@@ -23,6 +23,7 @@ String? _firstImageUrl(Map<String, dynamic> json) {
 
 class RecipeSummary {
   final int id;
+  final int? userId;
   final String name;
   final String? description;
   final double? estimatedCost;
@@ -33,6 +34,7 @@ class RecipeSummary {
 
   const RecipeSummary({
     required this.id,
+    this.userId,
     required this.name,
     this.description,
     this.estimatedCost,
@@ -45,6 +47,7 @@ class RecipeSummary {
   factory RecipeSummary.fromJson(Map<String, dynamic> json) {
     return RecipeSummary(
       id: json['id'] as int,
+      userId: (json['user_id'] as num?)?.toInt(),
       name: json['name'] as String? ?? '',
       description: json['description'] as String?,
       estimatedCost: _toDoubleOrNull(json['estimated_cost']),
@@ -62,6 +65,7 @@ class RecipeSummary {
   }) {
     return RecipeSummary(
       id: id,
+      userId: userId,
       name: name,
       description: description,
       estimatedCost: estimatedCost ?? this.estimatedCost,

@@ -25,7 +25,7 @@ class _ImportRow {
   /// 由 _openEditor 创建、_cancelEdit/_chooseExisting/_chooseNewSame 释放。
   TextEditingController? searchController;
 
- /// _onExistingSearch 的请求序号，用于丢弃过期的异步响应（竞态保护）。
+  /// _onExistingSearch 的请求序号，用于丢弃过期的异步响应（竞态保护）。
   int searchSeq = 0;
 
   /// 原料搜索的状态（new_attach 模式：新建商品并关联到原料）。
@@ -193,8 +193,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
       // 1. 商品主名精确匹配
       final nameMatch = list.firstWhere(
-        (it) =>
-            it['match_type'] == 'name' && it['name'] == row.parsed.name,
+        (it) => it['match_type'] == 'name' && it['name'] == row.parsed.name,
         orElse: () => const <String, dynamic>{},
       );
       final nameId = _toInt(nameMatch['id']);
@@ -269,8 +268,8 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
     final products =
         list.where((it) => it['ingredient_id'] == ingredientId).toList();
     if (products.isEmpty) return null;
-    final totalCount = _toInt(products.first['ingredient_product_count']) ??
-        products.length;
+    final totalCount =
+        _toInt(products.first['ingredient_product_count']) ?? products.length;
     if (totalCount == 1) return _toInt(products.first['id']);
     final sameName = products.firstWhere(
       (p) => p['name'] == ingredientName,
@@ -371,14 +370,12 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
       );
       if (!mounted || mySeq != row.ingredientSearchSeq) return;
       final data = resp.data;
-      final list = (data is List)
-          ? data
-          : ((data['items'] as List?) ?? const []);
+      final list =
+          (data is List) ? data : ((data['items'] as List?) ?? const []);
       final items = list.cast<Map<String, dynamic>>();
       setState(() {
-        row.ingredientSuggestions = items
-            .map((e) => {'id': e['id'], 'name': e['name']})
-            .toList();
+        row.ingredientSuggestions =
+            items.map((e) => {'id': e['id'], 'name': e['name']}).toList();
       });
     } on Exception {
       if (!mounted || mySeq != row.ingredientSearchSeq) return;
@@ -423,11 +420,9 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
         batch.map((row) async {
           try {
             final record = await _priceRepo.createRecord(
-              productId:
-                  row.mode == _MatchMode.existing ? row.productId : null,
-              productName: row.mode == _MatchMode.existing
-                  ? null
-                  : row.parsed.name,
+              productId: row.mode == _MatchMode.existing ? row.productId : null,
+              productName:
+                  row.mode == _MatchMode.existing ? null : row.parsed.name,
               price: row.parsed.price!,
               quantity: row.parsed.quantity,
               unit: row.parsed.unit,
@@ -446,7 +441,8 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                     : null;
             if (aliasProductId != null) {
               try {
-                await _priceRepo.addImportAlias(aliasProductId, row.parsed.name);
+                await _priceRepo.addImportAlias(
+                    aliasProductId, row.parsed.name);
               } on Exception {
                 // 别名失败不影响导入成功
               }
@@ -533,9 +529,8 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: widget.historyProductNames.isEmpty
-                      ? null
-                      : _copyTemplate,
+                  onPressed:
+                      widget.historyProductNames.isEmpty ? null : _copyTemplate,
                   icon: const Icon(Icons.content_copy),
                   label: const Text('复制模板'),
                 ),
@@ -759,55 +754,55 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                   shrinkWrap: true,
                   padding: const EdgeInsets.only(top: 4),
                   children: [
-                   for (final s in row.suggestions)
-                     ListTile(
-                       key: Key('paste-suggestion-${s['id']}'),
-                       dense: true,
-                       title: Text('${s['name']}'),
-                       onTap: () => _chooseExisting(row, s),
-                     ),
+                    for (final s in row.suggestions)
+                      ListTile(
+                        key: Key('paste-suggestion-${s['id']}'),
+                        dense: true,
+                        title: Text('${s['name']}'),
+                        onTap: () => _chooseExisting(row, s),
+                      ),
                   ],
                 ),
               ),
-           const SizedBox(height: 8),
-           // 搜索原料：新建商品并关联到该原料（new_attach 模式）
-           TextField(
-             key: const Key('paste-ingredient-search'),
-             decoration: const InputDecoration(
-               labelText: '关联到原料',
-               hintText: '搜索原料…',
-               border: OutlineInputBorder(),
-               isDense: true,
-               prefixIcon: Icon(Icons.eco_outlined),
-             ),
-             onChanged: (v) => _onIngredientSearch(row, v),
-             controller: row.ingredientSearchController,
-           ),
-           if (row.ingredientSuggestions.isNotEmpty)
-             ConstrainedBox(
-               constraints: const BoxConstraints(maxHeight: 200),
-               child: ListView(
-                 shrinkWrap: true,
-                 padding: const EdgeInsets.only(top: 4),
-                 children: [
-                   for (final s in row.ingredientSuggestions)
-                    ListTile(
-                      key: Key('paste-ingredient-${s['id']}'),
-                      dense: true,
-                      title: Text('${s['name']}'),
-                      onTap: () => _chooseAttach(row, s),
-                    ),
-                 ],
-               ),
-             ),
-           const SizedBox(height: 8),
-           // 创建同名商品
-           FilledButton.tonalIcon(
-             key: const Key('paste-new-same-button'),
-             onPressed: () => _chooseNewSame(row),
-             icon: const Icon(Icons.add),
-             label: const Text('创建同名原料 + 商品'),
-           ),
+            const SizedBox(height: 8),
+            // 搜索原料：新建商品并关联到该原料（new_attach 模式）
+            TextField(
+              key: const Key('paste-ingredient-search'),
+              decoration: const InputDecoration(
+                labelText: '关联到原料',
+                hintText: '搜索原料…',
+                border: OutlineInputBorder(),
+                isDense: true,
+                prefixIcon: Icon(Icons.eco_outlined),
+              ),
+              onChanged: (v) => _onIngredientSearch(row, v),
+              controller: row.ingredientSearchController,
+            ),
+            if (row.ingredientSuggestions.isNotEmpty)
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.only(top: 4),
+                  children: [
+                    for (final s in row.ingredientSuggestions)
+                      ListTile(
+                        key: Key('paste-ingredient-${s['id']}'),
+                        dense: true,
+                        title: Text('${s['name']}'),
+                        onTap: () => _chooseAttach(row, s),
+                      ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            // 创建同名商品
+            FilledButton.tonalIcon(
+              key: const Key('paste-new-same-button'),
+              onPressed: () => _chooseNewSame(row),
+              icon: const Icon(Icons.add),
+              label: const Text('创建同名原料 + 商品'),
+            ),
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,

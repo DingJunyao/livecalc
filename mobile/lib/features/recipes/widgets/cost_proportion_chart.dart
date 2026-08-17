@@ -94,8 +94,8 @@ class _CostProportionChartState extends State<CostProportionChart> {
             if (widget.loading)
               const SizedBox(
                   height: 140,
-                  child: Center(
-                      child: CircularProgressIndicator(strokeWidth: 2)))
+                  child:
+                      Center(child: CircularProgressIndicator(strokeWidth: 2)))
             else if (widget.breakdown.isEmpty)
               SizedBox(
                 height: 140,
@@ -107,8 +107,7 @@ class _CostProportionChartState extends State<CostProportionChart> {
                           size: 40, color: theme.colorScheme.outline),
                       const SizedBox(height: 8),
                       Text('暂无成本数据',
-                          style:
-                              TextStyle(color: theme.colorScheme.outline)),
+                          style: TextStyle(color: theme.colorScheme.outline)),
                     ],
                   ),
                 ),
@@ -121,7 +120,8 @@ class _CostProportionChartState extends State<CostProportionChart> {
     );
   }
 
-  Widget _buildChart(ThemeData theme, List<CostProportionItem> items, double total) {
+  Widget _buildChart(
+      ThemeData theme, List<CostProportionItem> items, double total) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -163,7 +163,8 @@ class _CostProportionChartState extends State<CostProportionChart> {
   }
 
   /// 食材清单：色块 + 名称 + 金额 + 百分比（点击行高亮对应段，对齐 web 图例点击显示金额）。
-  Widget _buildList(ThemeData theme, List<CostProportionItem> items, double total) {
+  Widget _buildList(
+      ThemeData theme, List<CostProportionItem> items, double total) {
     return Column(
       children: [
         for (var i = 0; i < items.length; i++)

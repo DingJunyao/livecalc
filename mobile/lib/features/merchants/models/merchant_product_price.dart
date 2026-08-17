@@ -32,8 +32,8 @@ class MerchantProductPrice {
       standardUnitPrice: _toDouble(json['standard_unit_price']),
       standardUnitLabel: json['standard_unit_label'] as String?,
       originalQuantity: _toDouble(json['original_quantity']) ?? 1,
-      recordedAt: json['recorded_at'] as String? ??
-          DateTime.now().toIso8601String(),
+      recordedAt:
+          json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
     );
   }
 

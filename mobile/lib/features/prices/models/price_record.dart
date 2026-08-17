@@ -50,9 +50,8 @@ class PriceRecord {
     return PriceRecord(
       id: _toInt(json['id']),
       productId: _toInt(json['product_id']),
-      productName: (json['product_name'] as String?) ??
-          (json['name'] as String?) ??
-          '',
+      productName:
+          (json['product_name'] as String?) ?? (json['name'] as String?) ?? '',
       price: _toDouble(json['price']),
       quantity: _toDouble(json['original_quantity'], fallback: 1),
       unit: (json['original_unit'] as String?) ??
@@ -64,8 +63,8 @@ class PriceRecord {
       standardUnit: json['standard_unit'] as String?,
       merchantId: json['merchant_id'] as int?,
       merchantName: json['merchant_name'] as String?,
-      recordedAt: json['recorded_at'] as String? ??
-          DateTime.now().toIso8601String(),
+      recordedAt:
+          json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
       recordType: json['record_type'] as String? ?? 'price',
       notes: json['notes'] as String?,
     );

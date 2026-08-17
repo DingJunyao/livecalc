@@ -2,6 +2,7 @@ import '../../../core/api/api_client.dart';
 import '../models/merchant.dart';
 import '../models/merchant_coordinate.dart';
 import '../models/merchant_product_price.dart';
+import '../../nutrition/models/usda_models.dart';
 
 class MerchantPage {
   final List<Merchant> items;
@@ -13,6 +14,20 @@ class MerchantProductPricePage {
   final List<MerchantProductPrice> items;
   final int total;
   const MerchantProductPricePage({required this.items, this.total = 0});
+}
+
+class MerchantMutationResult {
+  final Merchant? merchant;
+  final MutationReviewResult review;
+
+  const MerchantMutationResult({
+    this.merchant,
+    required this.review,
+  });
+
+  bool get pending => review.pending;
+  bool get applied => !pending;
+  String get message => review.message;
 }
 
 class MerchantRepository {
@@ -45,14 +60,11 @@ class MerchantRepository {
     final response =
         await _client.dio.get('/merchants', queryParameters: params);
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['items'] as List?) ?? const []);
-    final items = list
-        .map((e) => Merchant.fromJson(e as Map<String, dynamic>))
-        .toList();
-    final total = (data is Map ? (data['total'] as num?)?.toInt() : null) ??
-        items.length;
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
+    final items =
+        list.map((e) => Merchant.fromJson(e as Map<String, dynamic>)).toList();
+    final total =
+        (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
     return MerchantPage(items: items, total: total);
   }
 
@@ -81,8 +93,9 @@ class MerchantRepository {
     return Merchant.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<Merchant> updateMerchant(
+  Future<MerchantMutationResult> updateMerchant(
     int id, {
+    required bool isAdmin,
     String? name,
     String? address,
     bool? isOpen,
@@ -95,13 +108,33 @@ class MerchantRepository {
     if (isOpen != null) payload['is_open'] = isOpen;
     if (latitude != null) payload['latitude'] = latitude;
     if (longitude != null) payload['longitude'] = longitude;
-    final response =
-        await _client.dio.put('/merchants/$id', data: payload);
-    return Merchant.fromJson(response.data as Map<String, dynamic>);
+    final response = await _client.dio.put('/merchants/$id', data: payload);
+    final data = response.data as Map<String, dynamic>;
+    final review = MutationReviewResult.fromJson(data);
+    return MerchantMutationResult(
+      merchant: Merchant.fromJson(data),
+      review: isAdmin
+          ? MutationReviewResult(
+              applied: true,
+              pending: false,
+              message: review.message.isEmpty ? '已保存' : review.message,
+              raw: data,
+            )
+          : MutationReviewResult(
+              applied: false,
+              pending: true,
+              message: review.message.isEmpty ? '已提交，待管理员审核' : review.message,
+              raw: data,
+            ),
+    );
   }
 
-  Future<void> deleteMerchant(int id) async {
-    await _client.dio.delete('/merchants/$id');
+  Future<MutationReviewResult> deleteMerchant(int id) async {
+    final response = await _client.dio.delete('/merchants/$id');
+    final data = response.data;
+    return MutationReviewResult.fromJson(
+      data is Map<String, dynamic> ? data : const {},
+    );
   }
 
   /// 我的收藏（GET /merchants/favorites）。
@@ -137,8 +170,7 @@ class MerchantRepository {
     final data = response.data;
     final list = (data is List) ? data : const [];
     return list
-        .map((e) =>
-            MerchantCoordinate.fromJson(e as Map<String, dynamic>))
+        .map((e) => MerchantCoordinate.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 
@@ -153,15 +185,12 @@ class MerchantRepository {
       queryParameters: {'skip': skip, 'limit': limit},
     );
     final data = response.data;
-    final list = (data is List)
-        ? data
-        : ((data['items'] as List?) ?? const []);
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
     final items = list
-        .map((e) =>
-            MerchantProductPrice.fromJson(e as Map<String, dynamic>))
+        .map((e) => MerchantProductPrice.fromJson(e as Map<String, dynamic>))
         .toList();
-    final total = (data is Map ? (data['total'] as num?)?.toInt() : null) ??
-        items.length;
+    final total =
+        (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
     return MerchantProductPricePage(items: items, total: total);
   }
 }

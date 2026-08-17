@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart'
+import '../../../shared/screens/price_record_edit_screen.dart'
     show priceRecordUnits;
 import '../../merchants/models/merchant.dart';
 import '../../merchants/providers/merchant_provider.dart';
@@ -8,17 +8,31 @@ import '../../products/models/product.dart';
 import '../../products/repositories/product_repository.dart';
 import '../repositories/price_repository.dart';
 
+class PriceRecordFormPrefill {
+  final Product? product;
+  final int? ingredientId;
+  final bool lockProduct;
+
+  const PriceRecordFormPrefill({
+    this.product,
+    this.ingredientId,
+    this.lockProduct = false,
+  });
+}
+
 /// 新增价格记录全屏页（对齐 web 端添加价格记录对话框）。
 /// 保存成功后 pop(true)；校验失败提示不关闭。
 class PriceRecordFormScreen extends ConsumerStatefulWidget {
   /// 测试注入，缺省用真实 repository。
   final PriceRepository? priceRepository;
   final ProductRepository? productRepository;
+  final PriceRecordFormPrefill? prefill;
 
   const PriceRecordFormScreen({
     super.key,
     this.priceRepository,
     this.productRepository,
+    this.prefill,
   });
 
   @override
@@ -43,10 +57,16 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   bool _isPurchase = true;
   bool _saving = false;
   DateTime _recordedAt = DateTime.now();
+  late final bool _lockProduct;
+  late final int? _ingredientId;
 
   @override
   void initState() {
     super.initState();
+    _lockProduct = widget.prefill?.lockProduct ?? false;
+    _ingredientId = widget.prefill?.ingredientId;
+    _selectedProduct = widget.prefill?.product;
+    _nameController.text = widget.prefill?.product?.name ?? '';
     _priceRepo = widget.priceRepository ?? PriceRepository();
     _productRepo = widget.productRepository ?? ProductRepository();
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
@@ -64,6 +84,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   }
 
   Future<void> _searchProducts(String query) async {
+    if (_lockProduct) return;
     final q = query.trim();
     if (q.isEmpty) {
       _searchSeq++; // 使在途搜索失效，避免清空后被旧结果覆盖
@@ -81,7 +102,11 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     final seq = ++_searchSeq;
     setState(() => _searching = true);
     try {
-      final page = await _productRepo.search(search: q, limit: 10);
+      final page = await _productRepo.search(
+        search: q,
+        ingredientId: _ingredientId,
+        limit: 10,
+      );
       if (!mounted || seq != _searchSeq) return;
       setState(() {
         _searchResults = page.items;
@@ -203,6 +228,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                   : null,
             ),
             onChanged: _searchProducts,
+            readOnly: _lockProduct,
           ),
           if (_searchResults.isNotEmpty)
             Card(
@@ -221,8 +247,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: _priceController,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: '价格（¥）',
               border: OutlineInputBorder(
@@ -281,8 +306,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
               _merchantController.text = m.name;
               setState(() => _merchantId = m.id);
             },
-            fieldViewBuilder:
-                (ctx, controller, focusNode, onFieldSubmitted) {
+            fieldViewBuilder: (ctx, controller, focusNode, onFieldSubmitted) {
               // 同步外部 _merchantController 与 Autocomplete 内部 controller，
               // 避免预填值被内部 controller 覆盖（对齐 quick_fill_screen 做法）。
               WidgetsBinding.instance.addPostFrameCallback((_) {

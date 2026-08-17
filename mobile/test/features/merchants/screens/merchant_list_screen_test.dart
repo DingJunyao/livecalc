@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,8 @@ import 'package:com_a4ding_livecalc/features/merchants/providers/map_config_prov
 import 'package:com_a4ding_livecalc/features/merchants/providers/merchant_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
 import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_list_screen.dart';
+import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_form_screen.dart';
+import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
 import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 
@@ -89,31 +92,76 @@ void main() {
         )).thenAnswer((_) async => const Merchant(id: 99, name: '新商家'));
     when(() => repo.updateMerchant(
           any(),
+          isAdmin: any(named: 'isAdmin'),
           name: any(named: 'name'),
           address: any(named: 'address'),
           isOpen: any(named: 'isOpen'),
           latitude: any(named: 'latitude'),
           longitude: any(named: 'longitude'),
-        )).thenAnswer((_) async => const Merchant(id: 1, name: '盒马鲜生'));
+        )).thenAnswer((_) async => const MerchantMutationResult(
+          merchant: Merchant(id: 1, name: '盒马鲜生'),
+          review: MutationReviewResult(
+            applied: false,
+            pending: true,
+            message: '',
+            raw: {},
+          ),
+        ));
     profileRepo = MockProfileRepo();
     when(() => profileRepo.getPlaces())
         .thenAnswer((_) async => [_home, _office]);
   });
 
   Future<void> pumpList(WidgetTester tester) async {
+    final router = GoRouter(
+      initialLocation: '/merchants',
+      routes: [
+        GoRoute(
+          path: '/merchants',
+          builder: (_, __) => MerchantListScreen(
+            initialShowMap: true,
+            profileRepository: profileRepo,
+            merchantRepository: repo,
+            mapTileProvider: _MemoryTileProvider(),
+          ),
+        ),
+        GoRoute(
+          path: '/merchants/new',
+          builder: (_, state) {
+            final args = state.extra;
+            return MerchantFormScreen(
+              isAdmin: args is MerchantFormArguments ? args.isAdmin : false,
+              repository:
+                  args is MerchantFormArguments ? args.repository : repo,
+              mapTileProvider: args is MerchantFormArguments
+                  ? args.mapTileProvider
+                  : _MemoryTileProvider(),
+            );
+          },
+        ),
+        GoRoute(
+          path: '/merchants/:id/edit',
+          builder: (_, state) {
+            final args = state.extra;
+            return MerchantFormScreen(
+              merchant: args is MerchantFormArguments ? args.merchant : null,
+              isAdmin: args is MerchantFormArguments ? args.isAdmin : false,
+              repository:
+                  args is MerchantFormArguments ? args.repository : repo,
+              mapTileProvider: args is MerchantFormArguments
+                  ? args.mapTileProvider
+                  : _MemoryTileProvider(),
+            );
+          },
+        ),
+      ],
+    );
     await tester.pumpWidget(ProviderScope(
       overrides: [
         merchantListProvider.overrideWith((ref) => MerchantListNotifier(repo)),
         mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
       ],
-      child: MaterialApp(
-        home: MerchantListScreen(
-          initialShowMap: true,
-          profileRepository: profileRepo,
-          merchantRepository: repo,
-          mapTileProvider: _MemoryTileProvider(),
-        ),
-      ),
+      child: MaterialApp.router(routerConfig: router),
     ));
     await tester.pumpAndSettle();
   }
@@ -215,22 +263,33 @@ void main() {
         )).called(1);
   });
 
-  group('添加/编辑商家对话框', () {
+  group('添加/编辑商家页面', () {
+    Future<void> useTallViewport(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 2400);
+      tester.view.devicePixelRatio = 3.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+    }
+
     testWidgets('添加商家：填名称 → 地图选点 → createMerchant 参数正确', (tester) async {
+      await useTallViewport(tester);
       await pumpList(tester);
 
       await tester.tap(find.byType(FloatingActionButton));
       await tester.pumpAndSettle();
       expect(find.text('添加商家'), findsOneWidget);
+      expect(find.byType(MerchantFormScreen), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, '商家名称 *'), '社区超市');
-      // 对话框自动滚到地图可见；OSM 底图点中心 = 北京，坐标原样
-      // （页面地图 MerchantMapView 也在树里，须限定对话框范围）
       await tester.tap(find.descendant(
-          of: find.byType(AlertDialog), matching: find.byType(FlutterMap)));
+          of: find.byType(MerchantFormScreen),
+          matching: find.byType(FlutterMap)));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('保存'));
+      await tester.ensureVisible(find.text('创建'));
+      await tester.pump();
+      await tester.tap(find.text('创建'));
       await tester.pumpAndSettle();
 
       final captured = verify(() => repo.createMerchant(
@@ -246,6 +305,7 @@ void main() {
     });
 
     testWidgets('编辑商家：已有坐标显示标记，重新选点保存', (tester) async {
+      await useTallViewport(tester);
       await pumpList(tester);
 
       await tester.tap(find.byIcon(Icons.more_vert).first);
@@ -253,11 +313,20 @@ void main() {
       await tester.tap(find.text('编辑'));
       await tester.pumpAndSettle();
       expect(find.text('编辑商家'), findsOneWidget);
+      expect(find.byType(MerchantFormScreen), findsOneWidget);
+      expect(find.byType(AlertDialog), findsNothing);
       // 已有坐标 → 标记显示
-      expect(find.byIcon(Icons.location_pin), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(MerchantFormScreen),
+          matching: find.byIcon(Icons.location_pin),
+        ),
+        findsOneWidget,
+      );
 
       await tester.tap(find.descendant(
-          of: find.byType(AlertDialog), matching: find.byType(FlutterMap)));
+          of: find.byType(MerchantFormScreen),
+          matching: find.byType(FlutterMap)));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
       await tester.tap(find.text('保存'));
@@ -265,13 +334,14 @@ void main() {
 
       verify(() => repo.updateMerchant(
             1,
+            isAdmin: any(named: 'isAdmin'),
             name: any(named: 'name'),
             address: any(named: 'address'),
             isOpen: any(named: 'isOpen'),
             latitude: captureAny(named: 'latitude'),
             longitude: captureAny(named: 'longitude'),
           )).called(1);
-      expect(find.text('已保存'), findsOneWidget);
+      expect(find.text('已提交，待管理员审核'), findsOneWidget);
     });
   });
 

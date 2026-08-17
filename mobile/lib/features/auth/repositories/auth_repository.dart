@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/api/api_client.dart';
 import '../models/account_response.dart';
@@ -17,7 +17,8 @@ class AuthRepository {
   }
 
   Future<LoginResponse> login(LoginRequest request) async {
-    final response = await _client.dio.post('/auth/login', data: request.toJson());
+    final response =
+        await _client.dio.post('/auth/login', data: request.toJson());
     return LoginResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -28,7 +29,11 @@ class AuthRepository {
     String? phone,
     String? inviteCode,
   }) async {
-    final data = <String, dynamic>{'username': username, 'email': email, 'password_hash': passwordHash};
+    final data = <String, dynamic>{
+      'username': username,
+      'email': email,
+      'password_hash': passwordHash
+    };
     if (phone != null) data['phone'] = phone;
     if (inviteCode != null) data['invite_code'] = inviteCode;
     final response = await _client.dio.post('/auth/register', data: data);
@@ -49,8 +54,7 @@ class AuthRepository {
   /// 更新账号信息（用户名/邮箱/手机/昵称），返回用户 + 可能的新 token。
   Future<UserAccountResponse> updateAccount(Map<String, dynamic> body) async {
     final response = await _client.dio.put('/auth/me/account', data: body);
-    return UserAccountResponse.fromJson(
-        response.data as Map<String, dynamic>);
+    return UserAccountResponse.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// 上传头像。注意：dio 全局默认 Content-Type 是 application/json，
@@ -67,4 +71,3 @@ class AuthRepository {
     );
   }
 }
-

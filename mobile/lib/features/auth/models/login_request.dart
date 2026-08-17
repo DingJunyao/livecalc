@@ -4,7 +4,8 @@ class LoginRequest {
 
   const LoginRequest({required this.username, required this.passwordHash});
 
-  Map<String, dynamic> toJson() => {'username': username, 'password_hash': passwordHash};
+  Map<String, dynamic> toJson() =>
+      {'username': username, 'password_hash': passwordHash};
 }
 
 class LoginResponse {

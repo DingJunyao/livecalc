@@ -4,16 +4,20 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
+import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/widgets/nutrition_card.dart';
-import '../../../shared/widgets/price_record_form_sheet.dart';
+import '../../../shared/screens/price_record_edit_screen.dart';
 import '../../merchants/providers/merchant_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../prices/models/price_record.dart';
+import '../../prices/screens/price_record_form_screen.dart';
 import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/product.dart';
+import '../screens/product_form_screen.dart' show ProductFormResult;
 import '../providers/product_provider.dart';
 import '../repositories/product_repository.dart';
 
@@ -65,6 +69,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
 
     final notifier = ref.read(productDetailPageProvider(widget.id).notifier);
+    final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -127,6 +132,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ? null
                   : () => context.push('/ingredients/${product.ingredientId}'),
             ),
+            if (product.pendingProposal != null) ...[
+              const SizedBox(height: 12),
+              _PendingProposalBanner(proposal: product.pendingProposal!),
+            ],
             const SizedBox(height: 16),
             _ProductLatestPriceCard(
               latest: state.latestPrice,
@@ -157,6 +166,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
             const SizedBox(height: 16),
             NutritionCard(
+              entityType: 'product',
+              entityId: widget.id,
+              entityName: product.name,
               nutrition: state.nutrition,
               loading: state.loadingNutrition,
               saving: state.savingNutrition,
@@ -166,17 +178,38 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ),
             const SizedBox(height: 16),
             EntityUnitsCard(
+              entityType: 'product',
+              entityId: widget.id,
+              entityName: product.name,
               units: state.units,
               unmappedUnits: state.unmappedUnits,
               densities: state.densities,
               loading: state.loadingUnits,
-              onAddUnit: notifier.addUnit,
-              onEditUnit: notifier.updateUnit,
-              onDeleteUnit: (id) => _confirmDeleteUnit(notifier, id),
-              onQuickAddUnmapped: notifier.quickAddUnmappedUnit,
-              onAddDensity: notifier.addDensity,
-              onDeleteDensity: (id) =>
-                  _confirmDeleteDensity(notifier, id),
+              isAdmin: isAdmin,
+              onAddUnit: (input) => notifier.addUnit(
+                unitName: input.unitName,
+                conversionFactor: input.conversionFactor,
+                weightPerUnit: input.weightPerUnit,
+                isDefault: input.isDefault,
+                isAdmin: isAdmin,
+              ),
+              onEditUnit: (unitId, input) => notifier.updateUnit(
+                unitId,
+                unitName: input.unitName,
+                conversionFactor: input.conversionFactor,
+                weightPerUnit: input.weightPerUnit,
+                isDefault: input.isDefault,
+                isAdmin: isAdmin,
+              ),
+              onDeleteUnit: notifier.deleteUnit,
+              onQuickAddUnmapped: (unit) =>
+                  notifier.quickAddUnmappedUnit(unit, isAdmin: isAdmin),
+              onAddDensity: (input) => notifier.addDensity(
+                density: input.density,
+                condition: input.condition,
+                isAdmin: isAdmin,
+              ),
+              onDeleteDensity: notifier.deleteDensity,
             ),
           ],
         ),
@@ -187,31 +220,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   // ---- 记录价格 ----
   Future<void> _openAddRecord(ProductDetailPageNotifier notifier) async {
     if (!mounted) return;
-    final merchants = ref.read(merchantListProvider).items;
-    final result = await showPriceRecordFormSheet(
-      context,
-      merchants: merchants,
-      fixedProductId: widget.id,
-      fixedProductName:
-          ref.read(productDetailPageProvider(widget.id)).product?.name,
+    final product = ref.read(productDetailPageProvider(widget.id)).product;
+    if (product == null) return;
+    final saved = await context.push<bool>(
+      '/prices/record',
+      extra: PriceRecordFormPrefill(
+        product: product,
+        lockProduct: true,
+      ),
     );
-    if (result == null || !mounted) return;
-    try {
-      await notifier.addRecord(
-        price: result.price,
-        quantity: result.quantity,
-        unit: result.unit,
-        merchantId: result.merchantId,
-      );
+    if (saved == true && mounted) {
+      await notifier.load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('价格已记录')),
-        );
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
         );
       }
     }
@@ -223,16 +245,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   ) async {
     if (!mounted) return;
     final merchants = ref.read(merchantListProvider).items;
-    final result = await showPriceRecordFormSheet(
-      context,
-      merchants: merchants,
-      fixedProductId: widget.id,
-      fixedProductName:
-          ref.read(productDetailPageProvider(widget.id)).product?.name,
-      initialPrice: record.price,
-      initialQuantity: record.quantity,
-      initialUnit: record.unit,
-      initialMerchantId: record.merchantId,
+    final result = await context.push<PriceRecordFormResult>(
+      '/prices/record/edit',
+      extra: PriceRecordFormArguments(
+        merchants: merchants,
+        fixedProductId: widget.id,
+        fixedProductName:
+            ref.read(productDetailPageProvider(widget.id)).product?.name,
+        initialPrice: record.price,
+        initialQuantity: record.quantity,
+        initialUnit: record.unit,
+        initialMerchantId: record.merchantId,
+      ),
     );
     if (result == null || !mounted) return;
     try {
@@ -303,15 +327,21 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     ProductDetailPageNotifier notifier,
     Product product,
   ) async {
-    final saved = await context.push<bool>(
+    final result = await context.push<ProductFormResult>(
       '/products/${product.id}/edit',
       extra: product,
     );
-    if (saved == true && mounted) {
+    if (result?.saved == true && mounted) {
       await notifier.load(initialDays: 30);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('基本信息已保存')),
+          SnackBar(
+            content: Text(
+              result!.pending
+                  ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
+                  : '基本信息已保存',
+            ),
+          ),
         );
       }
     }
@@ -343,8 +373,18 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     );
     if (ok != true || !mounted) return;
     try {
-      await ProductRepository().deleteProduct(widget.id);
-      if (mounted) context.go('/products');
+      final review = await ProductRepository().deleteProduct(widget.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            review.pending
+                ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
+                : '商品已删除',
+          ),
+        ),
+      );
+      if (review.applied) context.go('/products');
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -353,59 +393,40 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       }
     }
   }
+}
 
-  Future<void> _confirmDeleteUnit(
-    ProductDetailPageNotifier notifier,
-    int unitId,
-  ) async {
-    final ok = await _confirm('删除单位', '确定删除该自定义单位吗？');
-    if (ok != true || !mounted) return;
-    try {
-      await notifier.deleteUnit(unitId);
-    } catch (_) {
-      _toast('删除失败，请重试');
-    }
-  }
+class _PendingProposalBanner extends StatelessWidget {
+  final EntityPendingProposal proposal;
 
-  Future<void> _confirmDeleteDensity(
-    ProductDetailPageNotifier notifier,
-    int densityId,
-  ) async {
-    final ok = await _confirm('删除密度', '确定删除该密度记录吗？');
-    if (ok != true || !mounted) return;
-    try {
-      await notifier.deleteDensity(densityId);
-    } catch (_) {
-      _toast('删除失败，请重试');
-    }
-  }
+  const _PendingProposalBanner({required this.proposal});
 
-  Future<bool?> _confirm(String title, String content) {
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title),
-        content: Text(content),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.secondaryContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.hourglass_top_outlined,
+            color: theme.colorScheme.onSecondaryContainer,
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(ctx).colorScheme.error,
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              proposal.action == 'delete' ? '删除提议待管理员审核' : '基本信息修改待管理员审核',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSecondaryContainer,
+              ),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
           ),
         ],
       ),
     );
-  }
-
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
 
@@ -678,8 +699,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.history,
-                    color: theme.colorScheme.primary, size: 20),
+                Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Text('价格记录',
                     style: theme.textTheme.titleMedium

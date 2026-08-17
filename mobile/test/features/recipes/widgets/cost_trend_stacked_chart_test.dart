@@ -11,14 +11,28 @@ void main() {
   group('buildStackedSeries', () {
     test('按食材累加 y 值实现堆叠', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-          CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-        ]),
-        const CostHistoryPoint(date: '07-02', minCost: 1, maxCost: 4, avgCost: 3, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-          CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-        ]),
+        const CostHistoryPoint(
+            date: '07-01',
+            minCost: 1,
+            maxCost: 3,
+            avgCost: 2,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+              CostHistoryBreakdownItem(
+                  ingredientId: 2, ingredientName: '番茄', cost: 3),
+            ]),
+        const CostHistoryPoint(
+            date: '07-02',
+            minCost: 1,
+            maxCost: 4,
+            avgCost: 3,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+              CostHistoryBreakdownItem(
+                  ingredientId: 2, ingredientName: '番茄', cost: 1),
+            ]),
       ];
       final series = buildStackedSeries(points);
       // 两个食材两条线
@@ -33,20 +47,34 @@ void main() {
 
     test('无 breakdown 时返回空（由调用方回退折线图）', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2),
+        const CostHistoryPoint(
+            date: '07-01', minCost: 1, maxCost: 3, avgCost: 2),
       ];
       expect(buildStackedSeries(points), isEmpty);
     });
 
     test('某天缺某食材 → 0 贡献（y 平接上一序列）+ 跨天 acc 重置', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-        ]),
-        const CostHistoryPoint(date: '07-02', minCost: 1, maxCost: 4, avgCost: 3, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-          CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-        ]),
+        const CostHistoryPoint(
+            date: '07-01',
+            minCost: 1,
+            maxCost: 3,
+            avgCost: 2,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+            ]),
+        const CostHistoryPoint(
+            date: '07-02',
+            minCost: 1,
+            maxCost: 4,
+            avgCost: 3,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+              CostHistoryBreakdownItem(
+                  ingredientId: 2, ingredientName: '番茄', cost: 1),
+            ]),
       ];
       final series = buildStackedSeries(points);
       expect(series.length, 2);
@@ -60,13 +88,26 @@ void main() {
 
     test('某食材只出现在后面天数 → 锁定首次出现顺序', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-        ]),
-        const CostHistoryPoint(date: '07-02', minCost: 1, maxCost: 4, avgCost: 3, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-          CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-        ]),
+        const CostHistoryPoint(
+            date: '07-01',
+            minCost: 1,
+            maxCost: 3,
+            avgCost: 2,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 2, ingredientName: '番茄', cost: 3),
+            ]),
+        const CostHistoryPoint(
+            date: '07-02',
+            minCost: 1,
+            maxCost: 4,
+            avgCost: 3,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+              CostHistoryBreakdownItem(
+                  ingredientId: 2, ingredientName: '番茄', cost: 1),
+            ]),
       ];
       final series = buildStackedSeries(points);
       // 番茄先出现 → 排前（y 顺序即堆叠顺序）；鸡蛋第2天才出现 → 排后
@@ -81,10 +122,16 @@ void main() {
 
     test('null ingredientId → 归入 key 0 系列且成本计入', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2, breakdown: [
-          CostHistoryBreakdownItem(ingredientName: '自选食材', cost: 2),
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 3),
-        ]),
+        const CostHistoryPoint(
+            date: '07-01',
+            minCost: 1,
+            maxCost: 3,
+            avgCost: 2,
+            breakdown: [
+              CostHistoryBreakdownItem(ingredientName: '自选食材', cost: 2),
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 3),
+            ]),
       ];
       final series = buildStackedSeries(points);
       // 两条序列：null 归 key 0（灰色），成本 2 计入堆叠
@@ -98,10 +145,17 @@ void main() {
 
     test('同天重复 id → 成本求和', () {
       final points = [
-        const CostHistoryPoint(date: '07-01', minCost: 1, maxCost: 3, avgCost: 2, breakdown: [
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-          CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 3),
-        ]),
+        const CostHistoryPoint(
+            date: '07-01',
+            minCost: 1,
+            maxCost: 3,
+            avgCost: 2,
+            breakdown: [
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+              CostHistoryBreakdownItem(
+                  ingredientId: 1, ingredientName: '鸡蛋', cost: 3),
+            ]),
       ];
       final series = buildStackedSeries(points);
       expect(series.length, 1);
@@ -122,7 +176,8 @@ void main() {
 
     test('乱序输入按 barIndex 重排，差值逆推成本，日期/合计并入首尾条', () {
       // fl_chart 传入顺序按到触点距离（番茄线在上先列出），须重排为序列顺序
-      final items = buildStackedTooltipItems([egg, tomato], [tomatoSpot, eggSpot], '07-01');
+      final items = buildStackedTooltipItems(
+          [egg, tomato], [tomatoSpot, eggSpot], '07-01');
       // fl_chart 契约：返回条数必须与 touchedSpots 一致（painter 校验不一致 throw）
       expect(items.length, 2);
       // 第一条：日期行（粗体）+ 底部序列（鸡蛋）明细
@@ -154,7 +209,9 @@ void main() {
     test('相邻天像素过密时远线跳到邻天 → 仍统一触点天逆推（不混日）', () {
       // 两天数据：鸡蛋第0天2/第1天10，番茄（累计值）第0天5/第1天15
       const eggSeries = StackedSeries(
-          name: '鸡蛋', color: Colors.amber, spots: [FlSpot(0, 2), FlSpot(1, 10)]);
+          name: '鸡蛋',
+          color: Colors.amber,
+          spots: [FlSpot(0, 2), FlSpot(1, 10)]);
       const tomatoSeries = StackedSeries(
           name: '番茄', color: Colors.red, spots: [FlSpot(0, 5), FlSpot(1, 15)]);
       // fl_chart 对每条线独立按「到触点像素距离」取最近点：触点在第 0 天，
@@ -182,7 +239,9 @@ void main() {
       // day1、日期却显示触点天 day0 → 日期与数值错日。
       // barIndex 随倒序绘制反置：番茄(顶层)=0、鸡蛋(底层)=1
       const eggSeries = StackedSeries(
-          name: '鸡蛋', color: Colors.amber, spots: [FlSpot(0, 2), FlSpot(1, 10)]);
+          name: '鸡蛋',
+          color: Colors.amber,
+          spots: [FlSpot(0, 2), FlSpot(1, 10)]);
       const tomatoSeries = StackedSeries(
           name: '番茄', color: Colors.red, spots: [FlSpot(0, 5), FlSpot(1, 15)]);
       final eggSpot = LineBarSpot(
@@ -224,16 +283,18 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              point('07-01',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-                  ]),
-              point('07-02',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-                  ]),
+              point('07-01', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 3),
+              ]),
+              point('07-02', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 1),
+              ]),
             ],
             onFilterChange: (f) => got = f,
           ),
@@ -255,16 +316,18 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              point('07-01',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-                  ]),
-              point('07-02',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-                  ]),
+              point('07-01', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 3),
+              ]),
+              point('07-02', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 1),
+              ]),
             ],
           ),
         ),
@@ -289,16 +352,18 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              point('07-01',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-                  ]),
-              point('07-02',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-                  ]),
+              point('07-01', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 3),
+              ]),
+              point('07-02', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 1),
+              ]),
             ],
           ),
         ),
@@ -315,8 +380,8 @@ void main() {
       // 注意不能 tap Text 本身：M3 InkWell 命中区域拦截了 label Text 的
       // hit test（tap(Text) 有 warnIfMissed 警告且不触发 onPressed），
       // 须 tap ActionChip 本体。
-      await tester.tap(
-          find.ancestor(of: find.text('鸡蛋'), matching: find.byType(ActionChip)));
+      await tester.tap(find.ancestor(
+          of: find.text('鸡蛋'), matching: find.byType(ActionChip)));
       // fl_chart 150ms 数据动画：须走完动画才读到目标色带（同 tooltip 测试经验）
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 200));
@@ -332,16 +397,18 @@ void main() {
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
-              point('07-01',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 3),
-                  ]),
-              point('07-02',
-                  breakdown: const [
-                    CostHistoryBreakdownItem(ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
-                    CostHistoryBreakdownItem(ingredientId: 2, ingredientName: '番茄', cost: 1),
-                  ]),
+              point('07-01', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 2),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 3),
+              ]),
+              point('07-02', breakdown: const [
+                CostHistoryBreakdownItem(
+                    ingredientId: 1, ingredientName: '鸡蛋', cost: 4),
+                CostHistoryBreakdownItem(
+                    ingredientId: 2, ingredientName: '番茄', cost: 1),
+              ]),
             ],
           ),
         ),
