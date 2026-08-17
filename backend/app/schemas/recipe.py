@@ -110,6 +110,7 @@ class RecipeIngredientDetail(BaseModel):
 class RecipeDetailResponse(RecipeResponse):
     ingredients: List[RecipeIngredientDetail]
     pending_proposal: Optional[dict] = None
+    pending_proposals: List[dict] = Field(default_factory=list)
 
 
 class RecipeCostResponse(BaseModel):
