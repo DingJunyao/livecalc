@@ -461,14 +461,24 @@ async def get_recipe_detail(
             ingredients=ingredients_detail
         )
 
-        # 非管理员追加 pending_proposal（查 recipe 和 recipe_edit 两种 entity_type）
+        # 非管理员追加待审提议。列表包含 recipe / recipe_edit 的全部待审项；
+        # 旧 pending_proposal 字段继续保留给现有 Web 客户端。
         if not getattr(current_user, "is_admin", False):
-            from app.services.proposals.pending import get_pending_proposal
-            pp = get_pending_proposal(db, "recipe", recipe_id, current_user.id)
-            if not pp:
-                pp = get_pending_proposal(db, "recipe_edit", recipe_id, current_user.id)
-            if pp:
-                response.pending_proposal = {"id": pp.id, "action": pp.action, "payload": pp.payload}
+            from app.services.proposals.pending import get_pending_proposals
+            pending = get_pending_proposals(
+                db, ("recipe", "recipe_edit"), recipe_id, current_user.id
+            )
+            if pending:
+                response.pending_proposals = [
+                    {"id": p.id, "action": p.action, "payload": p.payload}
+                    for p in pending
+                ]
+                latest = pending[-1]
+                response.pending_proposal = {
+                    "id": latest.id,
+                    "action": latest.action,
+                    "payload": latest.payload,
+                }
 
         return response
     except HTTPException:
