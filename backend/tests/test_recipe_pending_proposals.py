@@ -4,7 +4,9 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models.change_proposal import ChangeProposal
-from app.models.recipe import Recipe
+from app.models.nutrition import Ingredient
+from app.models.recipe import Recipe, RecipeIngredient
+from app.models.unit import Unit
 from app.models.user import User
 from app.services.proposals.pending import get_pending_proposals
 
@@ -127,4 +129,78 @@ def test_recipe_detail_returns_all_pending_proposals_and_compatible_latest(
         assert data["pending_proposal"]["payload"]["update_data"] == {"cooking_steps": []}
     finally:
         db_session.query(Recipe).filter(Recipe.id == recipe.id).delete()
+        db_session.commit()
+
+
+def test_recipe_detail_enriches_pending_ingredients_for_display(
+    db_session,
+    as_non_admin,
+    monkeypatch,
+):
+    ingredient = Ingredient(name="pending display beef")
+    unit = Unit(
+        name="pending display gram",
+        abbreviation="pdg",
+        unit_type="mass",
+    )
+    db_session.add_all([ingredient, unit])
+    db_session.flush()
+    recipe = Recipe(
+        name="pending ingredient display recipe",
+        source="custom",
+        servings=1,
+        user_id=2,
+        is_public=True,
+    )
+    db_session.add(recipe)
+    db_session.flush()
+    recipe_ingredient = RecipeIngredient(
+        recipe_id=recipe.id,
+        ingredient_id=ingredient.id,
+        quantity="100",
+        unit_id=unit.id,
+    )
+    db_session.add(recipe_ingredient)
+    db_session.commit()
+
+    source_payload = {
+        "update_data": {
+            "ingredients": [
+                {
+                    "ingredient_name": "pending display beef",
+                    "quantity": "200",
+                    "unit_id": unit.id,
+                    "is_optional": False,
+                }
+            ]
+        }
+    }
+
+    class Proposal:
+        id = 91003
+        action = "update"
+        payload = source_payload
+
+    monkeypatch.setattr(
+        "app.services.proposals.pending.get_pending_proposals",
+        lambda db, entity_types, entity_id, user_id: [Proposal()],
+    )
+
+    try:
+        response = client.get(f"/api/v1/recipes/{recipe.id}")
+
+        assert response.status_code == 200
+        item = response.json()["pending_proposals"][0]["payload"]["update_data"]["ingredients"][0]
+        assert item["id"] == recipe_ingredient.id
+        assert item["ingredient_id"] == ingredient.id
+        assert item["name"] == "pending display beef"
+        assert item["unit"] == "pdg"
+        assert "id" not in source_payload["update_data"]["ingredients"][0]
+    finally:
+        db_session.query(RecipeIngredient).filter(
+            RecipeIngredient.id == recipe_ingredient.id
+        ).delete()
+        db_session.query(Recipe).filter(Recipe.id == recipe.id).delete()
+        db_session.query(Ingredient).filter(Ingredient.id == ingredient.id).delete()
+        db_session.query(Unit).filter(Unit.id == unit.id).delete()
         db_session.commit()
