@@ -51,7 +51,9 @@ def _normalize_img_key(path: str) -> str:
     return path
 
 
-def _pending_payload_for_client(db: Session, proposal, recipe_ingredients) -> dict:
+def _pending_payload_for_client(
+    db: Session, proposal, recipe_ingredients, current_user
+) -> dict:
     """Add display-only fields to recipe-edit ingredient proposals."""
     payload = deepcopy(proposal.payload or {})
     update_data = payload.get("update_data")
@@ -70,6 +72,20 @@ def _pending_payload_for_client(db: Session, proposal, recipe_ingredients) -> di
         .filter(Ingredient.name.in_(names))
         .all()
     } if names else {}
+
+    if not getattr(current_user, "is_admin", False):
+        from app.services.proposals.pending import get_latest_pending_proposals
+
+        ingredient_proposals = get_latest_pending_proposals(
+            db,
+            "ingredient",
+            [row.ingredient_id for row in recipe_ingredients if row.ingredient_id],
+            current_user.id,
+        )
+        for ingredient_proposal in ingredient_proposals.values():
+            name = (ingredient_proposal.payload or {}).get("name")
+            if isinstance(name, str) and name:
+                ingredient_ids_by_name[name] = ingredient_proposal.entity_id
 
     unit_ids = {
         item.get("unit_id")
@@ -550,7 +566,7 @@ async def get_recipe_detail(
                         "id": p.id,
                         "action": p.action,
                         "payload": _pending_payload_for_client(
-                            db, p, recipe_ingredients
+                            db, p, recipe_ingredients, current_user
                         ),
                     }
                     for p in pending
@@ -560,7 +576,7 @@ async def get_recipe_detail(
                     "id": latest.id,
                     "action": latest.action,
                     "payload": _pending_payload_for_client(
-                        db, latest, recipe_ingredients
+                        db, latest, recipe_ingredients, current_user
                     ),
                 }
 
