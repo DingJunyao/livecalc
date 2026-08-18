@@ -336,6 +336,13 @@ async def get_ingredients(
         total = len(ingredients)  # 由于我们使用了 limit，这里只是当前页的数量
         page = skip // limit + 1
 
+        pending_by_id = {}
+        if not getattr(current_user, "is_admin", False):
+            from app.services.proposals.pending import get_latest_pending_proposals
+            pending_by_id = get_latest_pending_proposals(
+                db, "ingredient", [ing.id for ing in ingredients], current_user.id
+            )
+
         # 需要重新查询总数以获取真正的总数
         if sort_by == "price_records":
             # 为 price_records 排序方式查询总数量
@@ -354,13 +361,24 @@ async def get_ingredients(
                 total_query = total_query.filter(Ingredient.name.contains(search))
             total = total_query.count()
 
-        return PaginatedResponse.create(
-            items=[IngredientResponse(
+        items = []
+        for ing in ingredients:
+            pending = pending_by_id.get(ing.id)
+            pending_payload = pending.payload or {} if pending else {}
+            draft_name = pending_payload.get("name")
+            items.append(IngredientResponse(
                 id=ing.id,
-                name=ing.name,
+                name=draft_name if isinstance(draft_name, str) and draft_name else ing.name,
                 aliases=ing.aliases or [],
-                created_at=ing.created_at
-            ) for ing in ingredients],
+                created_at=ing.created_at,
+                pending_proposal=(
+                    {"id": pending.id, "action": pending.action, "payload": pending_payload}
+                    if pending else None
+                )
+            ))
+
+        return PaginatedResponse.create(
+            items=items,
             total=total,
             page=page,
             page_size=limit

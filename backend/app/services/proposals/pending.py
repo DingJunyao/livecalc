@@ -41,3 +41,26 @@ def get_pending_proposals(
         ChangeProposal.created_at.asc().nullslast(),
         ChangeProposal.id.asc(),
     ).all()
+
+
+def get_latest_pending_proposals(
+    db: Session,
+    entity_type: str,
+    entity_ids: Sequence[int],
+    user_id: int,
+) -> dict:
+    """Return the newest active pending proposal for each entity id."""
+    if not entity_ids:
+        return {}
+    proposals = db.query(ChangeProposal).filter(
+        ChangeProposal.entity_type == entity_type,
+        ChangeProposal.entity_id.in_(tuple(entity_ids)),
+        ChangeProposal.proposer_id == user_id,
+        ChangeProposal.status == "pending",
+        ChangeProposal.is_active.is_(True),
+    ).all()
+    return {
+        proposal.entity_id: proposal
+        for proposal in sorted(proposals, key=lambda item: item.id)
+        if proposal.entity_id is not None
+    }

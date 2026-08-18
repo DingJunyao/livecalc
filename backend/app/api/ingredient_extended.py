@@ -831,15 +831,36 @@ async def get_ingredients(
             # 获取分页数据
             ingredients = query.offset(skip).limit(limit).all()
 
-        items = [{
-            "id": ing.id,
-            "name": ing.name,
-            "category_id": ing.category_id,
-            "category": ing.category_obj.display_name if ing.category_obj else None,
-            "density": ing.density,
-            "aliases": ing.aliases or [],
-            "created_at": ing.created_at
-        } for ing in ingredients]
+        pending_by_id = {}
+        if not getattr(current_user, "is_admin", False):
+            from app.services.proposals.pending import get_latest_pending_proposals
+            pending_by_id = get_latest_pending_proposals(
+                db, "ingredient", [ing.id for ing in ingredients], current_user.id
+            )
+
+        items = []
+        for ing in ingredients:
+            pending = pending_by_id.get(ing.id)
+            pending_payload = pending.payload or {} if pending else {}
+            draft_name = pending_payload.get("name")
+            items.append({
+                "id": ing.id,
+                "name": draft_name if isinstance(draft_name, str) and draft_name else ing.name,
+                "category_id": ing.category_id,
+                "category": ing.category_obj.display_name if ing.category_obj else None,
+                "density": ing.density,
+                "aliases": ing.aliases or [],
+                "created_at": ing.created_at,
+                "pending_proposal": (
+                    {
+                        "id": pending.id,
+                        "action": pending.action,
+                        "payload": pending_payload,
+                    }
+                    if pending
+                    else None
+                ),
+            })
 
         page = skip // limit + 1
         return PaginatedResponse.create(
