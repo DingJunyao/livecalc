@@ -21,6 +21,7 @@ from app.utils.unit_converter import convert_to_standard
 from app.utils.database_helpers import json_text_contains
 from app.services.unit_matcher import UnitMatcher
 from app.services.unit_conversion_service import UnitConversionService
+from app.services.proposals.pending import build_product_display_overrides
 
 router = APIRouter()
 
@@ -495,41 +496,19 @@ async def get_product_records(
 
     pending_product_names = {}
     if records and not getattr(current_user, "is_admin", False):
-        from app.services.proposals.pending import get_latest_pending_proposals
-
         product_ids = {record.product_id for record in records if record.product_id}
         linked_products = (
-            db.query(Product.id, Product.name, Product.ingredient_id)
+            db.query(Product)
             .filter(Product.id.in_(product_ids))
             .all()
             if product_ids else []
         )
-        ingredient_ids = {
-            product.ingredient_id
-            for product in linked_products
-            if product.ingredient_id is not None
+        pending_product_names = {
+            product_id: display["name"]
+            for product_id, display in build_product_display_overrides(
+                db, linked_products, current_user
+            ).items()
         }
-        pending_ingredients = get_latest_pending_proposals(
-            db, "ingredient", ingredient_ids, current_user.id
-        )
-        official_names = (
-            {
-                ingredient.id: ingredient.name
-                for ingredient in db.query(Ingredient.id, Ingredient.name)
-                .filter(Ingredient.id.in_(ingredient_ids))
-                .all()
-            }
-            if ingredient_ids else {}
-        )
-        for product in linked_products:
-            pending = pending_ingredients.get(product.ingredient_id)
-            draft_name = (pending.payload or {}).get("name") if pending else None
-            if (
-                isinstance(draft_name, str)
-                and draft_name
-                and product.name == official_names.get(product.ingredient_id)
-            ):
-                pending_product_names[product.id] = draft_name
 
     # 手动构造响应列表，处理单位转换
     items = []

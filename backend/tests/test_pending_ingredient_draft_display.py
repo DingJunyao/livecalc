@@ -73,6 +73,13 @@ def test_current_user_sees_pending_ingredient_names_across_views(
         payload={"name": "pending draft courgette", "updated_by": 2},
         proposer_id=2,
     )
+    product_proposal = ChangeProposal(
+        entity_type="product",
+        entity_id=product.id,
+        action="update",
+        payload={"name": "pending draft product courgette", "updated_by": 2},
+        proposer_id=2,
+    )
     hierarchy_proposal = ChangeProposal(
         entity_type="hierarchy",
         entity_id=None,
@@ -85,7 +92,7 @@ def test_current_user_sees_pending_ingredient_names_across_views(
         },
         proposer_id=2,
     )
-    db.add_all([ingredient_proposal, hierarchy_proposal])
+    db.add_all([ingredient_proposal, product_proposal, hierarchy_proposal])
     db.commit()
 
     try:
@@ -111,7 +118,51 @@ def test_current_user_sees_pending_ingredient_names_across_views(
             params={"product_id": product.id},
         )
         assert records_response.status_code == 200
-        assert records_response.json()["items"][0]["product_name"] == "pending draft courgette"
+        assert (
+            records_response.json()["items"][0]["product_name"]
+            == "pending draft product courgette"
+        )
+
+        products_response = client.get(
+            "/api/v1/products/entity",
+            params={"ingredient_id": zucchini.id},
+        )
+        assert products_response.status_code == 200
+        product_item = products_response.json()["items"][0]
+        assert product_item["name"] == "pending draft product courgette"
+        assert product_item["ingredient_name"] == "pending draft courgette"
+        assert (
+            product_item["pending_proposal"]["payload"]["name"]
+            == "pending draft product courgette"
+        )
+
+        product_search_response = client.get(
+            "/api/v1/products/entity",
+            params={"search": "pending draft product courgette"},
+        )
+        assert product_search_response.status_code == 200
+        assert any(
+            item["id"] == product.id
+            and item["name"] == "pending draft product courgette"
+            for item in product_search_response.json()["items"]
+        )
+
+        product_detail_response = client.get(
+            f"/api/v1/products/entity/{product.id}"
+        )
+        assert product_detail_response.status_code == 200
+        assert product_detail_response.json()["name"] == "pending draft product courgette"
+        assert (
+            product_detail_response.json()["ingredient_name"]
+            == "pending draft courgette"
+        )
+
+        autocomplete_response = client.get(
+            "/api/v1/products/autocomplete",
+            params={"q": "pending draft product courgette"},
+        )
+        assert autocomplete_response.status_code == 200
+        assert autocomplete_response.json()[0]["name"] == "pending draft product courgette"
 
         proposals_response = client.get(
             "/api/v1/proposals",
@@ -127,7 +178,13 @@ def test_current_user_sees_pending_ingredient_names_across_views(
         assert hierarchy_item["snapshot"]["_child_id_name"] == "pending draft pumpkin"
     finally:
         db.query(ChangeProposal).filter(
-            ChangeProposal.id.in_([ingredient_proposal.id, hierarchy_proposal.id])
+            ChangeProposal.id.in_(
+                [
+                    ingredient_proposal.id,
+                    product_proposal.id,
+                    hierarchy_proposal.id,
+                ]
+            )
         ).delete(synchronize_session=False)
         db.query(ProductRecord).filter(ProductRecord.id == record.id).delete()
         db.query(Product).filter(Product.id == product.id).delete()
