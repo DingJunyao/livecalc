@@ -23,6 +23,11 @@ from app.schemas.common import PaginatedResponse
 from app.utils.database_helpers import serialize_tags, deserialize_tags, json_text_contains
 from app.utils.datetime_utils import serialize_datetime
 from app.services.proposals import service as proposal_service
+from app.services.proposals.pending import (
+    build_product_display_overrides,
+    find_product_ids_with_pending_names,
+    get_pending_proposal,
+)
 
 router = APIRouter(tags=["products_entity"])
 
@@ -121,6 +126,12 @@ def list_products(
     """
     from sqlalchemy import func
 
+    pending_search_ids = (
+        find_product_ids_with_pending_names(db, search, current_user)
+        if search
+        else set()
+    )
+
     # 根据排序方式构建查询
     if sort_by == "price_records":
         # 按价格记录数量排序：计算每个商品的价格记录数量，然后按数量排序
@@ -153,7 +164,12 @@ def list_products(
                     )
                 )
             )
-            query = query.filter(search_filter)
+            if pending_search_ids:
+                query = query.filter(
+                    or_(search_filter, Product.id.in_(pending_search_ids))
+                )
+            else:
+                query = query.filter(search_filter)
 
         if ingredient_ids:
             ids = [int(x.strip()) for x in ingredient_ids.split(',') if x.strip()]
@@ -198,7 +214,12 @@ def list_products(
                     )
                 )
             )
-            query = query.filter(search_filter)
+            if pending_search_ids:
+                query = query.filter(
+                    or_(search_filter, Product.id.in_(pending_search_ids))
+                )
+            else:
+                query = query.filter(search_filter)
 
         if ingredient_ids:
             ids = [int(x.strip()) for x in ingredient_ids.split(',') if x.strip()]
@@ -227,6 +248,10 @@ def list_products(
             products = query.order_by(desc(Product.created_at)).offset(skip).limit(limit).all()
     page = skip // limit + 1
 
+    display_overrides = build_product_display_overrides(
+        db, products, current_user
+    )
+
     # 反序列化 tags 并填充 ingredient_name，然后构造响应对象
     items = []
     for product in products:
@@ -236,21 +261,35 @@ def list_products(
             product.tags = []
         # 填充原料名称
         product.ingredient_name = product.ingredient.name if product.ingredient else None
+        display = display_overrides.get(product.id, {})
 
         # 将 Product 对象转换为 dict 以便正确序列化
         items.append({
             "id": product.id,
-            "name": product.name,
+            "name": display.get("name", product.name),
             "brand": product.brand,
             "barcode": product.barcode,
             "image_url": product.image_url,
-            "ingredient_id": product.ingredient_id,
-            "ingredient_name": product.ingredient_name,
+            "ingredient_id": display.get(
+                "ingredient_id", product.ingredient_id
+            ),
+            "ingredient_name": display.get(
+                "ingredient_name", product.ingredient_name
+            ),
             "tags": product.tags,
             "aliases": product.aliases or [],
             "created_at": serialize_datetime(product.created_at) if product.created_at else None,
             "updated_at": serialize_datetime(product.updated_at) if product.updated_at else None,
-            "is_active": product.is_active
+            "is_active": product.is_active,
+            "pending_proposal": (
+                {
+                    "id": display["proposal"].id,
+                    "action": display["proposal"].action,
+                    "payload": display["proposal"].payload,
+                }
+                if display.get("proposal")
+                else None
+            ),
         })
 
     return PaginatedResponse.create(
@@ -349,17 +388,23 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
 
     # 构建详细响应
     ingredient_name = product.ingredient.name if product.ingredient else None
+    display = build_product_display_overrides(db, [product], current_user).get(
+        product.id, {}
+    )
     response = ProductWithDetails(
         **product.__dict__,
-        ingredient_name=ingredient_name,
+        ingredient_name=display.get("ingredient_name", ingredient_name),
         latest_price=latest_price,
         latest_price_unit=latest_price_unit,
         latest_price_date=latest_price_date
     )
+    response.name = display.get("name", product.name)
+    response.ingredient_id = display.get(
+        "ingredient_id", product.ingredient_id
+    )
 
     # 非管理员追加 pending_proposal
     if not getattr(current_user, "is_admin", False):
-        from app.services.proposals.pending import get_pending_proposal
         pp = get_pending_proposal(db, "product", product_id, current_user.id)
         if pp:
             response.pending_proposal = {"id": pp.id, "action": pp.action, "payload": pp.payload}
@@ -827,14 +872,26 @@ def product_autocomplete(
         ingredient_product_counts: dict[int, int] = Counter(
             p.ingredient_id for p in products if p.ingredient_id
         )
+        display_overrides = build_product_display_overrides(
+            db, products, current_user
+        )
 
         results = []
         for product in products:
+            display = display_overrides.get(product.id, {})
+            display_name = display.get("name", product.name)
+            display_ingredient_name = display.get(
+                "ingredient_name",
+                product.ingredient.name if product.ingredient else None,
+            )
             matched_alias = None
             match_type = None
 
             # 检查商品名称是否匹配
-            if search_lower in product.name.lower():
+            if (
+                search_lower in display_name.lower()
+                or search_lower in product.name.lower()
+            ):
                 match_type = "name"
             # 检查商品别名是否匹配
             elif product.aliases:
@@ -845,7 +902,7 @@ def product_autocomplete(
                         break
             # 检查关联食材的名称是否匹配
             if not match_type and product.ingredient:
-                if search_lower in product.ingredient.name.lower():
+                if search_lower in display_ingredient_name.lower():
                     match_type = "ingredient_name"
                 # 检查食材别名是否匹配
                 elif product.ingredient.aliases:
@@ -858,10 +915,12 @@ def product_autocomplete(
             if match_type:
                 results.append({
                     "id": product.id,
-                    "name": product.name,
+                    "name": display_name,
                     "brand": product.brand,
-                    "ingredient_id": product.ingredient_id,
-                    "ingredient_name": product.ingredient.name if product.ingredient else None,
+                    "ingredient_id": display.get(
+                        "ingredient_id", product.ingredient_id
+                    ),
+                    "ingredient_name": display_ingredient_name,
                     "aliases": product.aliases or [],
                     "ingredient_aliases": product.ingredient.aliases if product.ingredient else [],
                     "match_type": match_type,
