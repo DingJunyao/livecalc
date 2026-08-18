@@ -204,3 +204,100 @@ def test_recipe_detail_enriches_pending_ingredients_for_display(
         db_session.query(Ingredient).filter(Ingredient.id == ingredient.id).delete()
         db_session.query(Unit).filter(Unit.id == unit.id).delete()
         db_session.commit()
+
+
+def test_recipe_detail_resolves_pending_ingredient_names(
+    db_session,
+    as_non_admin,
+    monkeypatch,
+):
+    if db_session.query(User).filter(User.id == 2).first() is None:
+        db_session.add(
+            User(
+                id=2,
+                username="recipe_pending_normal_user",
+                email="recipe-pending-normal-user@test.local",
+                password_hash="x",
+            )
+        )
+    ingredient = Ingredient(name="recipe official courgette")
+    unit = Unit(
+        name="recipe pending gram",
+        abbreviation="rpg",
+        unit_type="mass",
+    )
+    db_session.add_all([ingredient, unit])
+    db_session.flush()
+    recipe = Recipe(
+        name="recipe pending ingredient name recipe",
+        source="custom",
+        servings=1,
+        user_id=2,
+        is_public=True,
+    )
+    db_session.add(recipe)
+    db_session.flush()
+    recipe_ingredient = RecipeIngredient(
+        recipe_id=recipe.id,
+        ingredient_id=ingredient.id,
+        quantity="100",
+        unit_id=unit.id,
+    )
+    db_session.add(recipe_ingredient)
+
+    ingredient_proposal = ChangeProposal(
+        entity_type="ingredient",
+        entity_id=ingredient.id,
+        action="update",
+        payload={"name": "recipe pending courgette"},
+        proposer_id=2,
+    )
+    db_session.add(ingredient_proposal)
+    db_session.commit()
+
+    source_payload = {
+        "update_data": {
+            "ingredients": [
+                {
+                    "ingredient_name": "recipe pending courgette",
+                    "quantity": "150",
+                    "quantity_range": {"min": 100, "max": 200},
+                    "unit_id": unit.id,
+                }
+            ]
+        }
+    }
+
+    class Proposal:
+        id = 91004
+        action = "update"
+        payload = source_payload
+
+    monkeypatch.setattr(
+        "app.services.proposals.pending.get_pending_proposals",
+        lambda db, entity_types, entity_id, user_id: [Proposal()],
+    )
+
+    try:
+        response = client.get(f"/api/v1/recipes/{recipe.id}")
+
+        assert response.status_code == 200
+        item = response.json()["pending_proposals"][0]["payload"]["update_data"]["ingredients"][0]
+        assert item["id"] == recipe_ingredient.id
+        assert item["ingredient_id"] == ingredient.id
+        assert item["name"] == "recipe pending courgette"
+        assert item["quantity"] == "150"
+        assert item["quantity_range"] == {"min": 100, "max": 200}
+        assert item["unit"] == "rpg"
+        assert "id" not in source_payload["update_data"]["ingredients"][0]
+    finally:
+        db_session.query(ChangeProposal).filter(
+            ChangeProposal.id == ingredient_proposal.id
+        ).delete()
+        db_session.query(RecipeIngredient).filter(
+            RecipeIngredient.id == recipe_ingredient.id
+        ).delete()
+        db_session.query(Recipe).filter(Recipe.id == recipe.id).delete()
+        db_session.query(Ingredient).filter(Ingredient.id == ingredient.id).delete()
+        db_session.query(Unit).filter(Unit.id == unit.id).delete()
+        db_session.commit()
