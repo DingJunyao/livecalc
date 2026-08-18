@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from copy import deepcopy
 from sqlalchemy.orm import Session, load_only
 import os
 from sqlalchemy import or_, and_
@@ -48,6 +49,69 @@ def _normalize_img_key(path: str) -> str:
     if path.startswith(_STATIC_IMAGES):
         return path[len(_STATIC_IMAGES):]
     return path
+
+
+def _pending_payload_for_client(db: Session, proposal, recipe_ingredients) -> dict:
+    """Add display-only fields to recipe-edit ingredient proposals."""
+    payload = deepcopy(proposal.payload or {})
+    update_data = payload.get("update_data")
+    pending_ingredients = update_data.get("ingredients") if isinstance(update_data, dict) else None
+    if not isinstance(pending_ingredients, list):
+        return payload
+
+    names = [
+        item.get("ingredient_name")
+        for item in pending_ingredients
+        if isinstance(item, dict) and item.get("ingredient_name")
+    ]
+    ingredient_ids_by_name = {
+        ingredient.name: ingredient.id
+        for ingredient in db.query(Ingredient.id, Ingredient.name)
+        .filter(Ingredient.name.in_(names))
+        .all()
+    } if names else {}
+
+    unit_ids = {
+        item.get("unit_id")
+        for item in pending_ingredients
+        if isinstance(item, dict) and item.get("unit_id") is not None
+    }
+    unit_ids.update(row.unit_id for row in recipe_ingredients if row.unit_id is not None)
+    unit_labels = {
+        unit.id: unit.abbreviation
+        for unit in db.query(Unit.id, Unit.abbreviation)
+        .filter(Unit.id.in_(unit_ids))
+        .all()
+    } if unit_ids else {}
+
+    unused_rows = list(recipe_ingredients)
+    for item in pending_ingredients:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("ingredient_name")
+        ingredient_id = item.get("ingredient_id")
+        if ingredient_id is None:
+            ingredient_id = ingredient_ids_by_name.get(name)
+
+        matched_row = next(
+            (
+                row
+                for row in unused_rows
+                if ingredient_id is not None and row.ingredient_id == ingredient_id
+            ),
+            None,
+        )
+        if matched_row is not None:
+            unused_rows.remove(matched_row)
+            item.setdefault("id", matched_row.id)
+
+        item["ingredient_id"] = ingredient_id
+        item["name"] = item.get("name") or name
+        if "unit_id" not in item and matched_row is not None:
+            item["unit_id"] = matched_row.unit_id
+        unit_id = item.get("unit_id")
+        item["unit"] = unit_labels.get(unit_id)
+    return payload
 
 
 def _apply_recipe_special_conditions(query, has_unpriced_ingredient, has_unnourished_ingredient):
@@ -482,14 +546,22 @@ async def get_recipe_detail(
             )
             if pending:
                 response.pending_proposals = [
-                    {"id": p.id, "action": p.action, "payload": p.payload}
+                    {
+                        "id": p.id,
+                        "action": p.action,
+                        "payload": _pending_payload_for_client(
+                            db, p, recipe_ingredients
+                        ),
+                    }
                     for p in pending
                 ]
                 latest = pending[-1]
                 response.pending_proposal = {
                     "id": latest.id,
                     "action": latest.action,
-                    "payload": latest.payload,
+                    "payload": _pending_payload_for_client(
+                        db, latest, recipe_ingredients
+                    ),
                 }
 
         return response
