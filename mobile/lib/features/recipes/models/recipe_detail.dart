@@ -156,6 +156,7 @@ class RecipeDetail {
   final List<String> tips;
   final bool isPublic;
   final int? resultIngredientId;
+  final List<RecipePendingProposal> pendingProposals;
   final RecipePendingProposal? pendingProposal;
 
   const RecipeDetail({
@@ -176,6 +177,7 @@ class RecipeDetail {
     this.tips = const [],
     this.isPublic = false,
     this.resultIngredientId,
+    this.pendingProposals = const [],
     this.pendingProposal,
   });
 
@@ -190,6 +192,18 @@ class RecipeDetail {
           tipsRaw.whereType<String>().where((s) => s.trim().isNotEmpty));
     } else if (tipsRaw is String && tipsRaw.trim().isNotEmpty) {
       tipsList.add(tipsRaw.trim());
+    }
+    final pendingProposalsJson = json['pending_proposals'];
+    final pendingProposals = <RecipePendingProposal>[
+      if (pendingProposalsJson is List)
+        for (final item in pendingProposalsJson)
+          if (item is Map<String, dynamic>)
+            RecipePendingProposal.fromJson(item),
+    ];
+    final pendingProposalJson = json['pending_proposal'];
+    if (pendingProposals.isEmpty &&
+        pendingProposalJson is Map<String, dynamic>) {
+      pendingProposals.add(RecipePendingProposal.fromJson(pendingProposalJson));
     }
     return RecipeDetail(
       id: _asInt(json['id']),
@@ -216,17 +230,28 @@ class RecipeDetail {
       tips: tipsList,
       isPublic: _asBool(json['is_public']),
       resultIngredientId: _toIntOrNull(json['result_ingredient_id']),
-      pendingProposal: json['pending_proposal'] is Map<String, dynamic>
-          ? RecipePendingProposal.fromJson(
-              json['pending_proposal'] as Map<String, dynamic>)
-          : null,
+      pendingProposals: pendingProposals,
+      pendingProposal: pendingProposals.isEmpty ? null : pendingProposals.last,
     );
   }
 
   /// Web 详情页把 recipe_edit 的 update_data 覆盖到当前详情后展示。
   RecipeDetail mergedWithPending() {
-    final proposal = pendingProposal;
-    if (proposal == null) return this;
+    var current = this;
+    for (final proposal in pendingProposals) {
+      current = current._mergedWithProposal(proposal);
+    }
+    return current;
+  }
+
+  String get pendingChangeSummary => [
+        for (final field in {
+          for (final proposal in pendingProposals) ...proposal.updateData.keys,
+        })
+          RecipePendingProposal.fieldLabel(field),
+      ].join('、');
+
+  RecipeDetail _mergedWithProposal(RecipePendingProposal proposal) {
     final data = proposal.updateData;
     return RecipeDetail(
       id: id,
@@ -272,6 +297,7 @@ class RecipeDetail {
       resultIngredientId: data.containsKey('result_ingredient_id')
           ? _toIntOrNull(data['result_ingredient_id'])
           : resultIngredientId,
+      pendingProposals: pendingProposals,
       pendingProposal: proposal,
     );
   }
@@ -281,6 +307,22 @@ class RecipePendingProposal {
   final int id;
   final String action;
   final Map<String, dynamic> updateData;
+
+  static const _fieldLabels = {
+    'name': '菜谱名称',
+    'source': '来源',
+    'category': '分类',
+    'tags': '标签',
+    'cooking_steps': '做法步骤',
+    'total_time_minutes': '总时间',
+    'difficulty': '难度',
+    'servings': '份数',
+    'tips': '小贴士',
+    'description': '简介',
+    'images': '配图',
+    'ingredients': '原料',
+    'result_ingredient_id': '成品产出原料',
+  };
 
   const RecipePendingProposal({
     required this.id,
@@ -306,5 +348,9 @@ class RecipePendingProposal {
     );
   }
 
-  String get changeSummary => updateData.keys.join('、');
+  static String fieldLabel(String field) => _fieldLabels[field] ?? field;
+
+  String get changeSummary => [
+        for (final field in updateData.keys) fieldLabel(field),
+      ].join('、');
 }

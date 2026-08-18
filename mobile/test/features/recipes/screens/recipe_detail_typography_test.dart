@@ -72,4 +72,140 @@ void main() {
     expect(stepText.style!.fontSize, 16);
     expect(tipText.style!.fontSize, 16, reason: '小贴士应与步骤同为 bodyLarge');
   });
+
+  testWidgets('recipe detail exposes one edit entry per maintained section',
+      (tester) async {
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        recipeDetailPageProvider(1).overrideWith((ref) =>
+            RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const RecipeDetailScreen(id: 1),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.edit_outlined), findsNWidgets(4));
+    expect(find.byTooltip('编辑基本信息'), findsOneWidget);
+    expect(find.byTooltip('编辑原料'), findsOneWidget);
+    expect(find.byTooltip('编辑做法'), findsOneWidget);
+    expect(find.byTooltip('编辑小贴士'), findsOneWidget);
+  });
+
+  testWidgets('recipe detail shows every pending proposal', (tester) async {
+    when(() => mockDio.get('/recipes/1')).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {
+            'id': 1,
+            'name': '番茄炒蛋',
+            'servings': 2,
+            'ingredients': [],
+            'cooking_steps': [
+              {'step': 1, 'content': 'base step'},
+            ],
+            'tips': ['base tip'],
+            'pending_proposals': [
+              {
+                'id': 11,
+                'action': 'update',
+                'payload': {
+                  'update_data': {'total_time_minutes': 20},
+                },
+              },
+              {
+                'id': 12,
+                'action': 'update',
+                'payload': {
+                  'update_data': {
+                    'cooking_steps': [
+                      {'step': 1, 'content': 'second pending step'},
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        ));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        recipeDetailPageProvider(1).overrideWith((ref) =>
+            RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const RecipeDetailScreen(id: 1),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.hourglass_top_outlined), findsNWidgets(1));
+    expect(find.text('修改待管理员审核：总时间、做法步骤'), findsOneWidget);
+    expect(find.text('second pending step'), findsOneWidget);
+  });
+
+  testWidgets('fallback cost info opens by tap on touch devices',
+      (tester) async {
+    when(() => mockDio.get('/recipes/1')).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {
+            'id': 1,
+            'name': '番茄炒蛋',
+            'servings': 2,
+            'ingredients': [
+              {'id': 1, 'ingredient_id': 8, 'name': '鸡蛋', 'quantity': '2'},
+            ],
+            'cooking_steps': [],
+            'tips': [],
+          },
+        ));
+    when(() => mockDio.get('/recipes/1/cost')).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {
+            'total_cost': 2.5,
+            'cost_breakdown': [
+              {
+                'recipe_ingredient_id': 1,
+                'cost': 2.5,
+                'fallback_chain': '鸡蛋 -> 鸭蛋',
+              },
+            ],
+          },
+        ));
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        recipeDetailPageProvider(1).overrideWith((ref) =>
+            RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
+      ],
+      child: MaterialApp(
+        theme: AppTheme.lightTheme,
+        home: const RecipeDetailScreen(id: 1),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final infoButton = find.widgetWithIcon(IconButton, Icons.info_outline);
+    final tableCost = find.descendant(
+      of: find.byType(Table),
+      matching: find.textContaining('¥'),
+    );
+    await tester.ensureVisible(infoButton);
+    await tester.pumpAndSettle();
+    expect(tester.getRect(infoButton).right,
+        lessThan(tester.getRect(tableCost).left));
+    await tester.tap(infoButton);
+    await tester.pumpAndSettle();
+    expect(find.text('根据以下食材计算成本：'), findsOneWidget);
+    expect(find.text('鸡蛋 -> 鸭蛋'), findsOneWidget);
+
+    await tester.tap(find.text('知道了'));
+    await tester.pumpAndSettle();
+    expect(find.text('根据以下食材计算成本：'), findsNothing);
+  });
 }

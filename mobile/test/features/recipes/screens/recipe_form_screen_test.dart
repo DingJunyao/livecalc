@@ -27,6 +27,7 @@ void main() {
   Future<Future<RecipeFormResult?>?> pumpForm(
     WidgetTester tester, {
     RecipeDetail? recipe,
+    RecipeFormSection? section,
   }) async {
     Future<RecipeFormResult?>? result;
     await tester.pumpWidget(
@@ -43,6 +44,7 @@ void main() {
                           repository: repository,
                           recipe: recipe,
                           recipeId: recipe?.id,
+                          section: section,
                         ),
                       ),
                     );
@@ -263,5 +265,109 @@ void main() {
     final result = await resultFuture;
     expect(result?.saved, isTrue);
     expect(result?.pending, isFalse);
+  });
+
+  testWidgets('edit form starts from all pending proposals', (tester) async {
+    final recipe = RecipeDetail.fromJson(const {
+      'id': 3,
+      'name': 'base recipe',
+      'ingredients': [],
+      'cooking_steps': [],
+      'tips': [],
+      'pending_proposals': [
+        {
+          'id': 11,
+          'action': 'update',
+          'payload': {
+            'update_data': {'name': 'first pending name'},
+          },
+        },
+        {
+          'id': 12,
+          'action': 'update',
+          'payload': {
+            'update_data': {
+              'tips': ['second pending tip']
+            },
+          },
+        },
+      ],
+    });
+    final resultFuture = await pumpForm(tester, recipe: recipe);
+
+    expect(
+      tester
+          .widget<TextFormField>(find.byType(TextFormField).first)
+          .controller
+          ?.text,
+      'first pending name',
+    );
+    await tester.dragUntilVisible(
+      find.widgetWithText(TextFormField, 'second pending tip'),
+      find.byType(ListView).first,
+      const Offset(0, -400),
+    );
+    expect(
+      find.widgetWithText(TextFormField, 'second pending tip'),
+      findsOneWidget,
+    );
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    final result = await resultFuture;
+    expect(result?.saved, isFalse);
+  });
+
+  testWidgets(
+      'section edit page only shows its own section and pops after save',
+      (tester) async {
+    final payloads = <Map<String, dynamic>>[];
+    when(() => repository.updateRecipe(any(), any())).thenAnswer(
+      (invocation) async {
+        payloads.add(Map<String, dynamic>.from(
+          invocation.positionalArguments.last as Map<String, dynamic>,
+        ));
+        return RecipeMutationResult.applied(
+          const RecipeDetail(id: 3, name: '番茄炒蛋'),
+          '',
+        );
+      },
+    );
+
+    const recipe = RecipeDetail(
+      id: 3,
+      name: '番茄炒蛋',
+      ingredients: [
+        RecipeIngredient(id: 1, ingredientId: 8, name: '鸡蛋', quantity: '2'),
+      ],
+      steps: [RecipeStep(stepNumber: 1, content: '炒')],
+      tips: ['热锅快炒'],
+    );
+    final resultFuture = await pumpForm(
+      tester,
+      recipe: recipe,
+      section: RecipeFormSection.ingredients,
+    );
+
+    expect(
+      find.byKey(const ValueKey('recipe-form-section-ingredients')),
+      findsOneWidget,
+    );
+    expect(
+        find.byKey(const ValueKey('recipe-form-section-basic')), findsNothing);
+    expect(
+        find.byKey(const ValueKey('recipe-form-section-steps')), findsNothing);
+    expect(
+        find.byKey(const ValueKey('recipe-form-section-tips')), findsNothing);
+
+    await tester.enterText(find.widgetWithText(TextFormField, '2'), '3');
+    await tester.tap(find.widgetWithText(FilledButton, '保存修改'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final result = await resultFuture;
+    expect(result?.saved, isTrue);
+    expect(result?.pending, isFalse);
+    expect(payloads.single.keys, ['ingredients']);
   });
 }

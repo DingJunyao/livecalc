@@ -268,6 +268,19 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/recipes/:id/edit/:section',
+            name: 'recipe-section-edit',
+            builder: (_, state) => RecipeFormScreen(
+              recipe: state.extra is RecipeDetail
+                  ? state.extra as RecipeDetail
+                  : null,
+              recipeId: int.tryParse(state.pathParameters['id']!),
+              section: RecipeFormSection.fromName(
+                state.pathParameters['section'],
+              ),
+            ),
+          ),
+          GoRoute(
             path: '/recipes/:id/analysis',
             name: 'recipe-analysis',
             builder: (_, state) => RecipeAnalysisScreen(

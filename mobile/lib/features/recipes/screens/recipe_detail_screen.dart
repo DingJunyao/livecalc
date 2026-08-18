@@ -22,7 +22,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   bool _showAllNutrients = false;
   int _selectedImageIndex = 0;
   final RecipeRepository _repository = RecipeRepository();
-  bool _actionRunning = false;
 
   @override
   void initState() {
@@ -59,11 +58,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final hasImages = imageUrls.isNotEmpty;
     final isAdmin = ref.read(authProvider).user?.isAdmin == true;
     final appBarActions = [
-      IconButton(
-        icon: const Icon(Icons.edit_outlined),
-        tooltip: '编辑菜谱',
-        onPressed: _actionRunning ? null : _editRecipe,
-      ),
       IconButton(
         icon: const Icon(Icons.analytics_outlined),
         tooltip: '菜谱分析',
@@ -163,8 +157,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     const SizedBox(height: 16),
                   ],
                   _buildHeader(theme, detail),
-                  if (detail.pendingProposal != null) ...[
-                    _PendingProposalBanner(proposal: detail.pendingProposal!),
+                  if (detail.pendingProposals.isNotEmpty) ...[
+                    _PendingProposalBanner(
+                      changeSummary: detail.pendingChangeSummary,
+                    ),
                     const SizedBox(height: 16),
                   ],
                   const SizedBox(height: 16),
@@ -176,10 +172,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   const SizedBox(height: 16),
                   _buildNutritionCard(theme, state, ratio),
                   const SizedBox(height: 16),
-                  if (detail.tips.isNotEmpty) ...[
-                    _buildTipsCard(theme, detail.tips),
-                    const SizedBox(height: 16),
-                  ],
+                  _buildTipsCard(theme, detail.tips),
                 ],
               ),
             ),
@@ -189,12 +182,19 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  Future<void> _editRecipe() async {
+  Future<void> _editSection(RecipeFormSection section) async {
+    final detail = ref.read(recipeDetailPageProvider(widget.id)).detail;
     final result = await context.push<RecipeFormResult>(
-      '/recipes/${widget.id}/edit',
+      '/recipes/${widget.id}/edit/${section.name}',
+      extra: detail,
     );
-    if (result?.saved == true && mounted) {
-      await ref.read(recipeDetailPageProvider(widget.id).notifier).load();
+    if (result?.saved != true || !mounted) return;
+    await ref.read(recipeDetailPageProvider(widget.id).notifier).load();
+    if (!mounted) return;
+    if (result?.message.isNotEmpty == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result!.message)),
+      );
     }
   }
 
@@ -217,7 +217,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    setState(() => _actionRunning = true);
     try {
       final result = await _repository.publishRecipe(widget.id);
       if (!mounted) return;
@@ -234,8 +233,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('$e')));
       }
-    } finally {
-      if (mounted) setState(() => _actionRunning = false);
     }
   }
 
@@ -258,7 +255,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    setState(() => _actionRunning = true);
     try {
       await _repository.deleteRecipe(widget.id);
       if (!mounted) return;
@@ -270,8 +266,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         ScaffoldMessenger.of(context)
             .showSnackBar(SnackBar(content: Text('$e')));
       }
-    } finally {
-      if (mounted) setState(() => _actionRunning = false);
     }
   }
 
@@ -333,6 +327,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   // ---- 头部：分类 / 难度 / 份数 ----
+  Widget _sectionEditButton(RecipeFormSection section, String tooltip) {
+    return IconButton(
+      icon: const Icon(Icons.edit_outlined),
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      onPressed: () => _editSection(section),
+    );
+  }
+
   Widget _buildHeader(ThemeData theme, RecipeDetail detail) {
     final chips = <Widget>[];
     if (detail.category != null && detail.category!.isNotEmpty) {
@@ -356,18 +359,38 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       chips.add(_chip(theme, '未发布', theme.colorScheme.errorContainer,
           theme.colorScheme.onErrorContainer));
     }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (detail.description != null && detail.description!.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Text(detail.description!,
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: theme.colorScheme.outline)),
-        ],
-        const SizedBox(height: 12),
-        Wrap(spacing: 8, runSpacing: 8, children: chips),
-      ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline,
+                    color: theme.colorScheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('基本信息',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                _sectionEditButton(RecipeFormSection.basic, '编辑基本信息'),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (detail.description != null &&
+                detail.description!.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(detail.description!,
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.outline)),
+            ],
+            const SizedBox(height: 12),
+            Wrap(spacing: 8, runSpacing: 8, children: chips),
+          ],
+        ),
+      ),
     );
   }
 
@@ -471,10 +494,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Icon(Icons.restaurant_menu,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('原料',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                Expanded(
+                  child: Text('原料',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ),
                 _ServingsStepper(
                   value: state.displayServings,
                   onChanged: (v) => ref
@@ -485,6 +509,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       .read(recipeDetailPageProvider(widget.id).notifier)
                       .setServings(detail.servings),
                 ),
+                _sectionEditButton(RecipeFormSection.ingredients, '编辑原料'),
               ],
             ),
             const SizedBox(height: 12),
@@ -497,7 +522,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 columnWidths: const {
                   0: FlexColumnWidth(),
                   1: FixedColumnWidth(88),
-                  2: FixedColumnWidth(76),
+                  2: FixedColumnWidth(92),
                 },
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                 children: [
@@ -580,7 +605,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline)),
         ),
-        // 价格（tooltip 长按查看，不跳转）
+        // 价格（桌面悬停查看，移动端点击查看）
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 7),
           child: Row(
@@ -589,20 +614,81 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               if (hasFallback)
                 Tooltip(
                   message: '根据以下食材计算成本：\n${cb.fallbackChain}',
-                  child: Icon(Icons.info_outline,
-                      size: 14, color: theme.colorScheme.tertiary),
+                  child: IconButton(
+                    visualDensity: VisualDensity.compact,
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
+                    padding: EdgeInsets.zero,
+                    style: IconButton.styleFrom(
+                      minimumSize: const Size(24, 24),
+                      maximumSize: const Size(24, 24),
+                      padding: EdgeInsets.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    iconSize: 16,
+                    icon: Icon(Icons.info_outline,
+                        color: theme.colorScheme.tertiary),
+                    onPressed: () => _showFallbackChain(
+                      context,
+                      ing.name,
+                      cb.fallbackChain!,
+                    ),
+                  ),
                 ),
               if (cb != null && cb.cost > 0) ...[
                 if (hasFallback) const SizedBox(width: 4),
-                Text('¥${(cb.cost * ratio).toStringAsFixed(2)}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
+                Flexible(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      '¥${(cb.cost * ratio).toStringAsFixed(2)}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold)),
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ],
           ),
         ),
       ],
+    );
+  }
+
+  void _showFallbackChain(
+    BuildContext context,
+    String ingredientName,
+    String fallbackChain,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('根据以下食材计算成本：'),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              ingredientName,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(fallbackChain),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('知道了'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -642,9 +728,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Icon(Icons.format_list_numbered,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('做法步骤',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text('做法步骤',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                _sectionEditButton(RecipeFormSection.steps, '编辑做法'),
               ],
             ),
             const SizedBox(height: 12),
@@ -903,31 +992,39 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Icon(Icons.lightbulb_outline,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
-                Text('小贴士',
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text('小贴士',
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.bold)),
+                ),
+                _sectionEditButton(RecipeFormSection.tips, '编辑小贴士'),
               ],
             ),
             const SizedBox(height: 12),
-            ...tips.map((tip) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.only(top: 6),
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                            color: theme.colorScheme.tertiary,
-                            shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                          child: Text(tip, style: theme.textTheme.bodyLarge)),
-                    ],
-                  ),
-                )),
+            if (tips.isEmpty)
+              Text('暂无小贴士',
+                  style: theme.textTheme.bodyMedium
+                      ?.copyWith(color: theme.colorScheme.outline))
+            else
+              ...tips.map((tip) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          margin: const EdgeInsets.only(top: 6),
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                              color: theme.colorScheme.tertiary,
+                              shape: BoxShape.circle),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                            child: Text(tip, style: theme.textTheme.bodyLarge)),
+                      ],
+                    ),
+                  )),
           ],
         ),
       ),
@@ -936,9 +1033,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 }
 
 class _PendingProposalBanner extends StatelessWidget {
-  final RecipePendingProposal proposal;
+  final String changeSummary;
 
-  const _PendingProposalBanner({required this.proposal});
+  const _PendingProposalBanner({required this.changeSummary});
 
   @override
   Widget build(BuildContext context) {
@@ -956,9 +1053,7 @@ class _PendingProposalBanner extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              proposal.updateData.isEmpty
-                  ? '当前有修改待管理员审核'
-                  : '修改待管理员审核：${proposal.changeSummary}',
+              changeSummary.isEmpty ? '当前有修改待管理员审核' : '修改待管理员审核：$changeSummary',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSecondaryContainer,
               ),

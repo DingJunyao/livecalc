@@ -11,24 +11,42 @@ class RecipeFormResult {
   final bool saved;
   final bool pending;
   final int? recipeId;
+  final String message;
 
   const RecipeFormResult({
     this.saved = false,
     this.pending = false,
     this.recipeId,
+    this.message = '',
   });
+}
+
+enum RecipeFormSection {
+  basic,
+  ingredients,
+  steps,
+  tips;
+
+  static RecipeFormSection? fromName(String? value) {
+    for (final section in RecipeFormSection.values) {
+      if (section.name == value) return section;
+    }
+    return null;
+  }
 }
 
 class RecipeFormScreen extends ConsumerStatefulWidget {
   final RecipeDetail? recipe;
   final int? recipeId;
   final RecipeRepository? repository;
+  final RecipeFormSection? section;
 
   const RecipeFormScreen({
     super.key,
     this.recipe,
     this.recipeId,
     this.repository,
+    this.section,
   });
 
   @override
@@ -94,29 +112,53 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   int? get _editId => widget.recipe?.id ?? widget.recipeId;
   bool get _isEdit => _editId != null;
+  bool _showSection(RecipeFormSection section) =>
+      widget.section == null || widget.section == section;
+
+  String get _appBarTitle {
+    if (!_isEdit) return '创建菜谱';
+    return switch (widget.section) {
+      RecipeFormSection.basic => '编辑基本信息',
+      RecipeFormSection.ingredients => '编辑原料',
+      RecipeFormSection.steps => '编辑做法',
+      RecipeFormSection.tips => '编辑小贴士',
+      _ => '编辑菜谱',
+    };
+  }
+
+  String? get _activeSectionSaveKey => switch (widget.section) {
+        RecipeFormSection.basic => _basicSectionKey,
+        RecipeFormSection.ingredients => _ingredientsSectionKey,
+        RecipeFormSection.steps => _stepsSectionKey,
+        RecipeFormSection.tips => _tipsSectionKey,
+        _ => null,
+      };
 
   @override
   void initState() {
     super.initState();
     _repository = widget.repository ?? RecipeRepository();
-    _name = TextEditingController(text: widget.recipe?.name);
+    final initialDetail = widget.recipe?.mergedWithPending();
+    _name = TextEditingController(text: initialDetail?.name);
     _description =
-        TextEditingController(text: widget.recipe?.description ?? '');
-    _servings = TextEditingController(text: '${widget.recipe?.servings ?? 1}');
+        TextEditingController(text: initialDetail?.description ?? '');
+    _servings = TextEditingController(text: '${initialDetail?.servings ?? 1}');
     _totalTime = TextEditingController(
-      text: widget.recipe?.totalTimeMinutes?.toString() ?? '',
+      text: initialDetail?.totalTimeMinutes?.toString() ?? '',
     );
     _resultIngredient = TextEditingController();
-    _category = widget.recipe?.category ?? _categories.first;
-    _difficulty = widget.recipe?.difficulty ?? 'easy';
-    _fillRows(widget.recipe ?? const RecipeDetail(id: 0, name: ''));
+    _category = initialDetail?.category ?? _categories.first;
+    _difficulty = initialDetail?.difficulty ?? 'easy';
+    _fillRows(initialDetail ?? const RecipeDetail(id: 0, name: ''));
     _resetBaselines();
     _ingredientSearch.addListener(_onIngredientSearch);
     _loading = _isEdit && widget.recipe == null;
     Future.microtask(() async {
       await _loadUnits();
       if (_isEdit && widget.recipe == null) await _loadRecipe();
-      if (widget.recipe?.resultIngredientId != null) await _loadResultName();
+      if (initialDetail?.resultIngredientId != null) {
+        await _loadResultName(initialDetail!.resultIngredientId!);
+      }
     });
   }
 
@@ -155,8 +197,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Future<void> _loadRecipe() async {
     try {
       final loaded = await _repository.getRecipe(_editId!);
-      final detail =
-          loaded.pendingProposal == null ? loaded : loaded.mergedWithPending();
+      final detail = loaded.mergedWithPending();
       if (!mounted) return;
       setState(() {
         _name.text = detail.name;
@@ -169,6 +210,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _resetBaselines();
         _loading = false;
       });
+      if (detail.resultIngredientId != null) {
+        await _loadResultName(detail.resultIngredientId!);
+      }
     } on Exception {
       if (!mounted) return;
       setState(() {
@@ -178,9 +222,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
   }
 
-  Future<void> _loadResultName() async {
-    final id = widget.recipe?.resultIngredientId;
-    if (id == null) return;
+  Future<void> _loadResultName(int id) async {
     try {
       final name = await _repository.getIngredientName(id);
       if (!mounted || name == null) return;
@@ -440,6 +482,25 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     );
   }
 
+  Future<void> _saveActiveSection() async {
+    switch (widget.section) {
+      case RecipeFormSection.basic:
+        await _saveBasicSection();
+        break;
+      case RecipeFormSection.ingredients:
+        await _saveIngredientsSection();
+        break;
+      case RecipeFormSection.steps:
+        await _saveStepsSection();
+        break;
+      case RecipeFormSection.tips:
+        await _saveTipsSection();
+        break;
+      case null:
+        break;
+    }
+  }
+
   Future<void> _saveEditSection({
     required String sectionKey,
     String? Function()? validate,
@@ -480,6 +541,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _hasSectionSave = true;
         if (result.pending) _hasPendingSection = true;
       });
+      if (widget.section != null) {
+        Navigator.of(context).pop(RecipeFormResult(
+          saved: true,
+          pending: result.pending,
+          recipeId: _editId,
+          message: result.pending
+              ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
+              : '保存成功',
+        ));
+        return;
+      }
       final message = result.pending
           ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
           : '保存成功';
@@ -605,7 +677,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         );
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(_isEdit ? '编辑菜谱' : '创建菜谱')),
+        appBar: AppBar(title: Text(_appBarTitle)),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -695,10 +767,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ),
                     ],
                     saveKey: _basicSectionKey,
-                    onSave: _isEdit ? _saveBasicSection : null,
+                    onSave: _isEdit && widget.section == null
+                        ? _saveBasicSection
+                        : null,
                     saving: _savingSection == _basicSectionKey,
+                    section: RecipeFormSection.basic,
                   ),
-                  const SizedBox(height: 16),
+                  if (widget.section == null) const SizedBox(height: 16),
                   _section(
                     theme,
                     '原料',
@@ -718,10 +793,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ),
                     ],
                     saveKey: _ingredientsSectionKey,
-                    onSave: _isEdit ? _saveIngredientsSection : null,
+                    onSave: _isEdit && widget.section == null
+                        ? _saveIngredientsSection
+                        : null,
                     saving: _savingSection == _ingredientsSectionKey,
+                    section: RecipeFormSection.ingredients,
                   ),
-                  const SizedBox(height: 16),
+                  if (widget.section == null) const SizedBox(height: 16),
                   _section(
                     theme,
                     '步骤',
@@ -741,10 +819,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ),
                     ],
                     saveKey: _stepsSectionKey,
-                    onSave: _isEdit ? _saveStepsSection : null,
+                    onSave: _isEdit && widget.section == null
+                        ? _saveStepsSection
+                        : null,
                     saving: _savingSection == _stepsSectionKey,
+                    section: RecipeFormSection.steps,
                   ),
-                  const SizedBox(height: 16),
+                  if (widget.section == null) const SizedBox(height: 16),
                   _section(
                     theme,
                     '小贴士',
@@ -764,8 +845,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                       ),
                     ],
                     saveKey: _tipsSectionKey,
-                    onSave: _isEdit ? _saveTipsSection : null,
+                    onSave: _isEdit && widget.section == null
+                        ? _saveTipsSection
+                        : null,
                     saving: _savingSection == _tipsSectionKey,
+                    section: RecipeFormSection.tips,
                   ),
                   if (_error != null) ...[
                     const SizedBox(height: 8),
@@ -777,23 +861,43 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                   const SizedBox(height: 16),
                 ],
               ),
-        bottomNavigationBar: _isEdit
-            ? null
-            : SafeArea(
+        bottomNavigationBar: _isEdit && widget.section != null
+            ? SafeArea(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
+                    onPressed:
+                        _activeSectionSaveKey == null || _savingSection != null
+                            ? null
+                            : () => _saveActiveSection(),
+                    child: _savingSection != null
                         ? const SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('创建菜谱'),
+                        : const Text('保存修改'),
                   ),
                 ),
-              ),
+              )
+            : _isEdit
+                ? null
+                : SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      child: FilledButton(
+                        onPressed: _saving ? null : _save,
+                        child: _saving
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Text('创建菜谱'),
+                      ),
+                    ),
+                  ),
       ),
     );
   }
@@ -806,8 +910,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     String? saveKey,
     VoidCallback? onSave,
     bool saving = false,
+    required RecipeFormSection section,
   }) {
+    if (!_showSection(section)) return const SizedBox.shrink();
     return Card(
+      key: ValueKey('recipe-form-section-${section.name}'),
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
