@@ -412,6 +412,18 @@ async def get_recipe_detail(
             RecipeIngredient.recipe_id == recipe_id
         ).all()
 
+        pending_ingredient_names = {}
+        if not getattr(current_user, "is_admin", False):
+            from app.services.proposals.pending import get_latest_pending_proposals
+            ingredient_ids = [ri.ingredient_id for ri in recipe_ingredients if ri.ingredient_id]
+            pending_proposals = get_latest_pending_proposals(
+                db, "ingredient", ingredient_ids, current_user.id
+            )
+            for pending in pending_proposals.values():
+                name = (pending.payload or {}).get("name")
+                if isinstance(name, str) and name:
+                    pending_ingredient_names[pending.entity_id] = name
+
         # 获取原料详情，处理可能的空关联
         ingredients_detail = []
         for ri in recipe_ingredients:
@@ -427,7 +439,7 @@ async def get_recipe_detail(
             ingredients_detail.append(RecipeIngredientDetail(
                 id=ri.id,  # 添加recipe_ingredient的ID
                 ingredient_id=ingredient.id,
-                name=ingredient.name,
+                name=pending_ingredient_names.get(ingredient.id, ingredient.name),
                 quantity=ri.quantity or "",
                 quantity_range=ri.quantity_range,
                 unit=ri.unit.abbreviation if ri.unit else None,

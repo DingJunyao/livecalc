@@ -49,6 +49,8 @@ def _to_response(db: Session, p: ChangeProposal) -> ProposalResponse:
         _enrich_cascade_snapshot(db, snapshot, p.entity_type, p.entity_id)
     elif p.action == "merge":
         _enrich_merge_snapshot(db, snapshot, p)
+    if p.entity_type == "hierarchy":
+        _enrich_hierarchy_snapshot(db, snapshot, p)
 
     return ProposalResponse(
         id=p.id, entity_type=p.entity_type, entity_id=p.entity_id, action=p.action,
@@ -58,6 +60,39 @@ def _to_response(db: Session, p: ChangeProposal) -> ProposalResponse:
         applied_at=p.applied_at, reviewed_at=p.reviewed_at, reverted_at=p.reverted_at,
         entity_label=label, created_at=p.created_at,
     )
+
+
+def _enrich_hierarchy_snapshot(
+    db: Session,
+    snapshot: dict,
+    proposal: ChangeProposal,
+) -> None:
+    """Keep hierarchy target ids/names available for old pending proposals."""
+    from app.models.ingredient_hierarchy import IngredientHierarchy
+    from app.models.nutrition import Ingredient
+
+    payload = proposal.payload or {}
+    parent_id = snapshot.get("parent_id", payload.get("parent_id"))
+    child_id = snapshot.get("child_id", payload.get("child_id"))
+    if proposal.entity_id is not None:
+        relation = db.query(IngredientHierarchy).get(proposal.entity_id)
+        if relation is not None:
+            parent_id = relation.parent_id
+            child_id = relation.child_id
+
+    ids = {value for value in (parent_id, child_id) if value is not None}
+    names = {
+        ingredient.id: ingredient.name
+        for ingredient in db.query(Ingredient.id, Ingredient.name)
+        .filter(Ingredient.id.in_(ids))
+        .all()
+    } if ids else {}
+    if parent_id is not None:
+        snapshot.setdefault("parent_id", parent_id)
+        snapshot.setdefault("_parent_id_name", names.get(parent_id))
+    if child_id is not None:
+        snapshot.setdefault("child_id", child_id)
+        snapshot.setdefault("_child_id_name", names.get(child_id))
 
 
 def _enrich_cascade_snapshot(db: Session, snapshot: dict, entity_type: str, entity_id: Optional[int]) -> None:

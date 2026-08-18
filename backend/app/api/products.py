@@ -493,6 +493,44 @@ async def get_product_records(
             records = query.order_by(ProductRecord.recorded_at.desc()).offset(skip).limit(limit).all()
     page = skip // limit + 1
 
+    pending_product_names = {}
+    if records and not getattr(current_user, "is_admin", False):
+        from app.services.proposals.pending import get_latest_pending_proposals
+
+        product_ids = {record.product_id for record in records if record.product_id}
+        linked_products = (
+            db.query(Product.id, Product.name, Product.ingredient_id)
+            .filter(Product.id.in_(product_ids))
+            .all()
+            if product_ids else []
+        )
+        ingredient_ids = {
+            product.ingredient_id
+            for product in linked_products
+            if product.ingredient_id is not None
+        }
+        pending_ingredients = get_latest_pending_proposals(
+            db, "ingredient", ingredient_ids, current_user.id
+        )
+        official_names = (
+            {
+                ingredient.id: ingredient.name
+                for ingredient in db.query(Ingredient.id, Ingredient.name)
+                .filter(Ingredient.id.in_(ingredient_ids))
+                .all()
+            }
+            if ingredient_ids else {}
+        )
+        for product in linked_products:
+            pending = pending_ingredients.get(product.ingredient_id)
+            draft_name = (pending.payload or {}).get("name") if pending else None
+            if (
+                isinstance(draft_name, str)
+                and draft_name
+                and product.name == official_names.get(product.ingredient_id)
+            ):
+                pending_product_names[product.id] = draft_name
+
     # 手动构造响应列表，处理单位转换
     items = []
     for record in records:
@@ -526,7 +564,9 @@ async def get_product_records(
             ProductRecordResponse(
                 id=record.id,
                 product_id=record.product_id,
-                product_name=record.product_name,
+                product_name=pending_product_names.get(
+                    record.product_id, record.product_name
+                ),
                 merchant_id=record.merchant_id,
                 merchant_name=record.merchant.name if record.merchant else None,
                 price=float(record.price),  # 总价保持不变
@@ -778,4 +818,3 @@ async def get_product_history(
         product_name=product_name,
         records=processed_records
     )
-
