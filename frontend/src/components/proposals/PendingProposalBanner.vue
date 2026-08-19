@@ -18,6 +18,7 @@ import { computed } from 'vue'
 
 type PendingProposal = {
   id: number
+  entity_type?: string
   action: string
   payload: Record<string, any>
 }
@@ -26,6 +27,7 @@ const props = defineProps<{
   proposal?: PendingProposal | null
   proposals?: PendingProposal[]
   fieldLabels?: Record<string, string>
+  proposalLabels?: Record<string, string>
 }>()
 
 const allProposals = computed(() => {
@@ -48,6 +50,13 @@ const internalFields = new Set(['updated_by', 'update_by'])
 const modificationLabels = computed(() => {
   const labels: string[] = []
   for (const proposal of allProposals.value) {
+    const wholeItemLabel = proposal.entity_type
+      ? props.proposalLabels?.[proposal.entity_type]
+      : null
+    if (wholeItemLabel) {
+      if (!labels.includes(wholeItemLabel)) labels.push(wholeItemLabel)
+      continue
+    }
     if (proposal.action !== 'update') continue
     const changes = proposal.payload?.update_data || proposal.payload || {}
     for (const field of Object.keys(changes)) {
