@@ -45,7 +45,11 @@
 
     <template v-else-if="product">
       <div class="px-4 pt-4 pb-0">
-        <PendingProposalBanner :proposal="pendingProposal" />
+        <PendingProposalBanner
+          :proposals="productPendingProposals"
+          :field-labels="productPendingFieldLabels"
+          :proposal-labels="pendingItemLabels"
+        />
       </div>
       <div class="product-layout">
       <!-- 基本信息 -->
@@ -353,7 +357,6 @@
 
             <!-- 自定义单位列表 -->
             <v-card-text class="pb-0">
-              <PendingProposalBanner v-if="pendingUnitProposal" :proposal="pendingUnitProposal" class="mb-2" />
               <div class="d-flex align-center mb-2">
                 <span class="text-body-2 font-weight-medium">自定义单位</span>
                 <v-spacer />
@@ -449,7 +452,6 @@
 
             <!-- 密度管理 -->
             <v-card-text>
-              <PendingProposalBanner v-if="pendingDensityProposal" :proposal="pendingDensityProposal" class="mb-2" />
               <div class="d-flex align-center mb-2">
                 <span class="text-body-2 font-weight-medium">密度信息</span>
                 <v-spacer />
@@ -659,7 +661,6 @@
           </template>
         </v-card-title>
         <v-divider />
-        <PendingProposalBanner :proposal="nutritionPendingProposal" class="mx-4 mt-3 mb-0" />
 
         <!-- 展示模式 -->
         <v-card-text v-if="!editingNutrition" class="pa-0">
@@ -1408,6 +1409,34 @@ const loadingChartPrices = ref(false)
 // 营养数据
 const nutritionData = ref<any>(null)
 const nutritionPendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
+
+const pendingItemLabels: Record<string, string> = {
+  entity_unit_override: '自定义单位',
+  entity_density: '密度',
+  nutrition: '营养成分',
+}
+
+const productPendingFieldLabels: Record<string, string> = {
+  name: '名称',
+  brand: '品牌',
+  barcode: '条码',
+  ingredient_id: '关联原料',
+  tags: '标签',
+  aliases: '别名',
+}
+
+const productPendingProposals = computed(() => {
+  const proposals = []
+  if (pendingProposal.value) {
+    proposals.push({ ...pendingProposal.value, entity_type: 'product' })
+  }
+  if (nutritionPendingProposal.value) {
+    proposals.push({ ...nutritionPendingProposal.value, entity_type: 'nutrition' })
+  }
+  if (pendingUnitProposal.value) proposals.push(pendingUnitProposal.value)
+  if (pendingDensityProposal.value) proposals.push(pendingDensityProposal.value)
+  return proposals
+})
 const loadingNutrition = ref(false)
 
 // 商家列表

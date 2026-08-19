@@ -1,0 +1,262 @@
+diff --git a/frontend/src/components/proposals/PendingProposalBanner.vue b/frontend/src/components/proposals/PendingProposalBanner.vue
+index 5150a62..da975f5 100644
+--- a/frontend/src/components/proposals/PendingProposalBanner.vue
++++ b/frontend/src/components/proposals/PendingProposalBanner.vue
+@@ -1,6 +1,6 @@
+ <template>
+   <v-alert
+-    v-if="proposal"
++    v-if="allProposals.length"
+     :type="alertType"
+     variant="tonal"
+     density="comfortable"
+@@ -16,31 +16,72 @@
+ <script setup lang="ts">
+ import { computed } from 'vue'
+ 
++type PendingProposal = {
++  id: number
++  entity_type?: string
++  action: string
++  payload: Record<string, any>
++}
++
+ const props = defineProps<{
+-  proposal: {
+-    id: number
+-    action: string
+-    payload: Record<string, any>
+-  } | null
++  proposal?: PendingProposal | null
++  proposals?: PendingProposal[]
++  fieldLabels?: Record<string, string>
++  proposalLabels?: Record<string, string>
+ }>()
+ 
+-const alertType = computed(() => {
+-  if (!props.proposal) return 'info'
+-  return props.proposal.action === 'delete' ? 'warning' : 'info'
++const allProposals = computed(() => {
++  if (props.proposals?.length) return props.proposals
++  return props.proposal ? [props.proposal] : []
+ })
+ 
+-const icon = computed(() => {
+-  if (!props.proposal) return 'mdi-information'
+-  return props.proposal.action === 'delete'
+-    ? 'mdi-delete-clock-outline'
+-    : 'mdi-clock-edit-outline'
++const hasDelete = computed(() =>
++  allProposals.value.some(proposal => proposal.action === 'delete')
++)
++
++const alertType = computed(() => (hasDelete.value ? 'warning' : 'info'))
++
++const icon = computed(() =>
++  hasDelete.value ? 'mdi-delete-clock-outline' : 'mdi-clock-edit-outline'
++)
++
++const internalFields = new Set(['updated_by', 'update_by'])
++
++const modificationLabels = computed(() => {
++  const labels: string[] = []
++  for (const proposal of allProposals.value) {
++    const wholeItemLabel = proposal.entity_type
++      ? props.proposalLabels?.[proposal.entity_type]
++      : null
++    if (wholeItemLabel) {
++      if (!labels.includes(wholeItemLabel)) labels.push(wholeItemLabel)
++      continue
++    }
++    if (proposal.action !== 'update') continue
++    const changes = proposal.payload?.update_data || proposal.payload || {}
++    for (const field of Object.keys(changes)) {
++      if (internalFields.has(field)) continue
++      const label = props.fieldLabels?.[field] || field
++      if (label && !labels.includes(label)) labels.push(label)
++    }
++  }
++  return labels
+ })
+ 
+ const message = computed(() => {
+-  if (!props.proposal) return ''
+-  if (props.proposal.action === 'delete') {
++  const labels = modificationLabels.value
++  if (!props.proposals?.length && props.proposal) {
++    if (props.proposal.action === 'delete') {
++      return '该条目已提交删除申请，待管理员审核。审核通过后该条目将被删除。'
++    }
++    return '修改待审核——您看到的是已提交的修改内容。审核通过后将正式生效。'
++  }
++  if (!hasDelete.value) {
++    return `修改待管理员审核：${labels.join('、')}`
++  }
++  if (!labels.length) {
+     return '该条目已提交删除申请，待管理员审核。审核通过后该条目将被删除。'
+   }
+-  return '修改待审核——您看到的是已提交的修改内容。审核通过后将正式生效。'
++  return `待管理员审核：修改${labels.join('、')}、删除该条目`
+ })
+ </script>
+diff --git a/frontend/src/views/ingredients/IngredientDetail.vue b/frontend/src/views/ingredients/IngredientDetail.vue
+index e832e4a..2e6c318 100644
+--- a/frontend/src/views/ingredients/IngredientDetail.vue
++++ b/frontend/src/views/ingredients/IngredientDetail.vue
+@@ -45,7 +45,11 @@
+ 
+     <template v-else-if="ingredient">
+       <div class="px-4 pt-4 pb-0">
+-        <PendingProposalBanner :proposal="pendingProposal" />
++        <PendingProposalBanner
++          :proposals="ingredientPendingProposals"
++          :field-labels="ingredientPendingFieldLabels"
++          :proposal-labels="pendingItemLabels"
++        />
+       </div>
+       <div class="ingredient-layout">
+       <!-- 基本信息 -->
+@@ -597,7 +601,6 @@
+           </template>
+         </v-card-title>
+         <v-divider />
+-        <PendingProposalBanner :proposal="nutritionPendingProposal" class="mx-4 mt-3 mb-0" />
+ 
+         <!-- 展示模式 -->
+         <v-card-text v-if="!editingNutrition" class="pa-0">
+@@ -984,7 +987,6 @@
+ 
+         <!-- 自定义单位列表 -->
+         <v-card-text class="pb-0">
+-          <PendingProposalBanner v-if="pendingUnitProposal" :proposal="pendingUnitProposal" class="mb-2" />
+           <div class="d-flex align-center mb-2">
+             <span class="text-body-2 font-weight-medium">自定义单位</span>
+             <v-spacer />
+@@ -1080,7 +1082,6 @@
+ 
+         <!-- 密度管理 -->
+         <v-card-text>
+-          <PendingProposalBanner v-if="pendingDensityProposal" :proposal="pendingDensityProposal" class="mb-2" />
+           <div class="d-flex align-center mb-2">
+             <span class="text-body-2 font-weight-medium">密度信息</span>
+             <v-spacer />
+@@ -2173,6 +2174,43 @@ const loadingChartPrices = ref(false)
+ // 营养数据
+ const nutritionData = ref<any>(null)
+ const nutritionPendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
++
++const pendingItemLabels: Record<string, string> = {
++  entity_unit_override: '自定义单位',
++  entity_density: '密度',
++  hierarchy: '层级关系',
++  nutrition: '营养成分',
++}
++
++const ingredientPendingFieldLabels: Record<string, string> = {
++  name: '名称',
++  category_id: '分类',
++  aliases: '别名',
++  density: '密度',
++  default_unit_id: '默认单位',
++  piece_weight: '单个重量',
++  piece_weight_unit_id: '单个重量单位',
++  serving_weight: '每份重量',
++  serving_weight_unit_id: '每份重量单位',
++}
++
++const ingredientPendingProposals = computed(() => {
++  const proposals = []
++  if (pendingProposal.value) {
++    proposals.push({ ...pendingProposal.value, entity_type: 'ingredient' })
++  }
++  if (nutritionPendingProposal.value) {
++    proposals.push({ ...nutritionPendingProposal.value, entity_type: 'nutrition' })
++  }
++  if (pendingUnitProposal.value) proposals.push(pendingUnitProposal.value)
++  if (pendingDensityProposal.value) proposals.push(pendingDensityProposal.value)
++  proposals.push(...pendingList.value.filter(proposal =>
++    proposal.entity_type === 'hierarchy' &&
++    (proposal.payload?.parent_id === ingredientId.value ||
++      proposal.payload?.child_id === ingredientId.value)
++  ))
++  return proposals
++})
+ const loadingNutrition = ref(false)
+ 
+ // 关联菜谱
+diff --git a/frontend/src/views/products/ProductDetail.vue b/frontend/src/views/products/ProductDetail.vue
+index ce72fff..3a69bc6 100644
+--- a/frontend/src/views/products/ProductDetail.vue
++++ b/frontend/src/views/products/ProductDetail.vue
+@@ -45,7 +45,11 @@
+ 
+     <template v-else-if="product">
+       <div class="px-4 pt-4 pb-0">
+-        <PendingProposalBanner :proposal="pendingProposal" />
++        <PendingProposalBanner
++          :proposals="productPendingProposals"
++          :field-labels="productPendingFieldLabels"
++          :proposal-labels="pendingItemLabels"
++        />
+       </div>
+       <div class="product-layout">
+       <!-- 基本信息 -->
+@@ -353,7 +357,6 @@
+ 
+             <!-- 自定义单位列表 -->
+             <v-card-text class="pb-0">
+-              <PendingProposalBanner v-if="pendingUnitProposal" :proposal="pendingUnitProposal" class="mb-2" />
+               <div class="d-flex align-center mb-2">
+                 <span class="text-body-2 font-weight-medium">自定义单位</span>
+                 <v-spacer />
+@@ -449,7 +452,6 @@
+ 
+             <!-- 密度管理 -->
+             <v-card-text>
+-              <PendingProposalBanner v-if="pendingDensityProposal" :proposal="pendingDensityProposal" class="mb-2" />
+               <div class="d-flex align-center mb-2">
+                 <span class="text-body-2 font-weight-medium">密度信息</span>
+                 <v-spacer />
+@@ -659,7 +661,6 @@
+           </template>
+         </v-card-title>
+         <v-divider />
+-        <PendingProposalBanner :proposal="nutritionPendingProposal" class="mx-4 mt-3 mb-0" />
+ 
+         <!-- 展示模式 -->
+         <v-card-text v-if="!editingNutrition" class="pa-0">
+@@ -1408,6 +1409,34 @@ const loadingChartPrices = ref(false)
+ // 营养数据
+ const nutritionData = ref<any>(null)
+ const nutritionPendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
++
++const pendingItemLabels: Record<string, string> = {
++  entity_unit_override: '自定义单位',
++  entity_density: '密度',
++  nutrition: '营养成分',
++}
++
++const productPendingFieldLabels: Record<string, string> = {
++  name: '名称',
++  brand: '品牌',
++  barcode: '条码',
++  ingredient_id: '关联原料',
++  tags: '标签',
++  aliases: '别名',
++}
++
++const productPendingProposals = computed(() => {
++  const proposals = []
++  if (pendingProposal.value) {
++    proposals.push({ ...pendingProposal.value, entity_type: 'product' })
++  }
++  if (nutritionPendingProposal.value) {
++    proposals.push({ ...nutritionPendingProposal.value, entity_type: 'nutrition' })
++  }
++  if (pendingUnitProposal.value) proposals.push(pendingUnitProposal.value)
++  if (pendingDensityProposal.value) proposals.push(pendingDensityProposal.value)
++  return proposals
++})
+ const loadingNutrition = ref(false)
+ 
+ // 商家列表

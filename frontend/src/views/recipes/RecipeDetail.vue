@@ -115,7 +115,10 @@
 
     <template v-else-if="recipe">
       <div class="px-4 pt-4 pb-0">
-        <PendingProposalBanner :proposal="pendingProposal" />
+        <PendingProposalBanner
+          :proposals="pendingProposals"
+          :field-labels="pendingFieldLabels"
+        />
       </div>
       <!-- 上部分：图片、菜谱介绍、成本估算、成本趋势 响应式重排 -->
       <template v-if="displayRecipe?.images?.length">
@@ -882,7 +885,6 @@ const loadData = async () => {
     pendingProposals.value = Array.isArray(response.pending_proposals)
       ? response.pending_proposals
       : (response.pending_proposal ? [response.pending_proposal] : [])
-    pendingProposal.value = pendingProposals.value.at(-1) || null
     setDetailTitle(response.name, '菜谱', '菜谱详情')
     displayServings.value = response.servings || 1
     // 基本数据到位，立即渲染页面
@@ -1164,8 +1166,23 @@ const getColorByIndex = (index: number) => {
 const proposalStatus = ref<string | null>(null)
 
 // 服务端注入的 pending proposals（详情 API 返回），按提交顺序合并全部分区修改
-const pendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
 const pendingProposals = ref<{ id: number; action: string; payload: Record<string, any> }[]>([])
+
+const pendingFieldLabels: Record<string, string> = {
+  name: '菜谱名称',
+  source: '来源',
+  category: '分类',
+  tags: '标签',
+  cooking_steps: '做法步骤',
+  total_time_minutes: '总时间',
+  difficulty: '难度',
+  servings: '份数',
+  tips: '小贴士',
+  description: '简介',
+  images: '配图',
+  ingredients: '原料',
+  result_ingredient_id: '成品产出原料',
+}
 
 // 合并了待审覆盖的虚拟 recipe 对象，用于传给子组件展示
 const displayRecipe = computed(() => {
@@ -1209,6 +1226,7 @@ const onRecipeSaved = (updatedRecipe: any) => {
     // 编辑已提交为提议 → 显示审核中
     proposalStatus.value = updatedRecipe.status || 'pending'
     notify('编辑已提交，待管理员审核', 'info')
+    loadData()
     return
   }
   if (recipe.value) {
@@ -1223,6 +1241,7 @@ const onBasicInfoSaved = (updatedRecipe: any) => {
   if (updatedRecipe?.proposal_id) {
     proposalStatus.value = updatedRecipe.status || 'pending'
     notify('编辑已提交，待管理员审核', 'info')
+    loadData()
     return
   }
   if (recipe.value) {
