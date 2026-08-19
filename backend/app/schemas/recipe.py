@@ -70,6 +70,7 @@ class RecipeResponse(TimeZoneAwareModel):
 class RecipeIngredientUpdate(BaseModel):
     """菜谱原料更新模式 — 按 ingredient_name 匹配"""
     ingredient_name: str
+    ingredient_id: Optional[int] = None
     quantity: Optional[str] = None
     quantity_range: Optional[Union[dict, str]] = None
     unit_id: Optional[int] = None
