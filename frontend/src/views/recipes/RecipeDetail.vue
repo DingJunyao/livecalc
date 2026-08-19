@@ -879,7 +879,10 @@ const loadData = async () => {
   try {
     const response = await api.get(`/recipes/${recipeId.value}`)
     recipe.value = response
-    pendingProposal.value = response.pending_proposal || null
+    pendingProposals.value = Array.isArray(response.pending_proposals)
+      ? response.pending_proposals
+      : (response.pending_proposal ? [response.pending_proposal] : [])
+    pendingProposal.value = pendingProposals.value.at(-1) || null
     setDetailTitle(response.name, '菜谱', '菜谱详情')
     displayServings.value = response.servings || 1
     // 基本数据到位，立即渲染页面
@@ -1160,19 +1163,22 @@ const getColorByIndex = (index: number) => {
 // 当前菜谱是否有待审的编辑提议
 const proposalStatus = ref<string | null>(null)
 
-// 服务端注入的 pending_proposal（详情 API 返回），用于字段覆盖渲染
+// 服务端注入的 pending proposals（详情 API 返回），按提交顺序合并全部分区修改
 const pendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
+const pendingProposals = ref<{ id: number; action: string; payload: Record<string, any> }[]>([])
 
 // 合并了待审覆盖的虚拟 recipe 对象，用于传给子组件展示
 const displayRecipe = computed(() => {
   if (!recipe.value) return null
-  const r = recipe.value
-  if (pendingProposal.value?.action === 'update') {
+  let display = { ...recipe.value }
+  for (const proposal of pendingProposals.value) {
     // recipe_edit 的 payload 结构为 {"update_data": {...}}
-    const p = pendingProposal.value.payload?.update_data || pendingProposal.value.payload
-    return { ...r, ...p }
+    if (proposal.action === 'update') {
+      const changes = proposal.payload?.update_data || proposal.payload
+      display = { ...display, ...changes }
+    }
   }
-  return r
+  return display
 })
 
 // 加载当前菜谱的待审提议状态

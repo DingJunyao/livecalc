@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../../shared/models/ingredient_recipe.dart';
-import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -12,6 +11,7 @@ import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/widgets/nutrition_card.dart';
+import '../../../shared/widgets/pending_change_banner.dart';
 import '../../../shared/screens/price_record_edit_screen.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -57,7 +57,7 @@ class _IngredientDetailScreenState
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(ingredientDetailPageProvider(widget.id));
-    final ingredient = state.ingredient;
+    final ingredient = state.ingredient?.mergedWithPending();
 
     if (state.error != null && ingredient == null) {
       return Scaffold(
@@ -78,6 +78,19 @@ class _IngredientDetailScreenState
 
     final notifier = ref.read(ingredientDetailPageProvider(widget.id).notifier);
     final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
+    final modifications = <String>{
+      ...ingredient.pendingModificationLabels,
+      if (state.nutrition?.pendingProposal != null) '营养成分',
+      if (state.units.any((unit) => unit.isPending)) '自定义单位',
+      if (state.densities.any((density) => density.isPending)) '密度',
+      if (_hasPendingHierarchy(state)) '层级关系',
+    };
+    final deletions = <String>{
+      if (ingredient.pendingProposal?.action == 'delete') '基本信息',
+      if (state.deletedUnitIds.isNotEmpty) '自定义单位',
+      if (state.deletedDensityIds.isNotEmpty) '密度',
+      if (state.deletedHierarchyIds.isNotEmpty) '层级关系',
+    };
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -120,15 +133,18 @@ class _IngredientDetailScreenState
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
+              PendingChangeBanner(
+                modifications: modifications,
+                deletions: deletions,
+              ),
+              const SizedBox(height: 16),
+            ],
             _BasicInfoCard(
               ingredient: ingredient,
               categoriesAsync: ref.watch(ingredientCategoriesProvider),
               onEdit: () => _openEditBasicPage(notifier, ingredient),
             ),
-            if (ingredient.pendingProposal != null) ...[
-              const SizedBox(height: 12),
-              _PendingProposalBanner(proposal: ingredient.pendingProposal!),
-            ],
             const SizedBox(height: 16),
             _LatestPriceCard(
               latest: state.latestPrice,
@@ -183,6 +199,7 @@ class _IngredientDetailScreenState
               nutrition: state.nutrition,
               loading: state.loadingNutrition,
               saving: state.savingNutrition,
+              onRefresh: notifier.refreshNutrition,
               onSave: notifier.saveNutrition,
             ),
             const SizedBox(height: 16),
@@ -238,6 +255,15 @@ class _IngredientDetailScreenState
   }
 
   // ---- 记录价格 ----
+  bool _hasPendingHierarchy(IngredientDetailPageState state) {
+    final hierarchy = state.hierarchy;
+    if (hierarchy == null) return false;
+    return [
+      ...hierarchy.parentRelations,
+      ...hierarchy.childRelations,
+    ].any((relation) => relation.isPending);
+  }
+
   Future<void> _openRecordPrice(
     IngredientDetailPageNotifier notifier,
     IngredientDetailPageState state,
@@ -472,7 +498,7 @@ class _IngredientDetailScreenState
     bool isAdmin,
   ) async {
     final state = ref.read(ingredientDetailPageProvider(widget.id));
-    final ingredient = state.ingredient;
+    final ingredient = state.ingredient?.mergedWithPending();
     if (ingredient == null || !mounted) return;
     await context.push<bool>(
       '/ingredients/${widget.id}/hierarchy',
@@ -501,41 +527,6 @@ class _IngredientDetailScreenState
   }
 }
 
-class _PendingProposalBanner extends StatelessWidget {
-  final EntityPendingProposal proposal;
-
-  const _PendingProposalBanner({required this.proposal});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.hourglass_top_outlined,
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              proposal.action == 'delete' ? '删除提议待管理员审核' : '基本信息修改待管理员审核',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ---- 基本信息卡 ----
 
 class _BasicInfoCard extends StatelessWidget {
@@ -552,6 +543,12 @@ class _BasicInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final categories = categoriesAsync.valueOrNull;
+    final matchedCategory = categories?.where(
+      (item) => item.id == ingredient.categoryId,
+    );
+    final category =
+        matchedCategory?.firstOrNull?.displayName ?? ingredient.category;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -576,11 +573,11 @@ class _BasicInfoCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 8),
-            if (ingredient.category != null)
+            if (category != null)
               _InfoRow(
                 icon: Icons.folder_outlined,
                 label: '分类',
-                value: ingredient.category!,
+                value: category,
               ),
             if (ingredient.makingRecipeName != null)
               _InfoRow(

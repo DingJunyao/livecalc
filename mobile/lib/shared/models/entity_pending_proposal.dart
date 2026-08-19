@@ -18,4 +18,12 @@ class EntityPendingProposal {
           : const {},
     );
   }
+
+  /// Most proposal payloads are plain fields; recipe-style payloads wrap them
+  /// in update_data. Both forms are accepted here so detail models can show a
+  /// proposer their pending draft without waiting for review.
+  Map<String, dynamic> get updateData {
+    final nested = payload['update_data'];
+    return nested is Map<String, dynamic> ? nested : payload;
+  }
 }

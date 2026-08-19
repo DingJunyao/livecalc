@@ -4,8 +4,12 @@ import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/nutrition.dart';
+import '../../../shared/models/entity_pending_proposal.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../nutrition/repositories/nutrition_repository.dart';
+import '../../nutrition/repositories/usda_repository.dart';
+import '../../profile/models/proposal.dart';
+import '../../profile/repositories/profile_repository.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../prices/utils/price_trend.dart';
@@ -247,6 +251,9 @@ class ProductDetailPageState {
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
   final bool loadingUnits;
+  final List<Proposal> pendingProposals;
+  final Set<int> deletedUnitIds;
+  final Set<int> deletedDensityIds;
   final String? error;
 
   const ProductDetailPageState({
@@ -269,6 +276,9 @@ class ProductDetailPageState {
     this.unmappedUnits = const [],
     this.densities = const [],
     this.loadingUnits = false,
+    this.pendingProposals = const [],
+    this.deletedUnitIds = const {},
+    this.deletedDensityIds = const {},
     this.error,
   });
 
@@ -292,6 +302,9 @@ class ProductDetailPageState {
     List<UnmappedUnit>? unmappedUnits,
     List<EntityDensity>? densities,
     bool? loadingUnits,
+    List<Proposal>? pendingProposals,
+    Set<int>? deletedUnitIds,
+    Set<int>? deletedDensityIds,
     String? error,
     bool clearError = false,
   }) {
@@ -319,6 +332,9 @@ class ProductDetailPageState {
       unmappedUnits: unmappedUnits ?? this.unmappedUnits,
       densities: densities ?? this.densities,
       loadingUnits: loadingUnits ?? this.loadingUnits,
+      pendingProposals: pendingProposals ?? this.pendingProposals,
+      deletedUnitIds: deletedUnitIds ?? this.deletedUnitIds,
+      deletedDensityIds: deletedDensityIds ?? this.deletedDensityIds,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -328,14 +344,20 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   final ProductRepository _productRepo;
   final PriceRepository _priceRepo;
   final NutritionRepository _nutritionRepo;
+  final UsdaRepository _usdaRepo;
   final EntityRepository _entityRepo;
+  final ProfileRepository _proposalRepo;
   final int productId;
 
-  ProductDetailPageNotifier(this.productId)
-      : _productRepo = ProductRepository(),
+  ProductDetailPageNotifier(
+    this.productId, {
+    ProfileRepository? proposalRepository,
+  })  : _productRepo = ProductRepository(),
         _priceRepo = PriceRepository(),
         _nutritionRepo = NutritionRepository(),
+        _usdaRepo = UsdaRepository(),
         _entityRepo = EntityRepository(),
+        _proposalRepo = proposalRepository ?? ProfileRepository(),
         super(const ProductDetailPageState());
 
   String _startDateFor(int days) {
@@ -359,6 +381,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         _loadNutrition(),
         _loadUnits(),
       ]);
+      await _loadPendingProposals();
+      _applyPendingDrafts();
     } on Exception catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }
@@ -427,6 +451,146 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
 
   Future<void> reloadChart(int days) => _loadChart(days: days);
 
+  Future<void> _loadPendingProposals() async {
+    try {
+      final proposals = await _proposalRepo.getProposals(
+        status: 'pending',
+        limit: 200,
+      );
+      state = state.copyWith(pendingProposals: proposals);
+    } on Exception {
+      // Draft display is supplementary and must not block official data.
+    }
+  }
+
+  void _applyPendingDrafts() {
+    final proposals = state.pendingProposals
+        .where((proposal) => proposal.status == 'pending')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    final unitProposals = proposals
+        .where((proposal) => proposal.entityType == 'entity_unit_override')
+        .toList();
+    final densityProposals = proposals
+        .where((proposal) => proposal.entityType == 'entity_density')
+        .toList();
+
+    final deletedUnits = <int>{};
+    final deletedDensities = <int>{};
+    var units = state.units;
+    var densities = state.densities;
+
+    for (final proposal in unitProposals) {
+      if (!_targetsProduct(proposal) && !_targetsLoadedUnit(proposal, units)) {
+        continue;
+      }
+      if (proposal.action == 'delete') {
+        final id = proposal.entityId;
+        if (id != null) deletedUnits.add(id);
+        units = units.where((unit) => unit.id != id).toList();
+        continue;
+      }
+      final data = proposal.payload;
+      if (proposal.action == 'create') {
+        if (_payloadTargetsProduct(data) &&
+            units.every(
+                (unit) => unit.unitName != data['unit_name']?.toString())) {
+          units = [
+            ...units,
+            EntityUnit(
+              id: -proposal.id,
+              unitName: data['unit_name']?.toString() ?? '',
+              conversionFactor: _toDouble(data['conversion_factor']),
+              weightPerUnit: _toDouble(data['weight_per_unit']),
+              isDefault: data['is_default'] == true,
+              source: 'pending',
+              isPending: true,
+            ),
+          ];
+        }
+        continue;
+      }
+      units = [
+        for (final unit in units)
+          if (unit.id == proposal.entityId)
+            EntityUnit(
+              id: unit.id,
+              unitName: data['unit_name']?.toString() ?? unit.unitName,
+              conversionFactor: data.containsKey('conversion_factor')
+                  ? _toDouble(data['conversion_factor'])
+                  : unit.conversionFactor,
+              weightPerUnit: data.containsKey('weight_per_unit')
+                  ? _toDouble(data['weight_per_unit'])
+                  : unit.weightPerUnit,
+              isDefault: data.containsKey('is_default')
+                  ? data['is_default'] == true
+                  : unit.isDefault,
+              source: 'pending',
+              isPending: true,
+            )
+          else
+            unit,
+      ];
+    }
+
+    for (final proposal in densityProposals) {
+      if (!_targetsProduct(proposal) &&
+          !_targetsLoadedDensity(proposal, densities)) {
+        continue;
+      }
+      if (proposal.action == 'delete') {
+        final id = proposal.entityId;
+        if (id != null) deletedDensities.add(id);
+        densities = densities.where((density) => density.id != id).toList();
+        continue;
+      }
+      final data = proposal.payload;
+      if (proposal.action == 'create') {
+        if (_payloadTargetsProduct(data)) {
+          densities = [
+            ...densities,
+            EntityDensity(
+              id: -proposal.id,
+              density: _toDouble(data['density']) ?? 0,
+              temperature: _toDouble(data['temperature']),
+              condition: data['condition']?.toString(),
+              source: 'pending',
+              isPending: true,
+            ),
+          ];
+        }
+        continue;
+      }
+      densities = [
+        for (final density in densities)
+          if (density.id == proposal.entityId)
+            EntityDensity(
+              id: density.id,
+              density: data.containsKey('density')
+                  ? _toDouble(data['density']) ?? density.density
+                  : density.density,
+              temperature: data.containsKey('temperature')
+                  ? _toDouble(data['temperature'])
+                  : density.temperature,
+              condition: data.containsKey('condition')
+                  ? data['condition']?.toString()
+                  : density.condition,
+              source: 'pending',
+              isPending: true,
+            )
+          else
+            density,
+      ];
+    }
+
+    state = state.copyWith(
+      units: units,
+      densities: densities,
+      deletedUnitIds: deletedUnits,
+      deletedDensityIds: deletedDensities,
+    );
+  }
+
   Future<void> _loadChart({required int days}) async {
     state = state.copyWith(loadingChart: true);
     try {
@@ -453,12 +617,87 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
 
   Future<void> _loadNutrition() async {
     state = state.copyWith(loadingNutrition: true);
+    final NutritionInfo? info;
     try {
-      final info = await _nutritionRepo.getProductNutrition(productId);
-      state = state.copyWith(nutrition: info, loadingNutrition: false);
+      info = await _nutritionRepo.getProductNutrition(productId);
     } on Exception {
       state = state.copyWith(loadingNutrition: false);
+      return;
     }
+
+    await _loadPendingProposals();
+    var merged = info?.mergedWithPending() ??
+        _pendingManualNutrition(entityType: 'product_nutrition');
+    try {
+      final usda = await _loadPendingUsdaNutrition();
+      if (usda != null &&
+          (merged?.pendingProposal?.id ?? 0) < usda.pendingProposal!.id) {
+        merged = usda;
+      }
+    } on Exception {
+      // Official data remains visible if USDA draft enrichment fails.
+    }
+    state = state.copyWith(nutrition: merged, loadingNutrition: false);
+  }
+
+  Future<void> refreshNutrition() => _loadNutrition();
+
+  Future<NutritionInfo?> _loadPendingUsdaNutrition() async {
+    final proposal = state.pendingProposals
+        .where((item) =>
+            item.entityType == 'usda_product_match' &&
+            item.entityId == productId &&
+            item.status == 'pending')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    if (proposal.isEmpty) return null;
+    final fdcId = _toInt(proposal.last.payload['fdc_id']);
+    if (fdcId == null) return null;
+    final food = await _usdaRepo.getFood(fdcId);
+    return NutritionInfo(
+      entityId: productId,
+      baseQuantity: 100,
+      baseUnit: 'g',
+      source: 'USDA（待审）',
+      nutrients: [
+        for (final nutrient in food.nutrients)
+          if (nutrient.amount > 0)
+            NutrientEntry(
+              key: nutrient.displayName,
+              label: nutrient.displayName,
+              value: nutrient.amount,
+              unit: nutrient.unit,
+            ),
+      ],
+      pendingProposal: EntityPendingProposal(
+        id: proposal.last.id,
+        action: 'update',
+        payload: proposal.last.payload,
+      ),
+    );
+  }
+
+  NutritionInfo? _pendingManualNutrition({
+    required String entityType,
+  }) {
+    final proposals = state.pendingProposals
+        .where((item) =>
+            item.entityType == entityType &&
+            item.entityId == productId &&
+            item.status == 'pending' &&
+            item.action == 'update')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    if (proposals.isEmpty) return null;
+    final proposal = proposals.last;
+    return NutritionInfo.fromPendingProposal(
+      entityId: productId,
+      proposal: EntityPendingProposal(
+        id: proposal.id,
+        action: proposal.action,
+        payload: proposal.payload,
+      ),
+    );
   }
 
   Future<Object?> saveNutrition(List<NutrientEntry> nutrients) async {
@@ -466,7 +705,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     try {
       final result =
           await _nutritionRepo.saveProductNutrition(productId, nutrients);
-      if (!result.pending) await _loadNutrition();
+      await _loadNutrition();
       return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
@@ -477,7 +716,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     state = state.copyWith(savingNutrition: true);
     try {
       final result = await _nutritionRepo.clearProductNutrition(productId);
-      if (!result.pending) await _loadNutrition();
+      await _loadNutrition();
       return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
@@ -504,6 +743,33 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     }
   }
 
+  Future<void> _refreshUnitsAndPendingDrafts() async {
+    await _loadUnits();
+    await _loadPendingProposals();
+    _applyPendingDrafts();
+  }
+
+  bool _targetsProduct(Proposal proposal) =>
+      _payloadTargetsProduct(proposal.payload) ||
+      _payloadTargetsProduct(proposal.snapshot);
+
+  bool _payloadTargetsProduct(Map<String, dynamic> data) =>
+      data['entity_type']?.toString() == 'product' &&
+      _toInt(data['entity_id']) == productId;
+
+  bool _targetsLoadedUnit(Proposal proposal, List<EntityUnit> units) =>
+      proposal.entityId != null &&
+      !proposal.payload.containsKey('entity_id') &&
+      units.any((unit) => unit.id == proposal.entityId);
+
+  bool _targetsLoadedDensity(
+    Proposal proposal,
+    List<EntityDensity> densities,
+  ) =>
+      proposal.entityId != null &&
+      !proposal.payload.containsKey('entity_id') &&
+      densities.any((density) => density.id == proposal.entityId);
+
   Future<Object?> addUnit({
     required String unitName,
     double? conversionFactor,
@@ -520,7 +786,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -542,13 +808,13 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
   Future<Object?> deleteUnit(int unitId) async {
     final result = await _entityRepo.deleteUnit('product', productId, unitId);
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -563,7 +829,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       weightPerUnit: 100,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -579,14 +845,14 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       condition: condition,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
   Future<Object?> deleteDensity(int densityId) async {
     final result =
         await _entityRepo.deleteDensity('product', productId, densityId);
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -642,3 +908,14 @@ final productDetailPageProvider = StateNotifierProvider.autoDispose
     .family<ProductDetailPageNotifier, ProductDetailPageState, int>(
   (ref, id) => ProductDetailPageNotifier(id),
 );
+
+int? _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+double? _toDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
+}

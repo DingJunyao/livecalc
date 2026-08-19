@@ -6,6 +6,7 @@ class HierarchyRelation {
   final String childName;
   final String relationType;
   final int strength;
+  final bool isPending;
 
   const HierarchyRelation({
     required this.id,
@@ -15,6 +16,7 @@ class HierarchyRelation {
     required this.childName,
     required this.relationType,
     this.strength = 50,
+    this.isPending = false,
   });
 
   factory HierarchyRelation.fromJson(Map<String, dynamic> json) {
@@ -26,6 +28,7 @@ class HierarchyRelation {
       childName: json['child_name'] as String? ?? '',
       relationType: json['relation_type'] as String? ?? '',
       strength: (json['strength'] as num?)?.toInt() ?? 50,
+      isPending: false,
     );
   }
 

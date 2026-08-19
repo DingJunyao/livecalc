@@ -23,6 +23,7 @@ class NutritionEditArguments {
   final String? entityName;
   final NutritionInfo? nutrition;
   final bool allowClear;
+  final Future<void> Function()? onRefresh;
   final Future<Object?> Function(List<NutrientEntry>) onSave;
   final Future<Object?> Function()? onClear;
 
@@ -32,6 +33,7 @@ class NutritionEditArguments {
     this.entityName,
     this.nutrition,
     this.allowClear = false,
+    this.onRefresh,
     required this.onSave,
     this.onClear,
   });
@@ -44,6 +46,7 @@ class NutritionEditScreen extends StatefulWidget {
   final NutritionInfo? nutrition;
   final List<NutrientEntry> initialNutrients;
   final bool allowClear;
+  final Future<void> Function()? onRefresh;
   final Future<Object?> Function(List<NutrientEntry>)? onSave;
   final Future<Object?> Function()? onClear;
   final UsdaRepository? usdaRepository;
@@ -56,6 +59,7 @@ class NutritionEditScreen extends StatefulWidget {
     this.nutrition,
     this.initialNutrients = const [],
     this.allowClear = false,
+    this.onRefresh,
     this.onSave,
     this.onClear,
     this.usdaRepository,
@@ -181,7 +185,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
         entityId: widget.entityId,
         fdcId: food.fdcId,
       );
-    });
+    }, onRefresh: widget.onRefresh);
   }
 
   Future<void> _saveManual() async {
@@ -216,6 +220,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   Future<void> _runMutation(
     Future<Object?> Function() action, {
     bool clear = false,
+    Future<void> Function()? onRefresh,
   }) async {
     setState(() => _saving = true);
     try {
@@ -227,6 +232,8 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
         pending = response.pending;
         message = response.message;
       }
+      await onRefresh?.call();
+      if (!mounted) return;
       if (pending) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message.isEmpty ? '已提交，待管理员审核' : message)),

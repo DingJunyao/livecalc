@@ -9,9 +9,18 @@ class ProfileRepository {
       : _client = client ?? ApiClient.instance;
 
   /// 我的提议（后端仅支持 scope/limit，返回裸数组）。
-  Future<List<Proposal>> getProposals({int limit = 100}) async {
-    final response = await _client.dio
-        .get('/proposals', queryParameters: {'scope': 'mine', 'limit': limit});
+  Future<List<Proposal>> getProposals({
+    String? status,
+    int limit = 100,
+  }) async {
+    final response = await _client.dio.get(
+      '/proposals',
+      queryParameters: {
+        'scope': 'mine',
+        if (status != null) 'status': status,
+        'limit': limit,
+      },
+    );
     final list = (response.data is List)
         ? response.data as List
         : (response.data['items'] as List);

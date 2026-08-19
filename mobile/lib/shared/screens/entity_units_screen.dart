@@ -378,27 +378,29 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                 '${_format(unit.weightPerUnit!)} g / 个',
               if (unit.isDefault) '默认',
             ].join(' · ')),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  tooltip: '编辑',
-                  onPressed: () => _startEditUnit(unit),
-                  icon: const Icon(Icons.edit_outlined),
-                ),
-                IconButton(
-                  tooltip: '删除',
-                  onPressed: _saving
-                      ? null
-                      : () => _delete(
-                            '删除单位',
-                            '确定删除「${unit.unitName}」吗？',
-                            () => widget.onDeleteUnit(unit.id),
-                          ),
-                  icon: const Icon(Icons.delete_outline),
-                ),
-              ],
-            ),
+            trailing: unit.isPending
+                ? const Chip(label: Text('待审'))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: '编辑',
+                        onPressed: () => _startEditUnit(unit),
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                      IconButton(
+                        tooltip: '删除',
+                        onPressed: _saving
+                            ? null
+                            : () => _delete(
+                                  '删除单位',
+                                  '确定删除「${unit.unitName}」吗？',
+                                  () => widget.onDeleteUnit(unit.id),
+                                ),
+                        icon: const Icon(Icons.delete_outline),
+                      ),
+                    ],
+                  ),
           ),
       ],
     );
@@ -454,17 +456,19 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
             subtitle: density.condition == null || density.condition!.isEmpty
                 ? null
                 : Text(density.condition!),
-            trailing: IconButton(
-              tooltip: '删除',
-              onPressed: _saving
-                  ? null
-                  : () => _delete(
-                        '删除密度',
-                        '确定删除该密度记录吗？',
-                        () => widget.onDeleteDensity(density.id),
-                      ),
-              icon: const Icon(Icons.delete_outline),
-            ),
+            trailing: density.isPending
+                ? const Chip(label: Text('待审'))
+                : IconButton(
+                    tooltip: '删除',
+                    onPressed: _saving
+                        ? null
+                        : () => _delete(
+                              '删除密度',
+                              '确定删除该密度记录吗？',
+                              () => widget.onDeleteDensity(density.id),
+                            ),
+                    icon: const Icon(Icons.delete_outline),
+                  ),
           ),
       ],
     );

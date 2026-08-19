@@ -257,6 +257,15 @@ void main() {
     expect(payloads, hasLength(4));
     expect(payloads[0].keys, ['name']);
     expect(payloads[1].keys, ['ingredients']);
+    expect(
+      ((payloads[1]['ingredients'] as List).single as RecipeIngredientInput)
+          .toJson(),
+      isA<Map<String, dynamic>>().having(
+        (item) => item['ingredient_id'],
+        'ingredient_id',
+        8,
+      ),
+    );
     expect(payloads[2].keys, ['cooking_steps']);
     expect(payloads[3].keys, ['tips']);
 

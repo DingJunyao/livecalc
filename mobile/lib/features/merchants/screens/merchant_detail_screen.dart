@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../../shared/widgets/pending_change_banner.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../screens/merchant_form_screen.dart';
 import '../models/merchant.dart';
@@ -39,7 +40,13 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     final state = ref.watch(merchantDetailPageProvider(widget.id));
     final mapConfig = ref.watch(mapConfigProvider);
     final mapReady = Platform.isIOS || mapConfig.loaded;
-    final merchant = state.merchant;
+    final merchant = state.merchant?.mergedWithPending();
+    final modifications = <String>{
+      ...?merchant?.pendingModificationLabels,
+    };
+    final deletions = <String>{
+      if (merchant?.pendingProposal?.action == 'delete') '基本信息',
+    };
 
     if (state.error != null && merchant == null) {
       return Scaffold(
@@ -100,14 +107,17 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
+              PendingChangeBanner(
+                modifications: modifications,
+                deletions: deletions,
+              ),
+              const SizedBox(height: 16),
+            ],
             _BasicInfoCard(
               merchant: merchant,
               onEdit: _editMerchant,
             ),
-            if (merchant.pendingProposal != null) ...[
-              const SizedBox(height: 12),
-              _PendingProposalBanner(proposal: merchant.pendingProposal!),
-            ],
             if (merchant.latitude != null && merchant.longitude != null) ...[
               const SizedBox(height: 16),
               Card(
@@ -172,7 +182,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
 
   Future<void> _editMerchant() async {
     final state = ref.read(merchantDetailPageProvider(widget.id));
-    final merchant = state.merchant;
+    final merchant = state.merchant?.mergedWithPending();
     if (merchant == null) return;
     final result = await context.push<MerchantFormResult>(
       '/merchants/${widget.id}/edit',
@@ -188,41 +198,6 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
     await ref.read(merchantDetailPageProvider(widget.id).notifier).load();
-  }
-}
-
-class _PendingProposalBanner extends StatelessWidget {
-  final MerchantPendingProposal proposal;
-
-  const _PendingProposalBanner({required this.proposal});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.hourglass_top_outlined,
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              proposal.action == 'delete' ? '删除提议待管理员审核' : '修改待管理员审核',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

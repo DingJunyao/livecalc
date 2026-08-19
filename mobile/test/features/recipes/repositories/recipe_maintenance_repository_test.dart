@@ -47,6 +47,7 @@ void main() {
         'name': '黄金番茄炒蛋',
         'ingredients': [
           const RecipeIngredientInput(
+            ingredientId: 8,
             ingredientName: '鸡蛋',
             quantity: '2',
             unitId: 7,
@@ -60,6 +61,7 @@ void main() {
       'name': '黄金番茄炒蛋',
       'ingredients': [
         {
+          'ingredient_id': 8,
           'ingredient_name': '鸡蛋',
           'quantity': '2',
           'unit_id': 7,

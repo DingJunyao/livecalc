@@ -332,6 +332,7 @@ class RecipeMutationResult {
 /// 菜谱原料编辑载荷。后端要求整行替换，未填字段不进 JSON。
 class RecipeIngredientInput {
   final String ingredientName;
+  final int? ingredientId;
   final String? quantity;
   final double? quantityMin;
   final double? quantityMax;
@@ -342,6 +343,7 @@ class RecipeIngredientInput {
 
   const RecipeIngredientInput({
     required this.ingredientName,
+    this.ingredientId,
     this.quantity,
     this.quantityMin,
     this.quantityMax,
@@ -357,6 +359,7 @@ class RecipeIngredientInput {
         : null;
     return {
       'ingredient_name': ingredientName,
+      if (ingredientId != null) 'ingredient_id': ingredientId,
       if (quantity != null && quantity!.isNotEmpty) 'quantity': quantity,
       if (range != null) 'quantity_range': range,
       if (unitId != null) 'unit_id': unitId,

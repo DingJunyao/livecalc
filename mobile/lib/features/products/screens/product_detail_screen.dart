@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
-import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/widgets/nutrition_card.dart';
+import '../../../shared/widgets/pending_change_banner.dart';
 import '../../../shared/screens/price_record_edit_screen.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -49,7 +49,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(productDetailPageProvider(widget.id));
-    final product = state.product;
+    final product = state.product?.mergedWithPending();
 
     if (state.error != null && product == null) {
       return Scaffold(
@@ -70,6 +70,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
     final notifier = ref.read(productDetailPageProvider(widget.id).notifier);
     final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
+    final modifications = <String>{
+      ...product.pendingModificationLabels,
+      if (state.nutrition?.pendingProposal != null) '营养成分',
+      if (state.units.any((unit) => unit.isPending)) '自定义单位',
+      if (state.densities.any((density) => density.isPending)) '密度',
+    };
+    final deletions = <String>{
+      if (product.pendingProposal?.action == 'delete') '基本信息',
+      if (state.deletedUnitIds.isNotEmpty) '自定义单位',
+      if (state.deletedDensityIds.isNotEmpty) '密度',
+    };
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -125,6 +136,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
+              PendingChangeBanner(
+                modifications: modifications,
+                deletions: deletions,
+              ),
+              const SizedBox(height: 16),
+            ],
             _ProductBasicInfoCard(
               product: product,
               onEdit: () => _openEditBasicPage(notifier, product),
@@ -132,10 +150,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ? null
                   : () => context.push('/ingredients/${product.ingredientId}'),
             ),
-            if (product.pendingProposal != null) ...[
-              const SizedBox(height: 12),
-              _PendingProposalBanner(proposal: product.pendingProposal!),
-            ],
             const SizedBox(height: 16),
             _ProductLatestPriceCard(
               latest: state.latestPrice,
@@ -173,6 +187,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               loading: state.loadingNutrition,
               saving: state.savingNutrition,
               allowClear: true,
+              onRefresh: notifier.refreshNutrition,
               onSave: notifier.saveNutrition,
               onClear: notifier.clearNutrition,
             ),
@@ -392,41 +407,6 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
       }
     }
-  }
-}
-
-class _PendingProposalBanner extends StatelessWidget {
-  final EntityPendingProposal proposal;
-
-  const _PendingProposalBanner({required this.proposal});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.hourglass_top_outlined,
-            color: theme.colorScheme.onSecondaryContainer,
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              proposal.action == 'delete' ? '删除提议待管理员审核' : '基本信息修改待管理员审核',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

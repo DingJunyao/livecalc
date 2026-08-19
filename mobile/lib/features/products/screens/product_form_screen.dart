@@ -64,9 +64,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _productRepository = widget.repository ?? ProductRepository();
     _ingredientRepository =
         widget.ingredientRepository ?? IngredientRepository();
-    _nameController = TextEditingController(text: widget.product?.name);
-    _brandController = TextEditingController(text: widget.product?.brand);
-    _barcodeController = TextEditingController(text: widget.product?.barcode);
+    final initialProduct = widget.product?.mergedWithPending();
+    _nameController = TextEditingController(text: initialProduct?.name);
+    _brandController = TextEditingController(text: initialProduct?.brand);
+    _barcodeController = TextEditingController(text: initialProduct?.barcode);
     _ingredientSearchController = TextEditingController();
     _selectedIngredient = widget.fixedIngredient;
 
@@ -90,7 +91,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   Future<void> _loadProduct() async {
     try {
-      final product = await _productRepository.getProduct(widget.product!.id);
+      final product = (await _productRepository.getProduct(widget.product!.id))
+          .mergedWithPending();
       if (!mounted) return;
       setState(() {
         _nameController.text = product.name;

@@ -244,12 +244,14 @@ class RecipeDetail {
     return current;
   }
 
-  String get pendingChangeSummary => [
+  String get pendingChangeSummary => pendingModificationLabels.join('、');
+
+  Set<String> get pendingModificationLabels => {
         for (final field in {
           for (final proposal in pendingProposals) ...proposal.updateData.keys,
         })
           RecipePendingProposal.fieldLabel(field),
-      ].join('、');
+      };
 
   RecipeDetail _mergedWithProposal(RecipePendingProposal proposal) {
     final data = proposal.updateData;

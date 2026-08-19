@@ -250,24 +250,27 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                     ),
                     subtitle:
                         Text('${relation.typeLabel} · 强度 ${relation.strength}'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: '调整强度',
-                          onPressed: () => setState(() {
-                            _editing = relation;
-                            _strength = relation.strength;
-                          }),
-                          icon: const Icon(Icons.tune),
-                        ),
-                        IconButton(
-                          tooltip: '删除',
-                          onPressed: _saving ? null : () => _delete(relation),
-                          icon: const Icon(Icons.delete_outline),
-                        ),
-                      ],
-                    ),
+                    trailing: relation.isPending
+                        ? const Chip(label: Text('待审'))
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                tooltip: '调整强度',
+                                onPressed: () => setState(() {
+                                  _editing = relation;
+                                  _strength = relation.strength;
+                                }),
+                                icon: const Icon(Icons.tune),
+                              ),
+                              IconButton(
+                                tooltip: '删除',
+                                onPressed:
+                                    _saving ? null : () => _delete(relation),
+                                icon: const Icon(Icons.delete_outline),
+                              ),
+                            ],
+                          ),
                   ),
                 ),
               ],

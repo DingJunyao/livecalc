@@ -357,6 +357,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   RecipeIngredientInput _ingredientInput(_IngredientRow row) {
     return RecipeIngredientInput(
       ingredientName: row.name.text.trim(),
+      ingredientId: row.ingredientId,
       quantity:
           row.quantityType == null && row.recommended.text.trim().isNotEmpty
               ? row.recommended.text.trim()
@@ -1258,6 +1259,7 @@ class _IngredientRow {
   final TextEditingController max = TextEditingController();
   final TextEditingController note = TextEditingController();
   String? quantityType;
+  int? ingredientId;
   String unitLabel = '';
   bool optional = false;
 
@@ -1266,6 +1268,7 @@ class _IngredientRow {
   factory _IngredientRow.fromModel(RecipeIngredient ingredient) {
     final row = _IngredientRow();
     row.name.text = ingredient.name;
+    row.ingredientId = ingredient.ingredientId;
     final original = ingredient.originalQuantity;
     if (original == '适量' || original == '少许') {
       row.quantityType = original;

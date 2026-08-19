@@ -615,6 +615,7 @@ const handleSave = async () => {
       .map(row => {
         const data: any = {
           ingredient_name: row.ingredient_name,
+          ingredient_id: row.ingredient_id ?? null,
           is_optional: row.is_optional,
         }
 

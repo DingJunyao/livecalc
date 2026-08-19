@@ -52,9 +52,10 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? IngredientRepository();
-    _nameController = TextEditingController(text: widget.ingredient?.name);
-    _aliases = List.of(widget.ingredient?.aliases ?? const []);
-    _categoryId = widget.ingredient?.categoryId;
+    final initialIngredient = widget.ingredient?.mergedWithPending();
+    _nameController = TextEditingController(text: initialIngredient?.name);
+    _aliases = List.of(initialIngredient?.aliases ?? const []);
+    _categoryId = initialIngredient?.categoryId;
     if (_isEdit && widget.ingredient == null) {
       _loading = true;
       Future.microtask(_loadIngredient);
@@ -69,7 +70,8 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
 
   Future<void> _loadIngredient() async {
     try {
-      final ingredient = await _repository.getIngredient(_editId!);
+      final ingredient =
+          (await _repository.getIngredient(_editId!)).mergedWithPending();
       if (!mounted) return;
       setState(() {
         _nameController.text = ingredient.name;

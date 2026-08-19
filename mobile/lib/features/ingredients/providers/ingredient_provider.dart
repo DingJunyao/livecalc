@@ -5,9 +5,14 @@ import '../../../shared/models/ingredient_recipe.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/nutrition.dart';
+import '../../../shared/models/entity_pending_proposal.dart';
+import '../../../shared/models/hierarchy_relation.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../nutrition/repositories/nutrition_repository.dart';
 import '../../nutrition/models/usda_models.dart';
+import '../../nutrition/repositories/usda_repository.dart';
+import '../../profile/models/proposal.dart';
+import '../../profile/repositories/profile_repository.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../prices/utils/price_trend.dart';
@@ -250,6 +255,10 @@ class IngredientDetailPageState {
   final bool recipesHasMore;
   final IngredientHierarchyData? hierarchy;
   final bool loadingHierarchy;
+  final List<Proposal> pendingProposals;
+  final Set<int> deletedUnitIds;
+  final Set<int> deletedDensityIds;
+  final Set<int> deletedHierarchyIds;
   final String? error;
 
   const IngredientDetailPageState({
@@ -281,6 +290,10 @@ class IngredientDetailPageState {
     this.recipesHasMore = false,
     this.hierarchy,
     this.loadingHierarchy = false,
+    this.pendingProposals = const [],
+    this.deletedUnitIds = const {},
+    this.deletedDensityIds = const {},
+    this.deletedHierarchyIds = const {},
     this.error,
   });
 
@@ -313,6 +326,10 @@ class IngredientDetailPageState {
     bool? recipesHasMore,
     Object? hierarchy = _absent,
     bool? loadingHierarchy,
+    List<Proposal>? pendingProposals,
+    Set<int>? deletedUnitIds,
+    Set<int>? deletedDensityIds,
+    Set<int>? deletedHierarchyIds,
     String? error,
     bool clearError = false,
   }) {
@@ -351,6 +368,10 @@ class IngredientDetailPageState {
           ? this.hierarchy
           : hierarchy as IngredientHierarchyData?,
       loadingHierarchy: loadingHierarchy ?? this.loadingHierarchy,
+      pendingProposals: pendingProposals ?? this.pendingProposals,
+      deletedUnitIds: deletedUnitIds ?? this.deletedUnitIds,
+      deletedDensityIds: deletedDensityIds ?? this.deletedDensityIds,
+      deletedHierarchyIds: deletedHierarchyIds ?? this.deletedHierarchyIds,
       error: clearError ? null : (error ?? this.error),
     );
   }
@@ -362,15 +383,21 @@ class IngredientDetailPageNotifier
   final ProductRepository _productRepo;
   final PriceRepository _priceRepo;
   final NutritionRepository _nutritionRepo;
+  final UsdaRepository _usdaRepo;
   final EntityRepository _entityRepo;
+  final ProfileRepository _proposalRepo;
   final int ingredientId;
 
-  IngredientDetailPageNotifier(this.ingredientId)
-      : _ingRepo = IngredientRepository(),
+  IngredientDetailPageNotifier(
+    this.ingredientId, {
+    ProfileRepository? proposalRepository,
+  })  : _ingRepo = IngredientRepository(),
         _productRepo = ProductRepository(),
         _priceRepo = PriceRepository(),
         _nutritionRepo = NutritionRepository(),
+        _usdaRepo = UsdaRepository(),
         _entityRepo = EntityRepository(),
+        _proposalRepo = proposalRepository ?? ProfileRepository(),
         super(const IngredientDetailPageState());
 
   String _startDateFor(int days) {
@@ -397,6 +424,8 @@ class IngredientDetailPageNotifier
         _loadRecipes(),
         _loadHierarchy(),
       ]);
+      await _loadPendingProposals();
+      _applyPendingDrafts();
     } on Exception catch (e) {
       state = state.copyWith(loading: false, error: e.toString());
     }
@@ -494,6 +523,183 @@ class IngredientDetailPageNotifier
 
   Future<void> reloadChart(int days) => _loadChart(days: days);
 
+  Future<void> _loadPendingProposals() async {
+    try {
+      final proposals = await _proposalRepo.getProposals(
+        status: 'pending',
+        limit: 200,
+      );
+      state = state.copyWith(pendingProposals: proposals);
+    } on Exception {
+      // Pending drafts are supplementary; official detail data remains usable.
+    }
+  }
+
+  void _applyPendingDrafts() {
+    final proposals = state.pendingProposals
+        .where((proposal) => proposal.status == 'pending')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+
+    final unitProposals = proposals
+        .where((proposal) => proposal.entityType == 'entity_unit_override')
+        .toList();
+    final densityProposals = proposals
+        .where((proposal) => proposal.entityType == 'entity_density')
+        .toList();
+    final hierarchyProposals = proposals
+        .where((proposal) => proposal.entityType == 'hierarchy')
+        .toList();
+
+    final deletedUnits = <int>{};
+    final deletedDensities = <int>{};
+    final deletedRelations = <int>{};
+    var units = state.units;
+    var densities = state.densities;
+    var hierarchy = state.hierarchy;
+
+    for (final proposal in unitProposals) {
+      if (!_targetsIngredient(proposal) &&
+          !_targetsLoadedUnit(proposal, units)) {
+        continue;
+      }
+      if (proposal.action == 'delete') {
+        final id = proposal.entityId;
+        if (id != null) deletedUnits.add(id);
+        units = units.where((unit) => unit.id != id).toList();
+        continue;
+      }
+      final data = proposal.payload;
+      if (proposal.action == 'create') {
+        if (_payloadTargetsIngredient(data) &&
+            units.every(
+                (unit) => unit.unitName != data['unit_name']?.toString())) {
+          units = [
+            ...units,
+            EntityUnit(
+              id: -proposal.id,
+              unitName: data['unit_name']?.toString() ?? '',
+              conversionFactor: _toDouble(data['conversion_factor']),
+              weightPerUnit: _toDouble(data['weight_per_unit']),
+              isDefault: data['is_default'] == true,
+              source: 'pending',
+              isPending: true,
+            ),
+          ];
+        }
+        continue;
+      }
+      units = [
+        for (final unit in units)
+          if (unit.id == proposal.entityId)
+            EntityUnit(
+              id: unit.id,
+              unitName: data['unit_name']?.toString() ?? unit.unitName,
+              conversionFactor: data.containsKey('conversion_factor')
+                  ? _toDouble(data['conversion_factor'])
+                  : unit.conversionFactor,
+              weightPerUnit: data.containsKey('weight_per_unit')
+                  ? _toDouble(data['weight_per_unit'])
+                  : unit.weightPerUnit,
+              isDefault: data.containsKey('is_default')
+                  ? data['is_default'] == true
+                  : unit.isDefault,
+              source: 'pending',
+              isPending: true,
+            )
+          else
+            unit,
+      ];
+    }
+
+    for (final proposal in densityProposals) {
+      if (!_targetsIngredient(proposal) &&
+          !_targetsLoadedDensity(proposal, densities)) {
+        continue;
+      }
+      if (proposal.action == 'delete') {
+        final id = proposal.entityId;
+        if (id != null) deletedDensities.add(id);
+        densities = densities.where((density) => density.id != id).toList();
+        continue;
+      }
+      final data = proposal.payload;
+      if (proposal.action == 'create') {
+        if (_payloadTargetsIngredient(data)) {
+          densities = [
+            ...densities,
+            EntityDensity(
+              id: -proposal.id,
+              density: _toDouble(data['density']) ?? 0,
+              temperature: _toDouble(data['temperature']),
+              condition: data['condition']?.toString(),
+              source: 'pending',
+              isPending: true,
+            ),
+          ];
+        }
+        continue;
+      }
+      densities = [
+        for (final density in densities)
+          if (density.id == proposal.entityId)
+            EntityDensity(
+              id: density.id,
+              density: data.containsKey('density')
+                  ? _toDouble(data['density']) ?? density.density
+                  : density.density,
+              temperature: data.containsKey('temperature')
+                  ? _toDouble(data['temperature'])
+                  : density.temperature,
+              condition: data.containsKey('condition')
+                  ? data['condition']?.toString()
+                  : density.condition,
+              source: 'pending',
+              isPending: true,
+            )
+          else
+            density,
+      ];
+    }
+
+    for (final proposal in hierarchyProposals) {
+      if (!_targetsLoadedHierarchy(proposal, hierarchy)) {
+        continue;
+      }
+      if (proposal.action == 'delete') {
+        final id = proposal.entityId;
+        if (id != null) deletedRelations.add(id);
+        hierarchy = _removeHierarchyRelation(hierarchy, id);
+        continue;
+      }
+      if (proposal.action == 'create') {
+        final parentId = _toInt(
+            proposal.payload['parent_id'] ?? proposal.snapshot['parent_id']);
+        final childId = _toInt(
+            proposal.payload['child_id'] ?? proposal.snapshot['child_id']);
+        if (parentId == ingredientId || childId == ingredientId) {
+          final relation = _pendingHierarchyRelation(proposal);
+          hierarchy = _addHierarchyRelation(hierarchy, relation);
+        }
+        continue;
+      }
+      hierarchy = _updateHierarchyRelation(
+        hierarchy,
+        proposal.entityId,
+        _toInt(proposal.payload['strength']),
+      );
+    }
+
+    state = state.copyWith(
+      units: units,
+      densities: densities,
+      hierarchy: hierarchy,
+      deletedUnitIds: deletedUnits,
+      deletedDensityIds: deletedDensities,
+      deletedHierarchyIds: deletedRelations,
+    );
+  }
+
   Future<void> _loadChart({required int days}) async {
     state = state.copyWith(loadingChart: true);
     try {
@@ -517,12 +723,89 @@ class IngredientDetailPageNotifier
 
   Future<void> _loadNutrition() async {
     state = state.copyWith(loadingNutrition: true);
+    final NutritionInfo? info;
     try {
-      final info = await _nutritionRepo.getIngredientNutrition(ingredientId);
-      state = state.copyWith(nutrition: info, loadingNutrition: false);
+      info = await _nutritionRepo.getIngredientNutrition(ingredientId);
     } on Exception {
+      // A missing official nutrition table is represented as null by the
+      // repository; other request failures keep pending drafts unloaded.
       state = state.copyWith(loadingNutrition: false);
+      return;
     }
+
+    await _loadPendingProposals();
+    var merged = info?.mergedWithPending() ??
+        _pendingManualNutrition(entityType: 'nutrition');
+    try {
+      final usda = await _loadPendingUsdaNutrition();
+      if (usda != null &&
+          (merged?.pendingProposal?.id ?? 0) < usda.pendingProposal!.id) {
+        merged = usda;
+      }
+    } on Exception {
+      // Keep the official nutrition table if USDA draft enrichment fails.
+    }
+    state = state.copyWith(nutrition: merged, loadingNutrition: false);
+  }
+
+  Future<void> refreshNutrition() => _loadNutrition();
+
+  Future<NutritionInfo?> _loadPendingUsdaNutrition() async {
+    final proposal = state.pendingProposals
+        .where((item) =>
+            item.entityType == 'usda_ingredient_match' &&
+            item.entityId == ingredientId &&
+            item.status == 'pending')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    if (proposal.isEmpty) return null;
+    final fdcId = _toInt(proposal.last.payload['fdc_id']);
+    if (fdcId == null) return null;
+    final food = await _usdaRepo.getFood(fdcId);
+    return NutritionInfo(
+      entityId: ingredientId,
+      baseQuantity: 100,
+      baseUnit: 'g',
+      source: 'USDA（待审）',
+      nutrients: [
+        for (final nutrient in food.nutrients)
+          if (nutrient.amount > 0)
+            NutrientEntry(
+              key: nutrient.displayName,
+              label: nutrient.displayName,
+              value: nutrient.amount,
+              unit: nutrient.unit,
+            ),
+      ],
+      pendingProposal: EntityPendingProposal(
+        id: proposal.last.id,
+        action: 'update',
+        payload: proposal.last.payload,
+      ),
+    );
+  }
+
+  NutritionInfo? _pendingManualNutrition({
+    required String entityType,
+  }) {
+    final proposals = state.pendingProposals
+        .where((item) =>
+            item.entityType == entityType &&
+            item.entityId == ingredientId &&
+            item.status == 'pending' &&
+            item.action == 'update')
+        .toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+    if (proposals.isEmpty) return null;
+    final proposal = proposals.last;
+    return NutritionInfo.fromPendingProposal(
+      entityId: ingredientId,
+      proposal: EntityPendingProposal(
+        id: proposal.id,
+        action: proposal.action,
+        payload: proposal.payload,
+      ),
+    );
   }
 
   Future<Object?> saveNutrition(List<NutrientEntry> nutrients) async {
@@ -530,7 +813,7 @@ class IngredientDetailPageNotifier
     try {
       final result =
           await _nutritionRepo.saveIngredientNutrition(ingredientId, nutrients);
-      if (!result.pending) await _loadNutrition();
+      await _loadNutrition();
       return result;
     } finally {
       state = state.copyWith(savingNutrition: false);
@@ -574,7 +857,7 @@ class IngredientDetailPageNotifier
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -596,14 +879,14 @@ class IngredientDetailPageNotifier
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
   Future<Object?> deleteUnit(int unitId) async {
     final result =
         await _entityRepo.deleteUnit('ingredient', ingredientId, unitId);
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -619,7 +902,7 @@ class IngredientDetailPageNotifier
       weightPerUnit: 100,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -635,7 +918,7 @@ class IngredientDetailPageNotifier
       condition: condition,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -645,7 +928,7 @@ class IngredientDetailPageNotifier
       ingredientId,
       densityId,
     );
-    if (result.applied) await _loadUnits();
+    await _refreshUnitsAndPendingDrafts();
     return result;
   }
 
@@ -700,6 +983,143 @@ class IngredientDetailPageNotifier
     }
   }
 
+  Future<void> _refreshUnitsAndPendingDrafts() async {
+    await _loadUnits();
+    await _loadPendingProposals();
+    _applyPendingDrafts();
+  }
+
+  Future<void> _refreshHierarchyAndPendingDrafts() async {
+    await _loadHierarchy();
+    await _loadPendingProposals();
+    _applyPendingDrafts();
+  }
+
+  bool _targetsIngredient(Proposal proposal) =>
+      _payloadTargetsIngredient(proposal.payload) ||
+      _payloadTargetsIngredient(proposal.snapshot);
+
+  bool _payloadTargetsIngredient(Map<String, dynamic> data) =>
+      data['entity_type']?.toString() == 'ingredient' &&
+      _toInt(data['entity_id']) == ingredientId;
+
+  bool _targetsLoadedUnit(Proposal proposal, List<EntityUnit> units) =>
+      proposal.entityId != null &&
+      !proposal.payload.containsKey('entity_id') &&
+      units.any((unit) => unit.id == proposal.entityId);
+
+  bool _targetsLoadedDensity(
+    Proposal proposal,
+    List<EntityDensity> densities,
+  ) =>
+      proposal.entityId != null &&
+      !proposal.payload.containsKey('entity_id') &&
+      densities.any((density) => density.id == proposal.entityId);
+
+  bool _targetsLoadedHierarchy(
+    Proposal proposal,
+    IngredientHierarchyData? hierarchy,
+  ) {
+    final parentId = _toInt(
+      proposal.payload['parent_id'] ?? proposal.snapshot['parent_id'],
+    );
+    final childId = _toInt(
+      proposal.payload['child_id'] ?? proposal.snapshot['child_id'],
+    );
+    if (parentId == ingredientId || childId == ingredientId) return true;
+
+    final relationId = proposal.entityId;
+    if (relationId == null) return false;
+    final relations = [
+      ...?hierarchy?.parentRelations,
+      ...?hierarchy?.childRelations,
+    ];
+    return relations.any((relation) => relation.id == relationId);
+  }
+
+  HierarchyRelation _pendingHierarchyRelation(Proposal proposal) {
+    final payload = proposal.payload;
+    final snapshot = proposal.snapshot;
+    final parentId = _toInt(payload['parent_id'] ?? snapshot['parent_id']) ?? 0;
+    final childId = _toInt(payload['child_id'] ?? snapshot['child_id']) ?? 0;
+    return HierarchyRelation(
+      id: -proposal.id,
+      parentId: parentId,
+      parentName: snapshot['_parent_id_name']?.toString() ?? '原料 #$parentId',
+      childId: childId,
+      childName: snapshot['_child_id_name']?.toString() ?? '原料 #$childId',
+      relationType: payload['relation_type']?.toString() ?? 'substitutable',
+      strength: _toInt(payload['strength']) ?? 50,
+      isPending: true,
+    );
+  }
+
+  IngredientHierarchyData _addHierarchyRelation(
+    IngredientHierarchyData? data,
+    HierarchyRelation relation,
+  ) {
+    final parentRelations = [...?data?.parentRelations];
+    final childRelations = [...?data?.childRelations];
+    final exists = [...parentRelations, ...childRelations].any(
+      (item) =>
+          item.parentId == relation.parentId &&
+          item.childId == relation.childId &&
+          item.relationType == relation.relationType,
+    );
+    if (!exists) {
+      if (relation.parentId == ingredientId) {
+        parentRelations.add(relation);
+      } else if (relation.childId == ingredientId) {
+        childRelations.add(relation);
+      }
+    }
+    return IngredientHierarchyData(
+      parentRelations: parentRelations,
+      childRelations: childRelations,
+      expandedRelations: data?.expandedRelations ?? const [],
+    );
+  }
+
+  IngredientHierarchyData _removeHierarchyRelation(
+    IngredientHierarchyData? data,
+    int? relationId,
+  ) {
+    bool remove(HierarchyRelation relation) => relation.id != relationId;
+    return IngredientHierarchyData(
+      parentRelations: data?.parentRelations.where(remove).toList() ?? const [],
+      childRelations: data?.childRelations.where(remove).toList() ?? const [],
+      expandedRelations: data?.expandedRelations ?? const [],
+    );
+  }
+
+  IngredientHierarchyData _updateHierarchyRelation(
+    IngredientHierarchyData? data,
+    int? relationId,
+    int? strength,
+  ) {
+    if (relationId == null || strength == null) {
+      return data ?? const IngredientHierarchyData();
+    }
+    HierarchyRelation update(HierarchyRelation relation) =>
+        relation.id == relationId
+            ? HierarchyRelation(
+                id: relation.id,
+                parentId: relation.parentId,
+                parentName: relation.parentName,
+                childId: relation.childId,
+                childName: relation.childName,
+                relationType: relation.relationType,
+                strength: strength,
+                isPending: true,
+              )
+            : relation;
+    return IngredientHierarchyData(
+      parentRelations: data?.parentRelations.map(update).toList() ?? const [],
+      childRelations: data?.childRelations.map(update).toList() ?? const [],
+      expandedRelations: data?.expandedRelations ?? const [],
+    );
+  }
+
   Future<Object?> addHierarchyRelation({
     required int parentId,
     required int childId,
@@ -714,7 +1134,7 @@ class IngredientDetailPageNotifier
       strength: strength,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadHierarchy();
+    await _refreshHierarchyAndPendingDrafts();
     return result;
   }
 
@@ -728,13 +1148,13 @@ class IngredientDetailPageNotifier
       strength: strength,
       isAdmin: isAdmin,
     );
-    if (result.applied) await _loadHierarchy();
+    await _refreshHierarchyAndPendingDrafts();
     return result;
   }
 
   Future<Object?> deleteHierarchyRelation(int relationId) async {
     final result = await _ingRepo.deleteHierarchyRelation(relationId);
-    if (result.applied) await _loadHierarchy();
+    await _refreshHierarchyAndPendingDrafts();
     return result;
   }
 
@@ -814,3 +1234,14 @@ final ingredientDetailPageProvider = StateNotifierProvider.autoDispose
     .family<IngredientDetailPageNotifier, IngredientDetailPageState, int>(
   (ref, id) => IngredientDetailPageNotifier(id),
 );
+
+int? _toInt(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '');
+}
+
+double? _toDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
+}

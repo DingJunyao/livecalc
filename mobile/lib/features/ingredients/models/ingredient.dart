@@ -46,4 +46,43 @@ class Ingredient {
           : null,
     );
   }
+
+  Ingredient mergedWithPending() {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return this;
+    final data = proposal!.updateData;
+    return Ingredient(
+      id: id,
+      name: data['name']?.toString() ?? name,
+      categoryId: data.containsKey('category_id')
+          ? data['category_id'] as int?
+          : categoryId,
+      category: data.containsKey('category_id')
+          ? (data['category']?.toString() ?? '分类 #${data['category_id']}')
+          : category,
+      categoryPath: categoryPath,
+      latestPrice: latestPrice,
+      unit: unit,
+      aliases: data['aliases'] is List
+          ? (data['aliases'] as List).map((e) => e.toString()).toList()
+          : aliases,
+      createdAt: createdAt,
+      makingRecipeName: makingRecipeName,
+      pendingProposal: proposal,
+    );
+  }
+
+  List<String> get pendingModificationLabels {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return const [];
+    return [
+      for (final field in proposal!.updateData.keys)
+        switch (field) {
+          'name' => '名称',
+          'category_id' => '分类',
+          'aliases' => '别名',
+          _ => field,
+        },
+    ];
+  }
 }

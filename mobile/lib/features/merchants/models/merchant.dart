@@ -40,6 +40,45 @@ class Merchant {
           : null,
     );
   }
+
+  Merchant mergedWithPending() {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return this;
+    final data = proposal!.payload;
+    return Merchant(
+      id: id,
+      name: data['name']?.toString() ?? name,
+      address:
+          data.containsKey('address') ? data['address']?.toString() : address,
+      latitude: data.containsKey('latitude')
+          ? (data['latitude'] as num?)?.toDouble()
+          : latitude,
+      longitude: data.containsKey('longitude')
+          ? (data['longitude'] as num?)?.toDouble()
+          : longitude,
+      phone: phone,
+      productCount: productCount,
+      isOpen:
+          data.containsKey('is_open') ? _parseBool(data['is_open']) : isOpen,
+      createdAt: createdAt,
+      pendingProposal: proposal,
+    );
+  }
+
+  List<String> get pendingModificationLabels {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return const [];
+    return [
+      for (final field in proposal!.payload.keys)
+        switch (field) {
+          'name' => '名称',
+          'address' => '地址',
+          'latitude' || 'longitude' => '位置',
+          'is_open' => '营业状态',
+          _ => field,
+        },
+    ];
+  }
 }
 
 class MerchantPendingProposal {

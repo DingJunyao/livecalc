@@ -9,6 +9,7 @@ class NutritionCard extends StatelessWidget {
   final bool loading;
   final bool saving;
   final bool allowClear;
+  final Future<void> Function()? onRefresh;
   final String entityType;
   final int entityId;
   final String? entityName;
@@ -21,6 +22,7 @@ class NutritionCard extends StatelessWidget {
     required this.loading,
     required this.saving,
     this.allowClear = false,
+    this.onRefresh,
     required this.entityType,
     required this.entityId,
     this.entityName,
@@ -108,6 +110,7 @@ class NutritionCard extends StatelessWidget {
         entityName: entityName,
         nutrition: nutrition,
         allowClear: allowClear,
+        onRefresh: onRefresh,
         onSave: onSave,
         onClear: onClear,
       ),

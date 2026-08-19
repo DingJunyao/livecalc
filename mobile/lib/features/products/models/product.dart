@@ -53,4 +53,53 @@ class Product {
           : null,
     );
   }
+
+  Product mergedWithPending() {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return this;
+    final data = proposal!.updateData;
+    return Product(
+      id: id,
+      name: data['name']?.toString() ?? name,
+      ingredientId: data.containsKey('ingredient_id')
+          ? data['ingredient_id'] as int?
+          : ingredientId,
+      ingredientName: data.containsKey('ingredient_id')
+          ? (data['ingredient_name']?.toString() ??
+              ingredientName ??
+              '原料 #${data['ingredient_id']}')
+          : ingredientName,
+      latestPrice: latestPrice,
+      unit: unit,
+      barcode:
+          data.containsKey('barcode') ? data['barcode']?.toString() : barcode,
+      brand: data.containsKey('brand') ? data['brand']?.toString() : brand,
+      aliases: data['aliases'] is List
+          ? (data['aliases'] as List).map((e) => e.toString()).toList()
+          : aliases,
+      tags: data['tags'] is List
+          ? (data['tags'] as List).map((e) => e.toString()).toList()
+          : tags,
+      createdAt: createdAt,
+      latestPriceDate: latestPriceDate,
+      pendingProposal: proposal,
+    );
+  }
+
+  List<String> get pendingModificationLabels {
+    final proposal = pendingProposal;
+    if (proposal?.action != 'update') return const [];
+    return [
+      for (final field in proposal!.updateData.keys)
+        switch (field) {
+          'name' => '名称',
+          'brand' => '品牌',
+          'barcode' => '条码',
+          'ingredient_id' => '关联原料',
+          'aliases' => '别名',
+          'tags' => '标签',
+          _ => field,
+        },
+    ];
+  }
 }

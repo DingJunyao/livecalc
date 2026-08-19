@@ -10,6 +10,7 @@ import '../widgets/cost_trend_chart.dart';
 import 'recipe_form_screen.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/pending_change_banner.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final int id;
@@ -152,17 +153,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (detail.pendingProposals.isNotEmpty) ...[
+                    PendingChangeBanner(
+                      modifications: detail.pendingModificationLabels,
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   if (imageUrls.length > 1) ...[
                     _buildImageGallery(theme, imageUrls, _selectedImageIndex),
                     const SizedBox(height: 16),
                   ],
                   _buildHeader(theme, detail),
-                  if (detail.pendingProposals.isNotEmpty) ...[
-                    _PendingProposalBanner(
-                      changeSummary: detail.pendingChangeSummary,
-                    ),
-                    const SizedBox(height: 16),
-                  ],
                   const SizedBox(height: 16),
                   _buildCostCard(theme, state, ratio),
                   const SizedBox(height: 16),
@@ -521,7 +522,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               Table(
                 columnWidths: const {
                   0: FlexColumnWidth(),
-                  1: FixedColumnWidth(88),
+                  1: FixedColumnWidth(104),
                   2: FixedColumnWidth(92),
                 },
                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
@@ -539,6 +540,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   TableRow _buildIngredientRow(ThemeData theme, RecipeIngredient ing,
       CostBreakdownItem? cb, double ratio) {
     final qtyText = _scaledQuantity(ing, ratio);
+    final recommendedText = _scaledRecommendedQuantity(ing, ratio);
     final hasFallback =
         cb != null && cb.fallbackChain != null && cb.fallbackChain!.isNotEmpty;
     final canNavigate = ing.ingredientId != null;
@@ -600,10 +602,28 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         // 用量
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 7),
-          child: Text(qtyText,
-              textAlign: TextAlign.right,
-              style: theme.textTheme.bodySmall
-                  ?.copyWith(color: theme.colorScheme.outline)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(qtyText,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline)),
+              if (recommendedText != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(recommendedText,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.right,
+                      style: theme.textTheme.labelSmall
+                          ?.copyWith(color: theme.colorScheme.outline)),
+                ),
+            ],
+          ),
         ),
         // 价格（桌面悬停查看，移动端点击查看）
         Padding(
@@ -708,6 +728,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       return ing.originalQuantity!;
     }
     return '适量';
+  }
+
+  String? _scaledRecommendedQuantity(RecipeIngredient ing, double ratio) {
+    final range = ing.quantityRange;
+    if (range == null || range.min <= 0) return null;
+
+    final quantity = double.tryParse(ing.quantity ?? '');
+    if (quantity == null || quantity <= 0) return null;
+
+    return '推荐 ${_fmt(quantity * ratio)}'
+        '${ing.unit != null ? ' ${ing.unit}' : ''}';
   }
 
   String _fmt(double n) {
@@ -1027,39 +1058,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   )),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _PendingProposalBanner extends StatelessWidget {
-  final String changeSummary;
-
-  const _PendingProposalBanner({required this.changeSummary});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.secondaryContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.hourglass_top_outlined,
-              color: theme.colorScheme.onSecondaryContainer),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              changeSummary.isEmpty ? '当前有修改待管理员审核' : '修改待管理员审核：$changeSummary',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSecondaryContainer,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -11,6 +11,7 @@ class EntityUnit {
   final double? weightPerUnit;
   final bool isDefault;
   final String? source;
+  final bool isPending;
 
   const EntityUnit({
     required this.id,
@@ -19,6 +20,7 @@ class EntityUnit {
     this.weightPerUnit,
     this.isDefault = false,
     this.source,
+    this.isPending = false,
   });
 
   factory EntityUnit.fromJson(Map<String, dynamic> json) {
@@ -29,6 +31,7 @@ class EntityUnit {
       weightPerUnit: _toDouble(json['weight_per_unit']),
       isDefault: json['is_default'] as bool? ?? false,
       source: json['source'] as String?,
+      isPending: false,
     );
   }
 }
@@ -59,6 +62,7 @@ class EntityDensity {
   final double? temperature;
   final String? condition;
   final String? source;
+  final bool isPending;
 
   const EntityDensity({
     required this.id,
@@ -66,6 +70,7 @@ class EntityDensity {
     this.temperature,
     this.condition,
     this.source,
+    this.isPending = false,
   });
 
   factory EntityDensity.fromJson(Map<String, dynamic> json) {
@@ -75,6 +80,7 @@ class EntityDensity {
       temperature: _toDouble(json['temperature']),
       condition: json['condition'] as String?,
       source: json['source'] as String?,
+      isPending: false,
     );
   }
 }
