@@ -933,7 +933,9 @@ async def calculate_recipe_cost(
     user_id: int,
     db: Session = None,
     visited: Optional[set] = None,
-    tz: str = "UTC"
+    tz: str = "UTC",
+    recipe_ingredients_override=None,
+    servings_override=None,
 ) -> Dict:
     """计算菜谱成本，使用当天价格区间的平均值"""
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -949,7 +951,12 @@ async def calculate_recipe_cost(
     # 获取当前日期（UTC naive，与 recorded_at 口径一致）
     now = datetime.now(timezone.utc)
 
-    for recipe_ingredient in recipe.ingredients:
+    recipe_ingredients = (
+        recipe.ingredients
+        if recipe_ingredients_override is None
+        else recipe_ingredients_override
+    )
+    for recipe_ingredient in recipe_ingredients:
         ingredient = recipe_ingredient.ingredient
 
         # 检查食材是否已被合并，如果是，使用合并后的目标食材
@@ -1115,7 +1122,7 @@ async def calculate_recipe_cost(
     return {
         "total_cost": total_cost,
         "currency": "CNY",
-        "cost_per_serving": total_cost / (recipe.servings or 1),
+        "cost_per_serving": total_cost / (servings_override or recipe.servings or 1),
         "cost_breakdown": cost_breakdown
     }
 

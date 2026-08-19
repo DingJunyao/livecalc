@@ -11,10 +11,10 @@ from fastapi import HTTPException
 from app.models.recipe import Recipe, RecipeIngredient
 from app.models.nutrition import Ingredient
 from app.models.unit import Unit
+from app.models.change_proposal import ChangeProposal
 from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.services.proposals.executors._crud_base import _json_safe
 from sqlalchemy import Date, DateTime
-from sqlalchemy.orm import load_only
 
 
 class RecipeEditExecutor(ProposalExecutor):
@@ -72,6 +72,40 @@ class RecipeEditExecutor(ProposalExecutor):
         return {c.name: _json_safe(getattr(recipe, c.name))
                 for c in recipe.__table__.columns}
 
+    def _resolve_ingredient(self, db, proposal, ing_data) -> Optional[Ingredient]:
+        ingredient_id = ing_data.get("ingredient_id")
+        if ingredient_id is not None:
+            ingredient = db.query(Ingredient).get(ingredient_id)
+            if ingredient is not None:
+                return ingredient
+
+        name = ing_data.get("ingredient_name")
+        ingredient = (
+            db.query(Ingredient).filter(Ingredient.name == name).first()
+            if name
+            else None
+        )
+        if ingredient is not None:
+            return ingredient
+
+        pending_ingredients = (
+            db.query(ChangeProposal)
+            .filter(
+                ChangeProposal.entity_type == "ingredient",
+                ChangeProposal.action == "update",
+                ChangeProposal.proposer_id == proposal.proposer_id,
+                ChangeProposal.status == "pending",
+                ChangeProposal.is_active.is_(True),
+                ChangeProposal.entity_id.isnot(None),
+            )
+            .order_by(ChangeProposal.id.desc())
+            .all()
+        )
+        for pending in pending_ingredients:
+            if (pending.payload or {}).get("name") == name:
+                return db.query(Ingredient).get(pending.entity_id)
+        return None
+
     def build_snapshot(self, db, proposal) -> dict:
         """submit 时预填 before（供 pending 审核看旧食材；apply 时被覆盖）。"""
         recipe_id = proposal.entity_id
@@ -107,9 +141,7 @@ class RecipeEditExecutor(ProposalExecutor):
                 RecipeIngredient.recipe_id == recipe_id
             ).delete(synchronize_session=False)
             for ing_data in update_data["ingredients"]:
-                ing = db.query(Ingredient).options(
-                    load_only(Ingredient.id, Ingredient.name, Ingredient.is_active)
-                ).filter(Ingredient.name == ing_data.get("ingredient_name")).first()
+                ing = self._resolve_ingredient(db, proposal, ing_data)
                 if ing:
                     db.add(RecipeIngredient(
                         recipe_id=recipe_id,

@@ -12,6 +12,7 @@ from app.models.recipe import Recipe, RecipeIngredient, RecipeCostHistory
 from app.models.nutrition import Ingredient
 from app.models.unit import Unit
 from app.models.user import User
+from app.models.change_proposal import ChangeProposal
 from app.schemas.recipe import (
     RecipeCreate,
     RecipeUpdate,
@@ -74,15 +75,20 @@ def _pending_payload_for_client(
     } if names else {}
 
     if not getattr(current_user, "is_admin", False):
-        from app.services.proposals.pending import get_latest_pending_proposals
-
-        ingredient_proposals = get_latest_pending_proposals(
-            db,
-            "ingredient",
-            [row.ingredient_id for row in recipe_ingredients if row.ingredient_id],
-            current_user.id,
+        ingredient_proposals = (
+            db.query(ChangeProposal)
+            .filter(
+                ChangeProposal.entity_type == "ingredient",
+                ChangeProposal.action == "update",
+                ChangeProposal.proposer_id == current_user.id,
+                ChangeProposal.status == "pending",
+                ChangeProposal.is_active.is_(True),
+                ChangeProposal.entity_id.isnot(None),
+            )
+            .order_by(ChangeProposal.id.asc())
+            .all()
         )
-        for ingredient_proposal in ingredient_proposals.values():
+        for ingredient_proposal in ingredient_proposals:
             name = (ingredient_proposal.payload or {}).get("name")
             if isinstance(name, str) and name:
                 ingredient_ids_by_name[name] = ingredient_proposal.entity_id
@@ -101,6 +107,7 @@ def _pending_payload_for_client(
     } if unit_ids else {}
 
     unused_rows = list(recipe_ingredients)
+    next_display_id = -1
     for item in pending_ingredients:
         if not isinstance(item, dict):
             continue
@@ -120,6 +127,9 @@ def _pending_payload_for_client(
         if matched_row is not None:
             unused_rows.remove(matched_row)
             item.setdefault("id", matched_row.id)
+        elif "id" not in item:
+            item["id"] = next_display_id
+            next_display_id -= 1
 
         item["ingredient_id"] = ingredient_id
         item["name"] = item.get("name") or name
@@ -128,6 +138,69 @@ def _pending_payload_for_client(
         unit_id = item.get("unit_id")
         item["unit"] = unit_labels.get(unit_id)
     return payload
+
+
+def _pending_recipe_cost_rows(db: Session, recipe, recipe_ingredients, current_user):
+    """Build transient cost rows from this user's pending recipe edits."""
+    if getattr(current_user, "is_admin", False):
+        return None
+
+    from app.services.proposals.pending import get_pending_proposals
+
+    proposals = get_pending_proposals(
+        db, ("recipe", "recipe_edit"), recipe.id, current_user.id
+    )
+    if not proposals:
+        return None
+
+    ingredients_by_id = {}
+    pending_rows = []
+    servings = recipe.servings
+    has_ingredient_update = False
+    for proposal in proposals:
+        payload = _pending_payload_for_client(
+            db, proposal, recipe_ingredients, current_user
+        )
+        update_data = payload.get("update_data")
+        if not isinstance(update_data, dict):
+            continue
+        if isinstance(update_data.get("servings"), int):
+            servings = max(1, update_data["servings"])
+        if not isinstance(update_data.get("ingredients"), list):
+            continue
+        has_ingredient_update = True
+
+        pending_rows = []
+        for item in update_data["ingredients"]:
+            if not isinstance(item, dict):
+                continue
+            ingredient_id = item.get("ingredient_id")
+            if ingredient_id is None:
+                continue
+            ingredient = ingredients_by_id.get(ingredient_id)
+            if ingredient is None:
+                ingredient = db.query(Ingredient).get(ingredient_id)
+                if ingredient is None:
+                    continue
+                ingredients_by_id[ingredient_id] = ingredient
+
+            transient_row = RecipeIngredient(
+                recipe_id=recipe.id,
+                ingredient_id=ingredient.id,
+                quantity=item.get("quantity"),
+                quantity_range=item.get("quantity_range"),
+                unit_id=item.get("unit_id"),
+                is_optional=item.get("is_optional", False),
+                note=item.get("note"),
+                original_quantity=item.get("original_quantity"),
+            )
+            transient_row.id = item.get("id")
+            transient_row.ingredient = ingredient
+            pending_rows.append(transient_row)
+
+    if not has_ingredient_update:
+        return None
+    return pending_rows, servings
 
 
 def _apply_recipe_special_conditions(query, has_unpriced_ingredient, has_unnourished_ingredient):
@@ -635,7 +708,12 @@ async def update_recipe(
             for ing_data in update_data.ingredients:
                 ingredient = db.query(Ingredient).options(
                     load_only(Ingredient.id, Ingredient.name, Ingredient.is_active)
-                ).filter(Ingredient.name == ing_data.ingredient_name).first()
+                ).filter(
+                    or_(
+                        Ingredient.id == ing_data.ingredient_id,
+                        Ingredient.name == ing_data.ingredient_name,
+                    )
+                ).first()
                 if not ingredient:
                     continue
 
@@ -936,7 +1014,21 @@ async def get_recipe_cost(
         ).first()
         if not recipe:
             raise HTTPException(status_code=404, detail="recipe not found")
-        result = await calculate_recipe_cost(recipe_id, current_user.id, db=db)
+        recipe_ingredients = db.query(RecipeIngredient).filter(
+            RecipeIngredient.recipe_id == recipe_id
+        ).all()
+        pending_cost = _pending_recipe_cost_rows(
+            db, recipe, recipe_ingredients, current_user
+        )
+        result = await calculate_recipe_cost(
+            recipe_id,
+            current_user.id,
+            db=db,
+            recipe_ingredients_override=(
+                pending_cost[0] if pending_cost else None
+            ),
+            servings_override=pending_cost[1] if pending_cost else None,
+        )
         if not result:
             raise HTTPException(status_code=404, detail="菜谱不存在")
         return RecipeCostResponse(**result)
