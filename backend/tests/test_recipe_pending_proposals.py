@@ -2,6 +2,7 @@ from datetime import datetime
 
 from fastapi.testclient import TestClient
 
+from app.core.security import get_current_user
 from app.main import app
 from app.models.change_proposal import ChangeProposal
 from app.models.nutrition import Ingredient
@@ -300,4 +301,99 @@ def test_recipe_detail_resolves_pending_ingredient_names(
         db_session.query(Recipe).filter(Recipe.id == recipe.id).delete()
         db_session.query(Ingredient).filter(Ingredient.id == ingredient.id).delete()
         db_session.query(Unit).filter(Unit.id == unit.id).delete()
+        db_session.commit()
+
+
+def test_recipe_display_fields_show_pending_values_to_proposer(
+    db_session,
+    as_non_admin,
+    monkeypatch,
+):
+    class FakeStorage:
+        def url_for(self, key: str) -> str:
+            return f"https://cdn.test/{key}"
+
+    class OtherUser:
+        id = 77
+        is_admin = False
+
+    monkeypatch.setattr(
+        "app.services.storage.get_storage",
+        lambda: FakeStorage(),
+    )
+
+    recipe = Recipe(
+        name="proposer display base recipe",
+        source="custom",
+        servings=1,
+        user_id=2,
+        is_public=True,
+        images=["recipes/old.webp"],
+    )
+    db_session.add(recipe)
+    db_session.flush()
+    proposal = ChangeProposal(
+        entity_type="recipe_edit",
+        entity_id=recipe.id,
+        action="update",
+        payload={
+            "update_data": {
+                "name": "proposer display pending recipe",
+                "images": ["recipes/new.webp", "recipes/old.webp"],
+            }
+        },
+        proposer_id=2,
+    )
+    db_session.add(proposal)
+    db_session.commit()
+
+    original_user = app.dependency_overrides[get_current_user]
+    try:
+        detail = client.get(f"/api/v1/recipes/{recipe.id}")
+        assert detail.status_code == 200
+        assert detail.json()["name"] == "proposer display pending recipe"
+        assert detail.json()["images"] == ["recipes/new.webp", "recipes/old.webp"]
+        assert detail.json()["image_urls"] == [
+            "https://cdn.test/recipes/new.webp",
+            "https://cdn.test/recipes/old.webp",
+        ]
+
+        listing = client.get(
+            "/api/v1/recipes/",
+            params={"search": "proposer display base recipe"},
+        )
+        assert listing.status_code == 200
+        items = listing.json()["items"]
+        assert [item["id"] for item in items] == [recipe.id]
+        assert items[0]["name"] == "proposer display pending recipe"
+        assert items[0]["images"] == ["recipes/new.webp", "recipes/old.webp"]
+        assert items[0]["image_urls"] == [
+            "https://cdn.test/recipes/new.webp",
+            "https://cdn.test/recipes/old.webp",
+        ]
+
+        app.dependency_overrides[get_current_user] = lambda: OtherUser()
+        other_detail = client.get(f"/api/v1/recipes/{recipe.id}")
+        assert other_detail.status_code == 200
+        assert other_detail.json()["name"] == "proposer display base recipe"
+        assert other_detail.json()["images"] == ["recipes/old.webp"]
+        assert other_detail.json()["image_urls"] == [
+            "https://cdn.test/recipes/old.webp",
+        ]
+
+        other_listing = client.get(
+            "/api/v1/recipes/",
+            params={"search": "proposer display base recipe"},
+        )
+        assert other_listing.status_code == 200
+        other_items = other_listing.json()["items"]
+        assert [item["id"] for item in other_items] == [recipe.id]
+        assert other_items[0]["name"] == "proposer display base recipe"
+        assert other_items[0]["images"] == ["recipes/old.webp"]
+    finally:
+        app.dependency_overrides[get_current_user] = original_user
+        db_session.query(ChangeProposal).filter(
+            ChangeProposal.id == proposal.id
+        ).delete()
+        db_session.query(Recipe).filter(Recipe.id == recipe.id).delete()
         db_session.commit()

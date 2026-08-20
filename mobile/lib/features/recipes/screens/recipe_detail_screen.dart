@@ -153,14 +153,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (imageUrls.length > 1) ...[
+                    _buildImageGallery(theme, imageUrls, _selectedImageIndex),
+                    const SizedBox(height: 16),
+                  ],
                   if (detail.pendingProposals.isNotEmpty) ...[
                     PendingChangeBanner(
                       modifications: detail.pendingModificationLabels,
                     ),
-                    const SizedBox(height: 16),
-                  ],
-                  if (imageUrls.length > 1) ...[
-                    _buildImageGallery(theme, imageUrls, _selectedImageIndex),
                     const SizedBox(height: 16),
                   ],
                   _buildHeader(theme, detail),
@@ -274,6 +274,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   Widget _buildImageGallery(
       ThemeData theme, List<String> urls, int selectedIndex) {
     return Column(
+      key: const ValueKey('recipe-detail-image-gallery'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SingleChildScrollView(

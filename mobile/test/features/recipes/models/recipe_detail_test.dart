@@ -165,6 +165,64 @@ void main() {
     expect(ingredient.ingredientId, 8);
   });
 
+  test('pending image changes preserve known URLs and resolve new keys', () {
+    final detail = RecipeDetail.fromJson(const {
+      'id': 3,
+      'name': 'base recipe',
+      'images': ['recipes/old.webp'],
+      'image_urls': ['https://cdn.example.test/recipes/old.webp'],
+      'pending_proposals': [
+        {
+          'id': 15,
+          'action': 'update',
+          'payload': {
+            'update_data': {
+              'images': [
+                'recipes/new.webp',
+                'recipes/old.webp',
+              ],
+            },
+          },
+        },
+      ],
+    });
+
+    final merged = detail.mergedWithPending();
+    expect(merged.images, ['recipes/new.webp', 'recipes/old.webp']);
+    expect(merged.imageUrls, [
+      '/api/v1/images/recipes/new.webp',
+      'https://cdn.example.test/recipes/old.webp',
+    ]);
+    expect(merged.imageUrl, merged.imageUrls.first);
+  });
+
+  test('pending changes without image edits preserve image URLs', () {
+    final detail = RecipeDetail.fromJson(const {
+      'id': 3,
+      'name': 'base recipe',
+      'image_urls': [
+        'https://cdn.example.test/recipes/first.webp',
+        'https://cdn.example.test/recipes/second.webp',
+      ],
+      'pending_proposals': [
+        {
+          'id': 16,
+          'action': 'update',
+          'payload': {
+            'update_data': {
+              'tips': ['new tip']
+            },
+          },
+        },
+      ],
+    });
+
+    final merged = detail.mergedWithPending();
+    expect(merged.imageUrls, detail.imageUrls);
+    expect(merged.imageUrl, detail.imageUrls.first);
+    expect(merged.tips, ['new tip']);
+  });
+
   test('pending recipe changes use Chinese field labels', () {
     final proposal = RecipePendingProposal.fromJson(const {
       'id': 12,

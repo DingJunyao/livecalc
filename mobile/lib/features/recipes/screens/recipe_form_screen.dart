@@ -3,7 +3,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/api/api_client.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
 
@@ -94,6 +96,8 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   Timer? _ingredientDebounce;
   List<IngredientOption> _ingredientOptions = const [];
   List<RecipeUnitOption> _unitOptions = const [];
+  List<String> _images = const [];
+  List<String> _imageUrls = const [];
   _IngredientRow? _activeIngredientRow;
   bool _resultSearchActive = false;
   IngredientOption? _resultIngredientOption;
@@ -103,6 +107,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   bool _saving = false;
   String? _savingSection;
   String? _error;
+  bool _uploadingImage = false;
   bool _hasSectionSave = false;
   bool _hasPendingSection = false;
   Map<String, dynamic> _basicBaseline = {};
@@ -138,6 +143,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   void initState() {
     super.initState();
     _repository = widget.repository ?? RecipeRepository();
+    final baseDetail = widget.recipe ?? const RecipeDetail(id: 0, name: '');
     final initialDetail = widget.recipe?.mergedWithPending();
     _name = TextEditingController(text: initialDetail?.name);
     _description =
@@ -149,6 +155,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     _resultIngredient = TextEditingController();
     _category = initialDetail?.category ?? _categories.first;
     _difficulty = initialDetail?.difficulty ?? 'easy';
+    _syncImages(baseDetail, initialDetail ?? baseDetail);
     _fillRows(initialDetail ?? const RecipeDetail(id: 0, name: ''));
     _resetBaselines();
     _ingredientSearch.addListener(_onIngredientSearch);
@@ -206,6 +213,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _totalTime.text = detail.totalTimeMinutes?.toString() ?? '';
         _category = detail.category ?? _categories.first;
         _difficulty = detail.difficulty ?? 'easy';
+        _syncImages(loaded, detail);
         _fillRows(detail);
         _resetBaselines();
         _loading = false;
@@ -220,6 +228,35 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _loading = false;
       });
     }
+  }
+
+  void _syncImages(RecipeDetail base, RecipeDetail detail) {
+    final urlsByKey = <String, String>{};
+    for (var i = 0; i < base.images.length; i++) {
+      if (i >= base.imageUrls.length) break;
+      urlsByKey[base.images[i]] = base.imageUrls[i];
+    }
+    _images = List<String>.from(detail.images);
+    _imageUrls = [
+      for (final key in _images) urlsByKey[key] ?? _fallbackImageUrl(key),
+    ];
+  }
+
+  String _fallbackImageUrl(String key) {
+    if (key.startsWith('http://') || key.startsWith('https://')) return key;
+    final base = ApiClient.instance.baseUrl;
+    final path = key.startsWith('/api/v1/static/images/') ||
+            key.startsWith('/api/v1/images/')
+        ? key
+        : '/api/v1/images/${_encodeImageKey(key)}';
+    return base.isEmpty ? path : '$base$path';
+  }
+
+  String _encodeImageKey(String key) {
+    final imageKey = key.startsWith('/static/images/')
+        ? key.substring('/static/images/'.length)
+        : (key.startsWith('/') ? key.substring(1) : key);
+    return imageKey.split('/').map(Uri.encodeComponent).join('/');
   }
 
   Future<void> _loadResultName(int id) async {
@@ -340,6 +377,68 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     return null;
   }
 
+  Future<void> _uploadImage() async {
+    if (!_isEdit || _uploadingImage || _savingSection != null) return;
+    XFile? picked;
+    try {
+      picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+      );
+    } on Exception {
+      if (mounted) setState(() => _error = '选择图片失败，请重试');
+      return;
+    }
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _uploadingImage = true;
+      _error = null;
+    });
+    try {
+      final uploaded = await _repository.uploadRecipeImage(_editId!, picked);
+      if (!mounted) return;
+      setState(() {
+        _images = [..._images, uploaded.imagePath];
+        _imageUrls = [
+          ..._imageUrls,
+          uploaded.imageUrl ?? _fallbackImageUrl(uploaded.imagePath),
+        ];
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('图片已上传，保存后生效')),
+        );
+      }
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _error = '图片上传失败，请重试');
+    } finally {
+      if (mounted) setState(() => _uploadingImage = false);
+    }
+  }
+
+  void _reorderImages(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _images.length) return;
+    newIndex = newIndex.clamp(0, _images.length);
+    if (newIndex == oldIndex) return;
+
+    setState(() {
+      final key = _images.removeAt(oldIndex);
+      final url = oldIndex < _imageUrls.length
+          ? _imageUrls.removeAt(oldIndex)
+          : _fallbackImageUrl(key);
+      _images.insert(newIndex, key);
+      _imageUrls.insert(newIndex, url);
+    });
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _images.removeAt(index);
+      if (index < _imageUrls.length) _imageUrls.removeAt(index);
+    });
+  }
+
   Map<String, dynamic> _basicPayload() {
     final servings = int.tryParse(_servings.text.trim()) ?? 1;
     final totalTime = int.tryParse(_totalTime.text.trim());
@@ -351,6 +450,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       'servings': servings < 1 ? 1 : servings,
       if (totalTime != null) 'total_time_minutes': totalTime,
       'result_ingredient_id': _resultIngredientOption?.id,
+      if (_isEdit) 'images': List<String>.from(_images),
     };
   }
 
@@ -438,6 +538,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _saveBasicSection() async {
+    if (_uploadingImage) return;
     await _saveEditSection(
       sectionKey: _basicSectionKey,
       validate: () {
@@ -484,6 +585,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _saveActiveSection() async {
+    if (_uploadingImage) return;
     switch (widget.section) {
       case RecipeFormSection.basic:
         await _saveBasicSection();
@@ -567,7 +669,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   }
 
   Future<void> _save() async {
-    if (_saving) return;
+    if (_saving || _uploadingImage) return;
     if (_name.text.trim().isEmpty) {
       setState(() => _error = '请输入菜谱名称');
       return;
@@ -766,12 +868,15 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                             _syncIngredientSearch(value, row: null),
                         showOptions: _resultSearchActive,
                       ),
+                      const SizedBox(height: 16),
+                      _imageManager(theme),
                     ],
                     saveKey: _basicSectionKey,
                     onSave: _isEdit && widget.section == null
                         ? _saveBasicSection
                         : null,
-                    saving: _savingSection == _basicSectionKey,
+                    saving:
+                        _savingSection == _basicSectionKey || _uploadingImage,
                     section: RecipeFormSection.basic,
                   ),
                   if (widget.section == null) const SizedBox(height: 16),
@@ -867,11 +972,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                   child: FilledButton(
-                    onPressed:
-                        _activeSectionSaveKey == null || _savingSection != null
-                            ? null
-                            : () => _saveActiveSection(),
-                    child: _savingSection != null
+                    onPressed: _activeSectionSaveKey == null ||
+                            _savingSection != null ||
+                            _uploadingImage
+                        ? null
+                        : () => _saveActiveSection(),
+                    child: _savingSection != null || _uploadingImage
                         ? const SizedBox(
                             width: 18,
                             height: 18,
@@ -948,6 +1054,185 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             ...children,
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _imageManager(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('配图管理', style: theme.textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            if (_images.isNotEmpty)
+              Expanded(
+                child: SizedBox(
+                  height: 88,
+                  child: ReorderableListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    buildDefaultDragHandles: false,
+                    itemCount: _images.length,
+                    onReorderItem: _reorderImages,
+                    itemBuilder: (context, index) => Padding(
+                      key: ValueKey('recipe-image-item-${_images[index]}'),
+                      padding: const EdgeInsets.only(right: 10),
+                      child: _imageTile(theme, index),
+                    ),
+                  ),
+                ),
+              ),
+            if (_isEdit) ...[
+              const SizedBox(width: 10),
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: OutlinedButton(
+                  key: const ValueKey('recipe-image-add'),
+                  onPressed: _uploadingImage ? null : _uploadImage,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.all(8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: _uploadingImage
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 20,
+                              color: theme.colorScheme.primary,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '上传',
+                              style: theme.textTheme.labelSmall,
+                            ),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        if (_isEdit) ...[
+          const SizedBox(height: 6),
+          Text(
+            '第一张图片为封面。',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.outline,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _imageTile(ThemeData theme, int index) {
+    final url = index < _imageUrls.length ? _imageUrls[index] : '';
+    final imageKey = _images[index];
+    return SizedBox(
+      width: 80,
+      height: 80,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            key: ValueKey('recipe-image-thumb-$imageKey'),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: url.isEmpty
+                  ? Icon(
+                      Icons.image_outlined,
+                      color: theme.colorScheme.outline,
+                    )
+                  : Image.network(
+                      url,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.broken_image_outlined,
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+            ),
+          ),
+          if (index == 0)
+            Positioned(
+              top: 4,
+              left: 4,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  '封面',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onPrimary,
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            top: 2,
+            right: 2,
+            child: IconButton(
+              key: ValueKey('recipe-image-delete-$imageKey'),
+              tooltip: '删除图片',
+              onPressed: () => _removeImage(index),
+              style: IconButton.styleFrom(
+                minimumSize: const Size(24, 24),
+                maximumSize: const Size(24, 24),
+                padding: EdgeInsets.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                backgroundColor: Colors.black54,
+              ),
+              color: Colors.white,
+              iconSize: 14,
+              icon: const Icon(Icons.close),
+            ),
+          ),
+          Positioned(
+            bottom: 2,
+            right: 2,
+            child: Tooltip(
+              message: '拖动排序',
+              child: ReorderableDragStartListener(
+                key: ValueKey('recipe-image-handle-$imageKey'),
+                index: index,
+                child: Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(
+                    Icons.drag_indicator,
+                    size: 16,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

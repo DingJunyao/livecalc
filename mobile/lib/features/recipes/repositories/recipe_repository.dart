@@ -3,6 +3,7 @@ import '../../nutrition/models/usda_models.dart';
 import '../models/recipe_summary.dart';
 import '../models/recipe_detail.dart';
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// 防御性数值转换：后端 Decimal 字段会序列化为字符串（如 "12.50"）
 double _toDouble(dynamic v, [double fallback = 0]) {
@@ -138,6 +139,62 @@ class RecipeRepository {
     final response =
         await _client.dio.put('/recipes/$id', data: _encodePayload(data));
     return _mutationResult(response.data);
+  }
+
+  Future<RecipeImageUpload> uploadRecipeImage(int id, XFile file) async {
+    final bytes = await file.readAsBytes();
+    final response = await _client.dio.post(
+      '/recipes/$id/images',
+      data: FormData.fromMap({
+        'file': MultipartFile.fromBytes(
+          bytes,
+          filename: file.name,
+          contentType: _imageMediaType(file),
+        ),
+      }),
+      options: Options(headers: {'Content-Type': 'multipart/form-data'}),
+    );
+    final data = response.data;
+    if (data is! Map) {
+      throw FormatException('Invalid recipe image response', data);
+    }
+    final path = data['image_path']?.toString();
+    if (path == null || path.isEmpty) {
+      throw FormatException('Missing image_path', data);
+    }
+    return RecipeImageUpload(
+      imagePath: path,
+      imageUrl: data['image_url']?.toString(),
+    );
+  }
+
+  DioMediaType? _imageMediaType(XFile file) {
+    final mimeType = file.mimeType?.toLowerCase();
+    switch (mimeType) {
+      case 'image/jpeg':
+      case 'image/jpg':
+        return DioMediaType('image', 'jpeg');
+      case 'image/png':
+        return DioMediaType('image', 'png');
+      case 'image/gif':
+        return DioMediaType('image', 'gif');
+      case 'image/webp':
+        return DioMediaType('image', 'webp');
+    }
+
+    final extension = file.path.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'jpg':
+      case 'jpeg':
+        return DioMediaType('image', 'jpeg');
+      case 'png':
+        return DioMediaType('image', 'png');
+      case 'gif':
+        return DioMediaType('image', 'gif');
+      case 'webp':
+        return DioMediaType('image', 'webp');
+    }
+    return null;
   }
 
   Future<MutationReviewResult> publishRecipe(int id) async {
@@ -327,6 +384,16 @@ class RecipeMutationResult {
   bool get pending => review.pending;
   bool get applied => !pending;
   String get message => review.message;
+}
+
+class RecipeImageUpload {
+  final String imagePath;
+  final String? imageUrl;
+
+  const RecipeImageUpload({
+    required this.imagePath,
+    this.imageUrl,
+  });
 }
 
 /// 菜谱原料编辑载荷。后端要求整行替换，未填字段不进 JSON。

@@ -239,9 +239,19 @@ void main() {
     await tester.pumpAndSettle();
 
     final banner = find.text('修改待管理员审核：总时间、做法步骤');
-    final images = find.byType(Image);
+    final gallery = find.byKey(const ValueKey('recipe-detail-image-gallery'));
+    await tester.dragUntilVisible(
+      gallery,
+      find.byType(CustomScrollView).first,
+      const Offset(0, -200),
+    );
+    await tester.dragUntilVisible(
+      banner,
+      find.byType(CustomScrollView).first,
+      const Offset(0, -200),
+    );
     expect(tester.getRect(banner).top,
-        greaterThan(tester.getRect(images.first).bottom));
+        greaterThan(tester.getRect(gallery).bottom));
     expect(tester.getRect(banner).bottom,
         lessThan(tester.getRect(find.text('基本信息')).top));
     expect(find.byIcon(Icons.hourglass_top_outlined), findsNWidgets(1));

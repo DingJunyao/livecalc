@@ -379,4 +379,144 @@ void main() {
     expect(result?.pending, isFalse);
     expect(payloads.single.keys, ['ingredients']);
   });
+
+  testWidgets('basic edit reorders and removes recipe images', (tester) async {
+    final payloads = <Map<String, dynamic>>[];
+    when(() => repository.updateRecipe(any(), any())).thenAnswer(
+      (invocation) async {
+        payloads.add(Map<String, dynamic>.from(
+          invocation.positionalArguments.last as Map<String, dynamic>,
+        ));
+        return RecipeMutationResult.applied(
+          const RecipeDetail(id: 3, name: 'recipe'),
+          '',
+        );
+      },
+    );
+
+    const recipe = RecipeDetail(
+      id: 3,
+      name: 'recipe',
+      images: ['recipes/first.jpg', 'recipes/second.jpg'],
+      imageUrls: ['', ''],
+      ingredients: [],
+      steps: [],
+    );
+    final resultFuture = await pumpForm(tester, recipe: recipe);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -250));
+    await tester.pump();
+    final gesture = await tester.startGesture(
+      tester.getCenter(
+        find.byKey(const ValueKey('recipe-image-handle-recipes/first.jpg')),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(16, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+    final deleteButton = tester.widget<IconButton>(
+      find.byKey(
+        const ValueKey('recipe-image-delete-recipes/first.jpg'),
+      ),
+    );
+    expect(deleteButton.onPressed, isNotNull);
+    deleteButton.onPressed!();
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('recipe-image-thumb-recipes/first.jpg')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const ValueKey('recipe-image-thumb-recipes/second.jpg')),
+      findsOneWidget,
+    );
+    await tester.drag(find.byType(ListView).first, const Offset(0, 250));
+    await tester.pump();
+    final saveButton = tester.widget<TextButton>(
+      find.byKey(const ValueKey('recipe-save-basic')),
+    );
+    expect(saveButton.onPressed, isNotNull);
+    saveButton.onPressed!();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pageBack();
+    await tester.pump();
+
+    expect(payloads.single, {
+      'images': ['recipes/second.jpg'],
+    });
+    final result = await resultFuture;
+    expect(result?.saved, isTrue);
+  });
+
+  testWidgets('basic edit supports drag handle image reordering', (
+    tester,
+  ) async {
+    final payloads = <Map<String, dynamic>>[];
+    when(() => repository.updateRecipe(any(), any())).thenAnswer(
+      (invocation) async {
+        payloads.add(Map<String, dynamic>.from(
+          invocation.positionalArguments.last as Map<String, dynamic>,
+        ));
+        return RecipeMutationResult.applied(
+          const RecipeDetail(id: 3, name: 'recipe'),
+          '',
+        );
+      },
+    );
+
+    const recipe = RecipeDetail(
+      id: 3,
+      name: 'recipe',
+      images: ['recipes/first.webp', 'recipes/second.webp'],
+      imageUrls: [
+        'https://cdn.example.test/recipes/first.webp',
+        'https://cdn.example.test/recipes/second.webp',
+      ],
+      ingredients: [],
+      steps: [],
+    );
+    await tester.binding.setSurfaceSize(const Size(900, 1600));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final resultFuture = await pumpForm(tester, recipe: recipe);
+
+    await tester.drag(find.byType(ListView).first, const Offset(0, -250));
+    await tester.pump();
+    final first =
+        find.byKey(const ValueKey('recipe-image-item-recipes/first.webp'));
+    final second =
+        find.byKey(const ValueKey('recipe-image-item-recipes/second.webp'));
+    final gesture = await tester.startGesture(
+      tester.getCenter(
+        find.byKey(const ValueKey('recipe-image-handle-recipes/first.webp')),
+      ),
+    );
+    for (var i = 0; i < 6; i++) {
+      await gesture.moveBy(const Offset(16, 0));
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(
+        tester.getTopLeft(first).dx, greaterThan(tester.getTopLeft(second).dx));
+
+    final saveButton = tester.widget<TextButton>(
+      find.byKey(const ValueKey('recipe-save-basic')),
+    );
+    saveButton.onPressed!();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pageBack();
+    await tester.pump();
+
+    expect(payloads.single, {
+      'images': ['recipes/second.webp', 'recipes/first.webp'],
+    });
+    final result = await resultFuture;
+    expect(result?.saved, isTrue);
+  });
 }

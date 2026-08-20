@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:com_a4ding_livecalc/core/api/api_client.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -90,5 +93,42 @@ void main() {
     expect(result.pending, isTrue);
     expect(result.message, contains('待管理员审核'));
     expect(result.detail, isNull);
+  });
+
+  test('recipe image upload sends multipart data and parses the response',
+      () async {
+    final captured = <dynamic>[];
+    when(() => dio.post(
+          any(),
+          data: any(named: 'data'),
+          options: any(named: 'options'),
+        )).thenAnswer((_) async {
+      return Response(
+        requestOptions: RequestOptions(path: ''),
+        data: {
+          'image_path': 'recipes/new-image.webp',
+          'image_url': 'https://example.test/images/new-image.webp',
+        },
+      );
+    });
+
+    final file = XFile.fromData(
+      Uint8List.fromList([1, 2, 3]),
+      name: 'new-image.webp',
+      mimeType: 'image/webp',
+    );
+    final result = await repository.uploadRecipeImage(3, file);
+
+    verify(() => dio.post(
+          captureAny(),
+          data: captureAny(named: 'data'),
+          options: captureAny(named: 'options'),
+        )).captured.forEach(captured.add);
+    expect(captured[0], '/recipes/3/images');
+    expect(captured[1], isA<FormData>());
+    final options = captured[2] as Options;
+    expect(options.headers?['Content-Type'], 'multipart/form-data');
+    expect(result.imagePath, 'recipes/new-image.webp');
+    expect(result.imageUrl, 'https://example.test/images/new-image.webp');
   });
 }

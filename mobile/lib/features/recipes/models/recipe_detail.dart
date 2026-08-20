@@ -46,6 +46,29 @@ List<String> _imageUrls(Map<String, dynamic> json) {
       .toList();
 }
 
+String _imageUrlForKey(String key) {
+  if (key.startsWith('http://') || key.startsWith('https://')) return key;
+  final base = ApiClient.instance.baseUrl;
+  if (key.startsWith('/api/v1/static/images/')) {
+    return base.isEmpty ? key : '$base$key';
+  }
+  if (key.startsWith('/static/images/')) {
+    final imageKey = key.substring('/static/images/'.length);
+    return base.isEmpty
+        ? '/api/v1/images/$imageKey'
+        : '$base/api/v1/images/$imageKey';
+  }
+  if (key.startsWith('/api/v1/images/')) {
+    return base.isEmpty ? key : '$base$key';
+  }
+  final imageKey = key.startsWith('/static/images/')
+      ? key.substring('/static/images/'.length)
+      : (key.startsWith('/') ? key.substring(1) : key);
+  final encodedKey = imageKey.split('/').map(Uri.encodeComponent).join('/');
+  final path = '/api/v1/images/$encodedKey';
+  return base.isEmpty ? path : '$base$path';
+}
+
 class QuantityRange {
   final double min;
   final double max;
@@ -255,6 +278,16 @@ class RecipeDetail {
 
   RecipeDetail _mergedWithProposal(RecipePendingProposal proposal) {
     final data = proposal.updateData;
+    final hasImageChange = data['images'] is List;
+    final nextImages = hasImageChange
+        ? (data['images'] as List).map((e) => e.toString()).toList()
+        : images;
+    final nextImageUrls = hasImageChange
+        ? [
+            for (final key in nextImages)
+              _urlsByKey()[key] ?? _imageUrlForKey(key),
+          ]
+        : imageUrls;
     return RecipeDetail(
       id: id,
       userId: userId,
@@ -274,11 +307,9 @@ class RecipeDetail {
       tags: data['tags'] is List
           ? (data['tags'] as List).map((e) => e.toString()).toList()
           : tags,
-      imageUrl: imageUrl,
-      imageUrls: imageUrls,
-      images: data['images'] is List
-          ? (data['images'] as List).map((e) => e.toString()).toList()
-          : images,
+      imageUrl: nextImageUrls.isEmpty ? null : nextImageUrls.first,
+      imageUrls: nextImageUrls,
+      images: nextImages,
       ingredients: data['ingredients'] is List
           ? [
               for (final item in data['ingredients'] as List)
@@ -302,6 +333,14 @@ class RecipeDetail {
       pendingProposals: pendingProposals,
       pendingProposal: proposal,
     );
+  }
+
+  Map<String, String> _urlsByKey() {
+    final urlsByKey = <String, String>{};
+    for (var i = 0; i < images.length && i < imageUrls.length; i++) {
+      urlsByKey[images[i]] = imageUrls[i];
+    }
+    return urlsByKey;
   }
 }
 

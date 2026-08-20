@@ -52,6 +52,46 @@ def _normalize_img_key(path: str) -> str:
     return path
 
 
+def _pending_recipe_display_updates(
+    db: Session, recipe_ids: List[int], current_user
+) -> dict:
+    """Return the proposer's pending display values for recipe lists/details."""
+    if not recipe_ids or getattr(current_user, "is_admin", False):
+        return {}
+
+    proposals = (
+        db.query(ChangeProposal)
+        .filter(
+            ChangeProposal.entity_type.in_(("recipe", "recipe_edit")),
+            ChangeProposal.entity_id.in_(recipe_ids),
+            ChangeProposal.action == "update",
+            ChangeProposal.proposer_id == current_user.id,
+            ChangeProposal.status == "pending",
+            ChangeProposal.is_active.is_(True),
+        )
+        .order_by(ChangeProposal.id.asc())
+        .all()
+    )
+
+    updates = {}
+    for proposal in proposals:
+        payload = proposal.payload or {}
+        update_data = payload.get("update_data")
+        if not isinstance(update_data, dict):
+            update_data = payload
+
+        display = updates.setdefault(proposal.entity_id, {})
+        name = update_data.get("name")
+        if isinstance(name, str) and name:
+            display["name"] = name
+        images = update_data.get("images")
+        if isinstance(images, list):
+            display["images"] = [
+                image for image in images if isinstance(image, str) and image
+            ]
+    return updates
+
+
 def _pending_payload_for_client(
     db: Session, proposal, recipe_ingredients, current_user
 ) -> dict:
@@ -410,6 +450,9 @@ async def get_recipes(
         from app.services.storage import get_storage
 
         storage = get_storage()
+        display_updates = _pending_recipe_display_updates(
+            db, [recipe.id for recipe in recipes], current_user
+        )
 
         if include_cost:
             from app.services.recipe_service import batch_calculate_recipes_cost_nutrition
@@ -423,7 +466,11 @@ async def get_recipes(
                 tags_list = recipe.tags if isinstance(recipe.tags, list) else []
                 cooking_steps_list = recipe.cooking_steps if isinstance(recipe.cooking_steps, list) else []
                 tips_list = recipe.tips if isinstance(recipe.tips, list) else []
-                images_list = recipe.images if isinstance(recipe.images, list) else []
+                recipe_display = display_updates.get(recipe.id, {})
+                images_list = recipe_display.get(
+                    "images",
+                    recipe.images if isinstance(recipe.images, list) else [],
+                )
                 image_urls_list = [storage.url_for(_normalize_img_key(img)) for img in images_list] if images_list else None
 
                 # 从批量结果中获取成本和营养信息
@@ -445,7 +492,7 @@ async def get_recipes(
 
                 items.append(RecipeResponse(
                     id=recipe.id,
-                    name=recipe.name,
+                    name=recipe_display.get("name", recipe.name),
                     source=recipe.source or "",
                     category=recipe.category,
                     tags=tags_list,
@@ -472,12 +519,16 @@ async def get_recipes(
                 tags_list = recipe.tags if isinstance(recipe.tags, list) else []
                 cooking_steps_list = recipe.cooking_steps if isinstance(recipe.cooking_steps, list) else []
                 tips_list = recipe.tips if isinstance(recipe.tips, list) else []
-                images_list = recipe.images if isinstance(recipe.images, list) else []
+                recipe_display = display_updates.get(recipe.id, {})
+                images_list = recipe_display.get(
+                    "images",
+                    recipe.images if isinstance(recipe.images, list) else [],
+                )
                 image_urls_list = [storage.url_for(_normalize_img_key(img)) for img in images_list] if images_list else None
 
                 items.append(RecipeResponse(
                     id=recipe.id,
-                    name=recipe.name,
+                    name=recipe_display.get("name", recipe.name),
                     source=recipe.source or "",
                     category=recipe.category,
                     tags=tags_list,
@@ -602,13 +653,16 @@ async def get_recipe_detail(
                 nutrition_info=None
             ))
 
-        images_list = recipe.images or []
         from app.services.storage import get_storage
+        display_updates = _pending_recipe_display_updates(
+            db, [recipe.id], current_user
+        ).get(recipe.id, {})
+        images_list = display_updates.get("images", recipe.images or [])
         image_urls_list = [get_storage().url_for(_normalize_img_key(img)) for img in images_list] if images_list else None
 
         response = RecipeDetailResponse(
             id=recipe.id,
-            name=recipe.name,
+            name=display_updates.get("name", recipe.name),
             source=recipe.source,
             category=recipe.category,
             tags=recipe.tags or [],
