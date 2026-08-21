@@ -371,9 +371,17 @@ const queryValue = (key: string) => {
 }
 
 function consumePrefill() {
-  const barcode = queryValue('barcode')
-  const name = queryValue('name')
-  const brand = queryValue('brand')
+  let storedPrefill: { barcode?: string; name?: string; brand?: string } | null = null
+  try {
+    storedPrefill = JSON.parse(sessionStorage.getItem('barcode-new-product') || 'null')
+  } catch {
+    storedPrefill = null
+  }
+  if (storedPrefill) sessionStorage.removeItem('barcode-new-product')
+
+  const barcode = queryValue('barcode') || storedPrefill?.barcode || ''
+  const name = queryValue('name') || storedPrefill?.name || ''
+  const brand = queryValue('brand') || storedPrefill?.brand || ''
   const returnPath = queryValue('returnTo')
   if (!barcode && !name && !brand && !returnPath) return
 
