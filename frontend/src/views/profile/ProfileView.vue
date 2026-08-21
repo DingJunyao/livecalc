@@ -212,6 +212,16 @@
             <v-list-item-title>地图配置</v-list-item-title>
             <v-list-item-subtitle>地图服务 API 密钥</v-list-item-subtitle>
             <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+            </template>
+          </v-list-item>
+          <v-list-item @click="router.push('/admin/barcode-services')">
+            <template #prepend>
+              <v-icon>mdi-barcode-scan</v-icon>
+            </template>
+            <v-list-item-title>条码服务配置</v-list-item-title>
+            <v-list-item-subtitle>商品条码查询 API 与优先级</v-list-item-subtitle>
+            <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
           </v-list-item>

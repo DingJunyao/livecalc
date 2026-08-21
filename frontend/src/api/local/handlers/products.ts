@@ -127,6 +127,49 @@ export async function getEntity(params: Record<string, string>): Promise<any> {
   }
 }
 
+export async function lookupBarcode(params: Record<string, string>): Promise<any> {
+  const barcode = String(params.barcode || '').trim()
+  if (!barcode) {
+    return { found: false, source: null, product: {}, errors: ['Invalid barcode'] }
+  }
+
+  const [products, ingredients] = await Promise.all([
+    getAll('products'),
+    getAll('ingredients'),
+  ])
+  const activeIngredientIds = new Set(
+    ingredients.filter((item: any) => item.is_active !== false).map((item: any) => item.id)
+  )
+  const isActive = (product: any) =>
+    product.is_active !== false &&
+    (!product.ingredient_id || activeIngredientIds.has(product.ingredient_id))
+
+  let product = products.find((item: any) => isActive(item) && item.barcode === barcode)
+  if (!product) {
+    const barcodeRows = await getByIndex('product_barcodes', 'by_code', barcode)
+    const productId = barcodeRows.find((row: any) => row.is_active !== false)?.product_id
+    product = products.find((item: any) => item.id === productId && isActive(item))
+  }
+  if (!product) {
+    return { found: false, source: null, product: {}, errors: [] }
+  }
+
+  return {
+    found: true,
+    source: 'local',
+    product: {
+      id: product.id,
+      barcode,
+      name: product.name,
+      brand: product.brand || null,
+      spec: null,
+      manufacturer: null,
+      image_url: product.image_url || null,
+    },
+    errors: [],
+  }
+}
+
 export async function createEntity(_params: Record<string, string>, data?: any): Promise<any> {
   const id = await addOne('products', {
     ...data,
