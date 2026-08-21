@@ -93,11 +93,22 @@ void main() {
     expect(state.mapEnabled, isFalse);
   });
 
-  test('请求失败：兜底仅 OSM 且启用', () async {
+  test('available_maps 为空：同样使用完整三层兜底', () async {
+    when(() => repo.getMapConfig()).thenAnswer((_) async => {
+          'available_maps': [],
+          'default_map': 'baidu',
+          'map_enabled': true,
+        });
+    final state = await loadState();
+    expect(state.layers.map((o) => o.id), ['amap', 'tencent', 'osm']);
+    expect(state.defaultId, 'amap');
+  });
+
+  test('请求失败：兜底完整三层且启用', () async {
     when(() => repo.getMapConfig()).thenThrow(Exception('network'));
     final state = await loadState();
-    expect(state.layers.map((o) => o.id), ['osm']);
-    expect(state.defaultId, 'osm');
+    expect(state.layers.map((o) => o.id), ['amap', 'tencent', 'osm']);
+    expect(state.defaultId, 'amap');
     expect(state.mapEnabled, isTrue);
   });
 }

@@ -50,8 +50,8 @@ const osmLayer = MapLayerOption(
 
 const mapLayerOptions = <MapLayerOption>[amapLayer, tencentLayer, osmLayer];
 
-/// 兜底图层（请求失败时仅 OSM）。
-const osmOnlyLayers = [osmLayer];
+/// 兜底图层：配置接口不可用时保留完整图层菜单，与 Web 端行为一致。
+const fallbackLayers = mapLayerOptions;
 
 class MapConfigState {
   /// 实际可用的图层（与后端 available_maps 求交集）。
@@ -62,8 +62,8 @@ class MapConfigState {
   final bool loaded;
 
   const MapConfigState({
-    this.layers = osmOnlyLayers,
-    this.defaultId = 'osm',
+    this.layers = fallbackLayers,
+    this.defaultId = 'amap',
     this.mapEnabled = true,
     this.loading = false,
     this.loaded = false,
@@ -109,18 +109,18 @@ class MapConfigNotifier extends StateNotifier<MapConfigState> {
           mapLayerOptions.where((o) => available.contains(o.id)).toList();
       final defaultId = layers.any((o) => o.id == data['default_map'])
           ? data['default_map'] as String
-          : (layers.isNotEmpty ? layers.first.id : 'osm');
+          : (layers.isNotEmpty ? layers.first.id : fallbackLayers.first.id);
       state = MapConfigState(
-        layers: layers.isEmpty ? osmOnlyLayers : layers,
+        layers: layers.isEmpty ? fallbackLayers : layers,
         defaultId: defaultId,
         mapEnabled: data['map_enabled'] != false,
         loaded: true,
       );
     } catch (_) {
-      // 失败回退仅 OSM + 启用（对齐 web 保守策略）。
+      // 失败回退完整图层 + 启用，对齐 Web 端。
       state = state.copyWith(
-        layers: osmOnlyLayers,
-        defaultId: 'osm',
+        layers: fallbackLayers,
+        defaultId: 'amap',
         mapEnabled: true,
         loading: false,
         loaded: true,
