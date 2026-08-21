@@ -1,6 +1,7 @@
 """Barcode provider configuration and lookup resolution."""
 
 import json
+import copy
 import ipaddress
 import re
 import socket
@@ -105,6 +106,19 @@ def mask_config(config: BarcodeConfig) -> dict:
         "cache_ttl_minutes": config.cache_ttl_minutes,
         "services": [_mask_service(service) for service in config.services],
     }
+
+
+def merge_saved_secrets(saved: BarcodeConfig, incoming: dict) -> BarcodeConfig:
+    data = copy.deepcopy(incoming)
+    saved_services = {service.id: service for service in saved.services}
+    for service in data.get("services", []):
+        previous = saved_services.get(service.get("id"))
+        if not previous:
+            continue
+        for field in ("app_id", "app_secret", "app_code"):
+            if service.get(field) in (None, "***"):
+                service[field] = getattr(previous, field)
+    return BarcodeConfig(**data)
 
 
 def validate_public_http_url(url_template: str) -> None:
@@ -387,7 +401,7 @@ def _cached_payload(db: Session, barcode: str, now: datetime) -> dict | None:
     return json.loads(row.payload)
 
 
-def _source(service: ServiceConfig) -> str:
+def provider_source(service: ServiceConfig) -> str:
     if service.type == "custom":
         return f"custom:{service.id}"
     return service.type
@@ -436,7 +450,7 @@ def resolve_barcode(
                 errors.append(f"{label}: product not found")
                 continue
 
-            source = _source(service)
+            source = provider_source(service)
             fetched_at = datetime.now(timezone.utc)
             row = db.get(BarcodeLookupCache, barcode)
             if row:
