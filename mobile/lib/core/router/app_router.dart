@@ -361,6 +361,9 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             builder: (context, state) => ProductFormScreen(
               fixedIngredient:
                   state.extra is Ingredient ? state.extra as Ingredient : null,
+              prefill: state.extra is ProductFormPrefill
+                  ? state.extra as ProductFormPrefill
+                  : null,
               isAdmin: ref.read(authProvider).user?.isAdmin == true,
             ),
           ),

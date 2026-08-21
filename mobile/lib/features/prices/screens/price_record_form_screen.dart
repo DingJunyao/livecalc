@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../shared/screens/price_record_edit_screen.dart'
     show priceRecordUnits;
 import '../../merchants/models/merchant.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../products/models/product.dart';
 import '../../products/repositories/product_repository.dart';
+import '../../products/screens/product_form_screen.dart'
+    show ProductFormPrefill, ProductFormResult;
+import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../repositories/price_repository.dart';
 
 class PriceRecordFormPrefill {
@@ -27,12 +31,14 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
   final PriceRepository? priceRepository;
   final ProductRepository? productRepository;
   final PriceRecordFormPrefill? prefill;
+  final Future<String?> Function(BuildContext context)? scanner;
 
   const PriceRecordFormScreen({
     super.key,
     this.priceRepository,
     this.productRepository,
     this.prefill,
+    this.scanner,
   });
 
   @override
@@ -129,6 +135,74 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     });
   }
 
+  Future<void> _scanBarcode() async {
+    final scanner = widget.scanner ?? showBarcodeScannerSheet;
+    final code = await scanner(context);
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    try {
+      final result = await _productRepo.lookupBarcode(code);
+      if (!mounted) return;
+      if (result.found && result.product.id != null) {
+        _selectProduct(
+          Product(
+            id: result.product.id!,
+            name: result.product.name ?? code,
+            barcode: result.product.barcode ?? code,
+            brand: result.product.brand,
+          ),
+        );
+        return;
+      }
+
+      final create = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('未找到本地商品'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('条码：$code'),
+              if (result.product.name?.isNotEmpty == true)
+                Text('名称：${result.product.name}'),
+              if (result.product.brand?.isNotEmpty == true)
+                Text('品牌：${result.product.brand}'),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('新增商品'),
+            ),
+          ],
+        ),
+      );
+      if (create != true || !mounted) return;
+
+      final saved = await context.push<ProductFormResult>(
+        '/products/new',
+        extra: ProductFormPrefill(
+          barcode: code,
+          name: result.product.name ?? '',
+          brand: result.product.brand ?? '',
+        ),
+      );
+      if (saved?.product != null && mounted) {
+        _selectProduct(saved!.product!);
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('条码查询失败，请重试')),
+        );
+      }
+    }
+  }
+
   Future<void> _pickRecordedAt() async {
     final date = await showDatePicker(
       context: context,
@@ -219,13 +293,22 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              suffixIcon: _searching
-                  ? const SizedBox(
+              suffixIcon: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    tooltip: '扫码识别商品',
+                    icon: const Icon(Icons.qr_code_scanner),
+                    onPressed: _lockProduct ? null : _scanBarcode,
+                  ),
+                  if (_searching)
+                    const SizedBox(
                       width: 20,
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : null,
+                    ),
+                ],
+              ),
             ),
             onChanged: _searchProducts,
             readOnly: _lockProduct,

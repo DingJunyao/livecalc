@@ -1,8 +1,11 @@
+import 'package:dio/dio.dart' show DioException;
+
 import '../../../core/api/api_client.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../models/product.dart';
 import '../../nutrition/models/usda_models.dart';
+import '../models/barcode_lookup.dart';
 
 class ProductPage {
   final List<Product> items;
@@ -75,6 +78,22 @@ class ProductRepository {
   Future<Product> getProduct(int id) async {
     final response = await _client.dio.get('/products/entity/$id');
     return Product.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<BarcodeLookupResult> lookupBarcode(String barcode) async {
+    final code = Uri.encodeComponent(barcode.trim());
+    try {
+      final response = await _client.dio.get('/products/entity/barcode/$code');
+      return BarcodeLookupResult.fromJson(
+        response.data as Map<String, dynamic>,
+      );
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      if (error.response?.statusCode == 404 && data is Map<String, dynamic>) {
+        return BarcodeLookupResult.fromJson(data);
+      }
+      rethrow;
+    }
   }
 
   Future<Product> createProduct({

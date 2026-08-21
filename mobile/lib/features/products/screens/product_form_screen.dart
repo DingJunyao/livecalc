@@ -6,16 +6,31 @@ import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/repositories/ingredient_repository.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
+import '../../../shared/widgets/barcode_scanner_sheet.dart';
+
+class ProductFormPrefill {
+  final String barcode;
+  final String name;
+  final String brand;
+
+  const ProductFormPrefill({
+    this.barcode = '',
+    this.name = '',
+    this.brand = '',
+  });
+}
 
 class ProductFormResult {
   final bool saved;
   final bool pending;
   final String message;
+  final Product? product;
 
   const ProductFormResult({
     required this.saved,
     required this.pending,
     required this.message,
+    this.product,
   });
 }
 
@@ -25,6 +40,8 @@ class ProductFormScreen extends StatefulWidget {
   final ProductRepository? repository;
   final IngredientRepository? ingredientRepository;
   final bool isAdmin;
+  final ProductFormPrefill? prefill;
+  final Future<String?> Function(BuildContext context)? scanner;
 
   const ProductFormScreen({
     super.key,
@@ -33,6 +50,8 @@ class ProductFormScreen extends StatefulWidget {
     this.repository,
     this.ingredientRepository,
     this.isAdmin = false,
+    this.prefill,
+    this.scanner,
   });
 
   @override
@@ -65,9 +84,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _ingredientRepository =
         widget.ingredientRepository ?? IngredientRepository();
     final initialProduct = widget.product?.mergedWithPending();
-    _nameController = TextEditingController(text: initialProduct?.name);
-    _brandController = TextEditingController(text: initialProduct?.brand);
-    _barcodeController = TextEditingController(text: initialProduct?.barcode);
+    _nameController = TextEditingController(
+      text: widget.prefill?.name ?? initialProduct?.name,
+    );
+    _brandController = TextEditingController(
+      text: widget.prefill?.brand ?? initialProduct?.brand,
+    );
+    _barcodeController = TextEditingController(
+      text: widget.prefill?.barcode ?? initialProduct?.barcode,
+    );
     _ingredientSearchController = TextEditingController();
     _selectedIngredient = widget.fixedIngredient;
 
@@ -149,6 +174,27 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     });
   }
 
+  Future<void> _scanBarcode() async {
+    final scanner = widget.scanner ?? showBarcodeScannerSheet;
+    final code = await scanner(context);
+    if (code == null || code.trim().isEmpty || !mounted) return;
+    _barcodeController.text = code.trim();
+    try {
+      final result = await _productRepository.lookupBarcode(code);
+      if (!mounted || !result.found) return;
+      setState(() {
+        if (_nameController.text.trim().isEmpty) {
+          _nameController.text = result.product.name ?? '';
+        }
+        if (_brandController.text.trim().isEmpty) {
+          _brandController.text = result.product.brand ?? '';
+        }
+      });
+    } catch (_) {
+      // 外部服务失败时保留扫码得到的条码，用户可以继续手工填写。
+    }
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
@@ -164,6 +210,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       _error = null;
     });
     try {
+      Product? createdProduct;
       ProductMutationResult? result;
       if (_isEdit) {
         result = await _productRepository.updateProduct(
@@ -177,7 +224,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           tags: _tags,
         );
       } else {
-        await _productRepository.createProduct(
+        createdProduct = await _productRepository.createProduct(
           name: name,
           ingredientId: _selectedIngredient!.id,
           brand: _brandController.text.trim(),
@@ -189,10 +236,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (!mounted) return;
       if (!_isEdit) {
         Navigator.of(context).pop(
-          const ProductFormResult(
+          ProductFormResult(
             saved: true,
             pending: false,
             message: '已创建商品',
+            product: createdProduct,
           ),
         );
         return;
@@ -321,9 +369,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 TextFormField(
                   controller: _barcodeController,
                   initialValue: null,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: '条码',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      tooltip: '扫码输入条码',
+                      icon: const Icon(Icons.qr_code_scanner),
+                      onPressed: _scanBarcode,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),

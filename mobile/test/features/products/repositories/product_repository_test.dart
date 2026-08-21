@@ -57,4 +57,47 @@ void main() {
     expect(result.pending, isTrue);
     expect(result.message, contains('待管理员审核'));
   });
+  test('looks up a barcode product', () async {
+    when(() => dio.get('/products/entity/barcode/123')).thenAnswer(
+      (_) async => Response(
+        requestOptions: RequestOptions(path: ''),
+        statusCode: 200,
+        data: {
+          'found': true,
+          'source': 'local',
+          'product': {'id': 7, 'name': 'Milk'},
+          'errors': [],
+        },
+      ),
+    );
+
+    final result = await repository.lookupBarcode('123');
+
+    expect(result.found, isTrue);
+    expect(result.product.id, 7);
+  });
+
+  test('looks up a barcode miss from a 404 response body', () async {
+    final requestOptions = RequestOptions(path: '');
+    when(() => dio.get('/products/entity/barcode/404')).thenThrow(
+      DioException(
+        requestOptions: requestOptions,
+        response: Response(
+          requestOptions: requestOptions,
+          statusCode: 404,
+          data: {
+            'found': false,
+            'source': null,
+            'product': {},
+            'errors': ['not found'],
+          },
+        ),
+      ),
+    );
+
+    final result = await repository.lookupBarcode('404');
+
+    expect(result.found, isFalse);
+    expect(result.errors, ['not found']);
+  });
 }
