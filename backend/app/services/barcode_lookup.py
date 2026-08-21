@@ -1,13 +1,23 @@
-"""Barcode provider configuration and external response normalization."""
+"""Barcode provider configuration and lookup resolution."""
 
+import json
 import ipaddress
 import re
 import socket
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Any, Literal
 from urllib.parse import quote, urlparse
 
 import httpx
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
+
+from app.models.barcode_lookup_cache import BarcodeLookupCache
+from app.models.nutrition import Ingredient
+from app.models.product_barcode import ProductBarcode
+from app.models.product_entity import Product
+from app.models.system_config import SystemConfig
 
 
 class ServiceConfig(BaseModel):
@@ -28,6 +38,14 @@ class ServiceConfig(BaseModel):
 class BarcodeConfig(BaseModel):
     cache_ttl_minutes: int = Field(10080, ge=1, le=527040)
     services: list[ServiceConfig] = Field(default_factory=list)
+
+
+@dataclass
+class LookupOutcome:
+    found: bool
+    source: str | None
+    product: dict
+    errors: list[str]
 
 
 BUILTIN_CONFIGS = [
@@ -63,6 +81,14 @@ def load_or_default_config(raw: dict | None) -> BarcodeConfig:
     if not raw:
         return BarcodeConfig(**default_config())
     return BarcodeConfig(**raw)
+
+
+def load_config(db: Session) -> BarcodeConfig:
+    row = db.query(SystemConfig).filter(
+        SystemConfig.key == "barcode_service_config"
+    ).first()
+    raw = json.loads(row.value) if row else None
+    return load_or_default_config(raw)
 
 
 def _mask_service(service: ServiceConfig) -> dict:
@@ -307,3 +333,133 @@ def lookup_with_provider(
     )
     response.raise_for_status()
     return _parse_custom(service, response.json(), barcode)
+
+
+def _local_product(db: Session, barcode: str) -> Product | None:
+    primary = (
+        db.query(Product)
+        .join(Ingredient, Product.ingredient_id == Ingredient.id)
+        .filter(
+            Product.barcode == barcode,
+            Product.is_active.is_(True),
+            Ingredient.is_active.is_(True),
+        )
+        .first()
+    )
+    if primary:
+        return primary
+
+    return (
+        db.query(Product)
+        .join(ProductBarcode, ProductBarcode.product_id == Product.id)
+        .join(Ingredient, Product.ingredient_id == Ingredient.id)
+        .filter(
+            ProductBarcode.barcode == barcode,
+            ProductBarcode.is_active.is_(True),
+            Product.is_active.is_(True),
+            Ingredient.is_active.is_(True),
+        )
+        .first()
+    )
+
+
+def _local_payload(product: Product, barcode: str) -> dict:
+    payload = _clean_product(barcode, {
+        "name": product.name,
+        "brand": product.brand,
+        "spec": None,
+        "manufacturer": None,
+        "image_url": product.image_url,
+    })
+    return {"id": product.id, **payload}
+
+
+def _as_utc(value: datetime) -> datetime:
+    return value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+
+
+def _cached_payload(db: Session, barcode: str, now: datetime) -> dict | None:
+    row = db.get(BarcodeLookupCache, barcode)
+    if not row:
+        return None
+    if _as_utc(row.expires_at) <= now:
+        return None
+    return json.loads(row.payload)
+
+
+def _source(service: ServiceConfig) -> str:
+    if service.type == "custom":
+        return f"custom:{service.id}"
+    return service.type
+
+
+def _provider_label(service: ServiceConfig) -> str:
+    return service.name or service.id
+
+
+def resolve_barcode(
+    db: Session,
+    barcode: str,
+    config: BarcodeConfig | None = None,
+    client: httpx.Client | None = None,
+) -> LookupOutcome:
+    barcode = barcode.strip()
+    if not barcode or len(barcode) > 50:
+        return LookupOutcome(False, None, {}, ["Invalid barcode"])
+
+    config = config or load_config(db)
+    product = _local_product(db, barcode)
+    if product:
+        return LookupOutcome(True, "local", _local_payload(product, barcode), [])
+
+    now = datetime.now(timezone.utc)
+    cached = _cached_payload(db, barcode, now)
+    if cached is not None:
+        row = db.get(BarcodeLookupCache, barcode)
+        return LookupOutcome(True, row.source, cached, [])
+
+    errors: list[str] = []
+    services = [service for service in config.services if service.enabled]
+    own_client = client is None and bool(services)
+    if own_client:
+        client = httpx.Client(timeout=max(service.timeout_seconds for service in services))
+
+    try:
+        for service in services:
+            label = _provider_label(service)
+            try:
+                provider_product = lookup_with_provider(service, barcode, client)
+            except (httpx.HTTPError, ValueError, TypeError):
+                errors.append(f"{label}: lookup failed")
+                continue
+            if provider_product is None:
+                errors.append(f"{label}: product not found")
+                continue
+
+            source = _source(service)
+            fetched_at = datetime.now(timezone.utc)
+            row = db.get(BarcodeLookupCache, barcode)
+            if row:
+                row.payload = json.dumps(provider_product, ensure_ascii=False)
+                row.source = source
+                row.fetched_at = fetched_at
+                row.expires_at = fetched_at + timedelta(
+                    minutes=config.cache_ttl_minutes
+                )
+            else:
+                db.add(BarcodeLookupCache(
+                    barcode=barcode,
+                    payload=json.dumps(provider_product, ensure_ascii=False),
+                    source=source,
+                    fetched_at=fetched_at,
+                    expires_at=fetched_at + timedelta(
+                        minutes=config.cache_ttl_minutes
+                    ),
+                ))
+            db.commit()
+            return LookupOutcome(True, source, provider_product, [])
+    finally:
+        if own_client:
+            client.close()
+
+    return LookupOutcome(False, None, {}, errors)
