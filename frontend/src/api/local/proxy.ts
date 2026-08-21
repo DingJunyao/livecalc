@@ -185,6 +185,7 @@ addRoute('/units/:id/conversions', { get: units.listUnitConversions })
 
 // ---- Products (exact sub-paths before param paths) ----
 addRoute('/products/entity', { get: products.listEntity, post: products.createEntity })
+addRoute('/products/entity/barcode/:barcode', { get: products.lookupBarcode })
 addRoute('/products/entity/:id', { get: products.getEntity, put: products.updateEntity, delete: products.deleteEntity })
 addRoute('/products/entity/:id/barcodes', { get: products.listBarcodes, post: products.addBarcode })
 addRoute('/products/entity/:id/latest-price', { get: products.getLatestPrice })
@@ -242,6 +243,8 @@ addRoute('/blacklist', { get: blacklist.listBlacklist, post: blacklist.addToBlac
 // ---- Admin ----
 addRoute('/admin/map-config', { get: admin.getMapConfig, put: admin.updateMapConfig })
 addRoute('/admin/config', { get: admin.getConfig })
+addRoute('/admin/barcode-services', { get: admin.getBarcodeServices, put: admin.updateBarcodeServices })
+addRoute('/admin/barcode-services/test', { post: admin.testBarcodeService })
 addRoute('/admin/stats', { get: admin.getStats })
 addRoute('/admin/storage-config', { get: admin.getStorageConfig, put: admin.updateStorageConfig })
 addRoute('/admin/storage-config/test', { post: admin.testStorageConfig })

@@ -190,12 +190,13 @@
               density="compact"
               class="mb-3"
             />
-            <v-text-field
+            <BarcodeField
               v-model="basicEditForm.barcode"
               label="条码"
-              variant="outlined"
               density="compact"
               class="mb-3"
+              :loading="barcodeLookupLoading"
+              @barcode="handleBarcodeLookup"
             />
             <v-combobox
               v-model="basicEditForm.tags"
@@ -1195,6 +1196,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
 import { getErrorMessage } from '@/utils/errorHandler'
+import BarcodeField from '@/components/common/BarcodeField.vue'
+import { lookupBarcode } from '@/utils/barcodeLookup'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
@@ -1489,6 +1492,28 @@ const basicEditForm = ref({
   myWeightEnabled: false as boolean, // 是否启用我的覆盖（false=用全局）
   globalWeightReadOnly: 50 as number, // 详情态展示用
 })
+const barcodeLookupLoading = ref(false)
+
+async function handleBarcodeLookup(code: string) {
+  basicEditForm.value.barcode = code.trim()
+  barcodeLookupLoading.value = true
+  try {
+    const result = await lookupBarcode(basicEditForm.value.barcode)
+    if (result.found) {
+      if (!basicEditForm.value.name.trim()) {
+        basicEditForm.value.name = result.product.name || ''
+      }
+      if (!basicEditForm.value.brand.trim()) {
+        basicEditForm.value.brand = result.product.brand || ''
+      }
+      showMessage('已按条码填入商品信息', 'success')
+    } else {
+      showMessage(result.errors[0] || '未找到条码商品信息', 'info')
+    }
+  } finally {
+    barcodeLookupLoading.value = false
+  }
+}
 
 // 营养成分内联编辑
 const editingNutrition = ref(false)

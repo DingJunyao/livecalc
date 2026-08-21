@@ -14,6 +14,14 @@
           :disabled="!selectedMerchantId"
           @click="pasteDialog = true"
         />
+        <v-btn
+          icon="mdi-barcode-scan"
+          variant="text"
+          aria-label="扫码录入商品"
+          :disabled="!selectedMerchantId"
+          :loading="barcodeLookupLoading"
+          @click="scannerOpen = true"
+        />
         <v-btn icon="mdi-check-all" variant="text" :loading="saving" @click="saveAll" />
       </div>
     </template>
@@ -152,6 +160,7 @@
               <div class="fill-row__inputs">
                 <v-text-field
                   v-model="row.price"
+                  :id="`new-row-price-${i}`"
                   type="number"
                   step="0.01"
                   placeholder="¥0.00"
@@ -218,18 +227,39 @@
       :history-product-names="historyProductNames"
       @imported="onPasteImported"
     />
+    <BarcodeScannerDialog v-model="scannerOpen" @detected="handleScannedBarcode" />
+    <v-dialog v-model="createProductDialog" max-width="420">
+      <v-card>
+        <v-card-title>未找到本地商品</v-card-title>
+        <v-card-text>
+          <div class="text-body-2">条码：{{ createProductData.barcode }}</div>
+          <div v-if="createProductData.name" class="text-body-2">名称：{{ createProductData.name }}</div>
+          <div v-if="createProductData.brand" class="text-body-2">品牌：{{ createProductData.brand }}</div>
+          <div v-if="createProductData.spec" class="text-body-2">规格：{{ createProductData.spec }}</div>
+          <div v-if="createProductData.manufacturer" class="text-body-2">生产商：{{ createProductData.manufacturer }}</div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="createProductDialog = false">取消</v-btn>
+          <v-btn color="primary" variant="text" @click="goCreateProduct">新增商品</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api } from '@/api'
 import PasteImportDialog from '@/components/prices/PasteImportDialog.vue'
-
+import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
+import { lookupBarcode } from '@/utils/barcodeLookup'
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const router = useRouter()
 
 interface Merchant {
   id: number
@@ -316,6 +346,27 @@ const searchDebounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const unitOptions = ref<UnitOption[]>([])
 const pasteDialog = ref(false)
+const scannerOpen = ref(false)
+const barcodeLookupLoading = ref(false)
+const createProductDialog = ref(false)
+const createProductData = ref({
+  barcode: '',
+  name: '',
+  brand: '',
+  spec: '',
+  manufacturer: '',
+})
+
+const NEW_PRODUCT_KEY = 'barcode-new-product'
+const PRODUCT_RETURN_KEY = 'barcode-price-return'
+const DRAFT_KEY = 'quick-fill-barcode-draft'
+
+interface QuickFillDraft {
+  merchantId: number | null
+  historyRows: FillRow[]
+  newRows: FillRow[]
+  newRowSuggestions: Record<number, any[]>
+}
 
 function showSnackbar(message: string, color: string = 'success') {
   snackbar.value = { show: true, message, color }
@@ -471,6 +522,93 @@ function addNewRow() {
     categoryName: '',
   }
   newRows.value.push(newRow)
+}
+
+function appendProductRow(product: { id: number; name: string }) {
+  if (existingProductIds.value.has(product.id)) {
+    showSnackbar('商品已在列表中', 'info')
+    return
+  }
+  addNewRow()
+  const row = newRows.value[newRows.value.length - 1]
+  row.productId = product
+  row.productName = product.name
+  row.searchText = product.name
+  void focusRowPrice(newRows.value.length - 1)
+}
+
+async function focusRowPrice(index: number) {
+  await nextTick()
+  document.getElementById(`new-row-price-${index}`)?.focus()
+}
+
+async function handleScannedBarcode(code: string) {
+  barcodeLookupLoading.value = true
+  try {
+    const result = await lookupBarcode(code)
+    if (result.found && result.product.id) {
+      appendProductRow({ id: result.product.id, name: result.product.name || '' })
+      return
+    }
+    createProductData.value = {
+      barcode: code,
+      name: result.product.name || '',
+      brand: result.product.brand || '',
+      spec: result.product.spec || '',
+      manufacturer: result.product.manufacturer || '',
+    }
+    createProductDialog.value = true
+  } finally {
+    barcodeLookupLoading.value = false
+  }
+}
+
+function saveDraft() {
+  const draft: QuickFillDraft = {
+    merchantId: selectedMerchantId.value,
+    historyRows: historyRows.value,
+    newRows: newRows.value,
+    newRowSuggestions: newRowSuggestions.value,
+  }
+  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft))
+}
+
+function restoreDraft() {
+  try {
+    const draft = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null') as QuickFillDraft | null
+    if (!draft?.merchantId) return
+    selectedMerchantId.value = draft.merchantId
+    historyRows.value = draft.historyRows || []
+    newRows.value = draft.newRows || []
+    newRowSuggestions.value = draft.newRowSuggestions || {}
+  } catch {
+    /* invalid drafts are discarded */
+  }
+}
+
+function goCreateProduct() {
+  createProductDialog.value = false
+  saveDraft()
+  const prefill = {
+    barcode: createProductData.value.barcode,
+    name: createProductData.value.name,
+    brand: createProductData.value.brand,
+  }
+  sessionStorage.setItem(NEW_PRODUCT_KEY, JSON.stringify(prefill))
+  void router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices/quick-fill' } })
+}
+
+function consumeProductReturn() {
+  const raw = sessionStorage.getItem(PRODUCT_RETURN_KEY)
+  if (!raw) return
+  sessionStorage.removeItem(PRODUCT_RETURN_KEY)
+  sessionStorage.removeItem(DRAFT_KEY)
+  try {
+    const product = JSON.parse(raw) as { id?: number; name?: string }
+    if (product.id && product.name) appendProductRow({ id: product.id, name: product.name })
+  } catch {
+    /* ignore malformed returns */
+  }
 }
 
 function removeNewRow(index: number) {
@@ -689,8 +827,10 @@ async function onPasteImported(savedProductIds?: number[]) {
 }
 
 onMounted(() => {
+  restoreDraft()
   loadMerchants()
   loadUnits()
+  consumeProductReturn()
 })
 </script>
 

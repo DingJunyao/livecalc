@@ -1645,11 +1645,11 @@
               variant="outlined"
               class="mb-4"
             />
-            <v-text-field
+            <BarcodeField
               v-model="productForm.barcode"
-              label="条码"
-              variant="outlined"
+              :loading="barcodeLookupLoading"
               class="mb-4"
+              @barcode="handleBarcodeLookup"
             />
             <v-combobox
               v-model="productForm.aliases"
@@ -1759,6 +1759,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
 import { getErrorMessage } from '@/utils/errorHandler'
+import BarcodeField from '@/components/common/BarcodeField.vue'
+import { lookupBarcode } from '@/utils/barcodeLookup'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import HierarchyGraph from '@/components/charts/HierarchyGraph.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
@@ -2017,6 +2019,24 @@ const productForm = ref({
   myWeightEnabled: false as boolean,
   globalWeightReadOnly: 50 as number,
 })
+const barcodeLookupLoading = ref(false)
+
+async function handleBarcodeLookup(code: string) {
+  productForm.value.barcode = code.trim()
+  barcodeLookupLoading.value = true
+  try {
+    const result = await lookupBarcode(productForm.value.barcode)
+    if (result.found) {
+      if (!productForm.value.name.trim()) productForm.value.name = result.product.name || ''
+      if (!productForm.value.brand.trim()) productForm.value.brand = result.product.brand || ''
+      showMessage('已按条码填入商品信息', 'success')
+    } else {
+      showMessage(result.errors[0] || '未找到条码商品信息', 'info')
+    }
+  } finally {
+    barcodeLookupLoading.value = false
+  }
+}
 // 删除商品
 const showDeleteProductDialog = ref(false)
 const deletingProduct = ref<Product | null>(null)

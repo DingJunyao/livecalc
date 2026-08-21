@@ -1,5 +1,8 @@
 """商品实体 API 路由"""
+from dataclasses import asdict
+
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, and_, or_, func
 from typing import List, Optional
@@ -28,6 +31,7 @@ from app.services.proposals.pending import (
     find_product_ids_with_pending_names,
     get_pending_proposal,
 )
+from app.services.barcode_lookup import resolve_barcode
 
 router = APIRouter(tags=["products_entity"])
 
@@ -298,6 +302,19 @@ def list_products(
         page=page,
         page_size=limit
     )
+
+
+@router.get("/products/entity/barcode/{barcode}")
+def lookup_product_by_barcode(
+    barcode: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """按条码查找本地商品或外部商品信息。"""
+    outcome = resolve_barcode(db, barcode)
+    if not outcome.found:
+        return JSONResponse(status_code=404, content=asdict(outcome))
+    return asdict(outcome)
 
 
 @router.get("/products/entity/{product_id}", response_model=ProductWithDetails)

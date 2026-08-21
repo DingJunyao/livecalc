@@ -34,6 +34,7 @@ from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
 from app.models.user_oauth_account import UserOauthAccount
 from app.models.storage_configuration import StorageConfiguration
 from app.models.image_tracking import ImageTracking
+from app.models.barcode_lookup_cache import BarcodeLookupCache
 
 __all__ = [
     "User", "UserPlace", "Merchant", "ProductRecord", "RecordType",
@@ -66,4 +67,5 @@ __all__ = [
     "UserOauthAccount",
     "StorageConfiguration",
     "ImageTracking",
+    "BarcodeLookupCache",
 ]

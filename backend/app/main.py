@@ -37,6 +37,7 @@ from app.api import proposals  # 通用提议-审核 API
 from app.api import email_config  # 邮件配置 API
 from app.api import regions  # 行政区划 API
 from app.api import storage_config  # 图片存储配置 API
+from app.api import barcode_config  # 条码服务配置 API
 from app.core.database import Base, engine, get_db
 from app.core.exceptions import AppException
 from app.core.logging_config import setup_logging
@@ -668,6 +669,7 @@ app.include_router(proposals.router, prefix="/api/v1", tags=["变更提议"])
 app.include_router(email_config.router, prefix="/api/v1", tags=["邮件配置"])
 app.include_router(regions.router, prefix="/api/v1", tags=["行政区划"])
 app.include_router(storage_config.router, prefix="/api/v1")
+app.include_router(barcode_config.router, prefix="/api/v1")
 
 
 @app.get("/")

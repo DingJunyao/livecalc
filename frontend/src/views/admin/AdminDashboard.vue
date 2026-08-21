@@ -141,6 +141,17 @@
         </v-list-item>
 
         <v-list-item
+          prepend-icon="mdi-barcode-scan"
+          title="条码服务配置"
+          subtitle="配置商品条码查询 API 与优先级"
+          to="/admin/barcode-services"
+        >
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+
+        <v-list-item
           prepend-icon="mdi-map-marker-path"
           title="地图配置"
           subtitle="配置地图服务 API 密钥"
