@@ -98,6 +98,7 @@ def _mask_service(service: ServiceConfig) -> dict:
         value = getattr(service, field)
         data[field] = "***" if value else None
         data[f"has_{field}"] = bool(value)
+    data["headers"] = {name: "***" for name in service.headers}
     return data
 
 
@@ -118,6 +119,10 @@ def merge_saved_secrets(saved: BarcodeConfig, incoming: dict) -> BarcodeConfig:
         for field in ("app_id", "app_secret", "app_code"):
             if service.get(field) in (None, "***"):
                 service[field] = getattr(previous, field)
+        service["headers"] = {
+            name: previous.headers.get(name, value) if value == "***" else value
+            for name, value in (service.get("headers") or {}).items()
+        }
     return BarcodeConfig(**data)
 
 

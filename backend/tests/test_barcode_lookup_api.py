@@ -162,6 +162,72 @@ def test_admin_config_rejects_private_custom_url(as_admin, db_session):
     ).count() == 0
 
 
+def test_admin_config_masks_and_retains_custom_headers(as_admin, db_session):
+    db_session.merge(SystemConfig(
+        key="barcode_service_config",
+        value=json.dumps({
+            "services": [{
+                "id": "custom",
+                "type": "custom",
+                "enabled": False,
+                "url_template": "https://api.example.test/{barcode}",
+                "headers": {"Authorization": "Bearer saved-token"},
+                "mappings": {"name": "$.name"},
+            }],
+        }),
+    ))
+    db_session.commit()
+    masked = client.get("/api/v1/admin/barcode-services").json()
+
+    response = client.put("/api/v1/admin/barcode-services", json=masked)
+
+    assert response.status_code == 200
+    assert masked["services"][0]["headers"] == {"Authorization": "***"}
+    persisted = json.loads(
+        db_session.get(SystemConfig, "barcode_service_config").value
+    )
+    assert persisted["services"][0]["headers"] == {
+        "Authorization": "Bearer saved-token"
+    }
+
+
+def test_admin_service_test_uses_saved_masked_credentials(
+    as_admin, db_session, monkeypatch
+):
+    db_session.merge(SystemConfig(
+        key="barcode_service_config",
+        value=json.dumps({
+            "services": [{
+                "id": "mxnzp",
+                "type": "mxnzp",
+                "enabled": True,
+                "app_id": "saved-id",
+                "app_secret": "saved-secret",
+            }],
+        }),
+    ))
+    db_session.commit()
+
+    with patch(
+        "app.api.barcode_config.lookup_with_provider", return_value=None
+    ) as provider:
+        response = client.post("/api/v1/admin/barcode-services/test", json={
+            "barcode": "9901000000005",
+            "service": {
+                "id": "mxnzp",
+                "type": "mxnzp",
+                "enabled": True,
+                "app_id": "***",
+                "app_secret": "***",
+            },
+        })
+
+    assert response.status_code == 200
+    service = provider.call_args[0][0]
+    assert service.app_id == "saved-id"
+    assert service.app_secret == "saved-secret"
+
+
 def test_admin_service_test_calls_one_provider_without_persisting(
     as_admin, db_session, monkeypatch
 ):
