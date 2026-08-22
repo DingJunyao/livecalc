@@ -249,11 +249,11 @@
               variant="outlined"
               class="mb-4"
             />
-            <v-text-field
+            <BarcodeField
               v-model="form.barcode"
-              label="条码"
-              variant="outlined"
+              :loading="barcodeLookupLoading"
               class="mb-4"
+              @barcode="handleBarcode"
             />
             <v-combobox
               v-model="form.aliases"
@@ -286,11 +286,13 @@ import { getErrorMessage } from '@/utils/errorHandler'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
 import FilterBar from '@/components/common/FilterBar.vue'
+import BarcodeField from '@/components/common/BarcodeField.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { useLatestPrices, formatUnitPrice } from '@/composables/useLatestPrices'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { usePendingProposals } from '@/composables/usePendingProposals'
+import { lookupBarcode } from '@/utils/barcodeLookup'
 
 const { notify } = useGlobalSnackbar()
 
@@ -342,6 +344,8 @@ const error = ref<string | null>(null)
 const search = ref((route.query.search as string) || '')
 const showAddDialog = ref(false)
 const saving = ref(false)
+const barcodeLookupLoading = ref(false)
+const returnTo = ref('')
 
 // 快速记录价格相关
 const showPriceDialog = ref(false)
@@ -360,6 +364,56 @@ const form = ref({
   aliases: [] as string[],
   ingredient_id: null as number | null
 })
+
+const queryValue = (key: string) => {
+  const value = route.query[key]
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '')
+}
+
+function consumePrefill() {
+  let storedPrefill: { barcode?: string; name?: string; brand?: string } | null = null
+  try {
+    storedPrefill = JSON.parse(sessionStorage.getItem('barcode-new-product') || 'null')
+  } catch {
+    storedPrefill = null
+  }
+  if (storedPrefill) sessionStorage.removeItem('barcode-new-product')
+
+  const barcode = queryValue('barcode') || storedPrefill?.barcode || ''
+  const name = queryValue('name') || storedPrefill?.name || ''
+  const brand = queryValue('brand') || storedPrefill?.brand || ''
+  const returnPath = queryValue('returnTo')
+  if (!barcode && !name && !brand && !returnPath) return
+
+  form.value.barcode = barcode
+  form.value.name = name
+  form.value.brand = brand
+  if (returnPath.startsWith('/') && !returnPath.startsWith('//')) {
+    returnTo.value = returnPath
+  }
+  showAddDialog.value = true
+
+  const query = { ...route.query }
+  for (const key of ['barcode', 'name', 'brand', 'returnTo']) delete query[key]
+  router.replace({ query })
+}
+
+async function handleBarcode(code: string) {
+  form.value.barcode = code.trim()
+  barcodeLookupLoading.value = true
+  try {
+    const result = await lookupBarcode(form.value.barcode)
+    if (result.found) {
+      if (!form.value.name.trim()) form.value.name = result.product.name || ''
+      if (!form.value.brand.trim()) form.value.brand = result.product.brand || ''
+      notify('已按条码填入商品信息', 'success')
+    } else {
+      notify(result.errors[0] || '未找到条码商品信息', 'info')
+    }
+  } finally {
+    barcodeLookupLoading.value = false
+  }
+}
 
 // 分页相关（从 URL 查询参数初始化）
 const currentPage = ref(Number(route.query.page) || 1)
@@ -593,6 +647,10 @@ const saveItem = async () => {
     form.value = { name: '', brand: '', barcode: '', aliases: [], ingredient_id: null }
     selectedIngredient.value = null
     ingredientSearch.value = ''
+    if (returnTo.value) {
+      sessionStorage.setItem('barcode-price-return', JSON.stringify(response))
+      router.push(returnTo.value)
+    }
   } catch (e: any) {
     console.error('保存商品失败', e)
   } finally {
@@ -601,6 +659,7 @@ const saveItem = async () => {
 }
 
 onMounted(() => {
+  consumePrefill()
   loadProducts()
   loadIngredients()
   loadCategories()

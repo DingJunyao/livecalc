@@ -55,6 +55,102 @@ export async function getMapConfig(): Promise<any> {
   }
 }
 
+const DEFAULT_BARCODE_SERVICES = [
+  {
+    id: 'openfoodfacts',
+    type: 'openfoodfacts',
+    enabled: false,
+    timeout_seconds: 5,
+    name: 'Open Food Facts',
+    doc_url: 'https://world.openfoodfacts.org/',
+  },
+  {
+    id: 'mxnzp',
+    type: 'mxnzp',
+    enabled: false,
+    timeout_seconds: 5,
+    name: 'mxnzp',
+    doc_url: 'https://www.mxnzp.com/doc/detail?id=6',
+  },
+  {
+    id: 'yunji',
+    type: 'yunji',
+    enabled: false,
+    timeout_seconds: 5,
+    name: '云际（云 API 市场）',
+    doc_url: 'https://market.aliyun.com/detail/cmapi031448',
+  },
+]
+
+function normalizeBarcodeConfig(raw: any): any {
+  return {
+    cache_ttl_minutes: Number(raw?.cache_ttl_minutes) || 10080,
+    services: (raw?.services || DEFAULT_BARCODE_SERVICES).map((service: any) => ({
+      headers: {},
+      mappings: {},
+      ...service,
+    })),
+  }
+}
+
+function maskBarcodeService(service: any): any {
+  const masked = { ...service }
+  for (const field of ['app_id', 'app_secret', 'app_code']) {
+    masked[field] = service[field] ? '***' : null
+    masked[`has_${field}`] = !!service[field]
+  }
+  masked.headers = Object.fromEntries(
+    Object.keys(service.headers || {}).map((name) => [name, '***'])
+  )
+  return masked
+}
+
+function mergeBarcodeConfig(saved: any, incoming: any): any {
+  const savedServices = new Map(saved.services.map((service: any) => [service.id, service]))
+  return {
+    cache_ttl_minutes: Number(incoming?.cache_ttl_minutes) || saved.cache_ttl_minutes,
+    services: (incoming?.services || []).map((service: any) => {
+      const previous = savedServices.get(service.id)
+      const merged = { headers: {}, mappings: {}, ...service }
+      if (previous) {
+        for (const field of ['app_id', 'app_secret', 'app_code']) {
+          if (merged[field] == null || merged[field] === '***') {
+            merged[field] = previous[field] || null
+          }
+        }
+        merged.headers = Object.fromEntries(
+          Object.entries(merged.headers).map(([name, value]) => [
+            name,
+            value === '***' ? previous.headers?.[name] ?? value : value,
+          ])
+        )
+      }
+      return merged
+    }),
+  }
+}
+
+export async function getBarcodeServices(): Promise<any> {
+  const config = normalizeBarcodeConfig(await getConfigValue('barcode_service_config'))
+  return { ...config, services: config.services.map(maskBarcodeService) }
+}
+
+export async function updateBarcodeServices(_params: Record<string, string>, data?: any): Promise<any> {
+  const saved = normalizeBarcodeConfig(await getConfigValue('barcode_service_config'))
+  const merged = mergeBarcodeConfig(saved, data)
+  await setConfigValue('barcode_service_config', merged)
+  return { ok: true }
+}
+
+export async function testBarcodeService(): Promise<any> {
+  return {
+    found: false,
+    source: null,
+    product: {},
+    errors: ['本地模式不支持外部条码服务连通性测试'],
+  }
+}
+
 export async function updateMapConfig(_params: Record<string, string>, data?: any): Promise<any> {
   await setConfigValue('map_config', data)
   return data
