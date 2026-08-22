@@ -281,22 +281,22 @@ def _parse_openfoodfacts(payload: dict, barcode: str) -> dict | None:
 
 
 def _parse_mxnzp(payload: dict, barcode: str) -> dict | None:
-    if payload.get("code") != 200:
+    if payload.get("code") != 1:
         return None
     data = payload.get("data") or {}
     return _clean_product(barcode, {
         "name": data.get("goodsName"),
-        "brand": data.get("brandName"),
-        "spec": data.get("spec"),
-        "manufacturer": data.get("manu"),
+        "brand": data.get("brand"),
+        "spec": data.get("standard"),
+        "manufacturer": data.get("supplier"),
         "image_url": data.get("image"),
     })
 
 
 def _parse_yunji(payload: dict, barcode: str) -> dict | None:
-    if payload.get("status") != 200:
+    if str(payload.get("status")) != "200":
         return None
-    data = payload.get("data") or {}
+    data = payload
     images = data.get("Image") or []
     image_url = images[0].get("Imageurl") if images else None
     return _clean_product(barcode, {
