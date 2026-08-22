@@ -13,14 +13,15 @@ export interface BarcodeLookupProduct {
 export interface BarcodeLookupResult {
   found: boolean
   source: string | null
-  product: BarcodeLookupProduct
-  errors: string[]
+ product: BarcodeLookupProduct
+ errors: string[]
+  has_enabled_providers: boolean
 }
 
 export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
   const code = barcode.trim()
   if (!code) {
-    return { found: false, source: null, product: {}, errors: ['请输入条码'] }
+    return { found: false, source: null, product: {}, errors: ['请输入条码'], has_enabled_providers: true }
   }
 
   try {
@@ -34,7 +35,8 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResul
       source: null,
       product: {},
       errors: [error?.userMessage || '条码查询失败'],
+      has_enabled_providers: false,
     }
   }
-  return { found: false, source: null, product: {}, errors: ['条码查询响应无效'] }
+  return { found: false, source: null, product: {}, errors: ['条码查询响应无效'], has_enabled_providers: true }
 }

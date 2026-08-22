@@ -169,6 +169,10 @@
     <!-- 添加/编辑价格记录对话框 -->
     <v-dialog v-model="showDialog" max-width="500" persistent>
       <v-card>
+        <v-overlay :model-value="barcodeLookupLoading" contained scrim="grey lighten-2" style="border-radius: inherit">
+          <v-progress-circular indeterminate color="primary" size="48" />
+          <div class="text-body-2 mt-3 text-grey-darken-2">正在查询条码信息...</div>
+        </v-overlay>
         <v-card-title>{{ isEditing ? '编辑价格记录' : '添加价格记录' }}</v-card-title>
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
@@ -191,6 +195,24 @@
               :custom-filter="() => true"
               class="mb-4"
             >
+              <template #append-inner>
+                <v-btn
+                  v-if="barcodeLookupLoading"
+                  icon="mdi-loading"
+                  size="small"
+                  variant="text"
+                  disabled
+                />
+                <v-btn
+                  v-else
+                  icon="mdi-barcode-scan"
+                  size="small"
+                  variant="text"
+                  aria-label="扫码识别商品"
+                  :disabled="isEditing"
+                  @click="scannerOpen = true"
+                />
+              </template>
               <template #item="{ props, item }">
                 <v-list-item v-bind="props">
                   <template #subtitle>
@@ -306,6 +328,22 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <BarcodeScannerDialog v-model="scannerOpen" @detected="handleScannedBarcode" />
+    <v-dialog v-model="createProductDialog" max-width="420">
+      <v-card>
+        <v-card-title>未找到本地商品</v-card-title>
+        <v-card-text>
+          <div class="text-body-2">条码：{{ createProductData.barcode }}</div>
+          <div v-if="createProductData.name" class="text-body-2">名称：{{ createProductData.name }}</div>
+          <div v-if="createProductData.brand" class="text-body-2">品牌：{{ createProductData.brand }}</div>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="createProductDialog = false">取消</v-btn>
+          <v-btn color="primary" variant="text" @click="goCreateProduct">新增商品</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" :timeout="4000" location="top">
       {{ snackbar.message }}
     </v-snackbar>
@@ -325,6 +363,8 @@ import FilterBar from '@/components/common/FilterBar.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
+import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
+import { lookupBarcode } from '@/utils/barcodeLookup'
 
 const { ask } = useConfirmDialog()
 
@@ -376,6 +416,52 @@ interface Merchant {
 const records = ref<PriceRecord[]>([])
 const loading = ref(true)
 const error = ref<string | null>(null)
+
+const scannerOpen = ref(false)
+const barcodeLookupLoading = ref(false)
+const createProductDialog = ref(false)
+const createProductData = ref({ barcode: '', name: '', brand: '' })
+
+async function handleScannedBarcode(code: string) {
+  barcodeLookupLoading.value = true
+  try {
+    const result = await lookupBarcode(code)
+    if (result.found && result.product.id) {
+      const p = result.product
+      selectedProduct.value = { id: p.id, name: p.name || '' } as ProductSuggestion
+      productSearch.value = p.name || ''
+      form.value.product_id = p.id
+      return
+    }
+    if (result.found) {
+      createProductData.value = {
+        barcode: code,
+        name: result.product.name || '',
+        brand: result.product.brand || '',
+      }
+      createProductDialog.value = true
+    } else if (result.has_enabled_providers) {
+      showSnackbar('未在条码服务中找到该商品', 'info')
+    } else {
+      showSnackbar('未找到匹配商品，且未配置条码查询服务', 'info')
+    }
+  } finally {
+    barcodeLookupLoading.value = false
+  }
+}
+
+function goCreateProduct() {
+  createProductDialog.value = false
+  const prefill = {
+    barcode: createProductData.value.barcode,
+    name: createProductData.value.name,
+    brand: createProductData.value.brand,
+  }
+  sessionStorage.setItem('barcode-new-product', JSON.stringify(prefill))
+  closeDialog()
+  router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices' } })
+}
+
 const snackbar = ref({ show: false, message: '', color: 'error' })
 function showSnackbar(message: string, color: string = 'error') {
   snackbar.value = { show: true, message, color }
@@ -785,6 +871,23 @@ const closeDialog = () => {
   selectedProduct.value = null
 }
 
+const consumeReturnedProduct = () => {
+  const raw = sessionStorage.getItem('barcode-price-return')
+  if (!raw) return
+  sessionStorage.removeItem('barcode-price-return')
+  try {
+    const product = JSON.parse(raw)
+    if (!product?.id) return
+    openAddDialog()
+    selectedProduct.value = { id: product.id, name: product.name || '' } as ProductSuggestion
+    productSearch.value = product.name || ''
+    form.value.product_id = product.id
+    form.value.product_name = product.name || ''
+  } catch {
+    // ignore malformed return data
+  }
+}
+
 const saveRecord = async () => {
   if (!formRef.value?.validate()) return
 
@@ -853,6 +956,7 @@ onMounted(() => {
   loadMerchants()
   loadCategories()
   loadUnits()
+  consumeReturnedProduct()
   window.addEventListener('app-refresh', handleRefresh)
 })
 

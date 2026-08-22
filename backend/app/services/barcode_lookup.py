@@ -47,6 +47,7 @@ class LookupOutcome:
     source: str | None
     product: dict
     errors: list[str]
+    has_enabled_providers: bool = False
 
 
 BUILTIN_CONFIGS = [
@@ -424,21 +425,22 @@ def resolve_barcode(
 ) -> LookupOutcome:
     barcode = barcode.strip()
     if not barcode or len(barcode) > 50:
-        return LookupOutcome(False, None, {}, ["Invalid barcode"])
+        return LookupOutcome(False, None, {}, ["Invalid barcode"], has_enabled_providers=False)
 
     config = config or load_config(db)
     product = _local_product(db, barcode)
     if product:
-        return LookupOutcome(True, "local", _local_payload(product, barcode), [])
+        return LookupOutcome(True, "local", _local_payload(product, barcode), [], has_enabled_providers=False)
 
     now = datetime.now(timezone.utc)
     cached = _cached_payload(db, barcode, now)
     if cached is not None:
         row = db.get(BarcodeLookupCache, barcode)
-        return LookupOutcome(True, row.source, cached, [])
+        return LookupOutcome(True, row.source, cached, [], has_enabled_providers=False)
 
     errors: list[str] = []
     services = [service for service in config.services if service.enabled]
+    has_enabled = bool(services)
     own_client = client is None and bool(services)
     if own_client:
         client = httpx.Client(timeout=max(service.timeout_seconds for service in services))
@@ -476,9 +478,9 @@ def resolve_barcode(
                     ),
                 ))
             db.commit()
-            return LookupOutcome(True, source, provider_product, [])
+            return LookupOutcome(True, source, provider_product, [], has_enabled_providers=has_enabled)
     finally:
         if own_client:
             client.close()
 
-    return LookupOutcome(False, None, {}, errors)
+    return LookupOutcome(False, None, {}, errors, has_enabled_providers=has_enabled)

@@ -217,6 +217,7 @@
               class="mb-4"
             />
             <v-autocomplete
+              v-if="!createNewIngredient"
               v-model="selectedIngredient"
               v-model:search="ingredientSearch"
               :items="ingredients"
@@ -243,6 +244,15 @@
                 </v-list-item>
               </template>
             </v-autocomplete>
+            <v-switch
+              v-model="createNewIngredient"
+              color="primary"
+              label="新建同名原料"
+              hide-details
+              class="mb-2"
+              hint="开启后将自动创建与商品同名的原料"
+              persistent-hint
+            />
             <v-text-field
               v-model="form.brand"
               label="品牌"
@@ -345,6 +355,7 @@ const search = ref((route.query.search as string) || '')
 const showAddDialog = ref(false)
 const saving = ref(false)
 const barcodeLookupLoading = ref(false)
+const createNewIngredient = ref(false)
 const returnTo = ref('')
 
 // 快速记录价格相关
@@ -407,6 +418,8 @@ async function handleBarcode(code: string) {
       if (!form.value.name.trim()) form.value.name = result.product.name || ''
       if (!form.value.brand.trim()) form.value.brand = result.product.brand || ''
       notify('已按条码填入商品信息', 'success')
+    } else if (!result.has_enabled_providers) {
+      notify('未找到匹配商品，且未配置条码查询服务', 'info')
     } else {
       notify(result.errors[0] || '未找到条码商品信息', 'info')
     }
@@ -633,8 +646,17 @@ const onPriceSaved = () => {
 
 const saveItem = async () => {
   if (!form.value.name.trim()) return
+  if (createNewIngredient.value && !form.value.ingredient_id) {
+    try {
+      const resp = await api.post('/ingredients', { name: form.value.name.trim() })
+      form.value.ingredient_id = resp.id
+    } catch (e: any) {
+      notify(getErrorMessage(e, '创建原料失败'), 'error')
+      return
+    }
+  }
   if (!form.value.ingredient_id) {
-    notify('请选择关联的原料', 'info')
+    notify('请选择关联的原料，或开启“新建同名原料”', 'info')
     return
   }
 
@@ -644,6 +666,7 @@ const saveItem = async () => {
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false
+    createNewIngredient.value = false
     form.value = { name: '', brand: '', barcode: '', aliases: [], ingredient_id: null }
     selectedIngredient.value = null
     ingredientSearch.value = ''

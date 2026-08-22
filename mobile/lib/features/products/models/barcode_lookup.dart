@@ -36,12 +36,14 @@ class BarcodeLookupResult {
   final String? source;
   final BarcodeLookupProduct product;
   final List<String> errors;
+  final bool hasEnabledProviders;
 
   const BarcodeLookupResult({
     required this.found,
     this.source,
     this.product = const BarcodeLookupProduct(),
     this.errors = const [],
+    this.hasEnabledProviders = false,
   });
 
   factory BarcodeLookupResult.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class BarcodeLookupResult {
               ?.map((error) => error.toString())
               .toList() ??
           const [],
+      hasEnabledProviders: json['has_enabled_providers'] as bool? ?? false,
     );
   }
 }

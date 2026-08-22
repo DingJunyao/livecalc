@@ -70,6 +70,8 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   List<String> _aliases = const [];
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
+  bool _createNewIngredient = false;
+  bool _barcodeLoading = false;
   bool _searching = false;
   bool _loading = false;
   bool _saving = false;
@@ -168,6 +170,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             _searching = false;
           });
         }
+    } finally {
+      if (mounted) setState(() => _barcodeLoading = false);
+    }
       } catch (_) {
         if (mounted) setState(() => _searching = false);
       }
@@ -179,9 +184,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     final code = await scanner(context);
     if (code == null || code.trim().isEmpty || !mounted) return;
     _barcodeController.text = code.trim();
+    setState(() => _barcodeLoading = true);
     try {
       final result = await _productRepository.lookupBarcode(code);
-      if (!mounted || !result.found) return;
+      if (!mounted) return;
+      if (!result.hasEnabledProviders) {
+        return;
+      }
+      if (!result.found) return;
       setState(() {
         if (_nameController.text.trim().isEmpty) {
           _nameController.text = result.product.name ?? '';
@@ -193,6 +203,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     } catch (_) {
       // 外部服务失败时保留扫码得到的条码，用户可以继续手工填写。
     }
+    finally {
+      if (mounted) setState(() => _barcodeLoading = false);
+    }
   }
 
   Future<void> _save() async {
@@ -201,9 +214,22 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       setState(() => _error = '请输入商品名称');
       return;
     }
-    if (_selectedIngredient == null) {
-      setState(() => _error = '请选择关联的原料');
+    if (_selectedIngredient == null && !_createNewIngredient) {
+      setState(() => _error = '请选择关联的原料，或开启“新建同名原料”');
       return;
+    }
+    if (_selectedIngredient == null && _createNewIngredient) {
+      setState(() => _saving = true);
+      try {
+        final ingredient = await _ingredientRepository.createIngredient(name: name);
+        _selectedIngredient = ingredient;
+      } catch (e) {
+        if (mounted) setState(() {
+          _error = '创建原料失败';
+          _saving = false;
+        });
+        return;
+      }
     }
     setState(() {
       _saving = true;
@@ -355,8 +381,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildIngredientField(),
+                if (!_createNewIngredient) _buildIngredientField(),
                 const SizedBox(height: 16),
+                SwitchListTile(
+                  title: const Text('新建同名原料'),
+                  subtitle: const Text('开启后将自动创建与商品同名的原料'),
+                  value: _createNewIngredient,
+                  onChanged: (v) => setState(() => _createNewIngredient = v),
+                  contentPadding: EdgeInsets.zero,
+                ),
+                const SizedBox(height: 8),
                 TextFormField(
                   controller: _brandController,
                   initialValue: null,
@@ -372,11 +406,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   decoration: InputDecoration(
                     labelText: '条码',
                     border: const OutlineInputBorder(),
-                    suffixIcon: IconButton(
-                      tooltip: '扫码输入条码',
-                      icon: const Icon(Icons.qr_code_scanner),
-                      onPressed: _scanBarcode,
-                    ),
+                    suffixIcon: _barcodeLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : IconButton(
+                            tooltip: '扫码输入条码',
+                            icon: const Icon(Icons.barcode_reader),
+                            onPressed: _scanBarcode,
+                          ),
                   ),
                 ),
                 const SizedBox(height: 16),

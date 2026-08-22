@@ -150,24 +150,25 @@ export async function lookupBarcode(params: Record<string, string>): Promise<any
     const productId = barcodeRows.find((row: any) => row.is_active !== false)?.product_id
     product = products.find((item: any) => item.id === productId && isActive(item))
   }
-  if (!product) {
-    return { found: false, source: null, product: {}, errors: [] }
-  }
+ if (!product) {
+    return { found: false, source: null, product: {}, errors: [], has_enabled_providers: false }
+ }
 
-  return {
-    found: true,
-    source: 'local',
-    product: {
-      id: product.id,
-      barcode,
-      name: product.name,
-      brand: product.brand || null,
-      spec: null,
-      manufacturer: null,
-      image_url: product.image_url || null,
-    },
-    errors: [],
-  }
+ return {
+   found: true,
+   source: 'local',
+   product: {
+     id: product.id,
+     barcode,
+     name: product.name,
+     brand: product.brand || null,
+     spec: null,
+     manufacturer: null,
+     image_url: product.image_url || null,
+   },
+   errors: [],
+  has_enabled_providers: false,
+ }
 }
 
 export async function createEntity(_params: Record<string, string>, data?: any): Promise<any> {

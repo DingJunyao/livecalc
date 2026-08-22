@@ -63,6 +63,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   bool _isPurchase = true;
   bool _saving = false;
   DateTime _recordedAt = DateTime.now();
+  bool _barcodeLoading = false;
   late final bool _lockProduct;
   late final int? _ingredientId;
 
@@ -139,9 +140,13 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     final scanner = widget.scanner ?? showBarcodeScannerSheet;
     final code = await scanner(context);
     if (code == null || code.trim().isEmpty || !mounted) return;
+    setState(() => _barcodeLoading = true);
     try {
       final result = await _productRepo.lookupBarcode(code);
       if (!mounted) return;
+      if (!result.hasEnabledProviders) {
+        return;
+      }
       if (result.found && result.product.id != null) {
         _selectProduct(
           Product(
@@ -200,6 +205,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           const SnackBar(content: Text('条码查询失败，请重试')),
         );
       }
+    } finally {
+      if (mounted) setState(() => _barcodeLoading = false);
     }
   }
 
@@ -298,8 +305,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                 children: [
                   IconButton(
                     tooltip: '扫码识别商品',
-                    icon: const Icon(Icons.qr_code_scanner),
-                    onPressed: _lockProduct ? null : _scanBarcode,
+                    icon: const Icon(Icons.barcode_reader),
+                    onPressed: (_barcodeLoading || _lockProduct) ? null : _scanBarcode,
                   ),
                   if (_searching)
                     const SizedBox(
