@@ -64,22 +64,33 @@ def test_mxnzp_maps_data_and_sends_credentials():
     )
     client = Mock()
     client.get.return_value = _Response({
-        "code": 200,
+        "code": 1,
         "data": {
-            "goodsName": "Milk",
-            "brandName": "Brand",
-            "spec": "500ml",
-            "manu": "Factory",
+            "goodsName": "寻味中华卤香炖肉味山西刀削面",
+            "barcode": "6921555561768",
+            "brand": "拉面范",
+            "supplier": "今麦郎食品股份有限公司",
+            "standard": "面饼+配料:110克×5",
         },
     })
 
-    result = lookup_with_provider(service, "690", client)
+    result = lookup_with_provider(service, "6921555561768", client)
 
-    assert result["name"] == "Milk"
-    assert result["manufacturer"] == "Factory"
+    assert result == {
+        "barcode": "6921555561768",
+        "name": "寻味中华卤香炖肉味山西刀削面",
+        "brand": "拉面范",
+        "spec": "面饼+配料:110克×5",
+        "manufacturer": "今麦郎食品股份有限公司",
+        "image_url": None,
+    }
     client.get.assert_called_once_with(
         "https://www.mxnzp.com/api/barcode/goods/details",
-        params={"barcode": "690", "app_id": "app-id", "app_secret": "secret"},
+        params={
+            "barcode": "6921555561768",
+            "app_id": "app-id",
+            "app_secret": "secret",
+        },
     )
 
 
@@ -89,29 +100,31 @@ def test_yunji_maps_data_and_app_code_header():
     )
     client = Mock()
     client.get.return_value = _Response({
-        "status": 200,
-        "data": {
-            "ItemName": "Milk",
-            "BrandName": "Brand",
-            "ItemSpecification": "500ml",
-            "FirmName": "Factory",
-            "Image": [{"Imageurl": "https://example.test/m.jpg"}],
-        },
+        "status": "200",
+        "message": "查询成功！",
+        "Barcode": "6921555561768",
+        "ItemName": "寻味中华卤香炖肉味山西刀削面",
+        "BrandName": "拉面范",
+        "ItemSpecification": "面饼+配料:110克×5",
+        "FirmName": "今麦郎食品股份有限公司",
+        "Image": [{
+            "Imageurl": "http://www.api-yun.cn/getPic/getPics/test/0"
+        }],
     })
 
-    result = lookup_with_provider(service, "690", client)
+    result = lookup_with_provider(service, "6921555561768", client)
 
     assert result == {
-        "barcode": "690",
-        "name": "Milk",
-        "brand": "Brand",
-        "spec": "500ml",
-        "manufacturer": "Factory",
-        "image_url": "https://example.test/m.jpg",
+        "barcode": "6921555561768",
+        "name": "寻味中华卤香炖肉味山西刀削面",
+        "brand": "拉面范",
+        "spec": "面饼+配料:110克×5",
+        "manufacturer": "今麦郎食品股份有限公司",
+        "image_url": "http://www.api-yun.cn/getPic/getPics/test/0",
     }
     client.get.assert_called_once_with(
         "https://barcode100.market.alicloudapi.com/getBarcode",
-        params={"Code": "690"},
+        params={"Code": "6921555561768"},
         headers={"Authorization": "APPCODE app-code"},
     )
 
