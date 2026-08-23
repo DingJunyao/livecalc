@@ -1,11 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient.dart';
+import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
+import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
 
 class _FakeProductRepository extends ProductRepository {
   _FakeProductRepository(this.existing);
@@ -57,6 +61,17 @@ class _FakeProductRepository extends ProductRepository {
         raw: {},
       ),
     );
+  }
+}
+
+class _ScanLookupRepository extends ProductRepository {
+  _ScanLookupRepository(this.completer);
+
+  final Completer<BarcodeLookupResult> completer;
+
+  @override
+  Future<BarcodeLookupResult> lookupBarcode(String barcode) {
+    return completer.future;
   }
 }
 
@@ -162,5 +177,34 @@ void main() {
     expect(repo.lastName, '低筋粉');
     expect(repo.lastAliases, ['蛋糕粉', '低 粉']);
     expect(repo.lastTags, ['烘焙']);
+  });
+
+  testWidgets('扫码后查询商品信息期间显示加载覆盖层', (tester) async {
+    await useTallViewport(tester);
+    final lookupCompleter = Completer<BarcodeLookupResult>();
+    final repo = _ScanLookupRepository(lookupCompleter);
+    await tester.pumpWidget(MaterialApp(
+      home: ProductFormScreen(
+        fixedIngredient: const Ingredient(id: 8, name: '面粉'),
+        repository: repo,
+        scanner: (_) async => '6901234567890',
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byIcon(Icons.barcode_reader));
+    await tester.tap(find.byIcon(Icons.barcode_reader));
+    await tester.pump();
+
+    // 查询进行中：显示加载覆盖层
+    expect(find.byType(LoadingOverlay), findsOneWidget);
+    expect(find.text('正在查询商品信息…'), findsOneWidget);
+
+    // 查询完成：覆盖层消失
+    lookupCompleter.complete(
+      const BarcodeLookupResult(found: false, hasEnabledProviders: true),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(LoadingOverlay), findsNothing);
   });
 }

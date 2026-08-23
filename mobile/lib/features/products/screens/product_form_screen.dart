@@ -7,6 +7,7 @@ import '../../ingredients/repositories/ingredient_repository.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
+import '../../../shared/widgets/loading_overlay.dart';
 
 class ProductFormPrefill {
   final String barcode;
@@ -364,95 +365,102 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? '编辑商品' : '添加商品')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  initialValue: null,
-                  decoration: const InputDecoration(
-                    labelText: '商品名称 *',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                if (!_createNewIngredient) _buildIngredientField(),
-                const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('新建同名原料'),
-                  subtitle: const Text('开启后将自动创建与商品同名的原料'),
-                  value: _createNewIngredient,
-                  onChanged: (v) => setState(() => _createNewIngredient = v),
-                  contentPadding: EdgeInsets.zero,
-                ),
-                const SizedBox(height: 8),
-                TextFormField(
-                  controller: _brandController,
-                  initialValue: null,
-                  decoration: const InputDecoration(
-                    labelText: '品牌',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _barcodeController,
-                  initialValue: null,
-                  decoration: InputDecoration(
-                    labelText: '条码',
-                    border: const OutlineInputBorder(),
-                    suffixIcon: _barcodeLoading
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : IconButton(
-                            tooltip: '扫码输入条码',
-                            icon: const Icon(Icons.barcode_reader),
-                            onPressed: _scanBarcode,
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                AliasTagsField(
-                  label: '别名',
-                  initialTags: _aliases,
-                  onTagsChanged: (aliases) => _aliases = aliases,
-                ),
-                if (_isEdit) ...[
-                  const SizedBox(height: 16),
-                  AliasTagsField(
-                    label: '标签',
-                    initialTags: _tags,
-                    onTagsChanged: (tags) => _tags = tags,
-                  ),
-                ],
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+    return Stack(
+      children: [
+        Scaffold(
+          appBar: AppBar(title: Text(_isEdit ? '编辑商品' : '添加商品')),
+          body: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    TextFormField(
+                      controller: _nameController,
+                      initialValue: null,
+                      decoration: const InputDecoration(
+                        labelText: '商品名称 *',
+                        border: OutlineInputBorder(),
                       ),
                     ),
-                  ),
-              ],
+                    const SizedBox(height: 16),
+                    if (!_createNewIngredient) _buildIngredientField(),
+                    const SizedBox(height: 16),
+                    SwitchListTile(
+                      title: const Text('新建同名原料'),
+                      subtitle: const Text('开启后将自动创建与商品同名的原料'),
+                      value: _createNewIngredient,
+                      onChanged: (v) =>
+                          setState(() => _createNewIngredient = v),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                    const SizedBox(height: 8),
+                    TextFormField(
+                      controller: _brandController,
+                      initialValue: null,
+                      decoration: const InputDecoration(
+                        labelText: '品牌',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _barcodeController,
+                      initialValue: null,
+                      decoration: InputDecoration(
+                        labelText: '条码',
+                        border: const OutlineInputBorder(),
+                        suffixIcon: _barcodeLoading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : IconButton(
+                                tooltip: '扫码输入条码',
+                                icon: const Icon(Icons.barcode_reader),
+                                onPressed: _scanBarcode,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    AliasTagsField(
+                      label: '别名',
+                      initialTags: _aliases,
+                      onTagsChanged: (aliases) => _aliases = aliases,
+                    ),
+                    if (_isEdit) ...[
+                      const SizedBox(height: 16),
+                      AliasTagsField(
+                        label: '标签',
+                        initialTags: _tags,
+                        onTagsChanged: (tags) => _tags = tags,
+                      ),
+                    ],
+                    if (_error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: FilledButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? '保存中...' : '保存'),
+              ),
             ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? '保存中...' : '保存'),
           ),
         ),
-      ),
+        if (_barcodeLoading) const LoadingOverlay(message: '正在查询商品信息…'),
+      ],
     );
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,8 +9,10 @@ import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_rep
 import 'package:com_a4ding_livecalc/features/prices/models/price_record.dart';
 import 'package:com_a4ding_livecalc/features/prices/screens/price_record_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/prices/repositories/price_repository.dart';
+import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
+import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
 
 class _FakePriceRepository extends PriceRepository {
   int createCount = 0;
@@ -79,6 +83,17 @@ class _FakeProductRepository extends ProductRepository {
   }
 }
 
+class _ScanLookupProductRepository extends ProductRepository {
+  _ScanLookupProductRepository(this.completer);
+
+  final Completer<BarcodeLookupResult> completer;
+
+  @override
+  Future<BarcodeLookupResult> lookupBarcode(String barcode) {
+    return completer.future;
+  }
+}
+
 class _FakeMerchantRepository extends MerchantRepository {
   @override
   Future<MerchantPage> search({
@@ -125,8 +140,9 @@ void main() {
   Future<void> pumpForm(
     WidgetTester tester, {
     _FakePriceRepository? priceRepo,
-    _FakeProductRepository? productRepo,
+    ProductRepository? productRepo,
     PriceRecordFormPrefill? prefill,
+    Future<String?> Function(BuildContext)? scanner,
     double viewportHeight = 1400,
   }) async {
     // 表单整体超过默认 600 高视口，放大视口让底部保存按钮被构建。
@@ -148,6 +164,7 @@ void main() {
             priceRepository: priceRepo ?? _FakePriceRepository(),
             productRepository: productRepo ?? _FakeProductRepository(const []),
             prefill: prefill,
+            scanner: scanner,
           ),
         ),
       ),
@@ -407,5 +424,29 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
+  });
+
+  testWidgets('扫码查询期间显示加载覆盖层，查询完成弹窗打开前覆盖层消失', (tester) async {
+    final lookupCompleter = Completer<BarcodeLookupResult>();
+    final productRepo = _ScanLookupProductRepository(lookupCompleter);
+    await pumpForm(
+      tester,
+      productRepo: productRepo,
+      scanner: (_) async => '6901234567890',
+    );
+
+    await tester.tap(find.byIcon(Icons.barcode_reader));
+    await tester.pump();
+
+    // 查询进行中：显示加载覆盖层
+    expect(find.byType(LoadingOverlay), findsOneWidget);
+
+    // 查询完成但未找到本地商品：先收起覆盖层，再弹出「未找到本地商品」对话框
+    lookupCompleter.complete(
+      const BarcodeLookupResult(found: false, hasEnabledProviders: true),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(LoadingOverlay), findsNothing);
+    expect(find.widgetWithText(AlertDialog, '未找到本地商品'), findsOneWidget);
   });
 }
