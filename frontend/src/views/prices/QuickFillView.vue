@@ -58,12 +58,26 @@
             <div class="fill-row">
               <div class="fill-row__name">{{ row.productName }}</div>
               <div class="fill-row__inputs">
+                <v-menu :close-on-content-click="true" location="bottom">
+                  <template #activator="{ props: menuProps }">
+                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item
+                      v-for="c in currencies"
+                      :key="c.code"
+                      :title="`${c.symbol || c.code} ${c.name}`"
+                      :active="recordCurrency === c.code"
+                      @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                    />
+                  </v-list>
+                </v-menu>
                 <v-text-field
                   :model-value="row.price"
                   @update:model-value="(v) => onPriceChange(row, v == null ? '' : String(v))"
                   type="number"
                   step="0.01"
-                  placeholder="¥0.00"
+                  :placeholder="currencySymbolText + '0.00'"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -158,12 +172,26 @@
                 </template>
               </v-autocomplete>
               <div class="fill-row__inputs">
+                <v-menu :close-on-content-click="true" location="bottom">
+                  <template #activator="{ props: menuProps }">
+                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
+                  </template>
+                  <v-list density="compact">
+                    <v-list-item
+                      v-for="c in currencies"
+                      :key="c.code"
+                      :title="`${c.symbol || c.code} ${c.name}`"
+                      :active="recordCurrency === c.code"
+                      @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                    />
+                  </v-list>
+                </v-menu>
                 <v-text-field
                   v-model="row.price"
                   :id="`new-row-price-${i}`"
                   type="number"
                   step="0.01"
-                  placeholder="¥0.00"
+                  :placeholder="currencySymbolText + '0.00'"
                   variant="outlined"
                   density="compact"
                   hide-details
@@ -258,12 +286,14 @@ import { api } from '@/api'
 import PasteImportDialog from '@/components/prices/PasteImportDialog.vue'
 import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
+import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
 
 interface Merchant {
   id: number
   name: string
+  default_currency: string | null
 }
 
 interface FillRow {
@@ -335,6 +365,9 @@ function addHiddenItems(merchantId: number, productIds: number[]) {
 
 // --- 状态 ---
 const merchants = ref<Merchant[]>([])
+const currencies = ref<any[]>([])
+const recordCurrency = ref<string>('CNY')
+const currencySymbolText = ref<string>('¥')
 const selectedMerchantId = ref<number | null>(null)
 const saving = ref(false)
 const saveProgress = ref<{ current: number; total: number } | null>(null)
@@ -478,6 +511,9 @@ const loadMerchants = async () => {
 const onMerchantChange = async (val: number | null) => {
   historyRows.value = []
   if (!val) return
+  const m = merchants.value.find((x) => x.id === val)
+  recordCurrency.value = m?.default_currency || 'CNY'
+  currencySymbolText.value = await currencySymbol(recordCurrency.value).catch(() => symbolFromIntl(recordCurrency.value))
   loading.value = true
   try {
     const res = await api.get(`/merchants/${val}/product-prices`, {
@@ -720,6 +756,7 @@ const saveAll = async () => {
       original_quantity: row.quantity,
       original_unit: row.unit,
       merchant_id: selectedMerchantId.value,
+      currency: recordCurrency.value,
       record_type: 'price',
     }
     if (pid) {
@@ -830,6 +867,7 @@ onMounted(() => {
   restoreDraft()
   loadMerchants()
   loadUnits()
+  loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
   consumeProductReturn()
 })
 </script>
