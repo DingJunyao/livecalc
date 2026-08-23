@@ -13,8 +13,8 @@ export interface BarcodeLookupProduct {
 export interface BarcodeLookupResult {
   found: boolean
   source: string | null
- product: BarcodeLookupProduct
- errors: string[]
+  product: BarcodeLookupProduct
+  errors: string[]
   has_enabled_providers: boolean
 }
 

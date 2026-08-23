@@ -676,6 +676,7 @@ const saveItem = async () => {
     }
   } catch (e: any) {
     console.error('保存商品失败', e)
+    notify(getErrorMessage(e, '保存商品失败'), 'error')
   } finally {
     saving.value = false
   }

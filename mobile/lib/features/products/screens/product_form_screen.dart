@@ -199,8 +199,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       });
     } catch (_) {
       // 外部服务失败时保留扫码得到的条码，用户可以继续手工填写。
-    }
-    finally {
+    } finally {
       if (mounted) setState(() => _barcodeLoading = false);
     }
   }
@@ -218,13 +217,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     if (_selectedIngredient == null && _createNewIngredient) {
       setState(() => _saving = true);
       try {
-        final ingredient = await _ingredientRepository.createIngredient(name: name);
+        final ingredient =
+            await _ingredientRepository.createIngredient(name: name);
         _selectedIngredient = ingredient;
       } catch (e) {
-        if (mounted) setState(() {
-          _error = '创建原料失败';
-          _saving = false;
-        });
+        if (mounted) {
+          setState(() {
+            _error = '创建原料失败';
+            _saving = false;
+          });
+        }
         return;
       }
     }
