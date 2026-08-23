@@ -81,6 +81,22 @@
 
 尽管有这个页面，但是除非单位为某个度量衡制度下的单位，或者是有通用的、明确的换算关系，否则不建议在这里维护单位，而是为原料或商品维护自定义单位。
 
+## 条码服务配置
+
+![条码服务配置](../img/admin_barcode.jpeg)
+
+可以维护条码服务，用于自动识别商品信息。
+
+现支持以下服务：
+
+- [Open Food Facts](https://world.openfoodfacts.org/)：免费无需注册，但服务器不稳定，且数据不足
+- [mxnzp](https://www.mxnzp.com/doc/detail?id=6)：免费需注册，需要获取 App ID 和 App Secret
+- [云际](https://market.aliyun.com/detail/cmapi031448)：通过阿里云云市场提供服务，需要购买服务后获取 AppCode
+
+你也可以自己接入 API，配置好相应参数即可。
+
+服务的优先级可以调整。
+
 ## 地图配置
 
 ![地图配置](../img/admin_map_desktop.jpeg)

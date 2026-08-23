@@ -8,6 +8,16 @@
 
 ![商品列表](img/product_desktop.png)
 
+## 新增原料与商品
+
+先新增原料，再新增商品。
+
+![新增原料](img/ingredient_add.jpeg)
+
+![新增商品](img/product_add.jpeg)
+
+创建商品时，如果管理员设置了条码查询服务，则可通过扫描条码，快速填充信息。
+
 ## 原料详情页
 
 ![原料详情页](img/ingredient_detail_desktop.jpeg)
