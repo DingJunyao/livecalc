@@ -463,7 +463,7 @@
               {{ record.product_name }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              <div>¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
+              <div><PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
               <template v-if="record.merchant_name"> · {{ record.merchant_name }}</template></div>
               <div class="text-caption text-medium-emphasis mt-1">
                 {{ formatToLocalDate(record.recorded_at) }}
@@ -1766,6 +1766,7 @@ import HierarchyGraph from '@/components/charts/HierarchyGraph.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
+import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
@@ -1825,6 +1826,8 @@ interface PriceRecord {
   product_id: number
   product_name: string
   price: number | string
+  currency?: string
+  exchange_rate?: number | null
   original_quantity: number | string
   original_unit: string
   merchant_name?: string

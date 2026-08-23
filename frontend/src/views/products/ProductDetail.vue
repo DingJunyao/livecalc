@@ -567,7 +567,7 @@
             </template>
 
             <v-list-item-title>
-              ¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
+              <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
             </v-list-item-title>
             <v-list-item-subtitle>
               <template v-if="record.merchant_name">
@@ -1202,6 +1202,7 @@ import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
+import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useUserStore } from '@/stores/user'
@@ -1248,6 +1249,8 @@ interface PriceRecord {
   product_id: number
   product_name: string
   price: number | string
+  currency?: string
+  exchange_rate?: number | null
   original_quantity: number | string
   original_unit: string
   merchant_name?: string
