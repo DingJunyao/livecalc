@@ -48,6 +48,24 @@
           {{ service.type === 'custom' ? service.name || '未命名自定义服务' : typeLabel(service.type) }}
         </div>
         <v-chip size="small" variant="tonal">{{ typeLabel(service.type) }}</v-chip>
+        <div class="d-flex align-center ga-1">
+          <v-btn
+            icon="mdi-arrow-up"
+            size="small"
+            variant="text"
+            :disabled="index === 0"
+            aria-label="提高优先级"
+            @click="moveService(index, -1)"
+          />
+          <v-btn
+            icon="mdi-arrow-down"
+            size="small"
+            variant="text"
+            :disabled="index === config.services.length - 1"
+            aria-label="降低优先级"
+            @click="moveService(index, 1)"
+          />
+        </div>
         <v-spacer />
         <v-switch
           v-model="service.enabled"
@@ -60,6 +78,7 @@
 
       <v-card-subtitle class="d-flex align-center flex-wrap ga-2 pb-3">
         <span class="text-medium-emphasis">ID: {{ service.id }}</span>
+        <span class="text-caption text-medium-emphasis">上方服务优先查询</span>
         <v-btn
           v-if="docLink(service)"
           :href="docLink(service)"
