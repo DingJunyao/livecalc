@@ -106,6 +106,28 @@
           </div>
         </v-list-item>
 
+        <v-list-item @click="openCurrencyDialog">
+          <template #prepend>
+            <v-icon>mdi-currency-usd</v-icon>
+          </template>
+          <v-list-item-title>默认币种</v-list-item-title>
+          <v-list-item-subtitle>{{ userStore.user?.default_currency || '跟随所在地区' }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+
+        <v-list-item @click="openScopeDialog">
+          <template #prepend>
+            <v-icon>mdi-map-marker-radius</v-icon>
+          </template>
+          <v-list-item-title>默认计算范围</v-list-item-title>
+          <v-list-item-subtitle>{{ scopeLabel }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+
         <v-list-item v-if="mapEnabled" @click="router.push('/profile/places')">
           <template #prepend>
             <v-icon>mdi-map-marker-multiple</v-icon>
@@ -684,6 +706,68 @@
       </v-card>
     </v-dialog>
 
+    <!-- 默认币种对话框 -->
+    <v-dialog v-model="currencyDialog" max-width="420">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          默认币种
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="currencyDialog = false" />
+        </v-card-title>
+        <v-card-text>
+          <p class="text-caption text-medium-emphasis mb-4">
+            设置默认货币；清空则跟随所在地区自动判断。
+          </p>
+          <v-autocomplete
+            v-model="currencyValue"
+            :items="currencies"
+            item-title="name"
+            item-value="code"
+            label="默认币种"
+            variant="outlined"
+            density="compact"
+            clearable
+            placeholder="跟随所在地区"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="currencyDialog = false">取消</v-btn>
+          <v-btn color="primary" @click="saveCurrency">保存</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- 默认计算范围对话框 -->
+    <v-dialog v-model="scopeDialog" max-width="420">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          默认计算范围
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="scopeDialog = false" />
+        </v-card-title>
+        <v-card-text>
+          <p class="text-caption text-medium-emphasis mb-4">
+            设置默认参与价格统计与换算的地区范围。
+          </p>
+          <v-select
+            v-model="scopeValue"
+            :items="scopeOptions"
+            item-title="title"
+            item-value="value"
+            label="默认计算范围"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" @click="scopeDialog = false">取消</v-btn>
+          <v-btn color="primary" @click="saveScope">保存</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- 关于对话框 -->
     <v-dialog v-model="aboutDialog" max-width="420">
       <v-card>
@@ -746,6 +830,7 @@ import { useThemeToggle } from '@/composables/useTheme'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { hashPassword } from '@/utils/crypto'
 import { resolveImageUrl } from '@/utils/image'
+import { loadCurrencies } from '@/utils/currency'
 import { appInfo } from '@/config/appInfo'
 
 const { notify } = useGlobalSnackbar()
@@ -784,6 +869,43 @@ const exporting = ref(false)
 
 // 用户信息编辑
 const accountDialog = ref(false)
+
+// 默认币种与计算范围
+const currencyDialog = ref(false)
+const scopeDialog = ref(false)
+const currencyValue = ref<string | null>(null)
+const scopeValue = ref<string>('country')
+const currencies = ref<any[]>([])
+const scopeOptions = [
+  { title: '国家/地区', value: 'country' },
+  { title: '省级', value: 'province' },
+  { title: '地级', value: 'city' },
+  { title: '县级', value: 'county' },
+]
+const scopeLabel = computed(() => scopeOptions.find(o => o.value === userStore.user?.default_calc_scope)?.title || '国家/地区')
+
+function openCurrencyDialog() {
+  currencyValue.value = userStore.user?.default_currency ?? null
+  currencyDialog.value = true
+}
+
+function openScopeDialog() {
+  scopeValue.value = userStore.user?.default_calc_scope ?? 'country'
+  scopeDialog.value = true
+}
+
+async function saveCurrency() {
+  await api.patch('/auth/me', { default_currency: currencyValue.value || null })
+  currencyDialog.value = false
+  await userStore.fetchUser()
+}
+
+async function saveScope() {
+  await api.patch('/auth/me', { default_calc_scope: scopeValue.value })
+  scopeDialog.value = false
+  await userStore.fetchUser()
+}
+
 // 所在地区编辑（本地模式专用对话框）
 const regionDialog = ref(false)
 const savingRegion = ref(false)
@@ -1357,5 +1479,8 @@ onMounted(() => {
   ensureLoaded()
   loadStats()
   loadBlacklistCount()
+  loadCurrencies()
+    .then(list => { currencies.value = list })
+    .catch(() => { /* 忽略本地模式无币种路由 */ })
 })
 </script>
