@@ -285,6 +285,8 @@ def _user_to_response(user: "User", db: Session) -> UserResponse:
         daily_budget=user.daily_budget,
         unit_preferences=_build_unit_preferences(user, db),
         region_id=user.region_id,
+        default_currency=user.default_currency,
+        default_calc_scope=user.default_calc_scope,
     )
 
 

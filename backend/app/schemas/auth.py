@@ -70,6 +70,8 @@ class UserResponse(BaseModel):
     daily_budget: Optional[float] = None
     unit_preferences: Optional[UnitPreferences] = None
     region_id: Optional[int] = None
+    default_currency: Optional[str] = None
+    default_calc_scope: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -125,6 +127,8 @@ class UserProfileUpdate(BaseModel):
     default_mass_unit_id: Optional[int] = None
     default_volume_unit_id: Optional[int] = None
     default_price_unit_id: Optional[int] = None
+    default_currency: Optional[str] = None
+    default_calc_scope: Optional[str] = None
 
 
 class UserAccountUpdate(BaseModel):
