@@ -13,6 +13,13 @@ export interface UnitPreferences {
   price_unit: UnitPreference | null
 }
 
+export interface Currency {
+  code: string
+  name: string
+  symbol: string | null
+  decimals: number
+}
+
 export interface User {
   id: number
   username: string
@@ -28,6 +35,8 @@ export interface User {
   daily_budget: number | null
   unit_preferences: UnitPreferences | null
   region_id: number | null
+  default_currency: string | null
+  default_calc_scope: string | null
 }
 
 export interface LoginRequest {
@@ -42,6 +51,18 @@ export interface RegisterRequest {
   invite_code?: string
 }
 
+export interface Merchant {
+  id: number
+  name: string
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  is_open: boolean
+  region_id?: number | null
+  default_currency?: string | null
+  pending_proposal?: Record<string, any> | null
+}
+
 export interface PriceRecord {
   id: number
   product_name: string
@@ -51,6 +72,10 @@ export interface PriceRecord {
   merchant_name?: string
   record_date: string
   created_at: string
+  currency: string
+  exchange_rate: number
+  user_currency: string
+  merchant_id?: number | null
 }
 
 export interface Recipe {

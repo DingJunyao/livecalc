@@ -215,6 +215,10 @@ const save = () => {
     merchant_name: form.merchant_name || undefined,
     record_date: new Date(form.record_date).toISOString(),
     created_at: props.record?.created_at || new Date().toISOString(),
+    currency: props.record?.currency || 'CNY',
+    exchange_rate: props.record?.exchange_rate ?? 1,
+    user_currency: props.record?.user_currency || 'CNY',
+    merchant_id: props.record?.merchant_id ?? null,
   }
 
   emit('save', record)
