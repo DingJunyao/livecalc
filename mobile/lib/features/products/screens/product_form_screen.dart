@@ -170,9 +170,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             _searching = false;
           });
         }
-    } finally {
-      if (mounted) setState(() => _barcodeLoading = false);
-    }
       } catch (_) {
         if (mounted) setState(() => _searching = false);
       }
