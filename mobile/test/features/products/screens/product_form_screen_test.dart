@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient.dart';
+import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
@@ -16,6 +17,7 @@ class _FakeProductRepository extends ProductRepository {
 
   final Product existing;
   String? lastCreatedName;
+  int? lastCreatedIngredientId;
   List<String>? lastCreatedAliases;
   String? lastName;
   List<String>? lastAliases;
@@ -34,6 +36,7 @@ class _FakeProductRepository extends ProductRepository {
     List<String> tags = const [],
   }) async {
     lastCreatedName = name;
+    lastCreatedIngredientId = ingredientId;
     lastCreatedAliases = aliases;
     return Product(id: 1, name: name);
   }
@@ -72,6 +75,30 @@ class _ScanLookupRepository extends ProductRepository {
   @override
   Future<BarcodeLookupResult> lookupBarcode(String barcode) {
     return completer.future;
+  }
+}
+
+class _FakeIngredientRepository extends IngredientRepository {
+  _FakeIngredientRepository(this.items);
+
+  final List<Ingredient> items;
+  String? lastSearch;
+
+  @override
+  Future<IngredientPage> search({
+    String? search,
+    List<int>? categoryIds,
+    List<String>? conditions,
+    int skip = 0,
+    int limit = 20,
+    String sortBy = 'price_records',
+  }) async {
+    lastSearch = search;
+    final q = (search ?? '').trim().toLowerCase();
+    final filtered = items
+        .where((i) => q.isEmpty || i.name.toLowerCase().contains(q))
+        .toList();
+    return IngredientPage(items: filtered, total: filtered.length);
   }
 }
 
@@ -206,5 +233,54 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.byType(LoadingOverlay), findsNothing);
+  });
+
+  testWidgets('关联原料为下拉带输入，可搜索并选择一项', (tester) async {
+    await useTallViewport(tester);
+    final repo = _FakeProductRepository(const Product(id: 0, name: ''));
+    final ingredientRepo = _FakeIngredientRepository(const [
+      Ingredient(id: 1, name: '面粉', category: '谷物'),
+      Ingredient(id: 2, name: '砂糖', category: '调味'),
+    ]);
+    await tester.pumpWidget(MaterialApp(
+      home: ProductFormScreen(
+        repository: repo,
+        ingredientRepository: ingredientRepo,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 下拉带输入：非 tag/Chip 形式
+    final ingredientField = find.widgetWithText(TextField, '搜索并选择关联原料 *');
+    expect(ingredientField, findsOneWidget);
+    expect(find.byType(Chip), findsNothing);
+
+    await tester.enterText(ingredientField, '面');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+
+    expect(ingredientRepo.lastSearch, '面');
+    expect(find.text('面粉'), findsWidgets);
+    expect(find.text('砂糖'), findsNothing);
+
+    // 从下拉中选择一项
+    await tester.tap(find.text('面粉').last);
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(ingredientField);
+    expect(field.controller?.text, '面粉');
+    expect(find.byType(Chip), findsNothing);
+
+    // 保存携带选中的 ingredientId
+    await tester.enterText(
+      find.widgetWithText(TextFormField, '商品名称 *'),
+      '高筋粉',
+    );
+    await tester.ensureVisible(find.text('保存'));
+    await tester.tap(find.text('保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastCreatedName, '高筋粉');
+    expect(repo.lastCreatedIngredientId, 1);
   });
 }

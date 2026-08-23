@@ -66,8 +66,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _brandController;
   late final TextEditingController _barcodeController;
   late final TextEditingController _ingredientSearchController;
+  final FocusNode _ingredientFocusNode = FocusNode();
   Timer? _debounce;
-  List<Ingredient> _ingredientOptions = const [];
+  int _ingredientSearchSeq = 0;
   List<String> _aliases = const [];
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
@@ -102,8 +103,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     if (_isEdit) {
       _loading = true;
       Future.microtask(_loadProduct);
-    } else {
-      _ingredientSearchController.addListener(_onIngredientSearchChanged);
     }
   }
 
@@ -114,6 +113,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     _brandController.dispose();
     _barcodeController.dispose();
     _ingredientSearchController.dispose();
+    _ingredientFocusNode.dispose();
     super.dispose();
   }
 
@@ -137,7 +137,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         _ingredientSearchController.text = _selectedIngredient?.name ?? '';
         _loading = false;
       });
-      _ingredientSearchController.addListener(_onIngredientSearchChanged);
     } catch (_) {
       if (mounted) {
         setState(() {
@@ -148,33 +147,37 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
   }
 
-  void _onIngredientSearchChanged() {
+  /// 防抖搜索关联原料（供 Autocomplete.optionsBuilder 异步调用）。
+  Future<List<Ingredient>> _searchIngredients(String query) {
+    final q = query.trim();
+    if (q.isEmpty) {
+      return Future.value(const <Ingredient>[]);
+    }
+    final seq = ++_ingredientSearchSeq;
+    final completer = Completer<List<Ingredient>>();
     _debounce?.cancel();
+    setState(() => _searching = true);
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final query = _ingredientSearchController.text.trim();
-      if (query.isEmpty) {
-        setState(() {
-          _ingredientOptions = const [];
-          _searching = false;
-        });
-        return;
-      }
-      setState(() => _searching = true);
       try {
         final result = await _ingredientRepository.search(
-          search: query,
+          search: q,
           limit: 20,
         );
-        if (mounted) {
-          setState(() {
-            _ingredientOptions = result.items;
-            _searching = false;
-          });
+        if (mounted && seq == _ingredientSearchSeq) {
+          setState(() => _searching = false);
+          completer.complete(result.items);
+        } else {
+          // 已有更新的查询在途，丢弃本次结果。
+          completer.complete(const <Ingredient>[]);
         }
       } catch (_) {
-        if (mounted) setState(() => _searching = false);
+        if (mounted && seq == _ingredientSearchSeq) {
+          setState(() => _searching = false);
+        }
+        completer.complete(const <Ingredient>[]);
       }
     });
+    return completer.future;
   }
 
   Future<void> _scanBarcode() async {
@@ -305,10 +308,61 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       );
     }
 
-    return Column(
-      children: [
-        TextField(
-          controller: _ingredientSearchController,
+    // 下拉带输入的关联原料选择（对齐 price_record_form_screen 商家选择做法）。
+    return Autocomplete<Ingredient>(
+      textEditingController: _ingredientSearchController,
+      focusNode: _ingredientFocusNode,
+      optionsBuilder: (textEditingValue) async {
+        final query = textEditingValue.text.trim();
+        // 当前文本就是已选原料名时不再搜索（避免编辑态预填触发查询）。
+        if (query.isEmpty ||
+            (_selectedIngredient != null &&
+                _selectedIngredient!.name == query)) {
+          if (_searching) setState(() => _searching = false);
+          return const <Ingredient>[];
+        }
+        return _searchIngredients(query);
+      },
+      displayStringForOption: (ingredient) => ingredient.name,
+      onSelected: (ingredient) {
+        _ingredientSearchController.text = ingredient.name;
+        setState(() {
+          _selectedIngredient = ingredient;
+          _searching = false;
+        });
+      },
+      optionsViewBuilder: (ctx, onSelected, options) {
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final ingredient = options.elementAt(index);
+                  return ListTile(
+                    dense: true,
+                    title: Text(ingredient.name),
+                    subtitle: ingredient.category == null
+                        ? null
+                        : Text(ingredient.category!),
+                    onTap: () => onSelected(ingredient),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+      fieldViewBuilder: (ctx, controller, focusNode, onFieldSubmitted) {
+        return TextField(
+          controller: controller,
+          focusNode: focusNode,
           decoration: InputDecoration(
             labelText: '搜索并选择关联原料 *',
             prefixIcon: const Icon(Icons.search),
@@ -321,45 +375,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 : null,
             border: const OutlineInputBorder(),
           ),
-        ),
-        if (_selectedIngredient != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Chip(
-                avatar: const Icon(Icons.check_circle, size: 16),
-                label: Text(_selectedIngredient!.name),
-                onDeleted: () => setState(() => _selectedIngredient = null),
-              ),
-            ),
-          ),
-        if (_ingredientOptions.isNotEmpty)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 180),
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: _ingredientOptions.length,
-              itemBuilder: (context, index) {
-                final ingredient = _ingredientOptions[index];
-                return ListTile(
-                  dense: true,
-                  title: Text(ingredient.name),
-                  subtitle: ingredient.category == null
-                      ? null
-                      : Text(ingredient.category!),
-                  onTap: () {
-                    setState(() {
-                      _selectedIngredient = ingredient;
-                      _ingredientSearchController.text = ingredient.name;
-                      _ingredientOptions = const [];
-                    });
-                  },
-                );
-              },
-            ),
-          ),
-      ],
+          onSubmitted: (_) => onFieldSubmitted(),
+          onChanged: (value) {
+            // 文本被改动后不再信任原选择；要保留必须重新点选。
+            if (_selectedIngredient != null &&
+                _selectedIngredient!.name != value.trim()) {
+              setState(() => _selectedIngredient = null);
+            }
+          },
+        );
+      },
     );
   }
 
