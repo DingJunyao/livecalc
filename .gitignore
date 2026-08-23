@@ -20,3 +20,4 @@ frontend/dev-dist/
 mobile/
 
 docker-compose.yml
+.worktrees/
