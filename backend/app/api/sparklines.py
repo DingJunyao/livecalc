@@ -100,6 +100,7 @@ def _daily_avg_for_product_ids(
 async def get_recipes_sparklines(
     ids: str = Query(..., description="菜谱ID列表，逗号分隔"),
     days: int = Query(90, ge=7, le=365, description="查询天数"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -117,7 +118,7 @@ async def get_recipes_sparklines(
             """在独立 DB session 中计算单个菜谱的成本趋势"""
             session = SessionLocal()
             try:
-                trend = calculate_recipe_cost_range_trend(rid, current_user.id, session, days=days, tz=tz)
+                trend = calculate_recipe_cost_range_trend(rid, current_user.id, session, days=days, tz=tz, region_id=region_id)
                 if trend:
                     data = [t["avg_cost"] for t in trend if t.get("avg_cost") is not None]
                     return (str(rid), data if data else None)

@@ -1057,6 +1057,7 @@ async def delete_recipe_image(
 @router.get("/{recipe_id}/cost", response_model=RecipeCostResponse)
 async def get_recipe_cost(
     recipe_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -1078,6 +1079,7 @@ async def get_recipe_cost(
             recipe_id,
             current_user.id,
             db=db,
+            region_id=region_id,
             recipe_ingredients_override=(
                 pending_cost[0] if pending_cost else None
             ),
@@ -1646,6 +1648,7 @@ async def get_recipe_images(
 async def get_recipe_cost_history(
     recipe_id: int,
     days: int = Query(90, ge=7, le=365, description="查询天数"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone)
@@ -1672,7 +1675,7 @@ async def get_recipe_cost_history(
             raise HTTPException(status_code=404, detail="菜谱不存在")
 
         # 实时计算成本趋势
-        cost_trend = calculate_recipe_cost_trend(recipe_id, current_user.id, db, days, tz=tz)
+        cost_trend = calculate_recipe_cost_trend(recipe_id, current_user.id, db, days, tz=tz, region_id=region_id)
 
         # 转换为响应模型（按时间倒序）
         return [
@@ -1697,6 +1700,7 @@ async def get_recipe_cost_history_range(
     recipe_id: int,
     days: int = Query(90, ge=7, le=365, description="查询天数"),
     offset_days: int = Query(0, ge=0, description="偏移天数（从 offset_days 天前开始算）"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone)
@@ -1732,7 +1736,7 @@ async def get_recipe_cost_history_range(
             raise HTTPException(status_code=404, detail="菜谱不存在")
 
         # 计算成本区间趋势
-        cost_range_trend = calculate_recipe_cost_range_trend(recipe_id, current_user.id, db, days, offset_days, tz=tz)
+        cost_range_trend = calculate_recipe_cost_range_trend(recipe_id, current_user.id, db, days, offset_days, tz=tz, region_id=region_id)
 
         # 转换为响应模型（按时间顺序）
         return [
