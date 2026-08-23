@@ -4,12 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, text, or_, and_
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.nutrition import Ingredient
+from app.models.merchant import Merchant
 from app.schemas.product import (
     ProductRecordCreate,
     ProductRecordUpdate,
@@ -108,8 +109,26 @@ async def create_product_record(
 ):
     """创建商品记录"""
     try:
-        # 获取当天汇率
-        exchange_rate = 1.0  # TODO: 从汇率服务获取
+        # 校验商家（必填）
+        merchant = db.query(Merchant).filter(Merchant.id == record.merchant_id).first()
+        if not merchant:
+            raise HTTPException(status_code=404, detail="商家不存在")
+
+        # 计算记录时快照：1 record.currency = exchange_rate * 用户默认币种
+        from app.services.currency_service import get_user_default_currency
+        from app.services import exchange_rate_service
+        from app.utils.date_range_utils import utc_datetime_to_local_date
+
+        user_currency = get_user_default_currency(db, current_user)
+        currency = (record.currency or "").upper()
+        if currency == user_currency:
+            exchange_rate = Decimal("1")
+        else:
+            as_of = utc_datetime_to_local_date(record.recorded_at or datetime.now(timezone.utc), "UTC")
+            rate = exchange_rate_service.convert(db, Decimal("1"), currency, user_currency, as_of)
+            if rate is None:
+                raise HTTPException(status_code=400, detail=f"无法获取 {currency} → {user_currency} 汇率，请手动指定")
+            exchange_rate = rate
 
         # 使用单位匹配器获取单位 ID
         matcher = UnitMatcher(db)
@@ -171,7 +190,8 @@ async def create_product_record(
             product_name=product_name,
             merchant_id=record.merchant_id,
             price=record.price,
-            currency=record.currency,
+            currency=currency,
+            user_currency=user_currency,
             original_quantity=record.original_quantity,
             original_unit_id=original_unit_obj.id if original_unit_obj else None,
             standard_quantity=standard_quantity,
@@ -203,6 +223,7 @@ async def create_product_record(
             merchant_name=db_record.merchant.name if db_record.merchant else None,
             price=db_record.price,
             currency=db_record.currency,
+            user_currency=db_record.user_currency,
             original_quantity=db_record.original_quantity,
             original_unit=db_record.original_unit.abbreviation if db_record.original_unit else "",
             unit_id=db_record.original_unit_id,
@@ -550,6 +571,7 @@ async def get_product_records(
                 merchant_name=record.merchant.name if record.merchant else None,
                 price=float(record.price),  # 总价保持不变
                 currency=record.currency,
+                user_currency=record.user_currency,
                 original_quantity=display_quantity,  # 使用转换后的数量
                 original_unit=display_unit,  # 使用转换后的单位
                 unit_id=(record.original_unit_id if record.original_unit and display_unit == record.original_unit.abbreviation else None),
@@ -599,6 +621,7 @@ async def get_product_record(
         merchant_name=record.merchant.name if record.merchant else None,
         price=record.price,
         currency=record.currency,
+        user_currency=record.user_currency,
         original_quantity=record.original_quantity,
         original_unit=record.original_unit.abbreviation if record.original_unit else "",
         unit_id=record.original_unit_id,
@@ -687,6 +710,36 @@ async def update_product_record(
             db_record.standard_quantity = standard_quantity
             db_record.standard_unit_id = standard_unit_obj.id if standard_unit_obj else None
 
+        # 币种快照与汇率：merchant_id 或 currency 变化时重算
+        if "merchant_id" in update_data or "currency" in update_data:
+            new_merchant_id = update_data.get("merchant_id", db_record.merchant_id)
+            if new_merchant_id is not None:
+                merchant = db.query(Merchant).filter(Merchant.id == new_merchant_id).first()
+                if not merchant:
+                    raise HTTPException(status_code=404, detail="商家不存在")
+
+            from app.services.currency_service import get_user_default_currency
+            from app.services import exchange_rate_service
+            from app.utils.date_range_utils import utc_datetime_to_local_date
+
+            user_currency = get_user_default_currency(db, current_user)
+            new_currency_raw = update_data.get("currency", db_record.currency)
+            new_currency = (new_currency_raw or "").upper()
+            if new_currency == user_currency:
+                exchange_rate = Decimal("1")
+            else:
+                recorded_at = update_data.get("recorded_at", db_record.recorded_at) or datetime.now(timezone.utc)
+                as_of = utc_datetime_to_local_date(recorded_at, "UTC")
+                rate = exchange_rate_service.convert(db, Decimal("1"), new_currency, user_currency, as_of)
+                if rate is None:
+                    raise HTTPException(status_code=400, detail=f"无法获取 {new_currency} → {user_currency} 汇率，请手动指定")
+                exchange_rate = rate
+
+            db_record.user_currency = user_currency
+            db_record.exchange_rate = exchange_rate
+            if "currency" in update_data and new_currency_raw is not None:
+                db_record.currency = new_currency
+
         db.commit()
         db.refresh(db_record)
 
@@ -699,6 +752,7 @@ async def update_product_record(
             merchant_name=db_record.merchant.name if db_record.merchant else None,
             price=db_record.price,
             currency=db_record.currency,
+            user_currency=db_record.user_currency,
             original_quantity=db_record.original_quantity,
             original_unit=db_record.original_unit.abbreviation if db_record.original_unit else "",
             unit_id=db_record.original_unit_id,
@@ -779,6 +833,7 @@ async def get_product_history(
             merchant_name=record.merchant.name if record.merchant else None,
             price=record.price,
             currency=record.currency,
+            user_currency=record.user_currency,
             original_quantity=record.original_quantity,
             original_unit=record.original_unit.abbreviation if record.original_unit else "",
             unit_id=record.original_unit_id,
