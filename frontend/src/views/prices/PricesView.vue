@@ -169,9 +169,17 @@
     <!-- 添加/编辑价格记录对话框 -->
     <v-dialog v-model="showDialog" max-width="500" persistent>
       <v-card>
-        <v-overlay :model-value="barcodeLookupLoading" contained scrim="grey lighten-2" style="border-radius: inherit">
-          <v-progress-circular indeterminate color="primary" size="48" />
-          <div class="text-body-2 mt-3 text-grey-darken-2">正在查询条码信息...</div>
+        <v-overlay
+          :model-value="barcodeLookupLoading"
+          contained
+          scrim="grey lighten-2"
+          class="align-center justify-center"
+          style="border-radius: inherit"
+        >
+          <div class="text-center">
+            <v-progress-circular indeterminate color="primary" size="48" />
+            <div class="text-body-2 mt-3 text-grey-darken-2">正在查询条码信息...</div>
+          </div>
         </v-overlay>
         <v-card-title>{{ isEditing ? '编辑价格记录' : '添加价格记录' }}</v-card-title>
         <v-card-text>
@@ -179,7 +187,8 @@
             <!-- 商品名称（带自动完成） -->
             <v-autocomplete
               v-model="selectedProduct"
-              v-model:search="productSearch"
+              :search="productSearch"
+              @update:search="onProductSearchUpdate"
               :items="productSuggestions"
               :loading="productLoading"
               item-title="name"
@@ -353,7 +362,7 @@
 <script setup lang="ts">
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { nextTick, ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { api } from '@/api'
@@ -441,7 +450,7 @@ async function handleScannedBarcode(code: string) {
       }
       createProductDialog.value = true
     } else if (result.has_enabled_providers) {
-      showSnackbar('未在条码服务中找到该商品', 'info')
+      showSnackbar(result.errors[0] || '未在条码服务中找到该商品', 'info')
     } else {
       showSnackbar('未找到匹配商品，且未配置条码查询服务', 'info')
     }
@@ -555,6 +564,17 @@ const productSearch = ref('')
 const productSuggestions = ref<ProductSuggestion[]>([])
 const productLoading = ref(false)
 const selectedProduct = ref<ProductSuggestion | null>(null)
+
+function normalizeProductSearch(value: any): string {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object' && typeof value.name === 'string') return value.name
+  return ''
+}
+
+function onProductSearchUpdate(value: any) {
+  const normalized = normalizeProductSearch(value)
+  productSearch.value = normalized
+}
 
 // 获取当前时间的本地格式 (YYYY-MM-DDTHH:mm)
 const getCurrentLocalDateTime = () => {
@@ -766,7 +786,9 @@ const onPageChange = (page: number) => {
 watch(productSearch, (newSearch) => {
   if (productSearchTimeout) clearTimeout(productSearchTimeout)
   productSearchTimeout = setTimeout(() => {
-    searchProducts()
+    const query = normalizeProductSearch(newSearch)
+    if (query) searchProducts()
+    else productSuggestions.value = []
   }, 300)
 })
 
@@ -871,18 +893,21 @@ const closeDialog = () => {
   selectedProduct.value = null
 }
 
-const consumeReturnedProduct = () => {
+const consumeReturnedProduct = async () => {
   const raw = sessionStorage.getItem('barcode-price-return')
   if (!raw) return
   sessionStorage.removeItem('barcode-price-return')
   try {
     const product = JSON.parse(raw)
     if (!product?.id) return
+    const productName = normalizeProductSearch(product.name || '')
     openAddDialog()
-    selectedProduct.value = { id: product.id, name: product.name || '' } as ProductSuggestion
-    productSearch.value = product.name || ''
+    await nextTick()
+    selectedProduct.value = { id: product.id, name: productName } as ProductSuggestion
+    productSuggestions.value = [{ id: product.id, name: productName }]
+    productSearch.value = productName
     form.value.product_id = product.id
-    form.value.product_name = product.name || ''
+    form.value.product_name = productName
   } catch {
     // ignore malformed return data
   }
@@ -912,10 +937,11 @@ const saveRecord = async () => {
       await api.put(`/products/${editingId.value}`, data)
     } else {
       // 创建记录
+      const productName = normalizeProductSearch(productSearch.value)
       if (form.value.product_id) {
         data.product_id = form.value.product_id
-      } else if (productSearch.value) {
-        data.product_name = productSearch.value
+      } else if (productName) {
+        data.product_name = productName
       }
       await api.post('/products', data)
     }

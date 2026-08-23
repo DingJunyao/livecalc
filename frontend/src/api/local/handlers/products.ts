@@ -10,6 +10,7 @@ import {
   listIncludes,
   buildProductRecordStats,
 } from './_filter'
+import { getBarcodeConfig, resolveExternalBarcode } from './barcodeServices'
 
 // ============================================================
 // Product Entity CRUD
@@ -129,11 +130,18 @@ export async function getEntity(params: Record<string, string>): Promise<any> {
 
 export async function lookupBarcode(params: Record<string, string>): Promise<any> {
   const barcode = String(params.barcode || '').trim()
-  if (!barcode) {
-    return { found: false, source: null, product: {}, errors: ['Invalid barcode'] }
+  if (!barcode || barcode.length > 50) {
+    return {
+      found: false,
+      source: null,
+      product: {},
+      errors: ['Invalid barcode'],
+      has_enabled_providers: false,
+    }
   }
 
-  const [products, ingredients] = await Promise.all([
+  const [config, products, ingredients] = await Promise.all([
+    getBarcodeConfig(),
     getAll('products'),
     getAll('ingredients'),
   ])
@@ -150,9 +158,7 @@ export async function lookupBarcode(params: Record<string, string>): Promise<any
     const productId = barcodeRows.find((row: any) => row.is_active !== false)?.product_id
     product = products.find((item: any) => item.id === productId && isActive(item))
   }
- if (!product) {
-    return { found: false, source: null, product: {}, errors: [], has_enabled_providers: false }
- }
+ if (!product) return resolveExternalBarcode(barcode, config)
 
  return {
    found: true,
@@ -172,12 +178,14 @@ export async function lookupBarcode(params: Record<string, string>): Promise<any
 }
 
 export async function createEntity(_params: Record<string, string>, data?: any): Promise<any> {
+  // IndexedDB structured cloning cannot store Vue's reactive form proxy.
+  const payload = JSON.parse(JSON.stringify(data || {}))
   const id = await addOne('products', {
-    ...data,
+    ...payload,
     is_active: true,
-    aliases: data?.aliases || [],
-    tags: data?.tags || [],
-    price_weight: data?.price_weight ?? 50,
+    aliases: payload.aliases || [],
+    tags: payload.tags || [],
+    price_weight: payload.price_weight ?? 50,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
@@ -237,10 +245,9 @@ export async function listRecords(_params: Record<string, string>, query?: any):
   const startDate = query?.start_date || query?.startDate
   const endDate = query?.end_date || query?.endDate
 
-  // Search and category/ingredient joins need product + ingredient lookups;
-  // merchants are always needed to attach merchant_name for display.
+  // Product names are always needed for display; ingredient lookups remain lazy.
   const needJoin = !!lower || !!catSet || !!ingredientId
-  const products = needJoin ? await getAll('products') : null
+  const products = await getAll('products')
   const merchants = await getAll('merchants')
   const ingredients = needJoin ? await getAll('ingredients') : null
 
@@ -302,9 +309,10 @@ export async function listRecords(_params: Record<string, string>, query?: any):
     if (r.original_unit == null) r.original_unit = r.original_unit_name || ''
     if (r.unit_name == null) r.unit_name = r.standard_unit_name || ''
     if (r.original_quantity == null) r.original_quantity = r.quantity ?? 1
-    if (!r.product_name) {
+    if (typeof r.product_name !== 'string' || !r.product_name) {
       const prod = productMap.get(r.product_id)
       if (prod) r.product_name = prod.name
+      else r.product_name = ''
     }
     if (r.merchant_name === undefined && r.merchant_id != null) {
       const m = merchantMap.get(r.merchant_id)
