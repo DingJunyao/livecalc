@@ -3,6 +3,43 @@
 
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb'
 
+export interface MerchantRecord {
+  id?: number
+  name: string
+  address?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  is_open?: boolean
+  is_active?: boolean
+  region_id?: number | null
+  default_currency?: string | null
+  created_at?: string
+  updated_at?: string
+  [key: string]: any
+}
+
+export interface ProductRecordRecord {
+  id?: number
+  product_id: number
+  price: number
+  quantity: number
+  unit_id?: number
+  standard_quantity?: number | null
+  standard_unit_id?: number | null
+  recorded_at: string
+  merchant_id?: number | null
+  currency: string
+  exchange_rate: number
+  user_currency: string
+  created_at?: string
+  updated_at?: string
+  [key: string]: any
+}
+
+export const DEFAULT_CURRENCY = 'CNY'
+export const DEFAULT_EXCHANGE_RATE = 1
+export const DEFAULT_USER_CURRENCY = 'CNY'
+
 // ============================================================
 // Schema 定义
 // ============================================================
@@ -39,7 +76,7 @@ interface LocalDB extends DBSchema {
   }
   'product_records': {
     key: number
-    value: any
+    value: ProductRecordRecord
     indexes: { 'by_product_id': number; 'by_merchant_id': number; 'by_recorded_at': string }
   }
   'user_merchant_product_orders': {
@@ -74,7 +111,7 @@ interface LocalDB extends DBSchema {
   }
   'merchants': {
     key: number
-    value: any
+    value: MerchantRecord
     indexes: { 'by_name': string }
   }
   'merchant_favorites': {

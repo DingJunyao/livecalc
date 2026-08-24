@@ -43,7 +43,7 @@
                   class="text-right"
                   :class="{ 'price-lowest': cell.isLowest, 'price-missing': !cell.hasPrice }"
                 >
-                  {{ cell.hasPrice ? `¥${cell.displayValue}` : '—' }}
+                  {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency) : '—' }}
                 </td>
               </tr>
             </tbody>
@@ -56,12 +56,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const props = defineProps<{
   recipeIngredients?: any[] | null
   merchantPrices?: any[] | null
   loading?: boolean
 }>()
+
+const { currency: userCurrency } = useUserCurrency()
 
 const merchantNames = computed(() => {
   if (!props.merchantPrices?.length) return []

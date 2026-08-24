@@ -139,6 +139,26 @@
             <v-icon>mdi-chevron-right</v-icon>
           </template>
         </v-list-item>
+        <v-list-item
+          prepend-icon="mdi-currency-usd"
+          title="币种管理"
+          subtitle="查看可用币种"
+          to="/admin/currencies"
+        >
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+        <v-list-item
+          prepend-icon="mdi-swap-horizontal"
+          title="汇率管理"
+          subtitle="查看与刷新汇率快照"
+          to="/admin/exchange-rates"
+        >
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
 
         <v-list-item
           prepend-icon="mdi-barcode-scan"

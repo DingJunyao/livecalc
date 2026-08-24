@@ -15,6 +15,10 @@ class Merchant(Base):
     latitude = Column(Numeric(10, 7))
     longitude = Column(Numeric(10, 7))
     is_open = Column(Boolean, default=True, nullable=False, server_default=sa.true())
+    region_id = Column(Integer, ForeignKey("administrative_regions.id"), nullable=True, index=True)
+    default_currency = Column(String(3), nullable=True)  # NULL = 跟随地区国家币种
+
+    region = relationship("AdministrativeRegion")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

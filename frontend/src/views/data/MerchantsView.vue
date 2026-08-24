@@ -355,12 +355,28 @@
               hide-details
             />
 
+            <RegionSelect v-model="form.region_id" class="mb-4" />
+
+            <v-select
+              v-model="form.default_currency"
+              :items="currencies"
+              item-title="name"
+              item-value="code"
+              label="默认币种（留空跟随地区）"
+              variant="outlined"
+              density="compact"
+              clearable
+              hide-details
+              class="mb-4"
+            />
+
             <!-- 地图选点（地图禁用时隐藏，提交不带坐标，后端保留原值） -->
             <div v-if="mapEnabled" class="mb-4">
               <div class="text-subtitle-2 mb-2">商家位置</div>
               <MapPicker
-                v-model="pickerCoords"
+                :model-value="pickerCoords"
                 :show-switcher="true"
+                @update:model-value="onMapPick"
               />
             </div>
           </v-form>
@@ -387,7 +403,10 @@ import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import FilterBar, { type FilterConfig } from '@/components/common/FilterBar.vue'
 import MerchantMapView from '@/components/map/MerchantMapView.vue'
 import MapPicker from '@/components/map/MapPicker.vue'
+import RegionSelect from '@/components/common/RegionSelect.vue'
 import type { Coordinate } from '@/utils/map/mapTypes'
+import { loadCurrencies } from '@/utils/currency'
+import type { Currency } from '@/types'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useMapConfig } from '@/composables/useMapConfig'
 
@@ -406,6 +425,8 @@ interface Merchant {
   latitude?: number | null
   longitude?: number | null
   is_open?: boolean
+  region_id?: number | null
+  default_currency?: string | null
   created_at?: string
 }
 
@@ -451,10 +472,23 @@ const PLACES_STORAGE_KEY = 'merchants_map_current_place_id'
 // 收藏的商家 id 集合（共享池下「我的收藏」由 user_merchant_favorites 表达）
 const favoriteIds = ref<Set<number>>(new Set())
 const saving = ref(false)
-const form = ref({
+const currencies = ref<Currency[]>([])
+const form = ref<{
+  name: string
+  address: string
+  is_open: boolean
+  region_id: number | null
+  default_currency: string | null
+  latitude: number | null
+  longitude: number | null
+}>({
   name: '',
   address: '',
   is_open: true,
+  region_id: null,
+  default_currency: null,
+  latitude: null,
+  longitude: null,
 })
 
 // 选点器坐标
@@ -720,6 +754,10 @@ const openEditDialog = (item?: Merchant) => {
       name: item.name,
       address: item.address || '',
       is_open: item.is_open ?? true,
+      region_id: item.region_id ?? null,
+      default_currency: item.default_currency ?? null,
+      latitude: item.latitude ?? null,
+      longitude: item.longitude ?? null,
     }
     // 设置坐标
     if (item.latitude != null && item.longitude != null) {
@@ -731,10 +769,33 @@ const openEditDialog = (item?: Merchant) => {
       pickerCoords.value = undefined
     }
   } else {
-    form.value = { name: '', address: '', is_open: true }
+    form.value = {
+      name: '',
+      address: '',
+      is_open: true,
+      region_id: null,
+      default_currency: null,
+      latitude: null,
+      longitude: null,
+    }
     pickerCoords.value = undefined
   }
   addDialog.value = true
+}
+
+/**
+ * 地图选点后更新坐标并反查地区
+ */
+const onMapPick = async (coord: Coordinate) => {
+  pickerCoords.value = coord
+  form.value.latitude = coord.lat
+  form.value.longitude = coord.lng
+  try {
+    const res = await api.post('/merchants/geocode', { latitude: coord.lat, longitude: coord.lng })
+    if (res?.region_id) form.value.region_id = res.region_id
+  } catch {
+    /* 反查失败保持手动 */
+  }
 }
 
 /**
@@ -749,6 +810,8 @@ const saveItem = async () => {
       name: form.value.name,
       address: form.value.address || undefined,
       is_open: form.value.is_open,
+      region_id: form.value.region_id,
+      default_currency: form.value.default_currency,
     }
 
     // 仅地图启用时才提交坐标；禁用时不传，靠后端 exclude_unset 保留原值
@@ -813,7 +876,7 @@ const deleteItem = async (id: number) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   ensureLoaded()
   loadMerchants()
   loadPlaces()
@@ -821,6 +884,11 @@ onMounted(() => {
   loadFavorites()
   loadPendingProposals()
   window.addEventListener('app-refresh', loadMerchants)
+  try {
+    currencies.value = await loadCurrencies()
+  } catch {
+    /* 加载币种失败忽略 */
+  }
 })
 
 onUnmounted(() => {

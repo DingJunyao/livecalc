@@ -37,6 +37,8 @@ export async function getMerchant(params: Record<string, string>): Promise<any> 
 export async function createMerchant(_params: Record<string, string>, data?: any): Promise<any> {
   const id = await addOne('merchants', {
     ...data,
+    region_id: data?.region_id ?? null,
+    default_currency: data?.default_currency ?? null,
     is_active: true,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -48,7 +50,14 @@ export async function updateMerchant(params: Record<string, string>, data?: any)
   const id = parseInt(params.id)
   const existing = await getById('merchants', id)
   if (!existing) throw { status: 404, message: `Merchant ${id} not found` }
-  await putOne('merchants', { ...existing, ...data, id, updated_at: new Date().toISOString() })
+  await putOne('merchants', {
+    ...existing,
+    ...data,
+    id,
+    region_id: data?.region_id !== undefined ? data.region_id : (existing?.region_id ?? null),
+    default_currency: data?.default_currency !== undefined ? data.default_currency : (existing?.default_currency ?? null),
+    updated_at: new Date().toISOString(),
+  })
   return await getById('merchants', id)
 }
 
@@ -255,6 +264,10 @@ export async function saveProductOrders(params: Record<string, string>, data?: a
   }
 
   return { message: 'ok' }
+}
+
+export async function geocodeMerchant(_params: Record<string, string>, _data?: any): Promise<any> {
+  return { region_id: null }
 }
 
 export async function getMapConfig(): Promise<any> {

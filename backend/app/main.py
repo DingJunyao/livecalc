@@ -36,6 +36,7 @@ from app.api import blacklist  # 用户原料黑名单
 from app.api import proposals  # 通用提议-审核 API
 from app.api import email_config  # 邮件配置 API
 from app.api import regions  # 行政区划 API
+from app.api import exchange_rates  # 币种汇率 API
 from app.api import storage_config  # 图片存储配置 API
 from app.api import barcode_config  # 条码服务配置 API
 from app.core.database import Base, engine, get_db
@@ -338,6 +339,12 @@ async def lifespan(app: FastAPI):
             logger.info("图像引用追踪扫描完成")
         except Exception as e:
             logger.warning(f"图像引用追踪初始化失败: {e}")
+
+        from app.services.exchange_rate_scheduler import start_scheduler
+        try:
+            start_scheduler()
+        except Exception as e:
+            logger.warning(f"汇率调度启动失败: {e}")
     except Exception as e:
         logger.error(f"初始化过程中发生错误: {str(e)}")
     finally:
@@ -348,6 +355,9 @@ async def lifespan(app: FastAPI):
 
     # 应用关闭时的事件处理
     logger.info("应用正在关闭...")
+
+    from app.services.exchange_rate_scheduler import stop_scheduler
+    stop_scheduler()
 
 
 # 创建 FastAPI 应用
@@ -668,6 +678,7 @@ app.include_router(blacklist_groups.blacklist_group_public_router, prefix="/api/
 app.include_router(proposals.router, prefix="/api/v1", tags=["变更提议"])
 app.include_router(email_config.router, prefix="/api/v1", tags=["邮件配置"])
 app.include_router(regions.router, prefix="/api/v1", tags=["行政区划"])
+app.include_router(exchange_rates.router, prefix="/api/v1", tags=["币种汇率"])
 app.include_router(storage_config.router, prefix="/api/v1")
 app.include_router(barcode_config.router, prefix="/api/v1")
 

@@ -145,6 +145,18 @@ const router = createRouter({
           component: () => import('@/views/admin/UnitsView.vue'),
         },
         {
+          path: 'admin/currencies',
+          name: 'admin-currencies',
+          meta: { adminOnly: true, title: '币种管理' },
+          component: () => import('@/views/admin/CurrencyAdminView.vue'),
+        },
+        {
+          path: 'admin/exchange-rates',
+          name: 'admin-exchange-rates',
+          meta: { adminOnly: true, title: '汇率管理' },
+          component: () => import('@/views/admin/ExchangeRateAdminView.vue'),
+        },
+        {
           path: 'admin/barcode-services',
           name: 'admin-barcode-services',
           meta: { adminOnly: true, title: '条码服务配置' },

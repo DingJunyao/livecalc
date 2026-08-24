@@ -292,10 +292,29 @@
                 hide-details
               />
 
+              <RegionSelect v-model="editingForm.region_id" class="mb-4" />
+
+              <v-select
+                v-model="editingForm.default_currency"
+                :items="currencies"
+                item-title="name"
+                item-value="code"
+                label="默认币种（留空跟随地区）"
+                variant="outlined"
+                density="compact"
+                clearable
+                hide-details
+                class="mb-4"
+              />
+
               <!-- 地图选点（地图禁用时隐藏） -->
               <div v-if="mapEnabled" class="mb-4">
                 <div class="text-subtitle-2 mb-2">商家位置</div>
-                <MapPicker v-model="pickerCoords" :show-switcher="true" />
+                <MapPicker
+                  :model-value="pickerCoords"
+                  :show-switcher="true"
+                  @update:model-value="onMapPick"
+                />
               </div>
             </v-form>
           </v-card-text>
@@ -320,7 +339,10 @@ import { usePageTitle } from '@/composables/usePageTitle'
 import { useDisplay } from 'vuetify'
 import MerchantMapView from '@/components/map/MerchantMapView.vue'
 import MapPicker from '@/components/map/MapPicker.vue'
+import RegionSelect from '@/components/common/RegionSelect.vue'
 import type { Coordinate } from '@/utils/map/mapTypes'
+import { loadCurrencies } from '@/utils/currency'
+import type { Currency } from '@/types'
 import { formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
@@ -342,6 +364,8 @@ interface Merchant {
   latitude?: number | null
   longitude?: number | null
   is_open?: boolean
+  region_id?: number | null
+  default_currency?: string | null
   created_at?: string
 }
 
@@ -427,7 +451,24 @@ const priceTotalVisible = computed(() => lgAndUp.value ? 7 : md.value ? 5 : 3)
 
 // 编辑
 const addDialog = ref(false)
-const editingForm = ref({ name: '', address: '', is_open: true })
+const currencies = ref<Currency[]>([])
+const editingForm = ref<{
+  name: string
+  address: string
+  is_open: boolean
+  region_id: number | null
+  default_currency: string | null
+  latitude: number | null
+  longitude: number | null
+}>({
+  name: '',
+  address: '',
+  is_open: true,
+  region_id: null,
+  default_currency: null,
+  latitude: null,
+  longitude: null,
+})
 const pickerCoords = ref<Coordinate | undefined>()
 const saving = ref(false)
 
@@ -480,6 +521,10 @@ const openEditDialog = () => {
     name: merchant.value.name || '',
     address: merchant.value.address || '',
     is_open: merchant.value.is_open ?? true,
+    region_id: merchant.value.region_id ?? null,
+    default_currency: merchant.value.default_currency ?? null,
+    latitude: merchant.value.latitude ?? null,
+    longitude: merchant.value.longitude ?? null,
   }
   if (merchant.value.latitude != null && merchant.value.longitude != null) {
     pickerCoords.value = {
@@ -492,6 +537,18 @@ const openEditDialog = () => {
   addDialog.value = true
 }
 
+const onMapPick = async (coord: Coordinate) => {
+  pickerCoords.value = coord
+  editingForm.value.latitude = coord.lat
+  editingForm.value.longitude = coord.lng
+  try {
+    const res = await api.post('/merchants/geocode', { latitude: coord.lat, longitude: coord.lng })
+    if (res?.region_id) editingForm.value.region_id = res.region_id
+  } catch {
+    /* 反查失败保持手动 */
+  }
+}
+
 const saveItem = async () => {
   if (!editingForm.value.name.trim()) return
 
@@ -501,6 +558,8 @@ const saveItem = async () => {
       name: editingForm.value.name,
       address: editingForm.value.address || undefined,
       is_open: editingForm.value.is_open,
+      region_id: editingForm.value.region_id,
+      default_currency: editingForm.value.default_currency,
     }
 
     // 仅地图启用时才提交坐标；禁用时不传，靠后端 exclude_unset 保留原值
@@ -553,10 +612,15 @@ const formatUnitSuffix = (label: string | null) => {
   return unit ? ` / ${unit}` : ''
 }
 
-onMounted(() => {
+onMounted(async () => {
   ensureLoaded()
   loadData()
   window.addEventListener('app-refresh', loadData)
+  try {
+    currencies.value = await loadCurrencies()
+  } catch {
+    /* 加载币种失败忽略 */
+  }
 })
 
 onUnmounted(() => {
