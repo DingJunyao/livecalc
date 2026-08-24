@@ -1035,7 +1035,7 @@ async def get_ingredient_latest_price(
                 if original_unit_abbr and original_unit_abbr != target_unit_abbr:
                     cr = unit_service.convert(
                         float(r.original_quantity), original_unit_abbr, target_unit_abbr,
-                        entity_type="ingredient", entity_id=ingredient_id,
+                        entity_type="product", entity_id=p.id,
                     )
                     if cr is None:
                         continue
@@ -1220,7 +1220,7 @@ async def get_ingredient_latest_price_by_merchant(
                     if ing_target and original_unit_abbr != ing_target:
                         convert_result = unit_service.convert(
                             original_quantity, original_unit_abbr, ing_target,
-                            entity_type="ingredient", entity_id=ing.id,
+                            entity_type="product", entity_id=pid,
                         )
                         if convert_result is not None:
                             converted_quantity, _ = convert_result
