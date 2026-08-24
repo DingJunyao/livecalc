@@ -54,6 +54,8 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 import * as echarts from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/components'
@@ -106,6 +108,8 @@ const emit = defineEmits<{
 
 const chartRef = ref<HTMLElement>()
 let chart: echarts.ECharts | null = null
+
+const { currency: userCurrency } = useUserCurrency()
 
 // 是否曾经有过数据（一旦为 true，图表 DOM 不再销毁）
 const hasEverHadData = ref(false)
@@ -217,11 +221,11 @@ function updateChart() {
             <div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color};"></span>
-              <span>${props.avgLabel}: ¥${item.avg.toFixed(2)}${unitSuffix.value}</span>
+              <span>${props.avgLabel}: ${formatMoney(item.avg, userCurrency.value)}${unitSuffix.value}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
               <span style="display: inline-block; width: 12px; height: 12px; background-color: ${props.color}33; border-radius: 2px;"></span>
-              <span>范围: ¥${item.min.toFixed(2)} - ¥${item.max.toFixed(2)}${unitSuffix.value}</span>
+              <span>范围: ${formatMoney(item.min, userCurrency.value)} - ${formatMoney(item.max, userCurrency.value)}${unitSuffix.value}</span>
             </div>
             ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">记录数: ${item.count}</div>` : ''}
           </div>
@@ -254,7 +258,7 @@ function updateChart() {
     yAxis: {
       type: 'value',
       axisLabel: {
-        formatter: (value: number) => `¥${value.toFixed(2)}`
+        formatter: (value: number) => formatMoney(value, userCurrency.value)
       },
       splitLine: {
         lineStyle: {
@@ -265,7 +269,7 @@ function updateChart() {
       axisPointer: {
         label: {
           formatter: (params: any) => {
-            return `¥${params.value.toFixed(2)}${unitSuffix.value}`
+            return `${formatMoney(params.value, userCurrency.value)}${unitSuffix.value}`
           }
         }
       }

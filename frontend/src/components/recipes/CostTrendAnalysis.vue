@@ -52,6 +52,8 @@
 import { ref, computed, watch, onMounted, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { getIngredientColor } from '@/utils/ingredientColors'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const props = defineProps<{
   recipeId: number
@@ -68,6 +70,8 @@ const emit = defineEmits<{
 
 const chartRef = ref<HTMLElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+
+const { currency: userCurrency } = useUserCurrency()
 
 const filters = [
   { label: '周', value: 'week' },
@@ -198,13 +202,13 @@ function renderTrendChart() {
             if (p.value > 0) {
               html += `<div style="display:flex;align-items:center;gap:4px">
                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
-                ${p.seriesName}: ¥${p.value.toFixed(2)}
+                ${p.seriesName}: ${formatMoney(p.value, userCurrency.value)}
               </div>`
               total += p.value
             }
           }
           html += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:2px;font-weight:600">
-            合计: ¥${total.toFixed(2)}
+            合计: ${formatMoney(total, userCurrency.value)}
           </div>`
           return html
         },
@@ -219,7 +223,7 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: '¥{value}', fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series,
@@ -238,7 +242,10 @@ function renderTrendChart() {
           const avg = params.find((p: any) => p.seriesName === '平均成本')
           const minP = params.find((p: any) => p.seriesName === '最低')
           const maxP = params.find((p: any) => p.seriesName === '最高')
-          return `${date}<br/>平均: ¥${avg?.value?.toFixed(2) || '-'}<br/>区间: ¥${minP?.value?.toFixed(2) || '-'} ~ ¥${maxP?.value?.toFixed(2) || '-'}`
+          const avgText = avg ? formatMoney(avg.value, userCurrency.value) : '-'
+          const minText = minP ? formatMoney(minP.value, userCurrency.value) : '-'
+          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value) : '-'
+          return `${date}<br/>平均: ${avgText}<br/>区间: ${minText} ~ ${maxText}`
         },
       },
       grid: { left: 50, right: 16, top: 8, bottom: 24 },
@@ -250,7 +257,7 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: '¥{value}', fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series: [
