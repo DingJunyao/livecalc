@@ -260,6 +260,7 @@ export async function listRecords(_params: Record<string, string>, query?: any):
   const productId = query?.product_id
   const startDate = query?.start_date || query?.startDate
   const endDate = query?.end_date || query?.endDate
+  const regionId = parseRegionId(query?.region_id)
 
   // Search and category/ingredient joins need product + ingredient lookups;
   // merchants are always needed to attach merchant_name for display.
@@ -336,11 +337,14 @@ export async function listRecords(_params: Record<string, string>, query?: any):
     }
   }
 
+  // 地区过滤：与后端 get_product_records 的 region_id 语义对齐
+  const regionFiltered = regionId == null ? all : await applyRegionFilter(all, regionId)
+
   // Sort by recorded_at descending
-  all.sort((a: any, b: any) => ((b.recorded_at || '') > (a.recorded_at || '') ? 1 : -1))
+  regionFiltered.sort((a: any, b: any) => ((b.recorded_at || '') > (a.recorded_at || '') ? 1 : -1))
 
   const { skip, limit: pageSize, page, page_size } = resolvePagination(query)
-  return { items: all.slice(skip, skip + pageSize), total: all.length, page, page_size }
+  return { items: regionFiltered.slice(skip, skip + pageSize), total: regionFiltered.length, page, page_size }
 }
 
 export async function createRecord(_params: Record<string, string>, data?: any): Promise<any> {

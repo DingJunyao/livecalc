@@ -22,6 +22,8 @@ from app.utils.unit_converter import convert_to_standard
 from app.utils.database_helpers import json_text_contains
 from app.services.unit_matcher import UnitMatcher
 from app.services.unit_conversion_service import UnitConversionService
+from app.services.calc_scope import resolve_region_param
+from app.services.price_region import apply_region_filter
 from app.services.proposals.pending import build_product_display_overrides
 
 router = APIRouter()
@@ -261,6 +263,7 @@ async def get_product_records(
     record_types: Optional[str] = Query(None, description="记录类型列表，逗号分隔（purchase,price）"),
     ingredient_category_ids: Optional[str] = Query(None, description="原料分类ID列表，逗号分隔"),
     sort_by: str = Query("created_at", enum=["created_at", "updated_at", "price_records"], description="排序方式"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -279,6 +282,9 @@ async def get_product_records(
     
     # 初始化单位转换服务（如果需要转换）
     unit_service = UnitConversionService(db) if target_unit else None
+
+    # 地区过滤：显式 region_id 或按用户默认计算范围推导
+    region_id = resolve_region_param(db, current_user, region_id)
     
     # 获取原料名称（用于单位转换）
     ingredient_name = None
@@ -300,6 +306,7 @@ async def get_product_records(
             ProductRecord.product_id,
             func.count(ProductRecord.id).label('record_count')
         ).filter(*rc_filter)
+        record_counts = apply_region_filter(record_counts, db, region_id)
 
         # 应用过滤条件
         if ingredient_id:
@@ -366,6 +373,7 @@ async def get_product_records(
             joinedload(ProductRecord.standard_unit),
             joinedload(ProductRecord.merchant)
         )
+        query = apply_region_filter(query, db, region_id)
         if not ingredient_id and not product_id:
             query = query.filter(ProductRecord.user_id == current_user.id)
 
@@ -437,6 +445,7 @@ async def get_product_records(
         ).filter(
             ProductRecord.is_active == True
         )
+        query = apply_region_filter(query, db, region_id)
         if not ingredient_id and not product_id:
             query = query.filter(ProductRecord.user_id == current_user.id)
 
@@ -821,16 +830,21 @@ async def delete_product_record(
 @router.get("/history/{product_name}", response_model=ProductHistoryResponse)
 async def get_product_history(
     product_name: str,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """获取商品历史价格"""
-    records = db.query(ProductRecord).options(
-        joinedload(ProductRecord.original_unit),
-        joinedload(ProductRecord.standard_unit),
-        joinedload(ProductRecord.merchant)
-    ).filter(
-        ProductRecord.product_name == product_name
+    region_id = resolve_region_param(db, current_user, region_id)
+    records = apply_region_filter(
+        db.query(ProductRecord).options(
+            joinedload(ProductRecord.original_unit),
+            joinedload(ProductRecord.standard_unit),
+            joinedload(ProductRecord.merchant)
+        ).filter(
+            ProductRecord.product_name == product_name
+        ),
+        db, region_id,
     ).order_by(ProductRecord.recorded_at.desc()).all()
 
     # 处理所有记录，将 Unit 对象转换为字符串

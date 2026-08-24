@@ -3296,7 +3296,7 @@ const loadProductPrice = async (product: Product) => {
   }
   try {
     // 获取最新价格
-    const detail: any = await api.get(`/products/entity/${pid}`, { params: { region_id: effective.value } })
+    const detail: any = await api.get(`/products/entity/${pid}`)
     const info = productPrices.value[pid]
     if (!info) return
     info.latestPrice = detail.latest_price ?? null

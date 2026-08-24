@@ -2289,7 +2289,7 @@ const loadSiblingProducts = async () => {
     // 加载每个关联商品的最新价格
     for (const sibling of siblingProducts.value) {
       try {
-        const detail = await api.get(`/products/entity/${sibling.id}`, { params: { region_id: effective.value } })
+        const detail = await api.get(`/products/entity/${sibling.id}`)
         sibling.latest_price = detail.latest_price
         sibling.latest_price_unit = detail.latest_price_unit
       } catch {
@@ -2341,9 +2341,7 @@ const loadData = async () => {
 
   try {
     // 只加载商品基本信息（名称、品牌、条码、标签、最新价格等）
-    const response = await api.get(`/products/entity/${productId.value}`, {
-      params: { region_id: effective.value },
-    })
+    const response = await api.get(`/products/entity/${productId.value}`)
     product.value = response
     pendingProposal.value = response.pending_proposal || null
     // 加载当前用户所有 pending 提议（用于单位/密度区域按 payload 关联显示横幅）
@@ -2981,9 +2979,7 @@ const showMessage = (message: string, color: string = 'success') => {
 // 地区变化后仅刷新最新价字段，避免整页 loading 闪烁
 const reloadLatestPrice = async () => {
   try {
-    const response = await api.get(`/products/entity/${productId.value}`, {
-      params: { region_id: effective.value },
-    })
+    const response = await api.get(`/products/entity/${productId.value}`)
     if (product.value) {
       product.value.latest_price = response.latest_price
       product.value.latest_price_unit = response.latest_price_unit
