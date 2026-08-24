@@ -18,6 +18,7 @@ export interface Currency {
   name: string
   symbol: string | null
   decimals: number
+  is_active?: boolean
 }
 
 export interface User {
