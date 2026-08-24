@@ -5,6 +5,7 @@
 product×merchant 的统计；本模块只读写 ProductMerchantPriceSummary，绝不暴露用户身份。
 """
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.product import ProductRecord
@@ -67,3 +68,104 @@ def recompute_summary(db: Session, *, product_id: int, merchant_id: Optional[int
     existing.recent_price = recent_unit_price
     existing.last_updated_at = datetime.utcnow()
     db.flush()
+
+
+def _recompute_summary_for_product(db: Session, *, product_id: int) -> None:
+    """重算某商品下所有（product×merchant + 全局）汇总行。"""
+    merchant_ids = {
+        r.merchant_id
+        for r in db.query(ProductRecord).filter(
+            ProductRecord.product_id == product_id,
+            ProductRecord.is_active == True,  # noqa: E712
+        ).all()
+        if r.merchant_id is not None
+    }
+    for mid in merchant_ids:
+        recompute_summary(db, product_id=product_id, merchant_id=mid)
+    recompute_summary(db, product_id=product_id, merchant_id=None)
+
+
+def recompute_product_standard_quantities(db: Session, *, product_id: int) -> int:
+    """按当前实体单位覆盖重算某商品价格记录的 standard_quantity / standard_unit_id。
+
+    场景：用户为扫码新增的商品维护自定义单位（如「袋=1000g」）后，此前按默认
+    100g/个 落库的价格记录仍是旧换算。本函数用最新覆盖（商品 > 原料 > 兜底）
+    重新换算 original → g 并回写记录，随后刷新去标识汇总表，保证最新价/区间/
+    成本计算口径一致。
+
+    返回实际更新的记录条数；调用方负责 commit。
+    """
+    from app.services.unit_conversion_service import UnitConversionService
+    from app.services.unit_matcher import UnitMatcher
+    from app.utils.unit_converter import convert_to_standard
+
+    records = (
+        db.query(ProductRecord)
+        .filter(
+            ProductRecord.product_id == product_id,
+            ProductRecord.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    svc = UnitConversionService(db)
+    matcher = UnitMatcher(db)
+    g_unit = matcher.match_or_create_unit("g")
+    changed = 0
+    for r in records:
+        if r.price is None or r.original_quantity is None or float(r.original_quantity) <= 0:
+            continue
+        original_unit = r.original_unit
+        abbr = original_unit.abbreviation if original_unit else None
+        if not abbr:
+            continue
+        result = svc.convert(
+            Decimal(str(r.original_quantity)),
+            abbr,
+            "g",
+            entity_type="product",
+            entity_id=product_id,
+        )
+        if result is not None:
+            new_sq, _ = result
+            new_su = g_unit
+        else:
+            # 回退旧转换器（与 products.py create/update 逻辑一致）
+            new_sq, su_str = convert_to_standard(r.original_quantity, abbr)
+            new_su = matcher.match_or_create_unit(su_str) if su_str else None
+        if new_sq is None:
+            continue
+        new_sq = Decimal(str(new_sq))
+        new_su_id = new_su.id if new_su is not None else r.standard_unit_id
+        if (
+            r.standard_quantity is None
+            or Decimal(str(r.standard_quantity)) != new_sq
+            or r.standard_unit_id != new_su_id
+        ):
+            r.standard_quantity = new_sq
+            r.standard_unit_id = new_su_id
+            changed += 1
+    # 记录换算变化后刷新汇总（即使无变化也刷新，保证汇总与当前覆盖一致）
+    _recompute_summary_for_product(db, product_id=product_id)
+    return changed
+
+
+def recompute_ingredient_standard_quantities(db: Session, *, ingredient_id: int) -> int:
+    """按当前覆盖重算某原料下所有商品的价格记录（商品覆盖 > 原料覆盖 > 兜底）。
+
+    原料的自定义单位覆盖会影响其下商品记录（product 换算会回退到原料覆盖），
+    故原料覆盖变更时需要对每个关联商品重算。返回更新总条数。
+    """
+    from app.models.product_entity import Product
+
+    products = (
+        db.query(Product)
+        .filter(
+            Product.ingredient_id == ingredient_id,
+            Product.is_active == True,  # noqa: E712
+        )
+        .all()
+    )
+    total = 0
+    for p in products:
+        total += recompute_product_standard_quantities(db, product_id=p.id)
+    return total

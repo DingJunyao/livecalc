@@ -8,6 +8,9 @@ revert restore_active 复活）。覆写 validate：
 两种 entity_type 区分（关键，勿混）：
 - 框架级 entity_type = "entity_unit_override"（本执行器注册名，进 change_proposals.entity_type）
 - 业务级 entity_type（"ingredient"/"product"，来自 URL 路径，放 payload，create 时写入数据行）
+
+自定义单位覆盖生效/回滚后，需要按业务实体重算既有价格记录的 standard_quantity
+（否则扫码后先记价、后补单位覆盖的记录仍按默认 100g/个 换算），见 _recompute_*。
 """
 from typing import Optional
 from fastapi import HTTPException
@@ -63,6 +66,56 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
         )
         if obj is None:
             raise HTTPException(status_code=404, detail=f"实体单位覆盖 {eid} 不存在或已删除")
+
+    def apply(self, db: Session, proposal) -> "ApplyResult":
+        """apply 后按业务实体重算价格记录，保证既有记录换算跟随最新覆盖。"""
+        result = super().apply(db, proposal)
+        self._recompute_price_records(db, proposal)
+        return result
+
+    def revert(self, db: Session, proposal) -> None:
+        """revert 后同样重算，保证记录换算跟随还原后的覆盖。"""
+        super().revert(db, proposal)
+        self._recompute_price_records(db, proposal)
+
+    def _recompute_price_records(self, db: Session, proposal) -> None:
+        """定位业务实体（product/ingredient）并重算其价格记录。
+
+        create 的 payload 含 entity_type/entity_id；update/delete 的 payload 不含，
+        需从覆盖行（proposal.entity_id）回查。重算失败不阻断覆盖生效，仅记录警告
+        （可通过 scripts/recompute_price_records.py 兜底修复）。
+        """
+        from app.services.price_aggregator import (
+            recompute_product_standard_quantities,
+            recompute_ingredient_standard_quantities,
+        )
+
+        p = proposal.payload or {}
+        biz_type = p.get("entity_type")
+        biz_id = p.get("entity_id")
+        if biz_type is None or biz_id is None:
+            eid = proposal.entity_id
+            if eid is None:
+                return
+            obj = db.query(EntityUnitOverride).get(eid)
+            if obj is None:
+                return
+            biz_type = obj.entity_type
+            biz_id = obj.entity_id
+        if biz_type is None or biz_id is None:
+            return
+        try:
+            db.flush()  # 让覆盖变更对后续查询可见
+            if biz_type == "product":
+                recompute_product_standard_quantities(db, product_id=biz_id)
+            elif biz_type == "ingredient":
+                recompute_ingredient_standard_quantities(db, ingredient_id=biz_id)
+        except Exception as e:  # pragma: no cover - 防御性兜底
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "重算 %s/%s 价格记录失败（覆盖已生效，可稍后修复）: %s", biz_type, biz_id, e
+            )
 
     def entity_label(self, db: Session, proposal) -> Optional[str]:
         """业务实体名（payload.entity_type/entity_id）+ unit_name。

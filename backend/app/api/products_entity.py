@@ -819,8 +819,8 @@ def get_product_latest_price_by_merchant(
                     original_quantity,
                     original_unit_abbr,
                     target_unit_abbr,
-                    entity_type="ingredient",
-                    entity_id=product.ingredient_id,
+                    entity_type="product",
+                    entity_id=product_id,
                 )
                 if convert_result is not None:
                     converted_quantity, _ = convert_result
