@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/repositories/auth_repository.dart';
+import '../../../core/api/api_client.dart';
 import '../providers/startup_page_provider.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -72,6 +75,20 @@ class ProfileScreen extends ConsumerWidget {
                 const Icon(Icons.chevron_right, color: Colors.grey),
               ]),
               onTap: () => _showStartupPageDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.currency_exchange),
+              title: const Text('默认币种'),
+              subtitle: Text(user?.defaultCurrency ?? '跟随所在地区'),
+              onTap: () => _showDefaultCurrencyDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.public),
+              title: const Text('默认计算范围'),
+              subtitle: Text(_calcScopeDisplayName(user?.defaultCalcScope)),
+              onTap: () => _showDefaultCalcScopeDialog(context, ref),
             ),
             const Divider(height: 1),
             ListTile(
@@ -155,3 +172,155 @@ Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
     await ref.read(startupPageProvider.notifier).setPage(selected);
   }
 }
+
+String _calcScopeDisplayName(String? scope) {
+  switch (scope) {
+    case 'country':
+      return '国家/地区';
+    case 'province':
+      return '省级';
+    case 'city':
+      return '地级';
+    case 'county':
+      return '县级';
+    default:
+      return '国家/地区';
+  }
+}
+
+const List<Map<String, String>> _fallbackCurrencies = [
+  {'code': 'CNY', 'symbol': '¥', 'name': '人民币'},
+  {'code': 'USD', 'symbol': r'$', 'name': '美元'},
+  {'code': 'EUR', 'symbol': '€', 'name': '欧元'},
+  {'code': 'JPY', 'symbol': '¥', 'name': '日元'},
+  {'code': 'KRW', 'symbol': '₩', 'name': '韩元'},
+  {'code': 'HKD', 'symbol': 'HK\$', 'name': '港币'},
+  {'code': 'TWD', 'symbol': 'NT\$', 'name': '新台币'},
+];
+
+Future<List<Map<String, dynamic>>> _fetchCurrencies() async {
+  try {
+    final response = await ApiClient.instance.dio.get('/currencies');
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data is Map ? data['items'] as List? : null) ?? const []);
+    return [
+      for (final item in list)
+        if (item is Map) Map<String, dynamic>.from(item),
+    ];
+  } catch (_) {
+    return const [];
+  }
+}
+
+Future<void> _showDefaultCurrencyDialog(
+    BuildContext context, WidgetRef ref) async {
+  final current = ref.read(authProvider).user?.defaultCurrency;
+  final fetched = await _fetchCurrencies();
+  if (!context.mounted) return;
+  final currencies = fetched.isNotEmpty
+      ? fetched
+      : <Map<String, dynamic>>[
+          for (final c in _fallbackCurrencies) Map<String, dynamic>.from(c),
+        ];
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('默认币种'),
+      children: [
+        RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final c in currencies)
+                RadioListTile<String>(
+                  value: c['code'] as String? ?? '',
+                  title: Text('${c['symbol']} ${c['name']}'),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected == null || selected == current) return;
+  if (!context.mounted) return;
+  await _saveLocaleSettings(
+    context,
+    ref,
+    defaultCurrency: selected,
+  );
+}
+
+Future<void> _showDefaultCalcScopeDialog(
+    BuildContext context, WidgetRef ref) async {
+  final current = ref.read(authProvider).user?.defaultCalcScope;
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: const Text('默认计算范围'),
+      children: [
+        RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<String>(value: 'country', title: Text('国家/地区')),
+              RadioListTile<String>(value: 'province', title: Text('省级')),
+              RadioListTile<String>(value: 'city', title: Text('地级')),
+              RadioListTile<String>(value: 'county', title: Text('县级')),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected == null || selected == current) return;
+  if (!context.mounted) return;
+  await _saveLocaleSettings(context, ref, defaultCalcScope: selected);
+}
+
+Future<void> _saveLocaleSettings(
+  BuildContext context,
+  WidgetRef ref, {
+  String? defaultCurrency,
+  String? defaultCalcScope,
+}) async {
+  try {
+    final user = await AuthRepository().updateSettings(
+      defaultCurrency: defaultCurrency,
+      defaultCalcScope: defaultCalcScope,
+    );
+    ref.read(authProvider.notifier).applyUser(user);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已保存')),
+      );
+    }
+  } on DioException catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_extractDetail(e))),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('保存失败，请重试')),
+      );
+    }
+  }
+}
+
+String _extractDetail(DioException e) {
+  final data = e.response?.data;
+  if (data is Map && data['detail'] is String) {
+    return data['detail'] as String;
+  }
+  return '保存失败，请检查后重试';
+}
+
