@@ -3054,53 +3054,62 @@ const chartData = computed(() => {
     if (isNaN(date.getTime())) continue
     const dateKey = date.toISOString().split('T')[0]
 
-    // 计算原始单价
-    const quantity = parseFloat(String(record.original_quantity)) || 1
+    // 常用单位转换系数（相对于g）
+    const unitFactors: Record<string, number> = {
+      'g': 1,
+      'kg': 1000,
+      '斤': 500,
+      '两': 50,
+      'mg': 0.001,
+      'oz': 28.3495,
+      'lb': 453.592,
+      'mL': 1,
+      'ml': 1,
+      'L': 1000,
+    }
+
+    // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
+    // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
     const price = parseFloat(String(record.price)) || 0
-    const originalUnitPrice = price / quantity
+    let convertedUnitPrice: number | null = null
+    const stdQty = parseFloat(String(record.standard_quantity))
+    const stdUnit = record.standard_unit
+    if (stdQty > 0 && stdUnit && unitFactors[stdUnit] !== undefined) {
+      // standard_quantity 以克为单位（后端统一归一化到 g）
+      const pricePerGram = price / stdQty
+      convertedUnitPrice = pricePerGram * (unitFactors[defaultUnit] || 1)
+    } else {
+      const quantity = parseFloat(String(record.original_quantity)) || 1
+      const originalUnitPrice = price / quantity
+      const originalUnit = record.original_unit
 
-    // 转换到原料的默认单位
-    let convertedUnitPrice = originalUnitPrice
-    const originalUnit = record.original_unit
-
-    // 如果原始单位和默认单位不同，进行转换
-    if (originalUnit && originalUnit !== defaultUnit) {
-      // 常用单位转换系数（相对于g）
-      const unitFactors: Record<string, number> = {
-        'g': 1,
-        'kg': 1000,
-        '斤': 500,
-        '两': 50,
-        'mg': 0.001,
-        'oz': 28.3495,
-        'lb': 453.592,
-        'mL': 1,
-        'ml': 1,
-        'L': 1000,
-      }
-
-      // 计数单位的默认回退：1个=100g
-      // 如果有 entity_unit_overrides，优先使用实际重量
-      let fromFactor = unitFactors[originalUnit]
-      if (fromFactor === undefined) {
-        // 检查是否有该原料/商品的自定义单位
-        const entityUnit = entityUnits.value?.find(
-          (eu: any) => eu.unit_name === originalUnit
-        )
-        if (entityUnit && entityUnit.weight_per_unit && entityUnit.weight_unit_id) {
-          // weight_per_unit 是以 weight_unit 为单位，通常是 g
-          const conversionCount = entityUnit.conversion_factor || 1
-          fromFactor = (entityUnit.weight_per_unit * conversionCount) // 每1个原始单位 = ?g
-        } else {
-          // 默认：1个=100g
-          fromFactor = 100
+      // 如果原始单位和默认单位不同，进行转换
+      if (originalUnit && originalUnit !== defaultUnit) {
+        // 计数单位的默认回退：1个=100g
+        // 如果有 entity_unit_overrides，优先使用实际重量
+        let fromFactor = unitFactors[originalUnit]
+        if (fromFactor === undefined) {
+          // 检查是否有该原料/商品的自定义单位
+          const entityUnit = entityUnits.value?.find(
+            (eu: any) => eu.unit_name === originalUnit
+          )
+          if (entityUnit && entityUnit.weight_per_unit && entityUnit.weight_unit_id) {
+            // weight_per_unit 是以 weight_unit 为单位，通常是 g
+            const conversionCount = entityUnit.conversion_factor || 1
+            fromFactor = (entityUnit.weight_per_unit * conversionCount) // 每1个原始单位 = ?g
+          } else {
+            // 默认：1个=100g
+            fromFactor = 100
+          }
         }
+
+        const toFactor = unitFactors[defaultUnit] || 1
+
+        // 单价转换公式：新单价 = 原单价 × (toFactor / fromFactor)
+        convertedUnitPrice = originalUnitPrice * (toFactor / fromFactor)
+      } else {
+        convertedUnitPrice = originalUnitPrice
       }
-
-      const toFactor = unitFactors[defaultUnit] || 1
-
-      // 单价转换公式：新单价 = 原单价 × (toFactor / fromFactor)
-      convertedUnitPrice = originalUnitPrice * (toFactor / fromFactor)
     }
 
     if (!dailyAll.has(dateKey)) {
