@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../models/meal_recommendation.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 class MealCard extends StatelessWidget {
   final MealRecommendation meal;
   final VoidCallback? onTap;
   final bool isRefreshing;
   final VoidCallback? onRefresh;
+  final String userCurrency;
 
   const MealCard({
     super.key,
@@ -13,6 +15,7 @@ class MealCard extends StatelessWidget {
     this.onTap,
     this.isRefreshing = false,
     this.onRefresh,
+    this.userCurrency = 'CNY',
   });
 
   IconData _mealIcon(String type) {
@@ -87,7 +90,7 @@ class MealCard extends StatelessWidget {
                     if (meal.estimatedCost != null)
                       _nutrientChip(
                         Icons.payments_outlined,
-                        '¥${meal.estimatedCost!.toStringAsFixed(1)}',
+                        formatMoney(meal.estimatedCost!, userCurrency),
                         theme,
                       ),
                     if (meal.calories != null)

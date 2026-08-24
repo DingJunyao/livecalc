@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../screens/merchant_form_screen.dart';
 import '../models/merchant.dart';
@@ -173,6 +174,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
               loading: state.loadingPrices,
               hasMore: state.pricesHasMore,
               onLoadMore: notifier.loadMorePrices,
+              userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
             ),
           ],
         ),
@@ -313,12 +315,14 @@ class _ProductPricesCard extends StatelessWidget {
   final bool loading;
   final bool hasMore;
   final VoidCallback onLoadMore;
+  final String userCurrency;
 
   const _ProductPricesCard({
     required this.prices,
     required this.loading,
     required this.hasMore,
     required this.onLoadMore,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -410,7 +414,7 @@ class _ProductPricesCard extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '¥${p.displayPrice.toStringAsFixed(2)}${p.displayUnit}',
+                          '${formatMoney(p.displayPrice, userCurrency)}${p.displayUnit}',
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.tertiary,
                             fontWeight: FontWeight.bold,

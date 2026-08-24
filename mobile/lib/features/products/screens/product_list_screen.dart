@@ -7,6 +7,8 @@ import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/sparkline.dart';
+import '../../../shared/utils/currency_fmt.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/providers/ingredient_provider.dart';
 import '../../merchants/providers/merchant_provider.dart';
@@ -222,6 +224,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             sparkline: state.sparklines[state.items[i].id],
             onTap: () => context.push('/products/${state.items[i].id}'),
             onQuickPrice: () => _quickPrice(state.items[i]),
+            userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
           );
         },
       ),
@@ -285,6 +288,7 @@ class _ProductCard extends StatelessWidget {
   final List<double>? sparkline;
   final VoidCallback onTap;
   final VoidCallback onQuickPrice;
+  final String userCurrency;
 
   const _ProductCard({
     required this.item,
@@ -292,6 +296,7 @@ class _ProductCard extends StatelessWidget {
     required this.sparkline,
     required this.onTap,
     required this.onQuickPrice,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -358,7 +363,7 @@ class _ProductCard extends StatelessWidget {
                         if (price != null) ...[
                           const Spacer(),
                           Text(
-                            '¥${price.toStringAsFixed(2)}'
+                            '${formatMoney(price, userCurrency)}'
                             '${unit == null ? '' : ' / $unit'}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,

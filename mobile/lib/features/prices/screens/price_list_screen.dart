@@ -110,12 +110,13 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   /// 二次确认后删除记录。
   Future<void> _confirmDelete(PriceRecord r) async {
     final theme = Theme.of(context);
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除记录'),
         content: Text(
-          '确定删除「${r.productName}」¥${r.price.toStringAsFixed(2)} 的记录吗？',
+          '确定删除「${r.productName}」${formatMoney(r.price, userCurrency)} 的记录吗？',
         ),
         actions: [
           TextButton(
