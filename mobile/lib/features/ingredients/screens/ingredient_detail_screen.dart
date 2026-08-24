@@ -169,6 +169,7 @@ class _IngredientDetailScreenState
                 child: CostTrendChart(
                   points: state.chartPoints,
                   loading: state.loadingChart,
+                  userCurrency: userCurrency,
                   onRangeChange: (days) => notifier.reloadChart(days),
                 ),
               ),
@@ -740,6 +741,7 @@ class _LatestPriceCard extends StatelessWidget {
             MerchantPriceList(
               prices: merchantPrices,
               loading: loadingMerchants,
+              userCurrency: currency,
             ),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/recipe_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../widgets/cost_proportion_chart.dart';
 import '../widgets/cost_trend_stacked_chart.dart';
 import '../widgets/nutrition_source_grid.dart';
@@ -61,6 +62,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     final breakdown = state.cost?.breakdown ?? const [];
     final totalCost = state.cost?.totalCost ?? 0;
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
 
     return Scaffold(
       appBar: AppBar(
@@ -103,12 +105,14 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
               breakdown: breakdown,
               totalCost: totalCost,
               loading: state.loadingCost,
+              userCurrency: userCurrency,
             ),
             const SizedBox(height: 16),
             // ② 成本趋势
             CostTrendStackedChart(
               points: state.costHistory,
               loading: state.loadingHistory,
+              userCurrency: userCurrency,
               onFilterChange: (filter) {
                 final days = costHistoryDays[filter] ?? 90;
                 ref
@@ -127,6 +131,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
             MerchantCostCards(
               merchants: state.merchantCosts?.merchants ?? const [],
               loading: state.loadingMerchantCosts,
+              userCurrency: userCurrency,
             ),
             const SizedBox(height: 16),
             // ⑤ 商家比价推荐
@@ -134,6 +139,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
               ingredients: detail.ingredients,
               prices: state.merchantPrices,
               loading: state.loadingMerchantPrices,
+              userCurrency: userCurrency,
             ),
           ],
         ),

@@ -474,6 +474,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             CostTrendChart(
               points: state.costHistory.map((p) => p.scaled(ratio)).toList(),
               loading: state.loadingHistory,
+              userCurrency: userCurrency,
               onRangeChange: (days) => ref
                   .read(recipeDetailPageProvider(widget.id).notifier)
                   .reloadHistory(days),

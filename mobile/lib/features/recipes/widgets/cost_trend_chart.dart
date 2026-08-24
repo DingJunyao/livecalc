@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/utils/smooth_path.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../repositories/recipe_repository.dart';
 
 /// 成本趋势图表：min/max 区间带 + avg 折线 + 触摸 tooltip + 区间筛选。
@@ -10,6 +11,7 @@ class CostTrendChart extends StatefulWidget {
   final String unit;
   final Color color;
   final ValueChanged<int>? onRangeChange;
+  final String userCurrency;
 
   const CostTrendChart({
     super.key,
@@ -18,6 +20,7 @@ class CostTrendChart extends StatefulWidget {
     this.unit = '元',
     this.color = const Color(0xFFFF9800),
     this.onRangeChange,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -123,6 +126,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
       color: widget.color,
       touchIndex: _touchIndex,
       onTouch: (i) => setState(() => _touchIndex = i),
+      userCurrency: widget.userCurrency,
     );
   }
 }
@@ -132,12 +136,14 @@ class _Chart extends StatelessWidget {
   final Color color;
   final int? touchIndex;
   final ValueChanged<int?> onTouch;
+  final String userCurrency;
 
   const _Chart({
     required this.points,
     required this.color,
     required this.touchIndex,
     required this.onTouch,
+    required this.userCurrency,
   });
 
   @override
@@ -164,6 +170,7 @@ class _Chart extends StatelessWidget {
                   color: color,
                   touchIndex: touchIndex,
                   gridColor: Theme.of(context).colorScheme.outlineVariant,
+                  userCurrency: userCurrency,
                 ),
               ),
               if (touchIndex != null && touchIndex! < points.length)
@@ -172,7 +179,10 @@ class _Chart extends StatelessWidget {
                   right: 0,
                   top: 0,
                   child: _Tooltip(
-                      points: points, index: touchIndex!, color: color),
+                      points: points,
+                      index: touchIndex!,
+                      color: color,
+                      userCurrency: userCurrency),
                 ),
             ],
           ),
@@ -196,8 +206,12 @@ class _Tooltip extends StatelessWidget {
   final List<CostHistoryPoint> points;
   final int index;
   final Color color;
+  final String userCurrency;
   const _Tooltip(
-      {required this.points, required this.index, required this.color});
+      {required this.points,
+      required this.index,
+      required this.color,
+      required this.userCurrency});
 
   @override
   Widget build(BuildContext context) {
@@ -217,12 +231,12 @@ class _Tooltip extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
             const SizedBox(height: 2),
-            Text('均价 ¥${p.avgCost.toStringAsFixed(2)}',
+            Text('均价 ${formatMoney(p.avgCost, userCurrency)}',
                 style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.onInverseSurface,
                     fontWeight: FontWeight.bold)),
             Text(
-                '区间 ¥${p.minCost.toStringAsFixed(2)} ~ ¥${p.maxCost.toStringAsFixed(2)}',
+                '区间 ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
           ],
@@ -237,12 +251,14 @@ class _TrendPainter extends CustomPainter {
   final Color color;
   final int? touchIndex;
   final Color gridColor;
+  final String userCurrency;
 
   _TrendPainter({
     required this.points,
     required this.color,
     required this.touchIndex,
     required this.gridColor,
+    required this.userCurrency,
   });
 
   @override
@@ -282,7 +298,8 @@ class _TrendPainter extends CustomPainter {
       final v = minV + (maxV - minV) * i / 4;
       final y = yAt(v);
       canvas.drawLine(Offset(plotLeft, y), Offset(plotRight, y), gridPaint);
-      final label = gridStep < 1 ? '¥${v.toStringAsFixed(1)}' : '¥${v.round()}';
+      final label =
+          gridStep < 1 ? formatMoney(v, userCurrency) : formatMoney(v.round(), userCurrency);
       _text(canvas, label, Offset(2, y - 7), gridColor, 9);
     }
 
@@ -383,5 +400,6 @@ class _TrendPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrendPainter old) =>
       old.points != points ||
       old.touchIndex != touchIndex ||
-      old.color != color;
+      old.color != color ||
+      old.userCurrency != userCurrency;
 }

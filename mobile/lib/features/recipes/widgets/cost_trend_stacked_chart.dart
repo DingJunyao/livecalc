@@ -9,6 +9,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:fl_chart/src/chart/line_chart/line_chart_renderer.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 /// 趋势筛选天数映射：周/月/季/年/全部（对齐 web 常量）
 const costHistoryDays = <String, int>{
@@ -72,7 +73,7 @@ List<StackedSeries> buildStackedSeries(List<CostHistoryPoint> points) {
   ];
 }
 
-/// 构建 tooltip 明细项：日期 + 每食材「名: ¥成本」+「合计: ¥x」。
+/// 构建 tooltip 明细项：日期 + 每食材「名: 成本」+「合计: 总成本」。
 /// fl_chart 传入的 touchedSpots 按到触点距离排序（非序列顺序）。
 /// 面积图倒序绘制（顶层先画、底层最后覆盖出层间色带，见 _buildStackedChart），
 /// lineBarsData 与序列顺序相反：barIndex i 对应 series[n-1-i]（底层序列
@@ -132,15 +133,18 @@ class _YAxisRange {
   }
 }
 
-String _formatYAxisLabel(double v, _YAxisRange range) {
+String _formatYAxisLabel(double v, _YAxisRange range, String userCurrency) {
   if (range.isIntegerInterval) {
-    return '¥${v.round()}';
+    return formatMoney(v.round(), userCurrency);
   }
-  return '¥${v.toStringAsFixed(1)}';
+  return formatMoney(v, userCurrency);
 }
 
 List<LineTooltipItem> buildStackedTooltipItems(
-    List<StackedSeries> series, List<LineBarSpot> touchedSpots, String date) {
+    List<StackedSeries> series,
+    List<LineBarSpot> touchedSpots,
+    String date,
+    {String userCurrency = 'CNY'}) {
   if (touchedSpots.isEmpty) return [];
   // 锚点须先取（touchedSpots 未重排时 first 即距触点最近线 = 触点天）
   final dayIndex = touchedSpots.first.x.toInt();
@@ -155,7 +159,7 @@ List<LineTooltipItem> buildStackedTooltipItems(
     final stackedY = spot.bar.spots[dayIndex].y;
     final seriesIndex = series.length - 1 - spot.barIndex;
     final line =
-        '${series[seriesIndex].name}: ¥${(stackedY - prev).toStringAsFixed(2)}';
+        '${series[seriesIndex].name}: ${formatMoney(stackedY - prev, userCurrency)}';
     items.add(LineTooltipItem(line, plain));
     prev = stackedY;
   }
@@ -167,7 +171,7 @@ List<LineTooltipItem> buildStackedTooltipItems(
       LineTooltipItem(items.last.text, items.last.textStyle, children: [
     ...(items.last.children ?? const []),
     TextSpan(
-        text: '\n合计: ¥${sorted.last.bar.spots[dayIndex].y.toStringAsFixed(2)}',
+        text: '\n合计: ${formatMoney(sorted.last.bar.spots[dayIndex].y, userCurrency)}',
         style: bold),
   ]);
   return items;
@@ -179,11 +183,13 @@ class CostTrendStackedChart extends StatefulWidget {
   final List<CostHistoryPoint> points;
   final bool loading;
   final ValueChanged<String>? onFilterChange;
+  final String userCurrency;
   const CostTrendStackedChart({
     super.key,
     required this.points,
     this.loading = false,
     this.onFilterChange,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -405,7 +411,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange),
+              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange, widget.userCurrency),
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: theme.colorScheme.outline)),
             ),
@@ -452,7 +458,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           handleBuiltInTouches: false,
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) => buildStackedTooltipItems(series,
-                touchedSpots, widget.points[touchedSpots.first.x.toInt()].date),
+                touchedSpots, widget.points[touchedSpots.first.x.toInt()].date,
+                userCurrency: widget.userCurrency),
           ),
         ),
         lineBarsData: lineBars,
@@ -518,7 +525,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange),
+              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange, widget.userCurrency),
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: theme.colorScheme.outline)),
             ),
@@ -568,11 +575,11 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               return [
                 LineTooltipItem('$date\n', bold, children: [
                   TextSpan(
-                      text: '均价: ¥${points[idx].avgCost.toStringAsFixed(2)}\n',
+                      text: '均价: ${formatMoney(points[idx].avgCost, widget.userCurrency)}\n',
                       style: plain),
                   TextSpan(
-                      text: '区间: ¥${points[idx].minCost.toStringAsFixed(2)} ~ '
-                          '¥${points[idx].maxCost.toStringAsFixed(2)}',
+                      text: '区间: ${formatMoney(points[idx].minCost, widget.userCurrency)} ~ '
+                          '${formatMoney(points[idx].maxCost, widget.userCurrency)}',
                       style: plain),
                 ]),
               ];

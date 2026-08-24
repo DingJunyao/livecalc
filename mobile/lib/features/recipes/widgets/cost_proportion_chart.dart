@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 /// 单个成本占比段（进度条段 / 清单行共用）
 class CostProportionItem {
@@ -38,11 +39,13 @@ class CostProportionChart extends StatefulWidget {
   final List<CostBreakdownItem> breakdown;
   final double totalCost;
   final bool loading;
+  final String userCurrency;
   const CostProportionChart({
     super.key,
     required this.breakdown,
     required this.totalCost,
     this.loading = false,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -86,7 +89,7 @@ class _CostProportionChartState extends State<CostProportionChart> {
               ),
               // 总价从圆环中心移至标题行右侧
               if (hasData && total > 0)
-                Text('¥${total.toStringAsFixed(2)}',
+                Text(formatMoney(total, widget.userCurrency),
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
             ]),
@@ -195,7 +198,7 @@ class _CostProportionChartState extends State<CostProportionChart> {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium),
                 ),
-                Text('¥${items[i].value.toStringAsFixed(2)}',
+                Text(formatMoney(items[i].value, widget.userCurrency),
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(width: 12),

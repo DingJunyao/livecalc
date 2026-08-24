@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../repositories/recipe_repository.dart';
 
 /// 按商家预估成本：横向滚动卡片（对齐 web MerchantCostCards）。
@@ -7,8 +8,12 @@ import '../repositories/recipe_repository.dart';
 class MerchantCostCards extends StatefulWidget {
   final List<MerchantCostItem> merchants;
   final bool loading;
+  final String userCurrency;
   const MerchantCostCards(
-      {super.key, required this.merchants, this.loading = false});
+      {super.key,
+      required this.merchants,
+      this.loading = false,
+      this.userCurrency = 'CNY'});
 
   @override
   State<MerchantCostCards> createState() => _MerchantCostCardsState();
@@ -146,19 +151,19 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
             ],
           ]),
           const SizedBox(height: 4),
-          Text('¥${m.totalCost.toStringAsFixed(2)}',
+          Text(formatMoney(m.totalCost, widget.userCurrency),
               style: theme.textTheme.headlineSmall
                   ?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
           Text.rich(TextSpan(children: [
             TextSpan(
-                text: '本店 ¥${m.coveredCost.toStringAsFixed(2)}',
+                text: '本店 ${formatMoney(m.coveredCost, widget.userCurrency)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF2E7D32),
                     fontWeight: FontWeight.w600)),
             if (m.externalCost > 0)
               TextSpan(
-                text: '  外部 ¥${m.externalCost.toStringAsFixed(2)}',
+                text: '  外部 ${formatMoney(m.externalCost, widget.userCurrency)}',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: const Color(0xFFEF6C00)),
               ),

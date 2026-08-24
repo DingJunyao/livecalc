@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/merchant_price.dart';
+import '../utils/currency_fmt.dart';
 import 'sparkline.dart';
 
 /// 各商家最新价格横排卡片（对应 Web 详情页 merchant-price-list）。
@@ -7,12 +8,14 @@ class MerchantPriceList extends StatelessWidget {
   final List<MerchantPrice> prices;
   final String unit;
   final bool loading;
+  final String userCurrency;
 
   const MerchantPriceList({
     super.key,
     required this.prices,
     this.unit = '',
     this.loading = false,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -48,6 +51,7 @@ class MerchantPriceList extends StatelessWidget {
               price: prices[i],
               unit: unit,
               theme: theme,
+              userCurrency: userCurrency,
             ),
           ),
         ),
@@ -60,10 +64,12 @@ class _MerchantPriceCard extends StatelessWidget {
   final MerchantPrice price;
   final String unit;
   final ThemeData theme;
+  final String userCurrency;
   const _MerchantPriceCard({
     required this.price,
     required this.unit,
     required this.theme,
+    required this.userCurrency,
   });
 
   @override
@@ -108,7 +114,7 @@ class _MerchantPriceCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '¥${price.price.toStringAsFixed(2)}'
+                '${formatMoney(price.price, userCurrency)}'
                 '${unit.isEmpty ? '' : ' / $unit'}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
