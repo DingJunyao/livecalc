@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/widgets/numeric_keypad.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 class QuickFillScreen extends ConsumerStatefulWidget {
   const QuickFillScreen({super.key});
@@ -15,6 +16,9 @@ class QuickFillScreen extends ConsumerStatefulWidget {
 class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   final _repo = PriceRepository();
   int? _selectedMerchantId;
+  String _currency = 'CNY';
+  String _currencySymbol = '¥';
+  List<dynamic> _currencies = const [];
 
   // Pricing rows
   final List<_PriceRow> _rows = [];
@@ -27,6 +31,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   void initState() {
     super.initState();
     _loadMerchants();
+    _loadCurrencies();
   }
 
   @override
@@ -54,8 +59,27 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   void _selectMerchant(Map<String, dynamic> merchant) {
     setState(() {
       _selectedMerchantId = merchant['id'] as int?;
+      final code = merchant['default_currency'] as String?;
+      if (code != null && code.isNotEmpty) {
+        _currency = code;
+        _currencySymbol = currencySymbol(code);
+      }
     });
     _loadHistoryProducts();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      final resp = await _repo.client.dio.get('/currencies');
+      final data = resp.data;
+      final list = (data is List)
+          ? data
+          : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
+      if (!mounted) return;
+      setState(() => _currencies = list);
+    } catch (_) {
+      // 币种加载失败保持默认 CNY
+    }
   }
 
   Future<void> _loadHistoryProducts() async {
@@ -112,6 +136,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   }
 
   Future<void> _saveAll() async {
+    if (_selectedMerchantId == null) return;
     int saved = 0;
     for (final row in _rows) {
       final priceStr = row.priceController.text.trim();
@@ -132,6 +157,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
           unit: row.unit,
           merchantId: _selectedMerchantId,
           recordType: 'price',
+          currency: _currency,
         );
         saved++;
       } catch (_) {}
@@ -215,6 +241,54 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                     );
                   },
                 ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Text('币种',
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
+                    const SizedBox(width: 12),
+                    PopupMenuButton<String>(
+                      onSelected: (code) {
+                        setState(() {
+                          _currency = code;
+                          _currencySymbol = currencySymbol(code);
+                        });
+                      },
+                      itemBuilder: (context) {
+                        if (_currencies.isEmpty) {
+                          return [
+                            PopupMenuItem(value: _currency, child: Text(_currency)),
+                          ];
+                        }
+                        return [
+                          for (final c in _currencies)
+                            PopupMenuItem(
+                              value: c['code'] as String,
+                              child: Text(
+                                '${c['symbol'] ?? c['code']} ${c['code']}',
+                              ),
+                            ),
+                        ];
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: theme.colorScheme.outline),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('$_currencySymbol $_currency'),
+                            const Icon(Icons.arrow_drop_down),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -275,6 +349,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                   }
                                   return _PriceRowWidget(
                                     row: _rows[i],
+                                    currencySymbol: _currencySymbol,
                                     onShowKeypad: () => _showKeypad(_rows[i]),
                                   );
                                 },
@@ -302,7 +377,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (ctx) => _PriceInputSheet(row: row),
+      builder: (ctx) =>
+          _PriceInputSheet(row: row, currencySymbol: _currencySymbol),
     );
   }
 }
@@ -320,9 +396,14 @@ class _PriceRow {
 
 class _PriceRowWidget extends StatelessWidget {
   final _PriceRow row;
+  final String currencySymbol;
   final VoidCallback onShowKeypad;
 
-  const _PriceRowWidget({required this.row, required this.onShowKeypad});
+  const _PriceRowWidget({
+    required this.row,
+    required this.currencySymbol,
+    required this.onShowKeypad,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -359,11 +440,11 @@ class _PriceRowWidget extends StatelessWidget {
                   child: AbsorbPointer(
                     child: TextField(
                       controller: row.priceController,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: '价格',
                         border: InputBorder.none,
                         isDense: true,
-                        prefixText: '¥',
+                        prefixText: currencySymbol,
                       ),
                       keyboardType: TextInputType.none, // block system keyboard
                     ),
@@ -397,7 +478,8 @@ class _PriceRowWidget extends StatelessWidget {
 
 class _PriceInputSheet extends StatefulWidget {
   final _PriceRow row;
-  const _PriceInputSheet({required this.row});
+  final String currencySymbol;
+  const _PriceInputSheet({required this.row, required this.currencySymbol});
 
   @override
   State<_PriceInputSheet> createState() => _PriceInputSheetState();
@@ -444,7 +526,7 @@ class _PriceInputSheetState extends State<_PriceInputSheet> {
             padding: const EdgeInsets.all(16),
             alignment: Alignment.centerRight,
             child: Text(
-              '¥$_display',
+              '${widget.currencySymbol}$_display',
               style: Theme.of(context)
                   .textTheme
                   .headlineMedium
