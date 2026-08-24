@@ -348,6 +348,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   final EntityRepository _entityRepo;
   final ProfileRepository _proposalRepo;
   final int productId;
+  int? _regionId;
 
   ProductDetailPageNotifier(
     this.productId, {
@@ -368,7 +369,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         '${d.day.toString().padLeft(2, '0')}';
   }
 
-  Future<void> load({int initialDays = 30}) async {
+  Future<void> load({int initialDays = 30, int? regionId}) async {
+    _regionId = regionId;
     state = state.copyWith(loading: true, clearError: true);
     try {
       final product = await _productRepo.getProduct(productId);
@@ -388,10 +390,17 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     }
   }
 
+  Future<void> setRegion(int? regionId) async {
+    if (_regionId == regionId) return;
+    _regionId = regionId;
+    await Future.wait([_loadLatestPrice(), _loadMerchantPrices()]);
+  }
+
   Future<void> _loadLatestPrice() async {
     state = state.copyWith(loadingLatest: true);
     try {
-      final info = await _productRepo.getLatestPrice(productId);
+      final info =
+          await _productRepo.getLatestPrice(productId, regionId: _regionId);
       state = state.copyWith(latestPrice: info, loadingLatest: false);
     } on Exception {
       state = state.copyWith(loadingLatest: false);
@@ -401,7 +410,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   Future<void> _loadMerchantPrices() async {
     state = state.copyWith(loadingMerchants: true);
     try {
-      final prices = await _productRepo.getLatestPricesByMerchant(productId);
+      final prices = await _productRepo.getLatestPricesByMerchant(productId,
+          regionId: _regionId);
       state = state.copyWith(merchantPrices: prices, loadingMerchants: false);
     } on Exception {
       state = state.copyWith(loadingMerchants: false);

@@ -8,6 +8,7 @@ import '../widgets/merchant_cost_cards.dart';
 import '../widgets/merchant_price_matrix.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/region_select_field.dart';
 
 /// 菜谱分析页：对齐 web RecipeAnalysisView.vue
 /// AppBar = 菜谱名 + 「分析」chip；5 模块顺序：
@@ -90,6 +91,13 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            RegionSelectField(
+              value: null,
+              onChanged: (regionId) => ref
+                  .read(recipeDetailPageProvider(widget.id).notifier)
+                  .setRegion(regionId),
+            ),
+            const SizedBox(height: 16),
             // ① 成本占比
             CostProportionChart(
               breakdown: breakdown,

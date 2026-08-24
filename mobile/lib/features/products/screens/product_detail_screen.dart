@@ -8,6 +8,8 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
+import '../../../shared/widgets/region_select_field.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/nutrition_card.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
 import '../../../shared/screens/price_record_edit_screen.dart';
@@ -69,7 +71,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
 
     final notifier = ref.read(productDetailPageProvider(widget.id).notifier);
-    final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
+    final user = ref.watch(authProvider).user;
+    final isAdmin = user?.isAdmin ?? false;
+    final userCurrency = user?.defaultCurrency ?? 'CNY';
     final modifications = <String>{
       ...product.pendingModificationLabels,
       if (state.nutrition?.pendingProposal != null) '营养成分',
@@ -136,6 +140,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            RegionSelectField(
+              value: null,
+              onChanged: (regionId) => notifier.setRegion(regionId),
+            ),
+            const SizedBox(height: 16),
             if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
               PendingChangeBanner(
                 modifications: modifications,
@@ -156,6 +165,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               merchantPrices: state.merchantPrices,
               loadingLatest: state.loadingLatest,
               loadingMerchants: state.loadingMerchants,
+              currency: userCurrency,
             ),
             const SizedBox(height: 16),
             Card(
@@ -173,6 +183,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               records: state.records,
               loading: state.loadingRecords,
               hasMore: state.recordsHasMore,
+              currency: userCurrency,
               onLoadMore: notifier.loadMoreRecords,
               onAdd: () => _openAddRecord(notifier),
               onEdit: (r) => _openEditRecord(notifier, r),
@@ -579,12 +590,14 @@ class _ProductLatestPriceCard extends StatelessWidget {
   final List<MerchantPrice> merchantPrices;
   final bool loadingLatest;
   final bool loadingMerchants;
+  final String currency;
 
   const _ProductLatestPriceCard({
     required this.latest,
     required this.merchantPrices,
     required this.loadingLatest,
     required this.loadingMerchants,
+    required this.currency,
   });
 
   @override
@@ -598,7 +611,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.currency_yen,
+                Icon(Icons.payments_outlined,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
                 Text('最新价格',
@@ -621,7 +634,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
               )
             else ...[
               Text(
-                '¥${latest!.price!.toStringAsFixed(2)}'
+                '${formatMoney(latest!.price!, currency)}'
                 '${latest!.unit == null ? '' : ' / ${latest!.unit}'}',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -653,6 +666,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
   final List<PriceRecord> records;
   final bool loading;
   final bool hasMore;
+  final String currency;
   final VoidCallback onLoadMore;
   final VoidCallback onAdd;
   final ValueChanged<PriceRecord> onEdit;
@@ -662,6 +676,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
     required this.records,
     required this.loading,
     required this.hasMore,
+    required this.currency,
     required this.onLoadMore,
     required this.onAdd,
     required this.onEdit,
@@ -711,6 +726,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
               for (final r in records)
                 _ProductRecordRow(
                   record: r,
+                  currency: currency,
                   onEdit: () => onEdit(r),
                   onDelete: () => onDelete(r),
                 ),
@@ -731,11 +747,13 @@ class _ProductPriceRecordsCard extends StatelessWidget {
 
 class _ProductRecordRow extends StatelessWidget {
   final PriceRecord record;
+  final String currency;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _ProductRecordRow({
     required this.record,
+    required this.currency,
     required this.onEdit,
     required this.onDelete,
   });
@@ -760,7 +778,7 @@ class _ProductRecordRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}'
+                  '${formatMoney(r.price, currency)} / ${_fmtQty(r.quantity)}'
                   '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,

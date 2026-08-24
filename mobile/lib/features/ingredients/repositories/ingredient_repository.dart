@@ -174,9 +174,11 @@ class IngredientRepository {
   }
 
   /// 最近一天平均价（GET /nutrition/ingredients/{id}/latest-price）。
-  Future<LatestPriceInfo> getLatestPrice(int id) async {
-    final response =
-        await _client.dio.get('/nutrition/ingredients/$id/latest-price');
+  Future<LatestPriceInfo> getLatestPrice(int id, {int? regionId}) async {
+    final response = await _client.dio.get(
+      '/nutrition/ingredients/$id/latest-price',
+      queryParameters: {if (regionId != null) 'region_id': regionId},
+    );
     return LatestPriceInfo.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -199,9 +201,12 @@ class IngredientRepository {
   }
 
   /// 各商家最新价（GET /nutrition/ingredients/{id}/latest-price-by-merchant）。
-  Future<List<MerchantPrice>> getLatestPricesByMerchant(int id) async {
-    final response = await _client.dio
-        .get('/nutrition/ingredients/$id/latest-price-by-merchant');
+  Future<List<MerchantPrice>> getLatestPricesByMerchant(int id,
+      {int? regionId}) async {
+    final response = await _client.dio.get(
+      '/nutrition/ingredients/$id/latest-price-by-merchant',
+      queryParameters: {if (regionId != null) 'region_id': regionId},
+    );
     final data = response.data;
     final list =
         (data is List) ? data : ((data['prices'] as List?) ?? const []);
