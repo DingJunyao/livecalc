@@ -1,9 +1,11 @@
 // 加权价格计算模块 — 纯函数，不依赖 IndexedDB。
 // 对多个商品的 price_weight 加权平均，支持用户级权重覆盖。
 
+import { convertAmount } from '@/utils/currency'
+
 export interface WeightedPriceInput {
   products: Array<{ id: number; price_weight: number; ingredient_id: number }>
-  price_records: Array<{ product_id: number; price: number; quantity: number; unit_id: number; recorded_at: string }>
+  price_records: Array<{ product_id: number; price: number; quantity: number; unit_id: number; recorded_at: string; exchange_rate?: number }>
   weight_overrides?: Array<{ product_id: number; weight: number }>
 }
 
@@ -39,7 +41,8 @@ export function calculateWeightedPrice(input: WeightedPriceInput): WeightedPrice
     if (productRecords.length === 0) continue
 
     const latest = productRecords[0]
-    const pricePerUnit = latest.price / (latest.quantity || 1)
+    const convertedPrice = convertAmount(latest.price, latest.exchange_rate || 1)
+    const pricePerUnit = convertedPrice / (latest.quantity || 1)
 
     const override = weight_overrides?.find(w => w.product_id === product.id)
     const weight = override?.weight ?? product.price_weight ?? 50

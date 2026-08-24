@@ -1,6 +1,8 @@
 // 菜谱成本计算模块 — 纯函数，不依赖 IndexedDB。
 // 基于原料用量、商品加权价格、单位换算和层级回退计算菜谱总成本。
 
+import { convertAmount } from '@/utils/currency'
+
 export interface CostCalcIngredient {
   recipe_ingredient_id?: number
   ingredient_id: number
@@ -29,6 +31,7 @@ export interface CostCalcPriceRecord {
   standard_unit_id?: number | null
   recorded_at: string
   merchant_id?: number
+  exchange_rate?: number
 }
 
 export interface CostCalcUnit {
@@ -298,8 +301,10 @@ function calculateWeightedPrice(
 
     const latest = productRecords[0]
     // 计算单价：price / standard_quantity（或 quantity）
+    // 先按记录汇率换算到用户币种（本地固定 CNY，汇率通常为 1）
     const qty = latest.standard_quantity ?? latest.quantity
-    const pricePerUnit = qty && qty > 0 ? latest.price / qty : latest.price
+    const convertedPrice = convertAmount(latest.price, latest.exchange_rate || 1)
+    const pricePerUnit = qty && qty > 0 ? convertedPrice / qty : convertedPrice
     const weight = weightOverrides?.find(w => w.product_id === p.id)?.weight ?? p.price_weight ?? 50
 
     return {

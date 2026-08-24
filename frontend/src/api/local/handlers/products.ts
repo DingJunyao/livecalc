@@ -1,6 +1,6 @@
 // Products handler — product entities, price records, barcodes, weights.
 
-import { getAll, getById, addOne, putOne, deleteOne, getByIndex, paginate, resolvePagination } from '../database'
+import { getAll, getById, addOne, putOne, deleteOne, getByIndex, paginate, resolvePagination, DEFAULT_CURRENCY, DEFAULT_EXCHANGE_RATE, DEFAULT_USER_CURRENCY } from '../database'
 import { aggregatePrices } from '../business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import {
@@ -322,6 +322,9 @@ export async function listRecords(_params: Record<string, string>, query?: any):
 export async function createRecord(_params: Record<string, string>, data?: any): Promise<any> {
   const id = await addOne('product_records', {
     ...data,
+    currency: data?.currency || DEFAULT_CURRENCY,
+    exchange_rate: DEFAULT_EXCHANGE_RATE,
+    user_currency: DEFAULT_USER_CURRENCY,
     created_at: new Date().toISOString(),
     recorded_at: data?.recorded_at || new Date().toISOString(),
   })
@@ -332,7 +335,15 @@ export async function updateRecord(params: Record<string, string>, data?: any): 
   const id = parseInt(params.id)
   const existing = await getById('product_records', id)
   if (!existing) throw { status: 404, message: `Price record ${id} not found` }
-  await putOne('product_records', { ...existing, ...data, id, updated_at: new Date().toISOString() })
+  await putOne('product_records', {
+    ...existing,
+    ...data,
+    id,
+    currency: data?.currency || existing?.currency || DEFAULT_CURRENCY,
+    exchange_rate: DEFAULT_EXCHANGE_RATE,
+    user_currency: DEFAULT_USER_CURRENCY,
+    updated_at: new Date().toISOString(),
+  })
   return await getById('product_records', id)
 }
 
