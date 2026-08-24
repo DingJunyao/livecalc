@@ -29,6 +29,9 @@ class PriceRecord {
   final String recordedAt;
   final String recordType; // 'purchase' | 'price'
   final String? notes;
+  final String currency;
+  final double? exchangeRate;
+  final String? userCurrency;
 
   const PriceRecord({
     required this.id,
@@ -44,6 +47,9 @@ class PriceRecord {
     required this.recordedAt,
     this.recordType = 'price',
     this.notes,
+    this.currency = 'CNY',
+    this.exchangeRate,
+    this.userCurrency,
   });
 
   factory PriceRecord.fromJson(Map<String, dynamic> json) {
@@ -67,6 +73,11 @@ class PriceRecord {
           json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
       recordType: json['record_type'] as String? ?? 'price',
       notes: json['notes'] as String?,
+      currency: (json['currency'] as String?) ?? 'CNY',
+      exchangeRate: json['exchange_rate'] == null
+          ? null
+          : _toDouble(json['exchange_rate']),
+      userCurrency: json['user_currency'] as String?,
     );
   }
 
