@@ -697,6 +697,16 @@ async def update_product_record(
 
         # 更新字段
         update_data = record.model_dump(exclude_unset=True)
+
+        # 商家必填：显式置空拒绝（在应用 update_data 前，避免把 merchant_id 置空绕过必填）
+        if "merchant_id" in update_data and update_data.get("merchant_id") is None:
+            raise HTTPException(status_code=400, detail="商家不能为空")
+        # 非空时校验商家存在（404），币种重算逻辑保持
+        if "merchant_id" in update_data and update_data.get("merchant_id") is not None:
+            _merchant = db.query(Merchant).filter(Merchant.id == update_data["merchant_id"]).first()
+            if not _merchant:
+                raise HTTPException(status_code=404, detail="商家不存在")
+
         for key, value in update_data.items():
             if key not in ['original_unit', 'original_quantity']:  # 单位需要特殊处理
                 setattr(db_record, key, value)

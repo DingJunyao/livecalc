@@ -14,13 +14,15 @@ CREATE TABLE IF NOT EXISTS exchange_rate_snapshots (
     base_currency VARCHAR(3) NOT NULL,
     rates JSONB NOT NULL,
     source VARCHAR(50),
-    fetched_at DATETIME,
+    fetched_at TIMESTAMP,
     CONSTRAINT uq_snapshot_date_base UNIQUE (rate_date, base_currency)
 );
 
 ALTER TABLE region_unit_settings ADD COLUMN default_currency VARCHAR(3) /* 国家/地区 → 默认币种 */;
 
 ALTER TABLE merchants ADD COLUMN region_id INTEGER REFERENCES administrative_regions(id) /* 商家地区与默认币种 */;
+
+CREATE INDEX IF NOT EXISTS ix_merchants_region_id ON merchants (region_id);
 ALTER TABLE merchants ADD COLUMN default_currency VARCHAR(3);
 
 ALTER TABLE users ADD COLUMN default_currency VARCHAR(3) /* 用户默认币种与默认计算范围 */;

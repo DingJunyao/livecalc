@@ -15,6 +15,7 @@ from app.models.product_entity import Product
 from app.models.product import ProductRecord
 from app.services.proposals import service as proposal_service
 from app.services.proposals.registry import ExecutorRegistry
+from app.services.calc_scope import resolve_region_param
 from app.schemas.nutrition import (
     IngredientResponse,
     NutritionDataResponse,
@@ -923,6 +924,7 @@ async def get_ingredient_latest_price(
     返回该原料关联商品在最近一天的平均价格（基于原料的默认单位）。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.product import ProductRecord
         from app.services.unit_conversion_service import UnitConversionService
@@ -1028,7 +1030,7 @@ async def get_ingredient_latest_price(
         from app.services.ingredient_price_service import _aggregate_weighted
 
         class _PseudoRecord:
-            __slots__ = ("price", "standard_quantity")
+            __slots__ = ("price", "standard_quantity", "exchange_rate")
 
         product_records = {}
         for p in products:
@@ -1058,6 +1060,7 @@ async def get_ingredient_latest_price(
                 ps = _PseudoRecord()
                 ps.price = r.price
                 ps.standard_quantity = converted_qty
+                ps.exchange_rate = r.exchange_rate
                 pseudo.append(ps)
             product_records[p.id] = (pseudo, w, {"product_id": p.id, "name": p.name, "weight_source": src})
 
@@ -1096,6 +1099,7 @@ async def get_ingredient_latest_prices_batch(
     Session，在 SQLite 高并发下放大 QueuePool 压力；批量接口复用同一个
     Session，单原料接口继续保持原有行为。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         ids = _parse_ingredient_ids(ingredient_ids)
     except ValueError as exc:
@@ -1153,6 +1157,7 @@ async def get_ingredient_latest_price_by_merchant(
     可选传入 quantity + quantity_unit 来计算该食材在该商家的预估总价。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.merchant import Merchant
         from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType

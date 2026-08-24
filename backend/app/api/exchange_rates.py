@@ -1,6 +1,5 @@
 ﻿"""币种与汇率 API。"""
 from datetime import date
-from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -43,7 +42,7 @@ def refresh(db: Session = Depends(get_db), _=Depends(get_current_admin_user)):
 
 @router.post("/admin/exchange-rates/manual")
 def manual(body: ManualRateIn, db: Session = Depends(get_db), _=Depends(get_current_admin_user)):
-    rates = {k: Decimal(str(v)) for k, v in body.rates.items()}
+    rates = {k: float(v) for k, v in body.rates.items()}
     snap = store_snapshot(db, body.rate_date, body.base_currency, rates, source="manual")
     db.commit()
     return {"date": snap.rate_date.isoformat(), "base": snap.base_currency, "count": len(snap.rates)}

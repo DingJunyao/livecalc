@@ -27,6 +27,7 @@ from app.schemas.recipe import (
     MerchantCostItem
 )
 from app.schemas.common import PaginatedResponse
+from app.services.calc_scope import resolve_region_param
 from app.services.recipe_service import (
     calculate_recipe_cost,
     calculate_recipe_nutrition,
@@ -567,6 +568,7 @@ async def get_recipes_batch_cost(
     current_user = Depends(get_current_user)
 ):
     """批量获取菜谱的成本和卡路里（用于列表页懒加载）"""
+    region_id = resolve_region_param(db, current_user, region_id)
     recipe_ids = request.get("ids", [])
     if not recipe_ids:
         return {}
@@ -1063,6 +1065,7 @@ async def get_recipe_cost(
     current_user = Depends(get_current_user)
 ):
     """计算菜谱成本"""
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(
             Recipe.id == recipe_id,
@@ -1123,6 +1126,7 @@ async def get_recipe_merchant_costs(
     current_user = Depends(get_current_user)
 ):
     """计算菜谱按商家购买的总成本估算"""
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(
             Recipe.id == recipe_id,
@@ -1139,7 +1143,7 @@ async def get_recipe_merchant_costs(
         from app.models.nutrition import Ingredient
         from app.services.unit_conversion_service import UnitConversionService
         from sqlalchemy.orm import joinedload
-        from app.services.price_region import apply_region_filter
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency
 
         recipe_ingredients = db.query(RecipeIngredient).options(
             joinedload(RecipeIngredient.unit),
@@ -1209,7 +1213,7 @@ async def get_recipe_merchant_costs(
                     continue
 
                 unit_price = None
-                total_price = Decimal(str(record.price))
+                total_price = record_price_in_user_currency(record)
                 orig_qty = float(record.original_quantity)
                 orig_unit_abbr = record.original_unit.abbreviation
 
@@ -1671,6 +1675,7 @@ async def get_recipe_cost_history(
     如果某天某食材没有价格数据，则向前找食材价格；
     如果没有食材价格，则以时间最早的为准。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
@@ -1732,6 +1737,7 @@ async def get_recipe_cost_history_range(
 
     使用前向填充机制处理缺失的价格记录。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 

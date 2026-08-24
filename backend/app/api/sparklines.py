@@ -15,6 +15,8 @@ from datetime import datetime, timedelta
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.api.deps import get_timezone
+from app.services.calc_scope import resolve_region_param
+from app.services.price_region import apply_region_filter, record_price_in_user_currency
 from app.utils.date_range_utils import utc_datetime_to_local_date
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
@@ -31,6 +33,7 @@ def _daily_avg_for_product_ids(
     ingredient_id: Optional[int] = None,
     user_id: Optional[int] = None,
     tz: str = "UTC",
+    region_id: Optional[int] = None,
 ) -> List[float]:
     """计算一组商品在近N天内的每日平均价格。
 
@@ -43,16 +46,18 @@ def _daily_avg_for_product_ids(
         return []
 
     cutoff = datetime.utcnow() - timedelta(days=days)
-    records = db.query(
+    q = db.query(
         ProductRecord.product_id,
         ProductRecord.price,
+        ProductRecord.exchange_rate,
         ProductRecord.standard_quantity,
         ProductRecord.recorded_at,
     ).filter(
         ProductRecord.product_id.in_(product_ids),
         ProductRecord.recorded_at >= cutoff,
         ProductRecord.price.isnot(None),
-    ).order_by(ProductRecord.recorded_at).all()
+    ).order_by(ProductRecord.recorded_at)
+    records = apply_region_filter(q, db, region_id).all()
 
     # 权重表：全局 price_weight
     pw: dict = {pid: w for pid, w in db.query(Product.id, Product.price_weight)
@@ -69,11 +74,12 @@ def _daily_avg_for_product_ids(
 
     # 按日 + 按商品：{date: {product_id: [unit_price,...]}}
     by_day_product: dict = defaultdict(dict)
-    for prod_id, price, std_qty, recorded_at in records:
-        std_qty_f = float(std_qty) if std_qty and float(std_qty) > 0 else 500.0
-        unit_price = float(price) * 500.0 / std_qty_f
-        dkey = utc_datetime_to_local_date(recorded_at, tz).isoformat()
-        by_day_product[dkey].setdefault(prod_id, []).append(unit_price)
+    for row in records:
+        std_qty_f = float(row.standard_quantity) if row.standard_quantity and float(row.standard_quantity) > 0 else 500.0
+        # 先按记录时用户币种快照折算，再做 500g/标准量 归一化，避免跨币种混算
+        unit_price = float(record_price_in_user_currency(row)) * 500.0 / std_qty_f
+        dkey = utc_datetime_to_local_date(row.recorded_at, tz).isoformat()
+        by_day_product[dkey].setdefault(row.product_id, []).append(unit_price)
 
     result: List[float] = []
     for dkey in sorted(by_day_product.keys()):
@@ -106,6 +112,7 @@ async def get_recipes_sparklines(
     tz: str = Depends(get_timezone),
 ) -> Dict[str, Optional[List[float]]]:
     """批量获取菜谱迷你图数据（多线程并发）"""
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
         if not id_list:
@@ -143,6 +150,7 @@ async def get_recipes_sparklines(
 async def get_ingredients_sparklines(
     ids: str = Query(..., description="原料ID列表，逗号分隔"),
     days: int = Query(90, ge=7, le=365, description="查询天数"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     _current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -167,7 +175,7 @@ async def get_ingredients_sparklines(
         result: dict = {}
         for ing_id in id_list:
             prod_ids = ing_to_prods.get(ing_id, [])
-            data = _daily_avg_for_product_ids(db, prod_ids, days=days, ingredient_id=ing_id, user_id=_current_user.id, tz=tz)
+            data = _daily_avg_for_product_ids(db, prod_ids, days=days, ingredient_id=ing_id, user_id=_current_user.id, tz=tz, region_id=region_id)
             result[str(ing_id)] = data if data else None
 
         return result
@@ -179,6 +187,7 @@ async def get_ingredients_sparklines(
 async def get_products_sparklines(
     ids: str = Query(..., description="商品ID列表，逗号分隔"),
     days: int = Query(90, ge=7, le=365, description="查询天数"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     _current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -191,7 +200,7 @@ async def get_products_sparklines(
 
         result: dict = {}
         for pid in id_list:
-            data = _daily_avg_for_product_ids(db, [pid], days=days, tz=tz)
+            data = _daily_avg_for_product_ids(db, [pid], days=days, tz=tz, region_id=region_id)
             result[str(pid)] = data if data else None
 
         return result

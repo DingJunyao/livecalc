@@ -21,3 +21,10 @@ def resolve_default_calc_region_id(db: Session, user) -> Optional[int]:
             break
         node = parent
     return node.id
+
+
+def resolve_region_param(db: Session, user, region_id: Optional[int]) -> Optional[int]:
+    """region_id 显式给出则用它；否则按用户默认计算范围推导。"""
+    if region_id is not None:
+        return region_id
+    return resolve_default_calc_region_id(db, user)

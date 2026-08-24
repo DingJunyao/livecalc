@@ -31,6 +31,7 @@ from app.services.proposals.pending import (
     find_product_ids_with_pending_names,
     get_pending_proposal,
 )
+from app.services.calc_scope import resolve_region_param
 from app.services.barcode_lookup import resolve_barcode
 
 router = APIRouter(tags=["products_entity"])
@@ -361,6 +362,7 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
         if day_records:
             from decimal import Decimal
             from app.services.unit_conversion_service import UnitConversionService
+            from app.services.price_region import record_price_in_user_currency
             unit_service = UnitConversionService(db)
 
             # 按当前用户的质量偏好单位折算（fallback 斤）
@@ -375,7 +377,7 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
             unit_prices = []
             for record in day_records:
                 if record.price and record.original_quantity and record.original_quantity > 0:
-                    total_price = float(record.price)
+                    total_price = float(record_price_in_user_currency(record))
                     original_quantity = float(record.original_quantity)
                     original_unit_abbr = record.original_unit.abbreviation if record.original_unit else None
 
@@ -671,10 +673,11 @@ def get_product_latest_price(
     返回该商品关联的最近一天所有价格记录的平均单价（单位归一化到 ¥/斤）。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from datetime import datetime, timedelta
         from collections import Counter
-        from app.services.price_region import apply_region_filter
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency
 
         # PostgreSQL 返回 aware datetime，统一转 naive 比较
         def _naive(dt):
@@ -720,7 +723,7 @@ def get_product_latest_price(
         for record in recent_records:
             std_qty = record.standard_quantity
             if record.price is not None and std_qty is not None and float(std_qty) > 0:
-                unit_price = float(record.price) * 500.0 / float(std_qty)
+                unit_price = float(record_price_in_user_currency(record)) * 500.0 / float(std_qty)
                 unit_prices.append(unit_price)
 
         if not unit_prices:
@@ -770,9 +773,10 @@ def get_product_latest_price_by_merchant(
     按价格从低到高排序，并标注最低价。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.merchant import Merchant
-        from app.services.price_region import apply_region_filter
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency
 
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
@@ -815,7 +819,7 @@ def get_product_latest_price_by_merchant(
             if record.price is None or record.original_quantity is None or record.original_quantity <= 0 or not record.original_unit:
                 continue
 
-            total_price = float(record.price)
+            total_price = float(record_price_in_user_currency(record))
             original_quantity = float(record.original_quantity)
             original_unit_abbr = record.original_unit.abbreviation
 
