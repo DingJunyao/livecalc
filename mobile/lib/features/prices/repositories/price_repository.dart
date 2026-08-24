@@ -72,12 +72,14 @@ class PriceRepository {
     String recordType = 'purchase',
     String? notes,
     DateTime? recordedAt,
+    String currency = 'CNY',
   }) async {
     final data = <String, dynamic>{
       'price': price,
       'original_quantity': quantity,
       'original_unit': unit,
       'record_type': recordType,
+      'currency': currency,
     };
     if (productId != null) {
       data['product_id'] = productId;
@@ -102,11 +104,13 @@ class PriceRepository {
     required double quantity,
     required String unit,
     int? merchantId,
+    String currency = 'CNY',
   }) async {
     final data = <String, dynamic>{
       'price': price,
       'original_quantity': quantity,
       'original_unit': unit,
+      'currency': currency,
     };
     if (merchantId != null) data['merchant_id'] = merchantId;
     await _client.dio.put('/products/$id', data: data);
