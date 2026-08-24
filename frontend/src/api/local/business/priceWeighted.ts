@@ -1,12 +1,22 @@
-// 加权价格计算模块 — 纯函数，不依赖 IndexedDB。
+﻿// 加权价格计算模块 — 纯函数，不依赖 IndexedDB。
 // 对多个商品的 price_weight 加权平均，支持用户级权重覆盖。
-
 import { convertAmount } from '@/utils/currency'
 
 export interface WeightedPriceInput {
   products: Array<{ id: number; price_weight: number; ingredient_id: number }>
-  price_records: Array<{ product_id: number; price: number; quantity: number; unit_id: number; recorded_at: string; exchange_rate?: number }>
+  price_records: Array<{
+    product_id: number
+    price: number
+    quantity: number
+    unit_id: number
+    recorded_at: string
+    exchange_rate?: number
+    merchant_id?: number | null
+  }>
   weight_overrides?: Array<{ product_id: number; weight: number }>
+  regionId?: number | null
+  allowedRegionIds?: number[] | null
+  merchantRegions?: Record<number, number | null>
 }
 
 export interface WeightedPriceResult {
@@ -14,6 +24,24 @@ export interface WeightedPriceResult {
   unit_id: number
   participants: number
   source: 'override' | 'global'
+}
+
+/** 按所选地区及其下级过滤价格记录（regionId == null 时保持全局）。 */
+function filterRecordsByRegion(
+  price_records: WeightedPriceInput['price_records'],
+  regionId: number | null | undefined,
+  allowedRegionIds: number[] | null | undefined,
+  merchantRegions?: Record<number, number | null>,
+): WeightedPriceInput['price_records'] {
+  if (regionId == null) return price_records
+  const allowed = new Set(allowedRegionIds ?? [])
+  return price_records.filter((r) => {
+    const mid = r.merchant_id
+    if (mid == null) return false
+    const rid = merchantRegions ? merchantRegions[mid] : undefined
+    if (rid == null) return false
+    return allowed.has(rid)
+  })
 }
 
 /**
@@ -29,7 +57,13 @@ export interface WeightedPriceResult {
  * 无价格记录的商品被排除。
  */
 export function calculateWeightedPrice(input: WeightedPriceInput): WeightedPriceResult | null {
-  const { products, price_records, weight_overrides } = input
+  const { products, weight_overrides } = input
+  const price_records = filterRecordsByRegion(
+    input.price_records,
+    input.regionId,
+    input.allowedRegionIds,
+    input.merchantRegions,
+  )
 
   const weighted: Array<{ pricePerUnit: number; weight: number; unitId: number }> = []
 

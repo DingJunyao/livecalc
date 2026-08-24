@@ -59,6 +59,9 @@ export interface CostInput {
   densities: any[]
   hierarchies: CostCalcHierarchy[]
   weight_overrides?: Array<{ product_id: number; weight: number }>
+  regionId?: number | null
+  allowedRegionIds?: number[] | null
+  merchantRegions?: Record<number, number | null>
 }
 
 export interface CostPerIngredient {
@@ -112,9 +115,39 @@ function resolveVagueQuantity(original?: string | null): number | null {
   }
   return null
 }
+/**
+ * 按所选地区及其下级地区过滤价格记录（纯函数，供 calculateCost 与 handler 复用）。
+ * - regionId == null：返回原数组（全局聚合）
+ * - 商家无 region、记录无 merchant_id：排除
+ */
+export function filterPriceRecordsByRegion(
+  records: CostCalcPriceRecord[],
+  regionId: number | null | undefined,
+  allowedRegionIds: number[] | Set<number> | null | undefined,
+  merchantRegions?: Record<number, number | null>,
+): CostCalcPriceRecord[] {
+  if (regionId == null) return records
+  const allowed = allowedRegionIds instanceof Set ? allowedRegionIds : new Set(allowedRegionIds ?? [])
+  return records.filter((r) => {
+    const mid = r.merchant_id
+    if (mid == null) return false
+    const rid = merchantRegions ? merchantRegions[mid] : undefined
+    if (rid == null) return false
+    return allowed.has(rid)
+  })
+}
+
 export function calculateCost(input: CostInput): CostResult {
   const perIngredient: CostPerIngredient[] = []
   let totalCost = 0
+
+  // 按所选地区及其下级过滤价格记录（regionId == null 时保持全局）
+  const records = filterPriceRecordsByRegion(
+    input.price_records,
+    input.regionId,
+    input.allowedRegionIds,
+    input.merchantRegions,
+  )
 
   for (const ing of input.ingredients) {
     if (ing.is_optional) {
@@ -174,7 +207,7 @@ export function calculateCost(input: CostInput): CostResult {
 
     if (ingredientProducts.length > 0) {
       // 加权平均价格
-      const weightedPrice = calculateWeightedPrice(ingredientProducts, input.price_records, input.weight_overrides)
+      const weightedPrice = calculateWeightedPrice(ingredientProducts, records, input.weight_overrides)
 
       if (weightedPrice != null) {
         // 单位转换：将食材用量从 effectiveUnitId 转换为 weightedPrice.unit_id
@@ -204,7 +237,7 @@ export function calculateCost(input: CostInput): CostResult {
     }
 
     // 无直接商品价格，尝试层级回退
-    const fallback = findFallbackPrice(ing.ingredient_id, input)
+    const fallback = findFallbackPrice(ing.ingredient_id, input, records)
     if (fallback != null) {
       // 单位转换：将食材用量从 effectiveUnitId 转换为回退价格的单位
       let convertedQty = effectiveQty
@@ -233,7 +266,7 @@ export function calculateCost(input: CostInput): CostResult {
     }
 
     // No direct/fallback price — try CONTAINS aggregation (weighted avg from child ingredient prices)
-    const containsResult = findContainsPrice(ing.ingredient_id, input)
+    const containsResult = findContainsPrice(ing.ingredient_id, input, records)
     if (containsResult != null) {
       // CONTAINS price is per-gram; convert recipe quantity to grams
       const gramUnit = input.units.find(u => u.name === '克')
@@ -337,6 +370,7 @@ function calculateWeightedPrice(
 function findFallbackPrice(
   ingredientId: number,
   input: CostInput,
+  records: CostCalcPriceRecord[],
 ): { pricePerUnit: number; unit_id: number; sourceIngredientId: number; productId?: number } | null {
   // 按优先级排序：FALLBACK(0) < SUBSTITUTABLE(1) < CONTAINS(2)
   const order: Record<string, number> = { FALLBACK: 0, SUBSTITUTABLE: 1 }
@@ -352,7 +386,7 @@ function findFallbackPrice(
   for (const h of hierarchies) {
     const parentProducts = input.products.filter(p => p.ingredient_id === h.parent_id)
     if (parentProducts.length > 0) {
-      const price = calculateWeightedPrice(parentProducts, input.price_records, input.weight_overrides)
+      const price = calculateWeightedPrice(parentProducts, records, input.weight_overrides)
       if (price != null) {
         return {
           pricePerUnit: price.pricePerUnit,
@@ -377,6 +411,7 @@ function findFallbackPrice(
 function findContainsPrice(
   ingredientId: number,
   input: CostInput,
+  records: CostCalcPriceRecord[],
 ): { pricePerGram: number; childIngredientIds: number[] } | null {
   // Find all CONTAINS children of this ingredient, sorted by strength desc
   const hierarchies = input.hierarchies
@@ -396,7 +431,7 @@ function findContainsPrice(
     if (childProducts.length === 0) continue
 
     // Child's direct weighted price (no fallback chain — mirrors cloud _get_child_price_per_gram)
-    const weighted = calculateWeightedPrice(childProducts, input.price_records, input.weight_overrides)
+    const weighted = calculateWeightedPrice(childProducts, records, input.weight_overrides)
     if (weighted == null) continue
 
     // Convert per-unit price to per-gram

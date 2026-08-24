@@ -10,6 +10,28 @@ import {
   listIncludes,
   buildProductRecordStats,
 } from './_filter'
+import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
+
+// ============================================================
+// 地区过滤辅助
+// ============================================================
+
+/** 从 query 解析可选 region_id；null/空值表示全局。 */
+function parseRegionId(value: any): number | null {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+/** 按所选地区及其下级过滤价格记录（regionId == null 时原样返回）。 */
+async function applyRegionFilter<T extends { merchant_id?: number | null }>(
+  records: T[],
+  regionId: number | null,
+): Promise<T[]> {
+  if (regionId == null) return records
+  const regionFilter = await buildRegionFilter(regionId)
+  return filterRecordsByRegion(records, regionId, regionFilter.allowedRegionIds, regionFilter.merchantRegions)
+}
 
 // ============================================================
 // Product Entity CRUD
@@ -85,8 +107,9 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
   return { items: filtered.slice(skip, skip + pageSize), total: filtered.length, page, page_size }
 }
 
-export async function getEntity(params: Record<string, string>): Promise<any> {
+export async function getEntity(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
+  const regionId = parseRegionId(query?.region_id)
   const product = await getById('products', id)
   if (!product) throw { status: 404, message: `Product ${id} not found` }
   // Attach barcodes
@@ -101,7 +124,8 @@ export async function getEntity(params: Record<string, string>): Promise<any> {
   let latestPrice: number | null = null
   let latestPriceUnit: string | null = null
   try {
-    const records = await getByIndex('product_records', 'by_product_id', id)
+    let records = await getByIndex('product_records', 'by_product_id', id)
+    records = await applyRegionFilter(records, regionId)
     if (records.length > 0) {
       // 按单位类型分组归一化，避免质量/计数混算（鸡蛋类问题的根因）
       const [units, overrides, densities] = await Promise.all([
@@ -422,9 +446,11 @@ export async function addBarcode(params: Record<string, string>, data?: any): Pr
 // Latest Price
 // ============================================================
 
-export async function getLatestPrice(params: Record<string, string>): Promise<any> {
+export async function getLatestPrice(params: Record<string, string>, query?: any): Promise<any> {
   const productId = parseInt(params.id)
-  const records = await getByIndex('product_records', 'by_product_id', productId)
+  const regionId = parseRegionId(query?.region_id)
+  let records = await getByIndex('product_records', 'by_product_id', productId)
+  records = await applyRegionFilter(records, regionId)
 
   if (records.length === 0) {
     return { average_price: null, unit: null, records: 0 }
@@ -452,11 +478,13 @@ export async function getLatestPrice(params: Record<string, string>): Promise<an
   }
 }
 
-export async function getLatestPriceByMerchant(params: Record<string, string>): Promise<any> {
+export async function getLatestPriceByMerchant(params: Record<string, string>, query?: any): Promise<any> {
   // Return per-merchant pricing for a product
   const id = parseInt(params.id)
   if (!Number.isFinite(id)) return { prices: [], unit: null }
-  const records = await getByIndex('product_records', 'by_product_id', id)
+  const regionId = parseRegionId(query?.region_id)
+  let records = await getByIndex('product_records', 'by_product_id', id)
+  records = await applyRegionFilter(records, regionId)
   // 前端模板期望 { prices: [...], unit: "..." }
   return {
     prices: records.map((r: any) => ({

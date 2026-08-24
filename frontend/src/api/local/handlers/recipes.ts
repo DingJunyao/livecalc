@@ -9,16 +9,24 @@ import {
   unpricedIngredientIds,
   ingredientsWithTrustedNutrition,
 } from './_filter'
-import { calculateCost, type CostInput, type CostCalcIngredient, type CostCalcProduct, type CostCalcPriceRecord, type CostCalcUnit, type CostCalcHierarchy } from '../business/costCalculator'
+import { calculateCost, filterPriceRecordsByRegion, type CostInput, type CostCalcIngredient, type CostCalcProduct, type CostCalcPriceRecord, type CostCalcUnit, type CostCalcHierarchy } from '../business/costCalculator'
 import { aggregateIngredients, calcNRV, type AggregationInput, type AggregationInputMulti } from '../business/nutritionAggregator'
 import { convert, type UnitInfo, type EntityOverride, type DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
+import { buildRegionFilter } from '../business/regionSubtree'
 
 // ============================================================
 // 辅助函数
 // ============================================================
 
 const GRAM_UNIT_ID = 2
+
+/** 从 query/body 解析可选 region_id；null/空值表示全局聚合。 */
+function parseRegionId(value: any): number | null {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
 
 /** Attach resolved image URLs so local mode also serves S3/repo URLs, not just blobs. */
 function withImageUrls<T extends Record<string, any>>(recipe: T): T & { image_urls: string[] | null } {
@@ -266,12 +274,13 @@ export async function deleteRecipe(params: Record<string, string>): Promise<any>
 // Cost Calculation
 // ============================================================
 
-export async function getRecipeCost(params: Record<string, string>, _query?: any): Promise<any> {
+export async function getRecipeCost(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
   if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
 
-  const input = await buildCostInput(id, recipe)
+  const regionId = parseRegionId(query?.region_id)
+  const input = await buildCostInput(id, recipe, regionId)
   const result = calculateCost(input)
   const allIngredients = await getAll('ingredients')
   const ingredientNameById = new Map(allIngredients.map((i: any) => [i.id, i.name]))
@@ -302,6 +311,8 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
   const recipeIds: number[] = data?.ids || data?.recipe_ids || data?.recipeIds || []
   if (recipeIds.length === 0) return {}
 
+  const regionId = parseRegionId(data?.region_id)
+
   // 预加载所有相关数据（成本 + 营养）
   const allRecipes = await getAll('recipes')
   const allIngredients = await getAll('ingredients')
@@ -313,6 +324,7 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
   const allDensities = await getAll('entity_densities')
   const allHierarchies = await getAll('ingredient_hierarchy')
   const allNutrition = await getAll('nutrition_data')
+  const regionFilter = await buildRegionFilter(regionId)
 
   // 复用同一份活跃商品/价格记录，避免每个菜谱重复过滤
   const activeProducts = allProducts.filter((p: any) => p.is_active !== false)
@@ -363,11 +375,15 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
           standard_unit_id: r.standard_unit_id,
           recorded_at: r.recorded_at,
           exchange_rate: r.exchange_rate ?? 1,
+          merchant_id: r.merchant_id,
         })),
         units: allUnits,
         overrides: allOverrides,
         densities: allDensities,
         hierarchies: allHierarchies,
+        regionId: regionFilter.regionId,
+        allowedRegionIds: regionFilter.allowedRegionIds,
+        merchantRegions: regionFilter.merchantRegions,
       }
 
       estimatedCost = calculateCost(costInput).total_cost
@@ -539,7 +555,8 @@ export async function getCostHistory(params: Record<string, string>, query?: any
   if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
 
   const days = parseInt(query?.days) || 90
-  const input = await buildCostInput(id, recipe)
+  const regionId = parseRegionId(query?.region_id)
+  const input = await buildCostInput(id, recipe, regionId)
   if (!input) return []
 
   // 获取所有价格记录中最早的日期
@@ -610,8 +627,9 @@ export async function getCostHistoryRange(params: Record<string, string>, query?
 
   const days = parseInt(query?.days) || 90
   const offsetDays = parseInt(query?.offset_days) || 0
+  const regionId = parseRegionId(query?.region_id)
 
-  const input = await buildCostInput(id, recipe)
+  const input = await buildCostInput(id, recipe, regionId)
   if (!input) return []
 
   const allDates = input.price_records
@@ -896,7 +914,7 @@ export async function deleteImage(params: Record<string, string>): Promise<any> 
 // 内部辅助：构建 CostInput
 // ============================================================
 
-async function buildCostInput(recipeId: number, recipe: any): Promise<CostInput> {
+async function buildCostInput(recipeId: number, recipe: any, regionId: number | null = null): Promise<CostInput> {
   const recipeIngredients = await getByIndex('recipe_ingredients', 'by_recipe_id', recipeId)
   if (!recipeIngredients || recipeIngredients.length === 0) {
     return {
@@ -916,6 +934,7 @@ async function buildCostInput(recipeId: number, recipe: any): Promise<CostInput>
   const allOverrides = await getAll('entity_unit_overrides')
   const allDensities = await getAll('entity_densities')
   const allHierarchies = await getAll('ingredient_hierarchy')
+  const regionFilter = await buildRegionFilter(regionId)
 
   const unitByName = new Map<string, number>()
   for (const u of allUnits) {
@@ -945,7 +964,13 @@ async function buildCostInput(recipeId: number, recipe: any): Promise<CostInput>
   // 加载价格记录
   const productIdSet = new Set(products.map((p: any) => p.id))
   const allRecords = await getAll('product_records')
-  const records = allRecords.filter((r: any) => productIdSet.has(r.product_id))
+  const productRecords = allRecords.filter((r: any) => productIdSet.has(r.product_id))
+  const records = filterPriceRecordsByRegion(
+    productRecords,
+    regionFilter.regionId,
+    regionFilter.allowedRegionIds,
+    regionFilter.merchantRegions,
+  )
 
   // 构建 ingredients 数组
   const ingredients: CostCalcIngredient[] = recipeIngredients.map((ri: any) => ({
@@ -978,10 +1003,14 @@ async function buildCostInput(recipeId: number, recipe: any): Promise<CostInput>
       standard_unit_id: r.standard_unit_id,
       recorded_at: r.recorded_at,
       exchange_rate: r.exchange_rate ?? 1,
+      merchant_id: r.merchant_id,
     })),
     units: allUnits,
     overrides: allOverrides,
     densities: allDensities,
     hierarchies: allHierarchies,
+    regionId: regionFilter.regionId,
+    allowedRegionIds: regionFilter.allowedRegionIds,
+    merchantRegions: regionFilter.merchantRegions,
   }
 }
