@@ -199,7 +199,7 @@ def _get_price_records_for_date(
     return records
 
 
-def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, visited: Optional[List[int]] = None) -> Optional[tuple[Ingredient, ProductRecord, str]]:
+def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, visited: Optional[List[int]] = None, region_id: Optional[int] = None) -> Optional[tuple[Ingredient, ProductRecord, str]]:
     """
     获取食材的回退链中的第一个有价格的食材
 
@@ -267,8 +267,12 @@ def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, 
 
         if product:
             # 查找该商品的公开价格记录（跨用户）
-            latest_record = db.query(ProductRecord).filter(
-                ProductRecord.product_id == product.id
+            from app.services.price_region import apply_region_filter
+            latest_record = apply_region_filter(
+                db.query(ProductRecord).filter(
+                    ProductRecord.product_id == product.id
+                ),
+                db, region_id,
             ).order_by(ProductRecord.recorded_at.desc()).first()
 
             if latest_record:
@@ -277,7 +281,7 @@ def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, 
                 return fallback_source, latest_record, fallback_chain
 
         # 如果当前回退源没有价格，继续向上查找
-        result = _get_ingredient_fallback(db, fallback_source, user_id, visited)
+        result = _get_ingredient_fallback(db, fallback_source, user_id, visited, region_id=region_id)
         if result:
             fallback_ingredient, price_record, chain = result
             # 如果回退链最终回到了原始食材，跳过此回退源（避免循环链）
@@ -399,7 +403,7 @@ def _get_child_price_per_gram(
                 return ppg
 
     # 2. 尝试 FALLBACK/SUBSTITUTABLE 回退
-    fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited)
+    fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
         fallback_ingredient, fallback_price_record, _ = fallback_result
         ppg = _convert_record_to_price_per_gram(db, fallback_price_record, fallback_ingredient.id)
@@ -552,7 +556,7 @@ def _get_child_price_per_gram_range(
 
     # 2. 尝试 FALLBACK/SUBSTITUTABLE 回退
     # _get_ingredient_fallback 不接 as_of/tz，只给单条全局最新记录
-    fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited)
+    fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
         fallback_ingredient, fallback_price_record, _ = fallback_result
         avg_ppg = _convert_record_to_price_per_gram(
@@ -875,7 +879,8 @@ def _get_ingredient_nutrition(
 async def batch_calculate_recipes_cost_nutrition(
     recipe_ids: List[int],
     user_id: int,
-    db: Session = None
+    db: Session = None,
+    region_id: Optional[int] = None,
 ) -> Dict[int, Dict]:
     """批量计算多个菜谱的成本和营养信息"""
     # 首先获取所有菜谱
@@ -884,7 +889,7 @@ async def batch_calculate_recipes_cost_nutrition(
     results = {}
 
     for recipe in recipes:
-        cost_result = await calculate_recipe_cost(recipe.id, user_id, db)
+        cost_result = await calculate_recipe_cost(recipe.id, user_id, db, region_id=region_id)
         nutrition_result = await calculate_recipe_nutrition(recipe.id, db)
 
         # 合并结果
@@ -1035,7 +1040,7 @@ async def calculate_recipe_cost(
             fb_range = _fallback_cost_range_ppg(db, ingredient, user_id, now, tz, region_id=region_id)
             if fb_range is not None:
                 _fb_min, _fb_max, unit_price = fb_range
-                fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                fb_full = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
                 if fb_full:
                     _, _, fallback_chain = fb_full
 
@@ -1301,7 +1306,7 @@ def _fallback_cost_range_ppg(
     返回的 fb_ingredient 是第一个「有任何价格记录」的回退源；这里再按 as_of_date
     前向填充取该回退食材当天所有商品的有效记录极值。
     """
-    fb = _get_ingredient_fallback(db, ingredient, user_id)
+    fb = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
     if not fb:
         return None
     fb_ingredient, _latest, _chain = fb
@@ -2084,7 +2089,7 @@ def calculate_recipe_cost_as_of(
                     _fb_min, _fb_max, unit_price = fb_range
                     # unit_price = avg_ppg，单位元/克
                     # 取 fallback_chain 用于前端展示
-                    fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                    fb_full = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
                     if fb_full:
                         _, _, fallback_chain = fb_full
         else:
@@ -2093,7 +2098,7 @@ def calculate_recipe_cost_as_of(
                 fb_range = _fallback_cost_range_ppg(db, ingredient, user_id, as_of_date, tz, region_id=region_id)
                 if fb_range is not None:
                     _fb_min, _fb_max, unit_price = fb_range
-                    fb_full = _get_ingredient_fallback(db, ingredient, user_id)
+                    fb_full = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
                     if fb_full:
                         _, _, fallback_chain = fb_full
 

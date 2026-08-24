@@ -562,6 +562,7 @@ async def get_recipes(
 @router.post("/batch-cost")
 async def get_recipes_batch_cost(
     request: dict,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -571,7 +572,7 @@ async def get_recipes_batch_cost(
         return {}
 
     from app.services.recipe_service import batch_calculate_recipes_cost_nutrition
-    batch_results = await batch_calculate_recipes_cost_nutrition(recipe_ids, current_user.id, db)
+    batch_results = await batch_calculate_recipes_cost_nutrition(recipe_ids, current_user.id, db, region_id=region_id)
 
     result = {}
     for recipe_id, data in batch_results.items():
@@ -1117,6 +1118,7 @@ async def get_recipe_nutrition(
 @router.get("/{recipe_id}/merchant-costs", response_model=RecipeMerchantCostResponse)
 async def get_recipe_merchant_costs(
     recipe_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -1137,6 +1139,7 @@ async def get_recipe_merchant_costs(
         from app.models.nutrition import Ingredient
         from app.services.unit_conversion_service import UnitConversionService
         from sqlalchemy.orm import joinedload
+        from app.services.price_region import apply_region_filter
 
         recipe_ingredients = db.query(RecipeIngredient).options(
             joinedload(RecipeIngredient.unit),
@@ -1179,11 +1182,14 @@ async def get_recipe_merchant_costs(
             if not product_ids:
                 return False
 
-            records = db.query(ProductRecord).options(
-                joinedload(ProductRecord.original_unit),
-                joinedload(ProductRecord.merchant)
-            ).join(
-                Merchant, ProductRecord.merchant_id == Merchant.id
+            records = apply_region_filter(
+                db.query(ProductRecord).options(
+                    joinedload(ProductRecord.original_unit),
+                    joinedload(ProductRecord.merchant)
+                ).join(
+                    Merchant, ProductRecord.merchant_id == Merchant.id
+                ),
+                db, region_id,
             ).filter(
                 ProductRecord.product_id.in_(product_ids),
                 ProductRecord.merchant_id.isnot(None),
@@ -1346,10 +1352,13 @@ async def get_recipe_merchant_costs(
                 if not fb_product_ids:
                     continue
 
-                has_merchant_price = db.query(ProductRecord).filter(
-                    ProductRecord.product_id.in_(fb_product_ids),
-                    ProductRecord.merchant_id.isnot(None),
-                    ProductRecord.is_active == True
+                has_merchant_price = apply_region_filter(
+                    db.query(ProductRecord).filter(
+                        ProductRecord.product_id.in_(fb_product_ids),
+                        ProductRecord.merchant_id.isnot(None),
+                        ProductRecord.is_active == True
+                    ),
+                    db, region_id,
                 ).first()
                 if has_merchant_price:
                     ing = all_ingredients_map.get(ing_id)
@@ -1408,11 +1417,14 @@ async def get_recipe_merchant_costs(
                     child_pids = [p.id for p in child_products if p.id]
                     if not child_pids:
                         continue
-                    child_records = db.query(ProductRecord).options(
-                        joinedload(ProductRecord.original_unit),
-                        joinedload(ProductRecord.merchant)
-                    ).join(
-                        Merchant, ProductRecord.merchant_id == Merchant.id
+                    child_records = apply_region_filter(
+                        db.query(ProductRecord).options(
+                            joinedload(ProductRecord.original_unit),
+                            joinedload(ProductRecord.merchant)
+                        ).join(
+                            Merchant, ProductRecord.merchant_id == Merchant.id
+                        ),
+                        db, region_id,
                     ).filter(
                         ProductRecord.product_id.in_(child_pids),
                         ProductRecord.merchant_id.isnot(None),

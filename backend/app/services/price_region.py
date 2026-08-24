@@ -2,7 +2,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy.orm import Session, Query
+from sqlalchemy.orm import Session, Query, aliased
 
 from app.models.administrative_region import AdministrativeRegion
 from app.models.merchant import Merchant
@@ -31,9 +31,13 @@ def apply_region_filter(query: Query, db: Session, region_id: Optional[int]) -> 
     ids = region_subtree_ids(db, region_id)
     if not ids:
         return query.filter(False)
-    return query.join(Merchant, ProductRecord.merchant_id == Merchant.id).filter(
-        Merchant.region_id.in_(ids)
-    )
+    # Use an alias so the filter stays unambiguous even when the caller
+    # already joined Merchant on ProductRecord.merchant_id (e.g. merchant-costs
+    # or latest-price-by-merchant queries).
+    merchant_alias = aliased(Merchant)
+    return query.join(
+        merchant_alias, ProductRecord.merchant_id == merchant_alias.id
+    ).filter(merchant_alias.region_id.in_(ids))
 
 
 def record_price_in_user_currency(record) -> Decimal:

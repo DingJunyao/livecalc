@@ -659,6 +659,7 @@ def delete_product_barcode(
 @router.get("/products/entity/{product_id}/latest-price")
 def get_product_latest_price(
     product_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -673,6 +674,7 @@ def get_product_latest_price(
     try:
         from datetime import datetime, timedelta
         from collections import Counter
+        from app.services.price_region import apply_region_filter
 
         # PostgreSQL 返回 aware datetime，统一转 naive 比较
         def _naive(dt):
@@ -681,8 +683,11 @@ def get_product_latest_price(
             return dt.replace(tzinfo=None) if dt.tzinfo else dt
 
         # 查询该商品的所有价格记录（P2：跨用户公开，不按 user_id 过滤）
-        all_records = db.query(ProductRecord).filter(
-            ProductRecord.product_id == product_id
+        all_records = apply_region_filter(
+            db.query(ProductRecord).filter(
+                ProductRecord.product_id == product_id
+            ),
+            db, region_id,
         ).order_by(ProductRecord.recorded_at.desc()).all()
 
         if not all_records:
@@ -754,6 +759,7 @@ def get_product_latest_price(
 @router.get("/products/entity/{product_id}/latest-price-by-merchant")
 def get_product_latest_price_by_merchant(
     product_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -766,6 +772,7 @@ def get_product_latest_price_by_merchant(
     """
     try:
         from app.models.merchant import Merchant
+        from app.services.price_region import apply_region_filter
 
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
@@ -781,11 +788,14 @@ def get_product_latest_price_by_merchant(
                 target_unit_abbr = _mu.abbreviation
 
         # P2：跨用户公开查询价格记录（不按 user_id 过滤）
-        records = db.query(ProductRecord).options(
-            joinedload(ProductRecord.original_unit),
-            joinedload(ProductRecord.merchant)
-        ).join(
-            Merchant, ProductRecord.merchant_id == Merchant.id
+        records = apply_region_filter(
+            db.query(ProductRecord).options(
+                joinedload(ProductRecord.original_unit),
+                joinedload(ProductRecord.merchant)
+            ).join(
+                Merchant, ProductRecord.merchant_id == Merchant.id
+            ),
+            db, region_id,
         ).filter(
             ProductRecord.product_id == product_id,
             ProductRecord.merchant_id.isnot(None),
