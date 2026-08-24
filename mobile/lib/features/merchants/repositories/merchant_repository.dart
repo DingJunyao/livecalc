@@ -219,4 +219,20 @@ class MerchantRepository {
         (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
     return MerchantProductPricePage(items: items, total: total);
   }
+
+  /// List regions (GET /regions). Returns region nodes, each containing at least id and name.
+  Future<List<Map<String, dynamic>>> listRegions({int? parentId, int? level}) async {
+    final params = <String, dynamic>{
+      if (parentId != null) 'parent_id': parentId,
+      if (level != null) 'level': level,
+    };
+    final response = await _client.dio.get('/regions', queryParameters: params);
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data is Map ? data['items'] as List? : null) ?? const []);
+    return list
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
 }
