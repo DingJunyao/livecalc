@@ -426,6 +426,78 @@ void main() {
     expect(repo.createCount, 1);
   });
 
+
+  testWidgets('新增保存后记住商家与计入支出，再次打开表单复用', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+
+    // 选商家「超市」
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    // 关闭「计入支出」
+    await tester.tap(find.text('计入支出'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.createCount, 1);
+    expect(repo.lastMerchantId, 1);
+    expect(repo.lastRecordType, 'price'); // 计入支出关闭 → record_type=price
+
+    // 再次打开表单：商家名回填、计入支出保持关闭
+    await tester.tap(find.text('打开表单'));
+    await tester.pumpAndSettle();
+
+    final merchantField2 = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    final textField = tester.widget<TextField>(merchantField2);
+    expect(textField.controller?.text, '超市');
+
+    final sw =
+        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    expect(sw.value, isFalse);
+  });
+
+  testWidgets('未记忆商家时再次打开表单为空，计入支出默认开启', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastMerchantId, isNull);
+
+    // 再次打开：商家空、计入支出默认开
+    await tester.tap(find.text('打开表单'));
+    await tester.pumpAndSettle();
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    final textField = tester.widget<TextField>(merchantField);
+    expect(textField.controller?.text, isEmpty);
+
+    final sw =
+        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    expect(sw.value, isTrue);
+  });
+
   testWidgets('扫码查询期间显示加载覆盖层，查询完成弹窗打开前覆盖层消失', (tester) async {
     final lookupCompleter = Completer<BarcodeLookupResult>();
     final productRepo = _ScanLookupProductRepository(lookupCompleter);

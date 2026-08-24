@@ -206,6 +206,9 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
     required String unit,
     int? merchantId,
     String? merchantName,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     try {
       await _repository.updateRecord(
@@ -214,6 +217,9 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         quantity: quantity,
         unit: unit,
         merchantId: merchantId,
+        recordType: recordType,
+        recordedAt: recordedAt,
+        notes: notes,
       );
       final newRecords = state.records.map((r) {
         if (r.id != id) return r;
@@ -226,9 +232,9 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
           unit: unit,
           merchantId: merchantId,
           merchantName: merchantName, // 见方法注释：由调用方反查传入
-          recordedAt: r.recordedAt,
-          recordType: r.recordType,
-          notes: r.notes,
+          recordedAt: recordedAt?.toUtc().toIso8601String() ?? r.recordedAt,
+          recordType: recordType,
+          notes: notes,
         );
       }).toList();
       state = state.copyWith(records: newRecords);

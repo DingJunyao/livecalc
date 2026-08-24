@@ -12,6 +12,7 @@ import '../../products/screens/product_form_screen.dart'
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../repositories/price_repository.dart';
+import '../providers/price_record_session_memory.dart';
 
 class PriceRecordFormPrefill {
   final Product? product;
@@ -77,6 +78,27 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     _nameController.text = widget.prefill?.product?.name ?? '';
     _priceRepo = widget.priceRepository ?? PriceRepository();
     _productRepo = widget.productRepository ?? ProductRepository();
+    // 会话记忆：商家 + 计入支出（对齐 web 端 sessionStorage，同一会话内保持）
+    final memory = ref.read(priceRecordSessionMemoryProvider);
+    _merchantId = memory.merchantId;
+    _isPurchase = memory.isPurchase;
+    // 商家列表可能已加载，也可能稍后才加载；两种情况都回填商家名到输入框
+    if (_merchantId != null) {
+      final m = ref
+          .read(merchantListProvider)
+          .items
+          .where((m) => m.id == _merchantId)
+          .firstOrNull;
+      if (m != null) _merchantController.text = m.name;
+    }
+    ref.listenManual<MerchantListState>(merchantListProvider, (previous, next) {
+      if (!mounted || _merchantId == null) return;
+      if (_merchantController.text.isNotEmpty) return;
+      final m = next.items.where((m) => m.id == _merchantId).firstOrNull;
+      if (m != null) {
+        _merchantController.text = m.name;
+      }
+    });
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
     Future.microtask(() => ref.read(merchantListProvider.notifier).load());
   }
@@ -274,6 +296,10 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
             : _notesController.text.trim(),
         recordedAt: _recordedAt,
       );
+      // 记住本次新增的商家与计入支出选择（仅新增时记忆，对齐 web 端）
+      ref
+          .read(priceRecordSessionMemoryProvider.notifier)
+          .save(merchantId: _merchantId, isPurchase: _isPurchase);
       if (mounted) Navigator.of(context).pop(true);
     } on Exception {
       // 失败可重试，恢复按钮

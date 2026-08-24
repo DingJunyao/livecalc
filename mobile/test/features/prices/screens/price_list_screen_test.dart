@@ -46,6 +46,9 @@ class _FakePriceRepository extends PriceRepository {
     required double quantity,
     required String unit,
     int? merchantId,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     updateCalls++;
     if (updateError != null) throw updateError!;

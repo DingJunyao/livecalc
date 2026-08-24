@@ -75,6 +75,9 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
         initialQuantity: r.quantity,
         initialUnit: r.unit,
         initialMerchantId: r.merchantId,
+        initialRecordType: r.recordType,
+        initialRecordedAt: DateTime.tryParse(r.recordedAt),
+        initialNotes: r.notes,
       ),
     );
     if (result != null && mounted) {
@@ -96,6 +99,9 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             unit: result.unit,
             merchantId: result.merchantId,
             merchantName: merchantName,
+            recordType: result.recordType,
+            recordedAt: result.recordedAt,
+            notes: result.notes,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -7,6 +7,9 @@ class PriceRecordFormResult {
   final String unit;
   final int? merchantId;
   final int? productId;
+  final String recordType; // 'purchase' | 'price'
+  final DateTime recordedAt;
+  final String? notes;
 
   const PriceRecordFormResult({
     required this.price,
@@ -14,6 +17,9 @@ class PriceRecordFormResult {
     required this.unit,
     this.merchantId,
     this.productId,
+    this.recordType = 'purchase',
+    required this.recordedAt,
+    this.notes,
   });
 }
 
@@ -46,6 +52,9 @@ class PriceRecordFormArguments {
   final double? initialQuantity;
   final String? initialUnit;
   final int? initialMerchantId;
+  final String? initialRecordType; // 'purchase' | 'price'
+  final DateTime? initialRecordedAt;
+  final String? initialNotes;
 
   const PriceRecordFormArguments({
     required this.merchants,
@@ -56,6 +65,9 @@ class PriceRecordFormArguments {
     this.initialQuantity,
     this.initialUnit,
     this.initialMerchantId,
+    this.initialRecordType,
+    this.initialRecordedAt,
+    this.initialNotes,
   });
 }
 
@@ -72,9 +84,12 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
   late final TextEditingController _priceController;
   late final TextEditingController _quantityController;
   late final TextEditingController _merchantController;
+  late final TextEditingController _notesController;
   late String _unit;
   int? _merchantId;
   int? _productId;
+  late bool _isPurchase;
+  late DateTime _recordedAt;
 
   @override
   void initState() {
@@ -95,6 +110,11 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
     _merchantId = merchantName.isEmpty ? null : args.initialMerchantId;
     _merchantController = TextEditingController(text: merchantName);
     _productId = args.fixedProductId ?? args.products.firstOrNull?.id;
+    _isPurchase = args.initialRecordType == null
+        ? true
+        : args.initialRecordType != 'price';
+    _recordedAt = args.initialRecordedAt ?? DateTime.now();
+    _notesController = TextEditingController(text: args.initialNotes ?? '');
   }
 
   @override
@@ -102,6 +122,7 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
     _priceController.dispose();
     _quantityController.dispose();
     _merchantController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -120,6 +141,25 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
     return quantity.toStringAsFixed(2);
   }
 
+  Future<void> _pickRecordedAt() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _recordedAt,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_recordedAt),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _recordedAt =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute);
+    });
+  }
+
   void _submit() {
     final price = double.tryParse(_priceController.text.trim());
     final quantity = double.tryParse(_quantityController.text.trim());
@@ -131,6 +171,7 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
       _toast('请输入有效的数量');
       return;
     }
+    final notes = _notesController.text.trim();
     Navigator.of(context).pop(
       PriceRecordFormResult(
         price: price,
@@ -138,6 +179,9 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
         unit: _unit,
         merchantId: _merchantId,
         productId: _productId,
+        recordType: _isPurchase ? 'purchase' : 'price',
+        recordedAt: _recordedAt,
+        notes: notes.isEmpty ? null : notes,
       ),
     );
   }
@@ -276,6 +320,36 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
                     },
                   );
                 },
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('计入支出'),
+                subtitle: const Text('表示此价格记录来自实际购买，将用于支出计算'),
+                value: _isPurchase,
+                onChanged: (v) => setState(() => _isPurchase = v),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.schedule),
+                title: const Text('记录时间'),
+                trailing: Text(
+                  '${_recordedAt.year}-${_recordedAt.month.toString().padLeft(2, '0')}-${_recordedAt.day.toString().padLeft(2, '0')} '
+                  '${_recordedAt.hour.toString().padLeft(2, '0')}:${_recordedAt.minute.toString().padLeft(2, '0')}',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                onTap: _pickRecordedAt,
+              ),
+              TextField(
+                controller: _notesController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: '备注',
+                  hintText: '备注（可选）',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
               const SizedBox(height: 24),
               FilledButton(

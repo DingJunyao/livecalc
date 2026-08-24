@@ -271,6 +271,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         initialQuantity: record.quantity,
         initialUnit: record.unit,
         initialMerchantId: record.merchantId,
+        initialRecordType: record.recordType,
+        initialRecordedAt: DateTime.tryParse(record.recordedAt),
+        initialNotes: record.notes,
       ),
     );
     if (result == null || !mounted) return;
@@ -281,6 +284,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         quantity: result.quantity,
         unit: result.unit,
         merchantId: result.merchantId,
+        recordType: result.recordType,
+        recordedAt: result.recordedAt,
+        notes: result.notes,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

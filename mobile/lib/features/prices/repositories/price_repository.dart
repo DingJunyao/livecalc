@@ -96,19 +96,29 @@ class PriceRepository {
   }
 
   /// 更新价格记录（PUT /products/{id}）。
+  /// 修改范围与新增一致：价格、数量、单位、商家、记录类型（计入支出）、记录时间、备注。
   Future<void> updateRecord(
     int id, {
     required double price,
     required double quantity,
     required String unit,
     int? merchantId,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     final data = <String, dynamic>{
       'price': price,
       'original_quantity': quantity,
       'original_unit': unit,
+      'record_type': recordType,
     };
     if (merchantId != null) data['merchant_id'] = merchantId;
+    if (recordedAt != null) {
+      data['recorded_at'] = recordedAt.toUtc().toIso8601String();
+    }
+    // 编辑表单始终有确定值（空即 null），显式发送以支持清空备注
+    data['notes'] = notes;
     await _client.dio.put('/products/$id', data: data);
   }
 

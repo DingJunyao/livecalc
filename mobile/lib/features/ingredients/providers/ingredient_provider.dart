@@ -1181,6 +1181,9 @@ class IngredientDetailPageNotifier
     required double quantity,
     required String unit,
     int? merchantId,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     await _priceRepo.updateRecord(
       recordId,
@@ -1188,6 +1191,9 @@ class IngredientDetailPageNotifier
       quantity: quantity,
       unit: unit,
       merchantId: merchantId,
+      recordType: recordType,
+      recordedAt: recordedAt,
+      notes: notes,
     );
     await _refreshAfterRecordChange();
   }

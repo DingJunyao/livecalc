@@ -878,6 +878,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     required double quantity,
     required String unit,
     int? merchantId,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     await _priceRepo.updateRecord(
       recordId,
@@ -885,6 +888,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       quantity: quantity,
       unit: unit,
       merchantId: merchantId,
+      recordType: recordType,
+      recordedAt: recordedAt,
+      notes: notes,
     );
     await _refreshAfterRecordChange();
   }

@@ -17,6 +17,9 @@ class _FakePriceRepository extends PriceRepository {
   double? lastUpdateQuantity;
   String? lastUpdateUnit;
   int? lastUpdateMerchantId;
+  String? lastUpdateRecordType;
+  DateTime? lastUpdateRecordedAt;
+  String? lastUpdateNotes;
   Exception? updateError;
 
   int deleteCalls = 0;
@@ -47,6 +50,9 @@ class _FakePriceRepository extends PriceRepository {
     required double quantity,
     required String unit,
     int? merchantId,
+    String recordType = 'purchase',
+    DateTime? recordedAt,
+    String? notes,
   }) async {
     updateCalls++;
     lastUpdateId = id;
@@ -54,6 +60,9 @@ class _FakePriceRepository extends PriceRepository {
     lastUpdateQuantity = quantity;
     lastUpdateUnit = unit;
     lastUpdateMerchantId = merchantId;
+    lastUpdateRecordType = recordType;
+    lastUpdateRecordedAt = recordedAt;
+    lastUpdateNotes = notes;
     if (updateError != null) throw updateError!;
   }
 
