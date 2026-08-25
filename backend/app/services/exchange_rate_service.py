@@ -24,7 +24,7 @@ def store_snapshot(db: Session, rate_date: date, base_currency: str, rates: dict
 
 
 def get_snapshot(db: Session, on_date: date, base_currency: str) -> Optional[ExchangeRateSnapshot]:
-    return (
+    snap = (
         db.query(ExchangeRateSnapshot)
         .filter(
             ExchangeRateSnapshot.rate_date <= on_date,
@@ -33,6 +33,18 @@ def get_snapshot(db: Session, on_date: date, base_currency: str) -> Optional[Exc
         .order_by(ExchangeRateSnapshot.rate_date.desc())
         .first()
     )
+    if snap is None:
+        # 记录日期早于已有全部快照：取最早可用快照近似，避免历史记录无法换算
+        snap = (
+            db.query(ExchangeRateSnapshot)
+            .filter(
+                ExchangeRateSnapshot.rate_date > on_date,
+                ExchangeRateSnapshot.base_currency == base_currency,
+            )
+            .order_by(ExchangeRateSnapshot.rate_date.asc())
+            .first()
+        )
+    return snap
 
 
 def get_rate_on_date(db: Session, currency: str, on_date: date) -> Optional[Decimal]:
