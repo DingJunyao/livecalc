@@ -267,6 +267,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning(f"行政区划数据初始化失败: {e}")
 
+        # 确保币种字典完整（普通用户无维护币种权限，由系统自动补齐；
+        # 幂等只补缺失，失败不阻断启动）
+        try:
+            from app.services.currency_seed import ensure_currencies
+            result = ensure_currencies(db)
+            logger.info(f"币种字典初始化完成：新增 {result['created']}，已有 {result['skipped']}")
+        except Exception as e:
+            logger.warning(f"币种字典初始化失败: {e}")
+
         # 检查是否需要为现有原料批量创建商品
         from app.models.nutrition import Ingredient
         from app.models.product_entity import Product

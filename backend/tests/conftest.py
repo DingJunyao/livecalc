@@ -30,6 +30,13 @@ from app.api.deps import get_timezone
 # 不走主 app 的 override，校验覆盖仍在。
 app.dependency_overrides[get_timezone] = lambda: "UTC"
 
+from app.config import settings
+
+# 启动即拉取汇率会发起真实网络请求：测试保持离线/确定性，关闭启动即拉取。
+# （调度逻辑本身由 tests/services/test_exchange_rate_scheduler.py 用假调度器覆盖）
+settings.exchange_rate_fetch_on_startup = False
+
+
 # 共享内存 engine：StaticPool 让 TestClient 跨线程与 fixture 共享同一内存库
 engine = create_engine(
     "sqlite://",

@@ -48,6 +48,7 @@ class Settings(BaseSettings):
     exchange_rate_provider: str = "frankfurter"
     exchange_rate_base_url: str = "https://api.frankfurter.dev"
     exchange_rate_base_currency: str = "EUR"
+    exchange_rate_fetch_on_startup: bool = True  # 启动时立即拉取一次汇率
 
     # 日志配置
     log_level: str = "INFO"
