@@ -170,7 +170,7 @@ const form = reactive({
   record_date: getLocalDateString(),
 })
 
-const merchants = ref<{ id: number; name: string; default_currency?: string | null }[]>([])
+const merchants = ref<{ id: number; name: string; default_currency?: string | null; effective_currency?: string | null }[]>([])
 const currencies = ref<any[]>([])
 const recordCurrency = ref<string>('CNY')
 const formRef = ref()

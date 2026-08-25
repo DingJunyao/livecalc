@@ -441,6 +441,7 @@ interface Merchant {
   id: number
   name: string
   default_currency?: string | null
+  effective_currency?: string | null
 }
 
 const records = ref<PriceRecord[]>([])
