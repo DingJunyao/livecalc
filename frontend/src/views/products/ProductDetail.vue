@@ -1018,15 +1018,46 @@
         <v-card-title>{{ editingPriceRecord ? '编辑价格记录' : '添加价格记录' }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="savePriceRecord">
-            <v-text-field
-              v-model.number="priceForm.price"
-              label="价格（元）"
+            <!-- 商家（置于商品前） -->
+            <v-autocomplete
+              v-model="priceForm.merchant_id"
+              :items="merchants"
+              item-title="name"
+              item-value="id"
+              label="商家（可选）"
               variant="outlined"
-              type="number"
-              step="0.01"
-              required
+              clearable
               class="mb-4"
+              @update:model-value="onPriceMerchantChange"
             />
+
+            <!-- 价格（币种符号可点击切换） -->
+            <div class="d-flex align-center ga-2 mb-4">
+              <v-menu :close-on-content-click="true" location="bottom">
+                <template #activator="{ props: menuProps }">
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ priceCurrencySymbolText }}</v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="c in priceCurrencies"
+                    :key="c.code"
+                    :title="`${c.symbol || c.code} ${c.name}`"
+                    :active="priceCurrency === c.code"
+                    @click="priceCurrency = c.code; priceCurrencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                  />
+                </v-list>
+              </v-menu>
+              <v-text-field
+                v-model.number="priceForm.price"
+                label="价格 *"
+                variant="outlined"
+                type="number"
+                step="0.01"
+                required
+                class="flex-grow-1"
+              />
+            </div>
+
             <v-row dense>
               <v-col cols="6">
                 <v-text-field
@@ -1049,16 +1080,6 @@
                 />
               </v-col>
             </v-row>
-            <v-autocomplete
-              v-model="priceForm.merchant_id"
-              :items="merchants"
-              item-title="name"
-              item-value="id"
-              label="商家（可选）"
-              variant="outlined"
-              clearable
-              class="mt-4"
-            />
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -1216,6 +1237,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
@@ -1265,6 +1287,7 @@ interface PriceRecord {
 interface Merchant {
   id: number
   name: string
+  default_currency?: string | null
 }
 
 interface Ingredient {
@@ -1660,6 +1683,26 @@ const priceForm = ref({
   merchant_id: null as number | null
 })
 
+// 价格对话框币种（对齐 QuickPriceRecordDialog / PriceRecordForm）
+const priceCurrencies = ref<any[]>([])
+const priceCurrency = ref<string>('CNY')
+const priceCurrencySymbolText = ref<string>('¥')
+
+const applyPriceCurrency = async (code: string) => {
+  priceCurrency.value = code || 'CNY'
+  try {
+    priceCurrencySymbolText.value = await currencySymbol(priceCurrency.value)
+  } catch {
+    priceCurrencySymbolText.value = symbolFromIntl(priceCurrency.value)
+  }
+}
+
+// 商家变化时联动币种（商家默认币种优先）
+const onPriceMerchantChange = (val: number | null) => {
+  const m = merchants.value.find((x) => x.id === val)
+  void applyPriceCurrency(m?.default_currency || 'CNY')
+}
+
 // 正在编辑的价格记录
 const editingPriceRecord = ref<PriceRecord | null>(null)
 
@@ -1673,6 +1716,7 @@ const openAddPriceDialog = () => {
     unit: priceUnitName.value,
     merchant_id: null
   }
+  void applyPriceCurrency('CNY')
   showAddPriceDialog.value = true
 }
 
@@ -1685,6 +1729,7 @@ const openEditPriceDialog = (record: PriceRecord) => {
     unit: record.original_unit || priceUnitName.value,
     merchant_id: null
   }
+  void applyPriceCurrency(record.currency || 'CNY')
   showAddPriceDialog.value = true
 }
 
@@ -2831,7 +2876,8 @@ const savePriceRecord = async () => {
         price: priceForm.value.price,
         original_quantity: priceForm.value.quantity,
         original_unit: priceForm.value.unit,
-        merchant_id: priceForm.value.merchant_id
+        merchant_id: priceForm.value.merchant_id,
+        currency: priceCurrency.value
       })
       showAddPriceDialog.value = false
       editingPriceRecord.value = null
@@ -2846,7 +2892,8 @@ const savePriceRecord = async () => {
         price: priceForm.value.price,
         original_quantity: priceForm.value.quantity,
         original_unit: priceForm.value.unit,
-        merchant_id: priceForm.value.merchant_id
+        merchant_id: priceForm.value.merchant_id,
+        currency: priceCurrency.value
       })
       showAddPriceDialog.value = false
       // 重置表单
@@ -2995,6 +3042,7 @@ watch(pricePage, loadPriceRecords)
 onMounted(() => {
   loadData()
   loadMerchants()
+  loadCurrencies().then((list) => { priceCurrencies.value = list }).catch(() => {})
 })
 </script>
 
