@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { api } from '@/api'
 
 interface Props {
@@ -65,15 +65,33 @@ function onLevelChange(level: number) {
   emit('update:modelValue', currentRegionId())
 }
 
+// 已存 region_id 回填级联（含只填国家/地区）：GET /regions/{id} 返回祖先链
+async function applyValue(v: number) {
+  const res = (await api.get(`/regions/${v}`)) as any
+  if (props.modelValue !== v) return // 外部值已变，丢弃过期回填
+  const chain: { id: number; level: number }[] = [
+    ...((res?.ancestors || []) as any[]).map(a => ({ id: a.id, level: a.level })),
+    { id: res.id, level: res.level },
+  ].sort((a, b) => a.level - b.level)
+  if (!options.value[0].length) {
+    await loadChildren(0, null)
+    if (props.modelValue !== v) return
+  }
+  for (let i = 0; i < chain.length; i++) {
+    selected.value[chain[i].level] = chain[i].id
+    if (i < chain.length - 1) {
+      await loadChildren(chain[i + 1].level, chain[i].id)
+      if (props.modelValue !== v) return
+    }
+  }
+}
+
 watch(() => props.modelValue, (v) => {
-  // 外部值变化时，若为空则清空
   if (v == null) {
     for (let i = 0; i < levels.length; i++) { selected.value[i] = null; options.value[i] = [] }
     void loadChildren(0, null)
+  } else if (v !== currentRegionId()) {
+    void applyValue(v)
   }
-})
-
-onMounted(async () => {
-  await loadChildren(0, null)
-})
+}, { immediate: true })
 </script>
