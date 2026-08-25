@@ -48,22 +48,8 @@
             class="mb-4"
           />
 
-          <!-- 价格（币种符号可点击切换） -->
+          <!-- 价格（币种在价格右侧，显示三字母） -->
           <div class="d-flex align-center ga-2 mb-4">
-            <v-menu :close-on-content-click="true" location="bottom">
-              <template #activator="{ props: menuProps }">
-                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="c in currencies"
-                  :key="c.code"
-                  :title="`${c.symbol || c.code} ${c.name}`"
-                  :active="recordCurrency === c.code"
-                  @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                />
-              </v-list>
-            </v-menu>
             <v-text-field
               v-model="form.price"
               label="价格 *"
@@ -73,6 +59,20 @@
               :rules="[rules.required]"
               class="flex-grow-1"
             />
+            <v-menu :close-on-content-click="true" location="bottom">
+              <template #activator="{ props: menuProps }">
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="c in currencies"
+                  :key="c.code"
+                  :title="`${c.name} ${c.code}`"
+                  :active="recordCurrency === c.code"
+                  @click="recordCurrency = c.code"
+                />
+              </v-list>
+            </v-menu>
           </div>
 
           <!-- 数量和单位 -->
@@ -142,7 +142,7 @@ import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
-import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { loadCurrencies } from '@/utils/currency'
 
 interface Props {
   modelValue: boolean
@@ -173,7 +173,6 @@ const form = reactive({
 const merchants = ref<{ id: number; name: string; default_currency?: string | null }[]>([])
 const currencies = ref<any[]>([])
 const recordCurrency = ref<string>('CNY')
-const currencySymbolText = ref<string>('¥')
 const formRef = ref()
 
 // 单位选项（从 API 动态加载）
@@ -202,13 +201,8 @@ const loadMerchants = async () => {
   }
 }
 
-const applyCurrency = async (code: string) => {
-  recordCurrency.value = code
-  try {
-    currencySymbolText.value = await currencySymbol(code)
-  } catch {
-    currencySymbolText.value = symbolFromIntl(code)
-  }
+const applyCurrency = (code: string) => {
+  recordCurrency.value = code || 'CNY'
 }
 
 const onMerchantChange = async (val: number | null) => {
@@ -255,7 +249,6 @@ const resetForm = () => {
   form.merchant_id = null
   form.is_purchase = true
   recordCurrency.value = 'CNY'
-  currencySymbolText.value = '¥'
   form.record_date = getLocalDateString()
 }
 

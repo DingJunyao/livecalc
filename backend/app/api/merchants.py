@@ -120,7 +120,7 @@ async def create_merchant(
     try:
         db_merchant = Merchant(
             user_id=current_user.id,
-            name=merchant.name,
+            name=merchant.name or "",
             address=merchant.address,
             latitude=merchant.latitude,
             longitude=merchant.longitude,

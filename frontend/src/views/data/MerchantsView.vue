@@ -335,9 +335,8 @@
           <v-form>
             <v-text-field
               v-model="form.name"
-              label="商家名称"
+              label="商家名称（可留空）"
               variant="outlined"
-              required
               class="mb-4"
             />
             <v-text-field
@@ -436,7 +435,7 @@ const { load: loadPendingProposals, has: hasPending, getPayload: getPendingPaylo
 // 待审草稿覆盖：普通用户提交后，列表显示提议中的新值（name/address/is_open）
 const pendingName = (item: Merchant) => {
   const p = getPendingPayload('merchant', item.id)
-  return p?.name ?? item.name
+  return (p?.name ?? item.name) || '未命名商家'
 }
 const pendingAddress = (item: Merchant) => {
   const p = getPendingPayload('merchant', item.id)
@@ -811,8 +810,6 @@ const onMapPick = async (coord: Coordinate) => {
  * 保存商家
  */
 const saveItem = async () => {
-  if (!form.value.name.trim()) return
-
   saving.value = true
   try {
     const data: any = {
