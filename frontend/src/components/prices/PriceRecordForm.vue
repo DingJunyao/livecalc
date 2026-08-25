@@ -208,7 +208,7 @@ const applyCurrency = (code: string) => {
 const onMerchantChange = async (val: number | null) => {
   const m = merchants.value.find((x) => x.id === val)
   form.merchant_name = m?.name || ''
-  await applyCurrency(m?.default_currency || 'CNY')
+  await applyCurrency(m?.default_currency || m?.effective_currency || 'CNY')
 }
 
 onMounted(() => {

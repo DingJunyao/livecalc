@@ -629,7 +629,7 @@ const applyCurrency = (code: string) => {
 // 商家变化时联动币种（商家默认币种优先）
 const onMerchantChange = (val: number | null) => {
   const m = merchantOptions.value.find((x) => x.id === val)
-  applyCurrency(m?.default_currency || 'CNY')
+  applyCurrency(m?.default_currency || m?.effective_currency || 'CNY')
 }
 
 // 单位选项（从 API 动态加载）
@@ -881,7 +881,7 @@ const openAddDialog = () => {
   selectedProduct.value = null
   // 币种：会话记忆的商家默认币种优先，否则回退 CNY
   const memMerchant = merchantOptions.value.find((m) => m.id === sessionMemory.merchantId)
-  void applyCurrency(memMerchant?.default_currency || 'CNY')
+  void applyCurrency(memMerchant?.default_currency || memMerchant?.effective_currency || 'CNY')
   showDialog.value = true
 }
 

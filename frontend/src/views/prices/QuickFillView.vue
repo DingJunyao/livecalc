@@ -512,7 +512,7 @@ const onMerchantChange = async (val: number | null) => {
   historyRows.value = []
   if (!val) return
   const m = merchants.value.find((x) => x.id === val)
-  recordCurrency.value = m?.default_currency || 'CNY'
+  recordCurrency.value = m?.default_currency || m?.effective_currency || 'CNY'
   currencySymbolText.value = await currencySymbol(recordCurrency.value).catch(() => symbolFromIntl(recordCurrency.value))
   loading.value = true
   try {

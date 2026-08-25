@@ -21,6 +21,7 @@ def test_create_merchant_empty_name_allowed(as_admin, db_session):
     body = r.json()
     assert body["name"] == ""
     assert body["region_id"] == 1
+    assert body["effective_currency"] == "CNY"  # 无地区/币种时回落全局默认
     assert body["is_open"] is True
     _cleanup(db_session, body["id"])
 

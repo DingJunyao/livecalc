@@ -72,6 +72,7 @@ class UserResponse(BaseModel):
     region_id: Optional[int] = None
     default_currency: Optional[str] = None
     default_calc_scope: Optional[str] = None
+    effective_currency: Optional[str] = None  # 推导后的实际币种（default_currency 为空时按地区国家）
 
     class Config:
         from_attributes = True

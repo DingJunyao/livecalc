@@ -270,9 +270,11 @@ async def lifespan(app: FastAPI):
         # 确保币种字典完整（普通用户无维护币种权限，由系统自动补齐；
         # 幂等只补缺失，失败不阻断启动）
         try:
-            from app.services.currency_seed import ensure_currencies
+            from app.services.currency_seed import ensure_currencies, ensure_region_currencies
             result = ensure_currencies(db)
             logger.info(f"币种字典初始化完成：新增 {result['created']}，已有 {result['skipped']}")
+            region_result = ensure_region_currencies(db)
+            logger.info(f"地区默认币种初始化完成：补齐 {region_result['filled']}/{region_result['total']}")
         except Exception as e:
             logger.warning(f"币种字典初始化失败: {e}")
 

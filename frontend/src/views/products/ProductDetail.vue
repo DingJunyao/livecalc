@@ -1694,7 +1694,7 @@ const applyPriceCurrency = (code: string) => {
 // 商家变化时联动币种（商家默认币种优先）
 const onPriceMerchantChange = (val: number | null) => {
   const m = merchants.value.find((x) => x.id === val)
-  applyPriceCurrency(m?.default_currency || 'CNY')
+  applyPriceCurrency(m?.default_currency || m?.effective_currency || 'CNY')
 }
 
 // 正在编辑的价格记录

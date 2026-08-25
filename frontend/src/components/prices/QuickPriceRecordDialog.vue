@@ -269,7 +269,7 @@ const loadMerchants = async () => {
 
 const applyMerchantCurrency = (merchantId: number | null) => {
   const m = merchantOptions.value.find((x) => x.id === merchantId)
-  recordCurrency.value = m?.default_currency || 'CNY'
+  recordCurrency.value = m?.default_currency || m?.effective_currency || 'CNY'
 }
 
 const onMerchantChange = (val: number | null) => {

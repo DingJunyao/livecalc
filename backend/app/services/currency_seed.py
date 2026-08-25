@@ -67,3 +67,61 @@ def ensure_currencies(db: Session) -> dict:
     if created:
         db.commit()
     return {"created": created, "skipped": len(CURRENCIES) - created}
+
+# ISO 3166-1 alpha-2 -> 默认币种（覆盖 CURRENCIES 各币种主要使用国；
+# 其余国家不设默认，回落全局 DEFAULT_CURRENCY=CNY）
+REGION_CURRENCIES: dict[str, str] = {
+    "CN": "CNY", "HK": "HKD", "TW": "TWD",
+    "US": "USD", "JP": "JPY", "GB": "GBP", "KR": "KRW", "SG": "SGD",
+    "AU": "AUD", "CA": "CAD", "TH": "THB", "MY": "MYR", "VN": "VND",
+    "RU": "RUB", "AE": "AED", "BG": "BGN", "BR": "BRL", "CH": "CHF",
+    "CZ": "CZK", "DK": "DKK", "HU": "HUF", "ID": "IDR", "IL": "ILS",
+    "IN": "INR", "IS": "ISK", "MX": "MXN", "NO": "NOK", "NZ": "NZD",
+    "PH": "PHP", "PL": "PLN", "RO": "RON", "SE": "SEK", "TR": "TRY",
+    "ZA": "ZAR",
+    "DE": "EUR", "FR": "EUR", "IT": "EUR", "ES": "EUR", "NL": "EUR",
+    "BE": "EUR", "AT": "EUR", "IE": "EUR", "PT": "EUR", "FI": "EUR",
+    "GR": "EUR", "SK": "EUR", "SI": "EUR", "LT": "EUR", "LV": "EUR",
+    "EE": "EUR", "CY": "EUR", "MT": "EUR", "LU": "EUR", "HR": "EUR",
+}
+
+
+def ensure_region_currencies(db: Session) -> dict:
+    """启动时按国家补齐地区默认币种，返回 {"filled": int, "total": int}。
+
+    幂等：只填空缺/新建（仅对行政区划中已存在的国家），不覆盖已设值，
+    管理员后续可在 region_unit_settings 手工调整。
+    """
+    from app.models.administrative_region import AdministrativeRegion
+    from app.models.region_unit_setting import RegionUnitSetting
+
+    existing = {r.region_code: r for r in db.query(RegionUnitSetting).all()}
+    filled = 0
+    for code, currency in REGION_CURRENCIES.items():
+        row = existing.get(code)
+        if row is not None and row.default_currency:
+            continue
+        region = (
+            db.query(AdministrativeRegion)
+            .filter(
+                AdministrativeRegion.iso_country == code,
+                AdministrativeRegion.level == 0,
+            )
+            .first()
+        )
+        if region is None:
+            continue
+        if row is None:
+            row = RegionUnitSetting(
+                region_code=code,
+                region_name=region.name,
+                default_currency=currency,
+            )
+            db.add(row)
+        else:
+            row.region_name = region.name
+            row.default_currency = currency
+        filled += 1
+    if filled:
+        db.commit()
+    return {"filled": filled, "total": len(REGION_CURRENCIES)}
