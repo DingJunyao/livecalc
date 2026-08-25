@@ -239,4 +239,11 @@ class MerchantRepository {
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
+
+  /// Get one region with its ancestor chain (GET /regions/{id}).
+  Future<Map<String, dynamic>> getRegion(int id) async {
+    final response = await _client.dio.get('/regions/$id');
+    final data = response.data;
+    return (data is Map) ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+  }
 }
