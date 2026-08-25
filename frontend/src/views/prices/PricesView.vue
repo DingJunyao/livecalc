@@ -184,6 +184,19 @@
         <v-card-title>{{ isEditing ? '编辑价格记录' : '添加价格记录' }}</v-card-title>
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
+            <!-- 商家（置于商品前） -->
+            <v-autocomplete
+              v-model="form.merchant_id"
+              :items="merchantOptions"
+              item-title="name"
+              item-value="id"
+              label="商家（可选）"
+              variant="outlined"
+              clearable
+              class="mb-4"
+              @update:model-value="onMerchantChange"
+            />
+
             <!-- 商品名称（带自动完成） -->
             <v-autocomplete
               v-model="selectedProduct"
@@ -248,15 +261,31 @@
               class="mb-4"
             />
 
-            <!-- 价格 -->
-            <v-text-field
-              v-model.number="form.price"
-              label="价格 (元)"
-              variant="outlined"
-              type="number"
-              :rules="priceRules"
-              class="mb-4"
-            />
+            <!-- 价格（币种符号可点击切换） -->
+            <div class="d-flex align-center ga-2 mb-4">
+              <v-menu :close-on-content-click="true" location="bottom">
+                <template #activator="{ props: menuProps }">
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="c in currencies"
+                    :key="c.code"
+                    :title="`${c.symbol || c.code} ${c.name}`"
+                    :active="recordCurrency === c.code"
+                    @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                  />
+                </v-list>
+              </v-menu>
+              <v-text-field
+                v-model.number="form.price"
+                label="价格 *"
+                variant="outlined"
+                type="number"
+                :rules="priceRules"
+                class="flex-grow-1"
+              />
+            </div>
 
             <!-- 数量和单位 -->
             <v-row>
@@ -279,18 +308,6 @@
                 />
               </v-col>
             </v-row>
-
-            <!-- 商家选择 -->
-            <v-autocomplete
-              v-model="form.merchant_id"
-              :items="merchantOptions"
-              item-title="name"
-              item-value="id"
-              label="商家（可选）"
-              variant="outlined"
-              clearable
-              class="mb-4"
-            />
 
             <!-- 计入支出复选框 -->
             <v-checkbox
@@ -375,6 +392,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
+import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 
 const { ask } = useConfirmDialog()
 
@@ -422,6 +440,7 @@ interface ProductSuggestion {
 interface Merchant {
   id: number
   name: string
+  default_currency?: string | null
 }
 
 const records = ref<PriceRecord[]>([])
@@ -598,6 +617,26 @@ const toDatetimeLocalValue = (isoStr: string) => {
 
 // 商家选项
 const merchantOptions = ref<Merchant[]>([])
+
+// 币种选择（对齐 QuickPriceRecordDialog / PriceRecordForm）
+const currencies = ref<any[]>([])
+const recordCurrency = ref<string>('CNY')
+const currencySymbolText = ref<string>('¥')
+
+const applyCurrency = async (code: string) => {
+  recordCurrency.value = code || 'CNY'
+  try {
+    currencySymbolText.value = await currencySymbol(recordCurrency.value)
+  } catch {
+    currencySymbolText.value = symbolFromIntl(recordCurrency.value)
+  }
+}
+
+// 商家变化时联动币种（商家默认币种优先）
+const onMerchantChange = (val: number | null) => {
+  const m = merchantOptions.value.find((x) => x.id === val)
+  void applyCurrency(m?.default_currency || 'CNY')
+}
 
 // 单位选项（从 API 动态加载）
 const unitOptions = ref<{ title: string; value: string }[]>([])
@@ -846,6 +885,9 @@ const openAddDialog = () => {
   productSearch.value = ''
   productSuggestions.value = []
   selectedProduct.value = null
+  // 币种：会话记忆的商家默认币种优先，否则回退 CNY
+  const memMerchant = merchantOptions.value.find((m) => m.id === sessionMemory.merchantId)
+  void applyCurrency(memMerchant?.default_currency || 'CNY')
   showDialog.value = true
 }
 
@@ -866,6 +908,7 @@ const openRecordAgainDialog = (record: PriceRecord) => {
   productSearch.value = record.product_name
   productSuggestions.value = [{ id: record.product_id, name: record.product_name }]
   selectedProduct.value = { id: record.product_id, name: record.product_name }
+  void applyCurrency(record.currency || 'CNY')
   showDialog.value = true
 }
 
@@ -886,6 +929,7 @@ const openEditDialog = (record: PriceRecord) => {
   productSearch.value = record.product_name
   productSuggestions.value = [{ id: record.product_id, name: record.product_name }]
   selectedProduct.value = { id: record.product_id, name: record.product_name }
+  void applyCurrency(record.currency || 'CNY')
   showDialog.value = true
 }
 
@@ -925,6 +969,7 @@ const saveRecord = async () => {
       original_quantity: form.value.original_quantity,
       original_unit: form.value.original_unit,
       merchant_id: form.value.merchant_id,
+      currency: recordCurrency.value,
       notes: form.value.notes || null,
       record_type: form.value.is_purchase ? 'purchase' : 'price'  // 映射到后端的 record_type
     }
@@ -984,6 +1029,7 @@ onMounted(() => {
   loadMerchants()
   loadCategories()
   loadUnits()
+  loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
   consumeReturnedProduct()
   window.addEventListener('app-refresh', handleRefresh)
 })
