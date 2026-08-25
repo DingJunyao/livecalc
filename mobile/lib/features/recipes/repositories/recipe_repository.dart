@@ -269,8 +269,12 @@ class RecipeRepository {
     await _client.dio.delete('/recipes/$id');
   }
 
-  Future<RecipeCost> getRecipeCost(int id) async {
-    final response = await _client.dio.get('/recipes/$id/cost');
+  Future<RecipeCost> getRecipeCost(int id, {int? regionId}) async {
+    final params = <String, dynamic>{
+      if (regionId != null) 'region_id': regionId,
+    };
+    final response =
+        await _client.dio.get('/recipes/$id/cost', queryParameters: params);
     return RecipeCost.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -280,10 +284,14 @@ class RecipeRepository {
   }
 
   Future<List<CostHistoryPoint>> getRecipeCostHistory(int id,
-      {int days = 30}) async {
+      {int days = 30, int? regionId}) async {
     final response = await _client.dio.get(
       '/recipes/$id/cost-history-range',
-      queryParameters: {'days': days, 'offset_days': 0},
+      queryParameters: {
+        'days': days,
+        'offset_days': 0,
+        if (regionId != null) 'region_id': regionId,
+      },
     );
     final list = response.data as List? ?? const [];
     return list
@@ -291,10 +299,13 @@ class RecipeRepository {
         .toList();
   }
 
-  Future<Map<int, RecipeCostInfo>> getRecipesBatchCost(List<int> ids) async {
+  Future<Map<int, RecipeCostInfo>> getRecipesBatchCost(List<int> ids,
+      {int? regionId}) async {
     if (ids.isEmpty) return {};
-    final response =
-        await _client.dio.post('/recipes/batch-cost', data: {'ids': ids});
+    final response = await _client.dio.post('/recipes/batch-cost', data: {
+      'ids': ids,
+      if (regionId != null) 'region_id': regionId,
+    });
     final data = response.data;
     if (data is! Map) return {};
     final result = <int, RecipeCostInfo>{};
@@ -310,10 +321,12 @@ class RecipeRepository {
     return result;
   }
 
-  Future<RecipeMerchantCost> getRecipeMerchantCosts(int id) async {
+  Future<RecipeMerchantCost> getRecipeMerchantCosts(int id,
+      {int? regionId}) async {
     // 商家维度成本聚合较慢，放宽超时（对齐 web 端 LONG_REQUEST_TIMEOUT=35s）
     final response = await _client.dio.get(
       '/recipes/$id/merchant-costs',
+      queryParameters: {if (regionId != null) 'region_id': regionId},
       options: Options(receiveTimeout: const Duration(seconds: 35)),
     );
     return RecipeMerchantCost.fromJson(response.data as Map<String, dynamic>);
@@ -327,12 +340,14 @@ class RecipeRepository {
     String? ingredientName,
     double? quantity,
     String? quantityUnit,
+    int? regionId,
   }) async {
     final params = <String, dynamic>{};
     if (quantity != null && quantity > 0) {
       params['quantity'] = quantity;
       params['quantity_unit'] = quantityUnit ?? '';
     }
+    if (regionId != null) params['region_id'] = regionId;
     final response = await _client.dio.get(
       '/nutrition/ingredients/$ingredientId/latest-price-by-merchant',
       queryParameters: params,

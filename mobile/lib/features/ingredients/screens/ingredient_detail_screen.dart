@@ -10,6 +10,8 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
+import '../../../shared/widgets/region_select_field.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/nutrition_card.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
 import '../../../shared/screens/price_record_edit_screen.dart';
@@ -77,7 +79,9 @@ class _IngredientDetailScreenState
     }
 
     final notifier = ref.read(ingredientDetailPageProvider(widget.id).notifier);
-    final isAdmin = ref.watch(authProvider).user?.isAdmin ?? false;
+    final user = ref.watch(authProvider).user;
+    final isAdmin = user?.isAdmin ?? false;
+    final userCurrency = user?.defaultCurrency ?? 'CNY';
     final modifications = <String>{
       ...ingredient.pendingModificationLabels,
       if (state.nutrition?.pendingProposal != null) '营养成分',
@@ -133,6 +137,11 @@ class _IngredientDetailScreenState
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            RegionSelectField(
+              value: null,
+              onChanged: (regionId) => notifier.setRegion(regionId),
+            ),
+            const SizedBox(height: 16),
             if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
               PendingChangeBanner(
                 modifications: modifications,
@@ -151,6 +160,7 @@ class _IngredientDetailScreenState
               merchantPrices: state.merchantPrices,
               loadingLatest: state.loadingLatest,
               loadingMerchants: state.loadingMerchants,
+              currency: userCurrency,
             ),
             const SizedBox(height: 16),
             Card(
@@ -159,6 +169,7 @@ class _IngredientDetailScreenState
                 child: CostTrendChart(
                   points: state.chartPoints,
                   loading: state.loadingChart,
+                  userCurrency: userCurrency,
                   onRangeChange: (days) => notifier.reloadChart(days),
                 ),
               ),
@@ -168,6 +179,7 @@ class _IngredientDetailScreenState
               products: state.products,
               productPrices: state.productPrices,
               loading: state.loadingProducts,
+              currency: userCurrency,
               onLoadPrice: notifier.loadProductPrice,
               onAdd: () => _openAddProductPage(notifier, ingredient),
               onEdit: (p) => _openEditProductPage(notifier, ingredient, p),
@@ -179,6 +191,7 @@ class _IngredientDetailScreenState
               loading: state.loadingRecords,
               hasMore: state.recordsHasMore,
               products: state.products,
+              currency: userCurrency,
               onLoadMore: notifier.loadMoreRecords,
               onAdd: () => _openAddRecord(notifier, state, ingredient),
               onEdit: (r) => _openEditRecord(notifier, state, r),
@@ -672,12 +685,14 @@ class _LatestPriceCard extends StatelessWidget {
   final List<MerchantPrice> merchantPrices;
   final bool loadingLatest;
   final bool loadingMerchants;
+  final String currency;
 
   const _LatestPriceCard({
     required this.latest,
     required this.merchantPrices,
     required this.loadingLatest,
     required this.loadingMerchants,
+    required this.currency,
   });
 
   @override
@@ -691,7 +706,7 @@ class _LatestPriceCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.currency_yen,
+                Icon(Icons.payments_outlined,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
                 Text('最新价格',
@@ -714,7 +729,7 @@ class _LatestPriceCard extends StatelessWidget {
               )
             else ...[
               Text(
-                '¥${latest!.price!.toStringAsFixed(2)}'
+                '${formatMoney(latest!.price!, currency)}'
                 '${latest!.unit == null ? '' : ' / ${latest!.unit}'}',
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -732,6 +747,7 @@ class _LatestPriceCard extends StatelessWidget {
             MerchantPriceList(
               prices: merchantPrices,
               loading: loadingMerchants,
+              userCurrency: currency,
             ),
           ],
         ),
@@ -746,6 +762,7 @@ class _RelatedProductsCard extends StatelessWidget {
   final List<Product> products;
   final Map<int, LatestPriceInfo> productPrices;
   final bool loading;
+  final String currency;
   final ValueChanged<int> onLoadPrice;
   final VoidCallback onAdd;
   final ValueChanged<Product> onEdit;
@@ -755,6 +772,7 @@ class _RelatedProductsCard extends StatelessWidget {
     required this.products,
     required this.productPrices,
     required this.loading,
+    required this.currency,
     required this.onLoadPrice,
     required this.onAdd,
     required this.onEdit,
@@ -821,6 +839,7 @@ class _RelatedProductsCard extends StatelessWidget {
                 _RelatedProductRow(
                   product: p,
                   latest: productPrices[p.id],
+                  currency: currency,
                   onTap: () => context.push('/products/${p.id}'),
                   onLoadPrice: () => onLoadPrice(p.id),
                   onEdit: () => onEdit(p),
@@ -838,6 +857,7 @@ class _RelatedProductsCard extends StatelessWidget {
 class _RelatedProductRow extends StatefulWidget {
   final Product product;
   final LatestPriceInfo? latest;
+  final String currency;
   final VoidCallback onTap;
   final VoidCallback onLoadPrice;
   final VoidCallback onEdit;
@@ -846,6 +866,7 @@ class _RelatedProductRow extends StatefulWidget {
   const _RelatedProductRow({
     required this.product,
     required this.latest,
+    required this.currency,
     required this.onTap,
     required this.onLoadPrice,
     required this.onEdit,
@@ -906,7 +927,7 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
             ),
             if (latest != null && latest.price != null)
               Text(
-                '¥${latest.price!.toStringAsFixed(2)}'
+                '${formatMoney(latest.price!, widget.currency)}'
                 '${latest.unit == null ? '' : ' / ${latest.unit}'}',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.tertiary,
@@ -941,6 +962,7 @@ class _PriceRecordsCard extends StatelessWidget {
   final bool loading;
   final bool hasMore;
   final List<Product> products;
+  final String currency;
   final VoidCallback onLoadMore;
   final VoidCallback onAdd;
   final ValueChanged<PriceRecord> onEdit;
@@ -951,6 +973,7 @@ class _PriceRecordsCard extends StatelessWidget {
     required this.loading,
     required this.hasMore,
     required this.products,
+    required this.currency,
     required this.onLoadMore,
     required this.onAdd,
     required this.onEdit,
@@ -1001,6 +1024,7 @@ class _PriceRecordsCard extends StatelessWidget {
               for (final r in records)
                 _RecordRow(
                   record: r,
+                  currency: currency,
                   onEdit: () => onEdit(r),
                   onDelete: () => onDelete(r),
                 ),
@@ -1021,11 +1045,13 @@ class _PriceRecordsCard extends StatelessWidget {
 
 class _RecordRow extends StatelessWidget {
   final PriceRecord record;
+  final String currency;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
 
   const _RecordRow({
     required this.record,
+    required this.currency,
     required this.onEdit,
     required this.onDelete,
   });
@@ -1057,7 +1083,7 @@ class _RecordRow extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
-                  '¥${r.price.toStringAsFixed(2)} / ${_fmtQty(r.quantity)}'
+                  '${formatMoney(r.price, currency)} / ${_fmtQty(r.quantity)}'
                   '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,

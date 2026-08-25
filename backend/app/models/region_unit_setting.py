@@ -13,6 +13,7 @@ class RegionUnitSetting(Base):
     default_mass_unit = Column(Integer, ForeignKey("units.id"))  # 默认质量单位ID
     default_volume_unit = Column(Integer, ForeignKey("units.id"))  # 默认体积单位ID
     default_length_unit = Column(Integer, ForeignKey("units.id"))  # 默认长度单位ID
+    default_currency = Column(String(3), nullable=True)  # NULL = 全局兜底
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

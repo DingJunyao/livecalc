@@ -12,6 +12,7 @@ interface ApiLike {
   get: ApiFn
   post: ApiFn
   put: ApiFn
+  patch: ApiFn
   delete: ApiFn
 }
 
@@ -29,6 +30,10 @@ function createLocalApi(): ApiLike {
       const m = await import('./local/proxy')
       return m.localPut(url, data)
     },
+    patch: async (url, data) => {
+      const m = await import('./local/proxy')
+      return m.localPut(url, data)
+    },
     delete: async (url) => {
       const m = await import('./local/proxy')
       return m.localDelete(url)
@@ -41,6 +46,7 @@ function createCloudApi(): ApiLike {
     get: (url, config) => cloudApi.get(url, config) as Promise<any>,
     post: (url, data, config) => cloudApi.post(url, data, config) as Promise<any>,
     put: (url, data, config) => cloudApi.put(url, data, config) as Promise<any>,
+    patch: (url, data, config) => cloudApi.patch(url, data, config) as Promise<any>,
     delete: (url, config) => cloudApi.delete(url, config) as Promise<any>,
   }
 }

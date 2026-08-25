@@ -62,6 +62,8 @@ class User {
   final Map<String, double?> nutritionGoals;
   final double? dailyBudget;
   final UnitPreferences? unitPreferences;
+  final String? defaultCurrency;
+  final String? defaultCalcScope;
 
   const User({
     required this.id,
@@ -74,6 +76,8 @@ class User {
     this.nutritionGoals = const {},
     this.dailyBudget,
     this.unitPreferences,
+    this.defaultCurrency,
+    this.defaultCalcScope,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -98,6 +102,8 @@ class User {
           ? UnitPreferences.fromJson(
               json['unit_preferences'] as Map<String, dynamic>)
           : null,
+      defaultCurrency: json['default_currency'] as String?,
+      defaultCalcScope: json['default_calc_scope'] as String?,
     );
   }
 

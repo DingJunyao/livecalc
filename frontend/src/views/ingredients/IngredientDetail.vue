@@ -51,6 +51,9 @@
           :proposal-labels="pendingItemLabels"
         />
       </div>
+      <div class="px-4 pt-4">
+        <RegionSelect v-model="regionId" class="mb-3" />
+      </div>
       <div class="ingredient-layout">
       <!-- 基本信息 -->
       <v-card elevation="0" class="grid-item item-basic-info">
@@ -208,7 +211,7 @@
       <!-- 最新价格（加载中） -->
       <v-card elevation="0" class="grid-item item-latest-price" v-if="loadingLatestPrice && !latestPrice">
         <v-card-title class="d-flex align-center pb-2">
-          <v-icon start color="tertiary">mdi-currency-cny</v-icon>
+          <v-icon start color="tertiary">mdi-cash</v-icon>
           最新价格
         </v-card-title>
         <v-divider />
@@ -221,21 +224,21 @@
       <!-- 最新价格 -->
       <v-card elevation="0" class="grid-item item-latest-price" v-else-if="latestPrice">
         <v-card-title class="d-flex align-center pb-2">
-          <v-icon start color="tertiary">mdi-currency-cny</v-icon>
+          <v-icon start color="tertiary">mdi-cash</v-icon>
           最新价格
         </v-card-title>
         <v-divider />
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              ¥{{ formatPrice(latestPrice) }}<span class="text-h6 font-weight-regular"> / {{ massUnitName }}</span>
+              {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitName }}</span>
             </div>
             <template v-if="latestChartTrend">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">区间</div>
                 <div class="text-subtitle-1 font-weight-bold">
-                  ¥{{ latestChartTrend.min.toFixed(2) }} - ¥{{ latestChartTrend.max.toFixed(2) }} / {{ chartUnit }}
+                  {{ formatMoney(latestChartTrend.min, userCurrency) }} - {{ formatMoney(latestChartTrend.max, userCurrency) }} / {{ chartUnit }}
                 </div>
               </div>
               <div v-if="latestChartTrend.count" class="text-center">
@@ -256,7 +259,7 @@
               <v-expansion-panel-text>
                 <div v-for="p in latestPriceParticipants" :key="p.product_id" class="text-caption d-flex justify-space-between">
                   <span>{{ p.name }} <v-chip size="x-small" :color="p.weight === 0 ? 'grey' : 'default'">权重 {{ p.weight }}</v-chip></span>
-                  <span class="text-medium-emphasis">¥{{ Number(p.unit_price).toFixed(4) }}（{{ p.weight_source === 'override' ? '我的' : '全局' }}）</span>
+                  <span class="text-medium-emphasis">{{ formatMoney(Number(p.unit_price), userCurrency) }}（{{ p.weight_source === 'override' ? '我的' : '全局' }}）</span>
                 </div>
                 <div v-for="e in latestPriceExcluded" :key="'ex_' + e.product_id" class="text-caption text-medium-emphasis">
                   已排除：{{ e.name }}（{{ e.reason === 'weight_zero' ? '权重为0' : '当日无记录' }}）
@@ -295,7 +298,7 @@
                 <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">{{ mp.merchant_name }}</div>
                 <div class="merchant-price-value" style="position: relative; z-index: 1">
                   <span class="font-weight-bold" :class="mp.is_lowest ? 'text-success' : ''">
-                    ¥{{ mp.price.toFixed(2) }}
+                    {{ formatMoney(mp.price, userCurrency) }}
                   </span>
                 </div>
                 <div v-if="mp.recorded_at" class="merchant-price-date" style="position: relative; z-index: 1">
@@ -310,7 +313,7 @@
             <div v-if="latestPrice" class="d-flex justify-space-between align-center px-1 pt-2">
               <span class="text-caption text-medium-emphasis">商品加权综合价</span>
               <span class="font-weight-bold text-tertiary">
-                ¥{{ formatPrice(latestPrice) }}<span class="text-caption font-weight-regular"> / {{ massUnitName }}</span>
+                {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-caption font-weight-regular"> / {{ massUnitName }}</span>
               </span>
             </div>
           </v-card-text>
@@ -378,7 +381,7 @@
                   </div>
                   <template v-else-if="productPrices[product.id].latestPrice !== null">
                     <div class="text-body-2 font-weight-bold text-tertiary text-no-wrap" style="line-height: 1.2">
-                      ¥{{ Number(productPrices[product.id].latestPrice).toFixed(2) }}
+                      {{ formatMoney(Number(productPrices[product.id].latestPrice), userCurrency) }}
                       <span v-if="productPrices[product.id].latestPriceUnit" class="text-caption font-weight-regular">{{ productPrices[product.id].latestPriceUnit }}</span>
                     </div>
                     <div v-if="productPrices[product.id].latestPriceDate" class="text-caption text-medium-emphasis" style="font-size: 0.6rem; line-height: 1">
@@ -463,7 +466,7 @@
               {{ record.product_name }}
             </v-list-item-title>
             <v-list-item-subtitle>
-              <div>¥{{ formatPrice(record.price) }} / {{ record.original_quantity }} {{ record.original_unit }}
+              <div><PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
               <template v-if="record.merchant_name"> · {{ record.merchant_name }}</template></div>
               <div class="text-caption text-medium-emphasis mt-1">
                 {{ formatToLocalDate(record.recorded_at) }}
@@ -1766,12 +1769,17 @@ import HierarchyGraph from '@/components/charts/HierarchyGraph.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
+import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { useCalcRegion } from '@/composables/useCalcRegion'
+import { formatMoney } from '@/utils/currency'
+import RegionSelect from '@/components/common/RegionSelect.vue'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
@@ -1779,6 +1787,8 @@ import { usePendingProposals } from '@/composables/usePendingProposals'
 
 const { ask } = useConfirmDialog()
 const userStore = useUserStore()
+const { regionId, effective } = useCalcRegion()
+const { currency: userCurrency } = useUserCurrency()
 
 const usdaDialog = ref(false)
 function onUsdaMatched() {
@@ -1825,6 +1835,8 @@ interface PriceRecord {
   product_id: number
   product_name: string
   price: number | string
+  currency?: string
+  exchange_rate?: number | null
   original_quantity: number | string
   original_unit: string
   merchant_name?: string
@@ -3211,7 +3223,9 @@ const loadData = async () => {
 const loadLatestPrice = async () => {
   loadingLatestPrice.value = true
   try {
-    const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price`)
+    const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price`, {
+      params: { region_id: effective.value },
+    })
     latestPrice.value = response.average_price
     latestPriceDate.value = response.latest_date
     latestPriceParticipants.value = response.participants || []
@@ -3243,7 +3257,9 @@ const loadProductWeights = async () => {
 const loadMerchantPrices = async () => {
   loadingMerchantPrices.value = true
   try {
-    const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price-by-merchant`)
+    const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price-by-merchant`, {
+      params: { region_id: effective.value },
+    })
     merchantPrices.value = response.prices || []
     merchantPriceUnit.value = response.unit || null
   } catch (e) {
@@ -3372,6 +3388,7 @@ const loadChartPriceRecords = async (startDate?: Date) => {
     const params: Record<string, any> = {
       ingredient_id: ingredientId.value,
       limit: 1000,
+      region_id: effective.value,
     }
     if (startDate) {
       params.start_date = startDate.toISOString().split('T')[0]
@@ -4318,11 +4335,7 @@ const goBack = () => {
   router.back()
 }
 
-// 格式化函数
-const formatPrice = (price: any) => {
-  const num = parseFloat(price) || 0
-  return num.toFixed(2)
-}
+
 
 const formatNutritionValue = (value: any, unit: string) => {
   const num = parseFloat(value) || 0
@@ -4333,6 +4346,14 @@ const formatNutritionValue = (value: any, unit: string) => {
 const showMessage = (message: string, color: string = 'success') => {
   snackbar.value = { show: true, message, color }
 }
+
+// 地区变化：刷新最新价、各商家价、商品权重与价格趋势
+watch(regionId, () => {
+  loadLatestPrice()
+  loadMerchantPrices()
+  loadProductWeights()
+  refreshChart()
+})
 
 // 监听分页变化
 watch(pricePage, loadPriceRecords)

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import '../../features/merchants/models/merchant.dart';
+import '../utils/currency_fmt.dart';
 
 class PriceRecordFormResult {
   final double price;
@@ -231,7 +234,12 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
                 ),
                 const SizedBox(height: 12),
               ],
-              _label(theme, '价格（¥）'),
+              Consumer(
+                builder: (context, ref, _) => _label(
+                  theme,
+                  '价格（${currencySymbol(ref.read(authProvider).user?.defaultCurrency ?? 'CNY')}）',
+                ),
+              ),
               TextField(
                 controller: _priceController,
                 keyboardType:

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
 
@@ -31,6 +32,7 @@ class MatrixRow {
 List<MatrixRow> buildMatrixRows({
   required List<RecipeIngredient> ingredients,
   required List<MerchantPriceItem> prices,
+  String userCurrency = 'CNY',
 }) {
   if (ingredients.isEmpty) return const [];
   final names = <String>[];
@@ -63,7 +65,7 @@ List<MatrixRow> buildMatrixRows({
       if (match != null) {
         final displayVal = match.totalCost ?? match.price;
         cells[name] = MatrixCell(
-          display: displayVal.toStringAsFixed(2),
+          display: formatMoney(displayVal, userCurrency),
           isLowest: match.isLowest,
         );
       } else {
@@ -110,11 +112,13 @@ class MerchantPriceMatrix extends StatefulWidget {
   final List<RecipeIngredient> ingredients;
   final List<MerchantPriceItem> prices;
   final bool loading;
+  final String userCurrency;
   const MerchantPriceMatrix({
     super.key,
     required this.ingredients,
     required this.prices,
     this.loading = false,
+    this.userCurrency = 'CNY',
   });
 
   @override
@@ -135,8 +139,10 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final rows =
-        buildMatrixRows(ingredients: widget.ingredients, prices: widget.prices);
+    final rows = buildMatrixRows(
+        ingredients: widget.ingredients,
+        prices: widget.prices,
+        userCurrency: widget.userCurrency);
     final names = <String>[];
     for (final r in rows) {
       for (final name in r.cells.keys) {
@@ -328,10 +334,8 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                     children: [
                       Flexible(
                         child: Text(
-                          // ¥ 前缀（对齐 web .vue:46 与 Task 8：¥3.50 而非 3.50 ¥）
-                          row.cells[n]!.hasPrice
-                              ? '¥${row.cells[n]!.display}'
-                              : row.cells[n]!.display,
+                          // 金额已由 buildMatrixRows 按用户币种格式化（对齐 web .vue:46）
+                          row.cells[n]!.display,
                           textAlign: TextAlign.right,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

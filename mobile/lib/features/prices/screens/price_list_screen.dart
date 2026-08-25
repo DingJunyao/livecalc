@@ -6,6 +6,8 @@ import '../models/price_record.dart';
 import '../providers/price_provider.dart';
 import '../../merchants/models/merchant.dart';
 import '../../merchants/providers/merchant_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -114,12 +116,13 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   /// 二次确认后删除记录。
   Future<void> _confirmDelete(PriceRecord r) async {
     final theme = Theme.of(context);
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除记录'),
         content: Text(
-          '确定删除「${r.productName}」¥${r.price.toStringAsFixed(2)} 的记录吗？',
+          '确定删除「${r.productName}」${formatMoney(r.price, userCurrency)} 的记录吗？',
         ),
         actions: [
           TextButton(
@@ -335,6 +338,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   Widget _buildRecordCard(ThemeData theme, PriceRecord r) {
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
@@ -371,7 +375,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '¥${r.price.toStringAsFixed(2)}'
+                      '${formatMoney(r.price, r.currency)}'
                       ' / ${_fmtQty(r.quantity)}'
                       '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -379,6 +383,11 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
+                    if (r.exchangeRate != null && r.currency != userCurrency)
+                      Text(
+                        '≈ ${formatMoney(convertAmount(r.price, r.exchangeRate), userCurrency)}',
+                        style: theme.textTheme.bodySmall,
+                      ),
                     const SizedBox(height: 4),
                     Row(
                       children: [

@@ -22,6 +22,21 @@
 
       <v-card-text class="pa-4">
         <v-form ref="formRef">
+          <!-- 商家（必填，置于商品前） -->
+          <v-autocomplete
+            v-model="form.merchant_id"
+            :items="merchants"
+            item-title="name"
+            item-value="id"
+            label="商家 *"
+            prepend-inner-icon="mdi-store"
+            variant="outlined"
+            required
+            :rules="[rules.required]"
+            class="mb-4"
+            @update:model-value="onMerchantChange"
+          />
+
           <!-- 商品选择 -->
           <v-text-field
             v-model="form.product_name"
@@ -33,17 +48,32 @@
             class="mb-4"
           />
 
-          <!-- 价格 -->
-          <v-text-field
-            v-model="form.price"
-            label="价格 *"
-            prefix="¥"
-            type="number"
-            variant="outlined"
-            required
-            :rules="[rules.required]"
-            class="mb-4"
-          />
+          <!-- 价格（币种符号可点击切换） -->
+          <div class="d-flex align-center ga-2 mb-4">
+            <v-menu :close-on-content-click="true" location="bottom">
+              <template #activator="{ props: menuProps }">
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="c in currencies"
+                  :key="c.code"
+                  :title="`${c.symbol || c.code} ${c.name}`"
+                  :active="recordCurrency === c.code"
+                  @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                />
+              </v-list>
+            </v-menu>
+            <v-text-field
+              v-model="form.price"
+              label="价格 *"
+              type="number"
+              variant="outlined"
+              required
+              :rules="[rules.required]"
+              class="flex-grow-1"
+            />
+          </div>
 
           <!-- 数量和单位 -->
           <v-row class="mb-4">
@@ -67,16 +97,6 @@
               />
             </v-col>
           </v-row>
-
-          <!-- 商家 -->
-          <v-text-field
-            v-model="form.merchant_name"
-            label="商家（可选）"
-            prepend-inner-icon="mdi-store"
-            variant="outlined"
-            clearable
-            class="mb-4"
-          />
 
           <!-- 计入支出 -->
           <v-checkbox
@@ -122,6 +142,7 @@ import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
+import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 
 interface Props {
   modelValue: boolean
@@ -144,9 +165,16 @@ const form = reactive({
   quantity: 1,
   unit: priceUnitName.value,
   merchant_name: '',
+  merchant_id: null as number | null,
   is_purchase: true,
   record_date: getLocalDateString(),
 })
+
+const merchants = ref<{ id: number; name: string; default_currency?: string | null }[]>([])
+const currencies = ref<any[]>([])
+const recordCurrency = ref<string>('CNY')
+const currencySymbolText = ref<string>('¥')
+const formRef = ref()
 
 // 单位选项（从 API 动态加载）
 const units = ref<string[]>([])
@@ -165,14 +193,40 @@ const loadUnits = async () => {
   }
 }
 
+const loadMerchants = async () => {
+  try {
+    const res = await api.get('/merchants', { params: { limit: 100 } })
+    merchants.value = (res as any).items || []
+  } catch {
+    merchants.value = []
+  }
+}
+
+const applyCurrency = async (code: string) => {
+  recordCurrency.value = code
+  try {
+    currencySymbolText.value = await currencySymbol(code)
+  } catch {
+    currencySymbolText.value = symbolFromIntl(code)
+  }
+}
+
+const onMerchantChange = async (val: number | null) => {
+  const m = merchants.value.find((x) => x.id === val)
+  form.merchant_name = m?.name || ''
+  await applyCurrency(m?.default_currency || 'CNY')
+}
+
 onMounted(() => {
   loadUnits()
+  loadMerchants()
+  loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
 })
 
 const saving = ref(false)
 
 const rules = {
-  required: (value: string) => !!value || '此字段必填',
+  required: (value: any) => !!value || '此字段必填',
 }
 
 // 监听 record 变化，填充表单
@@ -183,6 +237,8 @@ watch(() => props.record, (newRecord) => {
     form.quantity = newRecord.quantity
     form.unit = newRecord.unit
     form.merchant_name = newRecord.merchant_name || ''
+    form.merchant_id = newRecord.merchant_id ?? null
+    void applyCurrency(newRecord.currency || 'CNY')
     form.is_purchase = true
     form.record_date = newRecord.record_date.split('T')[0]
   } else {
@@ -196,7 +252,10 @@ const resetForm = () => {
   form.quantity = 1
   form.unit = priceUnitName.value
   form.merchant_name = ''
+  form.merchant_id = null
   form.is_purchase = true
+  recordCurrency.value = 'CNY'
+  currencySymbolText.value = '¥'
   form.record_date = getLocalDateString()
 }
 
@@ -205,7 +264,11 @@ const close = () => {
   resetForm()
 }
 
-const save = () => {
+const save = async () => {
+  if (formRef.value) {
+    const { valid } = await formRef.value.validate()
+    if (!valid) return
+  }
   const record: PriceRecord = {
     id: props.record?.id || Date.now(),
     product_name: form.product_name,
@@ -215,6 +278,10 @@ const save = () => {
     merchant_name: form.merchant_name || undefined,
     record_date: new Date(form.record_date).toISOString(),
     created_at: props.record?.created_at || new Date().toISOString(),
+    currency: recordCurrency.value,
+    exchange_rate: props.record?.exchange_rate ?? 1,
+    user_currency: props.record?.user_currency || 'CNY',
+    merchant_id: form.merchant_id ?? null,
   }
 
   emit('save', record)

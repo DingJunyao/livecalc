@@ -79,6 +79,8 @@ class MerchantRepository {
     bool isOpen = true,
     double? latitude,
     double? longitude,
+    int? regionId,
+    String? defaultCurrency,
   }) async {
     final response = await _client.dio.post(
       '/merchants',
@@ -88,6 +90,8 @@ class MerchantRepository {
         'is_open': isOpen,
         if (latitude != null) 'latitude': latitude,
         if (longitude != null) 'longitude': longitude,
+        if (regionId != null) 'region_id': regionId,
+        if (defaultCurrency != null) 'default_currency': defaultCurrency,
       },
     );
     return Merchant.fromJson(response.data as Map<String, dynamic>);
@@ -101,6 +105,8 @@ class MerchantRepository {
     bool? isOpen,
     double? latitude,
     double? longitude,
+    int? regionId,
+    String? defaultCurrency,
   }) async {
     final payload = <String, dynamic>{};
     if (name != null) payload['name'] = name;
@@ -108,6 +114,8 @@ class MerchantRepository {
     if (isOpen != null) payload['is_open'] = isOpen;
     if (latitude != null) payload['latitude'] = latitude;
     if (longitude != null) payload['longitude'] = longitude;
+    if (regionId != null) payload['region_id'] = regionId;
+    if (defaultCurrency != null) payload['default_currency'] = defaultCurrency;
     final response = await _client.dio.put('/merchants/$id', data: payload);
     final data = response.data as Map<String, dynamic>;
     final review = MutationReviewResult.fromJson(data);
@@ -127,6 +135,24 @@ class MerchantRepository {
               raw: data,
             ),
     );
+  }
+
+  /// Geocode coordinates to a region id (POST /merchants/geocode).
+  Future<int?> geocode({
+    required double latitude,
+    required double longitude,
+  }) async {
+    final response = await _client.dio.post(
+      '/merchants/geocode',
+      data: {'latitude': latitude, 'longitude': longitude},
+    );
+    final data = response.data;
+    if (data is Map) {
+      final regionId = data['region_id'];
+      if (regionId is num) return regionId.toInt();
+      if (regionId is String) return int.tryParse(regionId);
+    }
+    return null;
   }
 
   Future<MutationReviewResult> deleteMerchant(int id) async {
@@ -192,5 +218,21 @@ class MerchantRepository {
     final total =
         (data is Map ? (data['total'] as num?)?.toInt() : null) ?? items.length;
     return MerchantProductPricePage(items: items, total: total);
+  }
+
+  /// List regions (GET /regions). Returns region nodes, each containing at least id and name.
+  Future<List<Map<String, dynamic>>> listRegions({int? parentId, int? level}) async {
+    final params = <String, dynamic>{
+      if (parentId != null) 'parent_id': parentId,
+      if (level != null) 'level': level,
+    };
+    final response = await _client.dio.get('/regions', queryParameters: params);
+    final data = response.data;
+    final list = (data is List)
+        ? data
+        : ((data is Map ? data['items'] as List? : null) ?? const []);
+    return list
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 }

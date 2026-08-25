@@ -25,6 +25,7 @@ class ProductRecord(Base):
     standard_unit_id = Column(Integer, ForeignKey("units.id"), nullable=False, index=True)  # 标准单位外键
     record_type = Column(String(20), default=RecordType.PURCHASE)
     exchange_rate = Column(Numeric(10, 6), default=1.0)
+    user_currency = Column(String(3), default="CNY")  # 写入时用户默认币种快照
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
     notes = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)

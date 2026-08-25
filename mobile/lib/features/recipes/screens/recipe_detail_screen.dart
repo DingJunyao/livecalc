@@ -11,6 +11,8 @@ import 'recipe_form_screen.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
+import '../../../shared/widgets/region_select_field.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
   final int id;
@@ -153,6 +155,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  RegionSelectField(
+                    value: null,
+                    onChanged: (regionId) => ref
+                        .read(recipeDetailPageProvider(widget.id).notifier)
+                        .setRegion(regionId),
+                  ),
+                  const SizedBox(height: 16),
                   if (imageUrls.length > 1) ...[
                     _buildImageGallery(theme, imageUrls, _selectedImageIndex),
                     const SizedBox(height: 16),
@@ -426,6 +435,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   // ---- 成本估算 + 成本趋势 ----
   Widget _buildCostCard(
       ThemeData theme, RecipeDetailPageState state, double ratio) {
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -454,7 +464,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline))
                       : Text(
-                          '¥${(state.cost!.totalCost * ratio).toStringAsFixed(2)}',
+                          formatMoney(state.cost!.totalCost * ratio, userCurrency),
                           style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.tertiary),
@@ -464,6 +474,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             CostTrendChart(
               points: state.costHistory.map((p) => p.scaled(ratio)).toList(),
               loading: state.loadingHistory,
+              userCurrency: userCurrency,
               onRangeChange: (days) => ref
                   .read(recipeDetailPageProvider(widget.id).notifier)
                   .reloadHistory(days),
@@ -540,6 +551,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   TableRow _buildIngredientRow(ThemeData theme, RecipeIngredient ing,
       CostBreakdownItem? cb, double ratio) {
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     final qtyText = _scaledQuantity(ing, ratio);
     final recommendedText = _scaledRecommendedQuantity(ing, ratio);
     final hasFallback =
@@ -665,7 +677,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     fit: BoxFit.scaleDown,
                     alignment: Alignment.centerRight,
                     child: Text(
-                      '¥${(cb.cost * ratio).toStringAsFixed(2)}',
+                      formatMoney(cb.cost * ratio, userCurrency),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.primary,
                         fontWeight: FontWeight.bold,

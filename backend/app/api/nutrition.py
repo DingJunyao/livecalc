@@ -15,6 +15,7 @@ from app.models.product_entity import Product
 from app.models.product import ProductRecord
 from app.services.proposals import service as proposal_service
 from app.services.proposals.registry import ExecutorRegistry
+from app.services.calc_scope import resolve_region_param
 from app.schemas.nutrition import (
     IngredientResponse,
     NutritionDataResponse,
@@ -910,6 +911,7 @@ async def get_ingredient_recipes(
 @router.get("/ingredients/{ingredient_id}/latest-price")
 async def get_ingredient_latest_price(
     ingredient_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -922,9 +924,11 @@ async def get_ingredient_latest_price(
     返回该原料关联商品在最近一天的平均价格（基于原料的默认单位）。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.product import ProductRecord
         from app.services.unit_conversion_service import UnitConversionService
+        from app.services.price_region import apply_region_filter
         from datetime import datetime, timedelta
 
         # 查询原料及其默认单位
@@ -952,17 +956,23 @@ async def get_ingredient_latest_price(
         now = datetime.utcnow()
         one_day_ago = now - timedelta(days=1)
 
-        recent_records = db.query(ProductRecord).options(
-            joinedload(ProductRecord.original_unit)
-        ).filter(
-            ProductRecord.product_id.in_(product_ids),
-            ProductRecord.recorded_at >= one_day_ago,
+        recent_records = apply_region_filter(
+            db.query(ProductRecord).options(
+                joinedload(ProductRecord.original_unit)
+            ).filter(
+                ProductRecord.product_id.in_(product_ids),
+                ProductRecord.recorded_at >= one_day_ago,
+            ),
+            db, region_id,
         ).order_by(ProductRecord.recorded_at.desc()).all()
 
         # 如果最近24小时内没有记录，则查找最近一次记录的那一天的所有记录
         if not recent_records:
-            latest_record = db.query(ProductRecord).filter(
-                ProductRecord.product_id.in_(product_ids),
+            latest_record = apply_region_filter(
+                db.query(ProductRecord).filter(
+                    ProductRecord.product_id.in_(product_ids),
+                ),
+                db, region_id,
             ).order_by(ProductRecord.recorded_at.desc()).first()
 
             if not latest_record:
@@ -970,12 +980,15 @@ async def get_ingredient_latest_price(
 
             latest_date = utc_datetime_to_local_date(latest_record.recorded_at, tz)
             day_start, day_end = local_date_range_to_utc_range(latest_date, latest_date, tz)
-            recent_records = db.query(ProductRecord).options(
-                joinedload(ProductRecord.original_unit)
-            ).filter(
-                ProductRecord.product_id.in_(product_ids),
-                ProductRecord.recorded_at >= day_start,
-                ProductRecord.recorded_at <= day_end,
+            recent_records = apply_region_filter(
+                db.query(ProductRecord).options(
+                    joinedload(ProductRecord.original_unit)
+                ).filter(
+                    ProductRecord.product_id.in_(product_ids),
+                    ProductRecord.recorded_at >= day_start,
+                    ProductRecord.recorded_at <= day_end,
+                ),
+                db, region_id,
             ).all()
 
 
@@ -1017,7 +1030,7 @@ async def get_ingredient_latest_price(
         from app.services.ingredient_price_service import _aggregate_weighted
 
         class _PseudoRecord:
-            __slots__ = ("price", "standard_quantity")
+            __slots__ = ("price", "standard_quantity", "exchange_rate")
 
         product_records = {}
         for p in products:
@@ -1047,6 +1060,7 @@ async def get_ingredient_latest_price(
                 ps = _PseudoRecord()
                 ps.price = r.price
                 ps.standard_quantity = converted_qty
+                ps.exchange_rate = r.exchange_rate
                 pseudo.append(ps)
             product_records[p.id] = (pseudo, w, {"product_id": p.id, "name": p.name, "weight_source": src})
 
@@ -1074,6 +1088,7 @@ async def get_ingredient_latest_price(
 @router.get("/ingredients/latest-price/batch")
 async def get_ingredient_latest_prices_batch(
     ingredient_ids: str = Query(..., description="原料ID列表，逗号分隔"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -1084,6 +1099,7 @@ async def get_ingredient_latest_prices_batch(
     Session，在 SQLite 高并发下放大 QueuePool 压力；批量接口复用同一个
     Session，单原料接口继续保持原有行为。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         ids = _parse_ingredient_ids(ingredient_ids)
     except ValueError as exc:
@@ -1093,6 +1109,7 @@ async def get_ingredient_latest_prices_batch(
     for ingredient_id in ids:
         items[str(ingredient_id)] = await get_ingredient_latest_price(
             ingredient_id=ingredient_id,
+            region_id=region_id,
             db=db,
             current_user=current_user,
             tz=tz,
@@ -1126,6 +1143,7 @@ def _parse_ingredient_ids(raw: str) -> list[int]:
 @router.get("/ingredients/{ingredient_id}/latest-price-by-merchant")
 async def get_ingredient_latest_price_by_merchant(
     ingredient_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     quantity: Optional[float] = Query(None, description="菜谱中该食材的用量"),
@@ -1139,10 +1157,12 @@ async def get_ingredient_latest_price_by_merchant(
     可选传入 quantity + quantity_unit 来计算该食材在该商家的预估总价。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.merchant import Merchant
         from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType
         from app.services.unit_conversion_service import UnitConversionService
+        from app.services.price_region import apply_region_filter
         from datetime import datetime, timedelta
         from decimal import Decimal
         from typing import Optional as OptType
@@ -1177,11 +1197,14 @@ async def get_ingredient_latest_price_by_merchant(
             if not product_ids:
                 return []
 
-            records = db.query(ProductRecord).options(
-                joinedload(ProductRecord.original_unit),
-                joinedload(ProductRecord.merchant)
-            ).join(
-                Merchant, ProductRecord.merchant_id == Merchant.id
+            records = apply_region_filter(
+                db.query(ProductRecord).options(
+                    joinedload(ProductRecord.original_unit),
+                    joinedload(ProductRecord.merchant)
+                ).join(
+                    Merchant, ProductRecord.merchant_id == Merchant.id
+                ),
+                db, region_id,
             ).filter(
                 ProductRecord.product_id.in_(product_ids),
                 ProductRecord.merchant_id.isnot(None),
@@ -1328,10 +1351,13 @@ async def get_ingredient_latest_price_by_merchant(
                     fb_pids = [p.id for p in fb_prods if p.id]
                     if not fb_pids:
                         continue
-                    has_price = db.query(ProductRecord).filter(
-                        ProductRecord.product_id.in_(fb_pids),
-                        ProductRecord.merchant_id.isnot(None),
-                        ProductRecord.is_active == True,
+                    has_price = apply_region_filter(
+                        db.query(ProductRecord).filter(
+                            ProductRecord.product_id.in_(fb_pids),
+                            ProductRecord.merchant_id.isnot(None),
+                            ProductRecord.is_active == True,
+                        ),
+                        db, region_id,
                     ).first()
                     if has_price:
                         cur = fb_ingredients_map.get(ing_id)

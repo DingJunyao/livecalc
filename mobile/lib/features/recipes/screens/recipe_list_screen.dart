@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../shared/utils/currency_fmt.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../models/recipe_summary.dart';
@@ -302,6 +304,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     final servings = r.servings > 0 ? r.servings : 1;
     final hasCost = r.estimatedCost != null;
     final hasCal = r.calories != null;
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(
@@ -314,7 +317,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (hasCost) {
       children.add(
         Text(
-          '¥${r.estimatedCost!.toStringAsFixed(2)} / $servings 人份',
+          '${formatMoney(r.estimatedCost!, userCurrency)} / $servings 人份',
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,

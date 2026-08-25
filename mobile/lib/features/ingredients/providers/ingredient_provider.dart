@@ -387,6 +387,7 @@ class IngredientDetailPageNotifier
   final EntityRepository _entityRepo;
   final ProfileRepository _proposalRepo;
   final int ingredientId;
+  int? _regionId;
 
   IngredientDetailPageNotifier(
     this.ingredientId, {
@@ -408,7 +409,8 @@ class IngredientDetailPageNotifier
         '${d.day.toString().padLeft(2, '0')}';
   }
 
-  Future<void> load({int initialDays = 30}) async {
+  Future<void> load({int initialDays = 30, int? regionId}) async {
+    _regionId = regionId;
     state = state.copyWith(loading: true, clearError: true);
     try {
       final ingredient = await _ingRepo.getIngredient(ingredientId);
@@ -431,10 +433,17 @@ class IngredientDetailPageNotifier
     }
   }
 
+  Future<void> setRegion(int? regionId) async {
+    if (_regionId == regionId) return;
+    _regionId = regionId;
+    await Future.wait([_loadLatestPrice(), _loadMerchantPrices()]);
+  }
+
   Future<void> _loadLatestPrice() async {
     state = state.copyWith(loadingLatest: true);
     try {
-      final info = await _ingRepo.getLatestPrice(ingredientId);
+      final info =
+          await _ingRepo.getLatestPrice(ingredientId, regionId: _regionId);
       state = state.copyWith(latestPrice: info, loadingLatest: false);
     } on Exception {
       state = state.copyWith(loadingLatest: false);
@@ -444,7 +453,8 @@ class IngredientDetailPageNotifier
   Future<void> _loadMerchantPrices() async {
     state = state.copyWith(loadingMerchants: true);
     try {
-      final prices = await _ingRepo.getLatestPricesByMerchant(ingredientId);
+      final prices = await _ingRepo.getLatestPricesByMerchant(ingredientId,
+          regionId: _regionId);
       state = state.copyWith(merchantPrices: prices, loadingMerchants: false);
     } on Exception {
       state = state.copyWith(loadingMerchants: false);
@@ -470,7 +480,7 @@ class IngredientDetailPageNotifier
   /// 加载单个关联商品的最新价（详情页关联商品行展示用）。
   Future<void> loadProductPrice(int productId) async {
     try {
-      final info = await _productRepo.getLatestPrice(productId);
+      final info = await _productRepo.getLatestPrice(productId, regionId: _regionId);
       state = state.copyWith(productPrices: {
         ...state.productPrices,
         productId: info,

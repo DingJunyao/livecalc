@@ -44,6 +44,11 @@ class Settings(BaseSettings):
     # 导入下载超时（秒）
     import_download_timeout: int = 300  # git clone / ZIP 下载
 
+    # 汇率
+    exchange_rate_provider: str = "frankfurter"
+    exchange_rate_base_url: str = "https://api.frankfurter.dev"
+    exchange_rate_base_currency: str = "EUR"
+
     # 日志配置
     log_level: str = "INFO"
     log_dir: str = "./logs"

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/home_provider.dart';
 import '../widgets/meal_card.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 
@@ -72,6 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onRefresh: () => ref
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType),
+                  userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
                 ),
               )),
         ],

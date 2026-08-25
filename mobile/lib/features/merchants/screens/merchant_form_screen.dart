@@ -3,6 +3,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/api/api_client.dart';
+import '../../../shared/widgets/region_select_field.dart';
 import '../models/merchant.dart';
 import '../repositories/merchant_repository.dart';
 import '../widgets/map_point_picker.dart';
@@ -57,6 +59,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   late bool _isOpen;
   LatLng? _coordinate;
   bool _saving = false;
+  int? _regionId;
+  String? _defaultCurrency;
+  List<dynamic> _currencies = const [];
 
   @override
   void initState() {
@@ -65,6 +70,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     _nameController = TextEditingController(text: merchant?.name ?? '');
     _addressController = TextEditingController(text: merchant?.address ?? '');
     _isOpen = merchant?.isOpen ?? true;
+    _regionId = merchant?.regionId;
+    _defaultCurrency = merchant?.defaultCurrency;
+    _loadCurrencies();
     if (merchant?.latitude != null && merchant?.longitude != null) {
       _coordinate = LatLng(merchant!.latitude!, merchant.longitude!);
     }
@@ -75,6 +83,40 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     _nameController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      final response = await ApiClient.instance.dio.get('/currencies');
+      final data = response.data;
+      final list = (data is List)
+          ? data
+          : ((data is Map ? data['items'] as List? : null) ?? const []);
+      final currencies = <Map<String, dynamic>>[
+        for (final item in list)
+          if (item is Map) Map<String, dynamic>.from(item),
+      ];
+      if (!mounted) return;
+      setState(() => _currencies = currencies);
+    } catch (_) {
+      // Currency list is optional; keep the fallback item available.
+    }
+  }
+
+  Future<void> _onMapChanged(LatLng value) async {
+    setState(() => _coordinate = value);
+    final repository = widget.repository ?? MerchantRepository();
+    try {
+      final rid = await repository.geocode(
+        latitude: value.latitude,
+        longitude: value.longitude,
+      );
+      if (rid != null && mounted) {
+        setState(() => _regionId = rid);
+      }
+    } catch (_) {
+      // Region reverse lookup is best-effort.
+    }
   }
 
   Future<void> _save() async {
@@ -95,6 +137,8 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
           isOpen: _isOpen,
           latitude: _coordinate?.latitude,
           longitude: _coordinate?.longitude,
+          regionId: _regionId,
+          defaultCurrency: _defaultCurrency,
         );
       } else {
         final result = await repository.updateMerchant(
@@ -105,6 +149,8 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
           isOpen: _isOpen,
           latitude: _coordinate?.latitude,
           longitude: _coordinate?.longitude,
+          regionId: _regionId,
+          defaultCurrency: _defaultCurrency,
         );
         if (!mounted) return;
         context.pop(
@@ -175,6 +221,31 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                 onChanged:
                     _saving ? null : (value) => setState(() => _isOpen = value),
               ),
+              const SizedBox(height: 12),
+              RegionSelectField(
+                value: _regionId,
+                onChanged: (v) => setState(() => _regionId = v),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String?>(
+                initialValue: _defaultCurrency,
+                items: [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('跟随地区'),
+                  ),
+                  for (final c in _currencies)
+                    DropdownMenuItem<String?>(
+                      value: c['code'] as String?,
+                      child: Text('${c['symbol']} ${c['name']}'),
+                    ),
+                ],
+                decoration: const InputDecoration(
+                  labelText: '默认币种',
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) => setState(() => _defaultCurrency = v),
+              ),
               Text(
                 '位置（点击地图选择，可选）',
                 style: theme.textTheme.titleSmall
@@ -183,9 +254,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
               const SizedBox(height: 8),
               MapPointPicker(
                 initialValue: _coordinate,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _coordinate = value),
+                onChanged: _saving ? null : _onMapChanged,
                 tileProvider: widget.mapTileProvider,
               ),
               const SizedBox(height: 16),

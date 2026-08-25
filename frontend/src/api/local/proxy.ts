@@ -146,6 +146,7 @@ import * as sparklines from './handlers/sparklines'
 import * as usda from './handlers/usda'
 import * as agents from './handlers/agents'
 import * as regions from './handlers/regions'
+import * as currencies from './handlers/currencies'
 import { getExportData, uploadImport, listTasks, getTask } from './handlers/exportImport'
 import { cancelTask, importFromRepo, importFromLocal } from './handlers/exportImport'
 
@@ -215,12 +216,17 @@ addRoute('/merchants/map-config', { get: merchants.getMapConfig })
 addRoute('/merchants/favorites', { get: merchants.listFavorites })
 addRoute('/merchants/coordinates', { get: merchants.getCoordinates })
 addRoute('/merchants/places', { get: merchants.listUserPlaces })
+addRoute('/merchants/geocode', { post: merchants.geocodeMerchant })
 addRoute('/merchants/:id', { get: merchants.getMerchant, put: merchants.updateMerchant, delete: merchants.deleteMerchant })
 addRoute('/merchants/:id/favorite', { post: merchants.addFavorite, delete: merchants.removeFavorite })
 addRoute('/merchants/:id/prices', { get: merchants.getMerchantPrices })
 addRoute('/merchants/:id/product-prices', { get: merchants.getMerchantProductPrices })
 addRoute('/merchants/:id/product-orders', { post: merchants.saveProductOrders })
 addRoute('/merchants', { get: merchants.listMerchants, post: merchants.createMerchant })
+
+// ---- Currencies & Exchange Rates ----
+addRoute('/currencies', { get: currencies.localGetCurrencies })
+addRoute('/exchange-rates/status', { get: currencies.localRatesStatus })
 
 // ---- Nutrition ----
 addRoute('/nutrition/ingredients', { get: nutrition.listNutritionIngredients })

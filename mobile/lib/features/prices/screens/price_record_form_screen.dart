@@ -13,6 +13,7 @@ import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../repositories/price_repository.dart';
 import '../providers/price_record_session_memory.dart';
+import '../../../shared/utils/currency_fmt.dart';
 
 class PriceRecordFormPrefill {
   final Product? product;
@@ -56,6 +57,9 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   final _quantityController = TextEditingController(text: '1');
   final _notesController = TextEditingController();
   final _merchantController = TextEditingController();
+  String _currency = 'CNY';
+  String _currencySymbol = '¥';
+  List<dynamic> _currencies = const [];
   String _unit = '斤';
   int? _merchantId;
   Product? _selectedProduct;
@@ -101,6 +105,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     });
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
     Future.microtask(() => ref.read(merchantListProvider.notifier).load());
+    _loadCurrencies();
   }
 
   @override
@@ -111,6 +116,20 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     _notesController.dispose();
     _merchantController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      final resp = await _priceRepo.client.dio.get('/currencies');
+      final data = resp.data;
+      final list = (data is List)
+          ? data
+          : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
+      if (!mounted) return;
+      setState(() => _currencies = list);
+    } catch (_) {
+      // 币种加载失败保持默认 CNY
+    }
   }
 
   Future<void> _searchProducts(String query) async {
@@ -295,6 +314,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
             ? null
             : _notesController.text.trim(),
         recordedAt: _recordedAt,
+        currency: _currency,
       );
       // 记住本次新增的商家与计入支出选择（仅新增时记忆，对齐 web 端）
       ref
@@ -369,16 +389,64 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                   ),
                 ),
               const SizedBox(height: 16),
-              TextField(
-                controller: _priceController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: '价格（¥）',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _priceController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: '价格',
+                        prefixText: _currencySymbol,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 12),
+                  PopupMenuButton<String>(
+                    onSelected: (code) {
+                      setState(() {
+                        _currency = code;
+                        _currencySymbol = currencySymbol(code);
+                      });
+                    },
+                    itemBuilder: (context) {
+                      if (_currencies.isEmpty) {
+                        return [
+                          PopupMenuItem(value: _currency, child: Text(_currency)),
+                        ];
+                      }
+                      return [
+                        for (final c in _currencies)
+                          PopupMenuItem(
+                            value: c['code'] as String,
+                            child: Text(
+                              '${c['symbol'] ?? c['code']} ${c['code']}',
+                            ),
+                          ),
+                      ];
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: theme.colorScheme.outline),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('$_currencySymbol $_currency'),
+                          const Icon(Icons.arrow_drop_down),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Row(
@@ -429,7 +497,14 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                 displayStringForOption: (m) => m.name,
                 onSelected: (m) {
                   _merchantController.text = m.name;
-                  setState(() => _merchantId = m.id);
+                  setState(() {
+                    _merchantId = m.id;
+                    final code = m.defaultCurrency;
+                    if (code != null && code.isNotEmpty) {
+                      _currency = code;
+                      _currencySymbol = currencySymbol(code);
+                    }
+                  });
                 },
                 fieldViewBuilder:
                     (ctx, controller, focusNode, onFieldSubmitted) {

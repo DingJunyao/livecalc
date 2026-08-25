@@ -35,6 +35,8 @@ from app.models.user_oauth_account import UserOauthAccount
 from app.models.storage_configuration import StorageConfiguration
 from app.models.image_tracking import ImageTracking
 from app.models.barcode_lookup_cache import BarcodeLookupCache
+from app.models.currency import Currency
+from app.models.exchange_rate_snapshot import ExchangeRateSnapshot
 
 __all__ = [
     "User", "UserPlace", "Merchant", "ProductRecord", "RecordType",
@@ -68,4 +70,5 @@ __all__ = [
     "StorageConfiguration",
     "ImageTracking",
     "BarcodeLookupCache",
+    "Currency", "ExchangeRateSnapshot",
 ]

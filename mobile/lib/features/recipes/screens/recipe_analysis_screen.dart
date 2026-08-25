@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/recipe_provider.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../widgets/cost_proportion_chart.dart';
 import '../widgets/cost_trend_stacked_chart.dart';
 import '../widgets/nutrition_source_grid.dart';
@@ -8,6 +9,7 @@ import '../widgets/merchant_cost_cards.dart';
 import '../widgets/merchant_price_matrix.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/region_select_field.dart';
 
 /// 菜谱分析页：对齐 web RecipeAnalysisView.vue
 /// AppBar = 菜谱名 + 「分析」chip；5 模块顺序：
@@ -60,6 +62,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     final breakdown = state.cost?.breakdown ?? const [];
     final totalCost = state.cost?.totalCost ?? 0;
+    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
 
     return Scaffold(
       appBar: AppBar(
@@ -90,17 +93,26 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            RegionSelectField(
+              value: null,
+              onChanged: (regionId) => ref
+                  .read(recipeDetailPageProvider(widget.id).notifier)
+                  .setRegion(regionId),
+            ),
+            const SizedBox(height: 16),
             // ① 成本占比
             CostProportionChart(
               breakdown: breakdown,
               totalCost: totalCost,
               loading: state.loadingCost,
+              userCurrency: userCurrency,
             ),
             const SizedBox(height: 16),
             // ② 成本趋势
             CostTrendStackedChart(
               points: state.costHistory,
               loading: state.loadingHistory,
+              userCurrency: userCurrency,
               onFilterChange: (filter) {
                 final days = costHistoryDays[filter] ?? 90;
                 ref
@@ -119,6 +131,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
             MerchantCostCards(
               merchants: state.merchantCosts?.merchants ?? const [],
               loading: state.loadingMerchantCosts,
+              userCurrency: userCurrency,
             ),
             const SizedBox(height: 16),
             // ⑤ 商家比价推荐
@@ -126,6 +139,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
               ingredients: detail.ingredients,
               prices: state.merchantPrices,
               loading: state.loadingMerchantPrices,
+              userCurrency: userCurrency,
             ),
           ],
         ),
