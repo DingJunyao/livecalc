@@ -275,6 +275,9 @@ async def lifespan(app: FastAPI):
             logger.info(f"币种字典初始化完成：新增 {result['created']}，已有 {result['skipped']}")
             region_result = ensure_region_currencies(db)
             logger.info(f"地区默认币种初始化完成：补齐 {region_result['filled']}/{region_result['total']}")
+            from app.services.currency_service import ensure_user_currency_snapshots
+            snapshots = ensure_user_currency_snapshots(db)
+            logger.info(f"价格记录币种快照对齐完成：{snapshots['users']} 用户，更新 {snapshots['updated']}，跳过 {snapshots['skipped']}")
         except Exception as e:
             logger.warning(f"币种字典初始化失败: {e}")
 

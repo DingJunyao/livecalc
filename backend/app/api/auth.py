@@ -59,6 +59,17 @@ def _user_effective_currency(db: Session, user) -> str:
     return get_user_default_currency(db, user)
 
 
+def _recompute_currency_snapshots(db: Session, user, old_currency: str) -> None:
+    """用户有效币种变化后，重算其价格记录快照，保证历史换算跟随新币种。"""
+    from app.services.currency_service import (
+        get_user_default_currency,
+        recompute_user_records,
+    )
+    new_currency = get_user_default_currency(db, user)
+    if new_currency != old_currency:
+        recompute_user_records(db, user.id, new_currency)
+
+
 def _build_unit_preferences(user: User, db: Session) -> UnitPreferences:
     """从 User 的 4 个单位字段构造 unit_preferences，解析单位名。"""
     def _pref(uid):
@@ -365,11 +376,15 @@ async def patch_me(
             detail="用户不存在",
         )
 
+    from app.services.currency_service import get_user_default_currency
+    old_currency = get_user_default_currency(db, user)
+
     for field, value in update_data.items():
         setattr(user, field, value)
 
     db.commit()
     db.refresh(user)
+    _recompute_currency_snapshots(db, user, old_currency)
 
     return _user_to_response(user, db)
 
@@ -392,6 +407,9 @@ async def update_my_account(
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+
+    from app.services.currency_service import get_user_default_currency
+    old_currency = get_user_default_currency(db, user)
 
     # 用户名
     if payload.username is not None and payload.username != user.username:
@@ -438,6 +456,7 @@ async def update_my_account(
 
     db.commit()
     db.refresh(user)
+    _recompute_currency_snapshots(db, user, old_currency)
 
     access_token = None
     refresh_token = None
