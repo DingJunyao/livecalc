@@ -105,3 +105,36 @@ def test_recompute_user_records_rebases_snapshots(db):
     res2 = recompute_user_records(db, u.id, "JPY")
     assert res2["updated"] == 1
 
+
+def test_recompute_uses_nearest_snapshot_for_old_records(db):
+    """记录日期早于最早汇率快照时，用最近可用快照重算（不跳过）。"""
+    from datetime import date, datetime, timedelta
+    from decimal import Decimal
+
+    from app.config import settings
+    from app.models.product import ProductRecord
+    from app.services.currency_service import recompute_user_records
+    from app.services.exchange_rate_service import store_snapshot
+
+    db.add(Currency(code="CNY", name="人民币", symbol="¥"))
+    db.add(Currency(code="JPY", name="日元", symbol="¥"))
+    store_snapshot(db, date.today(), settings.exchange_rate_base_currency, {"CNY": "7.8", "JPY": "160.0"})
+    u = User(username="old_u", email="old@x.c", password_hash="x", region_id=50)
+    db.add(u)
+    db.commit()
+
+    r = ProductRecord(
+        user_id=u.id, product_id=1, product_name="old", price=100,
+        original_quantity=1, original_unit_id=1,
+        standard_quantity=1, standard_unit_id=1,
+        currency="CNY", user_currency="CNY", exchange_rate=Decimal("1"),
+        recorded_at=datetime.now() - timedelta(days=30),  # 早于快照日期
+    )
+    db.add(r)
+    db.commit()
+
+    res = recompute_user_records(db, u.id, "JPY")
+    assert res["updated"] == 1 and res["skipped"] == 0
+    db.refresh(r)
+    assert r.user_currency == "JPY"
+
