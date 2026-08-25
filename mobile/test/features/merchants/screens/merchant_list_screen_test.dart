@@ -57,6 +57,7 @@ void main() {
           search: any(named: 'search'),
           includeClosed: any(named: 'includeClosed'),
           noPrice: any(named: 'noPrice'),
+          includeOtherRegions: any(named: 'includeOtherRegions'),
           skip: any(named: 'skip'),
           limit: any(named: 'limit'),
         )).thenAnswer((_) async => const MerchantPage(
@@ -77,6 +78,7 @@ void main() {
     when(() => repo.getAllCoordinates(
           search: any(named: 'search'),
           includeClosed: any(named: 'includeClosed'),
+          includeOtherRegions: any(named: 'includeOtherRegions'),
         )).thenAnswer((_) async => []);
     when(() => repo.getMapConfig()).thenAnswer((_) async => {
           'available_maps': ['osm'],
@@ -201,7 +203,7 @@ void main() {
     );
   });
 
-  testWidgets('筛选弹窗：三个控件可切换，点确定后提交到 provider', (tester) async {
+  testWidgets('筛选弹窗：四个控件可切换，点确定后提交到 provider', (tester) async {
     await pumpList(tester);
 
     await tester.tap(find.byIcon(Icons.tune));
@@ -209,8 +211,10 @@ void main() {
 
     final closedTile = find.widgetWithText(SwitchListTile, '显示已关闭商家');
     final favTile = find.widgetWithText(SwitchListTile, '仅看我的收藏');
+    final regionTile = find.widgetWithText(SwitchListTile, '显示其他地区的商家');
     expect(tester.widget<SwitchListTile>(closedTile).value, isFalse);
     expect(tester.widget<SwitchListTile>(favTile).value, isFalse);
+    expect(tester.widget<SwitchListTile>(regionTile).value, isFalse);
 
     // 开关切换后应保持打开，而不是被重建弹回原位
     await tester.tap(favTile);
@@ -223,6 +227,11 @@ void main() {
     await tester.pump();
     expect(tester.widget<SwitchListTile>(closedTile).value, isTrue);
 
+    await tester.tap(regionTile);
+    await tester.pump();
+    await tester.pump();
+    expect(tester.widget<SwitchListTile>(regionTile).value, isTrue);
+
     await tester.tap(find.text('未维护过价格'));
     await tester.pump();
     await tester.pump();
@@ -231,6 +240,8 @@ void main() {
     );
     expect(chip.selected, isTrue);
 
+    // 底栏内容较高（矮视口内可滚动），先滚到「确定」再点
+    await tester.ensureVisible(find.text('确定'));
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
@@ -240,8 +251,30 @@ void main() {
     expect(state.includeClosed, isTrue);
     expect(state.favoritesOnly, isTrue);
     expect(state.noPrice, isTrue);
+    expect(state.includeOtherRegions, isTrue);
     // 收藏模式下：显示已关闭 → 保留全部收藏；未维护过价格不参与收藏过滤（与网页一致）
     expect(state.items.map((m) => m.id), [1, 2]);
+  });
+
+  testWidgets('打开「显示其他地区的商家」：search 带 include_other_regions=true', (tester) async {
+    await pumpList(tester);
+
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(SwitchListTile, '显示其他地区的商家'));
+    await tester.pump();
+    await tester.ensureVisible(find.text('确定'));
+    await tester.tap(find.text('确定'));
+    await tester.pumpAndSettle();
+
+    verify(() => repo.search(
+          search: any(named: 'search'),
+          includeClosed: any(named: 'includeClosed'),
+          noPrice: any(named: 'noPrice'),
+          includeOtherRegions: true,
+          skip: any(named: 'skip'),
+          limit: any(named: 'limit'),
+        )).called(1);
   });
 
   testWidgets('仅打开「显示已关闭商家」：重新走 search 接口并带上参数', (tester) async {
@@ -251,6 +284,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(SwitchListTile, '显示已关闭商家'));
     await tester.pump();
+    await tester.ensureVisible(find.text('确定'));
     await tester.tap(find.text('确定'));
     await tester.pumpAndSettle();
 
@@ -407,6 +441,7 @@ void main() {
             search: any(named: 'search'),
             includeClosed: any(named: 'includeClosed'),
             noPrice: any(named: 'noPrice'),
+            includeOtherRegions: any(named: 'includeOtherRegions'),
             skip: any(named: 'skip'),
             limit: any(named: 'limit'),
           )).thenAnswer((_) async => const MerchantPage(
@@ -420,6 +455,7 @@ void main() {
       when(() => repo.getAllCoordinates(
             search: any(named: 'search'),
             includeClosed: any(named: 'includeClosed'),
+            includeOtherRegions: any(named: 'includeOtherRegions'),
           )).thenAnswer((_) async => const [
             MerchantCoordinate(id: 1, latitude: 31.0, longitude: 121.0),
             MerchantCoordinate(id: 2, latitude: 31.4, longitude: 121.4),

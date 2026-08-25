@@ -100,6 +100,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
           .getAllCoordinates(
         search: state.searchQuery.isEmpty ? null : state.searchQuery,
         includeClosed: state.includeClosed,
+        includeOtherRegions: state.includeOtherRegions,
       );
       if (mounted) {
         setState(() {
@@ -154,7 +155,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
           prev.searchQuery != next.searchQuery ||
           prev.includeClosed != next.includeClosed ||
           prev.favoritesOnly != next.favoritesOnly ||
-          prev.noPrice != next.noPrice) {
+          prev.noPrice != next.noPrice ||
+          prev.includeOtherRegions != next.includeOtherRegions) {
         _loadCoordinates(next);
       }
     });
@@ -347,8 +349,11 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     var includeClosed = state.includeClosed;
     var favoritesOnly = state.favoritesOnly;
     var noPrice = state.noPrice;
+    var includeOtherRegions = state.includeOtherRegions;
     showModalBottomSheet<void>(
       context: context,
+      // 控件较多（4 开关+chip+按钮）：允许占满屏高，内容超高时滚动
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -359,10 +364,12 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
               setSheetState(() {});
             }
 
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+            // 控件较多（4 开关+chip+按钮），矮屏可滚动，避免溢出
+            return SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
                   child: Row(
@@ -371,12 +378,16 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                           style: theme.textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold)),
                       const Spacer(),
-                      if (includeClosed || favoritesOnly || noPrice)
+                      if (includeClosed ||
+                          favoritesOnly ||
+                          noPrice ||
+                          includeOtherRegions)
                         TextButton.icon(
                           onPressed: () {
                             includeClosed = false;
                             favoritesOnly = false;
                             noPrice = false;
+                            includeOtherRegions = false;
                             update();
                           },
                           icon: const Icon(Icons.clear_all, size: 18),
@@ -401,6 +412,16 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                         value: includeClosed,
                         onChanged: (v) {
                           includeClosed = v;
+                          update();
+                        },
+                      ),
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('显示其他地区的商家'),
+                        subtitle: const Text('含全部地区，不受计算范围限制'),
+                        value: includeOtherRegions,
+                        onChanged: (v) {
+                          includeOtherRegions = v;
                           update();
                         },
                       ),
@@ -438,6 +459,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                               includeClosed: includeClosed,
                               favoritesOnly: favoritesOnly,
                               noPrice: noPrice,
+                              includeOtherRegions: includeOtherRegions,
                             );
                         Navigator.of(ctx).pop();
                       },
@@ -445,7 +467,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             );
           },
         ),

@@ -101,6 +101,7 @@ class _FakeMerchantRepository extends MerchantRepository {
     String? search,
     bool includeClosed = false,
     bool noPrice = false,
+    bool includeOtherRegions = false,
     int skip = 0,
     int limit = 20,
   }) async {

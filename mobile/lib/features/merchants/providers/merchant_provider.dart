@@ -16,6 +16,7 @@ class MerchantListState {
   final bool includeClosed;
   final bool favoritesOnly;
   final bool noPrice;
+  final bool includeOtherRegions;
   final int total;
   final int currentPage;
   final bool hasMore;
@@ -30,6 +31,7 @@ class MerchantListState {
     this.includeClosed = false,
     this.favoritesOnly = false,
     this.noPrice = false,
+    this.includeOtherRegions = false,
     this.total = 0,
     this.currentPage = 1,
     this.hasMore = true,
@@ -46,6 +48,7 @@ class MerchantListState {
     bool? includeClosed,
     bool? favoritesOnly,
     bool? noPrice,
+    bool? includeOtherRegions,
     int? total,
     int? currentPage,
     bool? hasMore,
@@ -60,6 +63,7 @@ class MerchantListState {
       includeClosed: includeClosed ?? this.includeClosed,
       favoritesOnly: favoritesOnly ?? this.favoritesOnly,
       noPrice: noPrice ?? this.noPrice,
+      includeOtherRegions: includeOtherRegions ?? this.includeOtherRegions,
       total: total ?? this.total,
       currentPage: currentPage ?? this.currentPage,
       hasMore: hasMore ?? this.hasMore,
@@ -83,7 +87,8 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
   int get activeFilterCount =>
       (state.includeClosed ? 1 : 0) +
       (state.favoritesOnly ? 1 : 0) +
-      (state.noPrice ? 1 : 0);
+      (state.noPrice ? 1 : 0) +
+      (state.includeOtherRegions ? 1 : 0);
 
   bool get canLoadMore => state.hasMore && !state.loading && !state.loadingMore;
 
@@ -102,6 +107,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
               search: state.searchQuery.isEmpty ? null : state.searchQuery,
               includeClosed: state.includeClosed,
               noPrice: state.noPrice,
+              includeOtherRegions: state.includeOtherRegions,
               skip: (page - 1) * merchantPageSize,
               limit: merchantPageSize,
             );
@@ -154,11 +160,13 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
     bool? includeClosed,
     bool? favoritesOnly,
     bool? noPrice,
+    bool? includeOtherRegions,
   }) {
     state = state.copyWith(
       includeClosed: includeClosed ?? state.includeClosed,
       favoritesOnly: favoritesOnly ?? state.favoritesOnly,
       noPrice: noPrice ?? state.noPrice,
+      includeOtherRegions: includeOtherRegions ?? state.includeOtherRegions,
     );
     load();
   }

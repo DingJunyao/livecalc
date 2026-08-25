@@ -47,6 +47,7 @@ class MerchantRepository {
     String? search,
     bool includeClosed = false,
     bool noPrice = false,
+    bool includeOtherRegions = false,
     int skip = 0,
     int limit = 20,
   }) async {
@@ -54,6 +55,7 @@ class MerchantRepository {
       'skip': skip,
       'limit': limit,
       'include_closed': includeClosed,
+      'include_other_regions': includeOtherRegions,
     };
     if (search != null && search.isNotEmpty) params['search'] = search;
     if (noPrice) params['no_price'] = 'true';
@@ -185,12 +187,14 @@ class MerchantRepository {
   Future<List<MerchantCoordinate>> getAllCoordinates({
     String? search,
     bool includeClosed = false,
+    bool includeOtherRegions = false,
   }) async {
     final response = await _client.dio.get(
       '/merchants/coordinates',
       queryParameters: {
         if (search != null && search.isNotEmpty) 'search': search,
         'include_closed': includeClosed,
+        'include_other_regions': includeOtherRegions,
       },
     );
     final data = response.data;
