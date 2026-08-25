@@ -181,9 +181,9 @@
               <template #append>
                 <div class="text-tertiary font-weight-bold text-body-1">
                   <template v-if="record.standard_unit_price != null">
-                    ¥{{ formatUnitPrice(record.standard_unit_price) }}{{ formatUnitSuffix(record.standard_unit_label) }}
+                    {{ formatMoney(record.standard_unit_price, userCurrency) }}{{ formatUnitSuffix(record.standard_unit_label) }}
                   </template>
-                  <template v-else>¥{{ formatPrice(record.price) }}</template>
+                  <template v-else>{{ formatMoney(record.price, userCurrency) }}</template>
                 </div>
               </template>
             </v-list-item>
@@ -210,9 +210,9 @@
                   </div>
                   <div class="text-h6 font-weight-bold text-tertiary mb-1">
                     <template v-if="record.standard_unit_price != null">
-                      ¥{{ formatUnitPrice(record.standard_unit_price) }}<span class="text-caption font-weight-regular text-medium-emphasis">{{ formatUnitSuffix(record.standard_unit_label) }}</span>
+                      {{ formatMoney(record.standard_unit_price, userCurrency) }}<span class="text-caption font-weight-regular text-medium-emphasis">{{ formatUnitSuffix(record.standard_unit_label) }}</span>
                     </template>
-                    <template v-else>¥{{ formatPrice(record.price) }}</template>
+                    <template v-else>{{ formatMoney(record.price, userCurrency) }}</template>
                   </div>
                   <div class="d-flex flex-wrap align-center ga-2">
                     <span class="text-caption text-medium-emphasis">
@@ -347,8 +347,11 @@ import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { useMapConfig } from '@/composables/useMapConfig'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const route = useRoute()
+const { currency: userCurrency } = useUserCurrency()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()

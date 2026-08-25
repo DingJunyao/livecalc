@@ -12,6 +12,9 @@ from app.services.currency_seed import (
     ensure_region_currencies,
 )
 
+# 精选币种 + 地区映射用到的全部 ISO 4217 代码
+EXPECTED_TOTAL = len(set(CURRENCIES) | set(REGION_CURRENCIES.values()))
+
 
 def _db():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
@@ -23,9 +26,9 @@ def test_ensure_currencies_populates_all_when_empty():
     db = _db()
     try:
         result = ensure_currencies(db)
-        assert result["created"] == len(CURRENCIES)
+        assert result["created"] == EXPECTED_TOTAL
         assert result["skipped"] == 0
-        assert db.query(Currency).count() == len(CURRENCIES)
+        assert db.query(Currency).count() == EXPECTED_TOTAL
     finally:
         db.close()
 
@@ -37,7 +40,7 @@ def test_ensure_currencies_idempotent():
         first = {c.code for c in db.query(Currency).all()}
         result = ensure_currencies(db)
         assert result["created"] == 0
-        assert result["skipped"] == len(CURRENCIES)
+        assert result["skipped"] == EXPECTED_TOTAL
         assert {c.code for c in db.query(Currency).all()} == first
     finally:
         db.close()
@@ -49,7 +52,7 @@ def test_ensure_currencies_does_not_overwrite_existing():
         db.add(Currency(code="CNY", name="自定义名称", symbol="元", decimals=0, is_active=False))
         db.commit()
         result = ensure_currencies(db)
-        assert result["created"] == len(CURRENCIES) - 1
+        assert result["created"] == EXPECTED_TOTAL - 1
         row = db.query(Currency).filter(Currency.code == "CNY").one()
         assert row.name == "自定义名称"
         assert row.symbol == "元"
@@ -112,3 +115,26 @@ def test_region_currency_map_covers_supported_currencies():
     assert REGION_CURRENCIES["CN"] == "CNY"
     assert REGION_CURRENCIES["US"] == "USD"
     assert REGION_CURRENCIES["DE"] == "EUR"
+
+
+def test_region_currency_map_covers_all_countries():
+    # 覆盖 countries.json 全部 249 个国家/地区
+    import json
+    import os
+    data_path = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+        "frontend", "src", "data", "regions", "countries.json",
+    )
+    with open(data_path, encoding="utf-8") as f:
+        countries = json.load(f)
+    codes = {c["alpha-2"] for c in countries}
+    assert codes <= set(REGION_CURRENCIES)
+    # 每种映射币种都能被 ensure_currencies 补齐
+    needed = set(CURRENCIES) | set(REGION_CURRENCIES.values())
+    db = _db()
+    try:
+        result = ensure_currencies(db)
+        assert result["created"] == len(needed)
+    finally:
+        db.close()
+

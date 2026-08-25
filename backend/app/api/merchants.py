@@ -492,7 +492,7 @@ async def get_merchant_product_prices(
         # 商品关联原料的默认单位缩写，供 Python 层做单位换算。
         sql = text("""
             WITH latest AS (
-                SELECT product_id, price, original_quantity, standard_quantity,
+                SELECT product_id, price, exchange_rate, original_quantity, standard_quantity,
                        standard_unit_id, recorded_at,
                        ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY recorded_at DESC) AS rn
                 FROM product_records
@@ -511,7 +511,7 @@ async def get_merchant_product_prices(
                 ) sub
                 WHERE sub.orn = 1
             )
-            SELECT l.product_id, l.price, l.original_quantity, l.standard_quantity,
+            SELECT l.product_id, l.price, l.exchange_rate, l.original_quantity, l.standard_quantity,
                    l.recorded_at,
                    su.abbreviation AS standard_unit_abbr,
                    su.unit_type     AS standard_unit_type,
@@ -556,8 +556,11 @@ async def get_merchant_product_prices(
         total = db.execute(count_sql, {"uid": current_user.id, "mid": merchant_id}).scalar() or 0
         unit_service = UnitConversionService(db)
         items = []
+        from app.services.currency_service import get_user_default_currency
+        user_currency = get_user_default_currency(db, current_user)
         for r in rows:
-            price = float(r.price) if r.price else 0
+            rate = float(r.exchange_rate) if r.exchange_rate is not None else 1.0
+            price = (float(r.price) if r.price else 0) * rate
             std_qty = float(r.standard_quantity) if r.standard_quantity else 0
 
             unit_price = None
@@ -575,6 +578,7 @@ async def get_merchant_product_prices(
             items.append({
                 "product_id": r.product_id,
                 "product_name": r.name,
+                "currency": user_currency,
                 "price": round(price, 2),
                 "standard_unit_price": round(unit_price, 2) if unit_price is not None else None,
                 "standard_unit_label": unit_label,

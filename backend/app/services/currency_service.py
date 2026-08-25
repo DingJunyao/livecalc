@@ -51,3 +51,73 @@ def get_user_default_currency(db: Session, user) -> str:
         if region:
             return get_region_default_currency(db, region)
     return DEFAULT_CURRENCY
+
+
+def recompute_user_records(db: Session, user_id: int, new_currency: str) -> dict:
+    """用户有效币种变化后，按其记录日期重算所有价格记录的 exchange_rate/user_currency 快照。
+
+    幂等；单条缺历史汇率快照时跳过并保留原值（下次再补）。
+    """
+    from datetime import date
+    from decimal import Decimal
+
+    from app.models.product import ProductRecord
+    from app.scripts.recompute_user_currency import compute_exchange_factor
+
+    records = db.query(ProductRecord).filter(
+        ProductRecord.user_id == user_id,
+        ProductRecord.is_active == True,  # noqa: E712
+    ).all()
+    updated = skipped = 0
+    for r in records:
+        try:
+            if not r.currency or r.currency == new_currency:
+                rate = Decimal("1")
+            else:
+                d = r.recorded_at.date() if r.recorded_at else date.today()
+                rate = compute_exchange_factor(db, r.currency, new_currency, d)
+            r.exchange_rate = rate
+            r.user_currency = new_currency
+            updated += 1
+        except Exception:
+            skipped += 1  # 缺历史汇率快照，保留原值
+    if updated:
+        db.commit()
+    return {"updated": updated, "skipped": skipped}
+
+
+def ensure_user_currency_snapshots(db: Session) -> dict:
+    """启动时把各用户价格记录快照对齐到其当前有效币种（幂等：不一致才重算）。"""
+    from sqlalchemy import or_
+
+    from app.models.product import ProductRecord
+    from app.models.user import User
+
+    user_ids = [
+        row[0]
+        for row in db.query(ProductRecord.user_id)
+        .filter(ProductRecord.user_id.isnot(None))
+        .distinct()
+        .all()
+    ]
+    results = {"users": 0, "updated": 0, "skipped": 0}
+    for uid in user_ids:
+        user = db.query(User).filter(User.id == uid).first()
+        if user is None:
+            continue
+        effective = get_user_default_currency(db, user)
+        stale = db.query(ProductRecord.id).filter(
+            ProductRecord.user_id == uid,
+            ProductRecord.is_active == True,  # noqa: E712
+            or_(
+                ProductRecord.user_currency.is_(None),
+                ProductRecord.user_currency != effective,
+            ),
+        ).first()
+        if stale is None:
+            continue
+        results["users"] += 1
+        res = recompute_user_records(db, uid, effective)
+        results["updated"] += res["updated"]
+        results["skipped"] += res["skipped"]
+    return results
