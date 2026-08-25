@@ -20,6 +20,27 @@ export const STATIC_RATES_EUR: Record<string, number> = {
   MYR: 5.0,
   VND: 26000,
   RUB: 95,
+  // 与后端启动 seed（currency_seed.py）对齐补充的主流币种（2026-08-25 近似值）
+  AED: 4.2875,
+  BGN: 1.9558, // 保加利亚列弗锚定 EUR（1 EUR = 1.9558 BGN）
+  BRL: 6.0152,
+  CHF: 0.93639,
+  CZK: 24.115,
+  DKK: 7.4767,
+  HUF: 362.73,
+  IDR: 20662,
+  ILS: 3.4931,
+  INR: 111.7,
+  ISK: 141.36,
+  MXN: 19.7713,
+  NOK: 10.8701,
+  NZD: 1.9571,
+  PHP: 72.03,
+  PLN: 4.311,
+  RON: 5.2543,
+  SEK: 11.077,
+  TRY: 56.124,
+  ZAR: 18.6782,
 }
 
 /**
