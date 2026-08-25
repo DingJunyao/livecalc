@@ -344,6 +344,57 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // 商家（置于商品前）
+              Autocomplete<Merchant>(
+                optionsBuilder: (textEditingValue) {
+                  final text = textEditingValue.text.toLowerCase();
+                  if (text.isEmpty) return merchants;
+                  return merchants
+                      .where((m) => m.name.toLowerCase().contains(text))
+                      .toList();
+                },
+                displayStringForOption: (m) => m.name,
+                onSelected: (m) {
+                  _merchantController.text = m.name;
+                  setState(() {
+                    _merchantId = m.id;
+                    final code = m.defaultCurrency;
+                    if (code != null && code.isNotEmpty) {
+                      _currency = code;
+                      _currencySymbol = currencySymbol(code);
+                    }
+                  });
+                },
+                fieldViewBuilder:
+                    (ctx, controller, focusNode, onFieldSubmitted) {
+                  // 同步外部 _merchantController 与 Autocomplete 内部 controller，
+                  // 避免预填值被内部 controller 覆盖（对齐 quick_fill_screen 做法）。
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (_merchantController.text != controller.text) {
+                      controller.text = _merchantController.text;
+                    }
+                  });
+                  return TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: '商家',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onSubmitted: (_) => onFieldSubmitted(),
+                    onChanged: (value) {
+                      // 文本被改动后不再信任 _merchantId；要保留必须重新点选
+                      // （onSelected 程序化赋值不会走 onChanged，选中流程不受影响）
+                      if (_merchantId != null) {
+                        setState(() => _merchantId = null);
+                      }
+                    },
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -407,43 +458,41 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  PopupMenuButton<String>(
-                    onSelected: (code) {
-                      setState(() {
-                        _currency = code;
-                        _currencySymbol = currencySymbol(code);
-                      });
-                    },
-                    itemBuilder: (context) {
-                      if (_currencies.isEmpty) {
-                        return [
-                          PopupMenuItem(value: _currency, child: Text(_currency)),
-                        ];
-                      }
-                      return [
-                        for (final c in _currencies)
-                          PopupMenuItem(
-                            value: c['code'] as String,
-                            child: Text(
-                              '${c['symbol'] ?? c['code']} ${c['code']}',
-                            ),
-                          ),
-                      ];
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 16),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: theme.colorScheme.outline),
-                        borderRadius: BorderRadius.circular(12),
+                  SizedBox(
+                    width: 132,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(_currency),
+                      initialValue: _currency,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: '币种',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('$_currencySymbol $_currency'),
-                          const Icon(Icons.arrow_drop_down),
-                        ],
-                      ),
+                      items: _currencies.isEmpty
+                          ? [
+                              DropdownMenuItem(
+                                value: _currency,
+                                child: Text(_currency),
+                              ),
+                            ]
+                          : [
+                              for (final c in _currencies)
+                                DropdownMenuItem(
+                                  value: c['code'] as String,
+                                  child: Text(
+                                    '${c['symbol'] ?? c['code']} ${c['code']}',
+                                  ),
+                                ),
+                            ],
+                      onChanged: (code) {
+                        if (code == null) return;
+                        setState(() {
+                          _currency = code;
+                          _currencySymbol = currencySymbol(code);
+                        });
+                      },
                     ),
                   ),
                 ],
@@ -486,56 +535,6 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                 ],
               ),
               const SizedBox(height: 16),
-              Autocomplete<Merchant>(
-                optionsBuilder: (textEditingValue) {
-                  final text = textEditingValue.text.toLowerCase();
-                  if (text.isEmpty) return merchants;
-                  return merchants
-                      .where((m) => m.name.toLowerCase().contains(text))
-                      .toList();
-                },
-                displayStringForOption: (m) => m.name,
-                onSelected: (m) {
-                  _merchantController.text = m.name;
-                  setState(() {
-                    _merchantId = m.id;
-                    final code = m.defaultCurrency;
-                    if (code != null && code.isNotEmpty) {
-                      _currency = code;
-                      _currencySymbol = currencySymbol(code);
-                    }
-                  });
-                },
-                fieldViewBuilder:
-                    (ctx, controller, focusNode, onFieldSubmitted) {
-                  // 同步外部 _merchantController 与 Autocomplete 内部 controller，
-                  // 避免预填值被内部 controller 覆盖（对齐 quick_fill_screen 做法）。
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (_merchantController.text != controller.text) {
-                      controller.text = _merchantController.text;
-                    }
-                  });
-                  return TextField(
-                    controller: controller,
-                    focusNode: focusNode,
-                    decoration: InputDecoration(
-                      labelText: '商家',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onSubmitted: (_) => onFieldSubmitted(),
-                    onChanged: (value) {
-                      // 文本被改动后不再信任 _merchantId；要保留必须重新点选
-                      // （onSelected 程序化赋值不会走 onChanged，选中流程不受影响）
-                      if (_merchantId != null) {
-                        setState(() => _merchantId = null);
-                      }
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('计入支出'),

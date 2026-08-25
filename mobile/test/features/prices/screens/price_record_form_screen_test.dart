@@ -38,6 +38,7 @@ class _FakePriceRepository extends PriceRepository {
     String recordType = 'purchase',
     String? notes,
     DateTime? recordedAt,
+    String currency = 'CNY',
   }) async {
     createCount++;
     lastProductId = productId;
@@ -177,11 +178,12 @@ void main() {
     await pumpForm(tester);
 
     expect(find.text('新增价格记录'), findsOneWidget); // AppBar
+    expect(find.text('商家'), findsOneWidget);
     expect(find.text('商品名称'), findsOneWidget);
-    expect(find.text('价格（¥）'), findsOneWidget);
+    expect(find.text('价格'), findsOneWidget);
+    expect(find.text('币种'), findsOneWidget);
     expect(find.text('数量'), findsOneWidget);
     expect(find.text('单位'), findsOneWidget);
-    expect(find.text('商家'), findsOneWidget);
     expect(find.text('计入支出'), findsOneWidget);
     expect(find.text('记录时间'), findsOneWidget);
     expect(find.text('备注'), findsOneWidget);
@@ -211,7 +213,7 @@ void main() {
     );
     expect(nameField.controller?.text, '番茄');
 
-    final nameFieldFinder = find.byType(TextField).first;
+    final nameFieldFinder = find.widgetWithText(TextField, '商品名称');
     await tester.enterText(nameFieldFinder, '');
     await tester.pump();
     await tester.enterText(nameFieldFinder, '番茄');
@@ -220,7 +222,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, '番茄'));
     await tester.pumpAndSettle();
 
-    final priceField = find.byType(TextField).at(1);
+    final priceField = find.widgetWithText(TextField, '价格');
     await tester.enterText(priceField, '2.5');
     await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
@@ -257,7 +259,7 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, '番茄')); // 搜索结果 ListTile
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 
@@ -280,7 +282,7 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '新商品A');
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '3');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '3');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 
@@ -296,7 +298,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
     await tester.tap(find.text('计入支出'));
     await tester.pump();
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 
@@ -321,7 +323,7 @@ void main() {
     // 改名后原选择被撤销，保存携带新名字而非旧 productId
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄酱');
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '3');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '3');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 
@@ -353,7 +355,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
 
     final merchantField = find.descendant(
       of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
@@ -376,7 +378,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 
@@ -388,7 +390,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
 
     final merchantField = find.descendant(
       of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
@@ -414,7 +416,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     // 两次 tap 之间不 pump：第一次同步置 _saving，第二次命中同一按钮
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.tap(
@@ -432,7 +434,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
 
     // 选商家「超市」
     final merchantField = find.descendant(
@@ -476,7 +478,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.enterText(find.widgetWithText(TextField, '价格（¥）'), '2.5');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     await tester.tap(find.widgetWithText(FilledButton, '保存'));
     await tester.pumpAndSettle();
 

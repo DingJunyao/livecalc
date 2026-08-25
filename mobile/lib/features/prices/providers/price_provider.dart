@@ -209,6 +209,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
+    String currency = 'CNY',
   }) async {
     try {
       await _repository.updateRecord(
@@ -220,6 +221,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         recordType: recordType,
         recordedAt: recordedAt,
         notes: notes,
+        currency: currency,
       );
       final newRecords = state.records.map((r) {
         if (r.id != id) return r;
@@ -235,6 +237,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
           recordedAt: recordedAt?.toUtc().toIso8601String() ?? r.recordedAt,
           recordType: recordType,
           notes: notes,
+          currency: currency,
         );
       }).toList();
       state = state.copyWith(records: newRecords);

@@ -336,6 +336,7 @@ class _IngredientDetailScreenState
         initialRecordType: record.recordType,
         initialRecordedAt: DateTime.tryParse(record.recordedAt),
         initialNotes: record.notes,
+        initialCurrency: record.currency,
       ),
     );
     if (result == null || !mounted) return;
@@ -349,6 +350,7 @@ class _IngredientDetailScreenState
         recordType: result.recordType,
         recordedAt: result.recordedAt,
         notes: result.notes,
+        currency: result.currency,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

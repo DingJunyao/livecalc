@@ -36,6 +36,7 @@ class _FakePriceRepository extends PriceRepository {
     String recordType = 'purchase',
     String? notes,
     DateTime? recordedAt,
+    String currency = 'CNY',
   }) async {
     createCount++;
     createCalls.add({

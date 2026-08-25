@@ -22,8 +22,9 @@ void main() {
 
   group('getRecipeMerchantCosts', () {
     test('解析 merchant-costs 响应', () async {
-      when(() => mockDio
-              .get('/recipes/1/merchant-costs', options: any(named: 'options')))
+      when(() => mockDio.get('/recipes/1/merchant-costs',
+              queryParameters: any(named: 'queryParameters'),
+              options: any(named: 'options')))
           .thenAnswer((_) async => Response(
                 requestOptions: RequestOptions(path: ''),
                 statusCode: 200,
@@ -63,8 +64,9 @@ void main() {
     });
 
     test('空 merchants 不崩', () async {
-      when(() => mockDio
-              .get('/recipes/9/merchant-costs', options: any(named: 'options')))
+      when(() => mockDio.get('/recipes/9/merchant-costs',
+              queryParameters: any(named: 'queryParameters'),
+              options: any(named: 'options')))
           .thenAnswer((_) async => Response(
                 requestOptions: RequestOptions(path: ''),
                 statusCode: 200,

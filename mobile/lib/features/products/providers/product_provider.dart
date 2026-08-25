@@ -891,6 +891,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
+    String currency = 'CNY',
   }) async {
     await _priceRepo.updateRecord(
       recordId,
@@ -901,6 +902,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       recordType: recordType,
       recordedAt: recordedAt,
       notes: notes,
+      currency: currency,
     );
     await _refreshAfterRecordChange();
   }

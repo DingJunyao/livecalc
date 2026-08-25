@@ -127,7 +127,8 @@ void main() {
     // provider 的 on Exception catch 吞掉，显示“暂无”状态，不影响排版断言。
     // mocktail 未匹配的调用返回 MissingStubError（Error 而非 Exception）会击穿
     // provider 的 catch，故各路径按 repository 实际调用签名逐一显式 stub。
-    when(() => mockDio.get('/recipes/1/cost'))
+    when(() => mockDio.get('/recipes/1/cost',
+            queryParameters: any(named: 'queryParameters')))
         .thenAnswer((_) async => throw Exception('boom'));
     when(() => mockDio.get('/recipes/1/nutrition'))
         .thenAnswer((_) async => throw Exception('boom'));
@@ -135,6 +136,7 @@ void main() {
             queryParameters: any(named: 'queryParameters')))
         .thenAnswer((_) async => throw Exception('boom'));
     when(() => mockDio.get('/recipes/1/merchant-costs',
+            queryParameters: any(named: 'queryParameters'),
             options: any(named: 'options')))
         .thenAnswer((_) async => throw Exception('boom'));
   });
@@ -315,7 +317,9 @@ void main() {
             'tips': [],
           },
         ));
-    when(() => mockDio.get('/recipes/1/cost')).thenAnswer((_) async => Response(
+    when(() => mockDio.get('/recipes/1/cost',
+            queryParameters: any(named: 'queryParameters')))
+        .thenAnswer((_) async => Response(
           requestOptions: RequestOptions(path: ''),
           statusCode: 200,
           data: {

@@ -1194,6 +1194,7 @@ class IngredientDetailPageNotifier
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
+    String currency = 'CNY',
   }) async {
     await _priceRepo.updateRecord(
       recordId,
@@ -1204,6 +1205,7 @@ class IngredientDetailPageNotifier
       recordType: recordType,
       recordedAt: recordedAt,
       notes: notes,
+      currency: currency,
     );
     await _refreshAfterRecordChange();
   }

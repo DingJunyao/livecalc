@@ -25,7 +25,10 @@ class _FakeRecipeRepository extends RecipeRepository {
   }
 
   @override
-  Future<Map<int, RecipeCostInfo>> getRecipesBatchCost(List<int> ids) async {
+  Future<Map<int, RecipeCostInfo>> getRecipesBatchCost(
+    List<int> ids, {
+    int? regionId,
+  }) async {
     return {};
   }
 }

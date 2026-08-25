@@ -80,6 +80,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
         initialRecordType: r.recordType,
         initialRecordedAt: DateTime.tryParse(r.recordedAt),
         initialNotes: r.notes,
+        initialCurrency: r.currency,
       ),
     );
     if (result != null && mounted) {
@@ -104,6 +105,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             recordType: result.recordType,
             recordedAt: result.recordedAt,
             notes: result.notes,
+            currency: result.currency,
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

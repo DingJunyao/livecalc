@@ -14,7 +14,7 @@ class _FakeIngredientDetailNotifier extends IngredientDetailPageNotifier {
   _FakeIngredientDetailNotifier(super.id);
 
   @override
-  Future<void> load({int initialDays = 30}) async {
+  Future<void> load({int initialDays = 30, int? regionId}) async {
     state = const IngredientDetailPageState(
       ingredient: Ingredient(id: 8, name: '番茄'),
       hierarchy: IngredientHierarchyData(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
@@ -83,13 +84,15 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MaterialApp(
-      home: _FormHost(
-        merchants: merchants,
-        initialMerchantId: initialMerchantId,
-        initialRecordType: initialRecordType,
-        initialRecordedAt: initialRecordedAt,
-        initialNotes: initialNotes,
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        home: _FormHost(
+          merchants: merchants,
+          initialMerchantId: initialMerchantId,
+          initialRecordType: initialRecordType,
+          initialRecordedAt: initialRecordedAt,
+          initialNotes: initialNotes,
+        ),
       ),
     ));
     await tester.tap(find.text('打开表单'));
@@ -100,11 +103,8 @@ void main() {
     expect(find.widgetWithText(AppBar, '记录价格'), findsOneWidget);
   }
 
-  /// 价格 TextField 通过 prefixIcon(Icons.payments) 定位（无 labelText）
-  Finder priceFieldFinder() => find.ancestor(
-        of: find.byIcon(Icons.payments),
-        matching: find.byType(TextField),
-      );
+  /// 价格 TextField 通过 labelText('价格') 定位
+  Finder priceFieldFinder() => find.widgetWithText(TextField, '价格');
 
   testWidgets('预填商家时显示商家名', (tester) async {
     await pumpSheet(

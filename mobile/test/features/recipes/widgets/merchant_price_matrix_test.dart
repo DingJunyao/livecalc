@@ -37,11 +37,11 @@ void main() {
       expect(rows.length, 2);
       final row0 = rows.first;
       expect(row0.name, '鸡蛋');
-      // 盒马显示 total_cost 3.50 且最低价
-      expect(row0.cells['盒马']!.display, '3.50');
+      // 盒马显示 total_cost 3.50 且最低价（带币种符号前缀，对齐 9337a66 币种显示）
+      expect(row0.cells['盒马']!.display, '¥3.50');
       expect(row0.cells['盒马']!.isLowest, true);
       // 永辉回退 price 3.20
-      expect(row0.cells['永辉']!.display, '3.20');
+      expect(row0.cells['永辉']!.display, '¥3.20');
       expect(row0.cells['永辉']!.isLowest, false);
       // 番茄两商家都缺失
       expect(rows.last.cells['盒马']!.display, '—');
@@ -83,7 +83,7 @@ void main() {
         ],
       );
       expect(rows.single.cells.containsKey('商家9'), isTrue);
-      expect(rows.single.cells['商家9']!.display, '1.00');
+      expect(rows.single.cells['商家9']!.display, '¥1.00');
     });
   });
 

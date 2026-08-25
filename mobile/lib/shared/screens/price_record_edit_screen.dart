@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../features/auth/providers/auth_provider.dart';
 import '../../features/merchants/models/merchant.dart';
+import '../../features/prices/repositories/price_repository.dart';
 import '../utils/currency_fmt.dart';
 
 class PriceRecordFormResult {
@@ -13,6 +13,7 @@ class PriceRecordFormResult {
   final String recordType; // 'purchase' | 'price'
   final DateTime recordedAt;
   final String? notes;
+  final String currency;
 
   const PriceRecordFormResult({
     required this.price,
@@ -23,6 +24,7 @@ class PriceRecordFormResult {
     this.recordType = 'purchase',
     required this.recordedAt,
     this.notes,
+    this.currency = 'CNY',
   });
 }
 
@@ -58,6 +60,7 @@ class PriceRecordFormArguments {
   final String? initialRecordType; // 'purchase' | 'price'
   final DateTime? initialRecordedAt;
   final String? initialNotes;
+  final String? initialCurrency;
 
   const PriceRecordFormArguments({
     required this.merchants,
@@ -71,33 +74,49 @@ class PriceRecordFormArguments {
     this.initialRecordType,
     this.initialRecordedAt,
     this.initialNotes,
+    this.initialCurrency,
   });
 }
 
-class PriceRecordEditScreen extends StatefulWidget {
+/// 编辑/记录价格全屏页（对齐新增页 [PriceRecordFormScreen] 的字段顺序与样式：
+/// 商家在前、价格带币种下拉、inline label）。
+class PriceRecordEditScreen extends ConsumerStatefulWidget {
   final PriceRecordFormArguments arguments;
 
-  const PriceRecordEditScreen({super.key, required this.arguments});
+  /// 测试注入，缺省用真实 repository。
+  final PriceRepository? priceRepository;
+
+  const PriceRecordEditScreen({
+    super.key,
+    required this.arguments,
+    this.priceRepository,
+  });
 
   @override
-  State<PriceRecordEditScreen> createState() => _PriceRecordEditScreenState();
+  ConsumerState<PriceRecordEditScreen> createState() =>
+      _PriceRecordEditScreenState();
 }
 
-class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
+class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   late final TextEditingController _priceController;
   late final TextEditingController _quantityController;
   late final TextEditingController _merchantController;
   late final TextEditingController _notesController;
+  late final PriceRepository _priceRepo;
   late String _unit;
   int? _merchantId;
   int? _productId;
   late bool _isPurchase;
   late DateTime _recordedAt;
+  String _currency = 'CNY';
+  String _currencySymbol = '¥';
+  List<dynamic> _currencies = const [];
 
   @override
   void initState() {
     super.initState();
     final args = widget.arguments;
+    _priceRepo = widget.priceRepository ?? PriceRepository();
     _priceController = TextEditingController(
       text: args.initialPrice == null
           ? ''
@@ -118,6 +137,18 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
         : args.initialRecordType != 'price';
     _recordedAt = args.initialRecordedAt ?? DateTime.now();
     _notesController = TextEditingController(text: args.initialNotes ?? '');
+    // 币种优先级：记录原币种 > 商家默认币种 > CNY
+    var initialCurrency = args.initialCurrency ?? '';
+    if (initialCurrency.isEmpty) {
+      final m =
+          args.merchants.where((m) => m.id == _merchantId).firstOrNull;
+      initialCurrency = (m?.defaultCurrency ?? '').isNotEmpty
+          ? m!.defaultCurrency!
+          : 'CNY';
+    }
+    _currency = initialCurrency;
+    _currencySymbol = currencySymbol(_currency);
+    _loadCurrencies();
   }
 
   @override
@@ -127,6 +158,20 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
     _merchantController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCurrencies() async {
+    try {
+      final resp = await _priceRepo.client.dio.get('/currencies');
+      final data = resp.data;
+      final list = (data is List)
+          ? data
+          : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
+      if (!mounted) return;
+      setState(() => _currencies = list);
+    } catch (_) {
+      // 币种加载失败保持默认 CNY
+    }
   }
 
   String _findMerchantName(int? id) {
@@ -185,6 +230,7 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
         recordType: _isPurchase ? 'purchase' : 'price',
         recordedAt: _recordedAt,
         notes: notes.isEmpty ? null : notes,
+        currency: _currency,
       ),
     );
   }
@@ -208,89 +254,7 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (args.fixedProductName != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    args.fixedProductName!,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.outline),
-                  ),
-                ),
-              if (args.products.length > 1 && args.fixedProductId == null) ...[
-                _label(theme, '商品'),
-                DropdownButtonFormField<int>(
-                  initialValue: _productId,
-                  isExpanded: true,
-                  decoration: _decoration(),
-                  items: [
-                    for (final product in args.products)
-                      DropdownMenuItem(
-                        value: product.id,
-                        child: Text(product.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _productId = value),
-                ),
-                const SizedBox(height: 12),
-              ],
-              Consumer(
-                builder: (context, ref, _) => _label(
-                  theme,
-                  '价格（${currencySymbol(ref.read(authProvider).user?.defaultCurrency ?? 'CNY')}）',
-                ),
-              ),
-              TextField(
-                controller: _priceController,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                textInputAction: TextInputAction.next,
-                decoration: _decoration(prefixIcon: const Icon(Icons.payments)),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label(theme, '数量'),
-                        TextField(
-                          controller: _quantityController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          textInputAction: TextInputAction.next,
-                          decoration: _decoration(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _label(theme, '单位'),
-                        DropdownButtonFormField<String>(
-                          initialValue: _unit,
-                          isExpanded: true,
-                          decoration: _decoration(),
-                          items: [
-                            for (final unit in priceRecordUnits)
-                              DropdownMenuItem(value: unit, child: Text(unit)),
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _unit = value ?? '斤'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _label(theme, '商家'),
+              // 商家（置于商品前）
               Autocomplete<Merchant>(
                 optionsBuilder: (value) {
                   final text = value.text.toLowerCase();
@@ -303,7 +267,14 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
                 displayStringForOption: (merchant) => merchant.name,
                 onSelected: (merchant) {
                   _merchantController.text = merchant.name;
-                  setState(() => _merchantId = merchant.id);
+                  setState(() {
+                    _merchantId = merchant.id;
+                    final code = merchant.defaultCurrency;
+                    if (code != null && code.isNotEmpty) {
+                      _currency = code;
+                      _currencySymbol = currencySymbol(code);
+                    }
+                  });
                 },
                 fieldViewBuilder: (
                   context,
@@ -319,7 +290,12 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
                   return TextField(
                     controller: controller,
                     focusNode: focusNode,
-                    decoration: _decoration(),
+                    decoration: InputDecoration(
+                      labelText: '商家',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
                     onSubmitted: (_) => onFieldSubmitted(),
                     onChanged: (value) {
                       if (_merchantId != null) {
@@ -329,7 +305,139 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
                   );
                 },
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              if (args.fixedProductName != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    args.fixedProductName!,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                ),
+              if (args.products.length > 1 && args.fixedProductId == null)
+                DropdownButtonFormField<int>(
+                  key: ValueKey(_productId),
+                  initialValue: _productId,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    labelText: '商品',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  items: [
+                    for (final product in args.products)
+                      DropdownMenuItem(
+                        value: product.id,
+                        child: Text(product.name),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _productId = value),
+                ),
+              if (args.products.length > 1 && args.fixedProductId == null)
+                const SizedBox(height: 16),
+              // 价格（带币种下拉，对齐新增页样式）
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: '价格',
+                        prefixText: _currencySymbol,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: 132,
+                    child: DropdownButtonFormField<String>(
+                      key: ValueKey(_currency),
+                      initialValue: _currency,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: '币种',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      items: _currencies.isEmpty
+                          ? [
+                              DropdownMenuItem(
+                                value: _currency,
+                                child: Text(_currency),
+                              ),
+                            ]
+                          : [
+                              for (final c in _currencies)
+                                DropdownMenuItem(
+                                  value: c['code'] as String,
+                                  child: Text(
+                                    '${c['symbol'] ?? c['code']} ${c['code']}',
+                                  ),
+                                ),
+                            ],
+                      onChanged: (code) {
+                        if (code == null) return;
+                        setState(() {
+                          _currency = code;
+                          _currencySymbol = currencySymbol(code);
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _quantityController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: '数量',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _unit,
+                      isExpanded: true,
+                      decoration: InputDecoration(
+                        labelText: '单位',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      items: [
+                        for (final unit in priceRecordUnits)
+                          DropdownMenuItem(value: unit, child: Text(unit)),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _unit = value ?? '斤'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('计入支出'),
@@ -370,15 +478,4 @@ class _PriceRecordEditScreenState extends State<PriceRecordEditScreen> {
       ),
     );
   }
-
-  Widget _label(ThemeData theme, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(text, style: theme.textTheme.labelLarge),
-      );
-
-  InputDecoration _decoration({Widget? prefixIcon}) => InputDecoration(
-        prefixIcon: prefixIcon,
-        isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
 }

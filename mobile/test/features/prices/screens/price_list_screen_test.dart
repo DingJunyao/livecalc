@@ -49,6 +49,7 @@ class _FakePriceRepository extends PriceRepository {
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
+    String currency = 'CNY',
   }) async {
     updateCalls++;
     if (updateError != null) throw updateError!;

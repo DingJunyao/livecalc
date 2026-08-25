@@ -43,7 +43,8 @@ void main() {
     // - /cost-history-range：带 queryParameters {'days': N, 'offset_days': 0}
     //   （分析页 load(initialDays: 90) 单次请求，页面不再另行 reloadHistory）
     // - /merchant-costs：带 options: Options(receiveTimeout: 35s)
-    when(() => mockDio.get('/recipes/1/cost'))
+    when(() => mockDio.get('/recipes/1/cost',
+            queryParameters: any(named: 'queryParameters')))
         .thenAnswer((_) async => throw Exception('boom'));
     when(() => mockDio.get('/recipes/1/nutrition'))
         .thenAnswer((_) async => throw Exception('boom'));
@@ -51,6 +52,7 @@ void main() {
             queryParameters: any(named: 'queryParameters')))
         .thenAnswer((_) async => throw Exception('boom'));
     when(() => mockDio.get('/recipes/1/merchant-costs',
+            queryParameters: any(named: 'queryParameters'),
             options: any(named: 'options')))
         .thenAnswer((_) async => throw Exception('boom'));
   });
