@@ -266,7 +266,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                             PopupMenuItem(
                               value: c['code'] as String,
                               child: Text(
-                                '${c['symbol'] ?? c['code']} ${c['code']}',
+                                '${c['name']} ${c['code']}',
                               ),
                             ),
                         ];
@@ -281,7 +281,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text('$_currencySymbol $_currency'),
+                            Text(_currency),
                             const Icon(Icons.arrow_drop_down),
                           ],
                         ),

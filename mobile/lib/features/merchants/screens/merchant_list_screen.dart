@@ -480,7 +480,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('删除商家'),
-        content: Text('确定删除商家「${item.name}」吗？'),
+        content: Text('确定删除商家「${_displayName(item)}」吗？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -515,6 +515,9 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 }
+
+/// 商家名可能为空（只填国家/地区创建的商家），显示回退文案。
+String _displayName(Merchant m) => m.name.trim().isEmpty ? '未命名商家' : m.name;
 
 class _MerchantCard extends StatelessWidget {
   final Merchant item;
@@ -563,7 +566,7 @@ class _MerchantCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            item.name,
+                            _displayName(item),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleSmall

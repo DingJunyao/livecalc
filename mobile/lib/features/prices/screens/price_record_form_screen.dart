@@ -482,8 +482,23 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                                 DropdownMenuItem(
                                   value: c['code'] as String,
                                   child: Text(
-                                    '${c['symbol'] ?? c['code']} ${c['code']}',
+                                    '${c['name']} ${c['code']}',
                                   ),
+                                ),
+                            ],
+                      // 收起时只显示三字母代码，展开列表显示全称+代码
+                      selectedItemBuilder: (context) => _currencies.isEmpty
+                          ? [
+                              DropdownMenuItem(
+                                value: _currency,
+                                child: Text(_currency),
+                              ),
+                            ]
+                          : [
+                              for (final c in _currencies)
+                                DropdownMenuItem(
+                                  value: c['code'] as String,
+                                  child: Text(c['code'] as String),
                                 ),
                             ],
                       onChanged: (code) {

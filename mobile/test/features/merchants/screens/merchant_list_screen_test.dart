@@ -281,7 +281,7 @@ void main() {
       expect(find.byType(MerchantFormScreen), findsOneWidget);
       expect(find.byType(AlertDialog), findsNothing);
 
-      await tester.enterText(find.widgetWithText(TextField, '商家名称 *'), '社区超市');
+      await tester.enterText(find.widgetWithText(TextField, '商家名称（可留空）'), '社区超市');
       await tester.tap(find.descendant(
           of: find.byType(MerchantFormScreen),
           matching: find.byType(FlutterMap)));
@@ -301,6 +301,31 @@ void main() {
           )).captured;
       expect(captured[0], closeTo(39.9042, 1e-4));
       expect(captured[1], closeTo(116.4074, 1e-4));
+      expect(find.text('已创建商家'), findsOneWidget);
+    });
+
+    testWidgets('只填国家/地区（不填名称）也能保存', (tester) async {
+      await useTallViewport(tester);
+      await pumpList(tester);
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(MerchantFormScreen), findsOneWidget);
+
+      // 不填名称直接保存（只填地区场景：名称留空）
+      await tester.ensureVisible(find.text('创建'));
+      await tester.pump();
+      await tester.tap(find.text('创建'));
+      await tester.pumpAndSettle();
+
+      final captured = verify(() => repo.createMerchant(
+            name: captureAny(named: 'name'),
+            address: any(named: 'address'),
+            isOpen: any(named: 'isOpen'),
+            latitude: any(named: 'latitude'),
+            longitude: any(named: 'longitude'),
+          )).captured;
+      expect(captured.single, '');
       expect(find.text('已创建商家'), findsOneWidget);
     });
 

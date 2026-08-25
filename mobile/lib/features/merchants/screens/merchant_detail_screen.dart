@@ -73,8 +73,11 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Flexible(
-              child: Text(merchant.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              child: Text(
+                merchant.name.trim().isEmpty ? '未命名商家' : merchant.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
             const SizedBox(width: 8),
             Container(
@@ -237,7 +240,8 @@ class _BasicInfoCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 8),
-            _row(theme, Icons.store_outlined, '名称', merchant.name),
+            _row(theme, Icons.store_outlined, '名称',
+                merchant.name.trim().isEmpty ? '未命名商家' : merchant.name),
             if (merchant.address != null)
               _row(theme, Icons.map_outlined, '地址', merchant.address!),
             if (merchant.createdAt != null)

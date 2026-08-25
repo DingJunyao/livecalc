@@ -121,12 +121,6 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入商家名称')),
-      );
-      return;
-    }
     setState(() => _saving = true);
     final repository = widget.repository ?? MerchantRepository();
     try {
@@ -200,7 +194,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                 autofocus: !editing,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
-                  labelText: '商家名称 *',
+                  labelText: '商家名称（可留空）',
                   border: OutlineInputBorder(),
                 ),
               ),
