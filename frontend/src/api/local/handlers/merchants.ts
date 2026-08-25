@@ -2,6 +2,39 @@
 
 import { getAll, getById, addOne, putOne, deleteOne, getByIndex, resolvePagination } from '../database'
 
+
+// 本地模式商家币种推导：手选 default_currency 优先，其次按地区国家映射，无则 null（前端回落 CNY）
+const REGION_CURRENCIES: Record<string, string> = {
+  CN: 'CNY', HK: 'HKD', TW: 'TWD', US: 'USD', JP: 'JPY', GB: 'GBP',
+  KR: 'KRW', SG: 'SGD', AU: 'AUD', CA: 'CAD', TH: 'THB', MY: 'MYR',
+  VN: 'VND', RU: 'RUB', AE: 'AED', BG: 'BGN', BR: 'BRL', CH: 'CHF',
+  CZ: 'CZK', DK: 'DKK', HU: 'HUF', ID: 'IDR', IL: 'ILS', IN: 'INR',
+  IS: 'ISK', MX: 'MXN', NO: 'NOK', NZ: 'NZD', PH: 'PHP', PL: 'PLN',
+  RO: 'RON', SE: 'SEK', TR: 'TRY', ZA: 'ZAR',
+  DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR', BE: 'EUR',
+  AT: 'EUR', IE: 'EUR', PT: 'EUR', FI: 'EUR', GR: 'EUR', SK: 'EUR',
+  SI: 'EUR', LT: 'EUR', LV: 'EUR', EE: 'EUR', CY: 'EUR', MT: 'EUR',
+  LU: 'EUR', HR: 'EUR',
+}
+
+async function withEffectiveCurrency(m: any): Promise<any> {
+  if (!m || m.effective_currency != null) return m
+  let currency: string | null = m.default_currency || null
+  if (!currency && m.region_id != null) {
+    const all = await getAll('regions')
+    const byId = new Map(all.map((r: any) => [Number(r.id), r]))
+    let node = byId.get(Number(m.region_id))
+    while (node) {
+      if (node.iso_country && REGION_CURRENCIES[node.iso_country]) {
+        currency = REGION_CURRENCIES[node.iso_country]
+        break
+      }
+      node = node.parent_id != null ? byId.get(Number(node.parent_id)) : null
+    }
+  }
+  return { ...m, effective_currency: currency }
+}
+
 export async function listMerchants(_params: Record<string, string>, query?: any): Promise<any> {
   const search = query?.search || query?.name
   const lower = search?.toLowerCase()
@@ -24,14 +57,15 @@ export async function listMerchants(_params: Record<string, string>, query?: any
   })
   filtered.sort((a: any, b: any) => ((b.created_at || '') > (a.created_at || '') ? 1 : -1))
   const { skip, limit: pageSize, page, page_size } = resolvePagination(query)
-  return { items: filtered.slice(skip, skip + pageSize), total: filtered.length, page, page_size }
+  const items = await Promise.all(filtered.slice(skip, skip + pageSize).map(withEffectiveCurrency))
+  return { items, total: filtered.length, page, page_size }
 }
 
 export async function getMerchant(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const merchant = await getById('merchants', id)
   if (!merchant) throw { status: 404, message: `Merchant ${id} not found` }
-  return merchant
+  return await withEffectiveCurrency(merchant)
 }
 
 export async function createMerchant(_params: Record<string, string>, data?: any): Promise<any> {
@@ -43,7 +77,7 @@ export async function createMerchant(_params: Record<string, string>, data?: any
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
-  return await getById('merchants', id as number)
+  return await withEffectiveCurrency(await getById('merchants', id as number))
 }
 
 export async function updateMerchant(params: Record<string, string>, data?: any): Promise<any> {
@@ -58,7 +92,7 @@ export async function updateMerchant(params: Record<string, string>, data?: any)
     default_currency: data?.default_currency !== undefined ? data.default_currency : (existing?.default_currency ?? null),
     updated_at: new Date().toISOString(),
   })
-  return await getById('merchants', id)
+  return await withEffectiveCurrency(await getById('merchants', id))
 }
 
 export async function deleteMerchant(params: Record<string, string>): Promise<any> {
@@ -75,9 +109,10 @@ export async function listFavorites(_params: Record<string, string>): Promise<an
     getAll('merchants'),
   ])
   const merchantMap = new Map(allMerchants.map((m: any) => [m.id, m]))
-  return favorites
+  const rows = favorites
     .map((f: any) => merchantMap.get(f.merchant_id))
     .filter((m: any) => m != null && m.is_active !== false)
+  return await Promise.all(rows.map(withEffectiveCurrency))
 }
 
 export async function addFavorite(params: Record<string, string>): Promise<any> {

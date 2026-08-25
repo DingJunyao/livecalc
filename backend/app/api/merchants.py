@@ -65,6 +65,13 @@ def _to_iso(value) -> str | None:
 router = APIRouter()
 
 
+def _attach_effective_currency(db: Session, merchants) -> None:
+    """给返回的商家附加推导币种 effective_currency（default_currency 原值保留）。"""
+    from app.services.currency_service import get_merchant_default_currency
+    for m in merchants:
+        m.effective_currency = get_merchant_default_currency(db, m)
+
+
 @router.get("/map-config")
 async def get_public_map_config(
     db: Session = Depends(get_db),
@@ -131,6 +138,7 @@ async def create_merchant(
         db.add(db_merchant)
         db.commit()
         db.refresh(db_merchant)
+        _attach_effective_currency(db, [db_merchant])
         return db_merchant
     except SQLAlchemyError as e:
         db.rollback()
@@ -708,6 +716,7 @@ async def update_merchant(
             )
             db.commit()
             db.refresh(db_merchant)
+            _attach_effective_currency(db, [db_merchant])
             return db_merchant
 
         p = proposal_service.submit(
@@ -715,6 +724,7 @@ async def update_merchant(
             action="update", payload=update_data, proposer=current_user,
         )
         db.commit()
+        _attach_effective_currency(db, [db_merchant])
         # merchant.update 治理总表默认 manual → 待审；返回当前商家（值未变）
         return db_merchant
     except HTTPException:
@@ -843,6 +853,7 @@ async def get_merchants(
 
         # 分页查询
         merchants = query.order_by(Merchant.created_at.desc()).offset(skip).limit(limit).all()
+        _attach_effective_currency(db, merchants)
 
         # 计算页码
         page = (skip // limit) + 1

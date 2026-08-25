@@ -53,6 +53,12 @@ def _get_bool_config(db: Session, key: str, default: bool = False) -> bool:
     return val.lower() in ("true", "1", "yes")
 
 
+def _user_effective_currency(db: Session, user) -> str:
+    """用户实际币种：手选优先，其次按地区国家推导，最后全局默认。"""
+    from app.services.currency_service import get_user_default_currency
+    return get_user_default_currency(db, user)
+
+
 def _build_unit_preferences(user: User, db: Session) -> UnitPreferences:
     """从 User 的 4 个单位字段构造 unit_preferences，解析单位名。"""
     def _pref(uid):
@@ -287,6 +293,7 @@ def _user_to_response(user: "User", db: Session) -> UserResponse:
         region_id=user.region_id,
         default_currency=user.default_currency,
         default_calc_scope=user.default_calc_scope,
+        effective_currency=_user_effective_currency(db, user),
     )
 
 

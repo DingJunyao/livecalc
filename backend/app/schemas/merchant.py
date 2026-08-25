@@ -33,6 +33,7 @@ class MerchantResponse(TimeZoneAwareModel):
     longitude: Optional[float]
     region_id: Optional[int] = None
     default_currency: Optional[str] = None
+    effective_currency: str = "CNY"  # derived: default_currency empty -> region country currency
     is_open: bool
     created_at: datetime  # 修改为 datetime 类型
     pending_proposal: Optional[dict] = None

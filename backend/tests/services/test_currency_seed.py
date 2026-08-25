@@ -4,8 +4,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
-from app.models import Currency
-from app.services.currency_seed import CURRENCIES, ensure_currencies
+from app.models import AdministrativeRegion, Currency, RegionUnitSetting
+from app.services.currency_seed import (
+    CURRENCIES,
+    REGION_CURRENCIES,
+    ensure_currencies,
+    ensure_region_currencies,
+)
 
 
 def _db():
@@ -70,3 +75,40 @@ def test_currency_dictionary_covers_seed_and_provider_set():
         assert meta["name"]
         assert isinstance(meta["symbol"], str)
         assert meta["decimals"] >= 0
+
+
+def test_ensure_region_currencies_fills_and_is_idempotent():
+    db = _db()
+    try:
+        db.add_all([
+            AdministrativeRegion(id=1, code="CN", name="中国", level=0, iso_country="CN", path="CN"),
+            AdministrativeRegion(id=2, code="US", name="美国", level=0, iso_country="US", path="US"),
+            AdministrativeRegion(id=3, code="JP", name="日本", level=0, iso_country="JP", path="JP"),
+        ])
+        db.commit()
+
+        result = ensure_region_currencies(db)
+        assert result["filled"] == 3
+        assert db.query(RegionUnitSetting).filter(RegionUnitSetting.region_code == "US").one().default_currency == "USD"
+        assert db.query(RegionUnitSetting).filter(RegionUnitSetting.region_code == "CN").one().default_currency == "CNY"
+
+        # 幂等：第二次不重复补齐
+        assert ensure_region_currencies(db)["filled"] == 0
+
+        # 不覆盖已设值（模拟管理员手工改过）
+        us = db.query(RegionUnitSetting).filter(RegionUnitSetting.region_code == "US").one()
+        us.default_currency = "EUR"
+        db.commit()
+        assert ensure_region_currencies(db)["filled"] == 0
+        assert db.query(RegionUnitSetting).filter(RegionUnitSetting.region_code == "US").one().default_currency == "EUR"
+    finally:
+        db.close()
+
+
+def test_region_currency_map_covers_supported_currencies():
+    # 每种支持币种至少有一个映射国
+    codes = set(REGION_CURRENCIES.values())
+    assert set(CURRENCIES) - codes == set()
+    assert REGION_CURRENCIES["CN"] == "CNY"
+    assert REGION_CURRENCIES["US"] == "USD"
+    assert REGION_CURRENCIES["DE"] == "EUR"
