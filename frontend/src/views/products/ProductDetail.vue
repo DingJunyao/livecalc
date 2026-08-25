@@ -1031,22 +1031,8 @@
               @update:model-value="onPriceMerchantChange"
             />
 
-            <!-- 价格（币种符号可点击切换） -->
+            <!-- 价格（币种在价格右侧，显示三字母） -->
             <div class="d-flex align-center ga-2 mb-4">
-              <v-menu :close-on-content-click="true" location="bottom">
-                <template #activator="{ props: menuProps }">
-                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ priceCurrencySymbolText }}</v-btn>
-                </template>
-                <v-list density="compact">
-                  <v-list-item
-                    v-for="c in priceCurrencies"
-                    :key="c.code"
-                    :title="`${c.symbol || c.code} ${c.name}`"
-                    :active="priceCurrency === c.code"
-                    @click="priceCurrency = c.code; priceCurrencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                  />
-                </v-list>
-              </v-menu>
               <v-text-field
                 v-model.number="priceForm.price"
                 label="价格 *"
@@ -1056,6 +1042,20 @@
                 required
                 class="flex-grow-1"
               />
+              <v-menu :close-on-content-click="true" location="bottom">
+                <template #activator="{ props: menuProps }">
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ priceCurrency }}</v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="c in priceCurrencies"
+                    :key="c.code"
+                    :title="`${c.name} ${c.code}`"
+                    :active="priceCurrency === c.code"
+                    @click="priceCurrency = c.code"
+                  />
+                </v-list>
+              </v-menu>
             </div>
 
             <v-row dense>
@@ -1237,7 +1237,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
-import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { loadCurrencies } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
@@ -1686,21 +1686,15 @@ const priceForm = ref({
 // 价格对话框币种（对齐 QuickPriceRecordDialog / PriceRecordForm）
 const priceCurrencies = ref<any[]>([])
 const priceCurrency = ref<string>('CNY')
-const priceCurrencySymbolText = ref<string>('¥')
 
-const applyPriceCurrency = async (code: string) => {
+const applyPriceCurrency = (code: string) => {
   priceCurrency.value = code || 'CNY'
-  try {
-    priceCurrencySymbolText.value = await currencySymbol(priceCurrency.value)
-  } catch {
-    priceCurrencySymbolText.value = symbolFromIntl(priceCurrency.value)
-  }
 }
 
 // 商家变化时联动币种（商家默认币种优先）
 const onPriceMerchantChange = (val: number | null) => {
   const m = merchants.value.find((x) => x.id === val)
-  void applyPriceCurrency(m?.default_currency || 'CNY')
+  applyPriceCurrency(m?.default_currency || 'CNY')
 }
 
 // 正在编辑的价格记录

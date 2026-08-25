@@ -30,22 +30,8 @@
             class="mb-4"
           />
 
-          <!-- 价格（币种符号可点击切换） -->
+          <!-- 价格（币种在价格右侧，显示三字母） -->
           <div class="d-flex align-center ga-2 mb-4">
-            <v-menu :close-on-content-click="true" location="bottom">
-              <template #activator="{ props: menuProps }">
-                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
-              </template>
-              <v-list density="compact">
-                <v-list-item
-                  v-for="c in currencies"
-                  :key="c.code"
-                  :title="`${c.symbol || c.code} ${c.name}`"
-                  :active="recordCurrency === c.code"
-                  @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                />
-              </v-list>
-            </v-menu>
             <v-text-field
               v-model.number="form.price"
               label="价格"
@@ -54,6 +40,20 @@
               :rules="priceRules"
               class="flex-grow-1"
             />
+            <v-menu :close-on-content-click="true" location="bottom">
+              <template #activator="{ props: menuProps }">
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="c in currencies"
+                  :key="c.code"
+                  :title="`${c.name} ${c.code}`"
+                  :active="recordCurrency === c.code"
+                  @click="recordCurrency = c.code"
+                />
+              </v-list>
+            </v-menu>
           </div>
 
           <v-row>
@@ -129,7 +129,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
-import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { loadCurrencies } from '@/utils/currency'
 
 interface Merchant {
   id: number
@@ -163,7 +163,6 @@ const formValid = ref(false)
 const merchantOptions = ref<Merchant[]>([])
 const currencies = ref<any[]>([])
 const recordCurrency = ref<string>('CNY')
-const currencySymbolText = ref<string>('¥')
 
 // 商品选择（原料页使用）
 const selectedProductId = ref<number | null>(null)
@@ -268,18 +267,13 @@ const loadMerchants = async () => {
   }
 }
 
-const applyMerchantCurrency = async (merchantId: number | null) => {
+const applyMerchantCurrency = (merchantId: number | null) => {
   const m = merchantOptions.value.find((x) => x.id === merchantId)
   recordCurrency.value = m?.default_currency || 'CNY'
-  try {
-    currencySymbolText.value = await currencySymbol(recordCurrency.value)
-  } catch {
-    currencySymbolText.value = symbolFromIntl(recordCurrency.value)
-  }
 }
 
-const onMerchantChange = async (val: number | null) => {
-  await applyMerchantCurrency(val)
+const onMerchantChange = (val: number | null) => {
+  applyMerchantCurrency(val)
 }
 
 const resetForm = () => {
@@ -295,7 +289,6 @@ const resetForm = () => {
     is_purchase: sessionMemory.isPurchase,
   }
   recordCurrency.value = 'CNY'
-  currencySymbolText.value = '¥'
   nextTick(() => formRef.value?.resetValidation())
 }
 

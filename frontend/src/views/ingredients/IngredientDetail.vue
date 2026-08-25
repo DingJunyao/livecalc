@@ -1329,22 +1329,8 @@
               @update:model-value="onEditPriceMerchantChange"
             />
 
-            <!-- 价格（币种符号可点击切换） -->
+            <!-- 价格（币种在价格右侧，显示三字母） -->
             <div class="d-flex align-center ga-2 mb-4">
-              <v-menu :close-on-content-click="true" location="bottom">
-                <template #activator="{ props: menuProps }">
-                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ editPriceCurrencySymbolText }}</v-btn>
-                </template>
-                <v-list density="compact">
-                  <v-list-item
-                    v-for="c in editPriceCurrencies"
-                    :key="c.code"
-                    :title="`${c.symbol || c.code} ${c.name}`"
-                    :active="editPriceCurrency === c.code"
-                    @click="editPriceCurrency = c.code; editPriceCurrencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                  />
-                </v-list>
-              </v-menu>
               <v-text-field
                 v-model.number="editPriceForm.price"
                 label="价格 *"
@@ -1354,6 +1340,20 @@
                 required
                 class="flex-grow-1"
               />
+              <v-menu :close-on-content-click="true" location="bottom">
+                <template #activator="{ props: menuProps }">
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ editPriceCurrency }}</v-btn>
+                </template>
+                <v-list density="compact">
+                  <v-list-item
+                    v-for="c in editPriceCurrencies"
+                    :key="c.code"
+                    :title="`${c.name} ${c.code}`"
+                    :active="editPriceCurrency === c.code"
+                    @click="editPriceCurrency = c.code"
+                  />
+                </v-list>
+              </v-menu>
             </div>
 
             <v-row dense>
@@ -1798,7 +1798,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
-import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { loadCurrencies } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
@@ -2306,21 +2306,15 @@ const editPriceForm = ref({
 // 编辑价格对话框币种（对齐 QuickPriceRecordDialog / PriceRecordForm）
 const editPriceCurrencies = ref<any[]>([])
 const editPriceCurrency = ref<string>('CNY')
-const editPriceCurrencySymbolText = ref<string>('¥')
 
-const applyEditPriceCurrency = async (code: string) => {
+const applyEditPriceCurrency = (code: string) => {
   editPriceCurrency.value = code || 'CNY'
-  try {
-    editPriceCurrencySymbolText.value = await currencySymbol(editPriceCurrency.value)
-  } catch {
-    editPriceCurrencySymbolText.value = symbolFromIntl(editPriceCurrency.value)
-  }
 }
 
 // 商家变化时联动币种（商家默认币种优先）
 const onEditPriceMerchantChange = (val: number | null) => {
   const m = merchants.value.find((x) => x.id === val)
-  void applyEditPriceCurrency(m?.default_currency || 'CNY')
+  applyEditPriceCurrency(m?.default_currency || 'CNY')
 }
 const showMergeDialog = ref(false)
 const showMergeConfirmDialog = ref(false)

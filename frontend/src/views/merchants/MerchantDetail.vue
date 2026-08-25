@@ -272,9 +272,8 @@
             <v-form>
               <v-text-field
                 v-model="editingForm.name"
-                label="商家名称"
+                label="商家名称（可留空）"
                 variant="outlined"
-                required
                 class="mb-4"
               />
               <v-text-field
@@ -391,7 +390,7 @@ const overlaidMerchantName = computed(() => {
   if (pendingProposal.value?.action === 'update' && pendingProposal.value?.payload?.name) {
     return pendingProposal.value.payload.name
   }
-  return merchant.value?.name || ''
+  return merchant.value?.name || '未命名商家'
 })
 
 const overlaidAddress = computed(() => {
@@ -478,7 +477,7 @@ const loadData = async () => {
   try {
     merchant.value = await api.get(`/merchants/${merchantId.value}`)
     pendingProposal.value = merchant.value.pending_proposal || null
-    setDetailTitle(merchant.value.name, '商家', '商家详情')
+    setDetailTitle(merchant.value.name || '未命名商家', '商家', '商家详情')
     await loadProductPrices()
   } catch (e: any) {
     console.error('加载商家详情失败', e)
@@ -550,8 +549,6 @@ const onMapPick = async (coord: Coordinate) => {
 }
 
 const saveItem = async () => {
-  if (!editingForm.value.name.trim()) return
-
   saving.value = true
   try {
     const data: any = {

@@ -5,7 +5,8 @@ from app.utils.datetime_utils import TimeZoneAwareModel
 
 
 class MerchantCreate(BaseModel):
-    name: str = Field(..., max_length=200)
+    # name 可选：允许只填国家/地区等场景（空串存储，DB 列 NOT NULL 不变）
+    name: Optional[str] = Field(None, max_length=200)
     address: Optional[str] = Field(None, max_length=500)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
