@@ -26,11 +26,13 @@ export async function currencySymbol(code: string): Promise<string> {
   return hit?.symbol || symbolFromIntl(code)
 }
 
+// 防御：code 异常（如误传对象）时兜底 CNY，避免渲染出 "[object Object]"。
 export function formatMoney(amount: number, code: string): string {
+  const cur = typeof code === 'string' && code ? code : 'CNY'
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: code }).format(amount)
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur }).format(amount)
   } catch {
-    return `${amount.toFixed(2)} ${code}`
+    return `${amount.toFixed(2)} ${cur}`
   }
 }
 

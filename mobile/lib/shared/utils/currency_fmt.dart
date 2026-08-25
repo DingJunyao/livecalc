@@ -11,10 +11,11 @@ String currencySymbol(String code) {
 }
 
 String formatMoney(num amount, String code) {
+  final cur = code.isNotEmpty ? code : 'CNY';
   try {
-    return NumberFormat.simpleCurrency(name: code).format(amount);
+    return NumberFormat.simpleCurrency(name: cur).format(amount);
   } catch (_) {
-    return '${amount.toStringAsFixed(2)} $code';
+    return '${amount.toStringAsFixed(2)} $cur';
   }
 }
 

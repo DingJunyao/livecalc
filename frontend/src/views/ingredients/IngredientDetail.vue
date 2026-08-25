@@ -52,7 +52,6 @@
         />
       </div>
       <div class="px-4 pt-4">
-        <RegionSelect v-model="regionId" class="mb-3" />
       </div>
       <div class="ingredient-layout">
       <!-- 基本信息 -->
@@ -1777,9 +1776,7 @@ import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
-import { useCalcRegion } from '@/composables/useCalcRegion'
 import { formatMoney } from '@/utils/currency'
-import RegionSelect from '@/components/common/RegionSelect.vue'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
@@ -1787,7 +1784,6 @@ import { usePendingProposals } from '@/composables/usePendingProposals'
 
 const { ask } = useConfirmDialog()
 const userStore = useUserStore()
-const { regionId, effective } = useCalcRegion()
 const { currency: userCurrency } = useUserCurrency()
 
 const usdaDialog = ref(false)
@@ -3224,7 +3220,7 @@ const loadLatestPrice = async () => {
   loadingLatestPrice.value = true
   try {
     const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price`, {
-      params: { region_id: effective.value },
+      params: { region_id: null },
     })
     latestPrice.value = response.average_price
     latestPriceDate.value = response.latest_date
@@ -3258,7 +3254,7 @@ const loadMerchantPrices = async () => {
   loadingMerchantPrices.value = true
   try {
     const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price-by-merchant`, {
-      params: { region_id: effective.value },
+      params: { region_id: null },
     })
     merchantPrices.value = response.prices || []
     merchantPriceUnit.value = response.unit || null
@@ -3388,7 +3384,7 @@ const loadChartPriceRecords = async (startDate?: Date) => {
     const params: Record<string, any> = {
       ingredient_id: ingredientId.value,
       limit: 1000,
-      region_id: effective.value,
+      region_id: null,
     }
     if (startDate) {
       params.start_date = startDate.toISOString().split('T')[0]
@@ -4348,12 +4344,6 @@ const showMessage = (message: string, color: string = 'success') => {
 }
 
 // 地区变化：刷新最新价、各商家价、商品权重与价格趋势
-watch(regionId, () => {
-  loadLatestPrice()
-  loadMerchantPrices()
-  loadProductWeights()
-  refreshChart()
-})
 
 // 监听分页变化
 watch(pricePage, loadPriceRecords)

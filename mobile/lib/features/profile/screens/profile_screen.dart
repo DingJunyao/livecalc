@@ -183,6 +183,8 @@ String _calcScopeDisplayName(String? scope) {
       return '地级';
     case 'county':
       return '县级';
+    case '':
+      return '全部地区';
     default:
       return '国家/地区';
   }
@@ -257,7 +259,7 @@ Future<void> _showDefaultCurrencyDialog(
 
 Future<void> _showDefaultCalcScopeDialog(
     BuildContext context, WidgetRef ref) async {
-  final current = ref.read(authProvider).user?.defaultCalcScope;
+  final current = ref.read(authProvider).user?.defaultCalcScope ?? 'country';
   final selected = await showDialog<String>(
     context: context,
     builder: (ctx) => SimpleDialog(
@@ -269,6 +271,7 @@ Future<void> _showDefaultCalcScopeDialog(
           child: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              RadioListTile<String>(value: '', title: Text('全部地区')),
               RadioListTile<String>(value: 'country', title: Text('国家/地区')),
               RadioListTile<String>(value: 'province', title: Text('省级')),
               RadioListTile<String>(value: 'city', title: Text('地级')),

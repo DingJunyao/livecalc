@@ -11,7 +11,6 @@ import 'recipe_form_screen.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
-import '../../../shared/widgets/region_select_field.dart';
 import '../../../shared/utils/currency_fmt.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
@@ -155,13 +154,6 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  RegionSelectField(
-                    value: null,
-                    onChanged: (regionId) => ref
-                        .read(recipeDetailPageProvider(widget.id).notifier)
-                        .setRegion(regionId),
-                  ),
-                  const SizedBox(height: 16),
                   if (imageUrls.length > 1) ...[
                     _buildImageGallery(theme, imageUrls, _selectedImageIndex),
                     const SizedBox(height: 16),

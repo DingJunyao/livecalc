@@ -28,7 +28,6 @@
         @change="onFilterChange"
       />
     </div>
-    <RegionSelect v-model="regionId" class="mb-3" />
 
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-8">
@@ -249,9 +248,7 @@ import FilterBar from '@/components/common/FilterBar.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useUserCurrency } from '@/composables/useUserCurrency'
-import { useCalcRegion } from '@/composables/useCalcRegion'
 import { formatMoney } from '@/utils/currency'
-import RegionSelect from '@/components/common/RegionSelect.vue'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { smAndDown, mdAndDown, md, lgAndUp } = useDisplay()
@@ -278,7 +275,6 @@ interface Recipe {
 
 const router = useRouter()
 const userStore = useUserStore()
-const { regionId, effective } = useCalcRegion()
 const { currency: userCurrency } = useUserCurrency()
 
 const recipes = ref<Recipe[]>([])
@@ -562,7 +558,7 @@ const loadCostsForVisibleRecipes = async () => {
 
   loadingCosts.value = true
   try {
-    const result = await api.post('/recipes/batch-cost', { ids, region_id: effective.value })
+    const result = await api.post('/recipes/batch-cost', { ids, region_id: null })
     costMap.value = result || {}
   } catch (e) {
     console.error('加载成本失败', e)
@@ -593,7 +589,6 @@ const loadIngredients = async () => {
 // 处理图片路径（统一走 utils/image，含仓库兜底）
 const getImageUrl = resolveImageUrl
 
-watch(regionId, loadCostsForVisibleRecipes)
 
 onMounted(() => {
   loadRecipes()

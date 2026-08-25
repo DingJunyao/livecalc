@@ -11,7 +11,12 @@ def resolve_default_calc_region_id(db: Session, user) -> Optional[int]:
 
     if getattr(user, "region_id", None) is None:
         return None
-    target = _SCOPE_LEVEL.get(getattr(user, "default_calc_scope", None), 0)
+    scope = getattr(user, "default_calc_scope", None)
+    if scope == "":
+        # 显式选择「全部地区」→ 不设地区过滤。
+        return None
+    # None（未设置）→ 按设计默认 country（全量，保持既有行为）
+    target = _SCOPE_LEVEL.get(scope, 0)
     node = db.query(AdministrativeRegion).filter(AdministrativeRegion.id == user.region_id).first()
     if node is None:
         return None

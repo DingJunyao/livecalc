@@ -10,7 +10,6 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
-import '../../../shared/widgets/region_select_field.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/nutrition_card.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
@@ -137,11 +136,6 @@ class _IngredientDetailScreenState
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            RegionSelectField(
-              value: null,
-              onChanged: (regionId) => notifier.setRegion(regionId),
-            ),
-            const SizedBox(height: 16),
             if (modifications.isNotEmpty || deletions.isNotEmpty) ...[
               PendingChangeBanner(
                 modifications: modifications,

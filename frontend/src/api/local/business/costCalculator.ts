@@ -132,7 +132,7 @@ export function filterPriceRecordsByRegion(
     const mid = r.merchant_id
     if (mid == null) return false
     const rid = merchantRegions ? merchantRegions[mid] : undefined
-    if (rid == null) return false
+    if (rid == null) return true // 商家未分配地区：任何地区/范围下都计入
     return allowed.has(rid)
   })
 }
