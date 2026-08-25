@@ -24,7 +24,7 @@
           <v-card-text class="text-center pa-2 pa-sm-4">
             <div v-if="loadingStats" class="text-h5 text-sm-h4 font-weight-bold text-primary text-truncate">--</div>
             <div v-else class="text-h5 text-sm-h4 font-weight-bold text-primary text-truncate">
-              ¥{{ monthlyExpense !== null ? monthlyExpense.toFixed(2) : '0.00' }}
+              {{ monthlyExpense !== null ? formatMoney(monthlyExpense, userCurrency) : '0.00' }}
             </div>
             <div class="text-caption text-medium-emphasis">本月支出</div>
           </v-card-text>
@@ -830,7 +830,8 @@ import { useThemeToggle } from '@/composables/useTheme'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { hashPassword } from '@/utils/crypto'
 import { resolveImageUrl } from '@/utils/image'
-import { loadCurrencies } from '@/utils/currency'
+import { loadCurrencies, formatMoney } from '@/utils/currency'
+import { useUserCurrency } from '@/composables/useUserCurrency'
 import { appInfo } from '@/config/appInfo'
 
 const { notify } = useGlobalSnackbar()
@@ -839,6 +840,7 @@ const { energyUnit, toDisplayCalorie, fromDisplayCalorie } = useUserUnits()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 
 const router = useRouter()
+const { currency: userCurrency } = useUserCurrency()
 const userStore = useUserStore()
 const { themeMode } = useThemeToggle()
 const { mapEnabled, ensureLoaded } = useMapConfig()
@@ -1442,7 +1444,8 @@ const loadStats = async () => {
         // price 字段已经是该条记录的总价格，直接累加即可
         monthlyExpense.value = purchaseRecords.reduce((sum: number, record: any) => {
           const price = parseFloat(record.price) || 0
-          return sum + price
+          const rate = parseFloat(record.exchange_rate) || 1
+          return sum + price * rate  // 按快照折算到用户币种再累加，避免跨币种混加
         }, 0)
       } else {
         monthlyExpense.value = 0
