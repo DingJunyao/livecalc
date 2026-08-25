@@ -39,12 +39,12 @@
             </v-tooltip>
           </div>
           <div class="text-h5 font-weight-bold mb-1">
-            ¥{{ Number(m.total_cost || 0).toFixed(2) }}
+            {{ formatMoney(Number(m.total_cost || 0), userCurrency) }}
           </div>
           <div class="text-caption mb-1">
-            <span class="text-green-darken-2">本店 ¥{{ Number(m.covered_cost || 0).toFixed(2) }}</span>
+            <span class="text-green-darken-2">本店 {{ formatMoney(Number(m.covered_cost || 0), userCurrency) }}</span>
             <span v-if="Number(m.external_cost || 0) > 0" class="ml-2 text-orange-darken-2">
-              外部 ¥{{ Number(m.external_cost || 0).toFixed(2) }}
+              外部 {{ formatMoney(Number(m.external_cost || 0), userCurrency) }}
             </span>
           </div>
           <div v-if="m.missing_ingredients?.length" class="text-caption text-warning">
@@ -59,11 +59,15 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const props = defineProps<{
   merchantCosts?: { merchants?: any[] } | null
   loading?: boolean
 }>()
+
+const { currency: userCurrency } = useUserCurrency()
 
 const merchantList = computed(() => {
   return props.merchantCosts?.merchants || []

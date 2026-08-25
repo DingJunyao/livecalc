@@ -5,6 +5,24 @@ import { calcNRV } from '../business/nutritionAggregator'
 import { aggregatePrices } from '../business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
+import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
+
+/** 从 query 解析可选 region_id；null/空值表示全局。 */
+function parseRegionId(value: any): number | null {
+  if (value == null || value === '') return null
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+/** 按所选地区及其下级过滤价格记录（regionId == null 时原样返回）。 */
+async function applyRegionFilter<T extends { merchant_id?: number | null }>(
+  records: T[],
+  regionId: number | null,
+): Promise<T[]> {
+  if (regionId == null) return records
+  const regionFilter = await buildRegionFilter(regionId)
+  return filterRecordsByRegion(records, regionId, regionFilter.allowedRegionIds, regionFilter.merchantRegions)
+}
 
 export async function listNutritionIngredients(_params: Record<string, string>, query?: any): Promise<any> {
   const name = query?.name || query?.search
@@ -100,8 +118,9 @@ export async function updateIngredientNutrition(params: Record<string, string>, 
   return { items: created }
 }
 
-export async function getLatestPrice(params: Record<string, string>): Promise<any> {
+export async function getLatestPrice(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
+  const regionId = parseRegionId(query?.region_id)
   // Find all products for this ingredient
   const products = await getByIndex('products', 'by_ingredient_id', id)
   if (products.length === 0) {
@@ -116,17 +135,20 @@ export async function getLatestPrice(params: Record<string, string>): Promise<an
     getAll('entity_densities') as Promise<DensityInfo[]>,
   ])
   const allRecords: any[] = []
-  let latestRec: any = null
   for (const p of products) {
     const recs = await getByIndex('product_records', 'by_product_id', p.id)
     allRecords.push(...recs)
-    const sorted = recs.sort((a: any, b: any) => (b.recorded_at || '').localeCompare(a.recorded_at || ''))
-    if (sorted.length > 0 && (!latestRec || (sorted[0]?.recorded_at || '') > (latestRec.recorded_at || ''))) {
-      latestRec = sorted[0]
+  }
+
+  const recordsInRegion = await applyRegionFilter(allRecords, regionId)
+  let latestRec: any = null
+  for (const rec of recordsInRegion) {
+    if (!latestRec || (rec.recorded_at || '') > (latestRec.recorded_at || '')) {
+      latestRec = rec
     }
   }
 
-  const agg = aggregatePrices(allRecords, units, overrides, densities, 'ingredient', id)
+  const agg = aggregatePrices(recordsInRegion, units, overrides, densities, 'ingredient', id)
   return {
     average_price: agg.average_price,
     unit: agg.average_price != null ? agg.unit : null,
@@ -137,8 +159,9 @@ export async function getLatestPrice(params: Record<string, string>): Promise<an
   }
 }
 
-export async function getLatestPriceByMerchant(params: Record<string, string>): Promise<any> {
+export async function getLatestPriceByMerchant(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
+  const regionId = parseRegionId(query?.region_id)
   const products = await getByIndex('products', 'by_ingredient_id', id)
   const productIds = products.map((p: any) => p.id)
 
@@ -146,7 +169,8 @@ export async function getLatestPriceByMerchant(params: Record<string, string>): 
   const byMerchant: Record<number, any> = {}
   for (const pid of productIds) {
     const records = await getByIndex('product_records', 'by_product_id', pid)
-    for (const rec of records) {
+    const recordsInRegion = await applyRegionFilter(records, regionId)
+    for (const rec of recordsInRegion) {
       const mid = rec.merchant_id
       if (!mid) continue
       if (!byMerchant[mid]) {

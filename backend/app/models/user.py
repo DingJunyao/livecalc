@@ -29,6 +29,10 @@ class User(Base):
     default_mass_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
     default_volume_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
     default_price_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
+    # 默认币种（NULL = 跟随所在地区国家币种）
+    default_currency = Column(String(3), nullable=True)
+    # 默认计算范围：country/province/city/county
+    default_calc_scope = Column(String(10), nullable=True)
     # 所属行政区划
     region_id = Column(Integer, ForeignKey("administrative_regions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

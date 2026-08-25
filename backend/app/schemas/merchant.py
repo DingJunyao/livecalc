@@ -9,6 +9,8 @@ class MerchantCreate(BaseModel):
     address: Optional[str] = Field(None, max_length=500)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
+    region_id: Optional[int] = None
+    default_currency: Optional[str] = None
     is_open: Optional[bool] = Field(True)
 
 
@@ -17,6 +19,8 @@ class MerchantUpdate(BaseModel):
     address: Optional[str] = Field(None, max_length=500)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
+    region_id: Optional[int] = None
+    default_currency: Optional[str] = None
     is_open: Optional[bool] = Field(None)
 
 
@@ -26,6 +30,8 @@ class MerchantResponse(TimeZoneAwareModel):
     address: Optional[str]
     latitude: Optional[float]
     longitude: Optional[float]
+    region_id: Optional[int] = None
+    default_currency: Optional[str] = None
     is_open: bool
     created_at: datetime  # 修改为 datetime 类型
     pending_proposal: Optional[dict] = None

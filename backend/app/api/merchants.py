@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
@@ -7,6 +8,7 @@ from app.core.database import get_db
 from app.core.security import get_current_user
 from app.models.merchant import Merchant
 from app.models.map_config import MapConfiguration
+from app.models.administrative_region import AdministrativeRegion
 from app.services.proposals import service as proposal_service
 from app.schemas.merchant import (
     MerchantCreate,
@@ -93,6 +95,21 @@ async def get_public_map_config(
         )
 
 
+class GeocodeIn(BaseModel):
+    latitude: float
+    longitude: float
+
+@router.post("/geocode")
+async def geocode(body: GeocodeIn, db: Session = Depends(get_db), current_user = Depends(get_current_user)):
+    from app.services.geocoding import reverse_geocode
+    region_id = reverse_geocode(db, body.longitude, body.latitude)
+    if region_id is None:
+        return {"region_id": None}
+    from app.api.regions import _region_to_response
+    region = db.query(AdministrativeRegion).filter(AdministrativeRegion.id == region_id).first()
+    resp = _region_to_response(region)
+    return {"region_id": region_id, "region": resp.model_dump()}
+
 @router.post("", response_model=MerchantResponse)
 async def create_merchant(
     merchant: MerchantCreate,
@@ -107,6 +124,8 @@ async def create_merchant(
             address=merchant.address,
             latitude=merchant.latitude,
             longitude=merchant.longitude,
+            region_id=merchant.region_id,
+            default_currency=merchant.default_currency,
             is_open=merchant.is_open if merchant.is_open is not None else True
         )
         db.add(db_merchant)
@@ -131,6 +150,7 @@ async def create_merchant(
 async def get_merchant_coordinates(
     search: Optional[str] = Query(None, description="搜索关键词（与列表同语义）"),
     include_closed: bool = Query(False, description="是否包含已关闭的商家"),
+    include_other_regions: bool = Query(False, description="显示其他地区的商家（含全部地区）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -146,6 +166,20 @@ async def get_merchant_coordinates(
         )
         if not include_closed:
             query = query.filter(Merchant.is_open == True)  # noqa: E712
+        # 地区过滤：与列表一致（默认按用户计算范围；勾选「显示其他地区」则显示全部）
+        if not include_other_regions:
+            from app.services.calc_scope import resolve_region_param
+            from app.services.price_region import region_subtree_ids
+            _region_id = resolve_region_param(db, current_user, None)
+            if _region_id is not None:
+                _ids = region_subtree_ids(db, _region_id)
+                if _ids:
+                    query = query.filter(or_(
+                        Merchant.region_id.in_(_ids),
+                        Merchant.region_id.is_(None),
+                    ))
+                else:
+                    query = query.filter(False)
         if search:
             pattern = f"%{search}%"
             query = query.filter(
@@ -662,6 +696,10 @@ async def update_merchant(
             raise HTTPException(status_code=404, detail="商家不存在")
 
         update_data = merchant.model_dump(exclude_unset=True)
+        if merchant.region_id is not None:
+            update_data["region_id"] = merchant.region_id
+        if merchant.default_currency is not None:
+            update_data["default_currency"] = merchant.default_currency
 
         if current_user.is_admin:
             proposal_service.apply_as_admin(
@@ -749,6 +787,7 @@ async def get_merchants(
     search: Optional[str] = Query(None, description="搜索关键词（商家名称或地址）"),
     include_closed: bool = Query(False, description="是否包含已关闭的商家"),
     no_price: bool = Query(False, description="筛选未维护过价格的商家"),
+    include_other_regions: bool = Query(False, description="显示其他地区的商家（含全部地区；默认按用户计算范围过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -764,6 +803,23 @@ async def get_merchants(
         # 默认只显示营业中的商家
         if not include_closed:
             query = query.filter(Merchant.is_open == True)
+
+        # 地区过滤：默认按用户计算范围（region + default_calc_scope）；
+        # 勾选「显示其他地区的商家」则不过滤（显示全部）。
+        # 未分配地区的商家始终计入（与价格/成本计算规则一致）。
+        if not include_other_regions:
+            from app.services.calc_scope import resolve_region_param
+            from app.services.price_region import region_subtree_ids
+            _region_id = resolve_region_param(db, current_user, None)
+            if _region_id is not None:
+                _ids = region_subtree_ids(db, _region_id)
+                if _ids:
+                    query = query.filter(or_(
+                        Merchant.region_id.in_(_ids),
+                        Merchant.region_id.is_(None),
+                    ))
+                else:
+                    query = query.filter(False)
 
         # 添加搜索条件
         if search:

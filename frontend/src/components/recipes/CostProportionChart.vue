@@ -22,6 +22,8 @@
 import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
 import { getIngredientColor } from '@/utils/ingredientColors'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const props = defineProps<{
   costBreakdown?: any[] | null
@@ -31,6 +33,8 @@ const props = defineProps<{
 
 const chartRef = ref<HTMLElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
+
+const { currency: userCurrency } = useUserCurrency()
 
 interface ChartItem {
   name: string
@@ -66,10 +70,10 @@ const chartData = computed<ChartItem[]>(() => {
 
 const totalCostDisplay = computed(() => {
   if (props.totalCost !== null && props.totalCost !== undefined) {
-    return `¥${parseFloat(String(props.totalCost)).toFixed(2)}`
+    return formatMoney(parseFloat(String(props.totalCost)), userCurrency.value)
   }
   const total = chartData.value.reduce((s, i) => s + i.value, 0)
-  return `¥${total.toFixed(2)}`
+  return formatMoney(total, userCurrency.value)
 })
 
 function renderChart() {
@@ -82,7 +86,7 @@ function renderChart() {
   chartInstance.setOption({
     tooltip: {
       trigger: 'item',
-      formatter: (p: any) => `${p.name}: ¥${p.value.toFixed(2)} (${p.percent}%)`,
+      formatter: (p: any) => `${p.name}: ${formatMoney(p.value, userCurrency.value)} (${p.percent}%)`,
     },
     series: [{
       type: 'pie',
@@ -96,7 +100,7 @@ function renderChart() {
       },
       label: {
         show: true,
-        formatter: (p: any) => `{b|${p.name}}\n{c|¥${p.value.toFixed(2)}} {per|${p.percent}%}`,
+        formatter: (p: any) => `{b|${p.name}}\n{c|${formatMoney(p.value, userCurrency.value)}} {per|${p.percent}%}`,
         rich: {
           b: { fontSize: 12, lineHeight: 20 },
           c: { fontSize: 13, fontWeight: 'bold' as const },

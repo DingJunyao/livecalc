@@ -24,8 +24,9 @@ def recompute_summary(db: Session, *, product_id: int, merchant_id: Optional[int
     standard_quantity 为 0/None 时按 500（即 1 斤）兜底。
     latest-price 端点不读此汇总表，仅供未来趋势/K 线等使用。
     """
-    # 拉取原始记录，在 Python 端归一化为 ¥/斤 后再聚合
-    # （pure-SQL 难以表达「standard_quantity 为 0/None 时取 500」的兜底）
+    # 拉取原始记录，在 Python 端归一化为「记录时用户币种快照」下的 ¥/斤 后再聚合
+    # （pure-SQL 难以表达「standard_quantity 为 0/None 时取 500」的兜底；
+    #   每条记录先按 record_price_in_user_currency 折算到用户币种，避免跨币种混算）
     q = db.query(ProductRecord).filter(
         ProductRecord.product_id == product_id,
         ProductRecord.is_active == True,  # noqa: E712
@@ -40,7 +41,8 @@ def recompute_summary(db: Session, *, product_id: int, merchant_id: Optional[int
         if r.price is None:
             continue
         std_qty = float(r.standard_quantity) if r.standard_quantity and float(r.standard_quantity) > 0 else 500.0
-        unit_price = float(r.price) * 500.0 / std_qty
+        from app.services.price_region import record_price_in_user_currency
+        unit_price = float(record_price_in_user_currency(r)) * 500.0 / std_qty
         unit_prices.append(unit_price)
         # records 已按 recorded_at desc 排序，第一条有效单价即为最近价
         if idx == 0:

@@ -27,6 +27,7 @@ from app.schemas.recipe import (
     MerchantCostItem
 )
 from app.schemas.common import PaginatedResponse
+from app.services.calc_scope import resolve_region_param
 from app.services.recipe_service import (
     calculate_recipe_cost,
     calculate_recipe_nutrition,
@@ -562,16 +563,18 @@ async def get_recipes(
 @router.post("/batch-cost")
 async def get_recipes_batch_cost(
     request: dict,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """批量获取菜谱的成本和卡路里（用于列表页懒加载）"""
+    region_id = resolve_region_param(db, current_user, region_id)
     recipe_ids = request.get("ids", [])
     if not recipe_ids:
         return {}
 
     from app.services.recipe_service import batch_calculate_recipes_cost_nutrition
-    batch_results = await batch_calculate_recipes_cost_nutrition(recipe_ids, current_user.id, db)
+    batch_results = await batch_calculate_recipes_cost_nutrition(recipe_ids, current_user.id, db, region_id=region_id)
 
     result = {}
     for recipe_id, data in batch_results.items():
@@ -1057,10 +1060,12 @@ async def delete_recipe_image(
 @router.get("/{recipe_id}/cost", response_model=RecipeCostResponse)
 async def get_recipe_cost(
     recipe_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """计算菜谱成本"""
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(
             Recipe.id == recipe_id,
@@ -1078,6 +1083,7 @@ async def get_recipe_cost(
             recipe_id,
             current_user.id,
             db=db,
+            region_id=region_id,
             recipe_ingredients_override=(
                 pending_cost[0] if pending_cost else None
             ),
@@ -1115,10 +1121,12 @@ async def get_recipe_nutrition(
 @router.get("/{recipe_id}/merchant-costs", response_model=RecipeMerchantCostResponse)
 async def get_recipe_merchant_costs(
     recipe_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """计算菜谱按商家购买的总成本估算"""
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(
             Recipe.id == recipe_id,
@@ -1135,6 +1143,7 @@ async def get_recipe_merchant_costs(
         from app.models.nutrition import Ingredient
         from app.services.unit_conversion_service import UnitConversionService
         from sqlalchemy.orm import joinedload
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency
 
         recipe_ingredients = db.query(RecipeIngredient).options(
             joinedload(RecipeIngredient.unit),
@@ -1177,11 +1186,14 @@ async def get_recipe_merchant_costs(
             if not product_ids:
                 return False
 
-            records = db.query(ProductRecord).options(
-                joinedload(ProductRecord.original_unit),
-                joinedload(ProductRecord.merchant)
-            ).join(
-                Merchant, ProductRecord.merchant_id == Merchant.id
+            records = apply_region_filter(
+                db.query(ProductRecord).options(
+                    joinedload(ProductRecord.original_unit),
+                    joinedload(ProductRecord.merchant)
+                ).join(
+                    Merchant, ProductRecord.merchant_id == Merchant.id
+                ),
+                db, region_id,
             ).filter(
                 ProductRecord.product_id.in_(product_ids),
                 ProductRecord.merchant_id.isnot(None),
@@ -1201,7 +1213,7 @@ async def get_recipe_merchant_costs(
                     continue
 
                 unit_price = None
-                total_price = Decimal(str(record.price))
+                total_price = record_price_in_user_currency(record)
                 orig_qty = float(record.original_quantity)
                 orig_unit_abbr = record.original_unit.abbreviation
 
@@ -1344,10 +1356,13 @@ async def get_recipe_merchant_costs(
                 if not fb_product_ids:
                     continue
 
-                has_merchant_price = db.query(ProductRecord).filter(
-                    ProductRecord.product_id.in_(fb_product_ids),
-                    ProductRecord.merchant_id.isnot(None),
-                    ProductRecord.is_active == True
+                has_merchant_price = apply_region_filter(
+                    db.query(ProductRecord).filter(
+                        ProductRecord.product_id.in_(fb_product_ids),
+                        ProductRecord.merchant_id.isnot(None),
+                        ProductRecord.is_active == True
+                    ),
+                    db, region_id,
                 ).first()
                 if has_merchant_price:
                     ing = all_ingredients_map.get(ing_id)
@@ -1406,11 +1421,14 @@ async def get_recipe_merchant_costs(
                     child_pids = [p.id for p in child_products if p.id]
                     if not child_pids:
                         continue
-                    child_records = db.query(ProductRecord).options(
-                        joinedload(ProductRecord.original_unit),
-                        joinedload(ProductRecord.merchant)
-                    ).join(
-                        Merchant, ProductRecord.merchant_id == Merchant.id
+                    child_records = apply_region_filter(
+                        db.query(ProductRecord).options(
+                            joinedload(ProductRecord.original_unit),
+                            joinedload(ProductRecord.merchant)
+                        ).join(
+                            Merchant, ProductRecord.merchant_id == Merchant.id
+                        ),
+                        db, region_id,
                     ).filter(
                         ProductRecord.product_id.in_(child_pids),
                         ProductRecord.merchant_id.isnot(None),
@@ -1646,6 +1664,7 @@ async def get_recipe_images(
 async def get_recipe_cost_history(
     recipe_id: int,
     days: int = Query(90, ge=7, le=365, description="查询天数"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone)
@@ -1656,6 +1675,7 @@ async def get_recipe_cost_history(
     如果某天某食材没有价格数据，则向前找食材价格；
     如果没有食材价格，则以时间最早的为准。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
@@ -1672,7 +1692,7 @@ async def get_recipe_cost_history(
             raise HTTPException(status_code=404, detail="菜谱不存在")
 
         # 实时计算成本趋势
-        cost_trend = calculate_recipe_cost_trend(recipe_id, current_user.id, db, days, tz=tz)
+        cost_trend = calculate_recipe_cost_trend(recipe_id, current_user.id, db, days, tz=tz, region_id=region_id)
 
         # 转换为响应模型（按时间倒序）
         return [
@@ -1697,6 +1717,7 @@ async def get_recipe_cost_history_range(
     recipe_id: int,
     days: int = Query(90, ge=7, le=365, description="查询天数"),
     offset_days: int = Query(0, ge=0, description="偏移天数（从 offset_days 天前开始算）"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone)
@@ -1716,6 +1737,7 @@ async def get_recipe_cost_history_range(
 
     使用前向填充机制处理缺失的价格记录。
     """
+    region_id = resolve_region_param(db, current_user, region_id)
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
@@ -1732,7 +1754,7 @@ async def get_recipe_cost_history_range(
             raise HTTPException(status_code=404, detail="菜谱不存在")
 
         # 计算成本区间趋势
-        cost_range_trend = calculate_recipe_cost_range_trend(recipe_id, current_user.id, db, days, offset_days, tz=tz)
+        cost_range_trend = calculate_recipe_cost_range_trend(recipe_id, current_user.id, db, days, offset_days, tz=tz, region_id=region_id)
 
         # 转换为响应模型（按时间顺序）
         return [

@@ -27,6 +27,8 @@ export const useUserStore = defineStore('user', () => {
         price_unit: { id: 3, name: '斤', abbreviation: '斤' },
       },
       region_id: null,
+      default_currency: null,
+      default_calc_scope: null,
     }
 
     const user = ref<User | null>(localUserData)

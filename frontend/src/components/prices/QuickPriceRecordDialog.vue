@@ -4,6 +4,19 @@
       <v-card-title>记录价格{{ displayProductName ? ' - ' + displayProductName : '' }}</v-card-title>
       <v-card-text>
         <v-form ref="formRef" v-model="formValid">
+          <!-- 商家（必填，置于商品前） -->
+          <v-autocomplete
+            v-model="form.merchant_id"
+            :items="merchantOptions"
+            item-title="name"
+            item-value="id"
+            label="商家 *"
+            variant="outlined"
+            :rules="[(v: any) => !!v || '请选择商家']"
+            class="mb-4"
+            @update:model-value="onMerchantChange"
+          />
+
           <!-- 商品选择（原料页使用） -->
           <v-select
             v-if="products && products.length > 0"
@@ -17,14 +30,31 @@
             class="mb-4"
           />
 
-          <v-text-field
-            v-model.number="form.price"
-            label="价格 (元)"
-            variant="outlined"
-            type="number"
-            :rules="priceRules"
-            class="mb-4"
-          />
+          <!-- 价格（币种符号可点击切换） -->
+          <div class="d-flex align-center ga-2 mb-4">
+            <v-menu :close-on-content-click="true" location="bottom">
+              <template #activator="{ props: menuProps }">
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ currencySymbolText }}</v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="c in currencies"
+                  :key="c.code"
+                  :title="`${c.symbol || c.code} ${c.name}`"
+                  :active="recordCurrency === c.code"
+                  @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
+                />
+              </v-list>
+            </v-menu>
+            <v-text-field
+              v-model.number="form.price"
+              label="价格"
+              variant="outlined"
+              type="number"
+              :rules="priceRules"
+              class="flex-grow-1"
+            />
+          </div>
 
           <v-row>
             <v-col cols="6">
@@ -46,17 +76,6 @@
               />
             </v-col>
           </v-row>
-
-          <v-autocomplete
-            v-model="form.merchant_id"
-            :items="merchantOptions"
-            item-title="name"
-            item-value="id"
-            label="商家（可选）"
-            variant="outlined"
-            clearable
-            class="mb-4"
-          />
 
           <v-checkbox
             v-model="form.is_purchase"
@@ -110,10 +129,12 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
+import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 
 interface Merchant {
   id: number
   name: string
+  default_currency?: string | null
 }
 
 interface ProductOption {
@@ -140,6 +161,9 @@ const saveError = ref('')
 const formRef = ref()
 const formValid = ref(false)
 const merchantOptions = ref<Merchant[]>([])
+const currencies = ref<any[]>([])
+const recordCurrency = ref<string>('CNY')
+const currencySymbolText = ref<string>('¥')
 
 // 商品选择（原料页使用）
 const selectedProductId = ref<number | null>(null)
@@ -238,9 +262,24 @@ const loadMerchants = async () => {
   try {
     const response = await api.get('/merchants', { params: { limit: 100 } })
     merchantOptions.value = response.items || []
+    await applyMerchantCurrency(form.value.merchant_id)
   } catch (e: any) {
     console.error('加载商家失败', e)
   }
+}
+
+const applyMerchantCurrency = async (merchantId: number | null) => {
+  const m = merchantOptions.value.find((x) => x.id === merchantId)
+  recordCurrency.value = m?.default_currency || 'CNY'
+  try {
+    currencySymbolText.value = await currencySymbol(recordCurrency.value)
+  } catch {
+    currencySymbolText.value = symbolFromIntl(recordCurrency.value)
+  }
+}
+
+const onMerchantChange = async (val: number | null) => {
+  await applyMerchantCurrency(val)
 }
 
 const resetForm = () => {
@@ -255,6 +294,8 @@ const resetForm = () => {
     notes: '',
     is_purchase: sessionMemory.isPurchase,
   }
+  recordCurrency.value = 'CNY'
+  currencySymbolText.value = '¥'
   nextTick(() => formRef.value?.resetValidation())
 }
 
@@ -263,6 +304,7 @@ watch(() => props.modelValue, (val) => {
   if (val) {
     resetForm()
     loadMerchants()
+    loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
     loadUnits().then(() => {
       // 非列表模式下，直接加载 props.productId 对应的实体单位
       if (!props.products?.length && props.productId) {
@@ -302,6 +344,7 @@ const save = async () => {
       original_quantity: form.value.original_quantity,
       original_unit: form.value.original_unit,
       merchant_id: form.value.merchant_id,
+      currency: recordCurrency.value,
       notes: form.value.notes || null,
       record_type: form.value.is_purchase ? 'purchase' : 'price',
     }

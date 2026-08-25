@@ -120,6 +120,8 @@
           :field-labels="pendingFieldLabels"
         />
       </div>
+      <div class="px-4 pt-4">
+      </div>
       <!-- 上部分：图片、菜谱介绍、成本估算、成本趋势 响应式重排 -->
       <template v-if="displayRecipe?.images?.length">
         <!-- 有图片：左列=图片+介绍，右列=成本+趋势 -->
@@ -197,7 +199,7 @@
             <div v-if="costData || loadingCostData" class="grid-cost">
               <v-card elevation="0" class="ma-4">
                 <v-card-title class="d-flex align-center pb-2">
-                  <v-icon start color="tertiary">mdi-currency-cny</v-icon>
+                  <v-icon start color="tertiary">mdi-cash</v-icon>
                   成本估算
                 </v-card-title>
                 <v-divider />
@@ -207,7 +209,7 @@
                     计算中...
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
-                    ¥{{ formatCost((costData?.total_cost ?? 0) * servingRatio) }}
+                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
                   </div>
                 </v-card-text>
               </v-card>
@@ -240,7 +242,7 @@
             <div v-if="costData || loadingCostData" class="grid-cost">
               <v-card elevation="0" class="ma-4">
                 <v-card-title class="d-flex align-center pb-2">
-                  <v-icon start color="tertiary">mdi-currency-cny</v-icon>
+                  <v-icon start color="tertiary">mdi-cash</v-icon>
                   成本估算
                 </v-card-title>
                 <v-divider />
@@ -250,7 +252,7 @@
                     计算中...
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
-                    ¥{{ formatCost((costData?.total_cost ?? 0) * servingRatio) }}
+                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
                   </div>
                 </v-card-text>
               </v-card>
@@ -522,6 +524,8 @@ import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import { useUserUnits } from '@/composables/useUserUnits'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import RecipeBasicCard from '@/components/recipes/RecipeBasicCard.vue'
 import RecipeIngredientCard from '@/components/recipes/RecipeIngredientCard.vue'
@@ -617,6 +621,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { notify } = useGlobalSnackbar()
+const { currency: userCurrency } = useUserCurrency()
 
 const recipeId = computed(() => {
   const id = Number(route.params.id)
@@ -909,7 +914,9 @@ const loadData = async () => {
 const loadCostData = async () => {
   loadingCostData.value = true
   try {
-    const response = await api.get(`/recipes/${recipeId.value}/cost`)
+    const response = await api.get(`/recipes/${recipeId.value}/cost`, {
+      params: { region_id: null },
+    })
     costData.value = response
   } catch (e) {
     console.error('加载成本失败', e)
@@ -949,7 +956,7 @@ const fetchCostHistoryBatch = async (days: number, offsetDays: number) => {
   // 后端 days 参数要求 ge=7；末批 remaining 可能不足 7，此处兜底钳制
   days = Math.max(7, days)
   const response = await api.get(`/recipes/${recipeId.value}/cost-history-range`, {
-    params: { days, offset_days: offsetDays },
+    params: { days, offset_days: offsetDays, region_id: null },
     timeout: LONG_REQUEST_TIMEOUT,
   })
   return (response || []).map((record: any) => ({
@@ -1118,10 +1125,7 @@ const nextImage = () => {
   }
 }
 
-const formatCost = (cost: number | string) => {
-  const num = parseFloat(String(cost)) || 0
-  return num.toFixed(2)
-}
+
 
 const formatNutritionValue = (value: number | undefined, unit: string) => {
   if (value === undefined || value === null) return '-'
@@ -1325,6 +1329,7 @@ watch(() => route.params.id, () => {
     loadData()
   }
 })
+
 
 onMounted(() => { loadData(); loadProposalStatus() })
 </script>

@@ -29,7 +29,8 @@ def _product_unit_price(records: Sequence) -> Optional[Decimal]:
     for r in records:
         if r.price is None:
             continue
-        p = Decimal(str(r.price))
+        from app.services.price_region import record_price_in_user_currency
+        p = record_price_in_user_currency(r)
         sq = r.standard_quantity
         if sq is None or Decimal(str(sq)) == 0:
             prices.append(p)
@@ -123,6 +124,7 @@ def get_weighted_ingredient_price(
     target_unit_abbr: Optional[str] = None,
     mode: str = "as_of",
     tz: str = "UTC",
+    region_id: Optional[int] = None,
 ) -> dict:
     """编排：查商品 → 查每个商品当日有效记录 → 查权重 → 调 _aggregate_weighted。
 
@@ -158,10 +160,10 @@ def get_weighted_ingredient_price(
     product_records = {}
     for p in products:
         if mode == "recent":
-            records = _collect_recent_records(db, p.id, as_of_date, tz)
+            records = _collect_recent_records(db, p.id, as_of_date, tz, region_id=region_id)
         else:
             if _get_price_records_with_fallback is not None:
-                records = _get_price_records_with_fallback(db, user_id, p.id, as_of_date, tz=tz)
+                records = _get_price_records_with_fallback(db, user_id, p.id, as_of_date, tz=tz, region_id=region_id)
             else:
                 records = []
         # 权重 + source
@@ -177,29 +179,36 @@ def get_weighted_ingredient_price(
     return result
 
 
-def _collect_recent_records(db: Session, product_id: int, as_of_date: datetime, tz: str = "UTC") -> list:
+def _collect_recent_records(db: Session, product_id: int, as_of_date: datetime, tz: str = "UTC", region_id: Optional[int] = None) -> list:
     """latest-price 语义：该商品「最近有记录的那天」的全部记录。
 
     与 nutrition.get_ingredient_latest_price 的最近一天口径一致（去掉 24h 优先段，
     统一为「最近有记录日」以简化跨商品对齐）。
     """
     from app.models.product import ProductRecord
-    latest = db.query(ProductRecord).filter(
-        ProductRecord.product_id == product_id,
-        ProductRecord.recorded_at <= as_of_date,
+    from app.services.price_region import apply_region_filter
+    latest = apply_region_filter(
+        db.query(ProductRecord).filter(
+            ProductRecord.product_id == product_id,
+            ProductRecord.recorded_at <= as_of_date,
+        ),
+        db, region_id,
     ).order_by(ProductRecord.recorded_at.desc()).first()
     if not latest:
         return []
     d = utc_datetime_to_local_date(latest.recorded_at, tz)
     day_start, day_end = local_date_range_to_utc_range(d, d, tz)
-    return db.query(ProductRecord).filter(
-        ProductRecord.product_id == product_id,
-        ProductRecord.recorded_at >= day_start,
-        ProductRecord.recorded_at <= day_end,
+    return apply_region_filter(
+        db.query(ProductRecord).filter(
+            ProductRecord.product_id == product_id,
+            ProductRecord.recorded_at >= day_start,
+            ProductRecord.recorded_at <= day_end,
+        ),
+        db, region_id,
     ).all()
 
 
-def resolve_direct_weighted_for_cost(db: Session, ingredient_id: int, *, user_id, as_of_date: datetime, tz: str = "UTC"):
+def resolve_direct_weighted_for_cost(db: Session, ingredient_id: int, *, user_id, as_of_date: datetime, tz: str = "UTC", region_id: Optional[int] = None):
     """直接商品加权价（成本口径：元/standard_unit）。
 
     供菜谱成本计算用，取代 recipe_service 里「遍历商品取第一个有记录的」。
@@ -209,6 +218,7 @@ def resolve_direct_weighted_for_cost(db: Session, ingredient_id: int, *, user_id
     from app.models.product import ProductRecord
     w = get_weighted_ingredient_price(
         db, ingredient_id, as_of_date=as_of_date, user_id=user_id, mode="as_of", tz=tz,
+        region_id=region_id,
     )
     if w["unit_price"] is None:
         return None

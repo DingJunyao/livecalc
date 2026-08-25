@@ -9,7 +9,7 @@ class ProductRecordCreate(BaseModel):
     product_id: Optional[int] = None  # 可选，如果不提供则自动创建商品
     product_name: Optional[str] = Field(None, max_length=200)  # 可选，如果提供 product_id 则不需要
     ingredient_id: Optional[int] = None  # 可选，自动创建商品时挂靠到指定原料（不提供则创建同名原料）
-    merchant_id: Optional[int] = None
+    merchant_id: int
     price: Decimal = Field(..., gt=0, decimal_places=2)
     currency: str = "CNY"
     original_quantity: Decimal = Field(..., gt=0)
@@ -38,6 +38,7 @@ class ProductRecordResponse(TimeZoneAwareModel):
     merchant_name: Optional[str]  # 商家名称
     price: Decimal
     currency: str
+    user_currency: Optional[str] = "CNY"
     original_quantity: Decimal
     original_unit: str  # 单位缩写字符串
     unit_id: Optional[int] = None
