@@ -224,7 +224,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             sparkline: state.sparklines[state.items[i].id],
             onTap: () => context.push('/products/${state.items[i].id}'),
             onQuickPrice: () => _quickPrice(state.items[i]),
-            userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
+            userCurrency: ref.read(authProvider).user?.currency ?? 'CNY',
           );
         },
       ),

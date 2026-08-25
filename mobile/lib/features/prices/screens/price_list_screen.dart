@@ -118,7 +118,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   /// 二次确认后删除记录。
   Future<void> _confirmDelete(PriceRecord r) async {
     final theme = Theme.of(context);
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -340,7 +340,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   Widget _buildRecordCard(ThemeData theme, PriceRecord r) {
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,

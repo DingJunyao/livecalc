@@ -61,7 +61,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     final breakdown = state.cost?.breakdown ?? const [];
     final totalCost = state.cost?.totalCost ?? 0;
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
 
     return Scaffold(
       appBar: AppBar(

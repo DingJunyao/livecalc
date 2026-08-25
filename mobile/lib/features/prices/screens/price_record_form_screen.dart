@@ -358,7 +358,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                   _merchantController.text = m.name;
                   setState(() {
                     _merchantId = m.id;
-                    final code = m.defaultCurrency;
+                    final code =
+                        m.defaultCurrency ?? m.effectiveCurrency;
                     if (code != null && code.isNotEmpty) {
                       _currency = code;
                       _currencySymbol = currencySymbol(code);

@@ -72,7 +72,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final notifier = ref.read(productDetailPageProvider(widget.id).notifier);
     final user = ref.watch(authProvider).user;
     final isAdmin = user?.isAdmin ?? false;
-    final userCurrency = user?.defaultCurrency ?? 'CNY';
+    final userCurrency = user?.currency ?? 'CNY';
     final modifications = <String>{
       ...product.pendingModificationLabels,
       if (state.nutrition?.pendingProposal != null) '营养成分',

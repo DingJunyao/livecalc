@@ -427,7 +427,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   // ---- 成本估算 + 成本趋势 ----
   Widget _buildCostCard(
       ThemeData theme, RecipeDetailPageState state, double ratio) {
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -543,7 +543,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   TableRow _buildIngredientRow(ThemeData theme, RecipeIngredient ing,
       CostBreakdownItem? cb, double ratio) {
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
     final qtyText = _scaledQuantity(ing, ratio);
     final recommendedText = _scaledRecommendedQuantity(ing, ratio);
     final hasFallback =

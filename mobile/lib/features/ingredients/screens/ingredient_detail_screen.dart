@@ -80,7 +80,7 @@ class _IngredientDetailScreenState
     final notifier = ref.read(ingredientDetailPageProvider(widget.id).notifier);
     final user = ref.watch(authProvider).user;
     final isAdmin = user?.isAdmin ?? false;
-    final userCurrency = user?.defaultCurrency ?? 'CNY';
+    final userCurrency = user?.currency ?? 'CNY';
     final modifications = <String>{
       ...ingredient.pendingModificationLabels,
       if (state.nutrition?.pendingProposal != null) '营养成分',

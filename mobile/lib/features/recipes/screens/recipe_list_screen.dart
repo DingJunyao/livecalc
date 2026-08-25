@@ -304,7 +304,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     final servings = r.servings > 0 ? r.servings : 1;
     final hasCost = r.estimatedCost != null;
     final hasCal = r.calories != null;
-    final userCurrency = ref.read(authProvider).user?.defaultCurrency ?? 'CNY';
+    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(

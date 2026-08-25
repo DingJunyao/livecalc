@@ -142,9 +142,8 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     if (initialCurrency.isEmpty) {
       final m =
           args.merchants.where((m) => m.id == _merchantId).firstOrNull;
-      initialCurrency = (m?.defaultCurrency ?? '').isNotEmpty
-          ? m!.defaultCurrency!
-          : 'CNY';
+      final code = m?.defaultCurrency ?? m?.effectiveCurrency ?? '';
+      initialCurrency = code.isNotEmpty ? code : 'CNY';
     }
     _currency = initialCurrency;
     _currencySymbol = currencySymbol(_currency);
@@ -269,7 +268,8 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                   _merchantController.text = merchant.name;
                   setState(() {
                     _merchantId = merchant.id;
-                    final code = merchant.defaultCurrency;
+                    final code =
+                        merchant.defaultCurrency ?? merchant.effectiveCurrency;
                     if (code != null && code.isNotEmpty) {
                       _currency = code;
                       _currencySymbol = currencySymbol(code);

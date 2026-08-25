@@ -64,6 +64,7 @@ class User {
   final UnitPreferences? unitPreferences;
   final String? defaultCurrency;
   final String? defaultCalcScope;
+  final String? effectiveCurrency;
 
   const User({
     required this.id,
@@ -78,6 +79,7 @@ class User {
     this.unitPreferences,
     this.defaultCurrency,
     this.defaultCalcScope,
+    this.effectiveCurrency,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -104,8 +106,12 @@ class User {
           : null,
       defaultCurrency: json['default_currency'] as String?,
       defaultCalcScope: json['default_calc_scope'] as String?,
+      effectiveCurrency: json['effective_currency'] as String?,
     );
   }
+
+  /// 实际币种：手选优先，其次按地区推导（后端 effective_currency），最后 CNY。
+  String get currency => defaultCurrency ?? effectiveCurrency ?? 'CNY';
 
   /// 显示名：昵称优先，无昵称回退用户名（对齐 web displayName）。
   String get displayName {

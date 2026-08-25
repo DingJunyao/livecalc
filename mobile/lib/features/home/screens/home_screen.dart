@@ -73,7 +73,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onRefresh: () => ref
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType),
-                  userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
+                  userCurrency: ref.read(authProvider).user?.currency ?? 'CNY',
                 ),
               )),
         ],

@@ -177,7 +177,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
               loading: state.loadingPrices,
               hasMore: state.pricesHasMore,
               onLoadMore: notifier.loadMorePrices,
-              userCurrency: ref.read(authProvider).user?.defaultCurrency ?? 'CNY',
+              userCurrency: ref.read(authProvider).user?.currency ?? 'CNY',
             ),
           ],
         ),

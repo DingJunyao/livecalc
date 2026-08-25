@@ -11,6 +11,7 @@ class Merchant {
   final MerchantPendingProposal? pendingProposal;
   final int? regionId;
   final String? defaultCurrency;
+  final String? effectiveCurrency;
 
   const Merchant({
     required this.id,
@@ -25,6 +26,7 @@ class Merchant {
     this.pendingProposal,
     this.regionId,
     this.defaultCurrency,
+    this.effectiveCurrency,
   });
 
   factory Merchant.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class Merchant {
       createdAt: json['created_at'] as String?,
       regionId: (json['region_id'] as num?)?.toInt(),
       defaultCurrency: json['default_currency'] as String?,
+      effectiveCurrency: json['effective_currency'] as String?,
       pendingProposal: json['pending_proposal'] is Map<String, dynamic>
           ? MerchantPendingProposal.fromJson(
               json['pending_proposal'] as Map<String, dynamic>)
