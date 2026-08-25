@@ -450,7 +450,7 @@ const formatIngredientCost = (ingredient: RecipeIngredient) => {
   const item = props.costBreakdown.find((b: any) => b.recipe_ingredient_id === ingredient.id)
   if (!item) return '-'
   const ratio = displayServings.value / originalServings.value
-  return formatMoney((item.cost || 0) * ratio, userCurrency)
+  return formatMoney((item.cost || 0) * ratio, userCurrency.value)
 }
 
 const getIngredientFallbackChain = (ingredient: RecipeIngredient): string | null => {
