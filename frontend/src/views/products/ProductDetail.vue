@@ -52,7 +52,6 @@
         />
       </div>
       <div class="px-4 pt-4">
-        <RegionSelect v-model="regionId" class="mb-3" />
       </div>
       <div class="product-layout">
       <!-- 基本信息 -->
@@ -1216,16 +1215,13 @@ import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
-import { useCalcRegion } from '@/composables/useCalcRegion'
 import { formatMoney } from '@/utils/currency'
-import RegionSelect from '@/components/common/RegionSelect.vue'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
 
 const { ask } = useConfirmDialog()
 const userStore = useUserStore()
-const { regionId, effective } = useCalcRegion()
 const { currency: userCurrency } = useUserCurrency()
 
 const usdaDialog = ref(false)
@@ -2255,7 +2251,7 @@ const loadMerchantPrices = async () => {
   loadingMerchantPrices.value = true
   try {
     const response = await api.get(`/products/entity/${productId.value}/latest-price-by-merchant`, {
-      params: { region_id: effective.value },
+      params: { region_id: null },
     })
     merchantPrices.value = response.prices || []
     merchantPriceUnit.value = response.unit || null
@@ -2421,7 +2417,7 @@ const loadChartPriceRecords = async (startDate?: Date) => {
     const params: Record<string, any> = {
       product_id: productId.value,
       limit: 1000,
-      region_id: effective.value,
+      region_id: null,
     }
     if (startDate) {
       params.start_date = startDate.toISOString().split('T')[0]
@@ -2991,11 +2987,6 @@ const reloadLatestPrice = async () => {
 }
 
 // 地区变化：刷新最新价、各商家价与价格趋势
-watch(regionId, () => {
-  reloadLatestPrice()
-  loadMerchantPrices()
-  refreshChart()
-})
 
 // 监听分页变化
 watch(pricePage, loadPriceRecords)

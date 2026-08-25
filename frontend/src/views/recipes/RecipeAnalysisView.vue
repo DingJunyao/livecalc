@@ -28,7 +28,6 @@
 
     <template v-else-if="recipe">
       <div class="px-4 pt-4">
-        <RegionSelect v-model="regionId" class="mb-3" />
       </div>
       <!-- 模块 ① + ② -->
       <v-row no-gutters>
@@ -78,8 +77,6 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
-import { useCalcRegion } from '@/composables/useCalcRegion'
-import RegionSelect from '@/components/common/RegionSelect.vue'
 import CostProportionChart from '@/components/recipes/CostProportionChart.vue'
 import CostTrendAnalysis from '@/components/recipes/CostTrendAnalysis.vue'
 import NutritionSourceGrid from '@/components/recipes/NutritionSourceGrid.vue'
@@ -91,7 +88,6 @@ const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const recipeIdRaw = Number(route.params.id)
 const recipeId = Number.isFinite(recipeIdRaw) ? recipeIdRaw : 0
-const { regionId, effective } = useCalcRegion()
 
 const recipe = ref<any>(null)
 const costData = ref<any>(null)
@@ -134,7 +130,7 @@ async function loadAllData() {
   try {
     const [recipeRes, costRes, nutritionRes] = await Promise.all([
       api.get(`/recipes/${recipeId}`),
-      api.get(`/recipes/${recipeId}/cost`, { params: { region_id: effective.value } }).catch(() => null),
+      api.get(`/recipes/${recipeId}/cost`, { params: { region_id: null } }).catch(() => null),
       api.get(`/recipes/${recipeId}/nutrition`).catch(() => null),
     ])
 
@@ -160,7 +156,7 @@ async function loadCostHistory(filter: string) {
     const daysMap: Record<string, number> = { week: 7, month: 30, quarter: 90, year: 365, all: 3650 }
     const days = daysMap[filter] || 90
     const res = await api.get(`/recipes/${recipeId}/cost-history-range`, {
-      params: { days, offset_days: 0, region_id: effective.value },
+      params: { days, offset_days: 0, region_id: null },
       timeout: LONG_REQUEST_TIMEOUT,
     })
     costHistoryRecords.value = Array.isArray(res) ? res : []
@@ -174,7 +170,7 @@ async function loadMerchantCosts() {
   loadingMerchantCosts.value = true
   try {
     const res = await api.get(`/recipes/${recipeId}/merchant-costs`, {
-      params: { region_id: effective.value },
+      params: { region_id: null },
       timeout: LONG_REQUEST_TIMEOUT,
     })
     merchantCosts.value = res
@@ -230,7 +226,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
 
 function fetchMerchantPrice(ingredient: any): Promise<any> {
   const { qty, qtyDisplay, qtyUnit } = getEffectiveQuantity(ingredient)
-  const params: Record<string, any> = { region_id: effective.value }
+  const params: Record<string, any> = { region_id: null }
   if (qty != null && !isNaN(qty) && qty > 0) {
     params.quantity = qty
     params.quantity_unit = qtyUnit
@@ -290,7 +286,6 @@ function onCostTrendFilterChange(filter: string) {
   loadCostHistory(filter)
 }
 
-watch(regionId, loadAllData)
 
 onMounted(loadAllData)
 </script>

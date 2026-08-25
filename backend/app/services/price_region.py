@@ -2,6 +2,7 @@
 from decimal import Decimal
 from typing import Optional
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, Query, aliased
 
 from app.models.administrative_region import AdministrativeRegion
@@ -35,9 +36,13 @@ def apply_region_filter(query: Query, db: Session, region_id: Optional[int]) -> 
     # already joined Merchant on ProductRecord.merchant_id (e.g. merchant-costs
     # or latest-price-by-merchant queries).
     merchant_alias = aliased(Merchant)
+    # 未分配地区的商家视为「任何地区均计入」（用户明确要求：没有选择地区的商家在任何地区和范围下都计入）。
     return query.join(
         merchant_alias, ProductRecord.merchant_id == merchant_alias.id
-    ).filter(merchant_alias.region_id.in_(ids))
+    ).filter(or_(
+        merchant_alias.region_id.in_(ids),
+        merchant_alias.region_id.is_(None),
+    ))
 
 
 def record_price_in_user_currency(record) -> Decimal:

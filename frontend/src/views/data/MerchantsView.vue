@@ -509,6 +509,12 @@ const merchantFilters: FilterConfig[] = [
     minWidth: '160px',
   },
   {
+    key: 'include_other_regions',
+    label: '显示其他地区的商家',
+    type: 'toggle',
+    minWidth: '180px',
+  },
+  {
     key: 'favorites_only',
     label: '仅看我的收藏',
     type: 'toggle',
@@ -533,6 +539,7 @@ const onFilterChange = (filterState: Record<string, any>) => {
 }
 
 const showAllMerchants = computed(() => requestFilters.value.include_closed === true)
+const showOtherRegions = computed(() => requestFilters.value.include_other_regions === true)
 const favoritesOnly = computed(() => requestFilters.value.favorites_only === true)
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
@@ -592,7 +599,8 @@ const loadMerchants = async () => {
     const params: Record<string, any> = {
       skip,
       limit: pageSize.value,
-      include_closed: showAllMerchants.value
+      include_closed: showAllMerchants.value,
+      include_other_regions: showOtherRegions.value
     }
     if (search.value) {
       params.search = search.value
@@ -679,7 +687,8 @@ const loadAllCoordinates = async () => {
     const data = await api.get('/merchants/coordinates', {
       params: {
         search: search.value || undefined,
-        include_closed: showAllMerchants.value
+        include_closed: showAllMerchants.value,
+        include_other_regions: showOtherRegions.value
       }
     })
     allCoordinates.value = Array.isArray(data) ? data : []

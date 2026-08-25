@@ -156,6 +156,7 @@ async def get_ingredients_sparklines(
     tz: str = Depends(get_timezone),
 ) -> Dict[str, Optional[List[float]]]:
     """批量获取原料迷你图数据（跨所有关联商品聚合）"""
+    region_id = resolve_region_param(db, _current_user, region_id)
     try:
         id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
         if not id_list:
@@ -193,6 +194,7 @@ async def get_products_sparklines(
     tz: str = Depends(get_timezone),
 ) -> Dict[str, Optional[List[float]]]:
     """批量获取商品迷你图数据"""
+    region_id = resolve_region_param(db, _current_user, region_id)
     try:
         id_list = [int(x.strip()) for x in ids.split(",") if x.strip()]
         if not id_list:

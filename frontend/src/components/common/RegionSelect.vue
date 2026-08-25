@@ -1,6 +1,6 @@
 <template>
   <v-row dense>
-    <v-col v-for="(level, idx) in levels" :key="idx" cols="6" sm="3">
+    <v-col v-for="(level, idx) in levels" :key="idx" cols="12" sm="6">
       <v-select
         v-model="selected[idx]"
         :items="options[idx]"

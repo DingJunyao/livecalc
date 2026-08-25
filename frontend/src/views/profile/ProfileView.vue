@@ -874,9 +874,10 @@ const accountDialog = ref(false)
 const currencyDialog = ref(false)
 const scopeDialog = ref(false)
 const currencyValue = ref<string | null>(null)
-const scopeValue = ref<string>('country')
+const scopeValue = ref<string>('country') // 默认国家/地区（全量）；空串 = 全部地区
 const currencies = ref<any[]>([])
 const scopeOptions = [
+  { title: '全部地区', value: '' },
   { title: '国家/地区', value: 'country' },
   { title: '省级', value: 'province' },
   { title: '地级', value: 'city' },

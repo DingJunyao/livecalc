@@ -121,7 +121,6 @@
         />
       </div>
       <div class="px-4 pt-4">
-        <RegionSelect v-model="regionId" class="mb-3" />
       </div>
       <!-- 上部分：图片、菜谱介绍、成本估算、成本趋势 响应式重排 -->
       <template v-if="displayRecipe?.images?.length">
@@ -526,9 +525,7 @@ import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
-import { useCalcRegion } from '@/composables/useCalcRegion'
 import { formatMoney } from '@/utils/currency'
-import RegionSelect from '@/components/common/RegionSelect.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import RecipeBasicCard from '@/components/recipes/RecipeBasicCard.vue'
 import RecipeIngredientCard from '@/components/recipes/RecipeIngredientCard.vue'
@@ -624,7 +621,6 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { notify } = useGlobalSnackbar()
-const { regionId, effective } = useCalcRegion()
 const { currency: userCurrency } = useUserCurrency()
 
 const recipeId = computed(() => {
@@ -919,7 +915,7 @@ const loadCostData = async () => {
   loadingCostData.value = true
   try {
     const response = await api.get(`/recipes/${recipeId.value}/cost`, {
-      params: { region_id: effective.value },
+      params: { region_id: null },
     })
     costData.value = response
   } catch (e) {
@@ -960,7 +956,7 @@ const fetchCostHistoryBatch = async (days: number, offsetDays: number) => {
   // 后端 days 参数要求 ge=7；末批 remaining 可能不足 7，此处兜底钳制
   days = Math.max(7, days)
   const response = await api.get(`/recipes/${recipeId.value}/cost-history-range`, {
-    params: { days, offset_days: offsetDays, region_id: effective.value },
+    params: { days, offset_days: offsetDays, region_id: null },
     timeout: LONG_REQUEST_TIMEOUT,
   })
   return (response || []).map((record: any) => ({
@@ -1334,14 +1330,6 @@ watch(() => route.params.id, () => {
   }
 })
 
-watch(regionId, () => {
-  loadCostData()
-  // 地区变化后重置并重新加载成本趋势
-  costHistoryRecords.value = []
-  maxDaysLoaded.value = 0
-  attemptedRanges.clear()
-  loadCostHistoryInBatches()
-})
 
 onMounted(() => { loadData(); loadProposalStatus() })
 </script>
