@@ -132,7 +132,7 @@
                   </div>
                 </v-tooltip>
               </template>
-              <span>¥{{ formatIngredientCost(ingredient) }}</span>
+              <span>{{ formatIngredientCost(ingredient) }}</span>
             </div>
           </div>
           <div v-if="ingredient.note" class="text-caption text-medium-emphasis pl-2 pb-1">
@@ -304,6 +304,8 @@ import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import type { RecipeDetail, RecipeIngredient, IngredientEditRow, IngredientOption, UnitOption } from './types'
 import { useUserUnits, type UnitPref } from '@/composables/useUserUnits'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 
 const props = defineProps<{
   recipe: RecipeDetail
@@ -337,6 +339,7 @@ const onResetServings = () => {
 }
 
 const router = useRouter()
+const { currency: userCurrency } = useUserCurrency()
 const editing = ref(false)
 const saving = ref(false)
 const editRows = ref<IngredientEditRow[]>([])
@@ -447,8 +450,7 @@ const formatIngredientCost = (ingredient: RecipeIngredient) => {
   const item = props.costBreakdown.find((b: any) => b.recipe_ingredient_id === ingredient.id)
   if (!item) return '-'
   const ratio = displayServings.value / originalServings.value
-  const cost = (item.cost || 0) * ratio
-  return cost.toFixed(2)
+  return formatMoney((item.cost || 0) * ratio, userCurrency)
 }
 
 const getIngredientFallbackChain = (ingredient: RecipeIngredient): string | null => {
