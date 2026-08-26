@@ -107,10 +107,13 @@ import { computed, ref, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { MealRecommendation } from '@/api/meals'
 import { useUserUnits } from '@/composables/useUserUnits'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 import { resolveImageUrl, loadLocalImageBlob } from '@/utils/image'
 
 const router = useRouter()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
+const { currency: userCurrency } = useUserCurrency()
 
 const props = defineProps<{
   recommendation: MealRecommendation
@@ -163,7 +166,7 @@ const recipeImage = computed(() => {
 
 const costText = computed(() => {
   const cost = props.recommendation.recipe?.cost_estimate
-  return cost != null ? `¥${cost.toFixed(2)}` : '--'
+  return cost != null ? formatMoney(Number(cost), userCurrency.value) : '--'
 })
 
 const calorieText = computed(() => {
