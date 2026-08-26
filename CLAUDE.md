@@ -212,6 +212,12 @@ livecalc/
 
 现阶段，涉及到 web 前后端问题提交到 master 分支，然后同步到 feat/mobile-app 分支；涉及到 app 的问题提交到 feat/mobile-app 分支。
 
+### 各端体验一致性
+
+移动端 app 在体验上要与 web 前端保持一致。
+
+尽管移动端 app 在 UI 上偏向于原生，但功能上要保持一致，比如：价格列表，每项能够看到的内容要一样。
+
 ## Tips
 
 > 来自 Claude Code 的 Inspect 工具。
