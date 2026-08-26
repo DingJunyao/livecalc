@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/recipe_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../widgets/cost_proportion_chart.dart';
 import '../widgets/cost_trend_stacked_chart.dart';
 import '../widgets/nutrition_source_grid.dart';
@@ -61,7 +61,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     final breakdown = state.cost?.breakdown ?? const [];
     final totalCost = state.cost?.totalCost ?? 0;
-    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
+    final userCurrency = ref.read(displayCurrencyProvider);
 
     return Scaffold(
       appBar: AppBar(

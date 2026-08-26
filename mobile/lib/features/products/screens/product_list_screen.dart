@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +10,6 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/sparkline.dart';
 import '../../../shared/utils/currency_fmt.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/providers/ingredient_provider.dart';
 import '../../merchants/providers/merchant_provider.dart';
@@ -90,6 +90,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
+    ref.listen(calcContextProvider, (_, __) {
+      ref.read(productListProvider.notifier).load();
+    });
     final theme = Theme.of(context);
     final state = ref.watch(productListProvider);
     return Scaffold(
@@ -226,7 +230,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             sparkline: state.sparklines[state.items[i].id],
             onTap: () => context.push('/products/${state.items[i].id}'),
             onQuickPrice: () => _quickPrice(state.items[i]),
-            userCurrency: ref.read(authProvider).user?.currency ?? 'CNY',
+            userCurrency: ref.read(displayCurrencyProvider),
           );
         },
       ),

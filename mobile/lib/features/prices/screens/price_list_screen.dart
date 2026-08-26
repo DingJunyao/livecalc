@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +8,6 @@ import '../models/price_record.dart';
 import '../providers/price_provider.dart';
 import '../../merchants/models/merchant.dart';
 import '../../merchants/providers/merchant_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -119,7 +119,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   /// 二次确认后删除记录。
   Future<void> _confirmDelete(PriceRecord r) async {
     final theme = Theme.of(context);
-    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
+    final userCurrency = ref.read(displayCurrencyProvider);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -159,6 +159,10 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
+    ref.listen(calcContextProvider, (_, __) {
+      ref.read(priceListProvider.notifier).loadRecords();
+    });
     final theme = Theme.of(context);
     final state = ref.watch(priceListProvider);
 
@@ -342,7 +346,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   Widget _buildRecordCard(ThemeData theme, PriceRecord r) {
-    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
+    final userCurrency = ref.read(displayCurrencyProvider);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,

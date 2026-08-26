@@ -1,10 +1,10 @@
 import 'dart:async';
+import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/utils/currency_fmt.dart';
-import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../models/recipe_summary.dart';
@@ -88,6 +88,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
+    ref.listen(calcContextProvider, (_, __) {
+      ref.read(recipeListProvider.notifier).loadRecipes();
+    });
     final theme = Theme.of(context);
     final state = ref.watch(recipeListProvider);
 
@@ -306,7 +310,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     final servings = r.servings > 0 ? r.servings : 1;
     final hasCost = r.estimatedCost != null;
     final hasCal = r.calories != null;
-    final userCurrency = ref.read(authProvider).user?.currency ?? 'CNY';
+    final userCurrency = ref.read(displayCurrencyProvider);
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -72,7 +73,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final notifier = ref.read(productDetailPageProvider(widget.id).notifier);
     final user = ref.watch(authProvider).user;
     final isAdmin = user?.isAdmin ?? false;
-    final userCurrency = user?.currency ?? 'CNY';
+    final userCurrency = ref.read(displayCurrencyProvider);
     final modifications = <String>{
       ...product.pendingModificationLabels,
       if (state.nutrition?.pendingProposal != null) '营养成分',

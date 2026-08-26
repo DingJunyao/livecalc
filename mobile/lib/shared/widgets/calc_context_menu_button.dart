@@ -1,9 +1,8 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
-import '../../features/auth/repositories/auth_repository.dart';
+import '../providers/calc_context_provider.dart';
 import 'region_select_field.dart';
 
 /// 导航栏右侧「地区 / 计算范围 / 币种」快捷切换按钮（移动端单个按钮，点击弹窗修改）。
@@ -20,6 +19,7 @@ class CalcContextMenuButton extends ConsumerWidget {
   }
 
   Future<void> _showSheet(BuildContext context, WidgetRef ref) async {
+    final ctx = ref.read(calcContextProvider);
     final user = ref.read(authProvider).user;
     await showModalBottomSheet<void>(
       context: context,
@@ -31,9 +31,9 @@ class CalcContextMenuButton extends ConsumerWidget {
         padding:
             EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
         child: CalcContextSheet(
-          initialRegionId: user?.regionId,
-          initialScope: user?.defaultCalcScope ?? 'country',
-          initialCurrency: user?.defaultCurrency,
+          initialRegionId: ctx.regionId ?? user?.regionId,
+          initialScope: ctx.scope ?? user?.defaultCalcScope ?? 'country',
+          initialCurrency: ctx.currency ?? user?.defaultCurrency,
         ),
       ),
     );
@@ -114,44 +114,24 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
   }
 
   Future<void> _save() async {
-    final user = ref.read(authProvider).user;
     setState(() => _saving = true);
     try {
-      final repo = AuthRepository();
-      if (_scope != user?.defaultCalcScope ||
-          _currency != user?.defaultCurrency) {
-        final body = <String, dynamic>{};
-        if (_scope != user?.defaultCalcScope) {
-          body['default_calc_scope'] = _scope;
-        }
-        if (_currency != user?.defaultCurrency) {
-          // 空串 = 清除默认币种，跟随所在地区
-          body['default_currency'] = (_currency == null || _currency!.isEmpty)
-              ? null
-              : _currency;
-        }
-        await repo.updateMe(body);
-      }
-      if (_regionId != user?.regionId) {
-        await repo.updateAccount({'region_id': _regionId});
-      }
-      await ref.read(authProvider.notifier).refreshUser();
+      // 会话级临时覆盖：仅当前会话有效，不修改用户配置
+      await ref.read(calcContextProvider.notifier).apply(
+            regionId: _regionId,
+            scope: _scope,
+            currency: _currency,
+          );
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已保存')),
-        );
-      }
-    } on DioException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_extractDetail(e))),
+          const SnackBar(content: Text('已应用（当前会话生效）')),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
+          const SnackBar(content: Text('应用失败，请重试')),
         );
       }
     } finally {
@@ -159,12 +139,9 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
     }
   }
 
-  String _extractDetail(DioException e) {
-    final data = e.response?.data;
-    if (data is Map && data['detail'] is String) {
-      return data['detail'] as String;
-    }
-    return '保存失败，请检查后重试';
+  void _reset() {
+    ref.read(calcContextProvider.notifier).clear();
+    if (mounted) Navigator.of(context).pop();
   }
 
   @override
@@ -244,12 +221,21 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: Text(_saving ? '保存中...' : '保存'),
-                ),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: _saving ? null : _reset,
+                    child: const Text('重置为个人配置'),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: 160,
+                    child: FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: Text(_saving ? '应用中...' : '应用'),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

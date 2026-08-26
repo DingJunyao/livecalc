@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 
 import 'package:flutter/material.dart';
@@ -146,6 +147,10 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
+    ref.listen(calcContextProvider, (_, __) {
+      ref.read(merchantListProvider.notifier).load();
+    });
     final theme = Theme.of(context);
     final state = ref.watch(merchantListProvider);
     final mapConfig = ref.watch(mapConfigProvider);

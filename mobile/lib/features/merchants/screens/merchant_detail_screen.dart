@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import '../../../shared/providers/calc_context_provider.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -177,7 +178,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
               loading: state.loadingPrices,
               hasMore: state.pricesHasMore,
               onLoadMore: notifier.loadMorePrices,
-              userCurrency: ref.read(authProvider).user?.currency ?? 'CNY',
+              userCurrency: ref.read(displayCurrencyProvider),
             ),
           ],
         ),
