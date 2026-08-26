@@ -60,7 +60,7 @@
             <v-icon>mdi-map-marker</v-icon>
           </template>
           <v-list-item-title>所在地区编辑</v-list-item-title>
-          <v-list-item-subtitle>国家 / 省 / 市 / 区</v-list-item-subtitle>
+          <v-list-item-subtitle>国家/地区、省份、城市、区县</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -393,7 +393,7 @@
               label="国家/地区" variant="outlined" density="compact" class="region-select flex-grow-1"
               :loading="regionLoading[0]" hide-details="auto" clearable @update:model-value="onRegionChange(0)" />
             <v-select v-if="regionSelections[0] && regionItems[1].length >= 0" v-model="regionSelections[1]"
-              :items="regionItems[1]" item-title="name" item-value="id" label="省/州" variant="outlined" density="compact"
+              :items="regionItems[1]" item-title="name" item-value="id" label="省份" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[1]" hide-details="auto" clearable
               @update:model-value="onRegionChange(1)" />
             <v-select v-if="regionSelections[1] && regionItems[2].length >= 0" v-model="regionSelections[2]"
@@ -401,7 +401,7 @@
               class="region-select flex-grow-1" :loading="regionLoading[2]" hide-details="auto" clearable
               @update:model-value="onRegionChange(2)" />
             <v-select v-if="regionSelections[2] && regionItems[3].length >= 0" v-model="regionSelections[3]"
-              :items="regionItems[3]" item-title="name" item-value="id" label="区/县" variant="outlined" density="compact"
+              :items="regionItems[3]" item-title="name" item-value="id" label="区县" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[3]" hide-details="auto" clearable
               @update:model-value="onRegionChange(3)" />
           </div>
@@ -439,7 +439,7 @@
               label="国家/地区" variant="outlined" density="compact" class="region-select flex-grow-1"
               :loading="regionLoading[0]" hide-details="auto" clearable @update:model-value="onRegionChange(0)" />
             <v-select v-if="regionSelections[0] && regionItems[1].length >= 0" v-model="regionSelections[1]"
-              :items="regionItems[1]" item-title="name" item-value="id" label="省/州" variant="outlined" density="compact"
+              :items="regionItems[1]" item-title="name" item-value="id" label="省份" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[1]" hide-details="auto" clearable
               @update:model-value="onRegionChange(1)" />
             <v-select v-if="regionSelections[1] && regionItems[2].length >= 0" v-model="regionSelections[2]"
@@ -447,7 +447,7 @@
               class="region-select flex-grow-1" :loading="regionLoading[2]" hide-details="auto" clearable
               @update:model-value="onRegionChange(2)" />
             <v-select v-if="regionSelections[2] && regionItems[3].length >= 0" v-model="regionSelections[3]"
-              :items="regionItems[3]" item-title="name" item-value="id" label="区/县" variant="outlined" density="compact"
+              :items="regionItems[3]" item-title="name" item-value="id" label="区县" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[3]" hide-details="auto" clearable
               @update:model-value="onRegionChange(3)" />
           </div>
@@ -728,7 +728,15 @@
             density="compact"
             clearable
             placeholder="跟随所在地区"
-          />
+          >
+            <!-- 展开列表显示「全称 代码」，收起只显示三字母代码 -->
+            <template #selection="{ item }">
+              {{ item.raw.code }}
+            </template>
+            <template #item="{ props, item }">
+              <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+            </template>
+          </v-autocomplete>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
@@ -881,9 +889,9 @@ const currencies = ref<any[]>([])
 const scopeOptions = [
   { title: '全部地区', value: '' },
   { title: '国家/地区', value: 'country' },
-  { title: '省级', value: 'province' },
-  { title: '地级', value: 'city' },
-  { title: '县级', value: 'county' },
+  { title: '省份', value: 'province' },
+  { title: '城市', value: 'city' },
+  { title: '区县', value: 'county' },
 ]
 const scopeLabel = computed(() => scopeOptions.find(o => o.value === userStore.user?.default_calc_scope)?.title || '国家/地区')
 

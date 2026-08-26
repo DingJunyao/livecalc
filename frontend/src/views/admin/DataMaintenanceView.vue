@@ -244,9 +244,9 @@
             </v-alert>
             <div class="d-flex flex-wrap ga-3 mb-3 text-body-2">
               <v-chip size="small">国家/地区：{{ regionStatus?.counts?.['0'] ?? '--' }}</v-chip>
-              <v-chip size="small">省/州：{{ regionStatus?.counts?.['1'] ?? '--' }}</v-chip>
+              <v-chip size="small">省份：{{ regionStatus?.counts?.['1'] ?? '--' }}</v-chip>
               <v-chip size="small">城市：{{ regionStatus?.counts?.['2'] ?? '--' }}</v-chip>
-              <v-chip size="small">区/县：{{ regionStatus?.counts?.['3'] ?? '--' }}</v-chip>
+              <v-chip size="small">区县：{{ regionStatus?.counts?.['3'] ?? '--' }}</v-chip>
               <v-chip size="small" color="primary">总计：{{ regionStatus?.total ?? '--' }}</v-chip>
             </div>
           </v-card-text>
