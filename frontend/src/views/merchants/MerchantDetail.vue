@@ -304,7 +304,15 @@
                 clearable
                 hide-details
                 class="mb-4"
-              />
+              >
+                <!-- 展开列表显示「全称 代码」，收起只显示三字母代码 -->
+                <template #selection="{ item }">
+                  {{ item.raw.code }}
+                </template>
+                <template #item="{ props, item }">
+                  <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+                </template>
+              </v-select>
 
               <!-- 地图选点（地图禁用时隐藏） -->
               <div v-if="mapEnabled" class="mb-4">
