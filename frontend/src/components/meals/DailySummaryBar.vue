@@ -23,7 +23,7 @@
                 今日预估
               </span>
               <span class="text-h6 font-weight-bold ml-1">
-                {{ totals.cost != null ? `¥${totals.cost.toFixed(2)}` : '--' }}
+                {{ totals.cost != null ? formatMoney(Number(totals.cost), userCurrency.value) : '--' }}
               </span>
             </div>
 
@@ -96,10 +96,13 @@
 import { computed } from 'vue'
 import { useDisplay } from 'vuetify'
 import type { DailyTotals } from '@/api/meals'
+import { formatMoney } from '@/utils/currency'
+import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useUserUnits } from '@/composables/useUserUnits'
 
 const { mdAndUp } = useDisplay()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
+const { currency: userCurrency } = useUserCurrency()
 const isDesktop = computed(() => mdAndUp.value)
 
 const props = defineProps<{

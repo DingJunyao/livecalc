@@ -243,6 +243,34 @@ class TestFillOrder:
             assert item["fill_session_date"] is None
 
 
+class TestPriceCurrencyFields:
+    """product-prices 返回原始币种/汇率，价格保持原币种（前端按列表页样式展示 原币种 + 折算）。"""
+
+    def test_currency_and_exchange_rate(self, db, test_data):
+        mid = test_data["merchant_id"]
+        _create_price_record(db, 1, mid, 1)
+        rec = db.query(ProductRecord).filter(ProductRecord.product_id == 1).first()
+        rec.price = 12.5
+        rec.currency = "USD"
+        rec.exchange_rate = 7.2
+        db.commit()
+
+        resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        assert item["currency"] == "USD"
+        assert item["exchange_rate"] == 7.2
+        assert item["price"] == 12.5
+
+    def test_defaults_to_user_currency_when_record_has_none(self, db, test_data):
+        mid = test_data["merchant_id"]
+        _create_price_record(db, 1, mid, 1)
+        resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        assert item["currency"] == "CNY"
+        assert item["exchange_rate"] == 1.0
+
 class TestMostRecentSessionOrder:
     """测试按最近填写会话排序。"""
 

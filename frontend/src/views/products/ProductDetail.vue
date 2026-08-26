@@ -332,7 +332,7 @@
                 <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">{{ mp.merchant_name }}</div>
                 <div class="merchant-price-value" style="position: relative; z-index: 1">
                   <span class="font-weight-bold" :class="mp.is_lowest ? 'text-success' : ''">
-                    {{ formatMoney(mp.price, userCurrency) }}
+                    <PriceWithConvert :price="mp.price" :currency="mp.currency || 'CNY'" :exchange-rate="mp.exchange_rate" />
                   </span>
                 </div>
                 <div v-if="mp.recorded_at" class="merchant-price-date" style="position: relative; z-index: 1">
@@ -1225,7 +1225,6 @@ import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
-import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useUserStore } from '@/stores/user'
@@ -1237,6 +1236,7 @@ import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { loadCurrencies } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
@@ -1418,6 +1418,8 @@ interface MerchantPrice {
   merchant_id: number
   merchant_name: string
   price: number
+  currency?: string
+  exchange_rate?: number | null
   unit: string
   recorded_at: string | null
   product_name: string
