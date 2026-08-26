@@ -6,6 +6,8 @@ class MerchantPrice {
   final bool isLowest;
   final String? recordedAt;
   final List<double>? sparklineData;
+  final String? currency;
+  final double? exchangeRate;
 
   const MerchantPrice({
     required this.merchantId,
@@ -15,6 +17,8 @@ class MerchantPrice {
     this.isLowest = false,
     this.recordedAt,
     this.sparklineData,
+    this.currency,
+    this.exchangeRate,
   });
 
   factory MerchantPrice.fromJson(Map<String, dynamic> json) {
@@ -28,6 +32,8 @@ class MerchantPrice {
       sparklineData: (json['sparkline_data'] as List?)
           ?.map((e) => (e as num).toDouble())
           .toList(),
+      currency: json['currency'] as String?,
+      exchangeRate: _toDouble(json['exchange_rate']),
     );
   }
 }

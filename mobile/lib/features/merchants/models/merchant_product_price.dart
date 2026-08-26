@@ -13,6 +13,8 @@ class MerchantProductPrice {
   final String? standardUnitLabel;
   final double originalQuantity;
   final String recordedAt;
+  final String currency;
+  final double? exchangeRate;
 
   const MerchantProductPrice({
     required this.productId,
@@ -22,6 +24,8 @@ class MerchantProductPrice {
     this.standardUnitLabel,
     this.originalQuantity = 1,
     required this.recordedAt,
+    this.currency = 'CNY',
+    this.exchangeRate,
   });
 
   factory MerchantProductPrice.fromJson(Map<String, dynamic> json) {
@@ -34,6 +38,8 @@ class MerchantProductPrice {
       originalQuantity: _toDouble(json['original_quantity']) ?? 1,
       recordedAt:
           json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
+      currency: json['currency'] as String? ?? 'CNY',
+      exchangeRate: _toDouble(json['exchange_rate']),
     );
   }
 

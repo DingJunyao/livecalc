@@ -42,7 +42,7 @@ class MerchantPriceList extends StatelessWidget {
                 ?.copyWith(color: theme.colorScheme.outline)),
         const SizedBox(height: 8),
         SizedBox(
-          height: 88,
+          height: 108,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: prices.length,
@@ -114,7 +114,7 @@ class _MerchantPriceCard extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               Text(
-                '${formatMoney(price.price, userCurrency)}'
+                '${formatMoney(price.price, price.currency ?? userCurrency)}'
                 '${unit.isEmpty ? '' : ' / $unit'}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -125,6 +125,16 @@ class _MerchantPriceCard extends StatelessWidget {
                       : theme.colorScheme.onSurface,
                 ),
               ),
+              if (price.currency != null &&
+                  price.exchangeRate != null &&
+                  price.currency != userCurrency)
+                Text(
+                  '≈ ${formatMoney(convertAmount(price.price, price.exchangeRate!), userCurrency)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
               if (price.isLowest)
                 Container(
                   margin: const EdgeInsets.only(top: 3),

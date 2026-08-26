@@ -417,12 +417,25 @@ class _ProductPricesCard extends StatelessWidget {
                             ],
                           ),
                         ),
-                        Text(
-                          '${formatMoney(p.displayPrice, userCurrency)}${p.displayUnit}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.tertiary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${formatMoney(p.displayPrice, p.currency)}${p.displayUnit}',
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.tertiary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (p.exchangeRate != null &&
+                                p.currency != userCurrency)
+                              Text(
+                                '≈ ${formatMoney(convertAmount(p.displayPrice, p.exchangeRate), userCurrency)}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.outline),
+                              ),
+                          ],
                         ),
                         const Icon(Icons.chevron_right,
                             size: 20, color: Colors.grey),
