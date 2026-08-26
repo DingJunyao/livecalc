@@ -16,7 +16,9 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from fastapi import Depends
 from app.api import auth, products, merchants, nutrition, recipes, reports, admin, invite_codes
+from app.api.deps import get_session_currency_override
 from app.api import ingredient_extended  # 新增的食材扩展API
 from app.api import products_entity  # 商品实体 API
 from app.api import user_preferences  # 用户偏好 API
@@ -655,11 +657,11 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
-app.include_router(merchants.router, prefix="/api/v1/merchants", tags=["商家"])
+app.include_router(merchants.router, prefix="/api/v1/merchants", dependencies=[Depends(get_session_currency_override)], tags=["商家"])
 app.include_router(places.router, prefix="/api/v1/places", tags=["常用地点"])
-app.include_router(nutrition.router, prefix="/api/v1/nutrition", tags=["营养"])
-app.include_router(recipes.router, prefix="/api/v1/recipes", tags=["菜谱"])
-app.include_router(reports.router, prefix="/api/v1/reports", tags=["报告"])
+app.include_router(nutrition.router, prefix="/api/v1/nutrition", dependencies=[Depends(get_session_currency_override)], tags=["营养"])
+app.include_router(recipes.router, prefix="/api/v1/recipes", dependencies=[Depends(get_session_currency_override)], tags=["菜谱"])
+app.include_router(reports.router, prefix="/api/v1/reports", dependencies=[Depends(get_session_currency_override)], tags=["报告"])
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["管理员"])
 app.include_router(invite_codes.router, prefix="/api/v1/invite-codes", tags=["邀请码"])
 # 食材层级关系路由必须在食材扩展路由之前，避免 /ingredients/merge-history、
@@ -669,13 +671,13 @@ app.include_router(invite_codes.router, prefix="/api/v1/invite-codes", tags=["�
 app.include_router(ingredient_hierarchy.router, prefix="/api/v1", tags=["食材层级"])
 app.include_router(ingredient_extended.router, prefix="/api/v1/ingredients", tags=["食材扩展"])
 # 商品实体路由必须在商品记录路由之前，避免 /products/entity 被 /products/{record_id} 匹配
-app.include_router(products_entity.router, prefix="/api/v1", tags=["商品实体"])
-app.include_router(products.router, prefix="/api/v1/products", tags=["商品"])
+app.include_router(products_entity.router, prefix="/api/v1", dependencies=[Depends(get_session_currency_override)], tags=["商品实体"])
+app.include_router(products.router, prefix="/api/v1/products", dependencies=[Depends(get_session_currency_override)], tags=["商品"])
 app.include_router(user_preferences.router, prefix="/api/v1", tags=["用户偏好"])
 app.include_router(product_weight.router, prefix="/api/v1", tags=["商品权重"])
 app.include_router(units.router, prefix="/api/v1", tags=["单位管理"])
 # 迷你图数据 API（独立于主列表，避免超时）
-app.include_router(sparklines.router, prefix="/api/v1", tags=["迷你图"])
+app.include_router(sparklines.router, prefix="/api/v1", dependencies=[Depends(get_session_currency_override)], tags=["迷你图"])
 
 # 注册实体单位覆盖和密度路由
 app.include_router(units.entities_unit_router, prefix="/api/v1", tags=["实体单位覆盖"])
@@ -685,7 +687,7 @@ app.include_router(import_api.router, prefix="/api/v1/import", tags=["数据导�
 app.include_router(agent_api.router, prefix="/api/v1/agent", tags=["Agent任务台"])
 app.include_router(usda.router, prefix="/api/v1/usda", tags=["USDA"])
 app.include_router(usda_admin.router, prefix="/api/v1/admin", tags=["USDA管理"])
-app.include_router(meals.router, prefix="/api/v1/meals", tags=["每日推荐"])
+app.include_router(meals.router, prefix="/api/v1/meals", dependencies=[Depends(get_session_currency_override)], tags=["每日推荐"])
 app.include_router(blacklist.router, prefix="/api/v1", tags=["黑名单"])
 app.include_router(blacklist_groups.blacklist_group_admin_router, prefix="/api/v1/admin", tags=["原料黑名单分组管理"])
 app.include_router(blacklist_groups.blacklist_group_public_router, prefix="/api/v1", tags=["原料黑名单分组"])

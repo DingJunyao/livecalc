@@ -49,4 +49,26 @@ def record_price_in_user_currency(record) -> Decimal:
     p = Decimal(str(record.price))
     er = getattr(record, "exchange_rate", None)
     factor = Decimal(str(er)) if er is not None else Decimal("1")
+    sr = _session_rate_factor()
+    if sr is not None and sr != 1.0:
+        factor = factor * sr
     return p * factor
+
+
+def display_exchange_rate(record) -> Decimal:
+    """序列化给前端的 exchange_rate：会话币种覆盖时折算到会话币种（原币种 -> 会话币种）。"""
+    er = getattr(record, "exchange_rate", None)
+    factor = Decimal(str(er)) if er is not None else Decimal("1")
+    sr = _session_rate_factor()
+    if sr is not None and sr != 1.0:
+        factor = factor * sr
+    return factor
+
+
+def _session_rate_factor() -> Optional[Decimal]:
+    """会话覆盖时返回 用户币种 -> 会话币种 的当日汇率，否则 None。"""
+    from app.services.session_context import get_session_rate
+    sr = get_session_rate()
+    if sr is None or sr == 1.0:
+        return None
+    return Decimal(str(sr))

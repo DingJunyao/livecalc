@@ -22,6 +22,15 @@ api.interceptors.request.use(
     }
     // 统一注入用户时区（IANA 名），后端用于按用户本地日聚合
     config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone
+    // 会话级临时覆盖（导航栏切换，仅当前会话有效）：币种 + 地区
+    try {
+      const raw = sessionStorage.getItem('calc-context')
+      if (raw) {
+        const ctx = JSON.parse(raw)
+        if (ctx.currency) config.headers['X-Currency'] = ctx.currency
+        if (ctx.effectiveRegionId != null) config.headers['X-Region'] = String(ctx.effectiveRegionId)
+      }
+    } catch { /* ignore */ }
     return config
   },
   (error) => {

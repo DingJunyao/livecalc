@@ -9,6 +9,7 @@ from app.core.security import get_current_user
 from app.models.merchant import Merchant
 from app.models.map_config import MapConfiguration
 from app.models.administrative_region import AdministrativeRegion
+from app.services.price_region import display_exchange_rate
 from app.services.proposals import service as proposal_service
 from app.schemas.merchant import (
     MerchantCreate,
@@ -437,7 +438,7 @@ async def get_merchant_prices(
                 standard_unit=record.standard_unit.abbreviation if record.standard_unit else "",
                 standard_unit_id=record.standard_unit_id,
                 record_type=record.record_type,
-                exchange_rate=record.exchange_rate,
+                exchange_rate=display_exchange_rate(record),
                 recorded_at=record.recorded_at,
                 notes=record.notes
             )
@@ -580,7 +581,7 @@ async def get_merchant_product_prices(
                 "product_id": r.product_id,
                 "product_name": r.name,
                 "currency": currency,
-                "exchange_rate": round(rate, 6),
+                "exchange_rate": round(float(display_exchange_rate(r)), 6),
                 "price": round(price, 2),
                 "standard_unit_price": round(unit_price, 2) if unit_price is not None else None,
                 "standard_unit_label": unit_label,

@@ -271,6 +271,61 @@ class TestPriceCurrencyFields:
         assert item["currency"] == "CNY"
         assert item["exchange_rate"] == 1.0
 
+class TestSessionCurrencyOverride:
+    """X-Currency 请求头临时币种覆盖：价格折算到会话币种且不落库。"""
+
+    def _seed_rates(self, db):
+        from datetime import date
+        from app.models.currency import Currency
+        from app.services.exchange_rate_service import store_snapshot
+        if not db.query(Currency).filter(Currency.code == "JPY").first():
+            db.add(Currency(code="JPY", name="日元", symbol="¥"))
+            db.commit()
+        store_snapshot(db, date.today(), "EUR", {"CNY": 7.5, "USD": 1.1, "JPY": 150.0}, source="test")
+        db.commit()
+
+    def test_override_converts_price_and_exchange_rate(self, db, test_data):
+        mid = test_data["merchant_id"]
+        _create_price_record(db, 1, mid, 1)
+        rec = db.query(ProductRecord).filter(ProductRecord.product_id == 1).first()
+        rec.price = 10.0
+        rec.currency = "USD"
+        rec.exchange_rate = 7.2  # USD -> CNY（用户币种）快照
+        db.commit()
+        self._seed_rates(db)
+
+        resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10",
+                          headers={"X-Currency": "JPY"})
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        # 原始币种/原价保持不变；exchange_rate 折算到会话币种 JPY（7.2 * CNY->JPY 20 = 144）
+        assert item["currency"] == "USD"
+        assert item["price"] == 10.0
+        assert item["exchange_rate"] == 144.0
+
+    def test_without_header_keeps_snapshot_rate(self, db, test_data):
+        mid = test_data["merchant_id"]
+        _create_price_record(db, 1, mid, 1)
+        rec = db.query(ProductRecord).filter(ProductRecord.product_id == 1).first()
+        rec.price = 10.0
+        rec.currency = "USD"
+        rec.exchange_rate = 7.2
+        db.commit()
+        self._seed_rates(db)
+
+        resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10")
+        assert resp.status_code == 200
+        item = resp.json()["items"][0]
+        assert item["currency"] == "USD"
+        assert item["exchange_rate"] == 7.2
+
+    def test_unknown_currency_returns_400(self, db, test_data):
+        mid = test_data["merchant_id"]
+        _create_price_record(db, 1, mid, 1)
+        resp = client.get(f"/api/v1/merchants/{mid}/product-prices?limit=10",
+                          headers={"X-Currency": "ZZZ"})
+        assert resp.status_code == 400
+
 class TestMostRecentSessionOrder:
     """测试按最近填写会话排序。"""
 

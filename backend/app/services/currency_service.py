@@ -1,4 +1,4 @@
-﻿"""币种与地区推导服务。"""
+"""币种与地区推导服务。"""
 from sqlalchemy.orm import Session
 
 DEFAULT_CURRENCY = "CNY"
@@ -42,7 +42,12 @@ def get_merchant_default_currency(db: Session, merchant) -> str:
     return DEFAULT_CURRENCY
 
 
-def get_user_default_currency(db: Session, user) -> str:
+def get_user_default_currency(db: Session, user, *, ignore_session: bool = False) -> str:
+    if not ignore_session:
+        from app.services.session_context import get_session_currency
+        sess = get_session_currency()
+        if sess:
+            return sess
     if getattr(user, "default_currency", None):
         return user.default_currency
     if getattr(user, "region_id", None):
