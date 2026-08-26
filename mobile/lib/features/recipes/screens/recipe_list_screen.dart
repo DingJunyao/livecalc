@@ -1,4 +1,5 @@
 import 'dart:async';
+import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -93,6 +94,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('菜谱'),
+        actions: const [CalcContextMenuButton()],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCreate,

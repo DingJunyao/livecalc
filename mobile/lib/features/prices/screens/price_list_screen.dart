@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -165,6 +166,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       appBar: AppBar(
         title: const Text('价格记录'),
         actions: [
+  const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.bolt),
             tooltip: '快速填写',

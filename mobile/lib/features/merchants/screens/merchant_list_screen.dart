@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import '../../../shared/widgets/calc_context_menu_button.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -166,6 +167,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
         title: const Text('商家'),
         leading: const AppBackButton(),
         actions: [
+  const CalcContextMenuButton(),
           IconButton(
             icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
             tooltip: _showMap ? '收起地图' : '显示地图',

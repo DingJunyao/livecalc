@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/models/latest_price.dart';
@@ -77,6 +78,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
         title: const Text('原料'),
         leading: const AppBackButton(),
         actions: [
+  const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: '刷新',
