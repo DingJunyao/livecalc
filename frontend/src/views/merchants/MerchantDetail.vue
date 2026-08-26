@@ -383,6 +383,8 @@ interface ProductPrice {
   product_id: number
   product_name: string
   price: number
+  currency?: string
+  exchange_rate?: number | null
   standard_unit_price: number | null
   standard_unit_label: string | null
   original_quantity: number
