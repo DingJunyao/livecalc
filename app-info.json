@@ -1,7 +1,7 @@
 {
   "name": "生计 - 生活成本计算器",
   "shortName": "生计",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "记录商品价格、计算烹饪与生活成本",
   "copyright": "Copyright © 2026 DingJunyao",
   "repository": "https://github.com/DingJunyao/livecalc",
