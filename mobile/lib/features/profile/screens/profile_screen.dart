@@ -178,11 +178,11 @@ String _calcScopeDisplayName(String? scope) {
     case 'country':
       return '国家/地区';
     case 'province':
-      return '省级';
+      return '省份';
     case 'city':
-      return '地级';
+      return '城市';
     case 'county':
-      return '县级';
+      return '区县';
     case '':
       return '全部地区';
     default:
@@ -268,7 +268,7 @@ Future<void> _showDefaultCurrencyDialog(
               for (final c in currencies)
                 RadioListTile<String>(
                   value: c['code'] as String? ?? '',
-                  title: Text('${c['symbol']} ${c['name']}'),
+                  title: Text('${c['name']} ${c['code']}'),
                 ),
             ],
           ),
@@ -301,9 +301,9 @@ Future<void> _showDefaultCalcScopeDialog(
             children: [
               RadioListTile<String>(value: '', title: Text('全部地区')),
               RadioListTile<String>(value: 'country', title: Text('国家/地区')),
-              RadioListTile<String>(value: 'province', title: Text('省级')),
-              RadioListTile<String>(value: 'city', title: Text('地级')),
-              RadioListTile<String>(value: 'county', title: Text('县级')),
+              RadioListTile<String>(value: 'province', title: Text('省份')),
+              RadioListTile<String>(value: 'city', title: Text('城市')),
+              RadioListTile<String>(value: 'county', title: Text('区县')),
             ],
           ),
         ),

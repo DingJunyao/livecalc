@@ -65,6 +65,7 @@ class User {
   final String? defaultCurrency;
   final String? defaultCalcScope;
   final String? effectiveCurrency;
+  final int? regionId;
 
   const User({
     required this.id,
@@ -80,6 +81,7 @@ class User {
     this.defaultCurrency,
     this.defaultCalcScope,
     this.effectiveCurrency,
+    this.regionId,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -107,6 +109,7 @@ class User {
       defaultCurrency: json['default_currency'] as String?,
       defaultCalcScope: json['default_calc_scope'] as String?,
       effectiveCurrency: json['effective_currency'] as String?,
+      regionId: (json['region_id'] as num?)?.toInt(),
     );
   }
 

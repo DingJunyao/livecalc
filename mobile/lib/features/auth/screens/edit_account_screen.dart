@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'dart:io';
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,17 +8,22 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/api/auth_interceptor.dart';
+import '../../../shared/widgets/region_select_field.dart';
+import '../../merchants/repositories/merchant_repository.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../repositories/auth_repository.dart';
 
-/// 编辑账号信息：头像（选图 + 方形裁剪 + 上传）+ 用户名/昵称/邮箱/手机。
-/// 不做改密码（用户未要求，web 同入口也未放）。
+/// 编辑账号信息：头像（选图 + 方形裁剪 + 上传）+ 用户名/昵称/邮箱/手机 +
+/// 所在地区（四级级联）+ 修改密码（可选，与 web 用户信息编辑对齐）。
 class EditAccountScreen extends ConsumerStatefulWidget {
   /// 可注入以便测试；生产用默认实现。
   final AuthRepository? repository;
 
-  const EditAccountScreen({super.key, this.repository});
+  /// 地区级联的数据仓库，可注入以便测试。
+  final MerchantRepository? regionRepository;
+
+  const EditAccountScreen({super.key, this.repository, this.regionRepository});
 
   @override
   ConsumerState<EditAccountScreen> createState() => _EditAccountScreenState();
@@ -28,6 +35,10 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
   late final TextEditingController _nickname;
   late final TextEditingController _email;
   late final TextEditingController _phone;
+  late final TextEditingController _currentPassword;
+  late final TextEditingController _newPassword;
+  late final TextEditingController _confirmPassword;
+  int? _regionId;
   bool _uploading = false;
   bool _saving = false;
 
@@ -42,6 +53,10 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     _nickname = TextEditingController(text: _user.nickname ?? '');
     _email = TextEditingController(text: _user.email);
     _phone = TextEditingController(text: _user.phone ?? '');
+    _currentPassword = TextEditingController();
+    _newPassword = TextEditingController();
+    _confirmPassword = TextEditingController();
+    _regionId = _user.regionId;
   }
 
   @override
@@ -50,6 +65,9 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     _nickname.dispose();
     _email.dispose();
     _phone.dispose();
+    _currentPassword.dispose();
+    _newPassword.dispose();
+    _confirmPassword.dispose();
     super.dispose();
   }
 
@@ -101,6 +119,15 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     if (email != user.email) body['email'] = email;
     final phone = _phone.text.trim();
     if (phone != (user.phone ?? '')) body['phone'] = phone;
+    if (_regionId != user.regionId) body['region_id'] = _regionId;
+    // 密码：填了新密码才整组提交（对齐 web：当前密码 + 新密码两次一致）
+    final newPwd = _newPassword.text;
+    if (newPwd.isNotEmpty) {
+      body['current_password'] =
+          sha256.convert(utf8.encode(_currentPassword.text)).toString();
+      body['new_password'] =
+          sha256.convert(utf8.encode(newPwd)).toString();
+    }
     if (body.isEmpty) {
       _toast('没有需要保存的修改');
       return;
@@ -249,6 +276,64 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
                 if (t.isNotEmpty && !RegExp(r'^1[3-9]\d{9}$').hasMatch(t)) {
                   return '请输入有效的手机号';
                 }
+                return null;
+              },
+            ),
+            const SizedBox(height: 24),
+            Text('所在地区',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(color: theme.colorScheme.outline)),
+            const SizedBox(height: 8),
+            RegionSelectField(
+              value: _regionId,
+              repository: widget.regionRepository,
+              onChanged: (v) => setState(() => _regionId = v),
+            ),
+            const SizedBox(height: 24),
+            Text('修改密码（可选）',
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(color: theme.colorScheme.outline)),
+            const SizedBox(height: 8),
+            TextFormField(
+              controller: _currentPassword,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '当前密码',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) {
+                if ((_newPassword.text.isNotEmpty ||
+                        _confirmPassword.text.isNotEmpty) &&
+                    (v?.isEmpty ?? true)) {
+                  return '修改密码需提供当前密码';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _newPassword,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '新密码（至少 6 个字符）',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) {
+                final t = v ?? '';
+                if (t.isNotEmpty && t.length < 6) return '新密码至少 6 个字符';
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _confirmPassword,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: '确认新密码',
+                border: OutlineInputBorder(),
+              ),
+              validator: (v) {
+                if (v != _newPassword.text) return '两次输入的新密码不一致';
                 return null;
               },
             ),

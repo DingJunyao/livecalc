@@ -231,7 +231,19 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                   for (final c in _currencies)
                     DropdownMenuItem<String?>(
                       value: c['code'] as String?,
-                      child: Text('${c['symbol']} ${c['name']}'),
+                      child: Text('${c['name']} ${c['code']}'),
+                    ),
+                ],
+                // 收起时只显示三字母代码（未选时显示「跟随地区」）
+                selectedItemBuilder: (context) => [
+                  const DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text('跟随地区'),
+                  ),
+                  for (final c in _currencies)
+                    DropdownMenuItem<String?>(
+                      value: c['code'] as String?,
+                      child: Text(c['code'] as String),
                     ),
                 ],
                 decoration: const InputDecoration(

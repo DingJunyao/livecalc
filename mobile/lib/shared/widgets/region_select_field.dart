@@ -156,7 +156,8 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        for (var i = 0; i < _levels.length; i++)
+        for (var i = 0; i < _levels.length; i++) ...[
+          if (i > 0) const SizedBox(height: 12),
           DropdownButtonFormField<int?>(
             key: ValueKey('region_${_levels[i].$2}_$_sel[i]'),
             initialValue: _sel[i],
@@ -174,6 +175,7 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
             ),
             onChanged: (value) => _select(i, value),
           ),
+        ],
       ],
     );
   }
