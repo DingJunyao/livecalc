@@ -677,7 +677,7 @@ def get_product_latest_price(
     try:
         from datetime import datetime, timedelta
         from collections import Counter
-        from app.services.price_region import apply_region_filter, record_price_in_user_currency
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency, display_exchange_rate
 
         # PostgreSQL 返回 aware datetime，统一转 naive 比较
         def _naive(dt):
@@ -776,7 +776,7 @@ def get_product_latest_price_by_merchant(
     region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.merchant import Merchant
-        from app.services.price_region import apply_region_filter, record_price_in_user_currency
+        from app.services.price_region import apply_region_filter, record_price_in_user_currency, display_exchange_rate
 
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
@@ -852,7 +852,7 @@ def get_product_latest_price_by_merchant(
                 "merchant_name": record.merchant.name if record.merchant else f"商家#{mid}",
                 "price": round(unit_price, 2),
                 "currency": currency,
-                "exchange_rate": round(rate, 6),
+                "exchange_rate": round(float(display_exchange_rate(record)), 6),
                 "unit": target_unit_abbr or original_unit_abbr,
                 "recorded_at": serialize_datetime(record.recorded_at) if record.recorded_at else None,
                 "product_name": record.product_name,

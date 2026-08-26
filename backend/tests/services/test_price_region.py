@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base
 from app.models import AdministrativeRegion, Merchant, ProductRecord
+from app.services.calc_scope import resolve_region_param
 from app.services.price_region import apply_region_filter, record_price_in_user_currency
 
 
@@ -74,3 +75,42 @@ def test_apply_region_filter_includes_unassigned_merchants(db):
     rows = apply_region_filter(q, db, 1100).all()
     got = sorted(r.merchant_id for r in rows)
     assert got == [1, 3]
+
+
+def test_session_region_override_beats_user_default(db):
+    """会话级地区覆盖（X-Region）优先于用户默认计算范围。"""
+    from app.services.session_context import get_session_region, reset_session_region, set_session_region
+    _region(db, 100, "CN", "中国", 0, "CN")
+    _region(db, 200, "440000", "广东省", 1, "CN/440000")
+    _region(db, 300, "440300", "深圳市", 2, "CN/440000/440300")
+    _merchant(db, 1, 300)
+    db.commit()
+
+    class User:
+        region_id = None
+        default_calc_scope = "country"
+
+    try:
+        # 无覆盖：用户无地区 -> 不设过滤（None）
+        assert resolve_region_param(db, User(), None) is None
+        # 会话覆盖到深圳
+        set_session_region(300)
+        assert resolve_region_param(db, User(), None) == 300
+        # 显式 region_id 仍优先
+        assert resolve_region_param(db, User(), 100) == 100
+    finally:
+        reset_session_region()
+
+
+def test_session_currency_factor_in_record_price(db):
+    """会话币种覆盖时 record_price_in_user_currency 折算到会话币种。"""
+    from app.services.session_context import reset_session_currency, set_session_currency
+    class R:
+        price = Decimal("10")
+        exchange_rate = Decimal("7.2")  # USD -> CNY
+    try:
+        assert record_price_in_user_currency(R()) == Decimal("72")
+        set_session_currency("JPY", 20.0)  # CNY -> JPY
+        assert record_price_in_user_currency(R()) == Decimal("1440")
+    finally:
+        reset_session_currency()

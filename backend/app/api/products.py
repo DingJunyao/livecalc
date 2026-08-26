@@ -23,7 +23,7 @@ from app.utils.database_helpers import json_text_contains
 from app.services.unit_matcher import UnitMatcher
 from app.services.unit_conversion_service import UnitConversionService
 from app.services.calc_scope import resolve_region_param
-from app.services.price_region import apply_region_filter
+from app.services.price_region import apply_region_filter, display_exchange_rate
 from app.services.proposals.pending import build_product_display_overrides
 
 router = APIRouter()
@@ -121,7 +121,7 @@ async def create_product_record(
         from app.services import exchange_rate_service
         from app.utils.date_range_utils import utc_datetime_to_local_date
 
-        user_currency = get_user_default_currency(db, current_user)
+        user_currency = get_user_default_currency(db, current_user, ignore_session=True)
         currency = (record.currency or "").upper()
         if currency == user_currency:
             exchange_rate = Decimal("1")
@@ -589,7 +589,7 @@ async def get_product_records(
                 standard_unit_id=record.standard_unit_id,
                 record_type=None if ingredient_id else record.record_type,
                 is_owner=record.user_id == current_user.id,
-                exchange_rate=record.exchange_rate,
+                exchange_rate=display_exchange_rate(record),
                 recorded_at=record.recorded_at,
                 notes=record.notes
             )
@@ -638,7 +638,7 @@ async def get_product_record(
         standard_unit=record.standard_unit.abbreviation if record.standard_unit else "",
         standard_unit_id=record.standard_unit_id,
         record_type=record.record_type,
-        exchange_rate=record.exchange_rate,
+        exchange_rate=display_exchange_rate(record),
         recorded_at=record.recorded_at,
         notes=record.notes
     )
@@ -741,7 +741,7 @@ async def update_product_record(
             from app.services import exchange_rate_service
             from app.utils.date_range_utils import utc_datetime_to_local_date
 
-            user_currency = get_user_default_currency(db, current_user)
+            user_currency = get_user_default_currency(db, current_user, ignore_session=True)
             new_currency_raw = update_data.get("currency", db_record.currency)
             new_currency = (new_currency_raw or "").upper()
             if new_currency == user_currency:
@@ -865,7 +865,7 @@ async def get_product_history(
             standard_unit=record.standard_unit.abbreviation if record.standard_unit else "",
             standard_unit_id=record.standard_unit_id,
             record_type=None,
-            exchange_rate=record.exchange_rate,
+            exchange_rate=display_exchange_rate(record),
             recorded_at=record.recorded_at,
             notes=record.notes
         )

@@ -26,6 +26,9 @@
           <v-btn icon="mdi-close" variant="text" size="small" @click="dialog = false" />
         </v-card-title>
         <v-card-text>
+          <p class="text-caption text-medium-emphasis mb-3">
+            切换仅对当前会话生效（刷新后保留，关闭页面恢复为个人配置），不会修改你的账户设置。
+          </p>
           <div class="text-subtitle-2 mb-1">所在地区</div>
           <div class="d-flex flex-wrap ga-2 mb-3">
             <template v-for="(level, i) in regionLevels" :key="i">
@@ -41,7 +44,7 @@
             label="计算范围" variant="outlined" density="compact" class="mb-3" hide-details />
           <div class="text-subtitle-2 mb-1">币种</div>
           <v-autocomplete v-model="currencyValue" :items="currencies" item-title="name" item-value="code"
-            label="币种" variant="outlined" density="compact" clearable placeholder="跟随所在地区" hide-details>
+            label="币种" variant="outlined" density="compact" clearable placeholder="跟随个人配置" hide-details>
             <template #selection="{ item }">
               {{ item.raw.code }}
             </template>
@@ -51,9 +54,10 @@
           </v-autocomplete>
         </v-card-text>
         <v-card-actions>
+          <v-btn variant="text" :disabled="saving" @click="reset">重置为个人配置</v-btn>
           <v-spacer />
           <v-btn variant="text" @click="dialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="save">保存</v-btn>
+          <v-btn color="primary" :loading="saving" @click="save">应用</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -65,13 +69,13 @@ import { ref, computed, onMounted } from 'vue'
 import { useDisplay } from 'vuetify'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
+import { useCalcContextStore } from '@/stores/calcContext'
 import { loadCurrencies } from '@/utils/currency'
-import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 
 const { mdAndUp } = useDisplay()
 const isDesktop = computed(() => mdAndUp.value)
 const userStore = useUserStore()
-const { notify } = useGlobalSnackbar()
+const calcContext = useCalcContextStore()
 
 const dialog = ref(false)
 const saving = ref(false)
@@ -96,23 +100,24 @@ const regionSelections = ref<Array<number | null>>([null, null, null, null])
 const regionItems = ref<Array<Array<{ id: number; name: string; has_children: boolean }>>>([[], [], [], []])
 const regionLoading = ref<boolean[]>([false, false, false, false])
 const regionNames = ref<Record<number, string>>({})
-let currentRegionId: number | null = null
+let initialRegionId: number | null = null
 
 const scopeValue = ref<string>('country')
 const currencyValue = ref<string | null>(null)
 
+// 当前展示：会话覆盖优先，否则个人配置
 const scopeLabel = computed(() => {
-  const scope = userStore.user?.default_calc_scope
+  const scope = calcContext.scope ?? userStore.user?.default_calc_scope
   return scopeOptions.find(o => o.value === scope)?.title || '国家/地区'
 })
 
 const currencyLabel = computed(() => {
-  const c = userStore.user?.default_currency || userStore.user?.effective_currency
+  const c = calcContext.currency || userStore.user?.default_currency || userStore.user?.effective_currency
   return typeof c === 'string' && c ? c : '跟随地区'
 })
 
 const regionLabel = computed(() => {
-  const id = userStore.user?.region_id
+  const id = calcContext.regionId ?? userStore.user?.region_id
   return id != null ? (regionNames.value[id] || '地区') : '全部地区'
 })
 
@@ -150,10 +155,10 @@ function selectedRegionId(): number | null {
 }
 
 async function ensureRegionName() {
-  const id = userStore.user?.region_id
+  const id = calcContext.regionId ?? userStore.user?.region_id
   if (id != null && !regionNames.value[id]) {
     try {
-      const detail: any = await api.get(/regions/)
+      const detail: any = await api.get(`/regions/${id}`)
       regionNames.value[id] = detail?.name || ''
     } catch { /* ignore */ }
   }
@@ -162,9 +167,9 @@ async function ensureRegionName() {
 onMounted(() => { void ensureRegionName() })
 
 async function open() {
-  currentRegionId = userStore.user?.region_id ?? null
-  scopeValue.value = userStore.user?.default_calc_scope ?? 'country'
-  currencyValue.value = userStore.user?.default_currency ?? null
+  initialRegionId = calcContext.regionId ?? userStore.user?.region_id ?? null
+  scopeValue.value = calcContext.scope ?? userStore.user?.default_calc_scope ?? 'country'
+  currencyValue.value = calcContext.currency ?? userStore.user?.default_currency ?? null
   regionSelections.value = [null, null, null, null]
   regionItems.value = [[], [], [], []]
   if (!currencies.value.length) {
@@ -173,9 +178,9 @@ async function open() {
     } catch { /* ignore */ }
   }
   if (!regionItems.value[0].length) await loadRegionLevel(0, null)
-  if (currentRegionId) {
+  if (initialRegionId) {
     try {
-      const detail: any = await api.get(`/regions/${currentRegionId}`)
+      const detail: any = await api.get(`/regions/${initialRegionId}`)
       const chain: Array<{ id: number; level: number }> = [
         ...((detail?.ancestors || []) as any[]).map((a: any) => ({ id: a.id, level: a.level })),
         { id: detail.id, level: detail.level },
@@ -191,25 +196,35 @@ async function open() {
   dialog.value = true
 }
 
+// 当前级联选择链（含祖先），供 store 解析生效节点，避免重复请求
+function currentChain(): Array<{ id: number; level: number }> {
+  const chain: Array<{ id: number; level: number }> = []
+  for (let i = 0; i < 4; i++) {
+    const id = regionSelections.value[i]
+    if (id != null) chain.push({ id, level: i })
+  }
+  return chain
+}
+
 async function save() {
   saving.value = true
   try {
-    await api.patch('/auth/me', {
-      default_currency: currencyValue.value || null,
-      default_calc_scope: scopeValue.value,
-    })
-    const newRegionId = selectedRegionId()
-    if (newRegionId !== currentRegionId) {
-      await api.put('/auth/me/account', { region_id: newRegionId })
-    }
-    await userStore.fetchUser()
+    calcContext.apply({
+      regionId: selectedRegionId(),
+      scope: scopeValue.value,
+      currency: currencyValue.value || null,
+    }, currentChain())
     dialog.value = false
-    notify('已更新', 'success')
-  } catch (e: any) {
-    notify('保存失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    window.location.reload()
   } finally {
     saving.value = false
   }
+}
+
+function reset() {
+  calcContext.clear()
+  dialog.value = false
+  window.location.reload()
 }
 </script>
 
