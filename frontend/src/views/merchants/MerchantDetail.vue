@@ -9,6 +9,7 @@
       </div>
     </v-app-bar-title>
     <template #append>
+      <CalcContextMenu />
       <!-- 桌面端：按钮平铺 -->
       <template v-if="isDesktop">
         <v-btn icon="mdi-pencil" variant="text" @click="openEditDialog" />
@@ -338,6 +339,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'

@@ -14,6 +14,7 @@
       </v-app-bar-title>
 
       <template #append>
+        <CalcContextMenu />
         <v-btn
           icon="mdi-cog-outline"
           size="small"
@@ -81,6 +82,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive } from 'vue'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { useMealsStore } from '@/stores/meals'

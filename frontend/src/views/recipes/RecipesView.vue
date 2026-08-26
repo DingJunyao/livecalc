@@ -4,6 +4,7 @@
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-app-bar-title class="text-h6">菜谱管理</v-app-bar-title>
     <template #append>
+      <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadRecipes" />
     </template>
   </v-app-bar>
@@ -235,6 +236,7 @@
 
 <script setup lang="ts">
 import { useUserUnits } from '@/composables/useUserUnits'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 import { ref, computed, reactive, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
