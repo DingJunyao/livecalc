@@ -540,7 +540,7 @@ const getDisplayCost = (recipe: Recipe) => {
   const cost = costMap.value[recipe.id]?.estimated_cost ?? recipe.estimated_cost
   if (cost === null || cost === undefined) return '--'
   const servings = recipe.servings || 1
-  return `${formatMoney(Number(cost), userCurrency)} / ${servings} 人份`
+  return `${formatMoney(Number(cost), userCurrency.value)} / ${servings} 人份`
 }
 
 const getDisplayCalories = (recipe: Recipe) => {
