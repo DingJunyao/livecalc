@@ -4,6 +4,7 @@
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-app-bar-title class="text-h6">价格记录</v-app-bar-title>
     <template #append>
+      <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadRecords" />
       <v-btn icon="mdi-lightning-bolt" variant="text" @click="$router.push('/prices/quick-fill')" />
     </template>
@@ -378,6 +379,7 @@
 
 <script setup lang="ts">
 import { useUserUnits } from '@/composables/useUserUnits'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 const { priceUnitName } = useUserUnits()
 import { nextTick, ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

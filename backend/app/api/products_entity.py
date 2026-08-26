@@ -819,7 +819,9 @@ def get_product_latest_price_by_merchant(
             if record.price is None or record.original_quantity is None or record.original_quantity <= 0 or not record.original_unit:
                 continue
 
-            total_price = float(record_price_in_user_currency(record))
+            rate = float(record.exchange_rate) if record.exchange_rate is not None else 1.0
+            currency = record.currency or "CNY"
+            total_price = float(record.price)
             original_quantity = float(record.original_quantity)
             original_unit_abbr = record.original_unit.abbreviation
 
@@ -849,12 +851,14 @@ def get_product_latest_price_by_merchant(
                 "merchant_id": mid,
                 "merchant_name": record.merchant.name if record.merchant else f"商家#{mid}",
                 "price": round(unit_price, 2),
+                "currency": currency,
+                "exchange_rate": round(rate, 6),
                 "unit": target_unit_abbr or original_unit_abbr,
                 "recorded_at": serialize_datetime(record.recorded_at) if record.recorded_at else None,
                 "product_name": record.product_name,
             })
 
-        results.sort(key=lambda x: x["price"])
+        results.sort(key=lambda x: x["price"] * (x.get("exchange_rate") or 1.0))
 
         if results:
             results[0]["is_lowest"] = True

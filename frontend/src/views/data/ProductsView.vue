@@ -4,6 +4,7 @@
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-app-bar-title class="text-h6">商品管理</v-app-bar-title>
     <template #append>
+      <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadProducts" />
     </template>
   </v-app-bar>
@@ -289,6 +290,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { api } from '@/api'

@@ -10,6 +10,7 @@
       </div>
     </v-app-bar-title>
     <template #append>
+      <CalcContextMenu />
       <!-- 桌面端：按钮平铺 -->
       <template v-if="isDesktop">
         <v-btn icon="mdi-tag-plus" variant="text" @click="openQuickPriceDialog" />
@@ -1778,6 +1779,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
