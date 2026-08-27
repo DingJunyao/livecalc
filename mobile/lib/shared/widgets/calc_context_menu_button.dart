@@ -21,15 +21,19 @@ class CalcContextMenuButton extends ConsumerWidget {
   Future<void> _showSheet(BuildContext context, WidgetRef ref) async {
     final ctx = ref.read(calcContextProvider);
     final user = ref.read(authProvider).user;
+    final media = MediaQuery.of(context);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
+      constraints: BoxConstraints(
+        maxHeight: media.size.height * 0.86,
+      ),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => Padding(
-        padding:
-            EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
         child: CalcContextSheet(
           initialRegionId: ctx.regionId ?? user?.regionId,
           initialScope: ctx.scope ?? user?.defaultCalcScope ?? 'country',
@@ -178,46 +182,39 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
               const SizedBox(height: 16),
               Text('计算范围', style: theme.textTheme.titleSmall),
               const SizedBox(height: 4),
-              RadioGroup<String>(
-                groupValue: _scope,
-                onChanged: (v) => setState(() => _scope = v ?? 'country'),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    for (final (value, label) in _scopeOptions)
-                      RadioListTile<String>(
-                        value: value,
-                        title: Text(label),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                  ],
-                ),
+              DropdownButtonFormField<String>(
+                initialValue: _scope,
+                items: [
+                  for (final (value, label) in _scopeOptions)
+                    DropdownMenuItem(value: value, child: Text(label)),
+                ],
+                decoration: _inputDecoration,
+                menuMaxHeight: 320,
+                onChanged: (value) =>
+                    setState(() => _scope = value ?? 'country'),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Text('币种', style: theme.textTheme.titleSmall),
               const SizedBox(height: 4),
-              RadioGroup<String>(
-                groupValue: selectedCurrency,
-                onChanged: (v) => setState(() => _currency =
-                    (v == null || v.isEmpty) ? null : v),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const RadioListTile<String>(
-                      value: '',
-                      title: Text('跟随所在地区'),
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                    for (final c in _currencies)
-                      RadioListTile<String>(
-                        value: c['code'] as String? ?? '',
-                        title: Text('${c['name']} ${c['code']}'),
-                        dense: true,
-                        contentPadding: EdgeInsets.zero,
+              DropdownButtonFormField<String>(
+                initialValue: selectedCurrency,
+                isExpanded: true,
+                items: [
+                  const DropdownMenuItem(value: '', child: Text('跟随所在地区')),
+                  for (final c in _currencies)
+                    DropdownMenuItem(
+                      value: c['code'] as String? ?? '',
+                      child: Text(
+                        '${c['name']} ${c['code']}',
+                        overflow: TextOverflow.ellipsis,
                       ),
-                  ],
+                    ),
+                ],
+                decoration: _inputDecoration,
+                menuMaxHeight: 360,
+                onChanged: (value) => setState(
+                  () => _currency =
+                      (value == null || value.isEmpty) ? null : value,
                 ),
               ),
               const SizedBox(height: 16),
@@ -243,4 +240,12 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
       ),
     );
   }
+
+  InputDecoration get _inputDecoration => InputDecoration(
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      );
 }
