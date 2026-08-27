@@ -3,7 +3,7 @@
 普通用户没有维护币种的权限，币种字典由系统在启动时自动补齐：
 - 以汇率 provider（Frankfurter/ECB）覆盖的主流币种为基准，与
   backend/scripts/sql/20260823_multi_currency_*.sql 的 15 种对齐并补齐；
-- 幂等：只补缺失项，不覆盖管理员已编辑的名称/符号/小数位/停用状态。
+- 幂等：只补缺失项；除早期版本写入的 code 占位名称外，不覆盖管理员编辑。
 """
 from sqlalchemy.orm import Session
 
@@ -51,27 +51,179 @@ CURRENCIES: dict[str, dict] = {
     "ZAR": {"name": "南非兰特", "symbol": "R", "decimals": 2},
 }
 
+# 地区默认币种会额外进入字典的 ISO 4217 代码中文名。
+# 只用于新增缺失币种和回填历史占位名称，不覆盖管理员自定义名称。
+CURRENCY_NAMES: dict[str, str] = {
+    "AFN": "阿富汗尼",
+    "ALL": "阿尔巴尼亚列克",
+    "AMD": "亚美尼亚德拉姆",
+    "ANG": "荷属安的列斯盾",
+    "AOA": "安哥拉宽扎",
+    "ARS": "阿根廷比索",
+    "AWG": "阿鲁巴弗罗林",
+    "AZN": "阿塞拜疆马纳特",
+    "BAM": "波黑可兑换马克",
+    "BBD": "巴巴多斯元",
+    "BDT": "孟加拉塔卡",
+    "BHD": "巴林第纳尔",
+    "BIF": "布隆迪法郎",
+    "BMD": "百慕大元",
+    "BND": "文莱元",
+    "BOB": "玻利维亚诺",
+    "BSD": "巴哈马元",
+    "BTN": "不丹努尔特鲁姆",
+    "BWP": "博茨瓦纳普拉",
+    "BYN": "白俄罗斯卢布",
+    "BZD": "伯利兹元",
+    "CDF": "刚果法郎",
+    "CLP": "智利比索",
+    "COP": "哥伦比亚比索",
+    "CRC": "哥斯达黎加科朗",
+    "CUP": "古巴比索",
+    "CVE": "佛得角埃斯库多",
+    "DJF": "吉布提法郎",
+    "DOP": "多米尼加比索",
+    "DZD": "阿尔及利亚第纳尔",
+    "EGP": "埃及镑",
+    "ERN": "厄立特里亚纳克法",
+    "ETB": "埃塞俄比亚比尔",
+    "FJD": "斐济元",
+    "FKP": "福克兰群岛镑",
+    "GEL": "格鲁吉亚拉里",
+    "GHS": "加纳塞地",
+    "GIP": "直布罗陀镑",
+    "GMD": "冈比亚达拉西",
+    "GNF": "几内亚法郎",
+    "GTQ": "危地马拉格查尔",
+    "GYD": "圭亚那元",
+    "HNL": "洪都拉斯伦皮拉",
+    "HTG": "海地古德",
+    "IQD": "伊拉克第纳尔",
+    "IRR": "伊朗里亚尔",
+    "JMD": "牙买加元",
+    "JOD": "约旦第纳尔",
+    "KES": "肯尼亚先令",
+    "KGS": "吉尔吉斯斯坦索姆",
+    "KHR": "柬埔寨瑞尔",
+    "KMF": "科摩罗法郎",
+    "KPW": "朝鲜圆",
+    "KWD": "科威特第纳尔",
+    "KYD": "开曼群岛元",
+    "KZT": "哈萨克斯坦坚戈",
+    "LAK": "老挝基普",
+    "LBP": "黎巴嫩镑",
+    "LKR": "斯里兰卡卢比",
+    "LRD": "利比里亚元",
+    "LSL": "莱索托洛蒂",
+    "LYD": "利比亚第纳尔",
+    "MAD": "摩洛哥迪拉姆",
+    "MDL": "摩尔多瓦列伊",
+    "MGA": "马达加斯加阿里亚里",
+    "MKD": "北马其顿第纳尔",
+    "MMK": "缅甸元",
+    "MNT": "蒙古图格里克",
+    "MOP": "澳门元",
+    "MRU": "毛里塔尼亚乌吉亚",
+    "MUR": "毛里求斯卢比",
+    "MVR": "马尔代夫拉菲亚",
+    "MWK": "马拉维克瓦查",
+    "MZN": "莫桑比克梅蒂卡尔",
+    "NAD": "纳米比亚元",
+    "NGN": "尼日利亚奈拉",
+    "NIO": "尼加拉瓜科多巴",
+    "NPR": "尼泊尔卢比",
+    "OMR": "阿曼里亚尔",
+    "PEN": "秘鲁索尔",
+    "PGK": "巴布亚新几内亚基那",
+    "PKR": "巴基斯坦卢比",
+    "PYG": "巴拉圭瓜拉尼",
+    "QAR": "卡塔尔里亚尔",
+    "RSD": "塞尔维亚第纳尔",
+    "RWF": "卢旺达法郎",
+    "SAR": "沙特里亚尔",
+    "SBD": "所罗门群岛元",
+    "SCR": "塞舌尔卢比",
+    "SDG": "苏丹镑",
+    "SHP": "圣赫勒拿镑",
+    "SLE": "塞拉利昂新利昂",
+    "SOS": "索马里先令",
+    "SRD": "苏里南元",
+    "SSP": "南苏丹镑",
+    "STN": "圣多美和普林西比多布拉",
+    "SYP": "叙利亚镑",
+    "SZL": "斯威士兰里兰吉尼",
+    "TJS": "塔吉克斯坦索莫尼",
+    "TMT": "土库曼斯坦马纳特",
+    "TND": "突尼斯第纳尔",
+    "TOP": "汤加潘加",
+    "TTD": "特立尼达和多巴哥元",
+    "TZS": "坦桑尼亚先令",
+    "UAH": "乌克兰格里夫纳",
+    "UGX": "乌干达先令",
+    "UYU": "乌拉圭比索",
+    "UZS": "乌兹别克斯坦苏姆",
+    "VES": "委内瑞拉玻利瓦尔",
+    "VUV": "瓦努阿图瓦图",
+    "WST": "萨摩亚塔拉",
+    "XAF": "中非法郎",
+    "XCD": "东加勒比元",
+    "XOF": "西非法郎",
+    "XPF": "太平洋法郎",
+    "YER": "也门里亚尔",
+    "ZMW": "赞比亚克瓦查",
+    "ZWG": "津巴布韦金币",
+}
+
+ZERO_DECIMAL_CURRENCIES = {
+    "BIF", "CLP", "DJF", "GNF", "ISK", "JPY", "KMF", "KRW",
+    "PYG", "VND", "VUV", "XAF", "XOF", "XPF",
+}
+THREE_DECIMAL_CURRENCIES = {"BHD", "IQD", "JOD", "KWD", "LYD", "OMR", "TND"}
+
+
+def _fallback_currency(code: str) -> dict:
+    if code in THREE_DECIMAL_CURRENCIES:
+        decimals = 3
+    elif code in ZERO_DECIMAL_CURRENCIES:
+        decimals = 0
+    else:
+        decimals = 2
+    return {
+        "name": CURRENCY_NAMES.get(code, code),
+        "symbol": code,
+        "decimals": decimals,
+    }
+
 
 def ensure_currencies(db: Session) -> dict:
-    """启动时补齐缺失币种，返回 {"created": int, "skipped": int}。
+    """启动时补齐缺失币种，返回 {"created": int, "updated": int, "skipped": int}。
 
-    幂等：已存在的币种（含管理员停用/改名）保持不变，只插入缺失项。
+    幂等：已存在的币种保持不变；仅回填早期版本生成的 code 占位名称。
     覆盖 CURRENCIES（精选 35 种）与 REGION_CURRENCIES 用到的全部 ISO 4217 代码；
-    非精选币种用 code 本身作为名称/符号兜底（汇率覆盖仍以 provider 支持为准）。
+    非精选币种使用内置 ISO 4217 中文名兜底（汇率覆盖仍以 provider 支持为准）。
     """
-    existing = {c.code for c in db.query(Currency).all()}
+    existing = {c.code: c for c in db.query(Currency).all()}
     needed = dict(CURRENCIES)
     for code in REGION_CURRENCIES.values():
-        needed.setdefault(code, {"name": code, "symbol": code, "decimals": 2})
+        needed.setdefault(code, _fallback_currency(code))
     created = 0
+    updated = 0
     for code, meta in needed.items():
-        if code in existing:
+        row = existing.get(code)
+        if row is not None:
+            if row.name == code and row.name != meta["name"]:
+                row.name = meta["name"]
+                updated += 1
             continue
         db.add(Currency(code=code, **meta))
         created += 1
-    if created:
+    if created or updated:
         db.commit()
-    return {"created": created, "skipped": len(needed) - created}
+    return {
+        "created": created,
+        "updated": updated,
+        "skipped": len(needed) - created - updated,
+    }
 
 # ISO 3166-1 alpha-2 -> 默认币种（覆盖全部 249 个国家/地区；
 # 南极洲 AQ 无官方货币，按科考站惯例 USD；汇率覆盖以 provider 支持为准）
