@@ -7,6 +7,7 @@ from app.core.database import Base
 from app.models import AdministrativeRegion, Currency, RegionUnitSetting
 from app.services.currency_seed import (
     CURRENCIES,
+    CURRENCY_NAMES,
     REGION_CURRENCIES,
     ensure_currencies,
     ensure_region_currencies,
@@ -63,6 +64,25 @@ def test_ensure_currencies_does_not_overwrite_existing():
         db.close()
 
 
+def test_ensure_currencies_backfills_placeholder_names_only():
+    db = _db()
+    try:
+        db.add_all([
+            Currency(code="AFN", name="AFN", symbol="AFN", decimals=2),
+            Currency(code="ALL", name="自定义名称", symbol="ALL", decimals=2),
+        ])
+        db.commit()
+
+        result = ensure_currencies(db)
+        afn = db.query(Currency).filter(Currency.code == "AFN").one()
+        all_lek = db.query(Currency).filter(Currency.code == "ALL").one()
+        assert result["updated"] == 1
+        assert afn.name == "阿富汗尼"
+        assert all_lek.name == "自定义名称"
+    finally:
+        db.close()
+
+
 def test_currency_dictionary_covers_seed_and_provider_set():
     # 原有 seed 15 种 + Frankfurter/ECB 主流币种都应覆盖
     codes = [
@@ -115,6 +135,12 @@ def test_region_currency_map_covers_supported_currencies():
     assert REGION_CURRENCIES["CN"] == "CNY"
     assert REGION_CURRENCIES["US"] == "USD"
     assert REGION_CURRENCIES["DE"] == "EUR"
+
+
+def test_non_curated_currencies_have_chinese_names():
+    non_curated = set(REGION_CURRENCIES.values()) - set(CURRENCIES)
+    assert non_curated == set(CURRENCY_NAMES)
+    assert all(CURRENCY_NAMES[code] != code for code in non_curated)
 
 
 def test_region_currency_map_covers_all_countries():

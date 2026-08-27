@@ -1,20 +1,18 @@
 <template>
   <div class="d-flex align-center calc-context">
-    <!-- 桌面端：内联显示当前地区 / 计算范围 / 币种，点击打开同一弹窗 -->
-    <template v-if="isDesktop">
-      <v-btn variant="text" size="small" class="px-1" title="切换地区/计算范围/币种" @click="open">
-        <v-icon start size="small">mdi-map-marker-outline</v-icon>
-        {{ regionLabel }}
-      </v-btn>
-      <v-btn variant="text" size="small" class="px-1" title="切换计算范围" @click="open">
-        <v-icon start size="small">mdi-sitemap-outline</v-icon>
-        {{ scopeLabel }}
-      </v-btn>
-      <v-btn variant="text" size="small" class="px-1" title="切换币种" @click="open">
-        <v-icon start size="small">mdi-currency-usd</v-icon>
-        {{ currencyLabel }}
-      </v-btn>
-    </template>
+    <!-- 桌面端：合并为一个当前计算上下文入口 -->
+    <v-btn
+      v-if="isDesktop"
+      variant="text"
+      size="large"
+      class="context-button ml-2"
+      title="切换地区/计算范围/币种"
+      @click="open"
+    >
+      <v-icon start>mdi-tune-variant</v-icon>
+      <span class="context-button-text">{{ contextSummary }}</span>
+      <v-icon end size="small">mdi-chevron-down</v-icon>
+    </v-btn>
     <!-- 移动端：单个按钮 -->
     <v-btn v-else icon="mdi-tune-variant" variant="text" size="small" title="地区/计算范围/币种" @click="open" />
 
@@ -46,10 +44,10 @@
           <v-autocomplete v-model="currencyValue" :items="currencies" item-title="name" item-value="code"
             label="币种" variant="outlined" density="compact" clearable placeholder="跟随个人配置" hide-details>
             <template #selection="{ item }">
-              {{ item.raw.code }}
+              {{ currencyOptionLabel(item.raw) }}
             </template>
             <template #item="{ props, item }">
-              <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+              <v-list-item v-bind="props" :title="currencyOptionLabel(item.raw)" />
             </template>
           </v-autocomplete>
         </v-card-text>
@@ -113,13 +111,21 @@ const scopeLabel = computed(() => {
 
 const currencyLabel = computed(() => {
   const c = calcContext.currency || userStore.user?.default_currency || userStore.user?.effective_currency
-  return typeof c === 'string' && c ? c : '跟随地区'
+  if (typeof c !== 'string' || !c) return '跟随地区'
+  const hit = currencies.value.find(item => item.code === c)
+  return hit?.name && hit.name !== c ? hit.name : c
 })
 
 const regionLabel = computed(() => {
   const id = calcContext.regionId ?? userStore.user?.region_id
   return id != null ? (regionNames.value[id] || '地区') : '全部地区'
 })
+
+const contextSummary = computed(() => `${regionLabel.value} · ${scopeLabel.value} · ${currencyLabel.value}`)
+
+function currencyOptionLabel(item: { code: string; name?: string }) {
+  return item.name && item.name !== item.code ? `${item.name} (${item.code})` : item.code
+}
 
 async function loadRegionLevel(level: number, parentId: number | null) {
   regionLoading.value[level] = true
@@ -164,7 +170,17 @@ async function ensureRegionName() {
   }
 }
 
-onMounted(() => { void ensureRegionName() })
+onMounted(() => {
+  void ensureRegionName()
+  void ensureCurrencyOptions()
+})
+
+async function ensureCurrencyOptions() {
+  if (currencies.value.length) return
+  try {
+    currencies.value = await loadCurrencies()
+  } catch { /* keep the code-only fallback */ }
+}
 
 async function open() {
   initialRegionId = calcContext.regionId ?? userStore.user?.region_id ?? null
@@ -172,11 +188,7 @@ async function open() {
   currencyValue.value = calcContext.currency ?? userStore.user?.default_currency ?? null
   regionSelections.value = [null, null, null, null]
   regionItems.value = [[], [], [], []]
-  if (!currencies.value.length) {
-    try {
-      currencies.value = await loadCurrencies()
-    } catch { /* ignore */ }
-  }
+  await ensureCurrencyOptions()
   if (!regionItems.value[0].length) await loadRegionLevel(0, null)
   if (initialRegionId) {
     try {
@@ -230,6 +242,23 @@ function reset() {
 
 <style scoped>
 .calc-context :deep(.v-btn) { text-transform: none; }
+.context-button {
+  height: 48px;
+  padding: 0 12px;
+}
+.context-button :deep(.v-btn__content) {
+  max-width: min(420px, 38vw);
+  font-size: 1rem;
+  font-weight: 600;
+}
+.context-button :deep(.v-btn__content .v-icon:first-child) {
+  font-size: 22px;
+}
+.context-button-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .region-select { max-width: 220px; }
 @media (max-width: 600px) {
   .region-select { max-width: none; }

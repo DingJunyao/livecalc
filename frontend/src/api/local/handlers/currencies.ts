@@ -1,4 +1,5 @@
 import type { Currency } from '@/types'
+import { fallbackCurrency } from '@/utils/currencyNames'
 
 // 本地静态币种 — 与后端启动 seed（backend/app/services/currency_seed.py）对齐的 35 种。
 const CURRENCIES: Currency[] = [
@@ -37,7 +38,7 @@ const CURRENCIES: Currency[] = [
   { code: 'SEK', name: '瑞典克朗', symbol: 'kr', decimals: 2 },
   { code: 'TRY', name: '土耳其里拉', symbol: '₺', decimals: 2 },
   { code: 'ZAR', name: '南非兰特', symbol: 'R', decimals: 2 },
-  // 其余 ISO 4217 币种兜底（名称/符号用代码，与后端 ensure_currencies 对齐）
+  // 其余 ISO 4217 币种兜底；导出前会补上中文名。
   { code: 'AFN', name: 'AFN', symbol: 'AFN', decimals: 2 },
   { code: 'ALL', name: 'ALL', symbol: 'ALL', decimals: 2 },
   { code: 'AMD', name: 'AMD', symbol: 'AMD', decimals: 2 },
@@ -158,8 +159,12 @@ const CURRENCIES: Currency[] = [
   { code: 'ZWG', name: 'ZWG', symbol: 'ZWG', decimals: 2 },
 ]
 
+const LOCAL_CURRENCIES = CURRENCIES.map((currency) => (
+  currency.name === currency.code ? fallbackCurrency(currency.code) : currency
+))
+
 export function localGetCurrencies(): Currency[] {
-  return CURRENCIES
+  return LOCAL_CURRENCIES
 }
 
 export function localRatesStatus() {
