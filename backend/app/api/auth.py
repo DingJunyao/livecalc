@@ -15,6 +15,7 @@ from app.core.security import (
     get_current_admin_user,
 )
 from app.models.user import User
+from app.models.administrative_region import AdministrativeRegion
 from app.models.unit import Unit
 from app.models.invite_code import InviteCode
 from app.models.system_config import SystemConfig
@@ -68,6 +69,27 @@ def _recompute_currency_snapshots(db: Session, user, old_currency: str) -> None:
     new_currency = get_user_default_currency(db, user)
     if new_currency != old_currency:
         recompute_user_records(db, user.id, new_currency)
+
+
+def _clear_inherited_currency_after_region_change(
+    db: Session, user: User, previous_region_id: Optional[int], new_region_id: Optional[int]
+) -> None:
+    """地区改变时，清除与旧地区默认币种相同的存量默认值。
+
+    早期账号会把注册地区的币种（例如 CNY）写入 default_currency。该值本意是
+    “跟随地区”的初始值，却会在用户搬到另一国家后继续覆盖新地区。只清除与旧
+    地区推导币种一致的值；手动设成 USD 等不同币种的偏好不受影响。
+    """
+    if previous_region_id == new_region_id or not user.default_currency:
+        return
+    previous_region = db.query(AdministrativeRegion).filter(
+        AdministrativeRegion.id == previous_region_id
+    ).first() if previous_region_id is not None else None
+    if previous_region is None:
+        return
+    from app.services.currency_service import get_region_default_currency
+    if user.default_currency == get_region_default_currency(db, previous_region):
+        user.default_currency = None
 
 
 def _build_unit_preferences(user: User, db: Session) -> UnitPreferences:
@@ -439,9 +461,14 @@ async def update_my_account(
     if payload.nickname is not None:
         user.nickname = payload.nickname
 
-    # 地区（region_id = None 表示清除地区）
+    # 地区（region_id = None 表示清除地区）。同时迁移旧版“继承地区”的币种值，
+    # 让地区变更后继续自动跟随新的国家币种。
     if payload.region_id is not None or "region_id" in payload.model_dump(exclude_unset=True):
+        previous_region_id = user.region_id
         user.region_id = payload.region_id
+        _clear_inherited_currency_after_region_change(
+            db, user, previous_region_id, payload.region_id
+        )
 
     # 密码
     changed_password = False

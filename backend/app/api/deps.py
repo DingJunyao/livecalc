@@ -75,21 +75,22 @@ async def get_session_currency_override(
                     detail=f"无法获取 {user_currency} → {code} 汇率，请稍后重试",
                 )
         set_session_currency(code, float(rate))
-    # 会话级地区覆盖（X-Region）：前端已解析到生效节点
+    # 会话级地区覆盖（X-Region）：前端已解析到生效节点；all 表示明确不筛选。
     region_override = None
     if region_raw:
-        from app.models.administrative_region import AdministrativeRegion
-        if not region_raw.isdigit():
-            raise HTTPException(status_code=400, detail="无效地区 X-Region")
-        rnode = db.query(AdministrativeRegion).filter(
-            AdministrativeRegion.id == int(region_raw),
-            AdministrativeRegion.is_active == True,  # noqa: E712
-        ).first()
-        if not rnode:
-            raise HTTPException(status_code=400, detail="未知地区")
-        region_override = rnode.id
+        if region_raw != "all":
+            from app.models.administrative_region import AdministrativeRegion
+            if not region_raw.isdigit():
+                raise HTTPException(status_code=400, detail="无效地区 X-Region")
+            rnode = db.query(AdministrativeRegion).filter(
+                AdministrativeRegion.id == int(region_raw),
+                AdministrativeRegion.is_active == True,  # noqa: E712
+            ).first()
+            if not rnode:
+                raise HTTPException(status_code=400, detail="未知地区")
+            region_override = rnode.id
     from app.services.session_context import set_session_region
-    if region_override is not None:
+    if region_raw:
         set_session_region(region_override)
     try:
         yield

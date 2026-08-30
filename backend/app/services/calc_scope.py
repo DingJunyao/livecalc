@@ -32,8 +32,8 @@ def resolve_region_param(db: Session, user, region_id: Optional[int]) -> Optiona
     """region_id 显式给出则用它；否则按用户默认计算范围推导。"""
     if region_id is not None:
         return region_id
-    from app.services.session_context import get_session_region
-    sess = get_session_region()
-    if sess is not None:
-        return sess
+    from app.services.session_context import get_session_region, has_session_region_override
+    # 会话“全部地区”也必须短路默认范围；它的值正是 None。
+    if has_session_region_override():
+        return get_session_region()
     return resolve_default_calc_region_id(db, user)

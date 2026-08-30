@@ -65,6 +65,27 @@ def test_user_default_currency_override_and_derive(db):
     assert get_user_default_currency(db, u2) == "USD"
 
 
+def test_region_change_clears_legacy_inherited_currency_but_keeps_manual_override(db):
+    """迁移地区时，旧地区的默认币种不应继续遮蔽新地区币种。"""
+    from app.api.auth import _clear_inherited_currency_after_region_change
+
+    _seed(db)
+    db.add(RegionUnitSetting(region_code="ID", region_name="印度尼西亚", default_currency="IDR"))
+    indonesia = AdministrativeRegion(id=400, code="ID", name="印度尼西亚", level=0, iso_country="ID", path="ID")
+    inherited = User(username="follow_region", email="follow_region@x.c", password_hash="x", region_id=100, default_currency="CNY")
+    manual = User(username="manual_currency", email="manual_currency@x.c", password_hash="x", region_id=100, default_currency="USD")
+    db.add_all([indonesia, inherited, manual])
+    db.commit()
+
+    _clear_inherited_currency_after_region_change(db, inherited, 100, 400)
+    _clear_inherited_currency_after_region_change(db, manual, 100, 400)
+
+    assert inherited.default_currency is None
+    inherited.region_id = 400
+    assert get_user_default_currency(db, inherited) == "IDR"
+    assert manual.default_currency == "USD"
+
+
 def test_recompute_user_records_rebases_snapshots(db):
     """用户币种 CNY -> JPY：价格记录 exchange_rate/user_currency 按记录日期重算。"""
     from datetime import datetime, date
@@ -137,4 +158,3 @@ def test_recompute_uses_nearest_snapshot_for_old_records(db):
     assert res["updated"] == 1 and res["skipped"] == 0
     db.refresh(r)
     assert r.user_currency == "JPY"
-

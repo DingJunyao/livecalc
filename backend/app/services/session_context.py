@@ -30,16 +30,24 @@ def get_session_rate() -> Optional[float]:
 
 
 _session_region: ContextVar[Optional[int]] = ContextVar("session_region", default=None)
+# None 同时可能表示“没有覆盖”和“明确选择全部地区”，故单独记录是否有覆盖。
+_session_region_overridden: ContextVar[bool] = ContextVar("session_region_overridden", default=False)
 
 
 def set_session_region(region_id: Optional[int]) -> None:
-    """设置会话地区覆盖（已解析到生效节点的 region_id，null = 不覆盖）。"""
+    """设置会话地区覆盖（None 表示明确选择“全部地区”）。"""
     _session_region.set(region_id)
+    _session_region_overridden.set(True)
 
 
 def get_session_region() -> Optional[int]:
     return _session_region.get()
 
 
+def has_session_region_override() -> bool:
+    return _session_region_overridden.get()
+
+
 def reset_session_region() -> None:
     _session_region.set(None)
+    _session_region_overridden.set(False)

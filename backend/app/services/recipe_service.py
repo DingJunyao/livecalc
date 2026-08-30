@@ -3,6 +3,7 @@ from typing import Dict, List, Optional, Tuple
 import json
 from datetime import datetime, timedelta, timezone
 from app.models.recipe import Recipe, RecipeIngredient
+from app.models.user import User
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.nutrition import Ingredient
@@ -1162,9 +1163,10 @@ async def calculate_recipe_cost(
                     "cost_source": "recipe" if recipe_chain else ("contains_aggregation" if aggregation_chain else ("fallback" if fallback_chain else "direct"))
                 })
 
+    from app.services.currency_service import get_user_default_currency
     return {
         "total_cost": total_cost,
-        "currency": "CNY",
+        "currency": get_user_default_currency(db, db.query(User).filter(User.id == user_id).first()),
         "cost_per_serving": total_cost / (servings_override or recipe.servings or 1),
         "cost_breakdown": cost_breakdown
     }
@@ -1475,11 +1477,12 @@ def calculate_recipe_cost_range_as_of(
             "cost_source": src,
         })
 
+    from app.services.currency_service import get_user_default_currency
     return {
         "min_cost": total_min,
         "max_cost": total_max,
         "avg_cost": total_avg,
-        "currency": "CNY",
+        "currency": get_user_default_currency(db, db.query(User).filter(User.id == user_id).first()),
         "cost_breakdown": breakdown,
     }
 
@@ -2236,9 +2239,10 @@ def calculate_recipe_cost_as_of(
                     "cost_source": "recipe" if recipe_chain else ("contains_aggregation" if aggregation_chain else ("fallback" if fallback_chain else "direct"))
                 })
 
+    from app.services.currency_service import get_user_default_currency
     return {
         "total_cost": total_cost,
-        "currency": "CNY",
+        "currency": get_user_default_currency(db, db.query(User).filter(User.id == user_id).first()),
         "cost_per_serving": total_cost / (recipe.servings or 1),
         "cost_breakdown": cost_breakdown
     }

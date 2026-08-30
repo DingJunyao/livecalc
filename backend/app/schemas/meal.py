@@ -23,6 +23,7 @@ class RecipeBrief(BaseModel):
     image_urls: Optional[List[str]] = None  # 已解析的完整 URL（S3 直连 / local 路径）
     servings: int = 1
     cost_estimate: Optional[float] = None
+    currency: Optional[str] = None
     nutrition_per_serving: Optional[dict] = None
 
     class Config:
@@ -39,6 +40,7 @@ class MealRecommendationItem(BaseModel):
 class DailyTotals(BaseModel):
     """当日汇总"""
     cost: Optional[float] = None
+    currency: Optional[str] = None
     calories: Optional[float] = None
     protein_g: Optional[float] = None
     carbs_g: Optional[float] = None

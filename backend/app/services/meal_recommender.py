@@ -239,8 +239,10 @@ def _build_recipe_brief(
 
     if cost:
         brief["cost_estimate"] = round(float(cost.get("cost_per_serving", 0) or 0), 2)
+        brief["currency"] = cost.get("currency")
     else:
         brief["cost_estimate"] = None
+        brief["currency"] = None
 
     if nutrition:
         per_serving = nutrition.get("per_serving", {})
@@ -325,6 +327,7 @@ async def _build_response_from_records(
     recommendations = []
     totals = {
         "cost": 0.0,
+        "currency": None,
         "calories": 0.0,
         "protein_g": 0.0,
         "carbs_g": 0.0,
@@ -365,6 +368,9 @@ async def _build_response_from_records(
             )
 
             if cost:
+                # 所有成本均由同一请求上下文换算；把币种随数值返回，避免
+                # 前端用陈旧的用户资料或会话缓存重新猜测。
+                totals["currency"] = cost.get("currency") or totals["currency"]
                 totals["cost"] = round(
                     totals["cost"] + float(cost.get("cost_per_serving", 0) or 0), 2
                 )

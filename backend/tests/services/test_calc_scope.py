@@ -5,7 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from app.core.database import Base
 from app.models import AdministrativeRegion, User
-from app.services.calc_scope import resolve_default_calc_region_id
+from app.services.calc_scope import resolve_default_calc_region_id, resolve_region_param
+from app.services.session_context import reset_session_region, set_session_region
 
 @pytest.fixture()
 def db():
@@ -24,3 +25,19 @@ def test_resolve_scope_walks_to_province(db):
     db.commit()
     u = User(id=1, username="u", email="u@b.c", password_hash="x", region_id=300, default_calc_scope="province")
     assert resolve_default_calc_region_id(db, u) == 200
+
+
+def test_explicit_session_all_regions_overrides_user_default_scope(db):
+    """会话中选择“全部地区”不能回退为用户保存的地区范围。"""
+    cn = AdministrativeRegion(id=100, code="CN", name="中国", level=0, iso_country="CN", path="CN")
+    gd = AdministrativeRegion(id=200, code="440000", name="广东省", level=1, iso_country="CN", path="CN/440000", parent_id=100)
+    sz = AdministrativeRegion(id=300, code="440300", name="深圳市", level=2, iso_country="CN", path="CN/440000/440300", parent_id=200)
+    db.add_all([cn, gd, sz])
+    db.commit()
+    user = User(id=1, username="u", email="u@b.c", password_hash="x", region_id=300, default_calc_scope="province")
+
+    set_session_region(None)
+    try:
+        assert resolve_region_param(db, user, None) is None
+    finally:
+        reset_session_region()

@@ -65,7 +65,7 @@
       <v-card-text class="pb-2">
         <div class="d-flex align-center ga-3 flex-wrap">
           <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            <v-icon size="small">mdi-currency-cny</v-icon>
+            <v-icon size="small">mdi-cash</v-icon>
             {{ costText }}
           </span>
           <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
@@ -166,7 +166,7 @@ const recipeImage = computed(() => {
 
 const costText = computed(() => {
   const cost = props.recommendation.recipe?.cost_estimate
-  return cost != null ? formatMoney(Number(cost), userCurrency.value) : '--'
+  return cost != null ? formatMoney(Number(cost), props.recommendation.recipe?.currency || userCurrency.value) : '--'
 })
 
 const calorieText = computed(() => {
