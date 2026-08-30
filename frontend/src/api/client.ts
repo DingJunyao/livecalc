@@ -28,7 +28,10 @@ api.interceptors.request.use(
       if (raw) {
         const ctx = JSON.parse(raw)
         if (ctx.currency) config.headers['X-Currency'] = ctx.currency
-        if (ctx.effectiveRegionId != null) config.headers['X-Region'] = String(ctx.effectiveRegionId)
+        // “全部地区”是一次明确的会话覆盖，不能简单省略请求头：省略会让
+        // 后端回退到用户保存的默认计算范围。用 all 保留这个语义。
+        if (ctx.scope === '') config.headers['X-Region'] = 'all'
+        else if (ctx.effectiveRegionId != null) config.headers['X-Region'] = String(ctx.effectiveRegionId)
       }
     } catch { /* ignore */ }
     return config

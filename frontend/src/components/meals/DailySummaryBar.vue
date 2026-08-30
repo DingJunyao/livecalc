@@ -19,11 +19,11 @@
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="summary-item">
               <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-                <v-icon size="small">mdi-currency-cny</v-icon>
+                <v-icon size="small">mdi-cash</v-icon>
                 今日预估
               </span>
               <span class="text-h6 font-weight-bold ml-1">
-                {{ totals.cost != null ? formatMoney(Number(totals.cost), userCurrency.value) : '--' }}
+                {{ totals.cost != null ? formatMoney(Number(totals.cost), totals.currency || userCurrency.value) : '--' }}
               </span>
             </div>
 

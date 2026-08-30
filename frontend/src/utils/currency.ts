@@ -27,10 +27,18 @@ export async function currencySymbol(code: string): Promise<string> {
 }
 
 // 防御：code 异常（如误传对象）时兜底 CNY，避免渲染出 "[object Object]"。
+// 统一采用“金额 + ISO 币种代码”格式，避免因浏览器语言环境不同而出现
+// ¥、Rp、IDR 的位置或符号不一致。
 export function formatMoney(amount: number, code: string): string {
   const cur = typeof code === 'string' && code ? code : 'CNY'
   try {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: cur }).format(amount)
+    const currencyFormat = new Intl.NumberFormat(undefined, { style: 'currency', currency: cur })
+    const { minimumFractionDigits, maximumFractionDigits } = currencyFormat.resolvedOptions()
+    const number = new Intl.NumberFormat(undefined, {
+      minimumFractionDigits,
+      maximumFractionDigits,
+    }).format(amount)
+    return `${number} ${cur}`
   } catch {
     return `${amount.toFixed(2)} ${cur}`
   }

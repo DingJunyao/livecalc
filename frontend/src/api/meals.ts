@@ -16,6 +16,7 @@ export interface RecipeBrief {
   image_urls?: string[]  // 已解析的完整 URL（S3 直连 / local 路径）
   servings: number
   cost_estimate?: number
+  currency?: string | null
   nutrition_per_serving?: NutritionPerServing | null
 }
 
@@ -27,6 +28,7 @@ export interface MealRecommendation {
 
 export interface DailyTotals {
   cost?: number
+  currency?: string | null
   calories?: number
   protein_g?: number
   carbs_g?: number
