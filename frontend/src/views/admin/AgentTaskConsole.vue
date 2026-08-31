@@ -279,10 +279,13 @@ import type { AgentSession, TaskType } from '@/types/agent'
 import { enabledProviderOptions } from '@/utils/agentProviders'
 import AgentMessageBubble from '@/components/agent/AgentMessageBubble.vue'
 import AgentApprovalCard from '@/components/agent/AgentApprovalCard.vue'
+import { formatDate } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const route = useRoute()
 const router = useRouter()
+const localeStore = useLocaleStore()
 
 import { api } from '@/api'
 
@@ -413,7 +416,7 @@ function formatRelative(s: string | null): string {
     if (diff < 60_000) return '刚刚'
     if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
     if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
-    return d.toLocaleDateString('zh-CN')
+    return formatDate(d, localeStore.effectiveFormatLocale)
   } catch {
     return s
   }

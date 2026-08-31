@@ -65,6 +65,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { AgentApproval } from '@/types/agent'
+import { formatDateTime } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ approval: AgentApproval }>()
 const emit = defineEmits<{
@@ -72,6 +74,7 @@ const emit = defineEmits<{
 }>()
 
 const loading = ref<'approve' | 'reject' | null>(null)
+const localeStore = useLocaleStore()
 
 const isPending = computed(() => props.approval.status === 'pending')
 
@@ -132,11 +135,7 @@ const dangerTextClass = computed(() =>
 )
 
 function formatTime(s: string): string {
-  try {
-    return new Date(s).toLocaleString('zh-CN')
-  } catch {
-    return s
-  }
+  return formatDateTime(s, localeStore.effectiveFormatLocale)
 }
 
 async function onDecide(approved: boolean) {

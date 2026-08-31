@@ -6,6 +6,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
+    "test:format": "node --test src/utils/format.test.ts",
     "generate-pwa-assets": "pwa-assets-generator",
     "check:i18n": "node scripts/check-i18n.mjs keys",
     "check:i18n:sources": "node scripts/check-i18n.mjs sources"

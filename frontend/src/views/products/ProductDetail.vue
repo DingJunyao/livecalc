@@ -1243,10 +1243,13 @@ import { loadCurrencies } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
 const userStore = useUserStore()
 const { currency: userCurrency } = useUserCurrency()
+const localeStore = useLocaleStore()
 
 const usdaDialog = ref(false)
 function onUsdaMatched() {
@@ -1808,9 +1811,9 @@ const displayDensityValue = computed(() => {
   const val = Number(displayDensity.value.density)
   if (isNaN(val)) return ''
   if (densityDisplayUnit.value === 'g/cm3') {
-    return (val / 1000).toLocaleString('zh-CN', { maximumFractionDigits: 4 })
+    return formatNumber(val / 1000, localeStore.effectiveFormatLocale, { maximumFractionDigits: 4 })
   }
-  return val.toLocaleString('zh-CN', { maximumFractionDigits: 1 })
+  return formatNumber(val, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 })
 })
 
 // 切换显示单位
