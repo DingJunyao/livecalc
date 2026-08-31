@@ -5,8 +5,10 @@ import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from string import Template
-from typing import Optional
+from typing import Optional, Union
 from dataclasses import dataclass
+
+from app.core.i18n import DEFAULT_LOCALE, normalize_locale, translate
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +54,14 @@ class EmailService:
     def ready(self) -> bool:
         return self._cfg is not None and self._cfg.enabled and bool(self._cfg.host)
 
-    def send_template_async(self, template_key: str, to_email: str, variables: dict, db) -> None:
+    def send_template_async(
+        self,
+        template_key: str,
+        to_email: Union[str, list[str]],
+        variables: dict,
+        db,
+        locale: str = DEFAULT_LOCALE,
+    ) -> None:
         """根据模板 key 渲染并异步发送。静默跳过：服务未就绪、模板不存在。
 
         注意：template 的查询在调用线程 db session 内完成，渲染结果（纯字符串）传入后台线程。
@@ -63,7 +72,21 @@ class EmailService:
                          self._cfg.host if self._cfg else "N/A")
             return
         from app.models.email_template import EmailTemplate
-        template = db.query(EmailTemplate).filter(EmailTemplate.key == template_key).first()
+        selected_locale = normalize_locale(locale) or DEFAULT_LOCALE
+        template = (
+            db.query(EmailTemplate)
+            .filter(EmailTemplate.key == template_key, EmailTemplate.locale == selected_locale)
+            .first()
+        )
+        if template is None:
+            template = (
+                db.query(EmailTemplate)
+                .filter(
+                    EmailTemplate.key == template_key,
+                    EmailTemplate.locale == DEFAULT_LOCALE,
+                )
+                .first()
+            )
         if not template:
             logger.warning("邮件模板 %s 不存在，跳过发送", template_key)
             return
@@ -71,16 +94,24 @@ class EmailService:
         body = Template(template.body_html).safe_substitute(variables)
         self._send_async(to_email, subject, body)
 
-    def send_test_async(self, to_email: str) -> None:
+    def send_test_async(self, to_email: str, locale: str = DEFAULT_LOCALE) -> None:
         """发送测试邮件。"""
-        self._send_async(to_email, "测试邮件 - LiveCalc",
-                        "<h1>SMTP 配置测试</h1><p>这是一封测试邮件，来自 LiveCalc。如果收到此邮件，说明 SMTP 配置正确。</p>")
+        subject = f"{translate('测试邮件', locale)} - LiveCalc"
+        body = (
+            f"<h1>{translate('SMTP 配置测试', locale)}</h1>"
+            f"<p>{translate('这是一封测试邮件，来自 LiveCalc。如果收到此邮件，说明 SMTP 配置正确。', locale)}</p>"
+        )
+        self._send_async(to_email, subject, body)
 
-    def _send_async(self, to_email: str, subject: str, body_html: str) -> None:
+    def _send_async(
+        self, to_email: Union[str, list[str]], subject: str, body_html: str
+    ) -> None:
         thread = threading.Thread(target=self._send_sync, args=(to_email, subject, body_html), daemon=True)
         thread.start()
 
-    def _send_sync(self, to_email: str, subject: str, body_html: str) -> None:
+    def _send_sync(
+        self, to_email: Union[str, list[str]], subject: str, body_html: str
+    ) -> None:
         cfg = self._cfg
         if not cfg or not cfg.host:
             return
@@ -88,7 +119,8 @@ class EmailService:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = subject
             msg["From"] = f"{cfg.from_name} <{cfg.from_address}>"
-            msg["To"] = to_email
+            recipients = [to_email] if isinstance(to_email, str) else list(to_email)
+            msg["To"] = ", ".join(recipients)
             msg.attach(MIMEText(body_html, "html", "utf-8"))
 
             if cfg.use_ssl:
@@ -101,7 +133,7 @@ class EmailService:
 
             if cfg.username:
                 server.login(cfg.username, cfg.password)
-            server.sendmail(cfg.from_address, [to_email], msg.as_string())
+            server.sendmail(cfg.from_address, recipients, msg.as_string())
             server.quit()
             logger.info("邮件发送成功: to=%s subject=%s", to_email, subject)
         except Exception as e:

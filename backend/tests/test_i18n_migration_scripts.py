@@ -22,3 +22,23 @@ def test_user_locale_migration_and_sql_scripts_are_present():
         )
         assert "locale VARCHAR(10)" in sql
         assert "format_locale VARCHAR(10)" in sql
+
+
+def test_email_template_migration_and_sql_scripts_are_present():
+    revision = (
+        Path(__file__).parents[1]
+        / "alembic"
+        / "versions"
+        / "20260831_0002_localize_email_templates.py"
+    ).read_text(encoding="utf-8")
+    assert 'revision: str = "20260831_0002"' in revision
+    assert 'down_revision: Union[str, None] = "20260831_0001"' in revision
+    assert 'sa.Column("locale"' in revision
+    assert "uq_email_templates_key_locale" in revision
+
+    for suffix in ("sqlite", "mysql", "postgresql"):
+        sql = (ROOT / f"20260831_localize_email_templates_{suffix}.sql").read_text(
+            encoding="utf-8"
+        )
+        assert "locale" in sql
+        assert "uq_email_templates_key_locale" in sql

@@ -1,9 +1,10 @@
 """SMTP 配置与邮件模板管理 API（仅管理员）。"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
+from app.core.i18n import DEFAULT_LOCALE, normalize_locale, request_locale
 from app.core.security import get_current_admin_user
 from app.models.user import User
 from app.models.smtp_config import SmtpConfig
@@ -18,6 +19,10 @@ from app.schemas.email_config import (
 from app.services.email_service import EmailService
 
 router = APIRouter()
+
+
+def _template_locale(locale: str) -> str:
+    return normalize_locale(locale) or DEFAULT_LOCALE
 
 
 def _get_or_create_smtp_config(db: Session) -> SmtpConfig:
@@ -58,6 +63,7 @@ def update_smtp_config(
 @router.post("/admin/email-config/smtp/test")
 def test_smtp_config(
     body: SmtpTestRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
@@ -65,25 +71,36 @@ def test_smtp_config(
     if not config.host or not config.enabled:
         raise HTTPException(status_code=400, detail="SMTP 未配置或未启用")
     service = EmailService(config)
-    service.send_test_async(body.to_email)
+    service.send_test_async(body.to_email, request_locale(request))
     return {"message": f"测试邮件已异步发送至 {body.to_email}"}
 
 
 @router.get("/admin/email-config/templates", response_model=List[EmailTemplateResponse])
 def list_templates(
+    locale: str = Query(DEFAULT_LOCALE),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    return db.query(EmailTemplate).order_by(EmailTemplate.key).all()
+    selected_locale = _template_locale(locale)
+    return (
+        db.query(EmailTemplate)
+        .filter(EmailTemplate.locale == selected_locale)
+        .order_by(EmailTemplate.key)
+        .all()
+    )
 
 
 @router.get("/admin/email-config/templates/{key}", response_model=EmailTemplateResponse)
 def get_template(
     key: str,
+    locale: str = Query(DEFAULT_LOCALE),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    tpl = db.query(EmailTemplate).filter(EmailTemplate.key == key).first()
+    tpl = db.query(EmailTemplate).filter(
+        EmailTemplate.key == key,
+        EmailTemplate.locale == _template_locale(locale),
+    ).first()
     if not tpl:
         raise HTTPException(status_code=404, detail="模板不存在")
     return tpl
@@ -93,10 +110,14 @@ def get_template(
 def update_template(
     key: str,
     body: EmailTemplateUpdate,
+    locale: str = Query(DEFAULT_LOCALE),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
-    tpl = db.query(EmailTemplate).filter(EmailTemplate.key == key).first()
+    tpl = db.query(EmailTemplate).filter(
+        EmailTemplate.key == key,
+        EmailTemplate.locale == _template_locale(locale),
+    ).first()
     if not tpl:
         raise HTTPException(status_code=404, detail="模板不存在")
     update_data = body.model_dump(exclude_unset=True)
