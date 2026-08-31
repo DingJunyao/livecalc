@@ -199,25 +199,25 @@ const goBack = () => router.back()
 
 type FilterValue = 'all' | 'pending' | 'applied' | 'rejected' | 'reverted'
 const statusFilter = ref<FilterValue>('all')
-const statusOptions = [
+const statusOptions = computed(() => [
   { value: 'all', label: t('proposals.status.all'), color: 'default', icon: 'mdi-format-list-bulleted' },
   { value: 'pending', label: t('proposals.status.pending'), color: 'warning', icon: 'mdi-clock-outline' },
   { value: 'applied', label: t('proposals.status.applied'), color: 'success', icon: 'mdi-check-circle' },
   { value: 'rejected', label: t('proposals.status.rejected'), color: 'error', icon: 'mdi-close-circle' },
   { value: 'reverted', label: t('proposals.status.reverted'), color: 'info', icon: 'mdi-undo' },
-]
+])
 
 const proposals = ref<Proposal[]>([])
 const loading = ref(false)
 const itemsPerPage = ref(20)
 
-const headers = [
+const headers = computed(() => [
   { title: t('proposals.headerStatus'), key: 'status', sortable: false, width: 110 },
   { title: t('proposals.headerTypeAction'), key: 'type', sortable: false },
   { title: t('proposals.headerSummary'), key: 'summary', sortable: false },
   { title: t('proposals.headerTime'), key: 'time', sortable: false, width: 180 },
   { title: t('proposals.headerActions'), key: 'actions', sortable: false, align: 'end' as const, width: 80 },
-]
+])
 
 const pendingProposals = computed(() => proposals.value.filter(p => p.status === 'pending'))
 

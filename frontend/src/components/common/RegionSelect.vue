@@ -18,7 +18,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 
@@ -30,12 +30,12 @@ interface Props {
 const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: number | null): void }>()
 
-const levels = [
+const levels = computed(() => [
   { label: t('region.country'), code: 0 },
   { label: t('region.province'), code: 1 },
   { label: t('region.city'), code: 2 },
   { label: t('region.district'), code: 3 },
-]
+])
 const selected = ref<(number | null)[]>([null, null, null, null])
 const options = ref<any[][]>([[], [], [], []])
 
@@ -43,14 +43,14 @@ async function loadChildren(level: number, parentId: number | null) {
   const params = parentId != null ? { parent_id: parentId } : level === 0 ? {} : { level }
   const res = await api.get('/regions', { params })
   options.value[level] = Array.isArray(res) ? res : ((res as any)?.items || [])
-  for (let i = level + 1; i < levels.length; i++) {
+  for (let i = level + 1; i < levels.value.length; i++) {
     selected.value[i] = null
     options.value[i] = []
   }
 }
 
 function currentRegionId(): number | null {
-  for (let i = levels.length - 1; i >= 0; i--) {
+  for (let i = levels.value.length - 1; i >= 0; i--) {
     if (selected.value[i] != null) return selected.value[i]
   }
   return null
@@ -58,9 +58,9 @@ function currentRegionId(): number | null {
 
 function onLevelChange(level: number) {
   const pid = selected.value[level]
-  if (level < levels.length - 1) {
+  if (level < levels.value.length - 1) {
     if (pid == null) {
-      for (let i = level + 1; i < levels.length; i++) { selected.value[i] = null; options.value[i] = [] }
+      for (let i = level + 1; i < levels.value.length; i++) { selected.value[i] = null; options.value[i] = [] }
     } else {
       void loadChildren(level + 1, pid)
     }
@@ -91,7 +91,7 @@ async function applyValue(v: number) {
 
 watch(() => props.modelValue, (v) => {
   if (v == null) {
-    for (let i = 0; i < levels.length; i++) { selected.value[i] = null; options.value[i] = [] }
+    for (let i = 0; i < levels.value.length; i++) { selected.value[i] = null; options.value[i] = [] }
     void loadChildren(0, null)
   } else if (v !== currentRegionId()) {
     void applyValue(v)

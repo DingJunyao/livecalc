@@ -26,9 +26,9 @@ export function usePageTitle() {
    * @param type 实体类型标签（菜谱/商品/原料/商家）
    * @param fallback name 为空时的默认值
    */
-  const setDetailTitle = (name: string | undefined | null, type: string, fallback = '详情') => {
+  const setDetailTitle = (name: string | undefined | null, type: string, fallback = t('pageTitle.detailFallback')) => {
     const displayName = name || fallback
-    document.title = `${displayName}（${type}） - ${SITE_NAME()}`
+    document.title = `${t('pageTitle.detail', { name: displayName, type })} - ${SITE_NAME()}`
   }
 
   return { setTitle, setDetailTitle }

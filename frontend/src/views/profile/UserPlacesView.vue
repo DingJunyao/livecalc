@@ -122,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
@@ -158,11 +158,11 @@ const saving = ref(false)
 const pickerCoords = ref<Coordinate | undefined>()
 const form = ref({ name: '', kind: 'custom', address: '', viewRadius: 5 })
 
-const kindItems = [
+const kindItems = computed(() => [
   { label: t('places.kind.home'), value: 'home' },
   { label: t('places.kind.work'), value: 'work' },
   { label: t('places.kind.other'), value: 'custom' },
-]
+])
 
 const radiusItems = [
   { label: '1 km', value: 1 },
@@ -173,7 +173,7 @@ const radiusItems = [
   { label: '50 km', value: 50 },
 ]
 
-const kindLabel = (k: string) => kindItems.find(i => i.value === k)?.label || t('places.kind.other')
+const kindLabel = (k: string) => kindItems.value.find(i => i.value === k)?.label || t('places.kind.other')
 
 const kindIcon = (k: string) => {
   if (k === 'home') return 'mdi-home'

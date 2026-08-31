@@ -1,7 +1,7 @@
 <template>
   <v-text-field
     :model-value="modelValue"
-    :label="label"
+    :label="label || t('common.barcode')"
     :loading="loading"
     :variant="variant"
     :density="density"
@@ -26,7 +26,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { t as translate } from '@/plugins/i18n'
 import BarcodeScannerDialog from './BarcodeScannerDialog.vue'
 
 const { t } = useI18n()
@@ -38,7 +37,6 @@ const props = withDefaults(defineProps<{
   variant?: 'outlined' | 'underlined' | 'plain'
   density?: 'default' | 'comfortable' | 'compact'
 }>(), {
-  label: translate('common.barcode'),
   loading: false,
   variant: 'outlined',
   density: 'default',

@@ -1779,6 +1779,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
@@ -1820,6 +1821,7 @@ function onUsdaMatched() {
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()
+const { t } = useI18n()
 
 interface Ingredient {
   id: number
@@ -3232,7 +3234,7 @@ const loadData = async () => {
     pendingProposal.value = response.pending_proposal || null
     // 加载当前用户所有 pending 提议（用于单位/密度区域按 payload 关联显示横幅）
     loadPendingProposals()
-    setDetailTitle(response.name, '原料', '原料详情')
+    setDetailTitle(response.name, t('detailTypes.ingredient'), t('pageTitle.detailFallback'))
     // 基本数据到位，立即渲染页面
     loading.value = false
 

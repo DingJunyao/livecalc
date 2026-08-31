@@ -3,6 +3,11 @@
     "name": "生计",
     "slogan": "生活成本计算器"
   },
+  "pageTitle": {
+    "detailFallback": "详情",
+    "detail": "{name}（{type}）",
+    "unnamedMerchant": "未命名商家"
+  },
   "nav": {
     "today": "今日推荐",
     "prices": "价格记录",

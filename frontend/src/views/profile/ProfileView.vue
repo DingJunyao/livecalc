@@ -1006,14 +1006,14 @@ const scopeDialog = ref(false)
 const currencyValue = ref<string | null>(null)
 const scopeValue = ref<string>('country') // 默认国家/地区（全量）；空串 = 全部地区
 const currencies = ref<any[]>([])
-const scopeOptions = [
+const scopeOptions = computed(() => [
   { title: t('scope.all'), value: '' },
   { title: t('scope.country'), value: 'country' },
   { title: t('scope.province'), value: 'province' },
   { title: t('scope.city'), value: 'city' },
   { title: t('scope.county'), value: 'county' },
-]
-const scopeLabel = computed(() => scopeOptions.find(o => o.value === userStore.user?.default_calc_scope)?.title || t('region.country'))
+])
+const scopeLabel = computed(() => scopeOptions.value.find(o => o.value === userStore.user?.default_calc_scope)?.title || t('region.country'))
 
 function openCurrencyDialog() {
   currencyValue.value = userStore.user?.default_currency ?? null

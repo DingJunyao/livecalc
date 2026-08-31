@@ -339,6 +339,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '@/api'
@@ -363,6 +364,7 @@ const route = useRoute()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()
+const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
 const { smAndDown, md, lgAndUp } = useDisplay()
 const { mapEnabled, ensureLoaded } = useMapConfig()
@@ -490,7 +492,7 @@ const loadData = async () => {
   try {
     merchant.value = await api.get(`/merchants/${merchantId.value}`)
     pendingProposal.value = merchant.value.pending_proposal || null
-    setDetailTitle(merchant.value.name || '未命名商家', '商家', '商家详情')
+    setDetailTitle(merchant.value.name || t('pageTitle.unnamedMerchant'), t('detailTypes.merchant'), t('pageTitle.detailFallback'))
     await loadProductPrices()
   } catch (e: any) {
     console.error('加载商家详情失败', e)

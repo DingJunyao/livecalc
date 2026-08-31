@@ -515,6 +515,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
@@ -537,6 +538,7 @@ import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()
+const { t } = useI18n()
 
 interface CostHistoryRecord {
   date: string
@@ -892,7 +894,7 @@ const loadData = async () => {
     pendingProposals.value = Array.isArray(response.pending_proposals)
       ? response.pending_proposals
       : (response.pending_proposal ? [response.pending_proposal] : [])
-    setDetailTitle(response.name, '菜谱', '菜谱详情')
+    setDetailTitle(response.name, t('detailTypes.recipe'), t('pageTitle.detailFallback'))
     displayServings.value = response.servings || 1
     // 基本数据到位，立即渲染页面
     loading.value = false
@@ -1253,7 +1255,7 @@ const onBasicInfoSaved = (updatedRecipe: any) => {
   if (recipe.value) {
     recipe.value = { ...recipe.value, ...updatedRecipe }
     if (updatedRecipe.name) {
-      setDetailTitle(updatedRecipe.name, '菜谱', '菜谱详情')
+      setDetailTitle(updatedRecipe.name, t('detailTypes.recipe'), t('pageTitle.detailFallback'))
     }
   }
   loadCostData()

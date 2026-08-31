@@ -82,21 +82,21 @@ const dialog = ref(false)
 const saving = ref(false)
 const currencies = ref<any[]>([])
 
-const scopeOptions = [
+const scopeOptions = computed(() => [
   { title: t('scope.all'), value: '' },
   { title: t('scope.country'), value: 'country' },
   { title: t('scope.province'), value: 'province' },
   { title: t('scope.city'), value: 'city' },
   { title: t('scope.county'), value: 'county' },
-]
+])
 
 // 地区级联
-const regionLevels = [
+const regionLevels = computed(() => [
   { label: t('region.country'), code: 0 },
   { label: t('region.province'), code: 1 },
   { label: t('region.city'), code: 2 },
   { label: t('region.district'), code: 3 },
-]
+])
 const regionSelections = ref<Array<number | null>>([null, null, null, null])
 const regionItems = ref<Array<Array<{ id: number; name: string; has_children: boolean }>>>([[], [], [], []])
 const regionLoading = ref<boolean[]>([false, false, false, false])
@@ -109,7 +109,7 @@ const currencyValue = ref<string | null>(null)
 // 当前展示：会话覆盖优先，否则个人配置
 const scopeLabel = computed(() => {
   const scope = calcContext.scope ?? userStore.user?.default_calc_scope
-  return scopeOptions.find(o => o.value === scope)?.title || t('region.country')
+  return scopeOptions.value.find(o => o.value === scope)?.title || t('region.country')
 })
 
 const currencyLabel = computed(() => {

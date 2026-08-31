@@ -3,6 +3,11 @@
     "name": "LiveCalc",
     "slogan": "Living Cost Calculator"
   },
+  "pageTitle": {
+    "detailFallback": "Details",
+    "detail": "{name} ({type})",
+    "unnamedMerchant": "Unnamed merchant"
+  },
   "nav": {
     "today": "Today",
     "prices": "Prices",

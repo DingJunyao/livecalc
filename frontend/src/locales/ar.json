@@ -3,6 +3,11 @@
     "name": "生计",
     "slogan": "حاسبة تكلفة المعيشة"
   },
+  "pageTitle": {
+    "detailFallback": "التفاصيل",
+    "detail": "{name} ({type})",
+    "unnamedMerchant": "متجر غير مسمى"
+  },
   "nav": {
     "today": "توصيات اليوم",
     "prices": "سجل الأسعار",
