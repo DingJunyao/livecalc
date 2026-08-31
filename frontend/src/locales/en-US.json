@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "LiveCalc",
+    "slogan": "Living Cost Calculator"
+  },
+  "nav": {
+    "today": "Today",
+    "prices": "Prices",
+    "recipes": "Recipes",
+    "products": "Products",
+    "ingredients": "Ingredients",
+    "merchants": "Merchants",
+    "profile": "Profile",
+    "settings": "Settings",
+    "admin": "Admin",
+    "logout": "Sign out",
+    "theme": "Theme"
+  },
+  "routes": {
+    "login": "Sign in",
+    "register": "Sign up",
+    "setup": "Setup",
+    "today": "Today",
+    "prices": "Prices",
+    "quickFill": "Quick fill",
+    "recipes": "Recipes",
+    "recipeDetail": "Recipe details",
+    "recipeAnalysis": "Recipe analysis",
+    "products": "Products",
+    "productDetail": "Product details",
+    "ingredients": "Ingredients",
+    "ingredientDetail": "Ingredient details",
+    "merchants": "Merchants",
+    "merchantDetail": "Merchant details",
+    "profile": "Profile",
+    "settings": "Settings",
+    "profilePlaces": "Saved places",
+    "profileProposals": "My proposals",
+    "admin": "Admin",
+    "adminInviteCodes": "Invite codes",
+    "adminUnits": "Units",
+    "adminCurrencies": "Currencies",
+    "adminExchangeRates": "Exchange rates",
+    "adminBarcodeServices": "Barcode services",
+    "adminMapSettings": "Map settings",
+    "adminAiConfig": "AI and translation",
+    "adminUsers": "Users",
+    "adminDataMaintenance": "Data maintenance",
+    "adminAgentConsole": "Agent console",
+    "adminBlacklistGroups": "Ingredient blacklist groups",
+    "adminProposals": "Proposal review",
+    "adminEmailConfig": "Email settings",
+    "adminImagesUnused": "Unused images",
+    "adminStorage": "Image storage"
+  },
+  "detailTypes": {
+    "recipe": "Recipe",
+    "product": "Product",
+    "ingredient": "Ingredient",
+    "merchant": "Merchant"
+  },
+  "profile": {
+    "preferences": "Preferences",
+    "locale": {
+      "title": "Language and format",
+      "subtitle": "Interface language, text direction, and number/date format",
+      "language": "Interface language",
+      "format": "Number and date format",
+      "auto": "Follow language",
+      "saved": "Language and format updated",
+      "saveFailed": "Save failed: {message}"
+    }
+  },
+  "formatLocales": {
+    "auto": "Follow language",
+    "zh-CN": "简体中文（中国大陆）",
+    "zh-TW": "繁體中文（台灣）",
+    "en-US": "English (United States)",
+    "en-GB": "English (United Kingdom)",
+    "ja-JP": "日本語（日本）",
+    "de-DE": "Deutsch (Deutschland)",
+    "id-ID": "Bahasa Indonesia (Indonesia)",
+    "ar-EG": "العربية (مصر)"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "close": "Close"
+  },
+  "statuses": {
+    "loading": "Loading",
+    "none": "None"
+  },
+  "errors": {
+    "network": "Network connection failed. Check your network and retry.",
+    "timeout": "Request timed out. Try again later.",
+    "unknown": "Unknown error"
+  }
+}

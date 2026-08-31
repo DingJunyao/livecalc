@@ -6,7 +6,9 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "generate-pwa-assets": "pwa-assets-generator"
+    "generate-pwa-assets": "pwa-assets-generator",
+    "check:i18n": "node scripts/check-i18n.mjs keys",
+    "check:i18n:sources": "node scripts/check-i18n.mjs sources"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -23,6 +25,7 @@
     "proj4leaflet": "^1.0.2",
     "vue": "^3.4.0",
     "vue-advanced-cropper": "^2.8.9",
+    "vue-i18n": "^9.14.5",
     "vue-router": "^4.2.5",
     "vuetify": "^3.7.0",
     "webfontloader": "^1.6.28"

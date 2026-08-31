@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "生计",
+    "slogan": "生活成本计算器"
+  },
+  "nav": {
+    "today": "今日推荐",
+    "prices": "价格记录",
+    "recipes": "菜谱管理",
+    "products": "商品管理",
+    "ingredients": "原料管理",
+    "merchants": "商家管理",
+    "profile": "个人中心",
+    "settings": "设置",
+    "admin": "后台管理",
+    "logout": "退出登录",
+    "theme": "外观主题"
+  },
+  "routes": {
+    "login": "登录",
+    "register": "注册",
+    "setup": "初始化",
+    "today": "今日推荐",
+    "prices": "价格记录",
+    "quickFill": "快速填写",
+    "recipes": "菜谱管理",
+    "recipeDetail": "菜谱详情",
+    "recipeAnalysis": "菜谱分析",
+    "products": "商品管理",
+    "productDetail": "商品详情",
+    "ingredients": "原料管理",
+    "ingredientDetail": "原料详情",
+    "merchants": "商家管理",
+    "merchantDetail": "商家详情",
+    "profile": "个人中心",
+    "settings": "设置",
+    "profilePlaces": "我的常用地点",
+    "profileProposals": "我的提议",
+    "admin": "后台管理",
+    "adminInviteCodes": "邀请码管理",
+    "adminUnits": "单位管理",
+    "adminCurrencies": "币种管理",
+    "adminExchangeRates": "汇率管理",
+    "adminBarcodeServices": "条码服务配置",
+    "adminMapSettings": "地图配置",
+    "adminAiConfig": "AI 与机翻配置",
+    "adminUsers": "用户管理",
+    "adminDataMaintenance": "数据维护",
+    "adminAgentConsole": "Agent 任务台",
+    "adminBlacklistGroups": "原料黑名单分组",
+    "adminProposals": "提议审核台",
+    "adminEmailConfig": "邮件配置",
+    "adminImagesUnused": "未使用图片清理",
+    "adminStorage": "图片存储"
+  },
+  "detailTypes": {
+    "recipe": "菜谱",
+    "product": "商品",
+    "ingredient": "原料",
+    "merchant": "商家"
+  },
+  "profile": {
+    "preferences": "个人偏好",
+    "locale": {
+      "title": "语言与格式",
+      "subtitle": "界面语言、文字方向与数字/日期格式",
+      "language": "界面语言",
+      "format": "数字与日期格式",
+      "auto": "跟随语言",
+      "saved": "语言与格式已更新",
+      "saveFailed": "保存失败：{message}"
+    }
+  },
+  "formatLocales": {
+    "auto": "跟随语言",
+    "zh-CN": "简体中文（中国大陆）",
+    "zh-TW": "繁體中文（台灣）",
+    "en-US": "English (United States)",
+    "en-GB": "English (United Kingdom)",
+    "ja-JP": "日本語（日本）",
+    "de-DE": "Deutsch (Deutschland)",
+    "id-ID": "Bahasa Indonesia (Indonesia)",
+    "ar-EG": "العربية (مصر)"
+  },
+  "actions": {
+    "cancel": "取消",
+    "save": "保存",
+    "close": "关闭"
+  },
+  "statuses": {
+    "loading": "加载中",
+    "none": "无"
+  },
+  "errors": {
+    "network": "网络连接失败，请检查网络后重试",
+    "timeout": "请求超时，请稍后重试",
+    "unknown": "未知错误"
+  }
+}

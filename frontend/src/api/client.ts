@@ -1,5 +1,6 @@
 // api/client.ts
 import axios from 'axios'
+import { readStoredLocale } from '@/utils/localeStorage'
 
 // 请求超时（毫秒），可从 .env 配置
 export const REQUEST_TIMEOUT = parseInt(import.meta.env.VITE_REQUEST_TIMEOUT || '10000', 10)
@@ -22,6 +23,7 @@ api.interceptors.request.use(
     }
     // 统一注入用户时区（IANA 名），后端用于按用户本地日聚合
     config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone
+    config.headers['Accept-Language'] = readStoredLocale()
     // 会话级临时覆盖（导航栏切换，仅当前会话有效）：币种 + 地区
     try {
       const raw = sessionStorage.getItem('calc-context')

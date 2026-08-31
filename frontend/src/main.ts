@@ -3,6 +3,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import i18n from './plugins/i18n'
 import vuetify from './plugins/vuetify'
 import './assets/css/responsive.css'
 
@@ -30,6 +31,7 @@ window.history.pushState = function (...args: Parameters<typeof originalPushStat
 const app = createApp(App)
 
 app.use(createPinia())
+app.use(i18n)
 app.use(router)
 app.use(vuetify)
 

@@ -106,6 +106,17 @@
           </div>
         </v-list-item>
 
+        <v-list-item @click="openLocaleDialog">
+          <template #prepend>
+            <v-icon>mdi-translate</v-icon>
+          </template>
+          <v-list-item-title>{{ t('profile.locale.title') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ localeSubtitle }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon>mdi-chevron-right</v-icon>
+          </template>
+        </v-list-item>
+
         <v-list-item @click="openCurrencyDialog">
           <template #prepend>
             <v-icon>mdi-currency-usd</v-icon>
@@ -504,6 +515,43 @@
       </v-card>
     </v-dialog>
 
+    <!-- 语言与格式设置对话框 -->
+    <v-dialog v-model="localeDialog" max-width="480">
+      <v-card>
+        <v-card-title class="d-flex align-center">
+          {{ t('profile.locale.title') }}
+          <v-spacer />
+          <v-btn icon="mdi-close" variant="text" size="small" @click="localeDialog = false" />
+        </v-card-title>
+        <v-card-text>
+          <v-select
+            v-model="localeForm.locale"
+            :items="localeOptions"
+            item-title="title"
+            item-value="value"
+            :label="t('profile.locale.language')"
+            variant="outlined"
+            density="compact"
+            class="mb-3"
+          />
+          <v-select
+            v-model="localeForm.formatLocale"
+            :items="formatLocaleOptions"
+            item-title="title"
+            item-value="value"
+            :label="t('profile.locale.format')"
+            variant="outlined"
+            density="compact"
+          />
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="text" :disabled="savingLocale" @click="localeDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingLocale" @click="saveLocale">{{ t('actions.save') }}</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
     <!-- 数据导入对话框 -->
     <ImportUploadDialog v-model="importDialog" />
 
@@ -825,8 +873,10 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
+import { useLocaleStore } from '@/stores/locale'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api } from '@/api'
 import { ImportUploadDialog } from '@/components/import'
@@ -841,7 +891,9 @@ import { resolveImageUrl } from '@/utils/image'
 import { loadCurrencies, formatMoney } from '@/utils/currency'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { appInfo } from '@/config/appInfo'
+import { FORMAT_LOCALES } from '@/utils/localeStorage'
 
+const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
 const { energyUnit, toDisplayCalorie, fromDisplayCalorie } = useUserUnits()
 
@@ -850,6 +902,7 @@ const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
 const { currency: userCurrency } = useUserCurrency()
 const userStore = useUserStore()
+const localeStore = useLocaleStore()
 const { themeMode } = useThemeToggle()
 const { mapEnabled, ensureLoaded } = useMapConfig()
 // 当前主题模式的中文标签
@@ -879,6 +932,73 @@ const exporting = ref(false)
 
 // 用户信息编辑
 const accountDialog = ref(false)
+
+// 语言与格式偏好
+const localeDialog = ref(false)
+const savingLocale = ref(false)
+const localeForm = ref<{ locale: string; formatLocale: string | null }>({
+  locale: localeStore.locale,
+  formatLocale: localeStore.formatLocale,
+})
+
+function localeEndonym(locale: string): string {
+  switch (locale) {
+    case 'en-US':
+      return 'English (US)'
+    case 'ar':
+      return 'العربية'
+    default:
+      return '简体中文'
+  }
+}
+
+const localeOptions = computed(() => [
+  { title: '简体中文', value: 'zh-CN' },
+  { title: 'English (US)', value: 'en-US' },
+  { title: 'العربية', value: 'ar' },
+])
+
+const formatLocaleOptions = computed(() => {
+  const concrete = FORMAT_LOCALES.filter((value): value is string => value !== null)
+  return [
+    { title: t('formatLocales.auto'), value: null },
+    ...concrete.map((value) => ({ title: t(`formatLocales.${value}`), value })),
+  ]
+})
+
+const localeSubtitle = computed(() => {
+  return `${localeEndonym(localeStore.locale)} · ${localeStore.effectiveFormatLocale}`
+})
+
+function openLocaleDialog() {
+  localeForm.value = {
+    locale: localeStore.locale,
+    formatLocale: localeStore.formatLocale,
+  }
+  localeDialog.value = true
+}
+
+async function saveLocale() {
+  savingLocale.value = true
+  try {
+    if (isLocalMode.value) {
+      localeStore.setLocale(localeForm.value.locale)
+      localeStore.setFormatLocale(localeForm.value.formatLocale)
+    } else {
+      await api.patch('/auth/me', {
+        locale: localeForm.value.locale,
+        format_locale: localeForm.value.formatLocale,
+      })
+      await userStore.fetchUser()
+    }
+    localeDialog.value = false
+    notify(t('profile.locale.saved'), 'success')
+  } catch (e: any) {
+    notify(t('profile.locale.saveFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
+  } finally {
+    savingLocale.value = false
+  }
+}
 
 // 默认币种与计算范围
 const currencyDialog = ref(false)

@@ -1,0 +1,99 @@
+{
+  "app": {
+    "name": "生计",
+    "slogan": "حاسبة تكلفة المعيشة"
+  },
+  "nav": {
+    "today": "توصيات اليوم",
+    "prices": "سجل الأسعار",
+    "recipes": "إدارة الوصفات",
+    "products": "إدارة المنتجات",
+    "ingredients": "إدارة المكونات",
+    "merchants": "إدارة المتاجر",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "admin": "الإدارة",
+    "logout": "تسجيل الخروج",
+    "theme": "المظهر"
+  },
+  "routes": {
+    "login": "تسجيل الدخول",
+    "register": "التسجيل",
+    "setup": "التهيئة",
+    "today": "توصيات اليوم",
+    "prices": "سجل الأسعار",
+    "quickFill": "تعبئة سريعة",
+    "recipes": "إدارة الوصفات",
+    "recipeDetail": "تفاصيل الوصفة",
+    "recipeAnalysis": "تحليل الوصفة",
+    "products": "إدارة المنتجات",
+    "productDetail": "تفاصيل المنتج",
+    "ingredients": "إدارة المكونات",
+    "ingredientDetail": "تفاصيل المكون",
+    "merchants": "إدارة المتاجر",
+    "merchantDetail": "تفاصيل المتجر",
+    "profile": "الملف الشخصي",
+    "settings": "الإعدادات",
+    "profilePlaces": "الأماكن المحفوظة",
+    "profileProposals": "اقتراحاتي",
+    "admin": "الإدارة",
+    "adminInviteCodes": "رموز الدعوة",
+    "adminUnits": "الوحدات",
+    "adminCurrencies": "العملات",
+    "adminExchangeRates": "أسعار الصرف",
+    "adminBarcodeServices": "خدمات الباركود",
+    "adminMapSettings": "إعدادات الخريطة",
+    "adminAiConfig": "الذكاء الاصطناعي والترجمة",
+    "adminUsers": "المستخدمون",
+    "adminDataMaintenance": "صيانة البيانات",
+    "adminAgentConsole": "لوحة الوكيل",
+    "adminBlacklistGroups": "مجموعات حظر المكونات",
+    "adminProposals": "مراجعة الاقتراحات",
+    "adminEmailConfig": "إعدادات البريد",
+    "adminImagesUnused": "الصور غير المستخدمة",
+    "adminStorage": "تخزين الصور"
+  },
+  "detailTypes": {
+    "recipe": "وصفة",
+    "product": "منتج",
+    "ingredient": "مكوّن",
+    "merchant": "متجر"
+  },
+  "profile": {
+    "preferences": "التفضيلات",
+    "locale": {
+      "title": "اللغة والتنسيق",
+      "subtitle": "لغة الواجهة واتجاه النص وتنسيق الأرقام والتواريخ",
+      "language": "لغة الواجهة",
+      "format": "تنسيق الأرقام والتواريخ",
+      "auto": "اتباع اللغة",
+      "saved": "تم تحديث اللغة والتنسيق",
+      "saveFailed": "فشل الحفظ: {message}"
+    }
+  },
+  "formatLocales": {
+    "auto": "اتباع اللغة",
+    "zh-CN": "简体中文（中国大陆）",
+    "zh-TW": "繁體中文（台灣）",
+    "en-US": "English (United States)",
+    "en-GB": "English (United Kingdom)",
+    "ja-JP": "日本語（日本）",
+    "de-DE": "Deutsch (Deutschland)",
+    "id-ID": "Bahasa Indonesia (Indonesia)",
+    "ar-EG": "العربية (مصر)"
+  },
+  "actions": {
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "close": "إغلاق"
+  },
+  "statuses": {
+    "loading": "جارٍ التحميل",
+    "none": "لا شيء"
+  },
+  "errors": {
+    "network": "تعذّر الاتصال بالشبكة. تحقق من الشبكة وحاول مرة أخرى.",
+    "timeout": "انتهت مهلة الطلب. حاول مرة أخرى لاحقًا.",
+    "unknown": "خطأ غير معروف"
+  }
+}

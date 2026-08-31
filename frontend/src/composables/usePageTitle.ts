@@ -1,7 +1,8 @@
 // composables/usePageTitle.ts
 // 统一管理页面标题（document.title）
+import { t } from '@/plugins/i18n'
 
-const SITE_NAME = '生计 - 生活成本计算器'
+const SITE_NAME = () => t('app.name')
 
 /**
  * 页面标题管理 composable
@@ -16,7 +17,7 @@ export function usePageTitle() {
    * 设置静态页面标题：`{title} - 生计 - 生活成本计算器`
    */
   const setTitle = (title: string) => {
-    document.title = `${title} - ${SITE_NAME}`
+    document.title = `${title} - ${SITE_NAME()}`
   }
 
   /**
@@ -27,7 +28,7 @@ export function usePageTitle() {
    */
   const setDetailTitle = (name: string | undefined | null, type: string, fallback = '详情') => {
     const displayName = name || fallback
-    document.title = `${displayName}（${type}） - ${SITE_NAME}`
+    document.title = `${displayName}（${type}） - ${SITE_NAME()}`
   }
 
   return { setTitle, setDetailTitle }

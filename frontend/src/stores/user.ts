@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@/types'
 import { api } from '@/api'
+import { useLocaleStore } from '@/stores/locale'
 
 export const useUserStore = defineStore('user', () => {
   // ---- Local mode: return a fixed admin user without API calls ----
@@ -29,6 +30,8 @@ export const useUserStore = defineStore('user', () => {
       region_id: null,
       default_currency: null,
       default_calc_scope: null,
+      locale: null,
+      format_locale: null,
     }
 
     const user = ref<User | null>(localUserData)
@@ -57,6 +60,8 @@ export const useUserStore = defineStore('user', () => {
     try {
       const data = await api.get('/auth/me')
       user.value = data
+      const localeStore = useLocaleStore()
+      localeStore.syncFromUser(data)
     } catch (error) {
       console.error('Failed to fetch user:', error)
     }

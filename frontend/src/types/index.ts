@@ -38,6 +38,8 @@ export interface User {
   region_id: number | null
   default_currency: string | null
   default_calc_scope: string | null
+  locale: string | null
+  format_locale: string | null
 }
 
 export interface LoginRequest {

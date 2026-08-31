@@ -14,14 +14,14 @@
         <v-list-item v-if="isLocalMode" class="pa-2">
           <template #prepend>
             <v-avatar size="36" color="primary" class="mr-2">
-              <v-img src="/logo.svg" alt="生计" />
+              <v-img src="/logo.svg" :alt="t('app.name')" />
             </v-avatar>
           </template>
           <v-list-item-title class="text-body-2 font-weight-medium">
-            生计
+            {{ t('app.name') }}
           </v-list-item-title>
           <v-list-item-subtitle class="text-caption">
-            生活成本计算器
+            {{ t('app.slogan') }}
           </v-list-item-subtitle>
         </v-list-item>
         <!-- 云模式：用户信息 -->
@@ -44,18 +44,18 @@
       <v-divider />
 
       <v-list density="compact" nav>
-        <v-list-item prepend-icon="mdi-silverware-fork-knife" title="今日推荐" to="/" exact />
-        <v-list-item prepend-icon="mdi-currency-cny" title="价格记录" to="/prices" />
-        <v-list-item prepend-icon="mdi-book-open-variant" title="菜谱管理" to="/recipes" />
-        <v-list-item prepend-icon="mdi-package-variant" title="商品管理" to="/data/products" />
-        <v-list-item prepend-icon="mdi-leaf" title="原料管理" to="/data/ingredients" />
-        <v-list-item prepend-icon="mdi-store" title="商家管理" to="/data/merchants" />
-        <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? '设置' : '个人中心'" to="/profile" />
+        <v-list-item prepend-icon="mdi-silverware-fork-knife" :title="t('nav.today')" to="/" exact />
+        <v-list-item prepend-icon="mdi-currency-cny" :title="t('nav.prices')" to="/prices" />
+        <v-list-item prepend-icon="mdi-book-open-variant" :title="t('nav.recipes')" to="/recipes" />
+        <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" />
+        <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" />
+        <v-list-item prepend-icon="mdi-store" :title="t('nav.merchants')" to="/data/merchants" />
+        <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? t('nav.settings') : t('nav.profile')" to="/profile" />
         <v-divider v-if="userStore.user?.is_admin && !isLocalMode" class="my-2" />
         <v-list-item
           v-if="userStore.user?.is_admin && !isLocalMode"
           prepend-icon="mdi-shield-account"
-          title="后台管理"
+          :title="t('nav.admin')"
           to="/admin"
           base-color="primary"
         />
@@ -65,7 +65,7 @@
         <v-list density="compact" nav>
           <!-- 展开模式：三态图标按钮组 -->
           <div v-if="desktopSidebar" class="theme-switch pa-2">
-            <div class="text-caption text-medium-emphasis px-1 pb-1">外观主题</div>
+            <div class="text-caption text-medium-emphasis px-1 pb-1">{{ t('nav.theme') }}</div>
             <v-btn-toggle
               v-model="themeMode"
               mandatory
@@ -88,7 +88,7 @@
           <v-list-item
             v-if="!isLocalMode"
             prepend-icon="mdi-logout"
-            title="退出登录"
+            :title="t('nav.logout')"
             base-color="error"
             @click="logout"
           />
@@ -114,14 +114,14 @@
         <v-list-item v-if="isLocalMode" class="pa-2">
           <template #prepend>
             <v-avatar size="40" color="primary" class="mr-2">
-              <v-img src="/logo.svg" alt="生计" />
+              <v-img src="/logo.svg" :alt="t('app.name')" />
             </v-avatar>
           </template>
           <v-list-item-title class="text-body-2 font-weight-medium">
-            生计
+            {{ t('app.name') }}
           </v-list-item-title>
           <v-list-item-subtitle class="text-caption">
-            生活成本计算器
+            {{ t('app.slogan') }}
           </v-list-item-subtitle>
         </v-list-item>
         <!-- 云模式：用户信息 -->
@@ -144,18 +144,18 @@
       <v-divider />
 
       <v-list density="compact" nav>
-        <v-list-item prepend-icon="mdi-silverware-fork-knife" title="今日推荐" to="/" exact @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-currency-cny" title="价格记录" to="/prices" @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-book-open-variant" title="菜谱管理" to="/recipes" @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-package-variant" title="商品管理" to="/data/products" @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-leaf" title="原料管理" to="/data/ingredients" @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-store" title="商家管理" to="/data/merchants" @click="closeDrawer" />
-        <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? '设置' : '个人中心'" to="/profile" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-silverware-fork-knife" :title="t('nav.today')" to="/" exact @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-currency-cny" :title="t('nav.prices')" to="/prices" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-book-open-variant" :title="t('nav.recipes')" to="/recipes" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-store" :title="t('nav.merchants')" to="/data/merchants" @click="closeDrawer" />
+        <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? t('nav.settings') : t('nav.profile')" to="/profile" @click="closeDrawer" />
         <v-divider v-if="userStore.user?.is_admin && !isLocalMode" class="my-2" />
         <v-list-item
           v-if="userStore.user?.is_admin && !isLocalMode"
           prepend-icon="mdi-shield-account"
-          title="后台管理"
+          :title="t('nav.admin')"
           to="/admin"
           base-color="primary"
           @click="closeDrawer"
@@ -165,7 +165,7 @@
       <template #append>
         <v-list density="compact" nav>
           <div class="theme-switch pa-2">
-            <div class="text-caption text-medium-emphasis px-1 pb-1">外观主题</div>
+            <div class="text-caption text-medium-emphasis px-1 pb-1">{{ t('nav.theme') }}</div>
             <v-btn-toggle
               v-model="themeMode"
               mandatory
@@ -182,7 +182,7 @@
           <v-list-item
             v-if="!isLocalMode"
             prepend-icon="mdi-logout"
-            title="退出登录"
+            :title="t('nav.logout')"
             base-color="error"
             @click="logout"
           />
@@ -199,12 +199,14 @@
 
 <script setup lang="ts">
 import { computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMobileDrawer } from '@/composables/useMobileDrawer'
 import { useThemeToggle } from '@/composables/useTheme'
 import { resolveImageUrl } from '@/utils/image'
 
+const { t } = useI18n()
 const userStore = useUserStore()
 const router = useRouter()
 const { mobileDrawer, desktopSidebar, isDesktop, closeDrawer } = useMobileDrawer()
