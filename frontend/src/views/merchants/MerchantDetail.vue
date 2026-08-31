@@ -78,8 +78,8 @@
                   <v-icon size="small" color="medium-emphasis">mdi-crosshairs-gps</v-icon>
                 </template>
                 <v-list-item-title>{{ t('merchants.coordinates') }}</v-list-item-title>
-                <v-list-item-subtitle class="font-family-monospace">
-                  {{ formatNumber(overlaidLatitude, localeStore.effectiveFormatLocale, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ formatNumber(overlaidLongitude, localeStore.effectiveFormatLocale, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}
+                <v-list-item-subtitle class="font-family-monospace" dir="ltr">
+                  {{ formatNumber(overlaidLatitude, 'en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ formatNumber(overlaidLongitude, 'en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-else-if="mapEnabled">

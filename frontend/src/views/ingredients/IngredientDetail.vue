@@ -117,7 +117,7 @@
                 <v-icon size="small" color="medium-emphasis">mdi-scale-balance</v-icon>
               </template>
               <v-list-item-title>{{ t('ingredients.servingWeight') }}</v-list-item-title>
-              <v-list-item-subtitle>{{ overlaidServingWeight }} {{ overlaidServingWeightUnitName || 'g' }} / 份</v-list-item-subtitle>
+              <v-list-item-subtitle>{{ overlaidServingWeight }} {{ overlaidServingWeightUnitName || 'g' }} / {{ t('ingredients.perServing') }}</v-list-item-subtitle>
             </v-list-item>
 
             <v-list-item>
@@ -610,7 +610,7 @@
           <div class="nutrition-header d-flex py-2 border-bottom">
             <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">{{ t('ingredients.nutrients') }}</div>
             <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 80px">{{ t('ingredients.quantity') }}</div>
-            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 60px">NRV%</div>
+            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 60px">{{ t('ingredients.nrv') }}</div>
           </div>
           <div
             v-for="item in displayNutritionItems"
@@ -2067,7 +2067,7 @@ async function handleBarcodeLookup(code: string) {
       if (!productForm.value.brand.trim()) productForm.value.brand = result.product.brand || ''
       showMessage(t('ingredients.barcodeFilled'), 'success')
     } else {
-      showMessage(result.errors[0] || '未找到条码商品信息', 'info')
+      showMessage(result.errors[0] || t('ingredients.barcodeFallback'), 'info')
     }
   } finally {
     barcodeLookupLoading.value = false
@@ -2553,48 +2553,48 @@ const editRelationForm = ref({
 const relationToDelete = ref<HierarchyRelation | null>(null)
 
 // 关系类型选项
-const relationTypeOptions = [
+const relationTypeOptions = computed(() => [
   {
     value: 'contains',
-    label: '包含',
-    description: '当前原料包含目标原料（父→子）',
+    label: t('ingredients.relationContains'),
+    description: t('ingredients.relationContainsDescription'),
     icon: 'mdi-arrow-down',
     color: 'info',
     reverse: false
   },
   {
     value: 'contained_by',
-    label: '被包含',
-    description: '当前原料属于目标原料（子→父）',
+    label: t('ingredients.relationContainedBy'),
+    description: t('ingredients.relationContainedByDescription'),
     icon: 'mdi-arrow-up',
     color: 'info',
     reverse: true
   },
   {
     value: 'fallback',
-    label: '回退',
-    description: '当前原料可回退到目标原料',
+    label: t('ingredients.relationFallback'),
+    description: t('ingredients.relationFallbackDescription'),
     icon: 'mdi-arrow-left',
     color: 'warning',
     reverse: false
   },
   {
     value: 'fallback_by',
-    label: '被回退',
-    description: '目标原料可回退到当前原料',
+    label: t('ingredients.relationFallbackBy'),
+    description: t('ingredients.relationFallbackByDescription'),
     icon: 'mdi-arrow-right',
     color: 'warning',
     reverse: true
   },
   {
     value: 'substitutable',
-    label: '可替代',
-    description: '两个原料可以相互替代',
+    label: t('ingredients.relationSubstitutable'),
+    description: t('ingredients.relationSubstitutableDescription'),
     icon: 'mdi-swap-horizontal',
     color: 'success',
     reverse: false
   }
-]
+])
 
 // 合并相关
 const mergeTargetId = ref<number | null>(null)
@@ -2884,7 +2884,7 @@ const openQuickPriceDialog = async () => {
     })
     const products: { id: number; name: string }[] = response.items || []
     if (products.length === 0) {
-      snackbar.value = { show: true, message: '该原料暂无关联商品，请先添加商品', color: 'warning' }
+      snackbar.value = { show: true, message: t('ingredients.noLinkedProducts'), color: 'warning' }
       return
     }
     const matched = products.find(p => p.name === ingredient.value!.name) || products[0]
@@ -2892,7 +2892,7 @@ const openQuickPriceDialog = async () => {
     quickPriceProducts.value = products
     showQuickPriceDialog.value = true
   } catch (e: any) {
-    snackbar.value = { show: true, message: '加载商品失败', color: 'error' }
+    snackbar.value = { show: true, message: t('ingredients.loadProductsFailed'), color: 'error' }
   }
 }
 
@@ -3252,7 +3252,7 @@ const loadData = async () => {
     loadUnmappedUnits()
   } catch (e: any) {
     console.error('加载原料失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('ingredients.loadFailed'))
     loading.value = false
   }
 }
@@ -3511,7 +3511,8 @@ const formatUsageText = (u: IngredientUsage): string => {
   const range = u.quantity_range as { min?: number; max?: number } | null
   const unit = u.unit || ''
   if (qty && range && (range.min != null || range.max != null)) {
-    return `${range.min ?? ''}~${range.max ?? ''} ${unit}（推荐 ${qty} ${unit}）`.trim()
+    const quantityRange = `${range.min ?? ''}~${range.max ?? ''}`
+    return t('ingredients.usageWithRecommendedQuantity', { range: quantityRange, quantity: qty, unit }).trim()
   }
   if (qty) return `${qty} ${unit}`.trim()
   if (range && (range.min != null || range.max != null)) {
@@ -3529,7 +3530,7 @@ const formatUsages = (recipe: Recipe): string => {
   return (recipe.usages || []).map(u => {
     const text = formatUsageText(u)
     const isNumeric = !!(u.quantity || u.quantity_range)
-    return isNumeric ? `${text} / ${servings} 份` : text
+    return isNumeric ? t('ingredients.usagePerRecipeServings', { usage: text, count: servings }) : text
   }).join('；')
 }
 
@@ -3610,7 +3611,7 @@ const addRelation = async () => {
   savingRelation.value = true
   try {
     const selectedType = relationForm.value.relation_type
-    const option = relationTypeOptions.find(o => o.value === selectedType)
+    const option = relationTypeOptions.value.find(o => o.value === selectedType)
     const isReverse = option?.reverse ?? false
 
     // 将虚拟反向类型映射回实际数据库类型
@@ -3636,7 +3637,7 @@ const addRelation = async () => {
     }
   } catch (e: any) {
     // 从 response.data.detail 获取详细的错误信息
-    const errorMessage = e.response?.data?.detail || e.message || '添加关系失败'
+    const errorMessage = e.response?.data?.detail || e.message || t('ingredients.relationAddFailed')
     showMessage(errorMessage, 'error')
   } finally {
     savingRelation.value = false
@@ -3673,7 +3674,7 @@ const saveEditRelation = async () => {
     }
   } catch (e: any) {
     // 从 response.data.detail 获取详细的错误信息
-    const errorMessage = e.response?.data?.detail || e.message || '更新关系失败'
+    const errorMessage = e.response?.data?.detail || e.message || t('ingredients.relationUpdateFailed')
     showMessage(errorMessage, 'error')
   } finally {
     savingRelation.value = false
@@ -3703,7 +3704,7 @@ const deleteRelation = async () => {
     }
   } catch (e: any) {
     // 从 response.data.detail 获取详细的错误信息
-    const errorMessage = e.response?.data?.detail || e.message || '删除关系失败'
+    const errorMessage = e.response?.data?.detail || e.message || t('ingredients.relationDeleteFailed')
     showMessage(errorMessage, 'error')
   } finally {
     deletingRelation.value = false
@@ -3712,13 +3713,13 @@ const deleteRelation = async () => {
 
 // 获取关系类型标签
 const getRelationTypeLabel = (type: string) => {
-  const option = relationTypeOptions.find(o => o.value === type)
+  const option = relationTypeOptions.value.find(o => o.value === type)
   return option?.label || type
 }
 
 // 获取关系类型颜色
 const getRelationTypeColor = (type: string) => {
-  const option = relationTypeOptions.find(o => o.value === type)
+  const option = relationTypeOptions.value.find(o => o.value === type)
   return option?.color || 'grey'
 }
 
@@ -3731,17 +3732,17 @@ const getRelationDirectionText = (
   direction: 'child' | 'parent',
   fullText: boolean = true
 ) => {
-  const currentText = fullText ? '当前原料' : '当前'
+  const currentText = fullText ? t('ingredients.relationCurrent') : t('ingredients.relationCurrentShort')
 
   // child_relations: 当前原料 → 子原料
   if (direction === 'child') {
     switch (relationType) {
       case 'contains':
-        return `属于${currentText}`
+        return t('ingredients.relationDirectionBelongsToCurrent', { current: currentText })
       case 'fallback':
-        return `可回退到${currentText}`
+        return t('ingredients.relationDirectionCanFallbackToCurrent', { current: currentText })
       case 'substitutable':
-        return `可替代${currentText}`
+        return t('ingredients.relationDirectionCanSubstituteCurrent', { current: currentText })
       default:
         return ''
     }
@@ -3751,11 +3752,11 @@ const getRelationDirectionText = (
   if (direction === 'parent') {
     switch (relationType) {
       case 'contains':
-        return `${currentText}属于`
+        return t('ingredients.relationDirectionCurrentBelongsTo', { current: currentText })
       case 'fallback':
-        return `${currentText}可回退到`
+        return t('ingredients.relationDirectionCurrentCanFallbackTo', { current: currentText })
       case 'substitutable':
-        return `可替代${currentText}`
+        return t('ingredients.relationDirectionCanSubstituteCurrent', { current: currentText })
       default:
         return ''
     }
@@ -3768,21 +3769,21 @@ const getRelationDirectionText = (
 const escapeHtml = (s: any): string => String(s ?? '').replace(/[&<>"']/g, (c: string) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string))
 
 const getRelationListDisplayText = (rel: any, direction: 'child' | 'parent') => {
-  const currentName = ingredient.value?.name || '当前原料'
-  const currentShort = '当前'
+  const currentName = ingredient.value?.name || t('ingredients.relationCurrent')
+  const currentShort = t('ingredients.relationCurrentShort')
 
   // child_relations: 当前原料是 parent
   if (direction === 'child') {
     const otherName = rel.child_name
     switch (rel.relation_type) {
       case 'contains':
-        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">属于${currentShort}</span>`
+        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListChildContains', { current: currentShort }))}</span>`
       case 'fallback':
         // 对于 fallback，parent 是具体原料，child 是抽象原料
         // 在当前原料(parent)的详情中，显示"抽象原料 可回退到 当前原料"
-        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">可回退到${currentShort}</span>`
+        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListChildFallback', { current: currentShort }))}</span>`
       case 'substitutable':
-        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">可替代${currentShort}</span>`
+        return `<span class="text-medium-emphasis">${escapeHtml(otherName)}</span> <span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListChildSubstitute', { current: currentShort }))}</span>`
       default:
         return escapeHtml(otherName)
     }
@@ -3793,13 +3794,13 @@ const getRelationListDisplayText = (rel: any, direction: 'child' | 'parent') => 
     const otherName = rel.parent_name
     switch (rel.relation_type) {
       case 'contains':
-        return `<span class="text-caption text-primary font-weight-bold">${currentShort}属于</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentContains', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
       case 'fallback':
         // 对于 fallback，parent 是具体原料，child 是抽象原料
         // 在当前原料(child)的详情中，显示"当前原料 可回退到 具体原料"
-        return `<span class="text-caption text-primary font-weight-bold">${currentShort}可回退到</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentFallback', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
       case 'substitutable':
-        return `<span class="text-caption text-primary font-weight-bold">可替代${currentShort}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentSubstitute', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
       default:
         return escapeHtml(otherName)
     }
@@ -3814,18 +3815,15 @@ const getEditRelationDirectionText = () => {
   if (!rel) return ''
 
   const relationType = editRelationForm.value.relation_type
-  const currentText = '当前原料'
 
   // 判断是 child_relation 还是 parent_relation
   // child_relation: 当前原料是父，关联原料是子
   if (rel.child_name && !rel.parent_name) {
-    // 这是 child_relation，格式：子原料 属于 当前原料
-    return `${rel.child_name} ${getRelationDirectionText(relationType, 'child', true)}`
+    return getRelationPreviewText(relationType, 'child', undefined, rel.child_name)
   }
   // parent_relation: 当前原料是子，关联原料是父
   else if (rel.parent_name && !rel.child_name) {
-    // 这是 parent_relation，格式：当前原料 属于 父原料
-    return `${getRelationDirectionText(relationType, 'parent', true)} ${rel.parent_name}`
+    return getRelationPreviewText(relationType, 'parent', undefined, rel.parent_name)
   }
 
   return ''
@@ -3833,25 +3831,31 @@ const getEditRelationDirectionText = () => {
 
 // 获取关系预览文本（用于添加关系对话框）
 // 显示格式：当前原料 [关系动词] 目标原料
-const getRelationPreviewText = (relationType: string, direction: 'child' | 'parent') => {
-  const currentName = ingredient.value?.name || '当前原料'
-  const targetName = selectedTargetIngredient.value?.name || '目标原料'
+const getRelationPreviewText = (
+  relationType: string,
+  direction: 'child' | 'parent',
+  currentNameOverride?: string,
+  targetNameOverride?: string
+) => {
+  const currentName = currentNameOverride || ingredient.value?.name || t('ingredients.relationCurrent')
+  const targetName = targetNameOverride || selectedTargetIngredient.value?.name || t('ingredients.relationTarget')
+  const interpolation = { current: currentName, target: targetName }
 
   // child_relations: 当前原料是父，目标原料是子
   if (direction === 'child') {
     switch (relationType) {
       case 'contains':
-        return `${currentName} 包含 ${targetName}`
+        return t('ingredients.relationPreviewContains', interpolation)
       case 'contained_by':
-        return `${currentName} 属于 ${targetName}`
+        return t('ingredients.relationPreviewBelongsTo', interpolation)
       case 'fallback':
-        return `${currentName} 可回退到 ${targetName}`
+        return t('ingredients.relationPreviewCanFallbackTo', interpolation)
       case 'fallback_by':
-        return `${targetName} 可回退到 ${currentName}`
+        return t('ingredients.relationPreviewCanFallbackBy', interpolation)
       case 'substitutable':
-        return `${currentName} 和 ${targetName} 可相互替代`
+        return t('ingredients.relationPreviewSubstitutable', interpolation)
       default:
-        return `${currentName} - ${targetName}`
+        return t('ingredients.relationPreviewDefault', interpolation)
     }
   }
 
@@ -3859,17 +3863,17 @@ const getRelationPreviewText = (relationType: string, direction: 'child' | 'pare
   if (direction === 'parent') {
     switch (relationType) {
       case 'contains':
-        return `${currentName} 属于 ${targetName}`
+        return t('ingredients.relationPreviewBelongsTo', interpolation)
       case 'contained_by':
-        return `${targetName} 包含 ${currentName}`
+        return t('ingredients.relationPreviewContains', interpolation)
       case 'fallback':
-        return `${currentName} 可回退到 ${targetName}`
+        return t('ingredients.relationPreviewCanFallbackTo', interpolation)
       case 'fallback_by':
-        return `${targetName} 可回退到 ${currentName}`
+        return t('ingredients.relationPreviewCanFallbackBy', interpolation)
       case 'substitutable':
-        return `${currentName} 和 ${targetName} 可相互替代`
+        return t('ingredients.relationPreviewSubstitutable', interpolation)
       default:
-        return `${currentName} - ${targetName}`
+        return t('ingredients.relationPreviewDefault', interpolation)
     }
   }
 
@@ -3878,22 +3882,23 @@ const getRelationPreviewText = (relationType: string, direction: 'child' | 'pare
 
 // 获取关系描述文本（解释关系的含义）
 const getRelationDescriptionText = (relationType: string, direction: 'child' | 'parent') => {
-  const targetName = selectedTargetIngredient.value?.name || '目标原料'
-  const currentName = ingredient.value?.name || '当前原料'
+  const targetName = selectedTargetIngredient.value?.name || t('ingredients.relationTarget')
+  const currentName = ingredient.value?.name || t('ingredients.relationCurrent')
+  const interpolation = { current: currentName, target: targetName }
 
   // child_relations: 当前原料是父，目标原料是子
   if (direction === 'child') {
     switch (relationType) {
       case 'contains':
-        return `即 ${targetName} 是 ${currentName} 的一部分`
+        return t('ingredients.relationDescriptionTargetPartOfCurrent', interpolation)
       case 'contained_by':
-        return `即 ${currentName} 是 ${targetName} 的一部分`
+        return t('ingredients.relationDescriptionCurrentPartOfTarget', interpolation)
       case 'fallback':
-        return `即当无法获取 ${currentName} 时，可使用 ${targetName} 代替`
+        return t('ingredients.relationDescriptionCurrentFallsBackToTarget', interpolation)
       case 'fallback_by':
-        return `即当无法获取 ${targetName} 时，可使用 ${currentName} 代替`
+        return t('ingredients.relationDescriptionTargetFallsBackToCurrent', interpolation)
       case 'substitutable':
-        return `即两者可以在某些情况下互相替换使用`
+        return t('ingredients.relationDescriptionSubstitutable')
       default:
         return ''
     }
@@ -3903,15 +3908,15 @@ const getRelationDescriptionText = (relationType: string, direction: 'child' | '
   if (direction === 'parent') {
     switch (relationType) {
       case 'contains':
-        return `即 ${currentName} 是 ${targetName} 的一部分`
+        return t('ingredients.relationDescriptionCurrentPartOfTarget', interpolation)
       case 'contained_by':
-        return `即 ${targetName} 是 ${currentName} 的一部分`
+        return t('ingredients.relationDescriptionTargetPartOfCurrent', interpolation)
       case 'fallback':
-        return `即当无法获取 ${currentName} 时，可使用 ${targetName} 代替`
+        return t('ingredients.relationDescriptionCurrentFallsBackToTarget', interpolation)
       case 'fallback_by':
-        return `即当无法获取 ${targetName} 时，可使用 ${currentName} 代替`
+        return t('ingredients.relationDescriptionTargetFallsBackToCurrent', interpolation)
       case 'substitutable':
-        return `即两者可以在某些情况下互相替换使用`
+        return t('ingredients.relationDescriptionSubstitutable')
       default:
         return ''
     }
@@ -3954,7 +3959,7 @@ const startEditBasicInfo = () => {
   if (ingredient.value.making_recipe_id) {
     recipeOptions.value = [{
       id: ingredient.value.making_recipe_id,
-      name: ingredient.value.making_recipe_name || `菜谱#${ingredient.value.making_recipe_id}`,
+      name: ingredient.value.making_recipe_name || t('ingredients.recipeFallback', { id: ingredient.value.making_recipe_id }),
     }]
   }
   editingBasicInfo.value = true
@@ -4186,7 +4191,20 @@ const goToAddPrice = () => {
 }
 
 // 价格记录单位选项
-const unitOptions = ['g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐']
+const unitOptions = computed(() => [
+  { title: t('prices.units.gram'), value: 'g' },
+  { title: t('prices.units.kilogram'), value: 'kg' },
+  { title: t('prices.units.jin'), value: '斤' },
+  { title: t('prices.units.liang'), value: '两' },
+  { title: t('prices.units.milliliter'), value: 'ml' },
+  { title: t('prices.units.liter'), value: 'L' },
+  { title: t('prices.units.piece'), value: '个' },
+  { title: t('prices.units.package'), value: '包' },
+  { title: t('prices.units.bag'), value: '袋' },
+  { title: t('prices.units.box'), value: '盒' },
+  { title: t('prices.units.bottle'), value: '瓶' },
+  { title: t('prices.units.can'), value: '罐' },
+])
 
 // 商家列表
 interface Merchant {
@@ -4318,7 +4336,7 @@ const doMerge = async () => {
     if (msg.includes('待管理员审核')) {
       showMessage(t('ingredients.mergeProposalSubmitted'), 'info')
     } else {
-      showMessage(msg || '合并成功', 'success')
+      showMessage(msg || t('ingredients.mergeSuccessFallback'), 'success')
     }
     // 关闭所有对话框
     showMergeDialog.value = false

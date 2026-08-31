@@ -641,15 +641,15 @@ const onMerchantChange = (val: number | null) => {
 const unitOptions = ref<{ title: string; value: string }[]>([])
 
 // 基本单位列表（API 加载失败时的回退）
-const FALLBACK_UNITS = [
-  { title: '克', value: 'g' },
-  { title: '千克', value: 'kg' },
-  { title: '斤', value: '斤' },
-  { title: '两', value: '两' },
-  { title: '毫升', value: 'ml' },
-  { title: '升', value: 'L' },
-  { title: '个', value: '个' },
-]
+const FALLBACK_UNITS = computed(() => [
+  { title: t('prices.units.gram'), value: 'g' },
+  { title: t('prices.units.kilogram'), value: 'kg' },
+  { title: t('prices.units.jin'), value: '斤' },
+  { title: t('prices.units.liang'), value: '两' },
+  { title: t('prices.units.milliliter'), value: 'ml' },
+  { title: t('prices.units.liter'), value: 'L' },
+  { title: t('prices.units.piece'), value: '个' },
+])
 
 // 加载全局单位列表
 const loadUnits = async () => {
@@ -662,7 +662,7 @@ const loadUnits = async () => {
     }))
   } catch (e) {
     // 回退到基本单位列表
-    unitOptions.value = [...FALLBACK_UNITS]
+    unitOptions.value = [...FALLBACK_UNITS.value]
   }
 }
 

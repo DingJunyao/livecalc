@@ -381,6 +381,10 @@ const newRowSuggestions = ref<Record<number, any[]>>({})
 const searchDebounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const unitOptions = ref<UnitOption[]>([])
+const FALLBACK_UNIT_OPTIONS = computed(() => [
+  { title: t('prices.units.jin'), value: '斤' },
+  { title: t('prices.units.piece'), value: '个' },
+])
 const pasteDialog = ref(false)
 const scannerOpen = ref(false)
 const barcodeLookupLoading = ref(false)
@@ -493,10 +497,7 @@ const loadUnits = async () => {
       value: u.abbreviation,
     }))
   } catch {
-    unitOptions.value = [
-      { title: '斤 (斤)', value: '斤' },
-      { title: '个 (个)', value: '个' },
-    ]
+    unitOptions.value = [...FALLBACK_UNIT_OPTIONS.value]
   }
 }
 
