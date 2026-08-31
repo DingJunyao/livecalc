@@ -18,6 +18,7 @@ passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-multipart = "^0.0.6"
 apscheduler = "^3.10.4"
 requests = "^2.31.0"
+babel = ">=2.14,<3"
 # Windows 上 zoneinfo 无系统时区数据，需 tzdata 提供 IANA 时区
 tzdata = ">=2024.1"
 # 图片存储 - S3 兼容后端（OSS/COS/MinIO/AWS S3）

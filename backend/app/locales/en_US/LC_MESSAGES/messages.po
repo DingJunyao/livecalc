@@ -1,0 +1,40 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: LiveCalc\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: en_US\n"
+
+msgid "服务器内部错误"
+msgstr "Internal server error"
+
+msgid "请求参数验证失败"
+msgstr "Request parameter validation failed"
+
+msgid "用户名已存在"
+msgstr "Username already exists"
+
+msgid "邮箱已被注册"
+msgstr "Email is already registered"
+
+msgid "此字段为必填项"
+msgstr "This field is required"
+
+msgid "{field} 不存在"
+msgstr "{field} does not exist"
+
+msgid "仅限管理员访问"
+msgstr "Administrator access only"
+
+msgid "未授权"
+msgstr "Unauthorized"
+
+msgid "测试邮件"
+msgstr "Test email"
+
+msgid "SMTP 配置测试"
+msgstr "SMTP configuration test"
+
+msgid "这是一封测试邮件，来自 LiveCalc。如果收到此邮件，说明 SMTP 配置正确。"
+msgstr "This is a test email from LiveCalc. If you received it, the SMTP configuration is correct."
