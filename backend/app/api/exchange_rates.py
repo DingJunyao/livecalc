@@ -1,13 +1,15 @@
 ﻿"""币种与汇率 API。"""
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.i18n import request_locale
 from app.core.security import get_current_user, get_current_admin_user
 from app.models.currency import Currency
+from app.services.catalog_display import currency_display_name
 from app.services import exchange_rate_service
 from app.services.exchange_rate_service import get_snapshot, store_snapshot
 
@@ -46,9 +48,19 @@ def _currency_dict(cur: Currency) -> dict:
 
 
 @router.get("/currencies")
-def list_currencies(db: Session = Depends(get_db), _=Depends(get_current_user)):
+def list_currencies(request: Request, db: Session = Depends(get_db), _=Depends(get_current_user)):
+    locale = request_locale(request)
     rows = db.query(Currency).filter(Currency.is_active == True).order_by(Currency.code).all()  # noqa: E712
-    return [{"code": r.code, "name": r.name, "symbol": r.symbol, "decimals": r.decimals} for r in rows]
+    return [
+        {
+            "code": r.code,
+            "name": r.name,
+            "display_name": currency_display_name(r.code, r.name, locale),
+            "symbol": r.symbol,
+            "decimals": r.decimals,
+        }
+        for r in rows
+    ]
 
 
 @router.get("/admin/currencies")

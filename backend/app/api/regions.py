@@ -1,25 +1,28 @@
 """行政区划 API（懒加载树形选择器）"""
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
+from app.core.i18n import request_locale
 from app.core.security import get_current_admin_user
 from app.models.administrative_region import AdministrativeRegion
 from app.models.user import User
 from app.schemas.region import RegionResponse, RegionDetailResponse, RegionAncestor
+from app.services.catalog_display import region_display_name
 from app.services.region_seed import upsert_administrative_regions, need_region_seed
 
 router = APIRouter(tags=["行政区划"])
 
 
-def _region_to_response(region: AdministrativeRegion) -> RegionResponse:
+def _region_to_response(region: AdministrativeRegion, locale: str) -> RegionResponse:
     """ORM → Pydantic 响应"""
     return RegionResponse(
         id=region.id,
         code=region.code,
         name=region.name,
+        display_name=region_display_name(region, locale),
         name_en=region.name_en,
         level=region.level,
         iso_country=region.iso_country,
@@ -44,6 +47,7 @@ def _count_children(db: Session, parent_id: int) -> bool:
 @router.get("/regions", response_model=list[RegionResponse])
 @router.get("/regions/", response_model=list[RegionResponse])
 def list_regions(
+    request: Request,
     parent_id: Optional[int] = Query(None),
     level: Optional[int] = Query(None),
     db: Session = Depends(get_db),
@@ -68,11 +72,12 @@ def list_regions(
     if parent_id is None and level is None:
         query = query.filter(AdministrativeRegion.level == 0)
 
+    locale = request_locale(request)
     rows = query.order_by(AdministrativeRegion.code).all()
 
     results = []
     for r in rows:
-        resp = _region_to_response(r)
+        resp = _region_to_response(r, locale)
         resp.has_children = _count_children(db, r.id)
         results.append(resp)
     return results
@@ -80,7 +85,7 @@ def list_regions(
 
 @router.get("/regions/{region_id}", response_model=RegionDetailResponse)
 @router.get("/regions/{region_id}/", response_model=RegionDetailResponse)
-def get_region(region_id: int, db: Session = Depends(get_db)):
+def get_region(request: Request, region_id: int, db: Session = Depends(get_db)):
     """获取单个行政区划详情（含祖先链）。"""
     region = (
         db.query(AdministrativeRegion)
@@ -92,6 +97,8 @@ def get_region(region_id: int, db: Session = Depends(get_db)):
     )
     if not region:
         raise HTTPException(status_code=404, detail="行政区划不存在")
+
+    locale = request_locale(request)
 
     # 通过 path 字段解析祖先链
     ancestors: list[RegionAncestor] = []
@@ -114,11 +121,12 @@ def get_region(region_id: int, db: Session = Depends(get_db)):
                         id=ancestor.id,
                         code=ancestor.code,
                         name=ancestor.name,
+                        display_name=region_display_name(ancestor, locale),
                         level=ancestor.level,
                     )
                 )
 
-    resp = _region_to_response(region)
+    resp = _region_to_response(region, locale)
     resp.has_children = _count_children(db, region.id)
     return RegionDetailResponse(
         **resp.model_dump(),
