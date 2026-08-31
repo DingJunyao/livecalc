@@ -19,7 +19,6 @@ FORMAT_LOCALES = frozenset(
         "ja-JP",
         "de-DE",
         "id-ID",
-        "ar",
         "ar-EG",
     }
 )

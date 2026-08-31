@@ -21,7 +21,6 @@ def test_locale_constants_match_spec():
         "ja-JP",
         "de-DE",
         "id-ID",
-        "ar",
         "ar-EG",
     }
     assert DEFAULT_LOCALE == "zh-CN"
