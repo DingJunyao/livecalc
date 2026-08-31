@@ -6,7 +6,7 @@
 
 from typing import Any
 
-from starlette.exceptions import HTTPException as StarletteHTTPException
+from fastapi import HTTPException as FastAPIHTTPException
 
 
 class AppException(Exception):
@@ -27,7 +27,7 @@ class LocalizedAppException(AppException):
         self.message = message
 
 
-class LocalizedHTTPException(StarletteHTTPException):
+class LocalizedHTTPException(FastAPIHTTPException):
     """携带中文 msgid 与插值参数的本地化 HTTP 异常。"""
 
     def __init__(self, status_code: int, message: str, **params: Any):

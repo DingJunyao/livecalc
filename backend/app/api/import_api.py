@@ -19,6 +19,7 @@ from app.services.importer.api_service import (
     start_background_import,
 )
 from app.services.importer.ai_inference.inferrer import AIInferrer
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -38,7 +39,7 @@ def upload_import(
     普通用户仅可上传系统导出格式。
     """
     if not file.filename or not file.filename.endswith(".zip"):
-        raise HTTPException(400, detail="仅支持 ZIP 格式的压缩包")
+        raise LocalizedHTTPException(status_code=400, message='仅支持 ZIP 格式的压缩包')
 
     # 保存上传文件到临时路径
     import tempfile as _tmpfile
@@ -107,12 +108,9 @@ def trigger_local_import(
     """
     local_path = settings.data_local_path
     if not local_path:
-        raise HTTPException(
-            400,
-            detail="未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置",
-        )
+        raise LocalizedHTTPException(status_code=400, message='未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置')
     if not os.path.isdir(local_path):
-        raise HTTPException(400, detail=f"目录不存在: {local_path}")
+        raise LocalizedHTTPException(status_code=400, message='目录不存在: {local_path}', local_path=local_path)
 
     task_id = start_background_import(
         db,
@@ -162,7 +160,7 @@ def get_task_status(
         if getattr(current_user, "is_admin", False):
             task = db.query(ImportTask).get(task_id)
         if not task:
-            raise HTTPException(404, detail="任务不存在")
+            raise LocalizedHTTPException(status_code=404, message='任务不存在')
     return task.to_dict()
 
 
@@ -196,13 +194,10 @@ def cancel_import_task(
     """
     task = db.query(ImportTask).filter(ImportTask.id == task_id).first()
     if not task:
-        raise HTTPException(404, detail="任务不存在")
+        raise LocalizedHTTPException(status_code=404, message='任务不存在')
 
     if task.status not in ("pending", "running"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"任务状态为 {task.status}，不可取消",
-        )
+        raise LocalizedHTTPException(status_code=409, message='任务状态为 {status}，不可取消', status=task.status)
 
     # 如果该 ImportTask 关联了 Agent 会话，一并取消 Agent（推测模糊量/密度/翻译等）。
     if task.stats and task.stats.get("agent_session_id"):

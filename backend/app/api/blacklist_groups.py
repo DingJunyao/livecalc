@@ -16,6 +16,7 @@ from app.schemas.blacklist_group import (
     BlacklistGroupResponse, BlacklistGroupIngredientResponse,
     BlacklistGroupPublicResponse, BlacklistGroupIngredientCreate,
 )
+from app.core.exceptions import LocalizedHTTPException
 
 blacklist_group_admin_router = APIRouter(tags=["原料黑名单分组管理"])
 blacklist_group_public_router = APIRouter(tags=["原料黑名单分组"])
@@ -72,7 +73,7 @@ def create_group(
     """创建原料黑名单分组"""
     existing = db.query(BlacklistGroup).filter(BlacklistGroup.name == body.name).first()
     if existing:
-        raise HTTPException(status_code=400, detail="分组名已存在")
+        raise LocalizedHTTPException(status_code=400, message='分组名已存在')
     group = BlacklistGroup(
         name=body.name,
         display_order=body.display_order,
@@ -98,7 +99,7 @@ def update_group(
         joinedload(BlacklistGroup.group_ingredients).joinedload(BlacklistGroupIngredient.ingredient)
     ).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(group, field, value)
@@ -122,7 +123,7 @@ def delete_group(
     """
     group = db.query(BlacklistGroup).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     group.is_active = False
     group.updated_by = admin.id
     db.commit()
@@ -142,7 +143,7 @@ def add_ingredients_to_group(
         joinedload(BlacklistGroup.group_ingredients).joinedload(BlacklistGroupIngredient.ingredient)
     ).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     for ing_id in body.ingredient_ids:
         existing = db.query(BlacklistGroupIngredient).filter(
             BlacklistGroupIngredient.group_id == group_id,
@@ -179,7 +180,7 @@ def remove_ingredient_from_group(
         BlacklistGroupIngredient.is_active == True,
     ).first()
     if not agi:
-        raise HTTPException(status_code=404, detail="该原料不在分组中")
+        raise LocalizedHTTPException(status_code=404, message='该原料不在分组中')
     agi.is_active = False
     agi.updated_by = admin.id
     db.commit()
@@ -210,7 +211,7 @@ async def trigger_ai_match_all(
         .all()
     )
     if not groups:
-        raise HTTPException(status_code=400, detail="没有可匹配的启用分组")
+        raise LocalizedHTTPException(status_code=400, message='没有可匹配的启用分组')
 
     from app.services.agent.blacklist_group_task import trigger_blacklist_group_match_all
 
@@ -239,7 +240,7 @@ async def trigger_ai_match(
     """触发 AI Agent 匹配原料黑名单分组原料"""
     group = db.query(BlacklistGroup).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
 
     from app.services.agent.blacklist_group_task import trigger_blacklist_group_match
 

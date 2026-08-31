@@ -9,6 +9,7 @@ from app.services.proposals.base import ApplyResult
 from app.services.proposals.executors._crud_base import CrudExecutorBase, _json_safe
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
+from app.core.exceptions import LocalizedHTTPException
 
 _MERGED_PREFIX = "[已停用] "
 
@@ -42,7 +43,7 @@ class MerchantExecutor(CrudExecutorBase):
         eid = proposal.entity_id
         m = db.query(Merchant).get(eid)
         if m is None:
-            raise HTTPException(status_code=404, detail=f"商家 {eid} 不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家 {eid} 不存在', eid=eid)
 
         record_ids = [
             r.id

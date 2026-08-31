@@ -22,6 +22,7 @@ from app.models.product_ingredient_link import ProductIngredientLink
 from app.models.ingredient_hierarchy import IngredientHierarchy
 from app.models.ingredient_merge_record import IngredientMergeRecord
 from app.services.ingredient_merger import IngredientMerger
+from app.core.exceptions import LocalizedHTTPException
 
 
 class IngredientExecutor(CrudExecutorBase):
@@ -54,11 +55,11 @@ class IngredientExecutor(CrudExecutorBase):
             source_ids = proposal.payload.get("source_ids") or []
             target_id = proposal.payload.get("target_id")
             if not source_ids:
-                raise HTTPException(status_code=400, detail="源食材列表不能为空")
+                raise LocalizedHTTPException(status_code=400, message='源食材列表不能为空')
             if target_id is None:
-                raise HTTPException(status_code=400, detail="缺少目标食材")
+                raise LocalizedHTTPException(status_code=400, message='缺少目标食材')
             if target_id in source_ids:
-                raise HTTPException(status_code=400, detail="目标食材不能同时是源食材")
+                raise LocalizedHTTPException(status_code=400, message='目标食材不能同时是源食材')
             return
         # 其余走 CRUD 默认校验
         super().validate(db, proposal)
@@ -196,7 +197,7 @@ class IngredientExecutor(CrudExecutorBase):
             merged_by_user_id=proposal.proposer_id,
         )
         if not result.get("success"):
-            raise HTTPException(status_code=400, detail=result.get("message", "合并失败"))
+            raise LocalizedHTTPException(status_code=400, message='合并失败')
 
         return ApplyResult(
             snapshot=snapshot,
@@ -214,7 +215,7 @@ class IngredientExecutor(CrudExecutorBase):
             .first()
         )
         if ing is None:
-            raise HTTPException(status_code=404, detail=f"食材 {eid} 不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='食材 {eid} 不存在或已删除', eid=eid)
 
         # 菜谱引用检查（双层检查之执行器侧）
         recipe_count = (
@@ -223,10 +224,7 @@ class IngredientExecutor(CrudExecutorBase):
             .count()
         )
         if recipe_count > 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。",
-            )
+            raise LocalizedHTTPException(status_code=400, message='该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。', recipe_count=recipe_count)
 
         # snapshot 级联：活跃商品 id + 相关层级关系 id
         product_ids = [

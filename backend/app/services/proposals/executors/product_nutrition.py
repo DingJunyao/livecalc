@@ -12,6 +12,7 @@ from fastapi import HTTPException
 from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.services.proposals.executors._crud_base import _json_safe
 from app.models.product_entity import Product
+from app.core.exceptions import LocalizedHTTPException
 
 
 class ProductNutritionExecutor(ProposalExecutor):
@@ -20,10 +21,10 @@ class ProductNutritionExecutor(ProposalExecutor):
     def validate(self, db, proposal) -> None:
         product_id = proposal.entity_id
         if product_id is None:
-            raise HTTPException(status_code=400, detail="需 entity_id")
+            raise LocalizedHTTPException(status_code=400, message='需 entity_id')
         if db.query(Product).filter(Product.id == product_id,
                                     Product.is_active.is_(True)).first() is None:
-            raise HTTPException(status_code=404, detail="商品不存在")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     def build_snapshot(self, db, proposal) -> dict:
         """提交时预填旧 custom_nutrition_data。"""

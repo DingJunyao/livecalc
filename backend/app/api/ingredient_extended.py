@@ -15,6 +15,7 @@ from app.models.unit import Unit
 from app.models.nutrition import Ingredient
 from app.schemas.common import PaginatedResponse
 from app.services.proposals import service as proposal_service
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -130,7 +131,7 @@ async def get_units(
             page_size=limit
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取单位列表失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取单位列表失败: {error}', error=str(e))
 
 
 @router.get("/unit-conversion/{value}/{from_unit}/{to_unit}", response_model=Optional[float])
@@ -163,7 +164,7 @@ async def convert_units(
         result = service.convert(value, from_unit, to_unit)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"单位转换失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='单位转换失败: {error}', error=str(e))
 
 
 @router.get("/search-by-name/{name}", response_model=List[dict])
@@ -198,7 +199,7 @@ async def search_ingredients_by_name(
 
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索食材失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='搜索食材失败: {error}', error=str(e))
 
 
 @router.get("/hierarchy/{ingredient_id}", response_model=dict)
@@ -215,7 +216,7 @@ async def get_ingredient_hierarchy(
             joinedload(Ingredient.category_obj)
         ).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         parent_relations = db.query(IngredientHierarchy).filter(
             IngredientHierarchy.child_id == ingredient_id
@@ -260,7 +261,7 @@ async def get_ingredient_hierarchy(
             "children": children
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取层级关系失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取层级关系失败: {error}', error=str(e))
 
 
 @router.get("/categories", response_model=List[dict])
@@ -289,7 +290,7 @@ async def get_ingredient_categories(
             "description": cat.description
         } for cat in categories]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取分类列表失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取分类列表失败: {error}', error=str(e))
 
 
 @router.post("/resolve-hierarchy", response_model=Optional[dict])
@@ -321,7 +322,7 @@ async def resolve_ingredient_hierarchy(
         else:
             return None
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"解析层级关系失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='解析层级关系失败: {error}', error=str(e))
 
 
 @router.get("/alternatives/{ingredient_id}", response_model=List[dict])
@@ -336,7 +337,7 @@ async def get_ingredient_alternatives(
             joinedload(Ingredient.category_obj)
         ).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         matcher = IngredientMatcher(db)
         alternatives = matcher.suggest_alternatives(ingredient)
@@ -350,7 +351,7 @@ async def get_ingredient_alternatives(
             "aliases": alt.aliases or []
         } for alt in alternatives]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取替代选项失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取替代选项失败: {error}', error=str(e))
 
 
 @router.post("", response_model=dict)
@@ -367,7 +368,7 @@ async def create_ingredient(
     try:
         existing = db.query(Ingredient).filter(Ingredient.name == name, Ingredient.is_active == True).first()
         if existing:
-            raise HTTPException(status_code=400, detail="食材已存在")
+            raise LocalizedHTTPException(status_code=400, message='食材已存在')
 
         new_ingredient = Ingredient(
             name=name,
@@ -484,7 +485,7 @@ async def create_ingredient(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"创建食材失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='创建食材失败: {error}', error=str(e))
 
 
 @router.put("/{ingredient_id}", response_model=dict)
@@ -504,7 +505,7 @@ async def update_ingredient(
     try:
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         # 构造基本信息 payload（不含 nutrition——前端基本信息编辑不传 nutrition）
         payload = {}
@@ -513,7 +514,7 @@ async def update_ingredient(
                 Ingredient.name == name, Ingredient.is_active == True
             ).first()
             if existing:
-                raise HTTPException(status_code=400, detail="食材已存在")
+                raise LocalizedHTTPException(status_code=400, message='食材已存在')
             payload["name"] = name
         if category_id is not None:
             payload["category_id"] = category_id
@@ -660,7 +661,7 @@ async def update_ingredient(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"更新食材失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='更新食材失败: {error}', error=str(e))
 
 
 @router.delete("/{ingredient_id}/hard")
@@ -673,7 +674,7 @@ async def hard_delete_ingredient(
     try:
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         db.delete(ingredient)
         db.commit()
@@ -681,7 +682,7 @@ async def hard_delete_ingredient(
         return {"message": "食材已永久删除"}
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"硬删除食材失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='硬删除食材失败: {error}', error=str(e))
 
 
 @router.get("", response_model=PaginatedResponse[dict])
@@ -870,7 +871,7 @@ async def get_ingredients(
             page_size=limit
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取食材列表失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取食材列表失败: {error}', error=str(e))
 
 
 @router.get("/{ingredient_id}", response_model=dict)
@@ -886,7 +887,7 @@ async def get_ingredient(
             joinedload(Ingredient.serving_weight_unit)
         ).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         # 反查制作菜谱（哪个菜谱把我当成品产出）
         from app.models.recipe import Recipe
@@ -919,7 +920,7 @@ async def get_ingredient(
 
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取食材详情失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取食材详情失败: {error}', error=str(e))
 
 
 @router.delete("/{ingredient_id}")
@@ -939,17 +940,14 @@ async def soft_delete_ingredient(
 
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="食材不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         # 菜谱引用检查（端点提交时；执行器 apply 时再查一次）
         recipe_count = db.query(RecipeIngredient).filter(
             RecipeIngredient.ingredient_id == ingredient_id
         ).count()
         if recipe_count > 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。"
-            )
+            raise LocalizedHTTPException(status_code=400, message='该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。', recipe_count=recipe_count)
 
         # 分流：管理员直写（级联软删商品+层级在执行器）/ 普通用户提议待审
         if current_user.is_admin:
@@ -970,7 +968,7 @@ async def soft_delete_ingredient(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"删除原料失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='删除原料失败: {error}', error=str(e))
 
 
 @router.post("/batch-create-products", response_model=dict)
@@ -980,7 +978,7 @@ async def batch_create_products(
 ):
     """为所有没有对应商品的原料批量创建商品"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         from app.models.product_entity import Product
@@ -1032,4 +1030,4 @@ async def batch_create_products(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"批量创建商品失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='批量创建商品失败: {error}', error=str(e))

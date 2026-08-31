@@ -216,25 +216,16 @@ async def login(user_data: UserLogin, db: Session = Depends(get_db)):
     # 查找用户
     user = db.query(User).filter(User.username == user_data.username).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, message='用户名或密码错误')
 
     # 检查账户是否被禁用
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="账户已被禁用"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_403_FORBIDDEN, message='账户已被禁用')
 
     # 验证密码（前端已 SHA256，这里再 bcrypt）
     from app.core.security import verify_password
     if not verify_password(user_data.password_hash, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="用户名或密码错误"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, message='用户名或密码错误')
 
     # 创建令牌
     access_token = create_access_token(data={"sub": str(user.id), "ver": user.token_version})
@@ -259,38 +250,23 @@ async def refresh_token(
     token = token_request.refresh_token
 
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未提供刷新令牌"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, message='未提供刷新令牌')
 
     payload = decode_token(token)
     if not payload or payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的刷新令牌"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, message='无效的刷新令牌')
 
     user_id = payload.get("sub")
     user = db.query(User).filter(User.id == int(user_id)).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="账户已被禁用"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_403_FORBIDDEN, message='账户已被禁用')
 
     # refresh token 版本比对：旧 refresh token 在密码被重置后立即失效
     if payload.get("ver", 0) != user.token_version:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="凭证已失效，请重新登录"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_401_UNAUTHORIZED, message='凭证已失效，请重新登录')
 
     # 创建新的访问令牌
     access_token = create_access_token(data={"sub": str(user.id), "ver": user.token_version})
@@ -351,19 +327,13 @@ async def patch_me(
     """用户更新自己的营养目标、预算、单位偏好设置。"""
     update_data = profile_update.model_dump(exclude_unset=True)
     if not update_data:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="没有需要更新的字段",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='没有需要更新的字段')
 
     # 单位偏好校验
     if "default_energy_unit" in update_data:
         val = update_data["default_energy_unit"]
         if val is not None and val not in ("kcal", "kJ"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="default_energy_unit 必须是 kcal 或 kJ",
-            )
+            raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='default_energy_unit 必须是 kcal 或 kJ')
 
     _UNIT_TYPE_EXPECT = {
         "default_mass_unit_id": "mass",
@@ -376,30 +346,18 @@ async def patch_me(
             uid = update_data[field]
             u = db.query(Unit).filter(Unit.id == uid).first()
             if not u:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{field}={uid} 不存在",
-                )
+                raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='{field}={uid} 不存在', field=field, uid=uid)
             if expected_type is None:
                 if u.unit_type not in _PRICE_ALLOWED:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail=f"价格记录单位必须是 mass/volume/count，得到 {u.unit_type}",
-                    )
+                    raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='价格记录单位必须是 mass/volume/count，得到 {unit_type}', unit_type=u.unit_type)
             elif u.unit_type != expected_type:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"{field} 必须是 {expected_type} 类型单位，得到 {u.unit_type}",
-                )
+                raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='{field} 必须是 {expected_type} 类型单位，得到 {unit_type}', field=field, expected_type=expected_type, unit_type=u.unit_type)
 
     # current_user 由 get_current_user 从独立 session 解析（detached），
     # 在本请求 db 内重新加载，保证 setattr + commit + refresh 生效。
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     from app.services.currency_service import get_user_default_currency
     old_currency = get_user_default_currency(db, user)
@@ -431,7 +389,7 @@ async def update_my_account(
     # 在本请求 db 内重新加载，保证 setattr + commit + refresh 生效（与 patch_me 一致）。
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     from app.services.currency_service import get_user_default_currency
     old_currency = get_user_default_currency(db, user)
@@ -441,7 +399,7 @@ async def update_my_account(
         if db.query(User).filter(
             User.username == payload.username, User.id != user.id
         ).first():
-            raise HTTPException(status_code=400, detail="用户名已被占用")
+            raise LocalizedHTTPException(status_code=400, message='用户名已被占用')
         user.username = payload.username
 
     # 邮箱
@@ -449,7 +407,7 @@ async def update_my_account(
         if db.query(User).filter(
             User.email == payload.email, User.id != user.id
         ).first():
-            raise HTTPException(status_code=400, detail="邮箱已被占用")
+            raise LocalizedHTTPException(status_code=400, message='邮箱已被占用')
         user.email = payload.email
 
     # 手机（phone 允许 NULL，查重时 NULL 不算冲突）
@@ -457,7 +415,7 @@ async def update_my_account(
         if payload.phone and db.query(User).filter(
             User.phone == payload.phone, User.id != user.id
         ).first():
-            raise HTTPException(status_code=400, detail="手机号已被占用")
+            raise LocalizedHTTPException(status_code=400, message='手机号已被占用')
         user.phone = payload.phone
 
     # 昵称
@@ -477,9 +435,9 @@ async def update_my_account(
     changed_password = False
     if payload.new_password is not None:
         if not payload.current_password:
-            raise HTTPException(status_code=400, detail="修改密码需提供当前密码")
+            raise LocalizedHTTPException(status_code=400, message='修改密码需提供当前密码')
         if not verify_password(payload.current_password, user.password_hash):
-            raise HTTPException(status_code=401, detail="当前密码错误")
+            raise LocalizedHTTPException(status_code=401, message='当前密码错误')
         user.password_hash = get_password_hash(payload.new_password)
         user.token_version += 1
         changed_password = True
@@ -517,10 +475,7 @@ async def upload_avatar(
     """
     allowed_types = {"image/jpeg", "image/png", "image/gif", "image/webp"}
     if file.content_type and file.content_type not in allowed_types:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="仅支持 JPEG、PNG、GIF、WebP 格式的图片",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='仅支持 JPEG、PNG、GIF、WebP 格式的图片')
 
     try:
         ext = os.path.splitext(file.filename or "avatar.jpg")[1] or ".jpg"
@@ -542,7 +497,7 @@ async def upload_avatar(
         # 更新数据库
         user = db.query(User).filter(User.id == current_user.id).first()
         if not user:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+            raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
         user.avatar = key
         db.commit()
 
@@ -552,7 +507,7 @@ async def upload_avatar(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"上传头像失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='上传头像失败: {error}', error=str(e))
 
 
 @router.post("/config", response_model=ConfigResponse)
@@ -628,15 +583,9 @@ def _check_user_safety(current_user: User, target_user: User, action: str) -> No
     - 不能操作系统首个用户（id=1）
     """
     if target_user.id == current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"不能{action}自己的账户"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_403_FORBIDDEN, message='不能{action}自己的账户', action=action)
     if target_user.id == 1:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail=f"不能{action}系统初始管理员"
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_403_FORBIDDEN, message='不能{action}系统初始管理员', action=action)
 
 
 @router.get("/users/stats", response_model=UserStatsResponse)
@@ -658,7 +607,7 @@ async def get_user_detail(
     """获取单个用户详情 - 仅限管理员"""
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
     return UserResponse(
         id=user.id,
         username=user.username,
@@ -683,9 +632,9 @@ async def admin_create_user(
 ):
     """管理员创建用户（跳过邀请码校验）"""
     if db.query(User).filter(User.username == user_data.username).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='用户名已存在')
     if db.query(User).filter(User.email == user_data.email).first():
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="邮箱已被注册")
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='邮箱已被注册')
 
     user = User(
         username=user_data.username,
@@ -723,15 +672,15 @@ async def update_user(
     """修改用户信息 - 仅限管理员"""
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     if user_update.username and user_update.username != target.username:
         if db.query(User).filter(User.username == user_update.username).first():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="用户名已存在")
+            raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='用户名已存在')
         target.username = user_update.username
     if user_update.email and user_update.email != target.email:
         if db.query(User).filter(User.email == user_update.email).first():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="邮箱已被注册")
+            raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='邮箱已被注册')
         target.email = user_update.email
     if user_update.phone is not None:
         target.phone = user_update.phone
@@ -770,11 +719,11 @@ async def toggle_user_admin(
 ):
     """切换用户管理员身份 - 仅限管理员"""
     if body.is_admin is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少 is_admin 字段")
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='缺少 is_admin 字段')
 
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     # 取消管理员时必须检查安全规则
     if not body.is_admin:
@@ -808,11 +757,11 @@ async def toggle_user_active(
 ):
     """切换用户激活状态 - 仅限管理员"""
     if body.is_active is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="缺少 is_active 字段")
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='缺少 is_active 字段')
 
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="用户不存在")
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
 
     # 失效用户时必须检查安全规则
     if not body.is_active:

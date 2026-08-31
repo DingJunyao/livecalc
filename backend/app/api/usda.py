@@ -10,6 +10,7 @@ from app.schemas.auth import UserResponse
 from app.schemas.usda import UsdaSearchItem, UsdaFoodDetail, UsdaNutrientItem, UsdaMatchRequest
 from app.models.usda import UsdaFood, UsdaFoodNutrient
 from app.services.usda.index_manager import get_usda_index
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -74,7 +75,7 @@ async def get_usda_food(
 ):
     food = db.query(UsdaFood).filter(UsdaFood.fdc_id == fdc_id).first()
     if not food:
-        raise HTTPException(status_code=404, detail="USDA 食材不存在")
+        raise LocalizedHTTPException(status_code=404, message='USDA 食材不存在')
     nutrients = (
         db.query(UsdaFoodNutrient).filter(UsdaFoodNutrient.fdc_id == fdc_id).all()
     )
@@ -112,7 +113,7 @@ async def match_ingredient_endpoint(
 
     ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
     if not ingredient:
-        raise HTTPException(status_code=404, detail="原料不存在")
+        raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
     payload = {"fdc_id": body.fdc_id}
 
@@ -153,7 +154,7 @@ async def match_product_endpoint(
 
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     payload = {"fdc_id": body.fdc_id}
 

@@ -18,6 +18,7 @@ from app.services.proposals.base import ApplyResult, ProposalExecutor
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
 from app.models.user_merchant_favorite import UserMerchantFavorite
+from app.core.exceptions import LocalizedHTTPException
 
 _MERGED_PREFIX = "[已合并] "
 
@@ -47,11 +48,11 @@ class MerchantMergeExecutor(ProposalExecutor):
         source_ids = proposal.payload.get("source_ids") or []
         target_id = proposal.payload.get("target_id")
         if not source_ids:
-            raise HTTPException(status_code=400, detail="源商家列表不能为空")
+            raise LocalizedHTTPException(status_code=400, message='源商家列表不能为空')
         if target_id is None:
-            raise HTTPException(status_code=400, detail="缺少目标商家")
+            raise LocalizedHTTPException(status_code=400, message='缺少目标商家')
         if target_id in source_ids:
-            raise HTTPException(status_code=400, detail="目标商家不能同时是源商家")
+            raise LocalizedHTTPException(status_code=400, message='目标商家不能同时是源商家')
 
     def preview(self, db, proposal) -> dict:
         source_ids: List[int] = list(proposal.payload["source_ids"])

@@ -98,3 +98,762 @@ msgstr "اختبار إعدادات SMTP"
 
 msgid "这是一封测试邮件，来自 LiveCalc。如果收到此邮件，说明 SMTP 配置正确。"
 msgstr "هذه رسالة اختبارية من LiveCalc. إذا استلمت هذه الرسالة، فإن إعدادات SMTP صحيحة."
+
+msgid "S3 配置校验失败：{err}"
+msgstr "فشل التحقق من إعداد S3: {err}"
+
+msgid "USDA 食材不存在"
+msgstr "عنصر USDA غير موجود"
+
+msgid "default_energy_unit 必须是 kcal 或 kJ"
+msgstr "default_energy_unit يجب أن يكون kcal أو kJ"
+
+msgid "payload 缺少 density"
+msgstr "payload يفتقد density"
+
+msgid "payload 缺少 entity_type/entity_id"
+msgstr "payload يفتقد entity_type/entity_id"
+
+msgid "payload 缺少 entity_type/entity_id/unit_name"
+msgstr "payload يفتقد entity_type/entity_id/unit_name"
+
+msgid "payload 缺少 fdc_id / entity_id"
+msgstr "payload يفتقد fdc_id / entity_id"
+
+msgid "payload 缺少 nutrients"
+msgstr "payload يفتقد nutrients"
+
+msgid "session_date 格式无效，应为 YYYY-MM-DD"
+msgstr "تنسيق session_date غير صالح، يجب أن يكون YYYY-MM-DD"
+
+msgid "update/delete 需 entity_id"
+msgstr "التحديث/الحذف يتطلب entity_id"
+
+msgid "{biz_type}/{biz_id} 已存在该 condition 的密度记录"
+msgstr "توجد بالفعل سجل كثافة لهذا الشرط للمعرف {biz_type}/{biz_id}"
+
+msgid "{entity_type} update/delete 需 entity_id"
+msgstr "تحديث/حذف {entity_type} يتطلب entity_id"
+
+msgid "{entity_type} {eid} 不存在"
+msgstr "{entity_type} {eid} غير موجود"
+
+msgid "{field} 必须是 {expected_type} 类型单位，得到 {unit_type}"
+msgstr "يجب أن تكون {field} وحدة من نوع {expected_type}، وتم استلام {unit_type}"
+
+msgid "{field}={uid} 不存在"
+msgstr "{field}={uid} غير موجود"
+
+msgid "「{name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。"
+msgstr "«{name}» هو المنتج الوحيد المرتبط بالمكوّن ولا يمكن حذفه. يرجى إضافة منتج آخر للمكوّن أولاً."
+
+msgid "上传图片失败: {error}"
+msgstr "فشل رفع الصورة: {error}"
+
+msgid "上传头像失败: {error}"
+msgstr "فشل رفع الصورة الرمزية: {error}"
+
+msgid "不支持的提议类型: {entity_type}"
+msgstr "نوع اقتراح غير مدعوم: {entity_type}"
+
+msgid "不能{action}系统初始管理员"
+msgstr "لا يمكن {action} حساب المسؤول الأولي للنظام"
+
+msgid "不能{action}自己的账户"
+msgstr "لا يمكن {action} حسابك الخاص"
+
+msgid "不能创建自引用的回退关系"
+msgstr "لا يمكن إنشاء علاقة رجوع ذاتية المرجع"
+
+msgid "不能合并到自身"
+msgstr "لا يمكن الدمج مع نفسه"
+
+msgid "不能将商品合并到自身"
+msgstr "لا يمكن دمج المنتج مع نفسه"
+
+msgid "仅 applied 提议可回滚（当前 status={status}）"
+msgstr "يمكن التراجع عن الاقتراحات المطبّقة فقط (الحالة الحالية status={status})"
+
+msgid "仅作者可发布自己的菜谱"
+msgstr "يمكن للمؤلف فقط نشر وصفاته"
+
+msgid "仅支持 .zip, .json, .tar.gz 文件"
+msgstr "يتم دعم الملفات .zip و .json و .tar.gz فقط"
+
+msgid "仅支持 JPEG、PNG、GIF、WebP 格式的图片"
+msgstr "يتم دعم الصور بصيغ JPEG وPNG وGIF وWebP فقط"
+
+msgid "仅支持 ZIP 格式的压缩包"
+msgstr "يتم دعم أرشيف ZIP فقط"
+
+msgid "仅管理员可删除菜谱图片"
+msgstr "يمكن للمسؤولين فقط حذف صور الوصفات"
+
+msgid "仅管理员可导出全量数据"
+msgstr "يمكن للمسؤولين فقط تصدير جميع البيانات"
+
+msgid "仅管理员可操作"
+msgstr "للمسؤولين فقط"
+
+msgid "今天{meal_type}推荐已经刷新 5 次了，明天再来吧～"
+msgstr "تم تحديث توصيات {meal_type} 5 مرات اليوم. يرجى المحاولة غدًا."
+
+msgid "从 JSON 仓库导入失败: {error}"
+msgstr "فشل الاستيراد من مستودع JSON: {error}"
+
+msgid "从本地路径导入失败: {error}"
+msgstr "فشل الاستيراد من المسار المحلي: {error}"
+
+msgid "价格记录不存在"
+msgstr "سجل السعر غير موجود"
+
+msgid "价格记录单位必须是 mass/volume/count，得到 {unit_type}"
+msgstr "يجب أن تكون وحدة سجل السعر mass/volume/count، وتم استلام {unit_type}"
+
+msgid "任务不存在"
+msgstr "المهمة غير موجودة"
+
+msgid "任务状态为 {status}，不可取消"
+msgstr "حالة المهمة {status} ولا يمكن إلغاؤها"
+
+msgid "会话不存在"
+msgstr "الجلسة غير موجودة"
+
+msgid "会话仍在运行，无法插话（请在轮次结束后再追加）"
+msgstr "الجلسة ما زالت قيد التشغيل ولا يمكن الإضافة حتى انتهاء الجولة"
+
+msgid "会话状态为 {status}，不可取消"
+msgstr "حالة الجلسة {status} ولا يمكن إلغاؤها"
+
+msgid "会话缺少外部会话 ID，无法 resume"
+msgstr "الجلسة تفتقر إلى معرف الجلسة الخارجي ولا يمكن استئنافها"
+
+msgid "保存失败: {error}"
+msgstr "فشل الحفظ: {error}"
+
+msgid "修改密码需提供当前密码"
+msgstr "تغيير كلمة المرور يتطلب كلمة المرور الحالية"
+
+msgid "关联原料不存在"
+msgstr "المكوّن المرتبط غير موجود"
+
+msgid "分组不存在"
+msgstr "المجموعة غير موجودة"
+
+msgid "分组名已存在"
+msgstr "اسم المجموعة موجود بالفعل"
+
+msgid "创建原料失败: {error}"
+msgstr "فشل إنشاء المكوّن: {error}"
+
+msgid "创建商家时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء إنشاء التاجر"
+
+msgid "创建商家时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء إنشاء التاجر، يرجى المحاولة لاحقًا"
+
+msgid "创建常用地点失败"
+msgstr "فشل إنشاء المكان الشائع"
+
+msgid "创建菜谱失败: {error}"
+msgstr "فشل إنشاء الوصفة: {error}"
+
+msgid "创建记录失败: {error}"
+msgstr "فشل إنشاء السجل: {error}"
+
+msgid "创建费用记录失败: {error}"
+msgstr "فشل إنشاء سجل المصروف: {error}"
+
+msgid "创建食材失败: {error}"
+msgstr "فشل إنشاء المكوّن: {error}"
+
+msgid "删除原料失败: {error}"
+msgstr "فشل حذف المكوّن: {error}"
+
+msgid "删除商家时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء حذف التاجر"
+
+msgid "删除商家时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء حذف التاجر، يرجى المحاولة لاحقًا"
+
+msgid "删除图片失败: {error}"
+msgstr "فشل حذف الصورة: {error}"
+
+msgid "删除常用地点失败"
+msgstr "فشل حذف المكان الشائع"
+
+msgid "删除菜谱失败: {error}"
+msgstr "فشل حذف الوصفة: {error}"
+
+msgid "删除记录失败: {error}"
+msgstr "فشل حذف السجل: {error}"
+
+msgid "刷新推荐失败"
+msgstr "فشل تحديث التوصيات"
+
+msgid "匹配食材失败: {error}"
+msgstr "فشل مطابقة المكوّن: {error}"
+
+msgid "单位不存在"
+msgstr "الوحدة غير موجودة"
+
+msgid "单位转换失败: {error}"
+msgstr "فشل تحويل الوحدة: {error}"
+
+msgid "原料ID {ingredient_id} 不存在"
+msgstr "معرف المكوّن {ingredient_id} غير موجود"
+
+msgid "原料「{ingredient_name}」与当前关联原料同名，请指定不同的新原料名称。"
+msgstr "المكوّن «{ingredient_name}» يحمل نفس اسم المكوّن المرتبط حاليًا. يرجى تحديد اسم جديد مختلف."
+
+msgid "原料「{ingredient_name}」已存在（ID: {id}），请指定不同的名称。"
+msgstr "المكوّن «{ingredient_name}» موجود بالفعل (المعرف: {id}). يرجى تحديد اسم مختلف."
+
+msgid "原料不存在"
+msgstr "المكوّن غير موجود"
+
+msgid "原料名称不能为空"
+msgstr "لا يمكن أن يكون اسم المكوّن فارغًا"
+
+msgid "原料已存在"
+msgstr "المكوّن موجود بالفعل"
+
+msgid "取消失败"
+msgstr "فشل الإلغاء"
+
+msgid "取消收藏时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء إلغاء تفضيل التاجر، يرجى المحاولة لاحقًا"
+
+msgid "只能合并同一原料下的商品"
+msgstr "يمكن دمج المنتجات المرتبطة بالمكوّن نفسه فقط"
+
+msgid "合并商家时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء دمج التجّار"
+
+msgid "合并商家时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء دمج التجّار، يرجى المحاولة لاحقًا"
+
+msgid "合并失败"
+msgstr "فشل الدمج"
+
+msgid "名称与当前关联原料同名，请指定不同的新原料名称。"
+msgstr "الاسم مطابق للمكوّن المرتبط حاليًا. يرجى تحديد اسم جديد مختلف للمكوّن."
+
+msgid "商品 {eid} 不存在或已删除"
+msgstr "المنتج {eid} غير موجود أو محذوف"
+
+msgid "商品ID {product_id} 不存在"
+msgstr "معرف المنتج {product_id} غير موجود"
+
+msgid "商品不存在"
+msgstr "المنتج غير موجود"
+
+msgid "商品不存在或已删除"
+msgstr "المنتج غير موجود أو محذوف"
+
+msgid "商品未关联原料"
+msgstr "المنتج غير مرتبط بمكوّن"
+
+msgid "商品自动完成搜索失败: {error}"
+msgstr "فشل البحث التلقائي عن المنتج: {error}"
+
+msgid "商品营养数据不存在"
+msgstr "بيانات التغذية للمنتج غير موجودة"
+
+msgid "商家 {eid} 不存在"
+msgstr "التاجر {eid} غير موجود"
+
+msgid "商家不存在"
+msgstr "التاجر غير موجود"
+
+msgid "商家不能为空"
+msgstr "لا يمكن أن يكون التاجر فارغًا"
+
+msgid "回滚窗口已过"
+msgstr "انتهت نافذة التراجع"
+
+msgid "图片不存在"
+msgstr "الصورة غير موجودة"
+
+msgid "地图功能已关闭，无法维护常用地点"
+msgstr "الخرائط معطّلة، ولا يمكن إدارة الأماكن الشائعة"
+
+msgid "子食材ID {child_id} 不存在"
+msgstr "معرف المكوّن الفرعي {child_id} غير موجود"
+
+msgid "实体单位覆盖 {eid} 不存在或已删除"
+msgstr "تجاوز وحدة الكيان {eid} غير موجود أو محذوف"
+
+msgid "实体单位覆盖不存在"
+msgstr "تجاوز وحدة الكيان غير موجود"
+
+msgid "实体密度 {eid} 不存在或已删除"
+msgstr "كثافة الكيان {eid} غير موجودة أو محذوفة"
+
+msgid "实体密度记录不存在"
+msgstr "سجل كثافة الكيان غير موجود"
+
+msgid "审批已决策（status={status}），不能重复操作"
+msgstr "تم البت في الموافقة (status={status}) ولا يمكن تكرار العملية"
+
+msgid "审批已被处理或无阻塞 loop"
+msgstr "تمت معالجة الموافقة بالفعل أو لا توجد حلقة انتظار"
+
+msgid "审批记录不存在"
+msgstr "سجل الموافقة غير موجود"
+
+msgid "导入初始菜谱失败: {error}"
+msgstr "فشل استيراد الوصفات الأولية: {error}"
+
+msgid "导入失败: {error}"
+msgstr "فشل الاستيراد: {error}"
+
+msgid "层级关系不存在"
+msgstr "علاقة التسلسل الهرمي غير موجودة"
+
+msgid "已发布的菜谱不可删除/撤回，请联系管理员"
+msgstr "لا يمكن حذف/سحب الوصفات المنشورة؛ يرجى التواصل مع المسؤول"
+
+msgid "常用地点不存在"
+msgstr "المكان الشائع غير موجود"
+
+msgid "当前密码错误"
+msgstr "كلمة المرور الحالية غير صحيحة"
+
+msgid "手机号已被占用"
+msgstr "رقم الهاتف مستخدم بالفعل"
+
+msgid "批量创建商品失败: {error}"
+msgstr "فشل إنشاء المنتجات على دفعات: {error}"
+
+msgid "换算关系不存在"
+msgstr "علاقة التحويل غير موجودة"
+
+msgid "换算关系已存在"
+msgstr "علاقة التحويل موجودة بالفعل"
+
+msgid "提议不存在"
+msgstr "الاقتراح غير موجود"
+
+msgid "提议已处理（status={status}），不能重复审核"
+msgstr "تمت معالجة الاقتراح (status={status}) ولا يمكن مراجعته مرة أخرى"
+
+msgid "搜索营养数据失败: {error}"
+msgstr "فشل البحث في بيانات التغذية: {error}"
+
+msgid "搜索食材失败: {error}"
+msgstr "فشل البحث في المكوّنات: {error}"
+
+msgid "收藏商家时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء تفضيل التاجر، يرجى المحاولة لاحقًا"
+
+msgid "数据库错误: {error}"
+msgstr "خطأ في قاعدة البيانات: {error}"
+
+msgid "无效地区 X-Region"
+msgstr "منطقة X-Region غير صالحة"
+
+msgid "无效时区: {x_timezone}"
+msgstr "منطقة زمنية غير صالحة: {x_timezone}"
+
+msgid "无效的关系类型: {relation_type}"
+msgstr "نوع العلاقة غير صالح: {relation_type}"
+
+msgid "无效的刷新令牌"
+msgstr "رمز التحديث غير صالح"
+
+msgid "无权修改此价格记录"
+msgstr "لا تملك صلاحية تعديل سجل السعر هذا"
+
+msgid "无权修改此原料"
+msgstr "لا تملك صلاحية تعديل هذا المكوّن"
+
+msgid "无权修改此菜谱"
+msgstr "لا تملك صلاحية تعديل هذه الوصفة"
+
+msgid "无权删除此价格记录"
+msgstr "لا تملك صلاحية حذف سجل السعر هذا"
+
+msgid "无权删除此菜谱"
+msgstr "لا تملك صلاحية حذف هذه الوصفة"
+
+msgid "无权查看此菜谱图片"
+msgstr "لا تملك صلاحية عرض صورة هذه الوصفة"
+
+msgid "无法获取 {currency} → {user_currency} 汇率，请手动指定"
+msgstr "تعذر الحصول على سعر صرف {currency} → {user_currency}؛ يرجى تحديده يدويًا"
+
+msgid "无法获取 {new_currency} → {user_currency} 汇率，请手动指定"
+msgstr "تعذر الحصول على سعر صرف {new_currency} → {user_currency}؛ يرجى تحديده يدويًا"
+
+msgid "无法获取 {user_currency} → {code} 汇率，请稍后重试"
+msgstr "تعذر الحصول على سعر صرف {user_currency} → {code}؛ يرجى المحاولة لاحقًا"
+
+msgid "无法解析上传文件: {e}"
+msgstr "تعذر تحليل الملف المرفوع: {e}"
+
+msgid "更新原料失败: {error}"
+msgstr "فشل تحديث المكوّن: {error}"
+
+msgid "更新商品营养数据失败: {error}"
+msgstr "فشل تحديث بيانات تغذية المنتج: {error}"
+
+msgid "更新商家时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء تحديث التاجر"
+
+msgid "更新商家时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء تحديث التاجر، يرجى المحاولة لاحقًا"
+
+msgid "更新常用地点失败"
+msgstr "فشل تحديث المكان الشائع"
+
+msgid "更新菜谱失败: {error}"
+msgstr "فشل تحديث الوصفة: {error}"
+
+msgid "更新记录失败: {error}"
+msgstr "فشل تحديث السجل: {error}"
+
+msgid "更新食材失败: {error}"
+msgstr "فشل تحديث المكوّن: {error}"
+
+msgid "更正失败"
+msgstr "فشل التصحيح"
+
+msgid "更正失败: {error}"
+msgstr "فشل التصحيح: {error}"
+
+msgid "未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置"
+msgstr "لم يتم إعداد DATA_LOCAL_PATH في .env، يرجى ضبطه في backend/.env"
+
+msgid "未提供刷新令牌"
+msgstr "لم يتم توفير رمز التحديث"
+
+msgid "未注册的提议类型: {entity_type}/{action}"
+msgstr "نوع اقتراح غير مسجّل: {entity_type}/{action}"
+
+msgid "未知 action: {action}"
+msgstr "إجراء غير معروف: {action}"
+
+msgid "未知任务类型: {task_type}（可用类型见 GET /api/v1/agent/task-types）"
+msgstr "نوع مهمة غير معروف: {task_type} (الأنواع المتاحة في GET /api/v1/agent/task-types)"
+
+msgid "未知地区"
+msgstr "منطقة غير معروفة"
+
+msgid "未知币种: {code}"
+msgstr "عملة غير معروفة: {code}"
+
+msgid "未订阅该分组"
+msgstr "غير مشترك في هذه المجموعة"
+
+msgid "未配置 provider: {provider}"
+msgstr "لم يتم إعداد المزوّد: {provider}"
+
+msgid "查询失败: {error}"
+msgstr "فشل الاستعلام: {error}"
+
+msgid "标准单位不可通过提议创建"
+msgstr "لا يمكن إنشاء الوحدات القياسية عبر الاقتراحات"
+
+msgid "标准单位仅管理员可改/删，不进提议框架"
+msgstr "لا يمكن تعديل/حذف الوحدات القياسية إلا بواسطة المسؤولين ولا تدخل في إطار الاقتراحات"
+
+msgid "没有可匹配的启用分组"
+msgstr "لا توجد مجموعة مفعّلة مطابقة"
+
+msgid "没有需要更新的字段"
+msgstr "لا توجد حقول للتحديث"
+
+msgid "源单位 ID {from_unit_id} 不存在"
+msgstr "معرف الوحدة المصدر {from_unit_id} غير موجود"
+
+msgid "源商品不存在"
+msgstr "المنتج المصدر غير موجود"
+
+msgid "源商品不存在或已删除"
+msgstr "المنتج المصدر غير موجود أو محذوف"
+
+msgid "源商品或目标商品不存在"
+msgstr "المنتج المصدر أو الهدف غير موجود"
+
+msgid "源商家列表不能为空"
+msgstr "قائمة التجّار المصدر لا يمكن أن تكون فارغة"
+
+msgid "源食材列表不能为空"
+msgstr "قائمة المكوّنات المصدر لا يمكن أن تكون فارغة"
+
+msgid "父食材ID {parent_id} 不存在"
+msgstr "معرف المكوّن الأب {parent_id} غير موجود"
+
+msgid "生成报告失败: {error}"
+msgstr "فشل إنشاء التقرير: {error}"
+
+msgid "用户名已被占用"
+msgstr "اسم المستخدم مستخدم بالفعل"
+
+msgid "用户名或密码错误"
+msgstr "اسم المستخدم أو كلمة المرور غير صحيحة"
+
+msgid "目录不存在: {local_path}"
+msgstr "الدليل غير موجود: {local_path}"
+
+msgid "目标单位 ID {to_unit_id} 不存在"
+msgstr "معرف الوحدة الهدف {to_unit_id} غير موجود"
+
+msgid "目标商品不存在"
+msgstr "المنتج الهدف غير موجود"
+
+msgid "目标商品不存在或已删除"
+msgstr "المنتج الهدف غير موجود أو محذوف"
+
+msgid "目标商家不能同时是源商家"
+msgstr "لا يمكن أن يكون التاجر الهدف تاجرًا مصدرًا أيضًا"
+
+msgid "目标食材不能同时是源食材"
+msgstr "لا يمكن أن يكون المكوّن الهدف مكوّنًا مصدرًا أيضًا"
+
+msgid "相关食材不存在"
+msgstr "المكوّن المرتبط غير موجود"
+
+msgid "硬删除食材失败: {error}"
+msgstr "فشل الحذف النهائي للمكوّن: {error}"
+
+msgid "缺少 X-Timezone 请求头"
+msgstr "رأس الطلب X-Timezone مفقود"
+
+msgid "缺少 is_active 字段"
+msgstr "الحقل is_active مفقود"
+
+msgid "缺少 is_admin 字段"
+msgstr "الحقل is_admin مفقود"
+
+msgid "缺少 keys"
+msgstr "المفاتيح مفقودة"
+
+msgid "缺少 user_id"
+msgstr "user_id مفقود"
+
+msgid "缺少必要的参数：source_ids 和 target_id"
+msgstr "المعاملات المطلوبة مفقودة: source_ids و target_id"
+
+msgid "缺少必要的参数：源食材ID列表和目标食材ID"
+msgstr "المعاملات المطلوبة مفقودة: قائمة معرفات المكوّنات المصدر ومعرف المكوّن الهدف"
+
+msgid "缺少目标商家"
+msgstr "التاجر الهدف مفقود"
+
+msgid "缺少目标食材"
+msgstr "المكوّن الهدف مفقود"
+
+msgid "获取关联菜谱失败: {error}"
+msgstr "فشل الحصول على الوصفات المرتبطة: {error}"
+
+msgid "获取分类列表失败: {error}"
+msgstr "فشل الحصول على قائمة التصنيفات: {error}"
+
+msgid "获取单位列表失败: {error}"
+msgstr "فشل الحصول على قائمة الوحدات: {error}"
+
+msgid "获取原料列表失败: {error}"
+msgstr "فشل الحصول على قائمة المكوّنات: {error}"
+
+msgid "获取原料详情失败: {error}"
+msgstr "فشل الحصول على تفاصيل المكوّن: {error}"
+
+msgid "获取原料迷你图失败: {error}"
+msgstr "فشل الحصول على الرسوم المصغّرة للمكوّن: {error}"
+
+msgid "获取商品商家价格失败: {error}"
+msgstr "فشل الحصول على أسعار تجّار المنتج: {error}"
+
+msgid "获取商品营养数据失败: {error}"
+msgstr "فشل الحصول على بيانات تغذية المنتج: {error}"
+
+msgid "获取商品迷你图失败: {error}"
+msgstr "فشل الحصول على الرسوم المصغّرة للمنتج: {error}"
+
+msgid "获取商家价格失败: {error}"
+msgstr "فشل الحصول على أسعار التاجر: {error}"
+
+msgid "获取商家价格记录时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء جلب سجلات أسعار التاجر"
+
+msgid "获取商家价格记录时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء جلب سجلات أسعار التاجر، يرجى المحاولة لاحقًا"
+
+msgid "获取商家列表时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء جلب قائمة التجّار"
+
+msgid "获取商家列表时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء جلب قائمة التجّار، يرجى المحاولة لاحقًا"
+
+msgid "获取商家商品最新价格时发生未知错误"
+msgstr "حدث خطأ غير معروف أثناء جلب أحدث أسعار المنتجات"
+
+msgid "获取商家商品最新价格时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء جلب أحدث أسعار المنتجات، يرجى المحاولة لاحقًا"
+
+msgid "获取商家坐标时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء جلب إحداثيات التاجر، يرجى المحاولة لاحقًا"
+
+msgid "获取商家详情时发生错误"
+msgstr "حدث خطأ أثناء جلب تفاصيل التاجر"
+
+msgid "获取图片失败：{error}"
+msgstr "فشل الحصول على الصورة: {error}"
+
+msgid "获取地图配置时发生错误: {error}"
+msgstr "حدث خطأ أثناء الحصول على إعدادات الخريطة: {error}"
+
+msgid "获取层级关系失败: {error}"
+msgstr "فشل الحصول على علاقات التسلسل الهرمي: {error}"
+
+msgid "获取常用地点失败"
+msgstr "فشل الحصول على الأماكن الشائعة"
+
+msgid "获取成本区间历史失败：{error}"
+msgstr "فشل الحصول على سجل نطاق التكلفة: {error}"
+
+msgid "获取成本历史失败：{error}"
+msgstr "فشل الحصول على سجل التكلفة: {error}"
+
+msgid "获取收藏商家列表时发生错误，请稍后重试"
+msgstr "حدث خطأ أثناء جلب التجّار المفضّلين، يرجى المحاولة لاحقًا"
+
+msgid "获取替代选项失败: {error}"
+msgstr "فشل الحصول على الخيارات البديلة: {error}"
+
+msgid "获取最近价格失败: {error}"
+msgstr "فشل الحصول على أحدث الأسعار: {error}"
+
+msgid "获取每日推荐失败"
+msgstr "فشل الحصول على التوصيات اليومية"
+
+msgid "获取统计失败: {error}"
+msgstr "فشل الحصول على الإحصائيات: {error}"
+
+msgid "获取菜谱列表失败: {error}"
+msgstr "فشل الحصول على قائمة الوصفات: {error}"
+
+msgid "获取菜谱详情失败: {error}"
+msgstr "فشل الحصول على تفاصيل الوصفة: {error}"
+
+msgid "获取菜谱迷你图失败: {error}"
+msgstr "فشل الحصول على الرسوم المصغّرة للوصفة: {error}"
+
+msgid "获取费用记录失败: {error}"
+msgstr "فشل الحصول على المصروفات: {error}"
+
+msgid "获取食材列表失败: {error}"
+msgstr "فشل الحصول على قائمة المكوّنات: {error}"
+
+msgid "获取食材详情失败: {error}"
+msgstr "فشل الحصول على تفاصيل المكوّن: {error}"
+
+msgid "菜谱不存在"
+msgstr "الوصفة غير موجودة"
+
+msgid "菜谱不存在或营养数据不足"
+msgstr "الوصفة غير موجودة أو بيانات التغذية غير كافية"
+
+msgid "菜谱已发布"
+msgstr "الوصفة منشورة بالفعل"
+
+msgid "营养提议需 entity_id（食材 id）"
+msgstr "اقتراح التغذية يتطلب entity_id (معرف المكوّن)"
+
+msgid "覆盖不存在"
+msgstr "التجاوز غير موجود"
+
+msgid "解析层级关系失败: {error}"
+msgstr "فشل تحليل علاقات التسلسل الهرمي: {error}"
+
+msgid "触发推荐生成失败"
+msgstr "فشل بدء توليد التوصية"
+
+msgid "计算商家成本失败: {error}"
+msgstr "فشل حساب تكلفة التاجر: {error}"
+
+msgid "计算失败: {error}"
+msgstr "فشل الحساب: {error}"
+
+msgid "计算成本失败: {error}"
+msgstr "فشل حساب التكلفة: {error}"
+
+msgid "计算营养失败: {error}"
+msgstr "فشل حساب التغذية: {error}"
+
+msgid "记录不存在"
+msgstr "السجل غير موجود"
+
+msgid "设置默认地点失败"
+msgstr "فشل تعيين المكان الافتراضي"
+
+msgid "该原料不在分组中"
+msgstr "المكوّن ليس ضمن هذه المجموعة"
+
+msgid "该原料不在黑名单中"
+msgstr "المكوّن ليس في القائمة السوداء"
+
+msgid "该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。"
+msgstr "هذا المنتج هو المنتج الوحيد لمكوّنه ولا يمكن تقسيمه. يرجى إضافة منتج آخر أولاً."
+
+msgid "该层级关系已存在（{value}）"
+msgstr "علاقة التسلسل الهرمي هذه موجودة بالفعل ({value})"
+
+msgid "该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。"
+msgstr "هذا المكوّن مُشار إليه في {recipe_count} وصفة ولا يمكن حذفه. يرجى إزالته من تلك الوصفات أولاً."
+
+msgid "该餐正在刷新中，请稍候～"
+msgstr "هذه الوجبة قيد التحديث حاليًا، يرجى الانتظار."
+
+msgid "邀请码不存在"
+msgstr "رمز الدعوة غير موجود"
+
+msgid "邀请码已存在"
+msgstr "رمز الدعوة موجود بالفعل"
+
+msgid "邮箱已被占用"
+msgstr "البريد الإلكتروني مستخدم بالفعل"
+
+msgid "需 entity_id"
+msgstr "entity_id مطلوب"
+
+msgid "需要商品 ID"
+msgstr "معرف المنتج مطلوب"
+
+msgid "需要源商品 ID 和目标商品 ID"
+msgstr "يلزم تحديد معرفي المنتج المصدر والهدف"
+
+msgid "非法策略: {policy}"
+msgstr "سياسة غير صالحة: {policy}"
+
+msgid "食材 {eid} 不存在"
+msgstr "المكوّن {eid} غير موجود"
+
+msgid "食材 {eid} 不存在或已删除"
+msgstr "المكوّن {eid} غير موجود أو محذوف"
+
+msgid "食材不存在"
+msgstr "المكوّن غير موجود"
+
+msgid "食材已存在"
+msgstr "المكوّن موجود بالفعل"
+
+msgid "食材营养数据不存在"
+msgstr "بيانات التغذية للمكوّن غير موجودة"
+
+msgid "无效的 entity_type: '{entity_type}'，只接受 {VALID_ENTITY_TYPES}"
+msgstr "نوع الكيان غير صالح: '{entity_type}'؛ يُسمح فقط بـ {VALID_ENTITY_TYPES}"
+
+msgid "单位名称 '{name}' 已存在"
+msgstr "اسم الوحدة '{name}' موجود بالفعل"
+
+msgid "单位缩写 '{abbreviation}' 已存在"
+msgstr "اختصار الوحدة '{abbreviation}' موجود بالفعل"
+
+msgid "不支持从 '{from_unit}' 到 '{to_unit}' 的换算"
+msgstr "التحويل من '{from_unit}' إلى '{to_unit}' غير مدعوم"
+
+msgid "{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'"
+msgstr "يوجد تجاوز وحدة بالفعل لـ {biz_type}/{biz_id}: '{unit_name}'"

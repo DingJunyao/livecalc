@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 
 from app.services.proposals.executors._crud_base import CrudExecutorBase
 from app.models.entity_unit_override import EntityUnitOverride
+from app.core.exceptions import LocalizedHTTPException
 
 
 class EntityUnitOverrideExecutor(CrudExecutorBase):
@@ -32,10 +33,7 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
             biz_id = p.get("entity_id")
             unit_name = p.get("unit_name")
             if biz_type is None or biz_id is None or unit_name is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail="payload 缺少 entity_type/entity_id/unit_name",
-                )
+                raise LocalizedHTTPException(status_code=400, message='payload 缺少 entity_type/entity_id/unit_name')
             dup = (
                 db.query(EntityUnitOverride)
                 .filter(
@@ -47,15 +45,12 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
                 .first()
             )
             if dup is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'",
-                )
+                raise LocalizedHTTPException(status_code=400, message="{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'", biz_type=biz_type, biz_id=biz_id, unit_name=unit_name)
             return
         # update/delete：基类 validate 仅按 id 查存在性，这里补 is_active=True 校验
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail="update/delete 需 entity_id")
+            raise LocalizedHTTPException(status_code=400, message='update/delete 需 entity_id')
         obj = (
             db.query(EntityUnitOverride)
             .filter(
@@ -65,7 +60,7 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
             .first()
         )
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"实体单位覆盖 {eid} 不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='实体单位覆盖 {eid} 不存在或已删除', eid=eid)
 
     def apply(self, db: Session, proposal) -> "ApplyResult":
         """apply 后按业务实体重算价格记录，保证既有记录换算跟随最新覆盖。"""

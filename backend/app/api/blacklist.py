@@ -14,6 +14,7 @@ from app.schemas.blacklist import (
     BlacklistResponse, BlacklistIngredientIdsResponse,
     BlacklistGroupSubscribe, BlacklistGroupResponse,
 )
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(tags=["blacklist"])
 
@@ -146,7 +147,7 @@ def remove_from_blacklist(
         UserIngredientBlacklist.is_active == True,
     ).first()
     if not entry:
-        raise HTTPException(status_code=404, detail="该原料不在黑名单中")
+        raise LocalizedHTTPException(status_code=404, message='该原料不在黑名单中')
     entry.is_active = False
     entry.updated_by = current_user.id
     db.commit()
@@ -233,7 +234,7 @@ def unsubscribe_group(
         BlacklistGroupSubscription.is_active == True,
     ).first()
     if not sub:
-        raise HTTPException(status_code=404, detail="未订阅该分组")
+        raise LocalizedHTTPException(status_code=404, message='未订阅该分组')
     sub.is_active = False
     sub.updated_by = current_user.id
     db.commit()

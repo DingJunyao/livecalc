@@ -21,6 +21,7 @@ from app.services.usda.index_manager import build_usda_index
 from app.services.translate.registry import find_provider_section, get_translator
 from app.services.translate.task import TranslateTask
 from app.services.translate.nutrient_task import TranslateNutrientsTask
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -197,7 +198,7 @@ async def usda_upload(
             with zf.open(json_name) as f:
                 data = json.load(f)
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"无法解析上传文件: {e}")
+        raise LocalizedHTTPException(status_code=400, message='无法解析上传文件: {e}', e=e)
     key_map = {"FoundationFoods": "foundation", "SRLegacyFoods": "sr_legacy"}
     foods = []
     for key, dtype in key_map.items():
@@ -294,7 +295,7 @@ async def usda_task_by_id(
     """单条 USDA 任务（前端轮询用）。"""
     t = db.query(UsdaTask).get(task_id)
     if not t:
-        raise HTTPException(status_code=404, detail="任务不存在")
+        raise LocalizedHTTPException(status_code=404, message='任务不存在')
     return _usda_task_dict(t)
 
 
@@ -328,7 +329,7 @@ async def usda_translate(
 ):
     cfg = get_stored_translation_config(db).to_dict()
     if not find_provider_section(cfg, body.provider):
-        raise HTTPException(status_code=400, detail=f"未配置 provider: {body.provider}")
+        raise LocalizedHTTPException(status_code=400, message='未配置 provider: {provider}', provider=body.provider)
 
     async def _run():
         d = SessionLocal()
@@ -359,7 +360,7 @@ async def usda_translate_nutrients(
     """用 AI 翻译未映射营养素名（缩写/脂肪酸记号等需营养学知识）。"""
     cfg = get_stored_translation_config(db).to_dict()
     if not find_provider_section(cfg, body.provider):
-        raise HTTPException(status_code=400, detail=f"未配置 provider: {body.provider}")
+        raise LocalizedHTTPException(status_code=400, message='未配置 provider: {provider}', provider=body.provider)
 
     async def _run_nutrients():
         d = SessionLocal()
@@ -385,7 +386,7 @@ async def translation_config_test(
     cfg = get_stored_translation_config(db).to_dict()
     section = find_provider_section(cfg, body.provider)
     if not section:
-        raise HTTPException(status_code=400, detail=f"未配置 provider: {body.provider}")
+        raise LocalizedHTTPException(status_code=400, message='未配置 provider: {provider}', provider=body.provider)
     translator = get_translator(body.provider, section, timeout=settings.translate_http_timeout)
     try:
         out = await translator.translate_batch(["Water"])

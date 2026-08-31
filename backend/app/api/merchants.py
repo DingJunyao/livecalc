@@ -29,6 +29,7 @@ from app.models.user import User
 
 from datetime import date as date_type, datetime as _dt
 from app.utils.datetime_utils import serialize_datetime
+from app.core.exceptions import LocalizedHTTPException
 
 # SQLite 时间字符串格式（UTC naive）：'2026-06-11 03:38:00.000000'
 _SQLITE_TS_FMTS = [
@@ -97,10 +98,7 @@ async def get_public_map_config(
             }
         return config.to_dict()
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取地图配置时发生错误: {str(e)}"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取地图配置时发生错误: {error}', error=str(e))
 
 
 class GeocodeIn(BaseModel):
@@ -143,16 +141,10 @@ async def create_merchant(
         return db_merchant
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="创建商家时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='创建商家时发生错误，请稍后重试')
     except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="创建商家时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='创建商家时发生未知错误')
 
 
 @router.get("/coordinates", response_model=List[MerchantCoordinateResponse])
@@ -204,10 +196,7 @@ async def get_merchant_coordinates(
             for m in query.all()
         ]
     except SQLAlchemyError:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家坐标时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家坐标时发生错误，请稍后重试')
 
 
 # ---------- 收藏端点 ----------
@@ -236,9 +225,9 @@ async def merge_merchants(
     target_id = body.get("target_id")
 
     if not source_ids or target_id is None:
-        raise HTTPException(status_code=400, detail="缺少必要的参数：source_ids 和 target_id")
+        raise LocalizedHTTPException(status_code=400, message='缺少必要的参数：source_ids 和 target_id')
     if target_id in source_ids:
-        raise HTTPException(status_code=400, detail="目标商家不能同时是源商家")
+        raise LocalizedHTTPException(status_code=400, message='目标商家不能同时是源商家')
 
     payload = {"source_ids": source_ids, "target_id": target_id}
 
@@ -269,16 +258,10 @@ async def merge_merchants(
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="合并商家时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='合并商家时发生错误，请稍后重试')
     except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="合并商家时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='合并商家时发生未知错误')
 
 
 @router.get("/favorites", response_model=List[MerchantResponse])
@@ -297,10 +280,7 @@ async def list_favorite_merchants(
         )
         return db.query(Merchant).filter(Merchant.id.in_(fav_ids_subq)).all()
     except SQLAlchemyError:
-        raise HTTPException(
-            status_code=500,
-            detail="获取收藏商家列表时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取收藏商家列表时发生错误，请稍后重试')
 
 
 @router.post("/{merchant_id}/favorite")
@@ -312,7 +292,7 @@ async def add_favorite(
     """收藏一个商家（共享池中的任意商家均可收藏）。"""
     try:
         if not db.query(Merchant).filter(Merchant.id == merchant_id).first():
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
         existing = db.query(UserMerchantFavorite).filter(
             UserMerchantFavorite.user_id == current_user.id,
             UserMerchantFavorite.merchant_id == merchant_id,
@@ -327,10 +307,7 @@ async def add_favorite(
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="收藏商家时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='收藏商家时发生错误，请稍后重试')
 
 
 @router.delete("/{merchant_id}/favorite")
@@ -349,10 +326,7 @@ async def remove_favorite(
         return {"ok": True}
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="取消收藏时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='取消收藏时发生错误，请稍后重试')
 
 
 @router.get("/{merchant_id}", response_model=MerchantResponse)
@@ -370,7 +344,7 @@ async def get_merchant(
             Merchant.id == merchant_id
         ).first()
         if not merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         response = MerchantResponse.model_validate(merchant)
 
@@ -385,10 +359,7 @@ async def get_merchant(
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家详情时发生错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家详情时发生错误')
 
 
 @router.get("/{merchant_id}/prices", response_model=PaginatedResponse)
@@ -409,7 +380,7 @@ async def get_merchant_prices(
             Merchant.id == merchant_id
         ).first()
         if not merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         query = db.query(ProductRecord).options(
             joinedload(ProductRecord.original_unit),
@@ -455,15 +426,9 @@ async def get_merchant_prices(
     except HTTPException:
         raise
     except SQLAlchemyError:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家价格记录时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家价格记录时发生错误，请稍后重试')
     except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家价格记录时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家价格记录时发生未知错误')
 
 
 @router.get("/{merchant_id}/product-prices")
@@ -487,7 +452,7 @@ async def get_merchant_product_prices(
             Merchant.id == merchant_id
         ).first()
         if not merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         # 原生 SQL：CTE 取每商品最新价，外层 JOIN 出 standard_unit 缩写与
         # 商品关联原料的默认单位缩写，供 Python 层做单位换算。
@@ -606,17 +571,11 @@ async def get_merchant_product_prices(
     except SQLAlchemyError:
         import traceback as _tb
         _tb.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家商品最新价格时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家商品最新价格时发生错误，请稍后重试')
     except Exception:
         import traceback as _tb
         _tb.print_exc()
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家商品最新价格时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家商品最新价格时发生未知错误')
 
 
 @router.post("/{merchant_id}/product-orders")
@@ -638,13 +597,13 @@ async def save_product_orders(
             Merchant.id == merchant_id,
         ).first()
         if not merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         # 解析日期
         try:
             sess_date = date_type.fromisoformat(body.session_date)
         except (ValueError, TypeError):
-            raise HTTPException(status_code=400, detail="session_date 格式无效，应为 YYYY-MM-DD")
+            raise LocalizedHTTPException(status_code=400, message='session_date 格式无效，应为 YYYY-MM-DD')
 
         # 查询当天已有记录（用于 upsert）。
         # 本请求内 (user_id, merchant_id, session_date) 固定，以 product_id 为键即可。
@@ -689,7 +648,7 @@ async def save_product_orders(
         raise
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"数据库错误: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='数据库错误: {error}', error=str(e))
 
 
 @router.put("/{merchant_id}", response_model=MerchantResponse)
@@ -708,7 +667,7 @@ async def update_merchant(
     try:
         db_merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
         if not db_merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         update_data = merchant.model_dump(exclude_unset=True)
         if merchant.region_id is not None:
@@ -738,16 +697,10 @@ async def update_merchant(
         raise
     except SQLAlchemyError as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="更新商家时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='更新商家时发生错误，请稍后重试')
     except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="更新商家时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='更新商家时发生未知错误')
 
 
 @router.delete("/{merchant_id}")
@@ -765,7 +718,7 @@ async def delete_merchant(
     try:
         db_merchant = db.query(Merchant).filter(Merchant.id == merchant_id).first()
         if not db_merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         if current_user.is_admin:
             proposal_service.apply_as_admin(
@@ -785,16 +738,10 @@ async def delete_merchant(
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="删除商家时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='删除商家时发生错误，请稍后重试')
     except Exception:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="删除商家时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='删除商家时发生未知错误')
 
 
 @router.get("", response_model=PaginatedResponse[MerchantResponse])
@@ -873,12 +820,6 @@ async def get_merchants(
             page_size=limit
         )
     except SQLAlchemyError:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家列表时发生错误，请稍后重试"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家列表时发生错误，请稍后重试')
     except Exception:
-        raise HTTPException(
-            status_code=500,
-            detail="获取商家列表时发生未知错误"
-        )
+        raise LocalizedHTTPException(status_code=500, message='获取商家列表时发生未知错误')

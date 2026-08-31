@@ -20,6 +20,7 @@ from app.services.meal_recommender import (
     trigger_background_generation,
     trigger_background_refresh,
 )
+from app.core.exceptions import LocalizedHTTPException
 
 logger = logging.getLogger("meals")
 router = APIRouter()
@@ -65,10 +66,7 @@ def get_daily_recommendations(
         )
     except Exception as e:
         logger.error(f"获取每日推荐失败: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="获取每日推荐失败",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message='获取每日推荐失败')
 
 
 @router.post("/recommendations/generate", response_model=MealRecommendationsResponse)
@@ -105,10 +103,7 @@ def trigger_recommendation_generation(
         )
     except Exception as e:
         logger.error(f"触发推荐生成失败: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="触发推荐生成失败",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message='触发推荐生成失败')
 
 
 @router.post("/recommendations/refresh", response_model=MealRecommendationsResponse)
@@ -135,10 +130,7 @@ def refresh_recommendation(
         counts = _count_today_refreshes(db, current_user.id, today)
         current_count = counts.get(request.meal_type, 0)
         if current_count >= 5:
-            raise HTTPException(
-                status_code=429,
-                detail=f"今天{request.meal_type}推荐已经刷新 5 次了，明天再来吧～",
-            )
+            raise LocalizedHTTPException(status_code=429, message='今天{meal_type}推荐已经刷新 5 次了，明天再来吧～', meal_type=request.meal_type)
 
         # 检查是否已在刷新
         if is_refreshing(current_user.id, request.meal_type):
@@ -172,7 +164,7 @@ def refresh_recommendation(
             current_user.id, request.meal_type, tz
         )
         if not started:
-            raise HTTPException(status_code=409, detail=error)
+            raise LocalizedHTTPException(status_code=409, message='该餐正在刷新中，请稍候～')
 
         # 返回当前推荐 + 刷新中标记
         return _build_response_from_records_sync(
@@ -184,7 +176,4 @@ def refresh_recommendation(
         raise
     except Exception as e:
         logger.error(f"刷新推荐失败: {e}", exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="刷新推荐失败",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message='刷新推荐失败')

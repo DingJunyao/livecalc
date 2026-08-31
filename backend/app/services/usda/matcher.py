@@ -27,6 +27,7 @@ from app.services.nutrition_calculator import NutritionCalculator, calc_nrv_pct
 from app.services.usda.nutrient_mapping import map_nutrient_name
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from app.core.exceptions import LocalizedHTTPException
 
 # 核心营养素中文名集合（与 nutrition_import_service.CORE_DISPLAY_MAP 对齐）。
 CORE_NAMES = {
@@ -171,7 +172,7 @@ def _build_nutrition_json(usda_nutrients: list[UsdaFoodNutrient]) -> dict:
 def _get_food_or_404(db: Session, fdc_id: int) -> tuple[UsdaFood, list[UsdaFoodNutrient]]:
     food = db.query(UsdaFood).filter(UsdaFood.fdc_id == fdc_id).first()
     if not food:
-        raise HTTPException(status_code=404, detail="USDA 食材不存在")
+        raise LocalizedHTTPException(status_code=404, message='USDA 食材不存在')
     nutrients = (
         db.query(UsdaFoodNutrient)
         .filter(UsdaFoodNutrient.fdc_id == fdc_id)
@@ -195,7 +196,7 @@ def match_ingredient(db: Session, ingredient_id: int, fdc_id: int) -> dict:
     """把 USDA 食材的营养数据写入指定原料（覆盖该原料的所有 NutritionData）。"""
     ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
     if not ingredient:
-        raise HTTPException(status_code=404, detail="原料不存在")
+        raise LocalizedHTTPException(status_code=404, message='原料不存在')
     food, nutrients = _get_food_or_404(db, fdc_id)
 
     # 清空该原料现有 NutritionData
@@ -230,7 +231,7 @@ def match_product(db: Session, product_id: int, fdc_id: int) -> dict:
     """
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     food, nutrients = _get_food_or_404(db, fdc_id)
 
     # 收集骨架：原料 core_nutrients 的中文名 -> 值为 0 的占位项。

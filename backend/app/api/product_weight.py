@@ -12,6 +12,7 @@ from app.schemas.product_weight import (
     EffectiveWeightResponse,
 )
 from app.services.ingredient_price_service import _DEFAULT_WEIGHT
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(tags=["product-weight"])
 
@@ -22,7 +23,7 @@ def get_my_weight(product_id: int, db: Session = Depends(get_db),
     """获取该商品对当前用户的生效权重（覆盖 > 全局）。"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(404, "商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     ov = db.query(UserProductWeightOverride).filter(
         UserProductWeightOverride.user_id == current_user.id,
         UserProductWeightOverride.product_id == product_id,
@@ -48,7 +49,7 @@ def set_my_weight(product_id: int, body: ProductWeightOverrideCreate,
     """设置/更新当前用户对该商品的权重覆盖。"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(404, "商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     existing = db.query(UserProductWeightOverride).filter(
         UserProductWeightOverride.user_id == current_user.id,
         UserProductWeightOverride.product_id == product_id,
@@ -80,7 +81,7 @@ def delete_my_weight(product_id: int, db: Session = Depends(get_db),
         UserProductWeightOverride.product_id == product_id,
     ).first()
     if not existing:
-        raise HTTPException(404, "覆盖不存在")
+        raise LocalizedHTTPException(status_code=404, message='覆盖不存在')
     existing.is_active = False
     existing.updated_by = current_user.id
     db.commit()

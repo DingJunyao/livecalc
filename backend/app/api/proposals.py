@@ -15,6 +15,7 @@ from app.schemas.proposal import (
     ProposalPreviewRequest,
     ReviewDecision,
 )
+from app.core.exceptions import LocalizedHTTPException
 router = APIRouter()
 
 
@@ -219,7 +220,7 @@ def preview_proposal(body: ProposalPreviewRequest,
     """预览提议影响（如合并会影响多少引用）。"""
     executor = ExecutorRegistry.get(body.entity_type)
     if executor is None:
-        raise HTTPException(status_code=400, detail=f"不支持的提议类型: {body.entity_type}")
+        raise LocalizedHTTPException(status_code=400, message='不支持的提议类型: {entity_type}', entity_type=body.entity_type)
     # 构造临时 proposal 供 preview
     tmp = ChangeProposal(entity_type=body.entity_type, entity_id=body.entity_id,
                          action=body.action, payload=body.payload, proposer_id=current_user.id)
@@ -257,7 +258,7 @@ def revert_by_user(body: dict,
     """
     user_id = body.get("user_id")
     if not user_id:
-        raise HTTPException(status_code=400, detail="缺少 user_id")
+        raise LocalizedHTTPException(status_code=400, message='缺少 user_id')
     n = proposal_service.revert_all_by_user(db, user_id=user_id, reviewer=current_user)
     db.commit()
     return {"reverted_count": n}
@@ -280,10 +281,10 @@ def update_policy(body: PolicyUpdate,
     (entity_type, action) 已注册。
     """
     if body.policy not in ("auto_approve", "auto_review", "manual"):
-        raise HTTPException(status_code=400, detail=f"非法策略: {body.policy}")
+        raise LocalizedHTTPException(status_code=400, message='非法策略: {policy}', policy=body.policy)
     # 校验 (entity_type, action) 已注册（避免写入孤儿配置）
     if (body.entity_type, body.action) not in ExecutorRegistry._risk_levels:
-        raise HTTPException(status_code=400, detail=f"未注册的提议类型: {body.entity_type}/{body.action}")
+        raise LocalizedHTTPException(status_code=400, message='未注册的提议类型: {entity_type}/{action}', entity_type=body.entity_type, action=body.action)
     try:
         ExecutorRegistry.persist_policy(db, body.entity_type, body.action, body.policy)
     except ValueError as e:
@@ -305,10 +306,10 @@ def get_proposal(proposal_id: int,
                  current_user: User = Depends(get_current_user)):
     p = db.query(ChangeProposal).filter(ChangeProposal.id == proposal_id).first()
     if p is None:
-        raise HTTPException(status_code=404, detail="提议不存在")
+        raise LocalizedHTTPException(status_code=404, message='提议不存在')
     if not current_user.is_admin and p.proposer_id != current_user.id:
         # 越权访问他人提议 → 同样 404（不泄露存在性）
-        raise HTTPException(status_code=404, detail="提议不存在")
+        raise LocalizedHTTPException(status_code=404, message='提议不存在')
     return _to_response(db, p)
 
 

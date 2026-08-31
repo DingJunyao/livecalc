@@ -98,3 +98,762 @@ msgstr "SMTP configuration test"
 
 msgid "这是一封测试邮件，来自 LiveCalc。如果收到此邮件，说明 SMTP 配置正确。"
 msgstr "This is a test email from LiveCalc. If you received it, the SMTP configuration is correct."
+
+msgid "S3 配置校验失败：{err}"
+msgstr "S3 configuration validation failed: {err}"
+
+msgid "USDA 食材不存在"
+msgstr "USDA food does not exist"
+
+msgid "default_energy_unit 必须是 kcal 或 kJ"
+msgstr "default_energy_unit must be kcal or kJ"
+
+msgid "payload 缺少 density"
+msgstr "payload is missing density"
+
+msgid "payload 缺少 entity_type/entity_id"
+msgstr "payload is missing entity_type/entity_id"
+
+msgid "payload 缺少 entity_type/entity_id/unit_name"
+msgstr "payload is missing entity_type/entity_id/unit_name"
+
+msgid "payload 缺少 fdc_id / entity_id"
+msgstr "payload is missing fdc_id / entity_id"
+
+msgid "payload 缺少 nutrients"
+msgstr "payload is missing nutrients"
+
+msgid "session_date 格式无效，应为 YYYY-MM-DD"
+msgstr "session_date format is invalid; expected YYYY-MM-DD"
+
+msgid "update/delete 需 entity_id"
+msgstr "update/delete requires entity_id"
+
+msgid "{biz_type}/{biz_id} 已存在该 condition 的密度记录"
+msgstr "A density record already exists for {biz_type}/{biz_id} under this condition"
+
+msgid "{entity_type} update/delete 需 entity_id"
+msgstr "{entity_type} update/delete requires entity_id"
+
+msgid "{entity_type} {eid} 不存在"
+msgstr "{entity_type} {eid} does not exist"
+
+msgid "{field} 必须是 {expected_type} 类型单位，得到 {unit_type}"
+msgstr "{field} must be a {expected_type} unit, got {unit_type}"
+
+msgid "{field}={uid} 不存在"
+msgstr "{field}={uid} does not exist"
+
+msgid "「{name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。"
+msgstr "\"{name}\" is the only product for its ingredient and cannot be deleted. Add another product for this ingredient first."
+
+msgid "上传图片失败: {error}"
+msgstr "Failed to upload image: {error}"
+
+msgid "上传头像失败: {error}"
+msgstr "Failed to upload avatar: {error}"
+
+msgid "不支持的提议类型: {entity_type}"
+msgstr "Unsupported proposal type: {entity_type}"
+
+msgid "不能{action}系统初始管理员"
+msgstr "Cannot {action} the system initial administrator"
+
+msgid "不能{action}自己的账户"
+msgstr "Cannot {action} your own account"
+
+msgid "不能创建自引用的回退关系"
+msgstr "Cannot create a self-referencing fallback relationship"
+
+msgid "不能合并到自身"
+msgstr "Cannot merge into itself"
+
+msgid "不能将商品合并到自身"
+msgstr "Cannot merge a product into itself"
+
+msgid "仅 applied 提议可回滚（当前 status={status}）"
+msgstr "Only applied proposals can be rolled back (current status={status})"
+
+msgid "仅作者可发布自己的菜谱"
+msgstr "Only the author can publish their own recipe"
+
+msgid "仅支持 .zip, .json, .tar.gz 文件"
+msgstr "Only .zip, .json, and .tar.gz files are supported"
+
+msgid "仅支持 JPEG、PNG、GIF、WebP 格式的图片"
+msgstr "Only JPEG, PNG, GIF, and WebP images are supported"
+
+msgid "仅支持 ZIP 格式的压缩包"
+msgstr "Only ZIP archives are supported"
+
+msgid "仅管理员可删除菜谱图片"
+msgstr "Only administrators can delete recipe images"
+
+msgid "仅管理员可导出全量数据"
+msgstr "Only administrators can export all data"
+
+msgid "仅管理员可操作"
+msgstr "Administrators only"
+
+msgid "今天{meal_type}推荐已经刷新 5 次了，明天再来吧～"
+msgstr "{meal_type} recommendations have already been refreshed 5 times today; try again tomorrow"
+
+msgid "从 JSON 仓库导入失败: {error}"
+msgstr "Failed to import from JSON repository: {error}"
+
+msgid "从本地路径导入失败: {error}"
+msgstr "Failed to import from local path: {error}"
+
+msgid "价格记录不存在"
+msgstr "Price record does not exist"
+
+msgid "价格记录单位必须是 mass/volume/count，得到 {unit_type}"
+msgstr "Price record unit must be mass/volume/count, got {unit_type}"
+
+msgid "任务不存在"
+msgstr "Task does not exist"
+
+msgid "任务状态为 {status}，不可取消"
+msgstr "Task status is {status} and cannot be canceled"
+
+msgid "会话不存在"
+msgstr "Session does not exist"
+
+msgid "会话仍在运行，无法插话（请在轮次结束后再追加）"
+msgstr "Session is still running and cannot accept new input until the turn ends"
+
+msgid "会话状态为 {status}，不可取消"
+msgstr "Session status is {status} and cannot be canceled"
+
+msgid "会话缺少外部会话 ID，无法 resume"
+msgstr "Session is missing an external session ID and cannot resume"
+
+msgid "保存失败: {error}"
+msgstr "Failed to save: {error}"
+
+msgid "修改密码需提供当前密码"
+msgstr "Current password is required to change the password"
+
+msgid "关联原料不存在"
+msgstr "Associated ingredient does not exist"
+
+msgid "分组不存在"
+msgstr "Group does not exist"
+
+msgid "分组名已存在"
+msgstr "Group name already exists"
+
+msgid "创建原料失败: {error}"
+msgstr "Failed to create ingredient: {error}"
+
+msgid "创建商家时发生未知错误"
+msgstr "An unknown error occurred while creating the merchant"
+
+msgid "创建商家时发生错误，请稍后重试"
+msgstr "An error occurred while creating the merchant; try again later"
+
+msgid "创建常用地点失败"
+msgstr "Failed to create common place"
+
+msgid "创建菜谱失败: {error}"
+msgstr "Failed to create recipe: {error}"
+
+msgid "创建记录失败: {error}"
+msgstr "Failed to create record: {error}"
+
+msgid "创建费用记录失败: {error}"
+msgstr "Failed to create expense record: {error}"
+
+msgid "创建食材失败: {error}"
+msgstr "Failed to create ingredient: {error}"
+
+msgid "删除原料失败: {error}"
+msgstr "Failed to delete ingredient: {error}"
+
+msgid "删除商家时发生未知错误"
+msgstr "An unknown error occurred while deleting the merchant"
+
+msgid "删除商家时发生错误，请稍后重试"
+msgstr "An error occurred while deleting the merchant; try again later"
+
+msgid "删除图片失败: {error}"
+msgstr "Failed to delete image: {error}"
+
+msgid "删除常用地点失败"
+msgstr "Failed to delete common place"
+
+msgid "删除菜谱失败: {error}"
+msgstr "Failed to delete recipe: {error}"
+
+msgid "删除记录失败: {error}"
+msgstr "Failed to delete record: {error}"
+
+msgid "刷新推荐失败"
+msgstr "Failed to refresh recommendations"
+
+msgid "匹配食材失败: {error}"
+msgstr "Failed to match ingredient: {error}"
+
+msgid "单位不存在"
+msgstr "Unit does not exist"
+
+msgid "单位转换失败: {error}"
+msgstr "Unit conversion failed: {error}"
+
+msgid "原料ID {ingredient_id} 不存在"
+msgstr "Ingredient ID {ingredient_id} does not exist"
+
+msgid "原料「{ingredient_name}」与当前关联原料同名，请指定不同的新原料名称。"
+msgstr "Ingredient \"{ingredient_name}\" has the same name as the currently linked ingredient; specify a different new ingredient name."
+
+msgid "原料「{ingredient_name}」已存在（ID: {id}），请指定不同的名称。"
+msgstr "Ingredient \"{ingredient_name}\" already exists (ID: {id}); specify a different name."
+
+msgid "原料不存在"
+msgstr "Ingredient does not exist"
+
+msgid "原料名称不能为空"
+msgstr "Ingredient name cannot be empty"
+
+msgid "原料已存在"
+msgstr "Ingredient already exists"
+
+msgid "取消失败"
+msgstr "Cancellation failed"
+
+msgid "取消收藏时发生错误，请稍后重试"
+msgstr "An error occurred while removing the merchant favorite; try again later"
+
+msgid "只能合并同一原料下的商品"
+msgstr "Products can only be merged under the same ingredient"
+
+msgid "合并商家时发生未知错误"
+msgstr "An unknown error occurred while merging merchants"
+
+msgid "合并商家时发生错误，请稍后重试"
+msgstr "An error occurred while merging merchants; try again later"
+
+msgid "合并失败"
+msgstr "Merge failed"
+
+msgid "名称与当前关联原料同名，请指定不同的新原料名称。"
+msgstr "The name matches the currently linked ingredient; specify a different new ingredient name."
+
+msgid "商品 {eid} 不存在或已删除"
+msgstr "Product {eid} does not exist or has been deleted"
+
+msgid "商品ID {product_id} 不存在"
+msgstr "Product ID {product_id} does not exist"
+
+msgid "商品不存在"
+msgstr "Product does not exist"
+
+msgid "商品不存在或已删除"
+msgstr "Product does not exist or has been deleted"
+
+msgid "商品未关联原料"
+msgstr "Product is not linked to an ingredient"
+
+msgid "商品自动完成搜索失败: {error}"
+msgstr "Product autocomplete search failed: {error}"
+
+msgid "商品营养数据不存在"
+msgstr "Product nutrition data does not exist"
+
+msgid "商家 {eid} 不存在"
+msgstr "Merchant {eid} does not exist"
+
+msgid "商家不存在"
+msgstr "Merchant does not exist"
+
+msgid "商家不能为空"
+msgstr "Merchant cannot be empty"
+
+msgid "回滚窗口已过"
+msgstr "Rollback window has expired"
+
+msgid "图片不存在"
+msgstr "Image does not exist"
+
+msgid "地图功能已关闭，无法维护常用地点"
+msgstr "Maps are disabled; common places cannot be maintained"
+
+msgid "子食材ID {child_id} 不存在"
+msgstr "Child ingredient ID {child_id} does not exist"
+
+msgid "实体单位覆盖 {eid} 不存在或已删除"
+msgstr "Entity unit override {eid} does not exist or has been deleted"
+
+msgid "实体单位覆盖不存在"
+msgstr "Entity unit override does not exist"
+
+msgid "实体密度 {eid} 不存在或已删除"
+msgstr "Entity density {eid} does not exist or has been deleted"
+
+msgid "实体密度记录不存在"
+msgstr "Entity density record does not exist"
+
+msgid "审批已决策（status={status}），不能重复操作"
+msgstr "Approval has already been decided (status={status}) and cannot be repeated"
+
+msgid "审批已被处理或无阻塞 loop"
+msgstr "Approval has already been processed or has no blocking loop"
+
+msgid "审批记录不存在"
+msgstr "Approval record does not exist"
+
+msgid "导入初始菜谱失败: {error}"
+msgstr "Failed to import initial recipes: {error}"
+
+msgid "导入失败: {error}"
+msgstr "Import failed: {error}"
+
+msgid "层级关系不存在"
+msgstr "Hierarchy relationship does not exist"
+
+msgid "已发布的菜谱不可删除/撤回，请联系管理员"
+msgstr "Published recipes cannot be deleted or withdrawn; contact an administrator"
+
+msgid "常用地点不存在"
+msgstr "Common place does not exist"
+
+msgid "当前密码错误"
+msgstr "Current password is incorrect"
+
+msgid "手机号已被占用"
+msgstr "Phone number is already in use"
+
+msgid "批量创建商品失败: {error}"
+msgstr "Batch product creation failed: {error}"
+
+msgid "换算关系不存在"
+msgstr "Conversion relationship does not exist"
+
+msgid "换算关系已存在"
+msgstr "Conversion relationship already exists"
+
+msgid "提议不存在"
+msgstr "Proposal does not exist"
+
+msgid "提议已处理（status={status}），不能重复审核"
+msgstr "Proposal has already been processed (status={status}) and cannot be reviewed again"
+
+msgid "搜索营养数据失败: {error}"
+msgstr "Failed to search nutrition data: {error}"
+
+msgid "搜索食材失败: {error}"
+msgstr "Failed to search ingredients: {error}"
+
+msgid "收藏商家时发生错误，请稍后重试"
+msgstr "An error occurred while favoriting the merchant; try again later"
+
+msgid "数据库错误: {error}"
+msgstr "Database error: {error}"
+
+msgid "无效地区 X-Region"
+msgstr "Invalid X-Region"
+
+msgid "无效时区: {x_timezone}"
+msgstr "Invalid timezone: {x_timezone}"
+
+msgid "无效的关系类型: {relation_type}"
+msgstr "Invalid relationship type: {relation_type}"
+
+msgid "无效的刷新令牌"
+msgstr "Invalid refresh token"
+
+msgid "无权修改此价格记录"
+msgstr "Not authorized to modify this price record"
+
+msgid "无权修改此原料"
+msgstr "Not authorized to modify this ingredient"
+
+msgid "无权修改此菜谱"
+msgstr "Not authorized to modify this recipe"
+
+msgid "无权删除此价格记录"
+msgstr "Not authorized to delete this price record"
+
+msgid "无权删除此菜谱"
+msgstr "Not authorized to delete this recipe"
+
+msgid "无权查看此菜谱图片"
+msgstr "Not authorized to view this recipe image"
+
+msgid "无法获取 {currency} → {user_currency} 汇率，请手动指定"
+msgstr "Unable to get the {currency} to {user_currency} exchange rate; specify it manually"
+
+msgid "无法获取 {new_currency} → {user_currency} 汇率，请手动指定"
+msgstr "Unable to get the {new_currency} to {user_currency} exchange rate; specify it manually"
+
+msgid "无法获取 {user_currency} → {code} 汇率，请稍后重试"
+msgstr "Unable to get the {user_currency} to {code} exchange rate; try again later"
+
+msgid "无法解析上传文件: {e}"
+msgstr "Unable to parse uploaded file: {e}"
+
+msgid "更新原料失败: {error}"
+msgstr "Failed to update ingredient: {error}"
+
+msgid "更新商品营养数据失败: {error}"
+msgstr "Failed to update product nutrition data: {error}"
+
+msgid "更新商家时发生未知错误"
+msgstr "An unknown error occurred while updating the merchant"
+
+msgid "更新商家时发生错误，请稍后重试"
+msgstr "An error occurred while updating the merchant; try again later"
+
+msgid "更新常用地点失败"
+msgstr "Failed to update common place"
+
+msgid "更新菜谱失败: {error}"
+msgstr "Failed to update recipe: {error}"
+
+msgid "更新记录失败: {error}"
+msgstr "Failed to update record: {error}"
+
+msgid "更新食材失败: {error}"
+msgstr "Failed to update ingredient: {error}"
+
+msgid "更正失败"
+msgstr "Correction failed"
+
+msgid "更正失败: {error}"
+msgstr "Correction failed: {error}"
+
+msgid "未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置"
+msgstr "DATA_LOCAL_PATH is not configured in .env; set it in backend/.env"
+
+msgid "未提供刷新令牌"
+msgstr "Refresh token was not provided"
+
+msgid "未注册的提议类型: {entity_type}/{action}"
+msgstr "Unregistered proposal type: {entity_type}/{action}"
+
+msgid "未知 action: {action}"
+msgstr "Unknown action: {action}"
+
+msgid "未知任务类型: {task_type}（可用类型见 GET /api/v1/agent/task-types）"
+msgstr "Unknown task type: {task_type} (available types are listed at GET /api/v1/agent/task-types)"
+
+msgid "未知地区"
+msgstr "Unknown region"
+
+msgid "未知币种: {code}"
+msgstr "Unknown currency: {code}"
+
+msgid "未订阅该分组"
+msgstr "Not subscribed to this group"
+
+msgid "未配置 provider: {provider}"
+msgstr "Provider is not configured: {provider}"
+
+msgid "查询失败: {error}"
+msgstr "Query failed: {error}"
+
+msgid "标准单位不可通过提议创建"
+msgstr "Standard units cannot be created through proposals"
+
+msgid "标准单位仅管理员可改/删，不进提议框架"
+msgstr "Standard units can only be changed or deleted by administrators and are not part of the proposal framework"
+
+msgid "没有可匹配的启用分组"
+msgstr "No enabled matching group"
+
+msgid "没有需要更新的字段"
+msgstr "No fields need updating"
+
+msgid "源单位 ID {from_unit_id} 不存在"
+msgstr "Source unit ID {from_unit_id} does not exist"
+
+msgid "源商品不存在"
+msgstr "Source product does not exist"
+
+msgid "源商品不存在或已删除"
+msgstr "Source product does not exist or has been deleted"
+
+msgid "源商品或目标商品不存在"
+msgstr "Source or target product does not exist"
+
+msgid "源商家列表不能为空"
+msgstr "Source merchant list cannot be empty"
+
+msgid "源食材列表不能为空"
+msgstr "Source ingredient list cannot be empty"
+
+msgid "父食材ID {parent_id} 不存在"
+msgstr "Parent ingredient ID {parent_id} does not exist"
+
+msgid "生成报告失败: {error}"
+msgstr "Failed to generate report: {error}"
+
+msgid "用户名已被占用"
+msgstr "Username is already in use"
+
+msgid "用户名或密码错误"
+msgstr "Incorrect username or password"
+
+msgid "目录不存在: {local_path}"
+msgstr "Directory does not exist: {local_path}"
+
+msgid "目标单位 ID {to_unit_id} 不存在"
+msgstr "Target unit ID {to_unit_id} does not exist"
+
+msgid "目标商品不存在"
+msgstr "Target product does not exist"
+
+msgid "目标商品不存在或已删除"
+msgstr "Target product does not exist or has been deleted"
+
+msgid "目标商家不能同时是源商家"
+msgstr "Target merchant cannot also be a source merchant"
+
+msgid "目标食材不能同时是源食材"
+msgstr "Target ingredient cannot also be a source ingredient"
+
+msgid "相关食材不存在"
+msgstr "Related ingredient does not exist"
+
+msgid "硬删除食材失败: {error}"
+msgstr "Failed to hard delete ingredient: {error}"
+
+msgid "缺少 X-Timezone 请求头"
+msgstr "Missing X-Timezone request header"
+
+msgid "缺少 is_active 字段"
+msgstr "Missing is_active field"
+
+msgid "缺少 is_admin 字段"
+msgstr "Missing is_admin field"
+
+msgid "缺少 keys"
+msgstr "Missing keys"
+
+msgid "缺少 user_id"
+msgstr "Missing user_id"
+
+msgid "缺少必要的参数：source_ids 和 target_id"
+msgstr "Missing required parameters: source_ids and target_id"
+
+msgid "缺少必要的参数：源食材ID列表和目标食材ID"
+msgstr "Missing required parameters: source ingredient ID list and target ingredient ID"
+
+msgid "缺少目标商家"
+msgstr "Missing target merchant"
+
+msgid "缺少目标食材"
+msgstr "Missing target ingredient"
+
+msgid "获取关联菜谱失败: {error}"
+msgstr "Failed to get associated recipes: {error}"
+
+msgid "获取分类列表失败: {error}"
+msgstr "Failed to get category list: {error}"
+
+msgid "获取单位列表失败: {error}"
+msgstr "Failed to get unit list: {error}"
+
+msgid "获取原料列表失败: {error}"
+msgstr "Failed to get ingredient list: {error}"
+
+msgid "获取原料详情失败: {error}"
+msgstr "Failed to get ingredient details: {error}"
+
+msgid "获取原料迷你图失败: {error}"
+msgstr "Failed to get ingredient sparklines: {error}"
+
+msgid "获取商品商家价格失败: {error}"
+msgstr "Failed to get product merchant prices: {error}"
+
+msgid "获取商品营养数据失败: {error}"
+msgstr "Failed to get product nutrition data: {error}"
+
+msgid "获取商品迷你图失败: {error}"
+msgstr "Failed to get product sparklines: {error}"
+
+msgid "获取商家价格失败: {error}"
+msgstr "Failed to get merchant prices: {error}"
+
+msgid "获取商家价格记录时发生未知错误"
+msgstr "An unknown error occurred while fetching merchant price records"
+
+msgid "获取商家价格记录时发生错误，请稍后重试"
+msgstr "An error occurred while fetching merchant price records; try again later"
+
+msgid "获取商家列表时发生未知错误"
+msgstr "An unknown error occurred while fetching merchant list"
+
+msgid "获取商家列表时发生错误，请稍后重试"
+msgstr "An error occurred while fetching merchant list; try again later"
+
+msgid "获取商家商品最新价格时发生未知错误"
+msgstr "An unknown error occurred while fetching latest merchant product prices"
+
+msgid "获取商家商品最新价格时发生错误，请稍后重试"
+msgstr "An error occurred while fetching latest merchant product prices; try again later"
+
+msgid "获取商家坐标时发生错误，请稍后重试"
+msgstr "An error occurred while fetching merchant coordinates; try again later"
+
+msgid "获取商家详情时发生错误"
+msgstr "An error occurred while fetching merchant details"
+
+msgid "获取图片失败：{error}"
+msgstr "Failed to get image: {error}"
+
+msgid "获取地图配置时发生错误: {error}"
+msgstr "An error occurred while getting map configuration: {error}"
+
+msgid "获取层级关系失败: {error}"
+msgstr "Failed to get hierarchy relationships: {error}"
+
+msgid "获取常用地点失败"
+msgstr "Failed to get common places"
+
+msgid "获取成本区间历史失败：{error}"
+msgstr "Failed to get cost range history: {error}"
+
+msgid "获取成本历史失败：{error}"
+msgstr "Failed to get cost history: {error}"
+
+msgid "获取收藏商家列表时发生错误，请稍后重试"
+msgstr "An error occurred while fetching favorite merchants; try again later"
+
+msgid "获取替代选项失败: {error}"
+msgstr "Failed to get substitute options: {error}"
+
+msgid "获取最近价格失败: {error}"
+msgstr "Failed to get latest prices: {error}"
+
+msgid "获取每日推荐失败"
+msgstr "Failed to get daily recommendations"
+
+msgid "获取统计失败: {error}"
+msgstr "Failed to get statistics: {error}"
+
+msgid "获取菜谱列表失败: {error}"
+msgstr "Failed to get recipe list: {error}"
+
+msgid "获取菜谱详情失败: {error}"
+msgstr "Failed to get recipe details: {error}"
+
+msgid "获取菜谱迷你图失败: {error}"
+msgstr "Failed to get recipe sparklines: {error}"
+
+msgid "获取费用记录失败: {error}"
+msgstr "Failed to get expense records: {error}"
+
+msgid "获取食材列表失败: {error}"
+msgstr "Failed to get ingredient list: {error}"
+
+msgid "获取食材详情失败: {error}"
+msgstr "Failed to get ingredient details: {error}"
+
+msgid "菜谱不存在"
+msgstr "Recipe does not exist"
+
+msgid "菜谱不存在或营养数据不足"
+msgstr "Recipe does not exist or nutrition data is insufficient"
+
+msgid "菜谱已发布"
+msgstr "Recipe is already published"
+
+msgid "营养提议需 entity_id（食材 id）"
+msgstr "Nutrition proposal requires entity_id (ingredient id)"
+
+msgid "覆盖不存在"
+msgstr "Override does not exist"
+
+msgid "解析层级关系失败: {error}"
+msgstr "Failed to parse hierarchy relationships: {error}"
+
+msgid "触发推荐生成失败"
+msgstr "Failed to trigger recommendation generation"
+
+msgid "计算商家成本失败: {error}"
+msgstr "Failed to calculate merchant cost: {error}"
+
+msgid "计算失败: {error}"
+msgstr "Calculation failed: {error}"
+
+msgid "计算成本失败: {error}"
+msgstr "Failed to calculate cost: {error}"
+
+msgid "计算营养失败: {error}"
+msgstr "Failed to calculate nutrition: {error}"
+
+msgid "记录不存在"
+msgstr "Record does not exist"
+
+msgid "设置默认地点失败"
+msgstr "Failed to set default place"
+
+msgid "该原料不在分组中"
+msgstr "Ingredient is not in this group"
+
+msgid "该原料不在黑名单中"
+msgstr "Ingredient is not in the blacklist"
+
+msgid "该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。"
+msgstr "This product is the only product for its ingredient and cannot be split. Add another product for the ingredient first."
+
+msgid "该层级关系已存在（{value}）"
+msgstr "This hierarchy relationship already exists ({value})"
+
+msgid "该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。"
+msgstr "This ingredient is referenced by {recipe_count} recipes and cannot be deleted. Remove it from those recipes first."
+
+msgid "该餐正在刷新中，请稍候～"
+msgstr "This meal is currently refreshing; please wait"
+
+msgid "邀请码不存在"
+msgstr "Invitation code does not exist"
+
+msgid "邀请码已存在"
+msgstr "Invitation code already exists"
+
+msgid "邮箱已被占用"
+msgstr "Email is already in use"
+
+msgid "需 entity_id"
+msgstr "entity_id is required"
+
+msgid "需要商品 ID"
+msgstr "Product ID is required"
+
+msgid "需要源商品 ID 和目标商品 ID"
+msgstr "Source product ID and target product ID are required"
+
+msgid "非法策略: {policy}"
+msgstr "Invalid policy: {policy}"
+
+msgid "食材 {eid} 不存在"
+msgstr "Ingredient {eid} does not exist"
+
+msgid "食材 {eid} 不存在或已删除"
+msgstr "Ingredient {eid} does not exist or has been deleted"
+
+msgid "食材不存在"
+msgstr "Ingredient does not exist"
+
+msgid "食材已存在"
+msgstr "Ingredient already exists"
+
+msgid "食材营养数据不存在"
+msgstr "Ingredient nutrition data does not exist"
+
+msgid "无效的 entity_type: '{entity_type}'，只接受 {VALID_ENTITY_TYPES}"
+msgstr "Invalid entity_type: '{entity_type}'; only {VALID_ENTITY_TYPES} are accepted"
+
+msgid "单位名称 '{name}' 已存在"
+msgstr "Unit name '{name}' already exists"
+
+msgid "单位缩写 '{abbreviation}' 已存在"
+msgstr "Unit abbreviation '{abbreviation}' already exists"
+
+msgid "不支持从 '{from_unit}' 到 '{to_unit}' 的换算"
+msgstr "Conversion from '{from_unit}' to '{to_unit}' is not supported"
+
+msgid "{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'"
+msgstr "A unit override already exists for {biz_type}/{biz_id}: '{unit_name}'"

@@ -11,6 +11,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from app.services.proposals.base import ApplyResult, ProposalExecutor
+from app.core.exceptions import LocalizedHTTPException
 
 
 class ProductSplitExecutor(ProposalExecutor):
@@ -43,14 +44,14 @@ class ProductSplitExecutor(ProposalExecutor):
         from app.models.product_entity import Product
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail="需要商品 ID")
+            raise LocalizedHTTPException(status_code=400, message='需要商品 ID')
         p = db.query(Product).filter(
             Product.id == eid, Product.is_active == True
         ).first()
         if p is None:
-            raise HTTPException(status_code=404, detail="商品不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在或已删除')
         if not p.ingredient_id:
-            raise HTTPException(status_code=400, detail="商品未关联原料")
+            raise LocalizedHTTPException(status_code=400, message='商品未关联原料')
         # 唯一商品检查（端点也要查，执行器再查一次防审核期间变化）
         cnt = db.query(Product).filter(
             Product.ingredient_id == p.ingredient_id,
@@ -58,10 +59,7 @@ class ProductSplitExecutor(ProposalExecutor):
             Product.id != eid,
         ).count()
         if cnt == 0:
-            raise HTTPException(
-                status_code=400,
-                detail="该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。"
-            )
+            raise LocalizedHTTPException(status_code=400, message='该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。')
 
     def preview(self, db, proposal) -> dict:
         from app.models.product_entity import Product
@@ -85,11 +83,11 @@ class ProductSplitExecutor(ProposalExecutor):
             Product.id == eid, Product.is_active == True
         ).first()
         if p is None:
-            raise HTTPException(status_code=404, detail="商品不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在或已删除')
 
         current_ingredient = p.ingredient
         if not current_ingredient:
-            raise HTTPException(status_code=400, detail="商品未关联原料")
+            raise LocalizedHTTPException(status_code=400, message='商品未关联原料')
 
         # 快照当前状态（供 revert）
         snapshot = {
@@ -101,7 +99,7 @@ class ProductSplitExecutor(ProposalExecutor):
         # 确定名称
         ingredient_name = (new_name or p.name).strip()
         if not ingredient_name:
-            raise HTTPException(status_code=400, detail="原料名称不能为空")
+            raise LocalizedHTTPException(status_code=400, message='原料名称不能为空')
 
         # 检查同名
         existing = db.query(Ingredient).filter(
@@ -110,14 +108,8 @@ class ProductSplitExecutor(ProposalExecutor):
         ).first()
         if existing:
             if existing.id == current_ingredient.id:
-                raise HTTPException(
-                    status_code=409,
-                    detail="名称与当前关联原料同名，请指定不同的新原料名称。"
-                )
-            raise HTTPException(
-                status_code=409,
-                detail=f"原料「{ingredient_name}」已存在（ID: {existing.id}），请指定不同的名称。"
-            )
+                raise LocalizedHTTPException(status_code=409, message='名称与当前关联原料同名，请指定不同的新原料名称。')
+            raise LocalizedHTTPException(status_code=409, message='原料「{ingredient_name}」已存在（ID: {id}），请指定不同的名称。', ingredient_name=ingredient_name, id=existing.id)
 
         # 获取营养数据合并
         product_nutrition = p.custom_nutrition_data or {}

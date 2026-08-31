@@ -4,6 +4,7 @@ from fastapi import HTTPException
 
 from app.services.proposals.executors._crud_base import CrudExecutorBase
 from app.models.unit import Unit
+from app.core.exceptions import LocalizedHTTPException
 
 
 class UnitExecutor(CrudExecutorBase):
@@ -16,13 +17,9 @@ class UnitExecutor(CrudExecutorBase):
         if eid is not None and proposal.action in ("update", "delete"):
             u = db.query(Unit).get(eid)
             if u is not None and getattr(u, "is_standard", False):
-                raise HTTPException(
-                    status_code=403,
-                    detail="标准单位仅管理员可改/删，不进提议框架")
+                raise LocalizedHTTPException(status_code=403, message='标准单位仅管理员可改/删，不进提议框架')
         # create 拒绝 is_standard=True（标准单位不通过提议创建）
         if proposal.action == "create":
             if proposal.payload.get("is_standard"):
-                raise HTTPException(
-                    status_code=403,
-                    detail="标准单位不可通过提议创建")
+                raise LocalizedHTTPException(status_code=403, message='标准单位不可通过提议创建')
         super().validate(db, proposal)

@@ -14,6 +14,7 @@ from app.schemas.report import (
 from app.services.report_service import generate_expense_report
 from app.api.deps import get_timezone
 from app.models.expense import Expense
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -40,7 +41,7 @@ async def create_expense(
         return db_expense
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"创建费用记录失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='创建费用记录失败: {error}', error=str(e))
 
 
 @router.get("/expenses", response_model=List[ExpenseResponse])
@@ -62,7 +63,7 @@ async def get_expenses(
         expenses = query.order_by(Expense.date.desc()).all()
         return expenses
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取费用记录失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取费用记录失败: {error}', error=str(e))
 
 
 @router.get("/expense", response_model=ExpenseReportResponse)
@@ -96,6 +97,6 @@ async def get_expense_report(
         )
         return ExpenseReportResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"生成报告失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='生成报告失败: {error}', error=str(e))
 
 
