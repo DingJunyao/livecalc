@@ -1,18 +1,18 @@
 <template>
   <v-dialog v-model="show" max-width="500" persistent>
     <v-card>
-      <v-card-title>记录价格{{ displayProductName ? ' - ' + displayProductName : '' }}</v-card-title>
+      <v-card-title>{{ t('prices.recordPrice') }}{{ displayProductName ? ' - ' + displayProductName : '' }}</v-card-title>
       <v-card-text>
         <v-form ref="formRef" v-model="formValid">
           <!-- 商家（必填，置于商品前） -->
           <v-autocomplete
             v-model="form.merchant_id"
             :items="merchantOptions"
-            item-title="name"
+            :item-title="(item: any) => item.display_name || item.name"
             item-value="id"
-            label="商家 *"
+            :label="t('prices.merchantRequired')"
             variant="outlined"
-            :rules="[(v: any) => !!v || '请选择商家']"
+            :rules="[(v: any) => !!v || t('prices.chooseMerchant')]"
             class="mb-4"
             @update:model-value="onMerchantChange"
           />
@@ -22,11 +22,11 @@
             v-if="products && products.length > 0"
             v-model="selectedProductId"
             :items="products"
-            item-title="name"
+            :item-title="(item: any) => item.display_name || item.name"
             item-value="id"
-            label="商品"
+            :label="t('prices.product')"
             variant="outlined"
-            :rules="[(v: any) => !!v || '请选择商品']"
+            :rules="[(v: any) => !!v || t('prices.chooseProduct')]"
             class="mb-4"
           />
 
@@ -34,7 +34,7 @@
           <div class="d-flex align-center ga-2 mb-4">
             <v-text-field
               v-model.number="form.price"
-              label="价格"
+              :label="t('prices.priceWithoutStar')"
               variant="outlined"
               type="number"
               :rules="priceRules"
@@ -42,13 +42,13 @@
             />
             <v-menu :close-on-content-click="true" location="bottom">
               <template #activator="{ props: menuProps }">
-                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
               </template>
               <v-list density="compact">
                 <v-list-item
                   v-for="c in currencies"
                   :key="c.code"
-                  :title="`${c.name} ${c.code}`"
+                  :title="`${c.display_name || c.name} ${c.code}`"
                   :active="recordCurrency === c.code"
                   @click="recordCurrency = c.code"
                 />
@@ -60,7 +60,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model.number="form.original_quantity"
-                label="数量"
+                :label="t('prices.quantity')"
                 variant="outlined"
                 type="number"
                 :rules="quantityRules"
@@ -70,7 +70,7 @@
               <v-select
                 v-model="form.original_unit"
                 :items="unitOptions"
-                label="单位"
+                :label="t('prices.unit')"
                 variant="outlined"
                 :rules="unitRules"
               />
@@ -79,7 +79,7 @@
 
           <v-checkbox
             v-model="form.is_purchase"
-            label="计入支出"
+            :label="t('prices.countExpense')"
             color="primary"
             density="comfortable"
             class="mb-4"
@@ -89,14 +89,14 @@
                 <template #activator="{ props: tooltipProps }">
                   <v-icon v-bind="tooltipProps" size="small" color="grey">mdi-help-circle</v-icon>
                 </template>
-                <span>勾选此项表示此价格记录来自实际购买，将用于支出计算</span>
+                <span>{{ t('prices.countExpenseTooltip') }}</span>
               </v-tooltip>
             </template>
           </v-checkbox>
 
           <v-text-field
             v-model="form.recorded_at"
-            label="记录时间（可选）"
+            :label="t('prices.recordedAtOptional')"
             variant="outlined"
             type="datetime-local"
             class="mb-4"
@@ -104,7 +104,7 @@
 
           <v-textarea
             v-model="form.notes"
-            label="备注（可选）"
+            :label="t('prices.notesOptional')"
             variant="outlined"
             rows="2"
           />
@@ -115,14 +115,15 @@
       </v-alert>
       <v-card-actions>
         <v-spacer />
-        <v-btn @click="close">取消</v-btn>
-        <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="save">添加</v-btn>
+        <v-btn @click="close">{{ t('prices.cancel') }}</v-btn>
+        <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="save">{{ t('prices.add') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
 import { ref, computed, watch, nextTick } from 'vue'
@@ -130,6 +131,8 @@ import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
+
+const { t } = useI18n()
 
 interface Merchant {
   id: number
@@ -233,9 +236,9 @@ const loadEntityUnits = async (productId: number) => {
   }
 }
 
-const priceRules = [(v: number | null) => v !== null && v > 0 || '请输入有效价格']
-const quantityRules = [(v: number | null) => v !== null && v > 0 || '请输入有效数量']
-const unitRules = [(v: string) => !!v || '请选择单位']
+const priceRules = [(v: number | null) => v !== null && v > 0 || t('prices.validPrice')]
+const quantityRules = [(v: number | null) => v !== null && v > 0 || t('prices.validQuantity')]
+const unitRules = [(v: string) => !!v || t('prices.chooseUnit')]
 
 const SESSION_KEYS = {
   MERCHANT_ID: 'price_form_merchant_id',
@@ -353,7 +356,7 @@ const save = async () => {
     emit('saved')
   } catch (e: any) {
     console.error('保存记录失败', e)
-    saveError.value = getErrorMessage(e, '保存失败')
+    saveError.value = getErrorMessage(e, t('prices.saveFailed'))
   } finally {
     saving.value = false
   }

@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">商家管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('merchants.title') }}</v-app-bar-title>
     <template #append>
       <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadMerchants" />
@@ -15,7 +15,7 @@
     <v-alert v-if="error" type="error" class="ma-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadMerchants">重试</v-btn>
+        <v-btn variant="text" @click="loadMerchants">{{ t('merchants.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -24,7 +24,7 @@
       <!-- 加载叠加层 -->
       <div v-if="loading" class="fullpage-loading" style="position: absolute; inset: 0; z-index: 10; background: rgba(var(--v-theme-background), 0.7);">
         <v-progress-circular indeterminate color="primary" size="64" />
-        <div class="text-body-1 mt-4">加载中...</div>
+        <div class="text-body-1 mt-4">{{ t('merchants.loading') }}</div>
       </div>
 
       <!-- A. 地图启用：左列表 + 右地图（原布局，整块包起来） -->
@@ -35,7 +35,7 @@
             <div class="d-flex align-center ga-2">
               <v-text-field
                 v-model="search"
-                label="搜索商家..."
+                :label="t('merchants.search')"
                 prepend-inner-icon="mdi-magnify"
                 variant="outlined"
                 density="compact"
@@ -74,17 +74,17 @@
                     color="warning"
                     variant="tonal"
                     class="ms-2"
-                  >已关闭</v-chip>
+                  >{{ t('merchants.closed') }}</v-chip>
                   <v-chip
                     v-if="hasPending('merchant', item.id)"
                     size="x-small"
                     color="info"
                     variant="tonal"
                     class="ms-2"
-                  >修改待审</v-chip>
+                  >{{ t('merchants.pendingEdit') }}</v-chip>
                 </v-list-item-title>
                 <v-list-item-subtitle>
-                  {{ pendingAddress(item) || '暂无地址' }}
+                  {{ pendingAddress(item) || t('merchants.noAddress') }}
                 </v-list-item-subtitle>
                 <template #append>
                   <div class="d-flex ga-1 align-center">
@@ -95,7 +95,7 @@
                       variant="text"
                       color="secondary"
                       :disabled="!isValidCoordinate(item.latitude, item.longitude)"
-                      :title="isValidCoordinate(item.latitude, item.longitude) ? '在地图上定位' : '未设置位置'"
+                      :title="isValidCoordinate(item.latitude, item.longitude) ? t('merchants.locateOnMap') : t('merchants.notSetLocation')"
                       @click.stop="locateMerchant(item)"
                     />
                     <!-- 收藏 / 编辑 / 删除 收进三点溢出菜单 -->
@@ -107,19 +107,19 @@
                         <v-list-item
                           :prepend-icon="favoriteIds.has(item.id) ? 'mdi-heart' : 'mdi-heart-outline'"
                           :base-color="favoriteIds.has(item.id) ? 'error' : undefined"
-                          :title="favoriteIds.has(item.id) ? '取消收藏' : '收藏'"
+                          :title="favoriteIds.has(item.id) ? t('merchants.unfavorite') : t('merchants.favorite')"
                           @click="toggleFavorite(item.id)"
                         />
                         <v-list-item
                           prepend-icon="mdi-pencil"
                           base-color="primary"
-                          title="编辑"
+                          :title="t('merchants.edit')"
                           @click="openEditDialog(item)"
                         />
                         <v-list-item
                           prepend-icon="mdi-delete"
                           base-color="error"
-                          title="删除"
+                          :title="t('merchants.delete')"
                           @click="deleteItem(item.id)"
                         />
                       </v-list>
@@ -130,7 +130,7 @@
 
               <v-list-item v-if="items.length === 0">
                 <v-list-item-title class="text-center text-medium-emphasis">
-                  暂无商家
+                  {{ t('merchants.empty') }}
                 </v-list-item-title>
               </v-list-item>
             </v-list>
@@ -153,15 +153,15 @@
                 <v-select
                   v-model="pageSize"
                   :items="[10, 20, 50, 100]"
-                  :label="isDesktop ? '每页' : undefined"
+                  :label="isDesktop ? t('merchants.perPage') : undefined"
                   variant="outlined"
                   density="compact"
                   hide-details
                   class="page-size-select"
                   @update:model-value="handlePageSizeChange"
                 />
-                <span v-if="isDesktop" class="text-caption text-medium-emphasis total-count">共 {{ total }} 条</span>
-                <span v-else class="text-caption text-medium-emphasis total-count">{{ total }}条</span>
+                <span v-if="isDesktop" class="text-caption text-medium-emphasis total-count">{{ t('merchants.totalCount', { count: total }) }}</span>
+                <span v-else class="text-caption text-medium-emphasis total-count">{{ t('merchants.totalCountCompact', { count: total }) }}</span>
               </div>
             </div>
           </div>
@@ -198,7 +198,7 @@
           <div class="d-flex ga-3 mb-4 align-center">
             <v-text-field
               v-model="search"
-              label="搜索商家..."
+              :label="t('merchants.search')"
               prepend-inner-icon="mdi-magnify"
               variant="outlined"
               density="compact"
@@ -228,10 +228,10 @@
                 </template>
                 <v-list-item-title>
                   {{ pendingName(item) }}
-                  <v-chip v-if="pendingIsOpen(item) === false" size="x-small" color="warning" variant="tonal" class="ms-2">已关闭</v-chip>
-                  <v-chip v-if="hasPending('merchant', item.id)" size="x-small" color="info" variant="tonal" class="ms-2">修改待审</v-chip>
+                  <v-chip v-if="pendingIsOpen(item) === false" size="x-small" color="warning" variant="tonal" class="ms-2">{{ t('merchants.closed') }}</v-chip>
+                  <v-chip v-if="hasPending('merchant', item.id)" size="x-small" color="info" variant="tonal" class="ms-2">{{ t('merchants.pendingEdit') }}</v-chip>
                 </v-list-item-title>
-                <v-list-item-subtitle>{{ pendingAddress(item) || '暂无地址' }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ pendingAddress(item) || t('merchants.noAddress') }}</v-list-item-subtitle>
                 <template #append>
                   <v-menu :close-on-content-click="true" location="bottom end">
                     <template #activator="{ props: menuProps }">
@@ -241,17 +241,17 @@
                       <v-list-item
                         :prepend-icon="favoriteIds.has(item.id) ? 'mdi-heart' : 'mdi-heart-outline'"
                         :base-color="favoriteIds.has(item.id) ? 'error' : undefined"
-                        :title="favoriteIds.has(item.id) ? '取消收藏' : '收藏'"
+                        :title="favoriteIds.has(item.id) ? t('merchants.unfavorite') : t('merchants.favorite')"
                         @click="toggleFavorite(item.id)"
                       />
-                      <v-list-item prepend-icon="mdi-pencil" base-color="primary" title="编辑" @click="openEditDialog(item)" />
-                      <v-list-item prepend-icon="mdi-delete" base-color="error" title="删除" @click="deleteItem(item.id)" />
+                      <v-list-item prepend-icon="mdi-pencil" base-color="primary" :title="t('merchants.edit')" @click="openEditDialog(item)" />
+                      <v-list-item prepend-icon="mdi-delete" base-color="error" :title="t('merchants.delete')" @click="deleteItem(item.id)" />
                     </v-list>
                   </v-menu>
                 </template>
               </v-list-item>
               <v-list-item v-if="items.length === 0">
-                <v-list-item-title class="text-center text-medium-emphasis">暂无商家</v-list-item-title>
+                <v-list-item-title class="text-center text-medium-emphasis">{{ t('merchants.empty') }}</v-list-item-title>
               </v-list-item>
             </v-list>
           </v-card>
@@ -265,10 +265,10 @@
                     <v-avatar color="tertiary" size="40" class="mr-3"><v-icon>mdi-store</v-icon></v-avatar>
                     <div class="text-body-2 font-weight-medium text-truncate">
                       {{ pendingName(item) }}
-                      <v-chip v-if="pendingIsOpen(item) === false" size="x-small" color="warning" variant="tonal" class="ms-1">已关闭</v-chip>
+                      <v-chip v-if="pendingIsOpen(item) === false" size="x-small" color="warning" variant="tonal" class="ms-1">{{ t('merchants.closed') }}</v-chip>
                     </div>
                   </div>
-                  <div class="text-caption text-medium-emphasis mb-1 text-truncate">{{ pendingAddress(item) || '暂无地址' }}</div>
+                  <div class="text-caption text-medium-emphasis mb-1 text-truncate">{{ pendingAddress(item) || t('merchants.noAddress') }}</div>
                 </v-card-text>
                 <v-divider />
                 <v-card-actions>
@@ -286,7 +286,7 @@
               </v-card>
             </v-col>
             <v-col v-if="items.length === 0" cols="12">
-              <div class="text-center py-8 text-medium-emphasis">暂无商家</div>
+              <div class="text-center py-8 text-medium-emphasis">{{ t('merchants.empty') }}</div>
             </v-col>
           </v-row>
 
@@ -303,14 +303,14 @@
             <v-select
               v-model="pageSize"
               :items="[10, 20, 50, 100]"
-              label="每页"
+              :label="t('merchants.perPage')"
               variant="outlined"
               density="compact"
               hide-details
               style="max-width: 90px"
               @update:model-value="handlePageSizeChange"
             />
-            <span class="text-caption text-medium-emphasis">共 {{ total }} 条</span>
+            <span class="text-caption text-medium-emphasis">{{ t('merchants.totalCount', { count: total }) }}</span>
           </div>
         </div>
       </template>
@@ -331,25 +331,25 @@
     <!-- 添加/编辑对话框 -->
     <v-dialog v-model="addDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ editingItem ? '编辑商家' : '添加商家' }}</v-card-title>
+        <v-card-title>{{ editingItem ? t('merchants.editTitle') : t('merchants.addTitle') }}</v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
               v-model="form.name"
-              label="商家名称（可留空）"
+              :label="t('merchants.nameOptional')"
               variant="outlined"
               class="mb-4"
             />
             <v-text-field
               v-model="form.address"
-              label="地址"
+              :label="t('merchants.address')"
               variant="outlined"
               class="mb-4"
             />
 
             <v-switch
               v-model="form.is_open"
-              label="营业中"
+              :label="t('merchants.isOpen')"
               color="success"
               class="mb-4"
               hide-details
@@ -360,9 +360,9 @@
             <v-select
               v-model="form.default_currency"
               :items="currencies"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="code"
-              label="默认币种（留空跟随地区）"
+              :label="t('merchants.defaultCurrencyOptional')"
               variant="outlined"
               density="compact"
               clearable
@@ -374,13 +374,13 @@
                 {{ item.raw.code }}
               </template>
               <template #item="{ props, item }">
-                <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+                  <v-list-item v-bind="props" :title="`${item.raw.display_name || item.raw.name} ${item.raw.code}`" />
               </template>
             </v-select>
 
             <!-- 地图选点（地图禁用时隐藏，提交不带坐标，后端保留原值） -->
             <div v-if="mapEnabled" class="mb-4">
-              <div class="text-subtitle-2 mb-2">商家位置</div>
+              <div class="text-subtitle-2 mb-2">{{ t('merchants.merchantLocation') }}</div>
               <MapPicker
                 :model-value="pickerCoords"
                 :show-switcher="true"
@@ -391,8 +391,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="addDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveItem">保存</v-btn>
+          <v-btn @click="addDialog = false">{{ t('prices.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -401,6 +401,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -419,6 +420,7 @@ import type { Currency } from '@/types'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useMapConfig } from '@/composables/useMapConfig'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
@@ -445,7 +447,7 @@ const { load: loadPendingProposals, has: hasPending, getPayload: getPendingPaylo
 // 待审草稿覆盖：普通用户提交后，列表显示提议中的新值（name/address/is_open）
 const pendingName = (item: Merchant) => {
   const p = getPendingPayload('merchant', item.id)
-  return (p?.name ?? item.name) || '未命名商家'
+  return (p?.name ?? item.name) || t('pageTitle.unnamedMerchant')
 }
 const pendingAddress = (item: Merchant) => {
   const p = getPendingPayload('merchant', item.id)
@@ -513,28 +515,28 @@ const requestFilters = ref<Record<string, any>>({})
 const merchantFilters: FilterConfig[] = [
   {
     key: 'include_closed',
-    label: '显示已关闭商家',
+    label: t('merchants.showClosed'),
     type: 'toggle',
     minWidth: '160px',
   },
   {
     key: 'include_other_regions',
-    label: '显示其他地区的商家',
+    label: t('merchants.showOtherRegions'),
     type: 'toggle',
     minWidth: '180px',
   },
   {
     key: 'favorites_only',
-    label: '仅看我的收藏',
+    label: t('merchants.favoritesOnly'),
     type: 'toggle',
     minWidth: '140px',
   },
   {
     key: 'special_conditions',
-    label: '特殊条件',
+    label: t('merchants.specialConditions'),
     type: 'multicheck',
     items: [
-      { value: 'no_price', title: '未维护过价格' },
+      { value: 'no_price', title: t('merchants.noPrice') },
     ],
     minWidth: '180px',
   },
@@ -626,7 +628,7 @@ const loadMerchants = async () => {
     total.value = response.total || 0
   } catch (e: any) {
     console.error('加载商家失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('merchants.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -652,10 +654,10 @@ const toggleFavorite = async (id: number) => {
   try {
     if (wasFav) {
       await api.delete(`/merchants/${id}/favorite`)
-      notify('已取消收藏', 'info')
+      notify(t('merchants.unfavorited'), 'info')
     } else {
       await api.post(`/merchants/${id}/favorite`)
-      notify('已收藏', 'success')
+      notify(t('merchants.favorited'), 'success')
     }
     // 若当前处于「仅看收藏」视图，移除后需重新加载列表
     if (favoritesOnly.value) {
@@ -666,7 +668,7 @@ const toggleFavorite = async (id: number) => {
     favoriteIds.value = wasFav
       ? new Set([...favoriteIds.value, id])
       : (() => { const r = new Set(favoriteIds.value); r.delete(id); return r })()
-    notify(getErrorMessage(e, wasFav ? '取消收藏失败' : '收藏失败'), 'error')
+    notify(getErrorMessage(e, wasFav ? t('merchants.unfavoriteFailed') : t('merchants.favoriteFailed')), 'error')
   }
 }
 
@@ -842,10 +844,10 @@ const saveItem = async () => {
       // → 待审，值未变，返回原商家）。两端点均返回商家对象（无 message 字段），
       // 故用 userStore.is_admin 区分提示，避免普通用户待审时误报「已保存」。
       if (userStore.user?.is_admin) {
-        notify('已保存', 'success')
+        notify(t('merchants.saved'), 'success')
         await loadMerchants()
       } else {
-        notify('编辑提议已提交，待管理员审核', 'info')
+        notify(t('merchants.editProposalSubmitted'), 'info')
       }
       // 编辑后若当前视图筛掉了该商家（如改了 is_open），无需特殊处理
       void response
@@ -855,12 +857,12 @@ const saveItem = async () => {
         items.value.unshift(response)
         total.value++
       }
-      notify('已创建商家', 'success')
+      notify(t('merchants.created'), 'success')
     }
     addDialog.value = false
   } catch (e: any) {
     console.error('保存商家失败', e)
-    notify(getErrorMessage(e, '保存商家失败'), 'error')
+    notify(getErrorMessage(e, t('merchants.saveFailed')), 'error')
   } finally {
     saving.value = false
   }
@@ -873,9 +875,9 @@ const deleteItem = async (id: number) => {
     // 管理员直写软删（返回 {message: ...}）。普通用户提议待审，列表暂不移除。
     const msg: string = (result && result.message) || ''
     if (msg.includes('提议') || msg.includes('proposal')) {
-      notify('删除提议已提交，待管理员审核', 'info')
+      notify(t('merchants.deleteProposalSubmitted'), 'info')
     } else {
-      notify('商家已删除', 'success')
+      notify(t('merchants.deleted'), 'success')
       const index = items.value.findIndex(i => i.id === id)
       if (index !== -1) {
         items.value.splice(index, 1)
@@ -888,7 +890,7 @@ const deleteItem = async (id: number) => {
     }
   } catch (e: any) {
     console.error('删除商家失败', e)
-    notify(getErrorMessage(e, '删除商家失败'), 'error')
+    notify(getErrorMessage(e, t('merchants.deleteFailed')), 'error')
   }
 }
 

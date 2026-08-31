@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">价格记录</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('prices.title') }}</v-app-bar-title>
     <template #append>
       <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadRecords" />
@@ -14,7 +14,7 @@
     <div class="d-flex ga-2 mb-4 align-center">
       <v-text-field
         v-model="searchQuery"
-        label="搜索商品..."
+        :label="t('prices.searchProducts')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="compact"
@@ -35,7 +35,7 @@
     <v-alert v-else-if="error" type="error" class="mb-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadRecords">重试</v-btn>
+        <v-btn variant="text" @click="loadRecords">{{ t('prices.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -61,7 +61,7 @@
                     @click.stop="goToMerchant(record)">
                 {{ record.merchant_name }}
               </span>
-              <span v-else class="text-medium-emphasis">未知商家</span>
+              <span v-else class="text-medium-emphasis">{{ t('prices.unknownMerchant') }}</span>
             </v-list-item-subtitle>
             <v-list-item-subtitle>
               {{ formatToLocalDateTimeShort(record.recorded_at) }}
@@ -75,7 +75,7 @@
           </v-list-item>
 
           <v-list-item v-if="records.length === 0">
-            <v-list-item-title class="text-center">暂无记录</v-list-item-title>
+            <v-list-item-title class="text-center">{{ t('prices.noRecords') }}</v-list-item-title>
           </v-list-item>
         </v-list>
       </v-card>
@@ -109,7 +109,7 @@
                         :variant="record.merchant_id ? 'tonal' : 'outlined'"
                         @click.stop="goToMerchant(record)">
                   <v-icon start size="x-small">mdi-store</v-icon>
-                  {{ record.merchant_name || '未知商家' }}
+                  {{ record.merchant_name || t('prices.unknownMerchant') }}
                 </v-chip>
                 <span class="text-caption text-medium-emphasis">
                   {{ formatToLocalDateTimeShort(record.recorded_at) }}
@@ -127,7 +127,7 @@
         </v-col>
 
         <v-col v-if="records.length === 0" cols="12">
-          <div class="text-center py-8 text-medium-emphasis">暂无记录</div>
+          <div class="text-center py-8 text-medium-emphasis">{{ t('prices.noRecords') }}</div>
         </v-col>
       </v-row>
     </template>
@@ -145,14 +145,14 @@
         <v-select
           v-model="pageSize"
           :items="[10, 20, 50, 100]"
-          label="每页"
+          :label="t('prices.perPage')"
           variant="outlined"
           density="compact"
           hide-details
           style="max-width: 90px"
           @update:model-value="handlePageSizeChange"
         />
-        <span class="text-caption text-medium-emphasis">共 {{ total }} 条</span>
+        <span class="text-caption text-medium-emphasis">{{ t('prices.totalCount', { count: total }) }}</span>
       </div>
     </div>
 
@@ -179,19 +179,19 @@
         >
           <div class="text-center">
             <v-progress-circular indeterminate color="primary" size="48" />
-            <div class="text-body-2 mt-3 text-grey-darken-2">正在查询条码信息...</div>
+            <div class="text-body-2 mt-3 text-grey-darken-2">{{ t('prices.barcodeLookup') }}</div>
           </div>
         </v-overlay>
-        <v-card-title>{{ isEditing ? '编辑价格记录' : '添加价格记录' }}</v-card-title>
+        <v-card-title>{{ isEditing ? t('prices.editRecord') : t('prices.addRecord') }}</v-card-title>
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
             <!-- 商家（置于商品前） -->
             <v-autocomplete
               v-model="form.merchant_id"
               :items="merchantOptions"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="商家（可选）"
+              :label="t('prices.merchantOptional')"
               variant="outlined"
               clearable
               class="mb-4"
@@ -205,12 +205,12 @@
               @update:search="onProductSearchUpdate"
               :items="productSuggestions"
               :loading="productLoading"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="商品名称"
+              :label="t('prices.productName')"
               variant="outlined"
               :rules="productIdRules"
-              :no-data-text="productSearch ? '没有找到商品，将创建新商品' : '输入商品名称搜索'"
+              :no-data-text="productSearch ? t('prices.noProductFoundCreate') : t('prices.inputProductSearch')"
               clearable
               auto-select-first
               return-object
@@ -231,7 +231,7 @@
                   icon="mdi-barcode-scan"
                   size="small"
                   variant="text"
-                  aria-label="扫码识别商品"
+                  :aria-label="t('prices.scanProduct')"
                   :disabled="isEditing"
                   @click="scannerOpen = true"
                 />
@@ -240,7 +240,7 @@
                 <v-list-item v-bind="props">
                   <template #subtitle>
                     <span v-if="item.raw.matched_alias" class="text-caption">
-                      别名: {{ item.raw.matched_alias }}
+                      {{ t('prices.alias', { name: item.raw.matched_alias }) }}
                     </span>
                     <span v-else-if="item.raw.ingredient_name" class="text-caption">
                       {{ item.raw.ingredient_name }}
@@ -254,11 +254,11 @@
             <v-text-field
               v-if="!form.product_id && productSearch"
               :model-value="productSearch"
-              label="新商品名称"
+              :label="t('prices.newProductName')"
               variant="outlined"
               density="compact"
               disabled
-              hint="将创建新商品"
+              :hint="t('prices.willCreateProduct')"
               class="mb-4"
             />
 
@@ -266,7 +266,7 @@
             <div class="d-flex align-center ga-2 mb-4">
               <v-text-field
                 v-model.number="form.price"
-                label="价格 *"
+                :label="t('prices.price')"
                 variant="outlined"
                 type="number"
                 :rules="priceRules"
@@ -274,13 +274,13 @@
               />
               <v-menu :close-on-content-click="true" location="bottom">
                 <template #activator="{ props: menuProps }">
-                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
                 </template>
                 <v-list density="compact">
                   <v-list-item
                     v-for="c in currencies"
                     :key="c.code"
-                    :title="`${c.name} ${c.code}`"
+                    :title="`${c.display_name || c.name} ${c.code}`"
                     :active="recordCurrency === c.code"
                     @click="recordCurrency = c.code"
                   />
@@ -293,7 +293,7 @@
               <v-col cols="6">
                 <v-text-field
                   v-model.number="form.original_quantity"
-                  label="数量"
+                  :label="t('prices.quantity')"
                   variant="outlined"
                   type="number"
                   :rules="quantityRules"
@@ -303,7 +303,7 @@
                 <v-select
                   v-model="form.original_unit"
                   :items="unitOptions"
-                  label="单位"
+                  :label="t('prices.unit')"
                   variant="outlined"
                   :rules="unitRules"
                 />
@@ -313,7 +313,7 @@
             <!-- 计入支出复选框 -->
             <v-checkbox
               v-model="form.is_purchase"
-              label="计入支出"
+              :label="t('prices.countExpense')"
               color="primary"
               density="comfortable"
               class="mb-4"
@@ -323,7 +323,7 @@
                   <template #activator="{ props }">
                     <v-icon v-bind="props" size="small" color="grey">mdi-help-circle</v-icon>
                   </template>
-                  <span>勾选此项表示此价格记录来自实际购买，将用于支出计算</span>
+                  <span>{{ t('prices.countExpenseTooltip') }}</span>
                 </v-tooltip>
               </template>
             </v-checkbox>
@@ -331,7 +331,7 @@
             <!-- 记录时间 -->
             <v-text-field
               v-model="form.recorded_at"
-              label="记录时间（可选）"
+              :label="t('prices.recordedAtOptional')"
               variant="outlined"
               type="datetime-local"
               class="mb-4"
@@ -340,7 +340,7 @@
             <!-- 备注 -->
             <v-textarea
               v-model="form.notes"
-              label="备注（可选）"
+              :label="t('prices.notesOptional')"
               variant="outlined"
               rows="2"
             />
@@ -348,9 +348,9 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="closeDialog">取消</v-btn>
+          <v-btn @click="closeDialog">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="saveRecord">
-            {{ isEditing ? '保存' : '添加' }}
+            {{ isEditing ? t('prices.save') : t('prices.add') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -358,16 +358,16 @@
     <BarcodeScannerDialog v-model="scannerOpen" @detected="handleScannedBarcode" />
     <v-dialog v-model="createProductDialog" max-width="420">
       <v-card>
-        <v-card-title>未找到本地商品</v-card-title>
+        <v-card-title>{{ t('prices.notFoundLocalProduct') }}</v-card-title>
         <v-card-text>
-          <div class="text-body-2">条码：{{ createProductData.barcode }}</div>
-          <div v-if="createProductData.name" class="text-body-2">名称：{{ createProductData.name }}</div>
-          <div v-if="createProductData.brand" class="text-body-2">品牌：{{ createProductData.brand }}</div>
+          <div class="text-body-2">{{ t('prices.barcode') }}：{{ createProductData.barcode }}</div>
+          <div v-if="createProductData.name" class="text-body-2">{{ t('prices.name') }}：{{ createProductData.name }}</div>
+          <div v-if="createProductData.brand" class="text-body-2">{{ t('prices.brand') }}：{{ createProductData.brand }}</div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="createProductDialog = false">取消</v-btn>
-          <v-btn color="primary" variant="text" @click="goCreateProduct">新增商品</v-btn>
+          <v-btn variant="text" @click="createProductDialog = false">{{ t('prices.cancel') }}</v-btn>
+          <v-btn color="primary" variant="text" @click="goCreateProduct">{{ t('prices.createProduct') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -378,6 +378,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useUserUnits } from '@/composables/useUserUnits'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 const { priceUnitName } = useUserUnits()
@@ -396,6 +397,7 @@ import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies } from '@/utils/currency'
 
+const { t } = useI18n()
 const { ask } = useConfirmDialog()
 
 const route = useRoute()
@@ -474,9 +476,9 @@ async function handleScannedBarcode(code: string) {
       }
       createProductDialog.value = true
     } else if (result.has_enabled_providers) {
-      showSnackbar(result.errors[0] || '未在条码服务中找到该商品', 'info')
+      showSnackbar(result.errors[0] || t('prices.noBarcodeProductInfo'), 'info')
     } else {
-      showSnackbar('未找到匹配商品，且未配置条码查询服务', 'info')
+      showSnackbar(t('products.noMatchingProductNoService'), 'info')
     }
   } finally {
     barcodeLookupLoading.value = false
@@ -511,15 +513,15 @@ const requestFilters = ref<Record<string, any>>({})
 const priceFilters = computed<FilterConfig[]>(() => [
   {
     key: 'merchant_ids',
-    label: '商家',
+    label: t('prices.merchant'),
     type: 'select',
-    items: merchantOptions.value.map(m => ({ value: m.id, title: m.name })),
+    items: merchantOptions.value.map(m => ({ value: m.id, title: (m as any).display_name || m.name })),
     minWidth: '180px',
     maxWidth: '240px',
   },
   {
     key: 'ingredient_category_ids',
-    label: '原料分类',
+    label: t('products.filterIngredientCategory'),
     type: 'select',
     items: categoryOptions.value,
     minWidth: '160px',
@@ -527,18 +529,18 @@ const priceFilters = computed<FilterConfig[]>(() => [
   },
   {
     key: 'record_types',
-    label: '记录类型',
+    label: t('prices.recordType'),
     type: 'select',
     items: [
-      { value: 'purchase', title: '购买' },
-      { value: 'price', title: '比价' },
+      { value: 'purchase', title: t('prices.recordTypePurchase') },
+      { value: 'price', title: t('prices.recordTypePrice') },
     ],
     minWidth: '140px',
     maxWidth: '180px',
   },
   {
     key: 'date_range',
-    label: '日期',
+    label: t('prices.dateFilter'),
     type: 'date-range',
     minWidth: '260px',
   },
@@ -555,7 +557,7 @@ const loadCategories = async () => {
     const response = await api.get('/ingredients/categories')
     categoryOptions.value = (response || []).map((c: any) => ({
       value: c.id,
-      title: c.display_name,
+      title: c.display_name || c.name,
     }))
   } catch (e: any) {
     console.error('加载分类失败', e)
@@ -685,19 +687,19 @@ const loadEntityUnits = async (productId: number) => {
 
 // 表单验证规则
 const productIdRules = [
-  (v: number | null) => !!v || '请选择或输入商品名称'
+  (v: number | null) => !!v || t('prices.chooseOrInputProduct')
 ]
 
 const priceRules = [
-  (v: number | null) => v !== null && v > 0 || '请输入有效价格'
+  (v: number | null) => v !== null && v > 0 || t('prices.validPrice')
 ]
 
 const quantityRules = [
-  (v: number | null) => v !== null && v > 0 || '请输入有效数量'
+  (v: number | null) => v !== null && v > 0 || t('prices.validQuantity')
 ]
 
 const unitRules = [
-  (v: string) => !!v || '请选择单位'
+  (v: string) => !!v || t('prices.chooseUnit')
 ]
 
 // 会话记忆的键名
@@ -772,7 +774,7 @@ const loadRecords = async () => {
     records.value = response.items || []
     total.value = response.total || 0
   } catch (e: any) {
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('prices.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -999,20 +1001,20 @@ const saveRecord = async () => {
     loadRecords()
   } catch (e: any) {
     console.error('保存记录失败', e)
-    showSnackbar(getErrorMessage(e, '保存失败'), 'error')
+    showSnackbar(getErrorMessage(e, t('prices.saveFailed')), 'error')
   } finally {
     saving.value = false
   }
 }
 
 const deleteRecord = async (id: number) => {
-  if (!(await ask({ text: '确定删除此价格记录?', color: 'error', confirmText: '删除' }))) return
+  if (!(await ask({ text: t('prices.deleteConfirm'), color: 'error', confirmText: t('prices.delete') }))) return
   try {
     await api.delete(`/products/${id}`)
     loadRecords()
   } catch (e: any) {
     console.error('删除失败', e)
-    showSnackbar(getErrorMessage(e, '删除失败'), 'error')
+    showSnackbar(getErrorMessage(e, t('prices.deleteFailed')), 'error')
   }
 }
 

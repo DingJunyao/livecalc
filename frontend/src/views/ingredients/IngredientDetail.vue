@@ -5,8 +5,8 @@
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
     <v-app-bar-title class="text-h6">
       <div class="d-flex align-center ga-2">
-        <span class="text-truncate">{{ overlaidIngredientName || '原料详情' }}</span>
-        <v-chip size="x-small" variant="tonal" color="primary">原料</v-chip>
+        <span class="text-truncate">{{ overlaidIngredientName || t('ingredients.detail') }}</span>
+        <v-chip size="x-small" variant="tonal" color="primary">{{ t('ingredients.chipLabel') }}</v-chip>
       </div>
     </v-app-bar-title>
     <template #append>
@@ -22,8 +22,8 @@
           <v-btn icon="mdi-dots-vertical" variant="text" v-bind="menuProps" :loading="loading" />
         </template>
         <v-list density="compact" nav>
-          <v-list-item prepend-icon="mdi-tag-plus" title="记录价格" @click="openQuickPriceDialog" />
-          <v-list-item prepend-icon="mdi-refresh" title="刷新" @click="loadData" />
+          <v-list-item prepend-icon="mdi-tag-plus" :title="t('ingredients.addPriceRecord')" @click="openQuickPriceDialog" />
+          <v-list-item prepend-icon="mdi-refresh" :title="t('ingredients.retry')" @click="loadData" />
         </v-list>
       </v-menu>
     </template>
@@ -33,14 +33,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-16">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('ingredients.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="ma-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadData">重试</v-btn>
+        <v-btn variant="text" @click="loadData">{{ t('ingredients.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -59,7 +59,7 @@
       <v-card elevation="0" class="grid-item item-basic-info">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-information-outline</v-icon>
-          基本信息
+          {{ t('ingredients.basicInfo') }}
           <v-spacer />
           <v-btn
             v-if="!editingBasicInfo"
@@ -70,8 +70,8 @@
             @click="startEditBasicInfo"
           />
           <template v-else>
-            <v-btn size="small" variant="text" @click="cancelEditBasicInfo">取消</v-btn>
-            <v-btn size="small" color="primary" variant="text" :loading="saving" @click="saveBasicInfo">保存</v-btn>
+            <v-btn size="small" variant="text" @click="cancelEditBasicInfo">{{ t('ingredients.cancel') }}</v-btn>
+            <v-btn size="small" color="primary" variant="text" :loading="saving" @click="saveBasicInfo">{{ t('ingredients.save') }}</v-btn>
           </template>
         </v-card-title>
         <v-divider />
@@ -82,7 +82,7 @@
               <template #prepend>
                 <v-icon size="small" color="medium-emphasis">mdi-folder-outline</v-icon>
               </template>
-              <v-list-item-title>分类</v-list-item-title>
+              <v-list-item-title>{{ t('ingredients.category') }}</v-list-item-title>
               <v-list-item-subtitle>{{ overlaidCategory }}</v-list-item-subtitle>
             </v-list-item>
 
@@ -90,7 +90,7 @@
               <template #prepend>
                 <v-icon size="small" color="medium-emphasis">mdi-tag-outline</v-icon>
               </template>
-              <v-list-item-title>别名</v-list-item-title>
+              <v-list-item-title>{{ t('ingredients.aliases') }}</v-list-item-title>
               <v-list-item-subtitle class="aliases-subtitle">
                 <v-chip
                   v-for="alias in overlaidAliases!"
@@ -108,15 +108,15 @@
               <template #prepend>
                 <v-icon size="small" color="success">mdi-pot-steam-outline</v-icon>
               </template>
-              <v-list-item-title>制作来源</v-list-item-title>
-              <v-list-item-subtitle>由「{{ ingredient.making_recipe_name }}」制作</v-list-item-subtitle>
+              <v-list-item-title>{{ t('ingredients.makingSource') }}</v-list-item-title>
+              <v-list-item-subtitle>{{ t('ingredients.madeFrom', { name: ingredient.making_recipe_name }) }}</v-list-item-subtitle>
             </v-list-item>
 
             <v-list-item v-if="overlaidServingWeight">
               <template #prepend>
                 <v-icon size="small" color="medium-emphasis">mdi-scale-balance</v-icon>
               </template>
-              <v-list-item-title>成品基准量</v-list-item-title>
+              <v-list-item-title>{{ t('ingredients.servingWeight') }}</v-list-item-title>
               <v-list-item-subtitle>{{ overlaidServingWeight }} {{ overlaidServingWeightUnitName || 'g' }} / 份</v-list-item-subtitle>
             </v-list-item>
 
@@ -124,7 +124,7 @@
               <template #prepend>
                 <v-icon size="small" color="medium-emphasis">mdi-calendar</v-icon>
               </template>
-              <v-list-item-title>创建时间</v-list-item-title>
+              <v-list-item-title>{{ t('ingredients.createdAt') }}</v-list-item-title>
               <v-list-item-subtitle>{{ formatToLocalDateTimeShort(ingredient.created_at) }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
@@ -133,7 +133,7 @@
           <v-form v-else @submit.prevent="saveBasicInfo">
             <v-text-field
               v-model="basicEditForm.name"
-              label="原料名称"
+              :label="t('ingredients.ingredientName')"
               variant="outlined"
               density="compact"
               required
@@ -142,9 +142,9 @@
             <v-autocomplete
               v-model="basicEditForm.category_id"
               :items="categories"
-              item-title="display_name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="分类"
+              :label="t('ingredients.category')"
               variant="outlined"
               density="compact"
               clearable
@@ -152,24 +152,24 @@
             />
             <v-combobox
               v-model="basicEditForm.aliases"
-              label="别名"
+              :label="t('ingredients.aliases')"
               variant="outlined"
               density="compact"
               multiple
               chips
               closable-chips
-              hint="按回车添加别名"
+              :hint="t('ingredients.aliasHint')"
               persistent-hint
               class="mb-3"
             />
-            <div class="text-subtitle-2 mb-1">自制来源（半成品）</div>
-            <div class="text-caption text-medium-emphasis mb-2">若此原料由某菜谱制作（如米饭由蒸米饭制作），选择制作菜谱并填写成品基准量，其成本将由该菜谱推导。</div>
+            <div class="text-subtitle-2 mb-1">{{ t('ingredients.homemadeSource') }}</div>
+            <div class="text-caption text-medium-emphasis mb-2">{{ t('ingredients.homemadeSourceHint') }}</div>
             <v-autocomplete
               v-model="basicEditForm.making_recipe_id"
               :items="recipeOptions"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="制作菜谱"
+              :label="t('ingredients.makingRecipe')"
               variant="outlined"
               density="compact"
               clearable
@@ -181,12 +181,12 @@
               <v-col cols="6">
                 <v-text-field
                   v-model.number="basicEditForm.serving_weight"
-                  label="成品基准量"
+                  :label="t('ingredients.servingWeight')"
                   type="number"
                   variant="outlined"
                   density="compact"
                   hide-details
-                  hint="每份多重（如1碗饭200g）"
+                  :hint="t('ingredients.servingWeightHint')"
                   persistent-hint
                 />
               </v-col>
@@ -194,9 +194,9 @@
                 <v-autocomplete
                   v-model="basicEditForm.serving_weight_unit_id"
                   :items="units"
-                  item-title="name"
+                  :item-title="(item: any) => item.display_name || item.name"
                   item-value="id"
-                  label="基准量单位"
+                  :label="t('ingredients.servingWeightUnit')"
                   variant="outlined"
                   density="compact"
                   clearable
@@ -212,12 +212,12 @@
       <v-card elevation="0" class="grid-item item-latest-price" v-if="loadingLatestPrice && !latestPrice">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="tertiary">mdi-cash</v-icon>
-          最新价格
+          {{ t('ingredients.latestPrice') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="text-center py-6">
           <v-progress-circular indeterminate size="28" />
-          <div class="text-body-2 text-medium-emphasis mt-2">加载中...</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.loading') }}</div>
         </v-card-text>
       </v-card>
 
@@ -225,7 +225,7 @@
       <v-card elevation="0" class="grid-item item-latest-price" v-else-if="latestPrice">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="tertiary">mdi-cash</v-icon>
-          最新价格
+          {{ t('ingredients.latestPrice') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="py-6">
@@ -236,13 +236,13 @@
             <template v-if="latestChartTrend">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
-                <div class="text-caption text-medium-emphasis">区间</div>
+                <div class="text-caption text-medium-emphasis">{{ t('ingredients.range') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">
                   {{ formatMoney(latestChartTrend.min, userCurrency) }} - {{ formatMoney(latestChartTrend.max, userCurrency) }} / {{ chartUnit }}
                 </div>
               </div>
               <div v-if="latestChartTrend.count" class="text-center">
-                <div class="text-caption text-medium-emphasis">记录</div>
+                <div class="text-caption text-medium-emphasis">{{ t('ingredients.recordCount') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">{{ latestChartTrend.count }}</div>
               </div>
             </template>
@@ -254,15 +254,15 @@
           <v-expansion-panels v-if="latestPriceParticipants.length" variant="accordion" class="mt-2">
             <v-expansion-panel>
               <v-expansion-panel-title class="text-caption">
-                加权明细（{{ latestPriceParticipants.length }} 个商品参与）
+                {{ t('ingredients.weightedDetails', { count: latestPriceParticipants.length }) }}
               </v-expansion-panel-title>
               <v-expansion-panel-text>
                 <div v-for="p in latestPriceParticipants" :key="p.product_id" class="text-caption d-flex justify-space-between">
-                  <span>{{ p.name }} <v-chip size="x-small" :color="p.weight === 0 ? 'grey' : 'default'">权重 {{ p.weight }}</v-chip></span>
-                  <span class="text-medium-emphasis">{{ formatMoney(Number(p.unit_price), userCurrency) }}（{{ p.weight_source === 'override' ? '我的' : '全局' }}）</span>
+                  <span>{{ p.name }} <v-chip size="x-small" :color="p.weight === 0 ? 'grey' : 'default'">{{ t('ingredients.weightLabel', { weight: p.weight }) }}</v-chip></span>
+                  <span class="text-medium-emphasis">{{ formatMoney(Number(p.unit_price), userCurrency) }}（{{ p.weight_source === 'override' ? t('ingredients.weightSourceMine') : t('ingredients.weightSourceGlobal') }}）</span>
                 </div>
                 <div v-for="e in latestPriceExcluded" :key="'ex_' + e.product_id" class="text-caption text-medium-emphasis">
-                  已排除：{{ e.name }}（{{ e.reason === 'weight_zero' ? '权重为0' : '当日无记录' }}）
+                  {{ t('ingredients.excluded', { name: e.name, reason: e.reason === 'weight_zero' ? t('ingredients.weightZero') : t('ingredients.noRecordToday') }) }}
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -275,13 +275,13 @@
           <v-divider />
           <v-card-text class="text-center py-4">
             <v-progress-circular indeterminate size="18" class="mr-2" />
-            <span class="text-caption text-medium-emphasis">加载商家价格...</span>
+            <span class="text-caption text-medium-emphasis">{{ t('ingredients.loadingMerchantPrices') }}</span>
           </v-card-text>
         </template>
         <template v-else-if="merchantPrices.length > 0">
           <v-divider />
           <v-card-text class="pa-3">
-            <div class="text-caption text-medium-emphasis mb-2">各商家价格</div>
+            <div class="text-caption text-medium-emphasis mb-2">{{ t('ingredients.merchantPrices') }}</div>
             <div class="merchant-price-list">
               <div
                 v-for="mp in merchantPrices"
@@ -305,13 +305,13 @@
                   {{ formatToLocalDate(mp.recorded_at) }}
                 </div>
                 <div v-if="mp.is_lowest" class="merchant-price-badge">
-                  <v-chip size="x-small" color="success" variant="flat" label>最低</v-chip>
+                  <v-chip size="x-small" color="success" variant="flat" label>{{ t('ingredients.lowest') }}</v-chip>
                 </div>
               </div>
             </div>
             <v-divider class="mt-1" />
             <div v-if="latestPrice" class="d-flex justify-space-between align-center px-1 pt-2">
-              <span class="text-caption text-medium-emphasis">商品加权综合价</span>
+              <span class="text-caption text-medium-emphasis">{{ t('ingredients.weightedCompositePrice') }}</span>
               <span class="font-weight-bold text-tertiary">
                 {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-caption font-weight-regular"> / {{ massUnitName }}</span>
               </span>
@@ -323,15 +323,15 @@
       <!-- 价格趋势图表 -->
       <PriceTrendChart
         v-if="ingredient"
-        title="价格趋势"
+        :title="t('ingredients.priceTrend')"
         icon="mdi-chart-line"
         icon-color="tertiary"
         :unit="chartUnit"
-        empty-text="暂无价格历史数据"
+        :empty-text="t('ingredients.noPriceHistory')"
         :data="chartData"
         :loading="loadingChartPrices"
         color="#ff9800"
-        avg-label="加权平均"
+        :avg-label="t('ingredients.weightedAverage')"
         class="grid-item item-price-trend"
         @filter-change="onPriceTrendFilterChange"
       />
@@ -340,14 +340,14 @@
       <v-card elevation="0" class="grid-item item-products">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-package-variant</v-icon>
-          关联商品
+          {{ t('ingredients.relatedProducts') }}
           <v-chip size="small" class="ml-2" v-if="products.length > 0">
             {{ products.length }}
           </v-chip>
           <v-spacer />
           <v-btn size="small" variant="text" color="primary" @click="openAddProductDialog">
             <v-icon start>mdi-plus</v-icon>
-            添加
+            {{ t('ingredients.add') }}
           </v-btn>
         </v-card-title>
         <v-divider />
@@ -426,7 +426,7 @@
 
         <v-card-text v-else class="text-center py-8">
           <v-icon size="48" color="medium-emphasis">mdi-package-variant-closed</v-icon>
-          <div class="text-body-2 text-medium-emphasis mt-2">暂无关联商品</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.noRelatedProducts') }}</div>
         </v-card-text>
       </v-card>
 
@@ -434,7 +434,7 @@
       <v-card elevation="0" class="grid-item item-price-records">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-history</v-icon>
-          价格记录
+          {{ t('ingredients.priceRecords') }}
           <v-spacer />
           <v-btn
             v-if="priceRecords.length > 0"
@@ -443,7 +443,7 @@
             color="primary"
             @click="showAddPriceDialog = true"
           >
-            添加记录
+            {{ t('ingredients.addRecord') }}
           </v-btn>
         </v-card-title>
         <v-divider />
@@ -499,7 +499,7 @@
         <!-- 空状态 -->
         <v-card-text v-else class="text-center py-8">
           <v-icon size="64" color="medium-emphasis">mdi-receipt-text-outline</v-icon>
-          <div class="text-body-1 text-medium-emphasis mt-4">暂无价格记录</div>
+          <div class="text-body-1 text-medium-emphasis mt-4">{{ t('ingredients.noPriceRecords') }}</div>
         </v-card-text>
 
         <!-- 分页器 -->
@@ -511,7 +511,7 @@
             rounded="circle"
             density="comfortable"
           />
-          <span class="text-caption text-medium-emphasis">共 {{ priceTotal }} 条</span>
+          <span class="text-caption text-medium-emphasis">{{ t('ingredients.priceTotal', { count: priceTotal }) }}</span>
         </div>
       </v-card>
 
@@ -519,7 +519,7 @@
       <v-card elevation="0" class="grid-item item-recipes">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-chef-hat</v-icon>
-          相关菜谱
+          {{ t('ingredients.relatedRecipes') }}
           <v-chip size="small" class="ml-2" v-if="recipeTotal > 0">
             {{ recipeTotal }}
           </v-chip>
@@ -537,7 +537,7 @@
                 <v-icon color="white">mdi-food</v-icon>
               </v-avatar>
             </template>
-            <v-list-item-title>{{ recipe.name }}<v-chip v-if="!recipe.is_public" size="x-small" color="warning" variant="tonal" class="ml-2">未发布</v-chip></v-list-item-title>
+            <v-list-item-title>{{ recipe.name }}<v-chip v-if="!recipe.is_public" size="x-small" color="warning" variant="tonal" class="ml-2">{{ t('ingredients.unpublished') }}</v-chip></v-list-item-title>
             <v-list-item-subtitle v-if="recipe.category || recipe.usages?.length">
               <div v-if="recipe.category">{{ recipe.category }}</div>
               <div v-if="recipe.usages?.length" class="text-caption text-medium-emphasis mt-1">{{ formatUsages(recipe) }}</div>
@@ -550,7 +550,7 @@
 
         <v-card-text v-else class="text-center py-8">
           <v-icon size="48" color="medium-emphasis">mdi-book-open-variant</v-icon>
-          <div class="text-body-2 text-medium-emphasis mt-2">暂无相关菜谱</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.noRelatedRecipes') }}</div>
         </v-card-text>
 
         <!-- 分页器 -->
@@ -562,7 +562,7 @@
             rounded="circle"
             density="comfortable"
           />
-          <span class="text-caption text-medium-emphasis">共 {{ recipeTotal }} 条</span>
+          <span class="text-caption text-medium-emphasis">{{ t('ingredients.recipeTotal', { count: recipeTotal }) }}</span>
         </div>
       </v-card>
 
@@ -573,8 +573,8 @@
       <v-card elevation="0" class="grid-item item-nutrition" v-if="nutritionData">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
-          营养成分
-          <span class="text-caption text-medium-emphasis ml-2">（每100g）</span>
+          {{ t('ingredients.nutrition') }}
+          <span class="text-caption text-medium-emphasis ml-2">{{ t('ingredients.per100g') }}</span>
           <v-spacer />
           <template v-if="!editingNutrition">
             <v-btn
@@ -585,7 +585,7 @@
               class="text-caption"
               @click="showAllNutrients = !showAllNutrients"
             >
-              {{ showAllNutrients ? '收起' : `展开 +${otherNutrientsCount} 项` }}
+              {{ showAllNutrients ? t('ingredients.collapse') : t('ingredients.expand', { count: otherNutrientsCount }) }}
               <v-icon :icon="showAllNutrients ? 'mdi-chevron-up' : 'mdi-chevron-down'" end />
             </v-btn>
             <v-btn
@@ -596,11 +596,11 @@
               @click="startEditNutrition"
             />
             <v-btn size="small" variant="text" color="primary" prepend-icon="mdi-database-search"
-              @click="usdaDialog = true">匹配 USDA</v-btn>
+              @click="usdaDialog = true">{{ t('ingredients.matchUsda') }}</v-btn>
           </template>
           <template v-else>
-            <v-btn size="small" variant="text" @click="cancelEditNutrition">取消</v-btn>
-            <v-btn size="small" color="primary" variant="text" :loading="savingNutrition" @click="saveNutritionEdit">保存</v-btn>
+            <v-btn size="small" variant="text" @click="cancelEditNutrition">{{ t('ingredients.cancel') }}</v-btn>
+            <v-btn size="small" color="primary" variant="text" :loading="savingNutrition" @click="saveNutritionEdit">{{ t('ingredients.save') }}</v-btn>
           </template>
         </v-card-title>
         <v-divider />
@@ -608,8 +608,8 @@
         <!-- 展示模式 -->
         <v-card-text v-if="!editingNutrition" class="pa-0">
           <div class="nutrition-header d-flex py-2 border-bottom">
-            <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">营养素</div>
-            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 80px">数量</div>
+            <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">{{ t('ingredients.nutrients') }}</div>
+            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 80px">{{ t('ingredients.quantity') }}</div>
             <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 60px">NRV%</div>
           </div>
           <div
@@ -623,21 +623,21 @@
               {{ formatNutritionValue(getNutritionValue(item), getNutritionUnit(item) || item.unit) }}
             </div>
             <div class="text-body-2 text-end pe-4" style="min-width: 60px">
-              {{ getNutritionNRV(item) }}%
+              {{ formatNumber(getNutritionNRV(item), localeStore.effectiveFormatLocale) }}%
             </div>
           </div>
 
           <div class="mt-4 text-caption text-medium-emphasis ps-4">
-            NRV = 营养素参考值百分比
+            {{ t('ingredients.nrvDescription') }}
           </div>
         </v-card-text>
 
         <!-- 编辑模式 -->
         <v-card-text v-else class="pa-0">
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
-            <div class="text-caption text-medium-emphasis ps-2">营养素</div>
-            <div class="text-caption text-medium-emphasis text-end">数量</div>
-            <div class="text-caption text-medium-emphasis text-end">单位</div>
+            <div class="text-caption text-medium-emphasis ps-2">{{ t('ingredients.nutrients') }}</div>
+            <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.quantity') }}</div>
+            <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.unit') }}</div>
             <div></div>
           </div>
           <div
@@ -655,7 +655,7 @@
                 variant="outlined"
                 density="compact"
                 hide-details
-                placeholder="选择营养素"
+                :placeholder="t('ingredients.chooseNutrient')"
                 class="nutrition-edit-input"
                 @update:model-value="(v: string) => onNutrientKeyChange(index, v)"
               >
@@ -699,7 +699,7 @@
           </div>
           <!-- 空状态指引 -->
           <div v-if="nutritionEditItems.length === 0" class="text-center py-4">
-            <span class="text-caption text-medium-emphasis">暂无营养素，点击下方按钮添加</span>
+            <span class="text-caption text-medium-emphasis">{{ t('ingredients.noNutrients') }}</span>
           </div>
           <div class="pa-3">
             <v-btn
@@ -709,7 +709,7 @@
               prepend-icon="mdi-plus"
               @click="addEmptyNutrientRow"
             >
-              添加营养素
+              {{ t('ingredients.addNutrient') }}
             </v-btn>
           </div>
         </v-card-text>
@@ -719,8 +719,8 @@
       <v-card v-else elevation="0" class="grid-item item-nutrition">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
-          营养成分
-          <span class="text-caption text-medium-emphasis ml-2">（每100g）</span>
+          {{ t('ingredients.nutrition') }}
+          <span class="text-caption text-medium-emphasis ml-2">{{ t('ingredients.per100g') }}</span>
           <v-spacer />
           <v-btn
             v-if="!loadingNutrition"
@@ -731,24 +731,24 @@
             @click="startEditNutrition"
           />
           <v-btn v-if="!loadingNutrition" size="small" variant="text" color="primary" prepend-icon="mdi-database-search"
-            @click="usdaDialog = true">匹配 USDA</v-btn>
+            @click="usdaDialog = true">{{ t('ingredients.matchUsda') }}</v-btn>
         </v-card-title>
         <v-divider />
         <!-- 懒加载中状态 -->
         <v-card-text v-if="loadingNutrition && !editingNutrition" class="text-center py-6">
           <v-progress-circular indeterminate size="28" />
-          <div class="text-body-2 text-medium-emphasis mt-2">加载中...</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.loading') }}</div>
         </v-card-text>
         <v-card-text v-else-if="!editingNutrition" class="text-center py-8">
           <v-icon size="48" color="medium-emphasis">mdi-food-apple-outline</v-icon>
-          <div class="text-body-2 text-medium-emphasis mt-2">暂无营养数据</div>
-          <div class="text-caption text-medium-emphasis mt-1">点击编辑按钮添加</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.noNutritionData') }}</div>
+          <div class="text-caption text-medium-emphasis mt-1">{{ t('ingredients.clickEditAdd') }}</div>
         </v-card-text>
         <v-card-text v-else class="pa-0">
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
-            <div class="text-caption text-medium-emphasis ps-2">营养素</div>
-            <div class="text-caption text-medium-emphasis text-end">数量</div>
-            <div class="text-caption text-medium-emphasis text-end">单位</div>
+            <div class="text-caption text-medium-emphasis ps-2">{{ t('ingredients.nutrients') }}</div>
+            <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.quantity') }}</div>
+            <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.unit') }}</div>
             <div></div>
           </div>
           <div
@@ -766,7 +766,7 @@
                 variant="outlined"
                 density="compact"
                 hide-details
-                placeholder="选择营养素"
+                :placeholder="t('ingredients.chooseNutrient')"
                 class="nutrition-edit-input"
                 @update:model-value="(v: string) => onNutrientKeyChange(index, v)"
               >
@@ -802,15 +802,15 @@
             </div>
           </div>
           <div v-if="nutritionEditItems.length === 0" class="text-center py-4">
-            <span class="text-caption text-medium-emphasis">暂无营养素，点击下方按钮添加</span>
+            <span class="text-caption text-medium-emphasis">{{ t('ingredients.noNutrients') }}</span>
           </div>
           <div class="pa-3">
             <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="addEmptyNutrientRow">
-              添加营养素
+              {{ t('ingredients.addNutrient') }}
             </v-btn>
             <div class="d-flex justify-end mt-3">
-              <v-btn size="small" variant="text" @click="cancelEditNutrition">取消</v-btn>
-              <v-btn size="small" color="primary" variant="text" :loading="savingNutrition" @click="saveNutritionEdit">保存</v-btn>
+              <v-btn size="small" variant="text" @click="cancelEditNutrition">{{ t('ingredients.cancel') }}</v-btn>
+              <v-btn size="small" color="primary" variant="text" :loading="savingNutrition" @click="saveNutritionEdit">{{ t('ingredients.save') }}</v-btn>
             </div>
           </div>
         </v-card-text>
@@ -822,7 +822,7 @@
       <v-card elevation="0" class="grid-item item-hierarchy">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="info">mdi-graph</v-icon>
-          层级关系
+          {{ t('ingredients.hierarchy') }}
           <v-spacer />
           <v-btn
             size="small"
@@ -831,7 +831,7 @@
             prepend-icon="mdi-plus"
             @click="openAddRelationDialog"
           >
-            添加关系
+            {{ t('ingredients.addRelation') }}
           </v-btn>
         </v-card-title>
         <v-divider />
@@ -850,20 +850,20 @@
         <v-card-text v-if="hasRelations" class="pt-0">
           <v-alert type="info" variant="tonal" density="compact">
             <template #title>
-              <span class="text-caption">关系说明</span>
+              <span class="text-caption">{{ t('ingredients.relationExplanation') }}</span>
             </template>
             <div class="text-caption">
               <div class="d-flex align-center ga-2 mb-1">
                 <v-chip size="x-small" color="info">●</v-chip>
-                <span>实线 - 包含关系（父→子）</span>
+                <span>{{ t('ingredients.solidContains') }}</span>
               </div>
               <div class="d-flex align-center ga-2 mb-1">
                 <v-chip size="x-small" color="warning">┄</v-chip>
-                <span>虚线 - 回退关系（找不到数据时可回退）</span>
+                <span>{{ t('ingredients.dashedFallback') }}</span>
               </div>
               <div class="d-flex align-center ga-2">
                 <v-chip size="x-small" color="success">┈</v-chip>
-                <span>点线 - 可替代关系（相互替代）</span>
+                <span>{{ t('ingredients.dottedAlternative') }}</span>
               </div>
             </div>
           </v-alert>
@@ -872,15 +872,15 @@
         <!-- 加载中 -->
         <v-card-text v-if="loadingHierarchy" class="text-center py-6">
           <v-progress-circular indeterminate size="28" />
-          <div class="text-body-2 text-medium-emphasis mt-2">加载中...</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.loading') }}</div>
         </v-card-text>
 
         <!-- 空状态 -->
         <v-card-text v-else-if="!hasRelations" class="text-center py-8">
           <v-icon size="48" color="medium-emphasis">mdi-graph-outline</v-icon>
-          <div class="text-body-2 text-medium-emphasis mt-2">暂无层级关系</div>
+          <div class="text-body-2 text-medium-emphasis mt-2">{{ t('ingredients.noHierarchy') }}</div>
           <div class="text-caption text-medium-emphasis mt-1">
-            可以设置原料之间的包含、回退或可替代关系
+            {{ t('ingredients.hierarchyHint') }}
           </div>
         </v-card-text>
       </v-card>
@@ -889,7 +889,7 @@
       <v-card v-if="hasRelations" elevation="0" class="grid-item item-relation-list">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-format-list-bulleted</v-icon>
-          关系列表
+          {{ t('ingredients.relationList') }}
         </v-card-title>
         <v-divider />
 
@@ -897,7 +897,7 @@
         <v-list density="compact">
           <!-- 子关系（当前原料是父，包含/回退到其他原料） -->
           <template v-if="hierarchyData?.child_relations?.length">
-            <v-list-subheader>包含/可回退到</v-list-subheader>
+            <v-list-subheader>{{ t('ingredients.containsOrFallback') }}</v-list-subheader>
             <v-list-item
               v-for="rel in hierarchyData.child_relations"
               :key="rel.id"
@@ -914,7 +914,7 @@
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
-                    <span class="ml-2">强度: {{ Math.round(rel.strength) }}%</span>
+                    <span class="ml-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -938,8 +938,7 @@
 
           <!-- 父关系（当前原料是子，被其他原料包含/回退） -->
           <template v-if="hierarchyData?.parent_relations?.length">
-            <v-list-subheader v-if="hierarchyData.child_relations?.length">所属关系</v-list-subheader>
-            <v-list-subheader v-else>所属关系</v-list-subheader>
+            <v-list-subheader>{{ t('ingredients.memberRelation') }}</v-list-subheader>
             <v-list-item
               v-for="rel in hierarchyData.parent_relations"
               :key="rel.id"
@@ -956,7 +955,7 @@
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
-                    <span class="ml-2">强度: {{ Math.round(rel.strength) }}%</span>
+                    <span class="ml-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -984,14 +983,14 @@
       <v-card elevation="0" class="grid-item item-units">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="secondary">mdi-ruler</v-icon>
-          单位与密度
+          {{ t('ingredients.unitsAndDensity') }}
         </v-card-title>
         <v-divider />
 
         <!-- 自定义单位列表 -->
         <v-card-text class="pb-0">
           <div class="d-flex align-center mb-2">
-            <span class="text-body-2 font-weight-medium">自定义单位</span>
+            <span class="text-body-2 font-weight-medium">{{ t('ingredients.customUnits') }}</span>
             <v-spacer />
             <v-btn
               size="small"
@@ -1000,14 +999,14 @@
               prepend-icon="mdi-plus"
               @click="openUnitDialog()"
             >
-              添加单位
+              {{ t('ingredients.addUnit') }}
             </v-btn>
           </div>
 
           <!-- 待配置单位（来自菜谱的 count 类型单位，尚未映射） -->
           <div v-if="unmappedUnits.length > 0" class="mb-3">
             <div class="text-caption text-medium-emphasis mb-1">
-              待配置单位（来自菜谱，点击快速添加，默认 100 g）
+              {{ t('ingredients.pendingUnitsHint') }}
             </div>
             <v-chip
               v-for="item in unmappedUnits"
@@ -1020,7 +1019,7 @@
               @click="quickAddUnmappedUnit(item)"
             >
               {{ item.unit_name }}
-              <span class="text-caption ml-1">({{ item.usage_count }}次)</span>
+              <span class="text-caption ml-1">({{ item.usage_count }})</span>
             </v-chip>
           </div>
 
@@ -1040,19 +1039,19 @@
                 </v-chip>
               </template>
               <v-list-item-title class="text-body-2">
-                <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ unit.conversion_factor }}个</span>
+                <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ unit.conversion_factor }}</span>
                 <span v-if="unit.weight_per_unit" class="ml-2">
                   <v-icon size="x-small">mdi-weight</v-icon>
-                  {{ unit.weight_per_unit }}g/个
+                  {{ unit.weight_per_unit }}g
                 </span>
-                <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">待审</v-chip>
+                <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('ingredients.pending') }}</v-chip>
               </v-list-item-title>
               <v-list-item-subtitle class="text-caption">
                 <template v-if="unit.is_default">
-                  <span class="text-primary">默认单位</span>
+                  <span class="text-primary">{{ t('ingredients.defaultUnit') }}</span>
                   <span class="mx-1">·</span>
                 </template>
-                <span class="text-medium-emphasis">{{ unit.source === 'import' ? '自动' : '手动' }}</span>
+                <span class="text-medium-emphasis">{{ unit.source === 'import' ? t('ingredients.sourceAuto') : t('ingredients.sourceManual') }}</span>
               </v-list-item-subtitle>
               <template #append>
                 <v-btn
@@ -1077,7 +1076,7 @@
 
           <div v-else class="text-center py-4">
             <v-icon size="32" color="medium-emphasis">mdi-ruler</v-icon>
-            <div class="text-caption text-medium-emphasis mt-1">暂无自定义单位</div>
+            <div class="text-caption text-medium-emphasis mt-1">{{ t('ingredients.noCustomUnits') }}</div>
           </div>
         </v-card-text>
 
@@ -1086,7 +1085,7 @@
         <!-- 密度管理 -->
         <v-card-text>
           <div class="d-flex align-center mb-2">
-            <span class="text-body-2 font-weight-medium">密度信息</span>
+            <span class="text-body-2 font-weight-medium">{{ t('ingredients.densityInfo') }}</span>
             <v-spacer />
             <v-btn
               v-if="!displayDensity"
@@ -1096,7 +1095,7 @@
               prepend-icon="mdi-plus"
               @click="openDensityDialog()"
             >
-              设置密度
+              {{ t('ingredients.setDensity') }}
             </v-btn>
             <template v-else-if="!(displayDensity as any)._pending">
               <v-btn
@@ -1128,22 +1127,22 @@
               color="primary"
               class="ml-1 cursor-pointer"
               @click="toggleDisplayDensityUnit"
-              :title="'点击切换为 ' + (densityDisplayUnit === 'g/cm3' ? 'kg/m³' : 'g/cm³')"
+              :title="t('ingredients.toggleDensityUnit', { unit: densityDisplayUnit === 'g/cm3' ? 'kg/m³' : 'g/cm³' })"
             >
               {{ densityDisplayUnit === 'g/cm3' ? 'g/cm³' : 'kg/m³' }}
               <v-icon end size="x-small">mdi-swap-horizontal</v-icon>
             </v-chip>
-            <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">待审</v-chip>
+            <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('ingredients.pending') }}</v-chip>
             <span v-if="displayDensity.temperature" class="text-caption text-medium-emphasis ml-2">
               ({{ displayDensity.temperature }}°C)
             </span>
             <span v-if="displayDensity.source" class="text-caption text-medium-emphasis ml-2">
-              来源: {{ displayDensity.source }}
+              {{ t('ingredients.source') }}: {{ displayDensity.source }}
             </span>
           </div>
           <div v-else class="text-center py-4">
             <v-icon size="32" color="medium-emphasis">mdi-water-off</v-icon>
-            <div class="text-caption text-medium-emphasis mt-1">暂未设置密度</div>
+            <div class="text-caption text-medium-emphasis mt-1">{{ t('ingredients.noDensity') }}</div>
           </div>
         </v-card-text>
       </v-card>
@@ -1161,7 +1160,7 @@
           class="mb-2"
           @click="showMergeDialog = true"
         >
-          合并到其他原料
+          {{ t('ingredients.mergeIntoOther') }}
         </v-btn>
         <v-btn
           color="error"
@@ -1170,45 +1169,45 @@
           prepend-icon="mdi-delete"
           @click="confirmDelete"
         >
-          删除原料
+          {{ t('ingredients.deleteIngredient') }}
         </v-btn>
       </div>
 
       <!-- 添加/编辑单位对话框 -->
       <v-dialog v-model="showUnitDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ unitForm.id ? '编辑单位' : '添加单位' }}</v-card-title>
+          <v-card-title>{{ unitForm.id ? t('ingredients.editUnit') : t('ingredients.addUnitTitle') }}</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveEntityUnit">
               <v-text-field
                 v-model="unitForm.unit_name"
-                label="单位名称"
+                :label="t('ingredients.unitName')"
                 variant="outlined"
-                placeholder="如：盒(12个)、根、袋"
+                :placeholder="t('ingredients.unitNamePlaceholder')"
                 required
                 class="mb-3"
               />
               <v-text-field
                 v-model.number="unitForm.conversion_factor"
-                label="换算系数"
+                :label="t('ingredients.conversionFactor')"
                 variant="outlined"
                 type="number"
-                hint="1单位 = 几个基础单位"
+                :hint="t('ingredients.conversionHint')"
                 persistent-hint
                 class="mb-3"
               />
               <v-text-field
                 v-model.number="unitForm.weight_per_unit"
-                label="单个重量 (g)"
+                :label="t('ingredients.weightPerUnit')"
                 variant="outlined"
                 type="number"
-                hint="每个单位对应的重量（克）"
+                :hint="t('ingredients.weightHint')"
                 persistent-hint
                 class="mb-3"
               />
               <v-checkbox
                 v-model="unitForm.is_default"
-                label="设为默认单位"
+                :label="t('ingredients.setDefaultUnit')"
                 density="compact"
                 hide-details
               />
@@ -1216,8 +1215,8 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn @click="showUnitDialog = false">取消</v-btn>
-            <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">保存</v-btn>
+            <v-btn @click="showUnitDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+            <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">{{ t('ingredients.save') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -1225,13 +1224,13 @@
       <!-- 添加/编辑密度对话框 -->
       <v-dialog v-model="showDensityDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ densityForm.id ? '编辑密度' : '设置密度' }}</v-card-title>
+          <v-card-title>{{ densityForm.id ? t('ingredients.editDensity') : t('ingredients.setDensityTitle') }}</v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveDensity">
               <div class="d-flex align-start ga-2 mb-3">
                 <v-text-field
                   v-model.number="densityForm.density"
-                  :label="'密度 (' + densityInputUnitLabel + ')'"
+                  :label="t('ingredients.density', { unit: densityInputUnitLabel })"
                   variant="outlined"
                   type="number"
                   required
@@ -1252,24 +1251,24 @@
               </div>
               <v-text-field
                 v-model.number="densityForm.temperature"
-                label="参考温度 (°C)"
+                :label="t('ingredients.referenceTemperature')"
                 variant="outlined"
                 type="number"
                 class="mb-3"
               />
               <v-text-field
                 v-model="densityForm.source"
-                label="来源"
+                :label="t('ingredients.source')"
                 variant="outlined"
-                placeholder="如：实测、USDA"
+                :placeholder="t('ingredients.sourcePlaceholder')"
                 class="mb-3"
               />
             </v-form>
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn @click="showDensityDialog = false">取消</v-btn>
-            <v-btn color="primary" :loading="savingDensity" @click="saveDensity">保存</v-btn>
+            <v-btn @click="showDensityDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+            <v-btn color="primary" :loading="savingDensity" @click="saveDensity">{{ t('ingredients.save') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -1278,17 +1277,17 @@
     <!-- 添加价格记录对话框 -->
     <v-dialog v-model="showAddPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>添加价格记录</v-card-title>
+        <v-card-title>{{ t('ingredients.addPriceRecord') }}</v-card-title>
         <v-card-text>
           <v-alert type="info" class="mb-4">
-            请先选择一个关联商品，然后为其添加价格记录
+            {{ t('ingredients.selectRelatedProductFirst') }}
           </v-alert>
           <v-autocomplete
             v-model="selectedPriceProduct"
             :items="products"
-            item-title="name"
+            :item-title="(item: any) => item.display_name || item.name"
             item-value="id"
-            label="选择商品"
+            :label="t('ingredients.selectProduct')"
             variant="outlined"
             required
             return-object
@@ -1296,13 +1295,13 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showAddPriceDialog = false">取消</v-btn>
+          <v-btn @click="showAddPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :disabled="!priceForm.product_id"
             @click="goToAddPrice"
           >
-            前往添加
+            {{ t('ingredients.goToAdd') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1311,19 +1310,19 @@
     <!-- 编辑价格记录对话框 -->
     <v-dialog v-model="showEditPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>编辑价格记录</v-card-title>
+        <v-card-title>{{ t('ingredients.editPriceRecord') }}</v-card-title>
         <v-card-text>
           <div class="text-body-2 text-medium-emphasis mb-3">
-            商品：{{ editingPriceRecord?.product_name }}
+            {{ t('ingredients.product') }}：{{ editingPriceRecord?.product_name }}
           </div>
           <v-form @submit.prevent="saveEditPriceRecord">
             <!-- 商家（置于商品前） -->
             <v-autocomplete
               v-model="editPriceForm.merchant_id"
               :items="merchants"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="商家（可选）"
+              :label="t('ingredients.merchantOptional')"
               variant="outlined"
               clearable
               class="mb-4"
@@ -1334,7 +1333,7 @@
             <div class="d-flex align-center ga-2 mb-4">
               <v-text-field
                 v-model.number="editPriceForm.price"
-                label="价格 *"
+                :label="t('ingredients.priceRequired')"
                 variant="outlined"
                 type="number"
                 step="0.01"
@@ -1343,13 +1342,13 @@
               />
               <v-menu :close-on-content-click="true" location="bottom">
                 <template #activator="{ props: menuProps }">
-                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ editPriceCurrency }}</v-btn>
+                  <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('ingredients.selectCurrency')">{{ editPriceCurrency }}</v-btn>
                 </template>
                 <v-list density="compact">
                   <v-list-item
                     v-for="c in editPriceCurrencies"
                     :key="c.code"
-                    :title="`${c.name} ${c.code}`"
+                    :title="`${c.display_name || c.name} ${c.code}`"
                     :active="editPriceCurrency === c.code"
                     @click="editPriceCurrency = c.code"
                   />
@@ -1361,7 +1360,7 @@
               <v-col cols="6">
                 <v-text-field
                   v-model.number="editPriceForm.quantity"
-                  label="数量"
+                  :label="t('ingredients.quantity')"
                   variant="outlined"
                   type="number"
                   required
@@ -1371,7 +1370,7 @@
                 <v-select
                   v-model="editPriceForm.unit"
                   :items="unitOptions"
-                  label="单位"
+                  :label="t('ingredients.unit')"
                   variant="outlined"
                   required
                 />
@@ -1381,8 +1380,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showEditPriceDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingPrice" @click="saveEditPriceRecord">保存</v-btn>
+          <v-btn @click="showEditPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingPrice" @click="saveEditPriceRecord">{{ t('ingredients.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1390,18 +1389,18 @@
     <!-- 合并对话框 -->
     <v-dialog v-model="showMergeDialog" max-width="500">
       <v-card>
-        <v-card-title>合并原料</v-card-title>
+        <v-card-title>{{ t('ingredients.mergeTitle') }}</v-card-title>
         <v-card-text>
           <v-alert type="warning" class="mb-4">
-            合并后，当前原料的菜谱引用、商品关联将迁移到目标原料，此操作不可恢复！
+            {{ t('ingredients.mergeDescription') }}
           </v-alert>
           <v-autocomplete
             v-model="selectedMergeTarget"
             v-model:search="mergeSearchQuery"
             :items="mergeTargets"
-            item-title="name"
+            :item-title="(item: any) => item.display_name || item.name"
             item-value="id"
-            label="选择目标原料"
+            :label="t('ingredients.targetIngredient')"
             variant="outlined"
             :loading="loadingMergeTargets"
             hide-selected
@@ -1412,14 +1411,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showMergeDialog = false">取消</v-btn>
+          <v-btn @click="showMergeDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
             color="warning"
             :loading="merging"
             :disabled="!mergeTargetId"
             @click="mergeIngredient"
           >
-            确认合并
+            {{ t('ingredients.confirmMerge') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1428,16 +1427,16 @@
     <!-- 合并确认对话框 -->
     <v-dialog v-model="showMergeConfirmDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-warning">确认合并</v-card-title>
+        <v-card-title class="text-warning">{{ t('ingredients.confirmMerge') }}</v-card-title>
         <v-card-text>
-          确定要将「{{ ingredient?.name }}」合并到「{{ selectedMergeTarget?.name }}」吗？
+          {{ t('ingredients.mergeConfirmText', { source: ingredient?.name, target: selectedMergeTarget?.name }) }}
           <br /><br />
-          <span class="text-error">此操作不可恢复！</span>
+          <span class="text-error">{{ t('ingredients.irreversible') }}</span>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showMergeConfirmDialog = false">取消</v-btn>
-          <v-btn color="warning" :loading="merging" @click="doMerge">确认合并</v-btn>
+          <v-btn @click="showMergeConfirmDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="warning" :loading="merging" @click="doMerge">{{ t('ingredients.confirmMerge') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1445,21 +1444,21 @@
     <!-- 添加层级关系对话框 -->
     <v-dialog v-model="showAddRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>添加层级关系</v-card-title>
+        <v-card-title>{{ t('ingredients.addRelationTitle') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="addRelation">
             <v-autocomplete
               v-model="selectedTargetIngredient"
               v-model:search="ingredientSearchQuery"
               :items="availableIngredients"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="选择原料"
+              :label="t('ingredients.selectIngredient')"
               variant="outlined"
               required
               :loading="loadingIngredients"
               class="mb-4"
-              hint="输入名称搜索原料"
+              :hint="t('ingredients.searchIngredient')"
               persistent-hint
               hide-selected
               auto-select-first
@@ -1472,7 +1471,7 @@
               :items="relationTypeOptions"
               item-title="label"
               item-value="value"
-              label="关系类型"
+              :label="t('ingredients.relationType')"
               variant="outlined"
               required
               class="mb-4"
@@ -1494,7 +1493,7 @@
 
             <v-slider
               v-model="relationForm.strength"
-              label="关系强度"
+              :label="t('ingredients.relationStrength')"
               :min="1"
               :max="100"
               :step="1"
@@ -1503,10 +1502,10 @@
               class="mb-4"
             >
               <template #thumb-label="{ modelValue }">
-                {{ Math.round(modelValue) }}%
+                {{ formatNumber(Math.round(modelValue), localeStore.effectiveFormatLocale) }}%
               </template>
               <template #append>
-                <v-chip size="small">{{ Math.round(relationForm.strength) }}%</v-chip>
+                <v-chip size="small">{{ formatNumber(Math.round(relationForm.strength), localeStore.effectiveFormatLocale) }}%</v-chip>
               </template>
             </v-slider>
 
@@ -1529,14 +1528,14 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showAddRelationDialog = false">取消</v-btn>
+          <v-btn @click="showAddRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="savingRelation"
             :disabled="!relationForm.target_ingredient_id"
             @click="addRelation"
           >
-            添加
+            {{ t('ingredients.add') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1545,7 +1544,7 @@
     <!-- 编辑层级关系对话框 -->
     <v-dialog v-model="showEditRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>编辑层级关系</v-card-title>
+        <v-card-title>{{ t('ingredients.editRelation') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="saveEditRelation">
             <!-- 关系预览 -->
@@ -1567,7 +1566,7 @@
               :items="relationTypeOptions"
               item-title="label"
               item-value="value"
-              label="关系类型"
+              :label="t('ingredients.relationType')"
               variant="outlined"
               required
               class="mb-4"
@@ -1589,7 +1588,7 @@
 
             <v-slider
               v-model="editRelationForm.strength"
-              label="关系强度"
+              :label="t('ingredients.relationStrength')"
               :min="1"
               :max="100"
               :step="1"
@@ -1597,23 +1596,23 @@
               :hints="true"
             >
               <template #thumb-label="{ modelValue }">
-                {{ Math.round(modelValue) }}%
+                {{ formatNumber(Math.round(modelValue), localeStore.effectiveFormatLocale) }}%
               </template>
               <template #append>
-                <v-chip size="small">{{ Math.round(editRelationForm.strength) }}%</v-chip>
+                <v-chip size="small">{{ formatNumber(Math.round(editRelationForm.strength), localeStore.effectiveFormatLocale) }}%</v-chip>
               </template>
             </v-slider>
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showEditRelationDialog = false">取消</v-btn>
+          <v-btn @click="showEditRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
             color="primary"
             :loading="savingRelation"
             @click="saveEditRelation"
           >
-            保存
+            {{ t('ingredients.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1622,14 +1621,14 @@
     <!-- 删除关系确认对话框 -->
     <v-dialog v-model="showDeleteRelationDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-error">确认删除关系</v-card-title>
+        <v-card-title class="text-error">{{ t('ingredients.confirmDeleteRelation') }}</v-card-title>
         <v-card-text>
-          确定要删除这个层级关系吗？
+          {{ t('ingredients.deleteRelationConfirm') }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showDeleteRelationDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="deletingRelation" @click="deleteRelation">删除</v-btn>
+          <v-btn @click="showDeleteRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deletingRelation" @click="deleteRelation">{{ t('ingredients.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1637,14 +1636,14 @@
     <!-- 确认删除对话框 -->
     <v-dialog v-model="showDeleteDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-error">确认删除</v-card-title>
+        <v-card-title class="text-error">{{ t('ingredients.confirmDelete') }}</v-card-title>
         <v-card-text>
-          确定要删除原料「{{ ingredient?.name }}」吗？此操作不可恢复。
+          {{ t('ingredients.deleteIngredientConfirm', { name: ingredient?.name }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showDeleteDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="deleting" @click="deleteIngredient">删除</v-btn>
+          <v-btn @click="showDeleteDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deleting" @click="deleteIngredient">{{ t('ingredients.deleteIngredient') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1653,19 +1652,19 @@
     <!-- 添加/编辑商品对话框 -->
     <v-dialog v-model="showProductDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ isEditingProduct ? '编辑商品' : '添加商品' }}</v-card-title>
+        <v-card-title>{{ isEditingProduct ? t('ingredients.editProduct') : t('ingredients.addProduct') }}</v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
               v-model="productForm.name"
-              label="商品名称"
+              :label="t('ingredients.productName')"
               variant="outlined"
               required
               class="mb-4"
             />
             <v-text-field
               v-model="productForm.brand"
-              label="品牌"
+              :label="t('ingredients.brand')"
               variant="outlined"
               class="mb-4"
             />
@@ -1677,19 +1676,19 @@
             />
             <v-combobox
               v-model="productForm.aliases"
-              label="别名"
+              :label="t('ingredients.productAliases')"
               variant="outlined"
               multiple
               chips
               closable-chips
-              hint="输入后回车添加多个别名"
+              :hint="t('ingredients.productAliasesHint')"
             />
             <!-- 价格权重区（与上方分隔，避免 hint 贴连） -->
             <div class="mt-4">
               <!-- 全局权重：仅管理员可改；普通用户整块不渲染 -->
               <div v-if="userStore.user?.is_admin" class="mb-4">
                 <div class="text-caption text-medium-emphasis mb-1">
-                  全局价格权重 <span class="text-disabled">（原料加权平均用；50=等权，0=排除该商品）</span>
+                  {{ t('ingredients.globalPriceWeight') }} <span class="text-disabled">{{ t('ingredients.globalPriceWeightHint') }}</span>
                 </div>
                 <v-slider
                   v-model="productForm.priceWeight"
@@ -1709,13 +1708,13 @@
               <div>
                 <v-switch
                   v-model="productForm.myWeightEnabled"
-                  label="覆盖全局权重（仅影响我）"
+                  :label="t('ingredients.overrideGlobalWeight')"
                   density="compact"
                   color="tertiary"
                   hide-details
                 />
                 <div class="text-caption text-medium-emphasis mb-1">
-                  全局默认：{{ productForm.globalWeightReadOnly }}（不覆盖即用此值）
+                  {{ t('ingredients.globalDefault', { value: productForm.globalWeightReadOnly }) }}
                 </div>
                 <v-slider
                   v-if="productForm.myWeightEnabled"
@@ -1737,8 +1736,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showProductDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingProduct" @click="saveProduct">保存</v-btn>
+          <v-btn @click="showProductDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingProduct" @click="saveProduct">{{ t('ingredients.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -1746,14 +1745,14 @@
     <!-- 删除商品确认对话框 -->
     <v-dialog v-model="showDeleteProductDialog" max-width="400">
       <v-card>
-        <v-card-title class="text-error">确认删除商品</v-card-title>
+        <v-card-title class="text-error">{{ t('ingredients.deleteProductTitle') }}</v-card-title>
         <v-card-text>
-          确定要删除商品「{{ deletingProduct?.name }}」吗？此操作不可恢复。
+          {{ t('ingredients.deleteProductConfirm', { name: deletingProduct?.name }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showDeleteProductDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="deletingProductLoading" @click="deleteProduct">删除</v-btn>
+          <v-btn @click="showDeleteProductDialog = false">{{ t('ingredients.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deletingProductLoading" @click="deleteProduct">{{ t('ingredients.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -2066,7 +2065,7 @@ async function handleBarcodeLookup(code: string) {
     if (result.found) {
       if (!productForm.value.name.trim()) productForm.value.name = result.product.name || ''
       if (!productForm.value.brand.trim()) productForm.value.brand = result.product.brand || ''
-      showMessage('已按条码填入商品信息', 'success')
+      showMessage(t('ingredients.barcodeFilled'), 'success')
     } else {
       showMessage(result.errors[0] || '未找到条码商品信息', 'info')
     }
@@ -2119,7 +2118,7 @@ const openEditProductDialog = (product: Product) => {
 // 保存商品（新增或编辑）
 const saveProduct = async () => {
   if (!productForm.value.name.trim()) {
-    showMessage('商品名称不能为空', 'error')
+    showMessage(t('ingredients.productNameRequired'), 'error')
     return
   }
   savingProduct.value = true
@@ -2150,9 +2149,9 @@ const saveProduct = async () => {
         if (idx !== -1) {
           products.value[idx] = { ...products.value[idx], ...response }
         }
-        showMessage('商品已更新', 'success')
+        showMessage(t('ingredients.productUpdated'), 'success')
       } else {
-        showMessage('已提交，待管理员审核', 'info')
+        showMessage(t('ingredients.proposalSubmitted'), 'info')
       }
     } else {
       // 新增
@@ -2164,7 +2163,7 @@ const saveProduct = async () => {
         aliases: productForm.value.aliases,
       })
       products.value.push(response)
-      showMessage('商品已添加', 'success')
+      showMessage(t('ingredients.productAdded'), 'success')
     }
     showProductDialog.value = false
     // 权重/商品变更后刷新依赖加权的数据：最新价、各商家代表价、趋势权重
@@ -2173,7 +2172,7 @@ const saveProduct = async () => {
     loadMerchantPrices()
     loadProductWeights()
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.saveFailed'), 'error')
   } finally {
     savingProduct.value = false
   }
@@ -2182,7 +2181,7 @@ const saveProduct = async () => {
 // 打开删除商品对话框
 const openDeleteProductDialog = (product: Product) => {
   if (products.value.length <= 1) {
-    showMessage('该原料只有一个关联商品，无法删除', 'warning')
+    showMessage(t('ingredients.cannotDeleteOnlyProduct'), 'warning')
     return
   }
   deletingProduct.value = product
@@ -2197,9 +2196,9 @@ const deleteProduct = async () => {
     await api.delete(`/products/entity/${deletingProduct.value.id}`)
     if (userStore.user?.is_admin) {
       products.value = products.value.filter(p => p.id !== deletingProduct.value!.id)
-      showMessage('商品已删除', 'success')
+      showMessage(t('ingredients.productDeleted'), 'success')
     } else {
-      showMessage('删除提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.deleteProposalSubmitted'), 'info')
     }
     showDeleteProductDialog.value = false
     deletingProduct.value = null
@@ -2208,7 +2207,7 @@ const deleteProduct = async () => {
     loadMerchantPrices()
     loadProductWeights()
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '删除失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.deleteFailed'), 'error')
   } finally {
     deletingProductLoading.value = false
   }
@@ -2233,22 +2232,22 @@ const nutritionData = ref<any>(null)
 const nutritionPendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
 
 const pendingItemLabels: Record<string, string> = {
-  entity_unit_override: '自定义单位',
-  entity_density: '密度',
-  hierarchy: '层级关系',
-  nutrition: '营养成分',
+  entity_unit_override: t('ingredients.customUnits'),
+  entity_density: t('ingredients.densityInfo'),
+  hierarchy: t('ingredients.hierarchy'),
+  nutrition: t('ingredients.nutrition'),
 }
 
 const ingredientPendingFieldLabels: Record<string, string> = {
-  name: '名称',
-  category_id: '分类',
-  aliases: '别名',
-  density: '密度',
-  default_unit_id: '默认单位',
-  piece_weight: '单个重量',
-  piece_weight_unit_id: '单个重量单位',
-  serving_weight: '每份重量',
-  serving_weight_unit_id: '每份重量单位',
+  name: t('ingredients.name'),
+  category_id: t('ingredients.category'),
+  aliases: t('ingredients.aliases'),
+  density: t('ingredients.densityInfo'),
+  default_unit_id: t('ingredients.defaultUnit'),
+  piece_weight: t('ingredients.pieceWeight'),
+  piece_weight_unit_id: t('ingredients.pieceWeightUnit'),
+  serving_weight: t('ingredients.servingWeight'),
+  serving_weight_unit_id: t('ingredients.servingWeightUnit'),
 }
 
 const ingredientPendingProposals = computed(() => {
@@ -2753,7 +2752,7 @@ const quickAddUnmappedUnit = (item: UnmappedUnitItem) => {
 // 保存单位
 const saveEntityUnit = async () => {
   if (!unitForm.value.unit_name.trim()) {
-    showMessage('请输入单位名称', 'error')
+    showMessage(t('ingredients.unitNameRequired'), 'error')
     return
   }
   savingUnit.value = true
@@ -2770,16 +2769,16 @@ const saveEntityUnit = async () => {
       await api.post(`/entities/ingredient/${ingredientId.value}/units`, payload)
     }
     if (userStore.user?.is_admin) {
-      showMessage('保存成功', 'success')
+      showMessage(t('ingredients.saved'), 'success')
       showUnitDialog.value = false
       await loadEntityUnits()
       await loadUnmappedUnits()
     } else {
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
       showUnitDialog.value = false
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.saveFailed'), 'error')
   } finally {
     savingUnit.value = false
   }
@@ -2787,18 +2786,18 @@ const saveEntityUnit = async () => {
 
 // 删除单位
 const deleteEntityUnit = async (unitId: number) => {
-  if (!(await ask({ text: '确定删除此自定义单位？', color: 'error', confirmText: '删除' }))) return
+  if (!(await ask({ text: t('ingredients.deleteUnitConfirm'), color: 'error', confirmText: t('ingredients.delete') }))) return
   try {
     await api.delete(`/entities/ingredient/${ingredientId.value}/units/${unitId}`)
     if (userStore.user?.is_admin) {
-      showMessage('删除成功', 'success')
+      showMessage(t('ingredients.deleted'), 'success')
       await loadEntityUnits()
       await loadUnmappedUnits()
     } else {
-      showMessage('删除提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.deleteProposalSubmitted'), 'info')
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '删除失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.deleteFailed'), 'error')
   }
 }
 
@@ -2826,7 +2825,7 @@ const openDensityDialog = (density?: EntityDensity) => {
 // 保存密度
 const saveDensity = async () => {
   if (!densityForm.value.density) {
-    showMessage('请输入密度值', 'error')
+    showMessage(t('ingredients.densityRequired'), 'error')
     return
   }
   savingDensity.value = true
@@ -2842,15 +2841,15 @@ const saveDensity = async () => {
       source: densityForm.value.source
     })
     if (userStore.user?.is_admin) {
-      showMessage('保存成功', 'success')
+      showMessage(t('ingredients.saved'), 'success')
       showDensityDialog.value = false
       await loadDensity()
     } else {
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
       showDensityDialog.value = false
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.saveFailed'), 'error')
   } finally {
     savingDensity.value = false
   }
@@ -2858,17 +2857,17 @@ const saveDensity = async () => {
 
 // 删除密度
 const deleteDensity = async (densityId: number) => {
-  if (!(await ask({ text: '确定删除此密度数据？', color: 'error', confirmText: '删除' }))) return
+  if (!(await ask({ text: t('ingredients.deleteDensityConfirm'), color: 'error', confirmText: t('ingredients.delete') }))) return
   try {
     await api.delete(`/entities/ingredient/${ingredientId.value}/density/${densityId}`)
     if (userStore.user?.is_admin) {
-      showMessage('删除成功', 'success')
+      showMessage(t('ingredients.deleted'), 'success')
       entityDensity.value = null
     } else {
-      showMessage('删除提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.deleteProposalSubmitted'), 'info')
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '删除失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.deleteFailed'), 'error')
   }
 }
 
@@ -3628,11 +3627,11 @@ const addRelation = async () => {
       strength: relationForm.value.strength
     })
     if (userStore.user?.is_admin) {
-      showMessage('关系添加成功', 'success')
+      showMessage(t('ingredients.relationAdded'), 'success')
       showAddRelationDialog.value = false
       await loadHierarchy()
     } else {
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
       showAddRelationDialog.value = false
     }
   } catch (e: any) {
@@ -3665,11 +3664,11 @@ const saveEditRelation = async () => {
       strength: editRelationForm.value.strength
     })
     if (userStore.user?.is_admin) {
-      showMessage('关系更新成功', 'success')
+      showMessage(t('ingredients.relationUpdated'), 'success')
       showEditRelationDialog.value = false
       await loadHierarchy()
     } else {
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
       showEditRelationDialog.value = false
     }
   } catch (e: any) {
@@ -3695,11 +3694,11 @@ const deleteRelation = async () => {
   try {
     await api.delete(`/ingredients/hierarchy/${relationToDelete.value.id}`)
     if (userStore.user?.is_admin) {
-      showMessage('关系删除成功', 'success')
+      showMessage(t('ingredients.relationDeleted'), 'success')
       showDeleteRelationDialog.value = false
       await loadHierarchy()
     } else {
-      showMessage('删除提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.deleteProposalSubmitted'), 'info')
       showDeleteRelationDialog.value = false
     }
   } catch (e: any) {
@@ -3967,7 +3966,7 @@ const cancelEditBasicInfo = () => {
 
 const saveBasicInfo = async () => {
   if (!basicEditForm.value.name.trim()) {
-    showMessage('原料名称不能为空', 'error')
+    showMessage(t('ingredients.ingredientNameRequired'), 'error')
     return
   }
   saving.value = true
@@ -4001,15 +4000,15 @@ const saveBasicInfo = async () => {
       await loadLatestPrice()
       await loadPriceRecords()
       editingBasicInfo.value = false
-      showMessage('基本信息已保存', 'success')
+      showMessage(t('ingredients.basicInfoSaved'), 'success')
     } else {
       editingBasicInfo.value = false
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
       // 重新加载详情，刷新 pending_proposal 以显示草稿覆盖（横幅+字段覆盖）
       await loadData()
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.saveFailed'), 'error')
   } finally {
     saving.value = false
   }
@@ -4092,7 +4091,7 @@ const onNutrientKeyChange = (index: number, newKey: string) => {
     i !== index && variants.includes(item.key)
   )
   if (exists) {
-    showMessage('该营养素已存在', 'error')
+    showMessage(t('ingredients.nutrientExists'), 'error')
     return
   }
   const def = findNutrientDef(newKey)
@@ -4147,7 +4146,7 @@ const saveNutritionEdit = async () => {
     }
 
     if (nutrients.length === 0) {
-      showMessage('请至少填写一项营养素', 'error')
+      showMessage(t('ingredients.nutrientRequired'), 'error')
       savingNutrition.value = false
       return
     }
@@ -4166,14 +4165,14 @@ const saveNutritionEdit = async () => {
     const msg: string = (res && res.message) || ''
     if (msg.includes('待管理员审核')) {
       // 普通用户有数据→manual 待审：营养未落地，无需刷新
-      showMessage('已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.proposalSubmitted'), 'info')
     } else {
       // 管理员直写 或 普通用户补空自动通过：营养已落地，刷新展示
       await loadNutritionData()
-      showMessage('营养数据已保存', 'success')
+      showMessage(t('ingredients.nutritionSaved'), 'success')
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '保存失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.saveFailed'), 'error')
   } finally {
     savingNutrition.value = false
   }
@@ -4254,9 +4253,9 @@ const saveEditPriceRecord = async () => {
     editingPriceRecord.value = null
     await loadPriceRecords()
     refreshChart()
-    showMessage('更新成功', 'success')
+    showMessage(t('ingredients.updated'), 'success')
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '更新失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.updateFailed'), 'error')
   } finally {
     savingPrice.value = false
   }
@@ -4264,15 +4263,15 @@ const saveEditPriceRecord = async () => {
 
 // 删除价格记录
 const deletePriceRecord = async (id: number) => {
-  if (!(await ask({ text: '确定删除此价格记录？', color: 'error', confirmText: '删除' }))) return
+  if (!(await ask({ text: t('ingredients.deletePriceRecordConfirm'), color: 'error', confirmText: t('ingredients.delete') }))) return
 
   try {
     await api.delete(`/products/${id}`)
     await loadPriceRecords()
     refreshChart()
-    showMessage('删除成功', 'success')
+    showMessage(t('ingredients.deleted'), 'success')
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '删除失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.deleteFailed'), 'error')
   }
 }
 
@@ -4317,7 +4316,7 @@ const doMerge = async () => {
     })
     const msg: string = (response && response.message) || ''
     if (msg.includes('待管理员审核')) {
-      showMessage('合并提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.mergeProposalSubmitted'), 'info')
     } else {
       showMessage(msg || '合并成功', 'success')
     }
@@ -4329,7 +4328,7 @@ const doMerge = async () => {
       router.push(`/data/ingredients/${mergeTargetId.value}`)
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '合并失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.mergeFailed'), 'error')
   } finally {
     merging.value = false
   }
@@ -4346,13 +4345,13 @@ const deleteIngredient = async () => {
   try {
     await api.delete(`/nutrition/ingredients/${ingredientId.value}`)
     if (userStore.user?.is_admin) {
-      showMessage('删除成功', 'success')
+      showMessage(t('ingredients.deleted'), 'success')
       router.push('/data/ingredients')
     } else {
-      showMessage('删除提议已提交，待管理员审核', 'info')
+      showMessage(t('ingredients.deleteProposalSubmitted'), 'info')
     }
   } catch (e: any) {
-    showMessage(e.response?.data?.detail || e.message || '删除失败', 'error')
+    showMessage(e.response?.data?.detail || e.message || t('ingredients.deleteFailed'), 'error')
   } finally {
     deleting.value = false
   }
@@ -4382,7 +4381,7 @@ const goBack = () => {
 
 const formatNutritionValue = (value: any, unit: string) => {
   const num = parseFloat(value) || 0
-  return `${num.toFixed(1)} ${unit}`
+  return `${formatNumber(num, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 })} ${unit}`
 }
 
 // 显示消息

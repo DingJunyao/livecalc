@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">原料管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('ingredients.title') }}</v-app-bar-title>
     <template #append>
       <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadIngredients" />
@@ -13,7 +13,7 @@
     <div class="d-flex ga-2 mb-4 align-center">
       <v-text-field
         v-model="search"
-        label="搜索原料..."
+        :label="t('ingredients.search')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="compact"
@@ -32,14 +32,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('ingredients.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="mb-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadIngredients">重试</v-btn>
+        <v-btn variant="text" @click="loadIngredients">{{ t('ingredients.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -61,7 +61,7 @@
 
             <v-list-item-title>
               {{ pendingName(item) }}
-              <v-chip v-if="hasPending('ingredient', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">修改待审</v-chip>
+              <v-chip v-if="hasPending('ingredient', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('ingredients.pendingEdit') }}</v-chip>
             </v-list-item-title>
             <v-list-item-subtitle>
               <span>{{ pendingCategory(item) }}</span>
@@ -90,7 +90,7 @@
 
           <v-list-item v-if="items.length === 0">
             <v-list-item-title class="text-center text-medium-emphasis">
-              暂无原料
+              {{ t('ingredients.empty') }}
             </v-list-item-title>
           </v-list-item>
         </v-list>
@@ -125,7 +125,7 @@
                 </v-avatar>
                 <div class="text-body-2 font-weight-medium text-truncate">
                   {{ pendingName(item) }}
-                  <v-chip v-if="hasPending('ingredient', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">修改待审</v-chip>
+                  <v-chip v-if="hasPending('ingredient', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('ingredients.pendingEdit') }}</v-chip>
                 </div>
               </div>
               <v-chip size="x-small" color="default" variant="outlined">
@@ -150,7 +150,7 @@
         </v-col>
 
         <v-col v-if="items.length === 0" cols="12">
-          <div class="text-center py-8 text-medium-emphasis">暂无原料</div>
+          <div class="text-center py-8 text-medium-emphasis">{{ t('ingredients.empty') }}</div>
         </v-col>
       </v-row>
     </template>
@@ -169,14 +169,14 @@
         <v-select
           v-model="pageSize"
           :items="[10, 20, 50, 100]"
-          label="每页"
+          :label="t('ingredients.perPage')"
           variant="outlined"
           density="compact"
           hide-details
           style="max-width: 90px"
           @update:model-value="handlePageSizeChange"
         />
-        <span class="text-caption text-medium-emphasis">共 {{ total }} 条</span>
+        <span class="text-caption text-medium-emphasis">{{ t('ingredients.totalCount', { count: total }) }}</span>
       </div>
     </div>
 
@@ -208,46 +208,46 @@
     <!-- 添加对话框 -->
     <v-dialog v-model="showAddDialog" max-width="500">
       <v-card>
-        <v-card-title>添加原料</v-card-title>
+        <v-card-title>{{ t('ingredients.addTitle') }}</v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
               v-model="form.name"
-              label="原料名称"
+              :label="t('ingredients.ingredientName')"
               variant="outlined"
               required
               class="mb-4"
             />
             <v-combobox
               v-model="form.aliases"
-              label="别名"
+              :label="t('ingredients.aliases')"
               variant="outlined"
               class="mb-4"
               chips
               multiple
               closable-chips
               hide-selected
-              placeholder="输入别名后按回车添加，可添加多个"
-              no-data-text="输入别名后按回车"
+              :placeholder="t('ingredients.aliasesPlaceholder')"
+              :no-data-text="t('ingredients.aliasesNoData')"
               :delimiters="[',', '，', ' ']"
             />
             <v-select
               v-model="form.category_id"
               :items="categories"
-              item-title="display_name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="分类"
+              :label="t('ingredients.category')"
               variant="outlined"
               class="mb-4"
               clearable
-              placeholder="请选择分类"
+              :placeholder="t('ingredients.categoryPlaceholder')"
             />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showAddDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveItem">保存</v-btn>
+          <v-btn @click="showAddDialog = false">{{ t('prices.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -256,6 +256,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -271,6 +272,7 @@ import { formatMoney } from '@/utils/currency'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 
+const { t } = useI18n()
 const route = useRoute()
 const { currency: userCurrency } = useUserCurrency()
 const router = useRouter()
@@ -306,9 +308,9 @@ const pendingCategory = (item: Ingredient) => {
   const p = getPendingPayload('ingredient', item.id)
   if (p?.category_id !== undefined) {
     const cat = categories.value.find(c => c.id === p.category_id)
-    return cat?.display_name || '未分类'
+    return cat?.display_name || cat?.name || t('ingredients.noCategory')
   }
-  return item.category || '未分类'
+  return item.category || t('ingredients.noCategory')
 }
 
 // 当天平均单价
@@ -369,7 +371,7 @@ const requestFilters = ref<Record<string, any>>({})
 const ingredientFilters = computed<FilterConfig[]>(() => [
   {
     key: 'category_ids',
-    label: '分类',
+    label: t('ingredients.filterCategory'),
     type: 'select',
     items: categoryOptions.value,
     minWidth: '160px',
@@ -377,15 +379,15 @@ const ingredientFilters = computed<FilterConfig[]>(() => [
   },
   {
     key: 'special_conditions',
-    label: '特殊条件',
+    label: t('ingredients.filterSpecialConditions'),
     type: 'multicheck',
     items: [
-      { value: 'no_nutrition', title: '未配置营养成分' },
-      { value: 'no_price', title: '没有维护过价格' },
-      { value: 'single_price', title: '仅有一条价格记录' },
-      { value: 'single_merchant', title: '仅有一家商家有其价格' },
-      { value: 'no_recipe', title: '无相关菜谱' },
-      { value: 'no_product', title: '无下属商品' },
+      { value: 'no_nutrition', title: t('ingredients.noNutrition') },
+      { value: 'no_price', title: t('ingredients.noPrice') },
+      { value: 'single_price', title: t('ingredients.singlePrice') },
+      { value: 'single_merchant', title: t('ingredients.singleMerchant') },
+      { value: 'no_recipe', title: t('ingredients.noRecipe') },
+      { value: 'no_product', title: t('ingredients.noProduct') },
     ],
     minWidth: '180px',
   },
@@ -402,7 +404,7 @@ const loadCategories = async () => {
     const response = await api.get('/ingredients/categories')
     categoryOptions.value = (response || []).map((c: any) => ({
       value: c.id,
-      title: c.display_name,
+      title: c.display_name || c.name,
     }))
   } catch (e: any) {
     console.error('加载分类失败', e)
@@ -434,7 +436,7 @@ const openPriceDialog = async (ingredient: Ingredient) => {
     const products: ProductItem[] = response.items || []
 
     if (products.length === 0) {
-      snackbarText.value = '该原料暂无关联商品，请先添加商品'
+      snackbarText.value = t('ingredients.noLinkedProducts')
       snackbarColor.value = 'warning'
       showSnackbar.value = true
       return
@@ -447,7 +449,7 @@ const openPriceDialog = async (ingredient: Ingredient) => {
     showPriceDialog.value = true
   } catch (e: any) {
     console.error('加载商品失败', e)
-    snackbarText.value = '加载商品失败'
+    snackbarText.value = t('ingredients.loadProductsFailed')
     snackbarColor.value = 'error'
     showSnackbar.value = true
   } finally {
@@ -519,7 +521,7 @@ const loadIngredients = async () => {
     if (items.value.length > 0) loadIngredientSparklines()
   } catch (e: any) {
     console.error('加载原料失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('ingredients.loadFailed'))
     loading.value = false
   }
 }

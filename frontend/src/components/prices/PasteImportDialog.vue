@@ -2,7 +2,7 @@
   <v-dialog :model-value="modelValue" max-width="720" persistent @update:model-value="emit('update:modelValue', $event)">
     <v-card class="paste-card">
       <v-card-title class="d-flex align-center">
-        粘贴导入价格
+        {{ t('prices.pasteImportTitle') }}
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" size="small" @click="emit('update:modelValue', false)" />
       </v-card-title>
@@ -10,7 +10,7 @@
       <v-card-text>
         <v-text-field
           v-model="dateTime"
-          label="记录时间"
+          :label="t('prices.recordedAt')"
           type="datetime-local"
           variant="outlined"
           density="compact"
@@ -26,23 +26,23 @@
             :disabled="historyProductNames.length === 0"
             @click="templateDialog = true"
           >
-            复制模板
+            {{ t('prices.copyTemplate') }}
           </v-btn>
         </div>
 
         <v-textarea
           v-model="rawText"
-          label="粘贴价格文本（每行一条，格式：名称 价格[/单位]）"
+          :label="t('prices.pasteLabel')"
           variant="outlined"
           rows="6"
-          :placeholder="`芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g`"
+          :placeholder="t('prices.pastePlaceholder')"
           hide-details
           class="mb-3"
         />
 
         <div class="d-flex align-center mb-3">
           <v-btn color="primary" variant="tonal" prepend-icon="mdi-text-search" :loading="parsing" @click="doParse">
-            解析并匹配
+            {{ t('prices.parseAndMatch') }}
           </v-btn>
           <span v-if="summaryText" class="text-caption text-medium-emphasis ml-3">{{ summaryText }}</span>
         </div>
@@ -51,10 +51,10 @@
           <thead>
             <tr>
               <th style="width: 28px"></th>
-              <th>商品</th>
-              <th style="width: 56px">价格</th>
-              <th style="width: 48px">数量</th>
-              <th style="width: 44px">单位</th>
+              <th>{{ t('prices.productColumn') }}</th>
+              <th style="width: 56px">{{ t('prices.priceColumn') }}</th>
+              <th style="width: 48px">{{ t('prices.quantityColumn') }}</th>
+              <th style="width: 44px">{{ t('prices.unitColumn') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -70,9 +70,9 @@
                     <v-autocomplete
                       v-model:search="row.productSearch"
                       :items="row.suggestions"
-                      item-title="name"
+                      :item-title="(item: any) => item.display_name || item.name"
                       item-value="id"
-                      placeholder="搜索关联已有商品…"
+                      :placeholder="t('prices.searchExistingProduct')"
                       variant="outlined"
                       density="compact"
                       hide-details
@@ -87,9 +87,9 @@
                     <v-autocomplete
                       v-model:search="row.ingredientSearch"
                       :items="row.ingredientSuggestions"
-                      item-title="name"
+                      :item-title="(item: any) => item.display_name || item.name"
                       item-value="id"
-                      placeholder="或搜索挂靠原料…"
+                      :placeholder="t('prices.orSearchAttach')"
                       variant="outlined"
                       density="compact"
                       hide-details
@@ -103,9 +103,9 @@
                     />
                     <div class="d-flex align-center ga-2 mt-1 flex-wrap">
                       <v-btn size="small" variant="tonal" color="primary" prepend-icon="mdi-plus" @click="chooseNewSame(row)">
-                        创建同名原料 + 商品
+                        {{ t('prices.createSameProduct') }}
                       </v-btn>
-                      <v-btn size="small" variant="text" @click="cancelEdit(row)">取消</v-btn>
+                      <v-btn size="small" variant="text" @click="cancelEdit(row)">{{ t('prices.cancel') }}</v-btn>
                     </div>
                   </div>
                 </td>
@@ -143,21 +143,21 @@
           />
           <div v-if="importing && progressText" class="text-caption text-medium-emphasis mb-2">{{ progressText }}</div>
           <v-btn color="primary" :loading="importing" :disabled="importing" prepend-icon="mdi-database-import" @click="doImport">
-            全部导入（{{ importableCount }} 条）
+            {{ t('prices.importAll', { count: importableCount }) }}
           </v-btn>
         </div>
       </v-card-text>
 
       <v-alert v-if="result" :type="result.fail === 0 ? 'success' : 'warning'" variant="tonal" class="mx-4 mb-2">
-        导入完成：成功 {{ result.success }} 条，失败 {{ result.fail }} 条
+        {{ t('prices.importDoneSuccess', { success: result.success, fail: result.fail }) }}
         <div v-if="result.failures.length" class="text-caption mt-1">
-          失败项目：{{ result.failures.map(f => `${f.name}（${f.reason}）`).join('、') }}
+          {{ t('prices.failureItems', { items: result.failures.map(f => `${f.name}（${f.reason}）`).join('、') }) }}
         </div>
       </v-alert>
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="emit('update:modelValue', false)">关闭</v-btn>
+        <v-btn variant="text" @click="emit('update:modelValue', false)">{{ t('prices.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -166,13 +166,13 @@
   <v-dialog v-model="templateDialog" max-width="560">
     <v-card>
       <v-card-title class="d-flex align-center">
-        复制模板
+        {{ t('prices.copyTemplate') }}
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" size="small" @click="templateDialog = false" />
       </v-card-title>
       <v-card-text>
         <div class="text-caption text-medium-emphasis mb-2">
-          每行为商品名加一个空格，复制后在空格后填价格即可。
+          {{ t('prices.templateDescription') }}
         </div>
         <v-textarea
           :model-value="templateText"
@@ -185,14 +185,14 @@
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="templateDialog = false">关闭</v-btn>
+        <v-btn variant="text" @click="templateDialog = false">{{ t('prices.close') }}</v-btn>
         <v-btn
           color="primary"
           variant="tonal"
           :prepend-icon="copied ? 'mdi-check' : 'mdi-content-copy'"
           @click="copyTemplate"
         >
-          {{ copied ? '已复制' : '复制' }}
+          {{ copied ? t('prices.copied') : t('prices.copy') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -201,6 +201,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import { getLocalDateTimeString } from '@/utils/timezone'
 import { getErrorMessage } from '@/utils/errorHandler'
@@ -208,6 +209,7 @@ import { parsePasteText, type ParsedPriceLine } from '@/utils/pastePriceParser'
 import { copyText } from '@/utils/clipboard'
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
+const { t } = useI18n()
 
 interface ImportRow extends ParsedPriceLine {
   status: 'matched' | 'unmatched' | 'invalid'
@@ -259,7 +261,7 @@ const summaryText = computed(() => {
   const matched = rows.value.filter(r => r.status === 'matched').length
   const unmatched = rows.value.filter(r => r.status === 'unmatched').length
   const invalid = rows.value.filter(r => r.status === 'invalid').length
-  return `已匹配 ${matched} · 待处理 ${unmatched} · 无法识别 ${invalid}`
+  return t('prices.summary', { matched, unmatched, invalid })
 })
 
 // 复制模板文本：每行「商品名 」+ 尾随空格，按快速填写页面顺序（分类序 + 组内拼音）
@@ -274,7 +276,7 @@ const progressPct = computed(() => {
   return Math.round((progress.value.current / progress.value.total) * 100)
 })
 const progressText = computed(() =>
-  progress.value.total > 0 ? `正在导入 ${progress.value.current}/${progress.value.total}…` : ''
+  progress.value.total > 0 ? t('prices.importProgress', { current: progress.value.current, total: progress.value.total }) : ''
 )
 
 watch(() => props.modelValue, (val) => {
@@ -561,7 +563,7 @@ async function doImport() {
           }
         }
       } else {
-        const reason = getErrorMessage((s as PromiseRejectedResult).reason, '导入失败')
+        const reason = getErrorMessage((s as PromiseRejectedResult).reason, t('prices.importFailReason'))
         failures.push({ name: batch[j].row.name, reason })
       }
       progress.value.current++

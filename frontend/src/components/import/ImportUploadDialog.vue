@@ -3,21 +3,21 @@
     <v-card>
       <v-card-title class="d-flex align-center">
         <v-icon start>mdi-upload</v-icon>
-        数据导入
+        {{ t('imports.title') }}
       </v-card-title>
 
       <v-card-text>
         <v-alert v-if="result" :type="result.success ? 'success' : 'error'"
                  variant="tonal" class="mb-4" closable>
           <div v-if="result.success">
-            导入完成：
+            {{ t('imports.completed') }}
             <span v-for="(v, k) in displayStats" :key="k" class="mr-2">
               {{ k }}={{ v }}
             </span>
             <div v-if="skippedItems.length" class="mt-2">
-              <div class="text-caption text-medium-emphasis">已跳过（权限或隐私限制）：</div>
+              <div class="text-caption text-medium-emphasis">{{ t('imports.skippedPermission') }}</div>
               <div v-for="item in skippedItems" :key="item.key" class="text-caption">
-                · {{ skippedLabel[item.key] || item.key }}：{{ item.count }} 条
+                · {{ t('imports.skippedCount', { label: skippedLabel[item.key] || item.key, count: item.count }) }}
               </div>
             </div>
           </div>
@@ -29,7 +29,7 @@
 
         <v-file-input
           v-model="file"
-          label="选择 ZIP 压缩包"
+          :label="t('imports.selectZip')"
           accept=".zip"
           :loading="uploading"
           :disabled="uploading"
@@ -39,7 +39,7 @@
         <div v-if="uploading" class="text-center py-4">
           <v-progress-circular indeterminate color="primary" />
           <div class="mt-2">
-            {{ currentTask?.progress?.message || '正在导入，请稍候…' }}
+            {{ currentTask?.progress?.message || t('imports.importing') }}
           </div>
           <div
             v-if="currentTask?.progress?.total"
@@ -54,13 +54,13 @@
         <v-btn block color="primary" :loading="uploading" :disabled="!file"
                class="mt-2" @click="handleUpload">
           <v-icon start>mdi-upload</v-icon>
-          开始导入
+          {{ t('imports.startImport') }}
         </v-btn>
       </v-card-text>
 
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" :disabled="uploading" @click="close">关闭</v-btn>
+        <v-btn variant="text" :disabled="uploading" @click="close">{{ t('imports.close') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -68,8 +68,11 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useImportTask } from '@/composables/useImportTask'
 import type { ImportTask } from '@/composables/useImportTask'
+
+const { t } = useI18n()
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:modelValue': [v: boolean] }>()
@@ -106,13 +109,13 @@ const skippedItems = computed<{ key: string; count: number }[]>(() => {
 })
 
 const skippedLabel: Record<string, string> = {
-  blacklist_groups: '管理员专属·黑名单分组',
-  unit_conversions: '管理员专属·单位换算',
-  product_barcodes: '管理员专属·商品条码',
-  user_places: '他人隐私·常用地点',
-  price_records: '他人隐私·价格记录',
-  user_ingredient_blacklist: '他人隐私·个人黑名单',
-  blacklist_group_subscriptions: '他人隐私·分组订阅',
+  blacklist_groups: t('imports.skippedLabels.blacklist_groups'),
+  unit_conversions: t('imports.skippedLabels.unit_conversions'),
+  product_barcodes: t('imports.skippedLabels.product_barcodes'),
+  user_places: t('imports.skippedLabels.user_places'),
+  price_records: t('imports.skippedLabels.price_records'),
+  user_ingredient_blacklist: t('imports.skippedLabels.user_ingredient_blacklist'),
+  blacklist_group_subscriptions: t('imports.skippedLabels.blacklist_group_subscriptions'),
 }
 
 // 监听任务状态变化，终态时展示结果
@@ -134,14 +137,14 @@ watch(
     } else if (snapshot.status === 'failed') {
       result.value = {
         success: false,
-        errors: [snapshot.error || '导入失败'],
+        errors: [snapshot.error || t('imports.importFailed')],
       }
       uploading.value = false
       currentTaskId.value = null
     } else if (snapshot.status === 'cancelled') {
       result.value = {
         success: false,
-        errors: ['导入任务已取消'],
+        errors: [t('imports.importCancelled')],
       }
       uploading.value = false
       currentTaskId.value = null
@@ -159,7 +162,7 @@ async function handleUpload() {
   } else {
     result.value = {
       success: false,
-      errors: ['上传失败，请检查网络后重试'],
+      errors: [t('imports.uploadFailed')],
     }
     uploading.value = false
   }

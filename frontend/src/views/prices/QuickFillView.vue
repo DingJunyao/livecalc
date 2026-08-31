@@ -2,7 +2,7 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push('/prices')" />
-    <v-app-bar-title class="text-h6">快速填写</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('prices.quickFill') }}</v-app-bar-title>
     <template #append>
       <div class="d-flex align-center">
         <span v-if="saveProgress" class="text-caption text-medium-emphasis mr-2">
@@ -17,7 +17,7 @@
         <v-btn
           icon="mdi-barcode-scan"
           variant="text"
-          aria-label="扫码录入商品"
+          :aria-label="t('prices.scanProduct')"
           :disabled="!selectedMerchantId"
           :loading="barcodeLookupLoading"
           @click="scannerOpen = true"
@@ -31,9 +31,9 @@
     <v-autocomplete
       v-model="selectedMerchantId"
       :items="merchants"
-      item-title="name"
+      :item-title="(item: any) => item.display_name || item.name"
       item-value="id"
-      label="选择商家"
+      :label="t('prices.selectMerchant')"
       variant="outlined"
       density="compact"
       hide-details
@@ -42,17 +42,17 @@
     />
 
     <template v-if="!selectedMerchantId">
-      <div class="text-center py-8 text-medium-emphasis">请先选择商家</div>
+      <div class="text-center py-8 text-medium-emphasis">{{ t('prices.pleaseSelectMerchant') }}</div>
     </template>
 
     <template v-else>
       <div class="text-caption text-medium-emphasis mb-3">
-        选商家后自动列出历史所有商品，只保存填了价格的
+        {{ t('prices.historyHint') }}
       </div>
 
       <!-- 历史商品（按填写顺序） -->
       <div v-if="orderedHistoryRows.length > 0" class="mb-4">
-        <div class="text-subtitle-2 mb-2">历史商品</div>
+        <div class="text-subtitle-2 mb-2">{{ t('prices.historyProducts') }}</div>
         <v-list class="fill-list" density="compact">
           <v-list-item v-for="(row, i) in orderedHistoryRows" :key="'h-' + i">
             <div class="fill-row">
@@ -71,13 +71,13 @@
                 />
                 <v-menu :close-on-content-click="true" location="bottom">
                   <template #activator="{ props: menuProps }">
-                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
                   </template>
                   <v-list density="compact">
                     <v-list-item
                       v-for="c in currencies"
                       :key="c.code"
-                      :title="`${c.name} ${c.code}`"
+                      :title="`${c.display_name || c.name} ${c.code}`"
                       :active="recordCurrency === c.code"
                       @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
                     />
@@ -125,26 +125,26 @@
           </v-list-item>
         </v-list>
         <div v-if="hiddenCount > 0" class="text-caption text-center text-medium-emphasis py-2">
-          ── 近 1h 已填商品已隐藏（{{ hiddenCount }} 个）──
+          {{ t('prices.hiddenRecently', { count: hiddenCount }) }}
         </div>
       </div>
 
       <!-- 加载中 -->
       <div v-if="loading" class="text-center py-4">
         <v-progress-circular indeterminate color="primary" size="24" width="2" />
-        <div class="text-medium-emphasis text-caption mt-2">加载中…</div>
+        <div class="text-medium-emphasis text-caption mt-2">{{ t('prices.loading') }}</div>
       </div>
       <!-- 空状态 -->
       <div v-else-if="allHistoryRows.length === 0" class="text-center py-4 text-medium-emphasis">
-        该商家暂无历史商品
+        {{ t('prices.noHistory') }}
       </div>
       <div v-else-if="orderedHistoryRows.length === 0" class="text-center py-4 text-medium-emphasis">
-        本期所有商品已填写完成
+        {{ t('prices.allFilled') }}
       </div>
 
       <!-- 新增商品 -->
       <div class="mb-4">
-        <div class="text-subtitle-2 mb-2">新增商品</div>
+        <div class="text-subtitle-2 mb-2">{{ t('prices.newProducts') }}</div>
         <v-list class="fill-list" density="compact">
           <v-list-item v-for="(row, i) in newRows" :key="'n-' + i">
             <div class="fill-row">
@@ -153,9 +153,9 @@
                 v-model:search="row.searchText"
                 :items="newRowSuggestions[i] || []"
                 :loading="row.loading"
-                item-title="name"
+                :item-title="(item: any) => item.display_name || item.name"
                 item-value="id"
-                placeholder="搜索商品..."
+                :placeholder="t('prices.searchProducts')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -168,7 +168,7 @@
                 @update:search="onNewRowSearch(i, $event)"
               >
                 <template #no-data>
-                  {{ row.searchText ? '没有找到商品，将创建新商品' : '输入商品名称搜索' }}
+                  {{ row.searchText ? t('prices.noProductFoundCreate') : t('prices.inputProductSearch') }}
                 </template>
               </v-autocomplete>
               <div class="fill-row__inputs">
@@ -185,13 +185,13 @@
                 />
                 <v-menu :close-on-content-click="true" location="bottom">
                   <template #activator="{ props: menuProps }">
-                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
                   </template>
                   <v-list density="compact">
                     <v-list-item
                       v-for="c in currencies"
                       :key="c.code"
-                      :title="`${c.name} ${c.code}`"
+                      :title="`${c.display_name || c.name} ${c.code}`"
                       :active="recordCurrency === c.code"
                       @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
                     />
@@ -240,7 +240,7 @@
           </v-list-item>
         </v-list>
         <v-btn variant="text" color="primary" prepend-icon="mdi-plus" @click="addNewRow">
-          添加新行
+          {{ t('prices.addNewRow') }}
         </v-btn>
       </div>
     </template>
@@ -258,18 +258,18 @@
     <BarcodeScannerDialog v-model="scannerOpen" @detected="handleScannedBarcode" />
     <v-dialog v-model="createProductDialog" max-width="420">
       <v-card>
-        <v-card-title>未找到本地商品</v-card-title>
+        <v-card-title>{{ t('prices.notFoundLocalProduct') }}</v-card-title>
         <v-card-text>
-          <div class="text-body-2">条码：{{ createProductData.barcode }}</div>
-          <div v-if="createProductData.name" class="text-body-2">名称：{{ createProductData.name }}</div>
-          <div v-if="createProductData.brand" class="text-body-2">品牌：{{ createProductData.brand }}</div>
-          <div v-if="createProductData.spec" class="text-body-2">规格：{{ createProductData.spec }}</div>
-          <div v-if="createProductData.manufacturer" class="text-body-2">生产商：{{ createProductData.manufacturer }}</div>
+          <div class="text-body-2">{{ t('prices.barcode') }}：{{ createProductData.barcode }}</div>
+          <div v-if="createProductData.name" class="text-body-2">{{ t('prices.name') }}：{{ createProductData.name }}</div>
+          <div v-if="createProductData.brand" class="text-body-2">{{ t('prices.brand') }}：{{ createProductData.brand }}</div>
+          <div v-if="createProductData.spec" class="text-body-2">{{ t('prices.spec') }}：{{ createProductData.spec }}</div>
+          <div v-if="createProductData.manufacturer" class="text-body-2">{{ t('prices.manufacturer') }}：{{ createProductData.manufacturer }}</div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="createProductDialog = false">取消</v-btn>
-          <v-btn color="primary" variant="text" @click="goCreateProduct">新增商品</v-btn>
+          <v-btn variant="text" @click="createProductDialog = false">{{ t('prices.cancel') }}</v-btn>
+          <v-btn color="primary" variant="text" @click="goCreateProduct">{{ t('prices.createProduct') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -277,6 +277,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
@@ -287,6 +288,7 @@ import PasteImportDialog from '@/components/prices/PasteImportDialog.vue'
 import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+const { t } = useI18n()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
 
@@ -531,13 +533,13 @@ const onMerchantChange = async (val: number | null) => {
       isEditingQuantity: false,
       isNew: false,
       categoryId: item.category_id ?? null,
-      categoryName: item.category_display_name ?? '其他',
+      categoryName: item.category_display_name ?? t('products.noCategory'),
       fillSortOrder: item.fill_sort_order ?? null,
       fillSessionDate: item.fill_session_date ?? null,
     }))
   } catch {
     historyRows.value = []
-    showSnackbar('加载历史商品失败，请重试', 'error')
+    showSnackbar(t('prices.loadHistoryFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -563,7 +565,7 @@ function addNewRow() {
 
 function appendProductRow(product: { id: number; name: string }) {
   if (existingProductIds.value.has(product.id)) {
-    showSnackbar('商品已在列表中', 'info')
+    showSnackbar(t('prices.productAlreadyInList'), 'info')
     return
   }
   addNewRow()
@@ -726,7 +728,7 @@ function onPriceChange(row: FillRow, val: string) {
 // --- 保存 ---
 const saveAll = async () => {
   if (!selectedMerchantId.value) {
-    showSnackbar('请先选择商家', 'warning')
+    showSnackbar(t('prices.pleaseSelectMerchant'), 'warning')
     return
   }
 
@@ -737,13 +739,13 @@ const saveAll = async () => {
 
   for (const row of rowsToSave) {
     if (row.isNew && !getRowProductId(row)) {
-      showSnackbar(`请先为商品选择或输入名称`, 'warning')
+      showSnackbar(t('prices.chooseOrInputProduct'), 'warning')
       return
     }
   }
 
   if (rowsToSave.length === 0) {
-    showSnackbar('没有需要保存的价格记录', 'info')
+    showSnackbar(t('prices.noRecordsToSave'), 'info')
     return
   }
 
@@ -841,10 +843,10 @@ const saveAll = async () => {
   newRows.value = []
 
   if (failCount === 0) {
-    const newHint = newSavedCount > 0 ? `，新增 ${newSavedCount} 个商品已加入历史列表` : ''
-    showSnackbar(`成功保存 ${successCount} 条价格记录${newHint}`, 'success')
+    const newHint = newSavedCount > 0 ? t('prices.newProductsAdded', { count: newSavedCount }) : ''
+    showSnackbar(t('prices.savedRecordsSuccess', { count: successCount, hint: newHint }), 'success')
   } else {
-    showSnackbar(`保存完成：${successCount} 成功，${failCount} 失败`, 'warning')
+    showSnackbar(t('prices.savedRecordsPartial', { success: successCount, fail: failCount }), 'warning')
   }
 }
 

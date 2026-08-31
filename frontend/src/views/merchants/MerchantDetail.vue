@@ -4,8 +4,8 @@
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
     <v-app-bar-title class="text-h6">
       <div class="d-flex align-center ga-2">
-        <span class="text-truncate">{{ overlaidMerchantName || '商家详情' }}</span>
-        <v-chip size="x-small" variant="tonal" color="primary">商家</v-chip>
+        <span class="text-truncate">{{ overlaidMerchantName || t('merchants.detail') }}</span>
+        <v-chip size="x-small" variant="tonal" color="primary">{{ t('merchants.chipLabel') }}</v-chip>
       </div>
     </v-app-bar-title>
     <template #append>
@@ -21,8 +21,8 @@
           <v-btn icon="mdi-dots-vertical" variant="text" v-bind="menuProps" :loading="loading" />
         </template>
         <v-list density="compact" nav>
-          <v-list-item prepend-icon="mdi-pencil" title="编辑商家" @click="openEditDialog" />
-          <v-list-item prepend-icon="mdi-refresh" title="刷新" @click="loadData" />
+          <v-list-item prepend-icon="mdi-pencil" :title="t('merchants.editTitle')" @click="openEditDialog" />
+          <v-list-item prepend-icon="mdi-refresh" :title="t('merchants.retry')" @click="loadData" />
         </v-list>
       </v-menu>
     </template>
@@ -32,14 +32,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-16">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('merchants.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="ma-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadData">重试</v-btn>
+        <v-btn variant="text" @click="loadData">{{ t('merchants.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -52,7 +52,7 @@
         <v-card elevation="0" class="grid-item item-basic-info" :class="{ 'item-full-width': !mapEnabled }">
           <v-card-title class="d-flex align-center pb-2">
             <v-icon start color="primary">mdi-information-outline</v-icon>
-            基本信息
+            {{ t('merchants.basicInfo') }}
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -61,7 +61,7 @@
                 <template #prepend>
                   <v-icon size="small" color="medium-emphasis">mdi-store</v-icon>
                 </template>
-                <v-list-item-title>名称</v-list-item-title>
+                <v-list-item-title>{{ t('merchants.name') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ overlaidMerchantName }}</v-list-item-subtitle>
               </v-list-item>
 
@@ -69,7 +69,7 @@
                 <template #prepend>
                   <v-icon size="small" color="medium-emphasis">mdi-map-marker</v-icon>
                 </template>
-                <v-list-item-title>地址</v-list-item-title>
+                <v-list-item-title>{{ t('merchants.address') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ overlaidAddress }}</v-list-item-subtitle>
               </v-list-item>
 
@@ -77,24 +77,24 @@
                 <template #prepend>
                   <v-icon size="small" color="medium-emphasis">mdi-crosshairs-gps</v-icon>
                 </template>
-                <v-list-item-title>坐标</v-list-item-title>
+                <v-list-item-title>{{ t('merchants.coordinates') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-family-monospace">
-                  {{ overlaidLatitude.toFixed(4) }}, {{ overlaidLongitude.toFixed(4) }}
+                  {{ formatNumber(overlaidLatitude, localeStore.effectiveFormatLocale, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ formatNumber(overlaidLongitude, localeStore.effectiveFormatLocale, { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-else-if="mapEnabled">
                 <template #prepend>
                   <v-icon size="small" color="medium-emphasis">mdi-crosshairs-gps</v-icon>
                 </template>
-                <v-list-item-title>坐标</v-list-item-title>
-                <v-list-item-subtitle class="text-medium-emphasis">未设置位置</v-list-item-subtitle>
+                <v-list-item-title>{{ t('merchants.coordinates') }}</v-list-item-title>
+                <v-list-item-subtitle class="text-medium-emphasis">{{ t('merchants.notSetLocation') }}</v-list-item-subtitle>
               </v-list-item>
 
               <v-list-item v-if="merchant.created_at">
                 <template #prepend>
                   <v-icon size="small" color="medium-emphasis">mdi-calendar</v-icon>
                 </template>
-                <v-list-item-title>创建时间</v-list-item-title>
+                <v-list-item-title>{{ t('merchants.createdAt') }}</v-list-item-title>
                 <v-list-item-subtitle>{{ formatToLocalDateTimeShort(merchant.created_at) }}</v-list-item-subtitle>
               </v-list-item>
 
@@ -104,14 +104,14 @@
                     {{ overlaidIsOpen !== false ? 'mdi-check-circle' : 'mdi-close-circle' }}
                   </v-icon>
                 </template>
-                <v-list-item-title>营业状态</v-list-item-title>
+                <v-list-item-title>{{ t('merchants.openStatus') }}</v-list-item-title>
                 <v-list-item-subtitle>
                   <v-chip
                     :color="overlaidIsOpen !== false ? 'success' : 'warning'"
                     size="small"
                     variant="tonal"
                   >
-                    {{ overlaidIsOpen !== false ? '营业中' : '已关闭' }}
+                    {{ overlaidIsOpen !== false ? t('merchants.open') : t('merchants.closedStatus') }}
                   </v-chip>
                 </v-list-item-subtitle>
               </v-list-item>
@@ -127,7 +127,7 @@
         >
           <v-card-title class="d-flex align-center pb-2">
             <v-icon start color="secondary">mdi-map</v-icon>
-            位置
+            {{ t('merchants.location') }}
           </v-card-title>
           <v-divider />
           <v-card-text>
@@ -145,7 +145,7 @@
         <v-card elevation="0" class="grid-item item-prices">
           <v-card-title class="d-flex align-center pb-2">
             <v-icon start color="tertiary">mdi-cart-outline</v-icon>
-            商品价格
+            {{ t('merchants.prices') }}
             <v-chip v-if="priceTotal > 0" size="x-small" variant="tonal" color="tertiary" class="ml-2">
               {{ priceTotal }}
             </v-chip>
@@ -245,20 +245,20 @@
               <v-select
                 v-model="pricePageSize"
                 :items="[10, 20, 50, 100]"
-                label="每页"
+                :label="t('merchants.perPage')"
                 variant="outlined"
                 density="compact"
                 hide-details
                 style="max-width: 90px"
                 @update:model-value="handlePricePageSizeChange"
               />
-              <span class="text-caption text-medium-emphasis">共 {{ priceTotal }} 条</span>
+              <span class="text-caption text-medium-emphasis">{{ t('merchants.totalCount', { count: priceTotal }) }}</span>
             </div>
           </div>
 
           <v-card-text v-else-if="productPrices.length === 0" class="text-center py-8">
             <v-icon size="64" color="medium-emphasis">mdi-cart-outline</v-icon>
-            <div class="text-body-1 text-medium-emphasis mt-4">该商家暂无价格记录</div>
+            <div class="text-body-1 text-medium-emphasis mt-4">{{ t('merchants.noMerchantPrices') }}</div>
           </v-card-text>
 
 
@@ -268,25 +268,25 @@
       <!-- 编辑对话框 -->
       <v-dialog v-model="addDialog" max-width="500">
         <v-card>
-          <v-card-title>编辑商家</v-card-title>
+          <v-card-title>{{ t('merchants.editTitle') }}</v-card-title>
           <v-card-text>
             <v-form>
               <v-text-field
                 v-model="editingForm.name"
-                label="商家名称（可留空）"
+                :label="t('merchants.nameOptional')"
                 variant="outlined"
                 class="mb-4"
               />
               <v-text-field
                 v-model="editingForm.address"
-                label="地址"
+                :label="t('merchants.address')"
                 variant="outlined"
                 class="mb-4"
               />
 
               <v-switch
                 v-model="editingForm.is_open"
-                label="营业中"
+                :label="t('merchants.isOpen')"
                 color="success"
                 class="mb-4"
                 hide-details
@@ -297,9 +297,9 @@
               <v-select
                 v-model="editingForm.default_currency"
                 :items="currencies"
-                item-title="name"
+                :item-title="(item: any) => item.display_name || item.name"
                 item-value="code"
-                label="默认币种（留空跟随地区）"
+                :label="t('merchants.defaultCurrencyOptional')"
                 variant="outlined"
                 density="compact"
                 clearable
@@ -311,13 +311,13 @@
                   {{ item.raw.code }}
                 </template>
                 <template #item="{ props, item }">
-                  <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+                  <v-list-item v-bind="props" :title="`${item.raw.display_name || item.raw.name} ${item.raw.code}`" />
                 </template>
               </v-select>
 
               <!-- 地图选点（地图禁用时隐藏） -->
               <div v-if="mapEnabled" class="mb-4">
-                <div class="text-subtitle-2 mb-2">商家位置</div>
+                <div class="text-subtitle-2 mb-2">{{ t('merchants.merchantLocation') }}</div>
                 <MapPicker
                   :model-value="pickerCoords"
                   :show-switcher="true"
@@ -328,8 +328,8 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer />
-            <v-btn @click="addDialog = false">取消</v-btn>
-            <v-btn color="primary" :loading="saving" @click="saveItem">保存</v-btn>
+            <v-btn @click="addDialog = false">{{ t('prices.cancel') }}</v-btn>
+            <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
           </v-card-actions>
         </v-card>
       </v-dialog>
@@ -359,6 +359,8 @@ import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { useMapConfig } from '@/composables/useMapConfig'
+import { useLocaleStore } from '@/stores/locale'
+import { formatNumber } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -368,6 +370,7 @@ const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
 const { smAndDown, md, lgAndUp } = useDisplay()
 const { mapEnabled, ensureLoaded } = useMapConfig()
+const localeStore = useLocaleStore()
 
 interface Merchant {
   id: number
@@ -405,7 +408,7 @@ const overlaidMerchantName = computed(() => {
   if (pendingProposal.value?.action === 'update' && pendingProposal.value?.payload?.name) {
     return pendingProposal.value.payload.name
   }
-  return merchant.value?.name || '未命名商家'
+  return merchant.value?.name || t('pageTitle.unnamedMerchant')
 })
 
 const overlaidAddress = computed(() => {
@@ -496,7 +499,7 @@ const loadData = async () => {
     await loadProductPrices()
   } catch (e: any) {
     console.error('加载商家详情失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('merchants.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -586,7 +589,7 @@ const saveItem = async () => {
       merchant.value = response
     } else {
       // 普通用户提交提议后返回的是原值（未变），需重新加载详情刷新 pending_proposal
-      notify('已提交，待管理员审核', 'info')
+      notify(t('merchants.proposalSubmitted'), 'info')
       await loadData()
     }
   } catch (e: any) {

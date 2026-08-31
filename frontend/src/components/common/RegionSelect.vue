@@ -5,7 +5,7 @@
         v-model="selected[idx]"
         :items="options[idx]"
         :label="level.label"
-        item-title="name"
+        :item-title="(item: any) => item.display_name || item.name"
         item-value="id"
         variant="outlined"
         density="compact"

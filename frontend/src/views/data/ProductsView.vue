@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">商品管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('products.title') }}</v-app-bar-title>
     <template #append>
       <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadProducts" />
@@ -13,7 +13,7 @@
     <div class="d-flex ga-2 mb-4 align-center">
       <v-text-field
         v-model="search"
-        label="搜索商品..."
+        :label="t('products.search')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="compact"
@@ -32,14 +32,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('products.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="mb-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadProducts">重试</v-btn>
+        <v-btn variant="text" @click="loadProducts">{{ t('products.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -61,7 +61,7 @@
 
             <v-list-item-title>
               {{ pendingName(item) }}
-              <v-chip v-if="hasPending('product', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">修改待审</v-chip>
+              <v-chip v-if="hasPending('product', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pendingEdit') }}</v-chip>
             </v-list-item-title>
             <v-list-item-subtitle>
               <template v-if="pendingAliases(item)?.length">
@@ -74,7 +74,7 @@
                 >{{ alias }}</v-chip>
                 <br>
               </template>
-              <span>{{ item.brand || '无品牌' }}</span>
+              <span>{{ item.brand || t('products.noBrand') }}</span>
               <span v-if="item.latest_price != null" class="text-tertiary font-weight-bold ms-2">
                 {{ formatMoney(item.latest_price, userCurrency) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </span>
@@ -94,7 +94,7 @@
 
           <v-list-item v-if="items.length === 0">
             <v-list-item-title class="text-center text-medium-emphasis">
-              暂无商品
+              {{ t('products.empty') }}
             </v-list-item-title>
           </v-list-item>
         </v-list>
@@ -129,7 +129,7 @@
                 </v-avatar>
                 <div class="text-body-2 font-weight-medium text-truncate">
                   {{ pendingName(item) }}
-                  <v-chip v-if="hasPending('product', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">修改待审</v-chip>
+                  <v-chip v-if="hasPending('product', item.id)" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pendingEdit') }}</v-chip>
                 </div>
               </div>
               <div v-if="pendingAliases(item)?.length" class="text-caption mb-1">
@@ -141,7 +141,7 @@
                   class="mr-1"
                 >{{ alias }}</v-chip>
               </div>
-              <div class="text-caption text-medium-emphasis">{{ item.brand || '无品牌' }}</div>
+              <div class="text-caption text-medium-emphasis">{{ item.brand || t('products.noBrand') }}</div>
               <div v-if="item.latest_price != null" class="text-subtitle-1 font-weight-bold text-tertiary">
                 {{ formatMoney(item.latest_price, userCurrency) }}<span v-if="item.latest_price_unit" class="text-caption font-weight-regular text-medium-emphasis"> / {{ item.latest_price_unit }}</span>
               </div>
@@ -155,7 +155,7 @@
         </v-col>
 
         <v-col v-if="items.length === 0" cols="12">
-          <div class="text-center py-8 text-medium-emphasis">暂无商品</div>
+          <div class="text-center py-8 text-medium-emphasis">{{ t('products.empty') }}</div>
         </v-col>
       </v-row>
     </template>
@@ -174,14 +174,14 @@
         <v-select
           v-model="pageSize"
           :items="[10, 20, 50, 100]"
-          label="每页"
+          :label="t('products.perPage')"
           variant="outlined"
           density="compact"
           hide-details
           style="max-width: 90px"
           @update:model-value="handlePageSizeChange"
         />
-        <span class="text-caption text-medium-emphasis">共 {{ total }} 条</span>
+        <span class="text-caption text-medium-emphasis">{{ t('products.totalCount', { count: total }) }}</span>
       </div>
     </div>
 
@@ -207,12 +207,12 @@
     <!-- 添加对话框 -->
     <v-dialog v-model="showAddDialog" max-width="500">
       <v-card>
-        <v-card-title>添加商品</v-card-title>
+        <v-card-title>{{ t('products.addTitle') }}</v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
               v-model="form.name"
-              label="商品名称"
+              :label="t('products.productName')"
               variant="outlined"
               required
               class="mb-4"
@@ -222,14 +222,14 @@
               v-model="selectedIngredient"
               v-model:search="ingredientSearch"
               :items="ingredients"
-              item-title="name"
+              :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              label="关联原料 *"
+              :label="t('products.linkedIngredient')"
               variant="outlined"
               required
               :loading="loadingIngredients"
-              :no-data-text="ingredientSearch ? '未找到匹配的原料' : '请输入搜索关键词'"
-              placeholder="输入关键词搜索原料"
+              :no-data-text="ingredientSearch ? t('products.noMatchingIngredient') : t('products.inputKeyword')"
+              :placeholder="t('products.searchIngredientPlaceholder')"
               clearable
               return-object
               auto-select-first
@@ -240,7 +240,7 @@
               <template #item="{ props, item }">
                 <v-list-item v-bind="props">
                   <v-list-item-subtitle v-if="item.raw.aliases && item.raw.aliases.length > 0">
-                    别名: {{ item.raw.aliases.join(', ') }}
+                    {{ t('products.aliases') }}: {{ item.raw.aliases.join(', ') }}
                   </v-list-item-subtitle>
                 </v-list-item>
               </template>
@@ -248,15 +248,15 @@
             <v-switch
               v-model="createNewIngredient"
               color="primary"
-              label="新建同名原料"
+              :label="t('products.newSameIngredient')"
               hide-details
               class="mb-2"
-              hint="开启后将自动创建与商品同名的原料"
+              :hint="t('products.newSameIngredientHint')"
               persistent-hint
             />
             <v-text-field
               v-model="form.brand"
-              label="品牌"
+              :label="t('products.brand')"
               variant="outlined"
               class="mb-4"
             />
@@ -268,20 +268,20 @@
             />
             <v-combobox
               v-model="form.aliases"
-              label="别名"
+              :label="t('products.aliases')"
               variant="outlined"
               multiple
               chips
               closable-chips
-              hint="输入后回车添加多个别名"
+              :hint="t('products.aliasesHint')"
               persistent-hint
             />
           </v-form>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="showAddDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveItem">保存</v-btn>
+          <v-btn @click="showAddDialog = false">{{ t('prices.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -290,6 +290,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -308,6 +309,7 @@ import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 
+const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
 
 const route = useRoute()
@@ -422,11 +424,11 @@ async function handleBarcode(code: string) {
     if (result.found) {
       if (!form.value.name.trim()) form.value.name = result.product.name || ''
       if (!form.value.brand.trim()) form.value.brand = result.product.brand || ''
-      notify('已按条码填入商品信息', 'success')
+      notify(t('products.barcodeFilled'), 'success')
     } else if (!result.has_enabled_providers) {
-      notify('未找到匹配商品，且未配置条码查询服务', 'info')
+      notify(t('products.noMatchingProductNoService'), 'info')
     } else {
-      notify(result.errors[0] || '未找到条码商品信息', 'info')
+      notify(result.errors[0] || t('products.noBarcodeProductInfo'), 'info')
     }
   } finally {
     barcodeLookupLoading.value = false
@@ -461,15 +463,15 @@ const requestFilters = ref<Record<string, any>>({})
 const productFilters = computed<FilterConfig[]>(() => [
   {
     key: 'ingredient_ids',
-    label: '关联原料',
+    label: t('products.filterLinkedIngredient'),
     type: 'select',
-    items: ingredients.value.map(i => ({ value: i.id, title: i.name })),
+    items: ingredients.value.map(i => ({ value: i.id, title: (i as any).display_name || i.name })),
     minWidth: '180px',
     maxWidth: '240px',
   },
   {
     key: 'ingredient_category_ids',
-    label: '原料分类',
+    label: t('products.filterIngredientCategory'),
     type: 'select',
     items: categoryOptions.value,
     minWidth: '160px',
@@ -477,7 +479,7 @@ const productFilters = computed<FilterConfig[]>(() => [
   },
   {
     key: 'brands',
-    label: '品牌',
+    label: t('products.filterBrand'),
     type: 'select',
     items: brandOptions.value,
     minWidth: '140px',
@@ -485,12 +487,12 @@ const productFilters = computed<FilterConfig[]>(() => [
   },
   {
     key: 'special_conditions',
-    label: '特殊条件',
+    label: t('products.filterSpecialConditions'),
     type: 'multicheck',
     items: [
-      { value: 'no_price', title: '没有维护过价格' },
-      { value: 'single_price', title: '仅有一条价格记录' },
-      { value: 'single_merchant', title: '仅有一家商家有其价格' },
+      { value: 'no_price', title: t('products.noPrice') },
+      { value: 'single_price', title: t('products.singlePrice') },
+      { value: 'single_merchant', title: t('products.singleMerchant') },
     ],
     minWidth: '180px',
   },
@@ -507,7 +509,7 @@ const loadCategories = async () => {
     const response = await api.get('/ingredients/categories')
     categoryOptions.value = (response || []).map((c: any) => ({
       value: c.id,
-      title: c.display_name,
+      title: c.display_name || c.name,
     }))
   } catch (e: any) {
     console.error('加载分类失败', e)
@@ -607,7 +609,7 @@ const loadProducts = async () => {
     if (items.value.length > 0) loadProductSparklines()
   } catch (e: any) {
     console.error('加载商品失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('products.loadFailed'))
     loading.value = false
   }
 }
@@ -656,12 +658,12 @@ const saveItem = async () => {
       const resp = await api.post('/ingredients', { name: form.value.name.trim() })
       form.value.ingredient_id = resp.id
     } catch (e: any) {
-      notify(getErrorMessage(e, '创建原料失败'), 'error')
+      notify(getErrorMessage(e, t('products.createIngredientFailed')), 'error')
       return
     }
   }
   if (!form.value.ingredient_id) {
-    notify('请选择关联的原料，或开启“新建同名原料”', 'info')
+    notify(t('products.selectIngredientOrCreate'), 'info')
     return
   }
 
@@ -681,7 +683,7 @@ const saveItem = async () => {
     }
   } catch (e: any) {
     console.error('保存商品失败', e)
-    notify(getErrorMessage(e, '保存商品失败'), 'error')
+    notify(getErrorMessage(e, t('products.saveProductFailed')), 'error')
   } finally {
     saving.value = false
   }
