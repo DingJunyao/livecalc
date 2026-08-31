@@ -3819,7 +3819,8 @@ const getEditRelationDirectionText = () => {
   // 判断是 child_relation 还是 parent_relation
   // child_relation: 当前原料是父，关联原料是子
   if (rel.child_name && !rel.parent_name) {
-    return getRelationPreviewText(relationType, 'child', undefined, rel.child_name)
+    const previewRelationType = relationType === 'fallback' ? 'fallback_by' : relationType
+    return getRelationPreviewText(previewRelationType, 'child', undefined, rel.child_name)
   }
   // parent_relation: 当前原料是子，关联原料是父
   else if (rel.parent_name && !rel.child_name) {
