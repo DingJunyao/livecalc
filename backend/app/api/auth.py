@@ -326,6 +326,8 @@ def _user_to_response(user: "User", db: Session) -> UserResponse:
         region_id=user.region_id,
         default_currency=user.default_currency,
         default_calc_scope=user.default_calc_scope,
+        locale=user.locale,
+        format_locale=user.format_locale,
         effective_currency=_user_effective_currency(db, user),
     )
 
@@ -605,6 +607,8 @@ async def get_all_users(
                 email_verified=user.email_verified,
                 avatar=user.avatar,
                 nickname=user.nickname,
+                locale=user.locale,
+                format_locale=user.format_locale,
                 created_at=serialize_datetime(user.created_at) if user.created_at else None
             ) for user in users
         ],
@@ -664,6 +668,8 @@ async def get_user_detail(
         email_verified=user.email_verified,
         avatar=user.avatar,
         nickname=user.nickname,
+        locale=user.locale,
+        format_locale=user.format_locale,
         created_at=serialize_datetime(user.created_at) if user.created_at else None
     )
 
@@ -700,6 +706,8 @@ async def admin_create_user(
         email_verified=user.email_verified,
         avatar=user.avatar,
         nickname=user.nickname,
+        locale=user.locale,
+        format_locale=user.format_locale,
         created_at=serialize_datetime(user.created_at) if user.created_at else None
     )
 
@@ -746,6 +754,8 @@ async def update_user(
         email_verified=target.email_verified,
         avatar=target.avatar,
         nickname=target.nickname,
+        locale=target.locale,
+        format_locale=target.format_locale,
         created_at=serialize_datetime(target.created_at) if target.created_at else None
     )
 
@@ -782,6 +792,8 @@ async def toggle_user_admin(
         email_verified=target.email_verified,
         avatar=target.avatar,
         nickname=target.nickname,
+        locale=target.locale,
+        format_locale=target.format_locale,
         created_at=serialize_datetime(target.created_at) if target.created_at else None
     )
 
@@ -818,6 +830,8 @@ async def toggle_user_active(
         email_verified=target.email_verified,
         avatar=target.avatar,
         nickname=target.nickname,
+        locale=target.locale,
+        format_locale=target.format_locale,
         created_at=serialize_datetime(target.created_at) if target.created_at else None
     )
 

@@ -1,6 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 
+from app.core.i18n import FORMAT_LOCALES, SUPPORTED_LOCALES
+
 
 class ConfigResponse(BaseModel):
     registration_require_invite_code: bool = False
@@ -72,6 +74,8 @@ class UserResponse(BaseModel):
     region_id: Optional[int] = None
     default_currency: Optional[str] = None
     default_calc_scope: Optional[str] = None
+    locale: Optional[str] = None
+    format_locale: Optional[str] = None
     effective_currency: Optional[str] = None  # 推导后的实际币种（default_currency 为空时按地区国家）
 
     class Config:
@@ -130,6 +134,26 @@ class UserProfileUpdate(BaseModel):
     default_price_unit_id: Optional[int] = None
     default_currency: Optional[str] = None
     default_calc_scope: Optional[str] = None
+    locale: Optional[str] = None
+    format_locale: Optional[str] = None
+
+    @field_validator("locale", mode="before")
+    @classmethod
+    def validate_ui_locale(cls, value):
+        if value is None:
+            return None
+        if value not in SUPPORTED_LOCALES:
+            raise ValueError("不支持的 locale")
+        return value
+
+    @field_validator("format_locale", mode="before")
+    @classmethod
+    def validate_format_locale(cls, value):
+        if value is None:
+            return None
+        if value not in FORMAT_LOCALES:
+            raise ValueError("不支持的 format_locale")
+        return value
 
 
 class UserAccountUpdate(BaseModel):

@@ -2,9 +2,10 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from app.config import settings
+from app.core.i18n import set_request_locale
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -145,9 +146,14 @@ def resolve_user_from_token(token: "Optional[str]"):
     return user
 
 
-async def get_current_user(credentials: HTTPBearer = Depends(security)):
+async def get_current_user(
+    request: Request,
+    credentials: HTTPBearer = Depends(security),
+):
     """获取当前登录用户（依赖注入）"""
-    return resolve_user_from_token(credentials.credentials)
+    user = resolve_user_from_token(credentials.credentials)
+    set_request_locale(request, user.locale)
+    return user
 
 
 async def get_current_admin_user(
