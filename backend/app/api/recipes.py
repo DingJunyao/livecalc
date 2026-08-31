@@ -1071,7 +1071,7 @@ async def get_recipe_cost(
             or_(Recipe.user_id == current_user.id, Recipe.is_public == True)
         ).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="recipe not found")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         recipe_ingredients = db.query(RecipeIngredient).filter(
             RecipeIngredient.recipe_id == recipe_id
         ).all()
@@ -1108,7 +1108,7 @@ async def get_recipe_nutrition(
             or_(Recipe.user_id == current_user.id, Recipe.is_public == True)
         ).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="recipe not found")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         result = await calculate_recipe_nutrition(recipe_id, db=db)
         if not result:
             raise LocalizedHTTPException(status_code=404, message='菜谱不存在')

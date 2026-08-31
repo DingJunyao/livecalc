@@ -164,7 +164,7 @@ def refresh_recommendation(
             current_user.id, request.meal_type, tz
         )
         if not started:
-            raise LocalizedHTTPException(status_code=409, message='该餐正在刷新中，请稍候～')
+            raise LocalizedHTTPException(status_code=409, message='刷新失败: {error}', error=error)
 
         # 返回当前推荐 + 刷新中标记
         return _build_response_from_records_sync(

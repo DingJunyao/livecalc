@@ -197,7 +197,7 @@ class IngredientExecutor(CrudExecutorBase):
             merged_by_user_id=proposal.proposer_id,
         )
         if not result.get("success"):
-            raise LocalizedHTTPException(status_code=400, message='合并失败')
+            raise LocalizedHTTPException(status_code=400, message='合并失败: {detail}', detail=result.get("message", "合并失败"))
 
         return ApplyResult(
             snapshot=snapshot,

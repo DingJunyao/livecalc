@@ -857,3 +857,30 @@ msgstr "التحويل من '{from_unit}' إلى '{to_unit}' غير مدعوم"
 
 msgid "{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'"
 msgstr "يوجد تجاوز وحدة بالفعل لـ {biz_type}/{biz_id}: '{unit_name}'"
+
+msgid "条码已存在"
+msgstr "الباركود موجود بالفعل"
+
+msgid "条码不存在"
+msgstr "الباركود غير موجود"
+
+msgid "名称不能为空"
+msgstr "الاسم مطلوب"
+
+msgid "偏好设置不存在"
+msgstr "التفضيل غير موجود"
+
+msgid "条码服务配置校验失败: {error}"
+msgstr "فشل التحقق من إعداد خدمة الباركود: {error}"
+
+msgid "原料 ID 列表格式无效: {error}"
+msgstr "تنسيق قائمة معرفات المكوّنات غير صالح: {error}"
+
+msgid "策略保存失败: {error}"
+msgstr "فشل حفظ السياسة: {error}"
+
+msgid "刷新失败: {error}"
+msgstr "فشل التحديث: {error}"
+
+msgid "合并失败: {detail}"
+msgstr "فشل الدمج: {detail}"

@@ -857,3 +857,30 @@ msgstr "Conversion from '{from_unit}' to '{to_unit}' is not supported"
 
 msgid "{biz_type}/{biz_id} 已存在单位覆盖 '{unit_name}'"
 msgstr "A unit override already exists for {biz_type}/{biz_id}: '{unit_name}'"
+
+msgid "条码已存在"
+msgstr "Barcode already exists"
+
+msgid "条码不存在"
+msgstr "Barcode not found"
+
+msgid "名称不能为空"
+msgstr "Name is required"
+
+msgid "偏好设置不存在"
+msgstr "Preference not found"
+
+msgid "条码服务配置校验失败: {error}"
+msgstr "Barcode service configuration validation failed: {error}"
+
+msgid "原料 ID 列表格式无效: {error}"
+msgstr "Ingredient ID list format is invalid: {error}"
+
+msgid "策略保存失败: {error}"
+msgstr "Failed to save policy: {error}"
+
+msgid "刷新失败: {error}"
+msgstr "Refresh failed: {error}"
+
+msgid "合并失败: {detail}"
+msgstr "Merge failed: {detail}"

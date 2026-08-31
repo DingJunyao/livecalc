@@ -1101,7 +1101,7 @@ async def get_ingredient_latest_prices_batch(
     try:
         ids = _parse_ingredient_ids(ingredient_ids)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise LocalizedHTTPException(status_code=400, message='原料 ID 列表格式无效: {error}', error=str(exc))
 
     items = {}
     for ingredient_id in ids:

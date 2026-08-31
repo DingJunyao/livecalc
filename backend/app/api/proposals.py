@@ -288,7 +288,7 @@ def update_policy(body: PolicyUpdate,
     try:
         ExecutorRegistry.persist_policy(db, body.entity_type, body.action, body.policy)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise LocalizedHTTPException(status_code=400, message='策略保存失败: {error}', error=str(e))
     db.commit()
     default = ExecutorRegistry._defaults.get(body.entity_type, "manual")
     return PolicyItem(

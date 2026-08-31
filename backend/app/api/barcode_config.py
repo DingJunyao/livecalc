@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.security import get_current_admin_user
+from app.core.exceptions import LocalizedHTTPException
 from app.models.barcode_lookup_cache import BarcodeLookupCache
 from app.models.system_config import SystemConfig
 from app.models.user import User
@@ -50,7 +51,7 @@ def put_barcode_config(
     try:
         validate_config(config)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise LocalizedHTTPException(status_code=400, message='条码服务配置校验失败: {error}', error=str(exc)) from exc
 
     serialized = json.dumps(config.model_dump(mode="json"), ensure_ascii=False)
     row = db.get(SystemConfig, "barcode_service_config")

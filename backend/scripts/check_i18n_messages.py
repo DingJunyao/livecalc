@@ -144,9 +144,6 @@ def inspect_file(path: Path, msgids_by_language: dict[str, set[str]]) -> list[Is
 
         if isinstance(message_node, ast.Constant) and isinstance(message_node.value, str):
             msgid = message_node.value
-            if not _has_chinese(msgid):
-                continue
-
             missing = [
                 language
                 for language, msgids in msgids_by_language.items()
@@ -164,16 +161,7 @@ def inspect_file(path: Path, msgids_by_language: dict[str, set[str]]) -> list[Is
                 )
             continue
 
-        if (
-            isinstance(message_node, ast.Name)
-            or isinstance(message_node, ast.BinOp)
-            or (
-                isinstance(message_node, ast.Call)
-                and isinstance(message_node.func, ast.Attribute)
-                and message_node.func.attr == "format"
-            )
-            or _node_has_chinese(message_node)
-        ):
+        if not isinstance(message_node, ast.Constant):
             issues.append(
                 Issue(
                     file=str(path),

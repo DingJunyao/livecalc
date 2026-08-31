@@ -83,7 +83,7 @@ def create_product(
     if product.barcode:
         existing = db.query(Product).filter(Product.barcode == product.barcode).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Barcode already exists")
+            raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 将 Pydantic 对象转换为字典并序列化 tags
     product_data = product.model_dump()
@@ -327,7 +327,7 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
         joinedload(Product.ingredient)
     ).filter(Product.id == product_id, Product.is_active == True).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     # 反序列化 tags
     if product.tags:
@@ -457,7 +457,7 @@ def update_product(
             Product.id != product_id
         ).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Barcode already exists")
+            raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 序列化 tags
     if 'tags' in update_data:
@@ -555,14 +555,14 @@ def add_product_barcode(
     # 验证商品是否存在
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     # 检查条码是否已存在（全局唯一）
     existing_barcode = db.query(ProductBarcode).filter(
         ProductBarcode.barcode == barcode.barcode
     ).first()
     if existing_barcode:
-        raise HTTPException(status_code=400, detail="Barcode already exists")
+        raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 如果设置为主条码，需要先将该商品的其他主条码取消
     if barcode.is_primary:
@@ -598,7 +598,7 @@ def get_product_barcodes(
     # 验证商品是否存在
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     barcodes = db.query(ProductBarcode).filter(
         ProductBarcode.product_id == product_id,
@@ -618,7 +618,7 @@ def update_product_barcode(
     """更新条码信息"""
     barcode = db.query(ProductBarcode).filter(ProductBarcode.id == barcode_id).first()
     if not barcode:
-        raise HTTPException(status_code=404, detail="Barcode not found")
+        raise LocalizedHTTPException(status_code=404, message='条码不存在')
 
     # 如果设置为主条码，需要先将该商品的其他主条码取消
     if barcode_update.is_primary is True:
@@ -649,7 +649,7 @@ def delete_product_barcode(
     """删除条码（软删除）"""
     barcode = db.query(ProductBarcode).filter(ProductBarcode.id == barcode_id).first()
     if not barcode:
-        raise HTTPException(status_code=404, detail="Barcode not found")
+        raise LocalizedHTTPException(status_code=404, message='条码不存在')
 
     barcode.is_active = False
     barcode.updated_by = current_user.id
@@ -1346,7 +1346,7 @@ def add_import_alias(
     """
     alias_name = body.name.strip()
     if not alias_name:
-        raise HTTPException(status_code=400, detail="name is required")
+        raise LocalizedHTTPException(status_code=400, message='名称不能为空')
 
     product = db.query(Product).filter(
         Product.id == product_id, Product.is_active == True
