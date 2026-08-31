@@ -501,7 +501,6 @@ VALIDATION_ERROR_MESSAGES: dict[str, str] = {
     "int_parsing": "请输入有效的整数",
     "enum": "输入值不在允许的选项内",
     "literal_error": "输入值不在允许的选项内",
-    "value_error": "输入值无效",
     "json_invalid": "请求体不是有效的 JSON",
 }
 
@@ -611,10 +610,17 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """处理请求参数验证错误 (422)。"""
     locale = request_locale(request)
+    raw_errors = []
     errors = []
     for error in exc.errors():
+        field = ".".join(str(loc) for loc in error.get("loc", []))
+        raw_errors.append({
+            "field": field,
+            "message": error.get("msg", ""),
+            "type": error.get("type", ""),
+        })
         errors.append({
-            "field": ".".join(str(loc) for loc in error.get("loc", [])),
+            "field": field,
             "message": _validation_message(error, locale),
             "type": error.get("type", ""),
         })
@@ -637,7 +643,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger.error(f"查询参数: {dict(request.query_params)}" if request.query_params else "查询参数: 无")
     if request_body is not None:
         logger.error(f"请求体: {json.dumps(request_body, ensure_ascii=False, default=str)}")
-    logger.error(f"验证错误:\n{json.dumps(errors, ensure_ascii=False, indent=2)}")
+    logger.error(f"验证错误:\n{json.dumps(raw_errors, ensure_ascii=False, indent=2)}")
     logger.error("=" * 60)
 
     return JSONResponse(

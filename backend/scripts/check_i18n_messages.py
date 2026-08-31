@@ -164,7 +164,16 @@ def inspect_file(path: Path, msgids_by_language: dict[str, set[str]]) -> list[Is
                 )
             continue
 
-        if isinstance(message_node, ast.Name) or _node_has_chinese(message_node):
+        if (
+            isinstance(message_node, ast.Name)
+            or isinstance(message_node, ast.BinOp)
+            or (
+                isinstance(message_node, ast.Call)
+                and isinstance(message_node.func, ast.Attribute)
+                and message_node.func.attr == "format"
+            )
+            or _node_has_chinese(message_node)
+        ):
             issues.append(
                 Issue(
                     file=str(path),
