@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">{{ isLocalMode ? '设置' : '个人中心' }}</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ isLocalMode ? t('nav.settings') : t('nav.profile') }}</v-app-bar-title>
   </v-app-bar>
 
   <v-container fluid>
@@ -26,7 +26,7 @@
             <div v-else class="text-h5 text-sm-h4 font-weight-bold text-primary text-truncate">
               {{ monthlyExpense !== null ? formatMoney(monthlyExpense, userCurrency) : '0.00' }}
             </div>
-            <div class="text-caption text-medium-emphasis">本月支出</div>
+            <div class="text-caption text-medium-emphasis">{{ t('profile.monthlyExpense') }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -35,7 +35,7 @@
           <v-card-text class="text-center pa-2 pa-sm-4">
             <div v-if="loadingStats" class="text-h5 text-sm-h4 font-weight-bold text-truncate">--</div>
             <div v-else class="text-h5 text-sm-h4 font-weight-bold text-truncate">{{ totalRecords }}</div>
-            <div class="text-caption text-medium-emphasis">记录数</div>
+            <div class="text-caption text-medium-emphasis">{{ t('profile.recordCount') }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -44,7 +44,7 @@
           <v-card-text class="text-center pa-2 pa-sm-4">
             <div v-if="loadingStats" class="text-h5 text-sm-h4 font-weight-bold text-truncate">--</div>
             <div v-else class="text-h5 text-sm-h4 font-weight-bold text-truncate">{{ totalRecipes }}</div>
-            <div class="text-caption text-medium-emphasis">菜谱数</div>
+            <div class="text-caption text-medium-emphasis">{{ t('profile.recipeCount') }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -54,13 +54,13 @@
     <!-- 设置列表 -->
     <v-card class="ma-4" elevation="0">
       <v-list>
-        <v-list-subheader v-if="isLocalMode">个人偏好</v-list-subheader>
+        <v-list-subheader v-if="isLocalMode">{{ t('profile.preferences') }}</v-list-subheader>
         <v-list-item v-if="isLocalMode" @click="openRegionDialog">
           <template #prepend>
             <v-icon>mdi-map-marker</v-icon>
           </template>
-          <v-list-item-title>所在地区编辑</v-list-item-title>
-          <v-list-item-subtitle>国家/地区、省份、城市、区县</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.editRegion') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.editRegionSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -69,8 +69,8 @@
           <template #prepend>
             <v-icon>mdi-account-edit</v-icon>
           </template>
-          <v-list-item-title>用户信息编辑</v-list-item-title>
-          <v-list-item-subtitle>头像、用户名、昵称、邮箱、地区、密码</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.editAccount') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.editAccountSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -82,7 +82,7 @@
           </template>
           <div class="theme-mode-content w-100">
             <div class="d-flex align-center justify-space-between">
-              <span class="text-body-2">外观主题</span>
+              <span class="text-body-2">{{ t('nav.theme') }}</span>
               <span class="text-caption text-medium-emphasis">{{ themeModeLabel }}</span>
             </div>
             <v-btn-toggle
@@ -94,13 +94,13 @@
               class="mt-2 w-100"
             >
               <v-btn value="light" size="small" class="flex-grow-1">
-                <v-icon start>mdi-weather-sunny</v-icon>浅色
+                <v-icon start>mdi-weather-sunny</v-icon>{{ t('profile.light') }}
               </v-btn>
               <v-btn value="dark" size="small" class="flex-grow-1">
-                <v-icon start>mdi-weather-night</v-icon>深色
+                <v-icon start>mdi-weather-night</v-icon>{{ t('profile.dark') }}
               </v-btn>
               <v-btn value="system" size="small" class="flex-grow-1">
-                <v-icon start>mdi-monitor</v-icon>自动
+                <v-icon start>mdi-monitor</v-icon>{{ t('profile.system') }}
               </v-btn>
             </v-btn-toggle>
           </div>
@@ -121,8 +121,8 @@
           <template #prepend>
             <v-icon>mdi-currency-usd</v-icon>
           </template>
-          <v-list-item-title>默认币种</v-list-item-title>
-          <v-list-item-subtitle>{{ userStore.user?.default_currency || '跟随所在地区' }}</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.defaultCurrency') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ userStore.user?.default_currency || t('profile.currencyPlaceholder') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -132,7 +132,7 @@
           <template #prepend>
             <v-icon>mdi-map-marker-radius</v-icon>
           </template>
-          <v-list-item-title>默认计算范围</v-list-item-title>
+          <v-list-item-title>{{ t('profile.defaultScope') }}</v-list-item-title>
           <v-list-item-subtitle>{{ scopeLabel }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
@@ -143,8 +143,8 @@
           <template #prepend>
             <v-icon>mdi-map-marker-multiple</v-icon>
           </template>
-          <v-list-item-title>我的常用地点</v-list-item-title>
-          <v-list-item-subtitle>家、公司等，地图默认聚焦</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.places') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.placesSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -154,8 +154,8 @@
           <template #prepend>
             <v-icon>mdi-clipboard-text-clock</v-icon>
           </template>
-          <v-list-item-title>我的提议</v-list-item-title>
-          <v-list-item-subtitle>查看提交的变更提议及审核状态</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.proposals') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.proposalsSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -165,8 +165,8 @@
           <template #prepend>
             <v-icon>mdi-food-apple-outline</v-icon>
           </template>
-          <v-list-item-title>饮食偏好</v-list-item-title>
-          <v-list-item-subtitle>每日营养目标与预算</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.nutritionPreferences') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.nutritionSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -176,8 +176,8 @@
           <template #prepend>
             <v-icon>mdi-ruler</v-icon>
           </template>
-          <v-list-item-title>单位偏好</v-list-item-title>
-          <v-list-item-subtitle>能量 / 质量 / 容积 / 记价默认单位</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.unitPreferences') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.unitPreferencesSubtitle') }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -187,19 +187,19 @@
           <template #prepend>
             <v-icon>mdi-cancel</v-icon>
           </template>
-          <v-list-item-title>原料黑名单</v-list-item-title>
-          <v-list-item-subtitle>已屏蔽 {{ blacklistCount }} 种原料</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.blacklist') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.blacklistCount', { count: blacklistCount }) }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
         </v-list-item>
 
-        <v-list-subheader v-if="isLocalMode">数据备份</v-list-subheader>
+        <v-list-subheader v-if="isLocalMode">{{ t('profile.dataBackup') }}</v-list-subheader>
         <v-list-item @click="exportDialog = true">
           <template #prepend>
             <v-icon>mdi-export</v-icon>
           </template>
-          <v-list-item-title>数据导出</v-list-item-title>
+          <v-list-item-title>{{ t('profile.dataExport') }}</v-list-item-title>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -209,20 +209,20 @@
           <template #prepend>
             <v-icon>mdi-upload</v-icon>
           </template>
-          <v-list-item-title>数据导入</v-list-item-title>
+          <v-list-item-title>{{ t('profile.dataImport') }}</v-list-item-title>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
         </v-list-item>
 
         <template v-if="isLocalMode">
-          <v-list-subheader>数据规则</v-list-subheader>
+          <v-list-subheader>{{ t('profile.dataRules') }}</v-list-subheader>
           <v-list-item @click="router.push('/admin/units')">
             <template #prepend>
               <v-icon>mdi-ruler</v-icon>
             </template>
-            <v-list-item-title>单位管理</v-list-item-title>
-            <v-list-item-subtitle>计量单位与换算关系</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.unitManagement') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.unitManagementSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -231,19 +231,19 @@
             <template #prepend>
               <v-icon>mdi-shield-alert</v-icon>
             </template>
-            <v-list-item-title>原料黑名单分组</v-list-item-title>
-            <v-list-item-subtitle>分组管理与原料映射</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.blacklistGroups') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.blacklistGroupsSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
           </v-list-item>
-          <v-list-subheader>系统集成</v-list-subheader>
+          <v-list-subheader>{{ t('profile.systemIntegration') }}</v-list-subheader>
           <v-list-item @click="router.push('/admin/map-settings')">
             <template #prepend>
               <v-icon>mdi-map-marker-path</v-icon>
             </template>
-            <v-list-item-title>地图配置</v-list-item-title>
-            <v-list-item-subtitle>地图服务 API 密钥</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.mapSettings') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.mapSettingsSubtitle') }}</v-list-item-subtitle>
             <template #append>
             <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -252,8 +252,8 @@
             <template #prepend>
               <v-icon>mdi-barcode-scan</v-icon>
             </template>
-            <v-list-item-title>条码服务配置</v-list-item-title>
-            <v-list-item-subtitle>商品条码查询 API 与优先级</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.barcodeServices') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.barcodeServicesSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -262,19 +262,19 @@
             <template #prepend>
               <v-icon>mdi-robot</v-icon>
             </template>
-            <v-list-item-title>AI 与机翻配置</v-list-item-title>
-            <v-list-item-subtitle>AI 服务与机翻密钥设置</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.aiConfig') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.aiConfigSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
          </v-list-item>
-          <v-list-subheader>图片管理</v-list-subheader>
+          <v-list-subheader>{{ t('profile.imageManagement') }}</v-list-subheader>
           <v-list-item @click="router.push('/admin/storage')">
             <template #prepend>
               <v-icon>mdi-cloud-outline</v-icon>
             </template>
-            <v-list-item-title>图片存储配置</v-list-item-title>
-            <v-list-item-subtitle>IndexedDB 与 S3/OSS 存储切换</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.imageStorage') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.imageStorageSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -283,19 +283,19 @@
             <template #prepend>
               <v-icon>mdi-image-multiple-outline</v-icon>
             </template>
-            <v-list-item-title>未使用图片清理</v-list-item-title>
-            <v-list-item-subtitle>扫描并清理无引用的图片</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.unusedImages') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.unusedImagesSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
           </v-list-item>
-          <v-list-subheader>数据维护</v-list-subheader>
+          <v-list-subheader>{{ t('profile.dataMaintenance') }}</v-list-subheader>
           <v-list-item @click="router.push('/admin/data-maintenance')">
             <template #prepend>
               <v-icon>mdi-database-cog</v-icon>
             </template>
-            <v-list-item-title>数据维护中心</v-list-item-title>
-            <v-list-item-subtitle>菜谱导入、USDA 数据管理</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.dataMaintenanceCenter') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.dataMaintenanceSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -304,8 +304,8 @@
             <template #prepend>
               <v-icon>mdi-robot-outline</v-icon>
             </template>
-            <v-list-item-title>Agent 任务台</v-list-item-title>
-            <v-list-item-subtitle>发起 Agent 维护任务、对话流</v-list-item-subtitle>
+            <v-list-item-title>{{ t('profile.agentConsole') }}</v-list-item-title>
+            <v-list-item-subtitle>{{ t('profile.agentConsoleSubtitle') }}</v-list-item-subtitle>
             <template #append>
               <v-icon>mdi-chevron-right</v-icon>
             </template>
@@ -316,8 +316,8 @@
           <template #prepend>
             <v-icon>mdi-information</v-icon>
           </template>
-          <v-list-item-title>关于</v-list-item-title>
-          <v-list-item-subtitle>版本 {{ appInfo.version }}</v-list-item-subtitle>
+          <v-list-item-title>{{ t('profile.about') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.version', { version: appInfo.version }) }}</v-list-item-subtitle>
           <template #append>
             <v-icon>mdi-chevron-right</v-icon>
           </template>
@@ -329,7 +329,7 @@
     <v-card v-if="!isLocalMode" class="ma-4" elevation="0">
       <v-btn block color="error" variant="text" @click="logout">
         <v-icon start>mdi-logout</v-icon>
-        退出登录
+        {{ t('nav.logout') }}
       </v-btn>
     </v-card>
 
@@ -337,7 +337,7 @@
     <v-dialog v-model="accountDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          用户信息编辑
+          {{ t('profile.editAccount') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="accountDialog = false" />
         </v-card-title>
@@ -358,15 +358,15 @@
             />
             <div class="text-caption text-medium-emphasis cursor-pointer" @click="triggerAvatarUpload">
               <template v-if="avatarUploading">
-                <v-progress-circular indeterminate size="16" width="2" class="mr-1" />上传中…
+                <v-progress-circular indeterminate size="16" width="2" class="mr-1" />{{ t('profile.uploadingAvatar') }}
               </template>
-              <template v-else>点击更换头像</template>
+              <template v-else>{{ t('profile.changeAvatar') }}</template>
             </div>
           </div>
-          <div class="text-caption text-medium-emphasis mb-2">基本信息</div>
+          <div class="text-caption text-medium-emphasis mb-2">{{ t('profile.basicInfo') }}</div>
           <v-text-field
             v-model="accountForm.username"
-            label="用户名"
+            :label="t('auth.username')"
             variant="outlined"
             density="compact"
             :error-messages="accountErrors.username"
@@ -374,7 +374,7 @@
           />
           <v-text-field
             v-model="accountForm.nickname"
-            label="昵称"
+            :label="t('profile.nickname')"
             variant="outlined"
             density="compact"
             :error-messages="accountErrors.nickname"
@@ -382,7 +382,7 @@
           />
           <v-text-field
             v-model="accountForm.email"
-            label="邮箱"
+            :label="t('auth.email')"
             type="email"
             variant="outlined"
             density="compact"
@@ -391,28 +391,28 @@
           />
           <v-text-field
             v-model="accountForm.phone"
-            label="手机号（可清空）"
+            :label="t('profile.phoneOptional')"
             variant="outlined"
             density="compact"
             :error-messages="accountErrors.phone"
             class="mb-4"
           />
 
-          <div class="text-caption text-medium-emphasis mb-2 mt-2">所在地区</div>
+          <div class="text-caption text-medium-emphasis mb-2 mt-2">{{ t('context.region') }}</div>
           <div class="d-flex flex-wrap ga-2 mb-2">
             <v-select v-model="regionSelections[0]" :items="regionItems[0]" item-title="name" item-value="id"
-              label="国家/地区" variant="outlined" density="compact" class="region-select flex-grow-1"
+              :label="t('region.country')" variant="outlined" density="compact" class="region-select flex-grow-1"
               :loading="regionLoading[0]" hide-details="auto" clearable @update:model-value="onRegionChange(0)" />
             <v-select v-if="regionSelections[0] && regionItems[1].length >= 0" v-model="regionSelections[1]"
-              :items="regionItems[1]" item-title="name" item-value="id" label="省份" variant="outlined" density="compact"
+              :items="regionItems[1]" item-title="name" item-value="id" :label="t('region.province')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[1]" hide-details="auto" clearable
               @update:model-value="onRegionChange(1)" />
             <v-select v-if="regionSelections[1] && regionItems[2].length >= 0" v-model="regionSelections[2]"
-              :items="regionItems[2]" item-title="name" item-value="id" label="城市" variant="outlined" density="compact"
+              :items="regionItems[2]" item-title="name" item-value="id" :label="t('region.city')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[2]" hide-details="auto" clearable
               @update:model-value="onRegionChange(2)" />
             <v-select v-if="regionSelections[2] && regionItems[3].length >= 0" v-model="regionSelections[3]"
-              :items="regionItems[3]" item-title="name" item-value="id" label="区县" variant="outlined" density="compact"
+              :items="regionItems[3]" item-title="name" item-value="id" :label="t('region.district')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[3]" hide-details="auto" clearable
               @update:model-value="onRegionChange(3)" />
           </div>
@@ -424,13 +424,13 @@
             class="mt-2"
             @click="openChangePasswordDialog"
           >
-            修改密码
+            {{ t('profile.changePassword') }}
           </v-btn>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" :disabled="savingAccount" @click="accountDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingAccount" @click="saveAccount">保存</v-btn>
+          <v-btn variant="text" :disabled="savingAccount" @click="accountDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingAccount" @click="saveAccount">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -439,34 +439,34 @@
     <v-dialog v-model="regionDialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          所在地区编辑
+          {{ t('profile.editRegion') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="regionDialog = false" />
         </v-card-title>
         <v-card-text>
-          <div class="text-caption text-medium-emphasis mb-2">选择你所在的地区，用于价格与地图默认定位</div>
+          <div class="text-caption text-medium-emphasis mb-2">{{ t('profile.regionSelectionHint') }}</div>
           <div class="d-flex flex-wrap ga-2 mb-2">
             <v-select v-model="regionSelections[0]" :items="regionItems[0]" item-title="name" item-value="id"
-              label="国家/地区" variant="outlined" density="compact" class="region-select flex-grow-1"
+              :label="t('region.country')" variant="outlined" density="compact" class="region-select flex-grow-1"
               :loading="regionLoading[0]" hide-details="auto" clearable @update:model-value="onRegionChange(0)" />
             <v-select v-if="regionSelections[0] && regionItems[1].length >= 0" v-model="regionSelections[1]"
-              :items="regionItems[1]" item-title="name" item-value="id" label="省份" variant="outlined" density="compact"
+              :items="regionItems[1]" item-title="name" item-value="id" :label="t('region.province')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[1]" hide-details="auto" clearable
               @update:model-value="onRegionChange(1)" />
             <v-select v-if="regionSelections[1] && regionItems[2].length >= 0" v-model="regionSelections[2]"
-              :items="regionItems[2]" item-title="name" item-value="id" label="城市" variant="outlined" density="compact"
+              :items="regionItems[2]" item-title="name" item-value="id" :label="t('region.city')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[2]" hide-details="auto" clearable
               @update:model-value="onRegionChange(2)" />
             <v-select v-if="regionSelections[2] && regionItems[3].length >= 0" v-model="regionSelections[3]"
-              :items="regionItems[3]" item-title="name" item-value="id" label="区县" variant="outlined" density="compact"
+              :items="regionItems[3]" item-title="name" item-value="id" :label="t('region.district')" variant="outlined" density="compact"
               class="region-select flex-grow-1" :loading="regionLoading[3]" hide-details="auto" clearable
               @update:model-value="onRegionChange(3)" />
           </div>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" :disabled="savingRegion" @click="regionDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingRegion" @click="saveRegion">保存</v-btn>
+          <v-btn variant="text" :disabled="savingRegion" @click="regionDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingRegion" @click="saveRegion">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -475,14 +475,14 @@
     <v-dialog v-model="changePasswordDialog" max-width="460">
       <v-card>
         <v-card-title class="d-flex align-center">
-          修改密码
+          {{ t('profile.changePassword') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="changePasswordDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-text-field
             v-model="changePasswordForm.currentPassword"
-            label="当前密码"
+            :label="t('profile.currentPassword')"
             type="password"
             variant="outlined"
             density="compact"
@@ -491,7 +491,7 @@
           />
           <v-text-field
             v-model="changePasswordForm.newPassword"
-            label="新密码"
+            :label="t('profile.newPassword')"
             type="password"
             variant="outlined"
             density="compact"
@@ -500,7 +500,7 @@
           />
           <v-text-field
             v-model="changePasswordForm.confirmPassword"
-            label="确认新密码"
+            :label="t('profile.confirmNewPassword')"
             type="password"
             variant="outlined"
             density="compact"
@@ -509,8 +509,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" :disabled="savingPassword" @click="changePasswordDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingPassword" @click="saveChangePassword">修改</v-btn>
+          <v-btn variant="text" :disabled="savingPassword" @click="changePasswordDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingPassword" @click="saveChangePassword">{{ t('profile.changePassword') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -565,20 +565,20 @@
     <v-dialog v-model="nutritionDialog" max-width="480">
       <v-card>
         <v-card-title class="d-flex align-center">
-          饮食偏好
+          {{ t('profile.nutritionPreferences') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="nutritionDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
-            设置每日营养目标和预算上限，用于饮食推荐。
+            {{ t('profile.nutritionDescription') }}
           </p>
 
           <v-row dense>
             <v-col cols="6">
               <v-text-field
                 v-model.number="nutritionForm.daily_calorie_target"
-                :label="`每日热量 (${energyUnit})`"
+                :label="t('profile.dailyCalories', { unit: energyUnit })"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -591,7 +591,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model.number="nutritionForm.daily_protein_target"
-                label="蛋白质 (g)"
+                :label="t('profile.proteinG')"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -604,7 +604,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model.number="nutritionForm.daily_carb_target"
-                label="碳水 (g)"
+                :label="t('profile.carbsG')"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -617,7 +617,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model.number="nutritionForm.daily_fat_target"
-                label="脂肪 (g)"
+                :label="t('profile.fatG')"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -630,7 +630,7 @@
             <v-col cols="12">
               <v-text-field
                 v-model.number="nutritionForm.daily_budget"
-                label="每日预算 (元，留空不限)"
+                :label="t('profile.dailyBudget')"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -638,16 +638,16 @@
                 min="0"
                 step="5"
                 clearable
-                placeholder="不限"
+                :placeholder="t('profile.unlimited')"
               />
             </v-col>
           </v-row>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="nutritionDialog = false">取消</v-btn>
+          <v-btn variant="text" @click="nutritionDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingNutrition" @click="saveNutrition">
-            保存
+            {{ t('actions.save') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -657,20 +657,20 @@
     <v-dialog v-model="unitPrefsDialog" max-width="480">
       <v-card>
         <v-card-title class="d-flex align-center">
-          单位偏好
+          {{ t('profile.unitPreferences') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="unitPrefsDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
-            设置你的默认单位，所有页面将按此显示与填写。
+            {{ t('profile.unitDescription') }}
           </p>
           <v-select
             v-model="unitPrefsForm.default_energy_unit"
-            :items="[{ title: '千卡 (kcal)', value: 'kcal' }, { title: '千焦 (kJ)', value: 'kJ' }]"
+            :items="[{ title: t('profile.kcal'), value: 'kcal' }, { title: t('profile.kj'), value: 'kJ' }]"
             item-title="title"
             item-value="value"
-            label="能量单位"
+            :label="t('profile.energyUnit')"
             variant="outlined"
             density="compact"
             class="mb-3"
@@ -680,7 +680,7 @@
             :items="massUnitOptions"
             item-title="name"
             item-value="id"
-            label="默认质量单位"
+            :label="t('profile.defaultMassUnit')"
             variant="outlined"
             density="compact"
             class="mb-3"
@@ -691,7 +691,7 @@
             :items="volumeUnitOptions"
             item-title="name"
             item-value="id"
-            label="默认容积单位"
+            :label="t('profile.defaultVolumeUnit')"
             variant="outlined"
             density="compact"
             class="mb-3"
@@ -702,7 +702,7 @@
             :items="priceUnitOptions"
             item-title="name"
             item-value="id"
-            label="默认记价单位（含个/包/瓶）"
+            :label="t('profile.defaultPriceUnit')"
             variant="outlined"
             density="compact"
             clearable
@@ -710,26 +710,26 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="unitPrefsDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="savingUnitPrefs" @click="saveUnitPrefs">保存</v-btn>
+          <v-btn variant="text" @click="unitPrefsDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="savingUnitPrefs" @click="saveUnitPrefs">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
 
     <v-dialog v-model="exportDialog" max-width="420">
       <v-card>
-        <v-card-title>数据导出</v-card-title>
+        <v-card-title>{{ t('profile.exportTitle') }}</v-card-title>
         <v-card-text>
           <p class="text-body-2 text-medium-emphasis mb-3">
-            选择导出范围，导出文件将打包为 zip 下载。
+            {{ t('profile.exportDescription') }}
           </p>
           <v-radio-group v-model="exportScope">
             <v-radio value="full">
               <template #label>
                 <div>
-                  <strong>全量数据</strong>
+                  <strong>{{ t('profile.exportAll') }}</strong>
                   <div class="text-caption text-medium-emphasis">
-                    包括我创建的和系统/管理员创建的所有数据
+                    {{ t('profile.exportAllDescription') }}
                   </div>
                 </div>
               </template>
@@ -737,9 +737,9 @@
             <v-radio value="mine">
               <template #label>
                 <div>
-                  <strong>仅我的数据</strong>
+                  <strong>{{ t('profile.exportMine') }}</strong>
                   <div class="text-caption text-medium-emphasis">
-                    只导出我创建的数据；我引用到的系统数据会一并带上
+                    {{ t('profile.exportMineDescription') }}
                   </div>
                 </div>
               </template>
@@ -748,8 +748,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" :disabled="exporting" @click="exportDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="exporting" @click="doExport">导出</v-btn>
+          <v-btn variant="text" :disabled="exporting" @click="exportDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="exporting" @click="doExport">{{ t('profile.export') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -758,24 +758,24 @@
     <v-dialog v-model="currencyDialog" max-width="420">
       <v-card>
         <v-card-title class="d-flex align-center">
-          默认币种
+          {{ t('profile.defaultCurrency') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="currencyDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
-            设置默认货币；清空则跟随所在地区自动判断。
+            {{ t('profile.currencyDescription') }}
           </p>
           <v-autocomplete
             v-model="currencyValue"
             :items="currencies"
             item-title="name"
             item-value="code"
-            label="默认币种"
+            :label="t('profile.defaultCurrency')"
             variant="outlined"
             density="compact"
             clearable
-            placeholder="跟随所在地区"
+            :placeholder="t('profile.currencyPlaceholder')"
           >
             <!-- 展开列表显示「全称 代码」，收起只显示三字母代码 -->
             <template #selection="{ item }">
@@ -788,8 +788,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="currencyDialog = false">取消</v-btn>
-          <v-btn color="primary" @click="saveCurrency">保存</v-btn>
+          <v-btn variant="text" @click="currencyDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" @click="saveCurrency">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -798,28 +798,28 @@
     <v-dialog v-model="scopeDialog" max-width="420">
       <v-card>
         <v-card-title class="d-flex align-center">
-          默认计算范围
+          {{ t('profile.defaultScope') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="scopeDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
-            设置默认参与价格统计与换算的地区范围。
+            {{ t('profile.defaultScopeDescription') }}
           </p>
           <v-select
             v-model="scopeValue"
             :items="scopeOptions"
             item-title="title"
             item-value="value"
-            label="默认计算范围"
+            :label="t('profile.defaultScope')"
             variant="outlined"
             density="compact"
           />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="scopeDialog = false">取消</v-btn>
-          <v-btn color="primary" @click="saveScope">保存</v-btn>
+          <v-btn variant="text" @click="scopeDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" @click="saveScope">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -828,7 +828,7 @@
     <v-dialog v-model="aboutDialog" max-width="420">
       <v-card>
         <v-card-title class="d-flex align-center">
-          关于
+          {{ t('profile.about') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="aboutDialog = false" />
         </v-card-title>
@@ -837,7 +837,7 @@
             <v-img src="/logo.svg" :alt="appInfo.name" cover />
           </v-avatar>
           <div class="text-h6 font-weight-bold">{{ appInfo.name }}</div>
-          <div class="text-caption text-medium-emphasis mb-2">版本 {{ appInfo.version }}</div>
+          <div class="text-caption text-medium-emphasis mb-2">{{ t('profile.version', { version: appInfo.version }) }}</div>
           <div class="text-body-2 text-medium-emphasis mb-3">{{ appInfo.description }}</div>
           <div class="text-caption text-medium-emphasis mb-2">{{ appInfo.copyright }}</div>
           <v-divider class="mb-2" />
@@ -846,14 +846,14 @@
               <template #prepend>
                 <v-icon>mdi-github</v-icon>
               </template>
-              <v-list-item-title>项目主页</v-list-item-title>
+              <v-list-item-title>{{ t('profile.projectHomepage') }}</v-list-item-title>
               <v-list-item-subtitle class="text-truncate">{{ appInfo.homepage }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item :href="appInfo.authorHomepage" target="_blank" rel="noopener">
               <template #prepend>
                 <v-icon>mdi-web</v-icon>
               </template>
-              <v-list-item-title>作者主页</v-list-item-title>
+              <v-list-item-title>{{ t('profile.authorHomepage') }}</v-list-item-title>
               <v-list-item-subtitle class="text-truncate">{{ appInfo.authorHomepage }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
@@ -865,7 +865,7 @@
     <v-overlay v-model="exporting" class="align-center justify-center" persistent>
       <div class="text-center">
         <v-progress-circular indeterminate size="48" />
-        <div class="mt-3">正在打包数据，请稍候…</div>
+        <div class="mt-3">{{ t('profile.packagingData') }}</div>
       </div>
     </v-overlay>
   </v-container>
@@ -909,11 +909,11 @@ const { mapEnabled, ensureLoaded } = useMapConfig()
 const themeModeLabel = computed(() => {
   switch (themeMode.value) {
     case 'light':
-      return '浅色模式'
+      return t('profile.lightMode')
     case 'dark':
-      return '深色模式'
+      return t('profile.darkMode')
     case 'system':
-      return '自动跟随系统'
+      return t('profile.systemMode')
     default:
       return ''
   }
@@ -1007,13 +1007,13 @@ const currencyValue = ref<string | null>(null)
 const scopeValue = ref<string>('country') // 默认国家/地区（全量）；空串 = 全部地区
 const currencies = ref<any[]>([])
 const scopeOptions = [
-  { title: '全部地区', value: '' },
-  { title: '国家/地区', value: 'country' },
-  { title: '省份', value: 'province' },
-  { title: '城市', value: 'city' },
-  { title: '区县', value: 'county' },
+  { title: t('scope.all'), value: '' },
+  { title: t('scope.country'), value: 'country' },
+  { title: t('scope.province'), value: 'province' },
+  { title: t('scope.city'), value: 'city' },
+  { title: t('scope.county'), value: 'county' },
 ]
-const scopeLabel = computed(() => scopeOptions.find(o => o.value === userStore.user?.default_calc_scope)?.title || '国家/地区')
+const scopeLabel = computed(() => scopeOptions.find(o => o.value === userStore.user?.default_calc_scope)?.title || t('region.country'))
 
 function openCurrencyDialog() {
   currencyValue.value = userStore.user?.default_currency ?? null
@@ -1087,12 +1087,12 @@ async function uploadCroppedAvatar(blob: Blob) {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
     await userStore.fetchUser()
-    notify('头像已更新', 'success')
+    notify(t('profile.avatarUpdated'), 'success')
   } catch (e: unknown) {
     const msg = (e && typeof e === 'object' && 'userMessage' in e)
       ? (e as { userMessage?: string }).userMessage
-      : (e instanceof Error ? e.message : '未知错误')
-    notify('头像上传失败：' + (msg || '未知错误'), 'error')
+      : (e instanceof Error ? e.message : t('errors.unknown'))
+    notify(t('profile.avatarUploadFailed', { message: msg || t('errors.unknown') }), 'error')
   } finally {
     avatarUploading.value = false
     if (cropperSrc.value) URL.revokeObjectURL(cropperSrc.value)
@@ -1131,7 +1131,7 @@ const doExport = async () => {
       { headers: token ? { Authorization: `Bearer ${token}` } : {} },
     )
     if (!resp.ok || !resp.body) {
-      throw new Error(`导出失败：HTTP ${resp.status}`)
+      throw new Error(t('profile.dataExportFailed', { message: `HTTP ${resp.status}` }))
     }
     const reader = resp.body.getReader()
     const chunks: Uint8Array[] = []
@@ -1155,7 +1155,7 @@ const doExport = async () => {
     exportDialog.value = false
   } catch (e: any) {
     console.error('数据导出失败', e)
-    notify('数据导出失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.dataExportFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     exporting.value = false
   }
@@ -1206,7 +1206,7 @@ async function saveNutrition() {
     await userStore.fetchUser()
     nutritionDialog.value = false
   } catch (e: any) {
-    notify('保存失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.saveFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     savingNutrition.value = false
   }
@@ -1264,7 +1264,7 @@ async function saveUnitPrefs() {
     await userStore.fetchUser()
     unitPrefsDialog.value = false
   } catch (e: any) {
-    notify('保存失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.saveFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     savingUnitPrefs.value = false
   }
@@ -1337,13 +1337,13 @@ async function saveAccount() {
   const f = accountForm.value
   let hasError = false
   if (!f.username || f.username.length < 3 || f.username.length > 50) {
-    accountErrors.username = '用户名需 3-50 个字符'; hasError = true
+    accountErrors.username = t('profile.accountUsernameLength'); hasError = true
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email)) {
-    accountErrors.email = '邮箱格式不正确'; hasError = true
+    accountErrors.email = t('profile.accountEmailInvalid'); hasError = true
   }
   if (f.phone && !/^1[3-9]\d{9}$/.test(f.phone)) {
-    accountErrors.phone = '手机号格式不正确'; hasError = true
+    accountErrors.phone = t('profile.phoneInvalid'); hasError = true
   }
   if (hasError) return
 
@@ -1386,9 +1386,9 @@ async function saveAccount() {
       }
     }
     accountDialog.value = false
-    notify('已更新', 'success')
+    notify(t('profile.updated'), 'success')
   } catch (e: any) {
-    notify('保存失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.saveFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     savingAccount.value = false
   }
@@ -1460,9 +1460,9 @@ async function saveRegion() {
       }
     }
     regionDialog.value = false
-    notify('已更新', 'success')
+    notify(t('profile.updated'), 'success')
   } catch (e: any) {
-    notify('保存失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.saveFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     savingRegion.value = false
   }
@@ -1472,12 +1472,12 @@ async function saveChangePassword() {
   Object.keys(changePasswordErrors).forEach(k => (changePasswordErrors[k as keyof typeof changePasswordErrors] = ''))
   const f = changePasswordForm.value
   let hasError = false
-  if (!f.currentPassword) { changePasswordErrors.currentPassword = '请输入当前密码'; hasError = true }
+  if (!f.currentPassword) { changePasswordErrors.currentPassword = t('profile.currentPasswordRequired'); hasError = true }
   if (!f.newPassword || f.newPassword.length < 6) {
-    changePasswordErrors.newPassword = '新密码至少 6 个字符'; hasError = true
+    changePasswordErrors.newPassword = t('profile.newPasswordMin'); hasError = true
   }
   if (f.newPassword !== f.confirmPassword) {
-    changePasswordErrors.confirmPassword = '两次输入的新密码不一致'; hasError = true
+    changePasswordErrors.confirmPassword = t('profile.confirmPasswordMismatch'); hasError = true
   }
   if (hasError) return
 
@@ -1492,9 +1492,9 @@ async function saveChangePassword() {
     }
     await userStore.fetchUser()
     changePasswordDialog.value = false
-    notify('密码已修改，登录态已刷新', 'success')
+    notify(t('profile.passwordChanged'), 'success')
   } catch (e: any) {
-    notify('修改失败：' + (e?.userMessage || e?.message || '未知错误'), 'error')
+    notify(t('profile.changeFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     savingPassword.value = false
   }

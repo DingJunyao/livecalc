@@ -12,7 +12,7 @@
       <v-btn
         icon="mdi-barcode-scan"
         variant="text"
-        aria-label="扫码输入条码"
+        :aria-label="t('common.scanBarcode')"
         @click="scannerOpen = true"
       />
     </template>
@@ -25,7 +25,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { t as translate } from '@/plugins/i18n'
 import BarcodeScannerDialog from './BarcodeScannerDialog.vue'
+
+const { t } = useI18n()
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -34,7 +38,7 @@ const props = withDefaults(defineProps<{
   variant?: 'outlined' | 'underlined' | 'plain'
   density?: 'default' | 'comfortable' | 'compact'
 }>(), {
-  label: '条码',
+  label: translate('common.barcode'),
   loading: false,
   variant: 'outlined',
   density: 'default',

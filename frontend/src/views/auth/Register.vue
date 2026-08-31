@@ -4,15 +4,15 @@
       <v-container class="h-100 d-flex align-center justify-center">
         <v-card class="elevation-8" max-width="400" width="100%">
           <v-card-title class="text-center pa-6">
-            <div class="text-h4 font-weight-bold text-primary">注册</div>
-            <div class="text-subtitle-2 text-medium-emphasis mt-2">创建您的生计账号</div>
+            <div class="text-h4 font-weight-bold text-primary">{{ t('auth.registerTitle') }}</div>
+            <div class="text-subtitle-2 text-medium-emphasis mt-2">{{ t('auth.registerSubtitle') }}</div>
           </v-card-title>
 
           <v-card-text>
             <v-form @submit.prevent="handleRegister">
               <v-text-field
                 v-model="form.username"
-                label="用户名"
+                :label="t('auth.username')"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 required
@@ -22,7 +22,7 @@
 
               <v-text-field
                 v-model="form.email"
-                label="邮箱"
+                :label="t('auth.email')"
                 prepend-inner-icon="mdi-email"
                 type="email"
                 variant="outlined"
@@ -33,7 +33,7 @@
 
               <v-text-field
                 v-model="form.password"
-                label="密码"
+                :label="t('auth.password')"
                 prepend-inner-icon="mdi-lock"
                 type="password"
                 variant="outlined"
@@ -44,7 +44,7 @@
 
               <v-text-field
                 v-model="form.confirmPassword"
-                label="确认密码"
+                :label="t('auth.confirmPassword')"
                 prepend-inner-icon="mdi-lock-check"
                 type="password"
                 variant="outlined"
@@ -56,7 +56,7 @@
               <v-text-field
                 v-if="requireInviteCode"
                 v-model="form.inviteCode"
-                label="邀请码"
+                :label="t('auth.inviteCode')"
                 prepend-inner-icon="mdi-ticket"
                 variant="outlined"
                 required
@@ -72,7 +72,7 @@
                 variant="elevated"
                 :loading="loading"
               >
-                注册
+                {{ t('auth.register') }}
               </v-btn>
             </v-form>
 
@@ -82,9 +82,9 @@
           </v-card-text>
 
           <v-card-actions class="pa-4 pt-0">
-            <span class="text-body-2 text-medium-emphasis">已有账号？</span>
+            <span class="text-body-2 text-medium-emphasis">{{ t('auth.haveAccount') }}</span>
             <v-btn variant="text" color="primary" to="/login" class="ml-1">
-              立即登录
+              {{ t('auth.loginNow') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -95,6 +95,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { api } from '@/api'
@@ -102,6 +103,7 @@ import { hashPassword } from '@/utils/crypto'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const form = reactive({
   username: '',
@@ -143,32 +145,32 @@ const handleRegister = async () => {
   // 验证
   let hasError = false
   if (!form.username) {
-    errors.username = '请输入用户名'
+    errors.username = t('auth.usernameRequired')
     hasError = true
   } else if (form.username.length < 3 || form.username.length > 50) {
-    errors.username = '用户名需 3-50 个字符'
+    errors.username = t('auth.usernameLength')
     hasError = true
   }
   if (!form.email) {
-    errors.email = '请输入邮箱'
+    errors.email = t('auth.emailRequired')
     hasError = true
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-    errors.email = '邮箱格式不正确'
+    errors.email = t('auth.emailInvalid')
     hasError = true
   }
   if (!form.password) {
-    errors.password = '请输入密码'
+    errors.password = t('auth.passwordRequired')
     hasError = true
   } else if (form.password.length < 6) {
-    errors.password = '密码至少需要6个字符'
+    errors.password = t('auth.passwordMin')
     hasError = true
   }
   if (form.password !== form.confirmPassword) {
-    errors.confirmPassword = '两次输入的密码不一致'
+    errors.confirmPassword = t('auth.passwordMismatch')
     hasError = true
   }
   if (requireInviteCode.value && !form.inviteCode) {
-    errors.inviteCode = '请输入邀请码'
+    errors.inviteCode = t('auth.inviteCodeRequired')
     hasError = true
   }
 
@@ -186,7 +188,7 @@ const handleRegister = async () => {
     )
     router.push('/')
   } catch (error: any) {
-    errorMessage.value = error.userMessage || error.response?.data?.detail || '注册失败，请稍后重试'
+    errorMessage.value = error.userMessage || error.response?.data?.detail || t('auth.registerFailed')
   } finally {
     loading.value = false
   }

@@ -4,15 +4,15 @@
       <v-container class="h-100 d-flex align-center justify-center">
         <v-card class="elevation-8" max-width="400" width="100%">
           <v-card-title class="text-center pa-6">
-            <div class="text-h4 font-weight-bold text-primary">生计</div>
-            <div class="text-subtitle-2 text-medium-emphasis mt-2">生活成本计算器</div>
+            <div class="text-h4 font-weight-bold text-primary">{{ t('app.name') }}</div>
+            <div class="text-subtitle-2 text-medium-emphasis mt-2">{{ t('app.slogan') }}</div>
           </v-card-title>
 
           <v-card-text>
             <v-form @submit.prevent="handleLogin">
               <v-text-field
                 v-model="form.username"
-                label="用户名"
+                :label="t('auth.username')"
                 prepend-inner-icon="mdi-account"
                 variant="outlined"
                 required
@@ -22,7 +22,7 @@
 
               <v-text-field
                 v-model="form.password"
-                label="密码"
+                :label="t('auth.password')"
                 prepend-inner-icon="mdi-lock"
                 type="password"
                 variant="outlined"
@@ -39,7 +39,7 @@
                 variant="elevated"
                 :loading="loading"
               >
-                登录
+                {{ t('auth.login') }}
               </v-btn>
             </v-form>
 
@@ -49,9 +49,9 @@
           </v-card-text>
 
           <v-card-actions class="pa-4 pt-0">
-            <span class="text-body-2 text-medium-emphasis">还没有账号？</span>
+            <span class="text-body-2 text-medium-emphasis">{{ t('auth.noAccount') }}</span>
             <v-btn variant="text" color="primary" to="/register" class="ml-1">
-              立即注册
+              {{ t('auth.registerNow') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -62,12 +62,14 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { hashPassword } from '@/utils/crypto'
 
 const router = useRouter()
 const userStore = useUserStore()
+const { t } = useI18n()
 
 const form = reactive({
   username: '',
@@ -91,11 +93,11 @@ const handleLogin = async () => {
   // 验证
   let hasError = false
   if (!form.username) {
-    errors.username = '请输入用户名'
+    errors.username = t('auth.usernameRequired')
     hasError = true
   }
   if (!form.password) {
-    errors.password = '请输入密码'
+    errors.password = t('auth.passwordRequired')
     hasError = true
   }
 
@@ -108,7 +110,7 @@ const handleLogin = async () => {
     await userStore.login(form.username, passwordHash)
     router.push('/')
   } catch (error: any) {
-    errorMessage.value = error.response?.data?.detail || '登录失败，请检查用户名和密码'
+    errorMessage.value = error.response?.data?.detail || t('auth.loginFailed')
   } finally {
     loading.value = false
   }

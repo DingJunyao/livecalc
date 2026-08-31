@@ -19,7 +19,10 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
+
+const { t } = useI18n()
 
 interface Props {
   modelValue: number | null
@@ -28,10 +31,10 @@ const props = defineProps<Props>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: number | null): void }>()
 
 const levels = [
-  { label: '国家/地区', code: 0 },
-  { label: '省份', code: 1 },
-  { label: '城市', code: 2 },
-  { label: '区县', code: 3 },
+  { label: t('region.country'), code: 0 },
+  { label: t('region.province'), code: 1 },
+  { label: t('region.city'), code: 2 },
+  { label: t('region.district'), code: 3 },
 ]
 const selected = ref<(number | null)[]>([null, null, null, null])
 const options = ref<any[][]>([[], [], [], []])

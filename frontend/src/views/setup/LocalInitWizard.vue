@@ -3,32 +3,32 @@
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="6" lg="4">
         <v-card class="pa-6">
-          <v-card-title class="text-h4 text-center mb-4">生计 — 初始化</v-card-title>
+          <v-card-title class="text-h4 text-center mb-4">{{ t('setup.title') }}</v-card-title>
 
           <!-- Step 1: Welcome + choose method -->
           <template v-if="step === 1">
             <v-card-text class="text-body-1 text-center mb-4">
-              欢迎使用本地版本！请选择数据初始化方式：
+              {{ t('setup.welcome') }}
             </v-card-text>
             <v-list lines="two">
               <v-list-item
                 prepend-icon="mdi-database-import-outline"
-                title="从 HowToCook 仓库导入"
-                subtitle="导入公开菜谱、原料和营养数据（需要网络）"
+                :title="t('setup.importFromRepo')"
+                :subtitle="t('setup.importFromRepoSubtitle')"
                 @click="importFromRepo"
                 :disabled="importing"
               />
               <v-list-item
                 prepend-icon="mdi-upload-outline"
-                title="上传数据包"
-                subtitle="导入之前导出的 ZIP 数据包"
+                :title="t('setup.uploadPackage')"
+                :subtitle="t('setup.uploadPackageSubtitle')"
                 @click="step = 2"
                 :disabled="importing"
               />
               <v-list-item
                 prepend-icon="mdi-rocket-launch-outline"
-                title="空白起步"
-                subtitle="只导入基础单位和分类，后续在数据维护中心导入"
+                :title="t('setup.blankStart')"
+                :subtitle="t('setup.blankStartSubtitle')"
                 @click="skipImport"
                 :disabled="importing"
               />
@@ -45,7 +45,7 @@
               <div class="text-caption text-center text-medium-emphasis" style="white-space: pre-line;">{{ importMessage }}</div>
               <div v-if="canCancel" class="text-center mt-2">
                 <v-btn size="small" variant="tonal" color="error" :disabled="cancelImport" @click="cancelImport = true">
-                  <v-icon start>mdi-stop-circle-outline</v-icon>中止导入
+                  <v-icon start>mdi-stop-circle-outline</v-icon>{{ t('setup.abortImport') }}
                 </v-btn>
               </div>
             </template>
@@ -54,15 +54,15 @@
           <!-- Step 2: Upload ZIP -->
           <template v-if="step === 2">
             <v-card-text class="text-body-1 mb-4">
-              选择之前导出的 ZIP 数据包：
+              {{ t('setup.uploadZipPrompt') }}
             </v-card-text>
             <v-file-input
-              label="选择 ZIP 文件"
+              :label="t('setup.chooseZip')"
               accept=".zip"
               @change="handleZipUpload"
               :loading="importing"
             />
-            <v-btn variant="text" @click="step = 1" :disabled="importing">返回</v-btn>
+            <v-btn variant="text" @click="step = 1" :disabled="importing">{{ t('setup.back') }}</v-btn>
             <!-- 导入进度 -->
             <template v-if="importing">
               <v-progress-linear
@@ -80,11 +80,11 @@
           <template v-if="step === 3">
             <v-card-text class="text-body-1 text-center">
               <v-icon size="48" color="success" class="mb-4">mdi-check-circle-outline</v-icon>
-              <p>初始化完成！</p>
+              <p>{{ t('setup.complete') }}</p>
               <p class="text-caption text-medium-emphasis mt-2" style="white-space: pre-line;">{{ importMessage }}</p>
             </v-card-text>
             <v-btn color="primary" block class="mt-4" @click="goToHome">
-              开始使用
+              {{ t('setup.startUsing') }}
             </v-btn>
           </template>
         </v-card>
@@ -95,10 +95,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { seedBasicData, BASE_UNITS } from '@/api/local/seed'
 import { fixBlobMime } from '@/utils/image'
 
+const { t } = useI18n()
 const router = useRouter()
 const step = ref(1)
 const importing = ref(false)
@@ -130,11 +132,11 @@ async function fetchWithRetry(
     } catch (e) {
       clearTimeout(timer)
       lastErr = (e instanceof DOMException && e.name === 'AbortError')
-        ? new Error('请求超时')
+        ? new Error(t('setup.requestTimeout'))
         : e
     }
     if (attempt < retries) {
-      onRetry?.(attempt, (lastErr as Error)?.message || '未知错误')
+      onRetry?.(attempt, (lastErr as Error)?.message || t('errors.unknown'))
       await new Promise(r => setTimeout(r, 1000 * attempt))
     }
   }
@@ -146,7 +148,7 @@ async function importFromRepo() {
   importProgress.value = 5
   cancelImport.value = false
   canCancel.value = false
-  importMessage.value = '正在从 HowToCook 数据仓库获取文件列表...'
+  importMessage.value = t('setup.fetchingRepo')
   try {
 
     const RAW_BASE = 'https://raw.githubusercontent.com/DingJunyao/HowToCook_json/main/out'
@@ -154,7 +156,7 @@ async function importFromRepo() {
 
     // 获取文件列表（强制：失败重试 3 次，仍失败则中止整个导入）
     const listResp = await fetchWithRetry(API_BASE, 3, 30000, (a, m) => {
-      importMessage.value = `获取文件列表第 ${a} 次失败（${m}），重试中...`
+      importMessage.value = t('setup.fetchRetry', { attempt: a, message: m })
     })
     const files: Array<{ name: string; type: string; download_url: string }> = await listResp.json()
 
@@ -165,7 +167,7 @@ async function importFromRepo() {
    // 全量导入所有菜谱
    const recipeFiles = allRecipeFiles
 
-   importMessage.value = `发现 ${recipeFiles.length} 个菜谱文件，准备全量导入`
+   importMessage.value = t('setup.foundRecipes', { count: recipeFiles.length })
    importProgress.value = 10
 
     const { getDb } = await import('@/api/local/database')
@@ -185,13 +187,13 @@ async function importFromRepo() {
 
     // 下载并导入单位（强制：失败重试 3 次，仍失败则中止整个导入）
     importProgress.value = 15
-    importMessage.value = '(1/4) 正在导入单位...'
+    importMessage.value = t('setup.importUnits')
     const unitsResp = await fetchWithRetry(`${RAW_BASE}/units.json`, 3, 30000, (a, m) => {
-      importMessage.value = `(1/4) 单位导入第 ${a} 次失败（${m}），重试中...`
+      importMessage.value = t('setup.importUnitsRetry', { attempt: a, message: m })
     })
     const unitsJson = await unitsResp.json()
     const htcUnits = Array.isArray(unitsJson) ? unitsJson : Object.values(unitsJson)
-    if (htcUnits.length === 0) throw new Error('单位导入失败：units.json 内容为空')
+    if (htcUnits.length === 0) throw new Error(t('setup.unitsImportFailedEmpty'))
     // HowToCook 的 units.json 只含 name/aliases，没有 unit_type/si_factor。
     // 若直接 put 会用 HowToCook 的名字覆盖 seed 单位记录（把 mass 单位变成 count、
     // si_factor 清空），导致成本换算全部失效。正确做法：先强制恢复 BASE_UNITS 的
@@ -237,20 +239,20 @@ async function importFromRepo() {
       await tx.done
     }
     importProgress.value = 20
-    importMessage.value = '(1/4) 单位已导入，正在导入原料...'
+    importMessage.value = t('setup.unitsImported')
 
     // 下载并导入原料（ingredients.json 是对象，key=原料名）
     // （强制：失败重试 3 次，仍失败则中止）
     importProgress.value = 22
-    importMessage.value = '(2/4) 正在导入原料...'
+    importMessage.value = t('setup.importIngredients')
     let ingredientCount = 0
     const ingredientNameToId: Record<string, number> = {}
     const ingResp = await fetchWithRetry(`${RAW_BASE}/ingredients.json`, 3, 30000, (a, m) => {
-      importMessage.value = `(2/4) 原料导入第 ${a} 次失败（${m}），重试中...`
+      importMessage.value = t('setup.importIngredientsRetry', { attempt: a, message: m })
     })
     const ingObj: Record<string, any> = await ingResp.json()
     const entries = Object.entries(ingObj)
-    if (entries.length === 0) throw new Error('原料导入失败：ingredients.json 内容为空')
+    if (entries.length === 0) throw new Error(t('setup.ingredientsImportFailedEmpty'))
     {
       const tx = db.transaction('ingredients', 'readwrite')
       let idCounter = 1
@@ -269,7 +271,7 @@ async function importFromRepo() {
       await tx.done
     }
     importProgress.value = 40
-    importMessage.value = `(2/4) ${ingredientCount} 个原料已导入，正在下载营养数据...`
+    importMessage.value = t('setup.ingredientsImported', { count: ingredientCount })
 
     // 下载并导入营养数据（可选：失败重试 3 次后跳过，不影响后续导入）
     let nutritionCount = 0
@@ -307,7 +309,7 @@ async function importFromRepo() {
       nutritionSkipped = true
     }
     importProgress.value = 50
-    importMessage.value = `(3/4) ${nutritionCount} 条营养数据已导入，正在为原料创建商品...`
+    importMessage.value = t('setup.nutritionImported', { count: nutritionCount })
 
     // 为每个原料创建对应的商品（产品和原料 1:1）
     let productCount = 0
@@ -324,7 +326,7 @@ async function importFromRepo() {
       await tx.done
     } catch { /* optional */ }
     importProgress.value = 55
-    importMessage.value = `(3/4) 已为 ${productCount} 个原料创建商品，正在下载菜谱（0/${recipeFiles.length}）...`
+    importMessage.value = t('setup.productsCreated', { count: productCount, total: recipeFiles.length })
 
     // 构建单位名→ID 映射（供菜谱原料匹配使用）
     const allUnits = await db.getAll('units')
@@ -353,8 +355,8 @@ async function importFromRepo() {
       const batch = recipeFiles.slice(i, i + BATCH_SIZE)
       const pct = 50 + Math.round((i / totalRecipes) * 40)
       importProgress.value = pct
-      const failedNote = recipeFailures > 0 ? `，失败 ${recipeFailures} 个` : ''
-      importMessage.value = `(4/4) 正在导入菜谱 ${Math.min(i + BATCH_SIZE, totalRecipes)}/${totalRecipes}${failedNote}...`
+      const failedNote = recipeFailures > 0 ? t('setup.recipeFailedNote', { count: recipeFailures }) : ''
+      importMessage.value = t('setup.importRecipesProgress', { current: Math.min(i + BATCH_SIZE, totalRecipes), total: totalRecipes, failed: failedNote })
 
       // 每个菜谱文件独立重试 3 次；某条彻底失败只计数，不影响其他
       const results = await Promise.allSettled(batch.map(async (file: any) => {
@@ -458,21 +460,21 @@ async function importFromRepo() {
     canCancel.value = false
 
     importProgress.value = 100
-    let summary = `导入完成！${ingredientCount} 个原料，${recipeCount} 个菜谱，${downloadedImages} 张图片。`
+    let summary = t('setup.summaryComplete', { ingredients: ingredientCount, recipes: recipeCount, images: downloadedImages })
     summary += nutritionSkipped
-      ? `\n营养数据导入失败已跳过，不影响使用。`
-      : `\n${nutritionCount} 条营养数据。`
+      ? `\n${t('setup.summaryNutritionSkipped')}`
+      : `\n${t('setup.summaryNutritionCount', { count: nutritionCount })}`
     if (recipeFailures > 0) {
-      summary += `\n⚠ ${recipeFailures} 个菜谱导入失败，已跳过。`
+      summary += `\n${t('setup.summaryRecipeFailures', { count: recipeFailures })}`
     }
     if (cancelImport.value) {
       const remaining = totalRecipes - recipeCount - recipeFailures
-      summary += `\n已中止导入，剩余 ${remaining} 个菜谱未处理。`
+      summary += `\n${t('setup.summaryAborted', { remaining })}`
     }
     importMessage.value = summary
     step.value = 3
   } catch (e: any) {
-    importMessage.value = '导入失败：' + (e?.message || '未知错误')
+    importMessage.value = t('setup.importFailedPrefix') + (e?.message || t('errors.unknown'))
     console.error('[repo-import]', e)
   } finally {
     importing.value = false
@@ -486,7 +488,7 @@ async function handleZipUpload(event: any) {
 
   importing.value = true
   importProgress.value = 0
-  importMessage.value = '正在准备基础数据...'
+  importMessage.value = t('setup.preparingBaseData')
   try {
     await seedBasicData()
 
@@ -499,38 +501,38 @@ async function handleZipUpload(event: any) {
       importProgress.value = percent
     })
     if (!result?.task_id) {
-      throw new Error('导入任务未创建')
+      throw new Error(t('setup.importTaskNotCreated'))
     }
 
     const task = await getTask({ id: String(result.task_id) })
     const stats: Record<string, number> = task?.stats || {}
     const statLabels: Record<string, string> = {
-      ingredients: '原料',
-      nutrition_data: '营养数据',
-      products: '商品',
-      product_records: '价格记录',
-      recipes: '菜谱',
-      recipe_ingredients: '菜谱原料',
-      merchants: '商家',
-      images: '图片',
-      ingredient_hierarchy: '层级关系',
-      entity_unit_overrides: '单位覆盖',
-      entity_densities: '密度',
-      user_places: '地点',
-      blacklist_groups: '黑名单分组',
+      ingredients: t('setup.stats.ingredients'),
+      nutrition_data: t('setup.stats.nutrition_data'),
+      products: t('setup.stats.products'),
+      product_records: t('setup.stats.product_records'),
+      recipes: t('setup.stats.recipes'),
+      recipe_ingredients: t('setup.stats.recipe_ingredients'),
+      merchants: t('setup.stats.merchants'),
+      images: t('setup.stats.images'),
+      ingredient_hierarchy: t('setup.stats.ingredient_hierarchy'),
+      entity_unit_overrides: t('setup.stats.entity_unit_overrides'),
+      entity_densities: t('setup.stats.entity_densities'),
+      user_places: t('setup.stats.user_places'),
+      blacklist_groups: t('setup.stats.blacklist_groups'),
     }
     const statsText = Object.entries(stats)
       .filter(([, count]) => Number(count) > 0)
       .map(([key, count]) => `${statLabels[key] || key} ${count}`)
-      .join('，')
-    importMessage.value = `导入完成！${statsText || '没有可导入数据'}`
+      .join(t('setup.statsSeparator'))
+    importMessage.value = t('setup.importCompleteStats', { stats: statsText || t('setup.noDataToImport') })
     if (task?.error) {
       importMessage.value += `\n${task.error}`
     }
     importProgress.value = 100
     step.value = 3
   } catch (e: any) {
-    importMessage.value = '导入失败：' + (e?.message || '未知错误')
+    importMessage.value = t('setup.importFailedPrefix') + (e?.message || t('errors.unknown'))
     console.error('[zip-import]', e)
   } finally {
     importing.value = false
@@ -543,10 +545,10 @@ async function skipImport() {
   try {
     await seedBasicData()
     importProgress.value = 100
-    importMessage.value = '基础单位和分类已就绪。'
+    importMessage.value = t('setup.baseDataReady')
     step.value = 3
   } catch (e: any) {
-    importMessage.value = '导入失败：' + (e?.message || '未知错误')
+    importMessage.value = t('setup.importFailedPrefix') + (e?.message || t('errors.unknown'))
   } finally {
     importing.value = false
   }

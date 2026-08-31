@@ -6,7 +6,7 @@
       variant="text"
       size="large"
       class="context-button ml-2"
-      title="切换地区/计算范围/币种"
+      :title="t('context.openTitleDesktop')"
       @click="open"
     >
       <v-icon start>mdi-tune-variant</v-icon>
@@ -14,20 +14,20 @@
       <v-icon end size="small">mdi-chevron-down</v-icon>
     </v-btn>
     <!-- 移动端：单个按钮 -->
-    <v-btn v-else icon="mdi-tune-variant" variant="text" size="small" title="地区/计算范围/币种" @click="open" />
+    <v-btn v-else icon="mdi-tune-variant" variant="text" size="small" :title="t('context.openTitleMobile')" @click="open" />
 
     <v-dialog v-model="dialog" max-width="520">
       <v-card>
         <v-card-title class="d-flex align-center">
-          地区 / 计算范围 / 币种
+          {{ t('context.dialogTitle') }}
           <v-spacer />
           <v-btn icon="mdi-close" variant="text" size="small" @click="dialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-3">
-            切换仅对当前会话生效（刷新后保留，关闭页面恢复为个人配置），不会修改你的账户设置。
+            {{ t('context.description') }}
           </p>
-          <div class="text-subtitle-2 mb-1">所在地区</div>
+          <div class="text-subtitle-2 mb-1">{{ t('context.region') }}</div>
           <div class="d-flex flex-wrap ga-2 mb-3">
             <template v-for="(level, i) in regionLevels" :key="i">
               <v-select v-if="i === 0 || regionSelections[i - 1]" v-model="regionSelections[i]"
@@ -37,12 +37,12 @@
                 @update:model-value="onRegionChange(i)" />
             </template>
           </div>
-          <div class="text-subtitle-2 mb-1">计算范围</div>
+          <div class="text-subtitle-2 mb-1">{{ t('context.scope') }}</div>
           <v-select v-model="scopeValue" :items="scopeOptions" item-title="title" item-value="value"
-            label="计算范围" variant="outlined" density="compact" class="mb-3" hide-details />
-          <div class="text-subtitle-2 mb-1">币种</div>
+            :label="t('context.scope')" variant="outlined" density="compact" class="mb-3" hide-details />
+          <div class="text-subtitle-2 mb-1">{{ t('context.currency') }}</div>
           <v-autocomplete v-model="currencyValue" :items="currencies" item-title="name" item-value="code"
-            label="币种" variant="outlined" density="compact" clearable placeholder="跟随个人配置" hide-details>
+            :label="t('context.currency')" variant="outlined" density="compact" clearable :placeholder="t('context.currencyPlaceholder')" hide-details>
             <template #selection="{ item }">
               {{ currencyOptionLabel(item.raw) }}
             </template>
@@ -52,10 +52,10 @@
           </v-autocomplete>
         </v-card-text>
         <v-card-actions>
-          <v-btn variant="text" :disabled="saving" @click="reset">重置为个人配置</v-btn>
+          <v-btn variant="text" :disabled="saving" @click="reset">{{ t('context.resetToProfile') }}</v-btn>
           <v-spacer />
-          <v-btn variant="text" @click="dialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="save">应用</v-btn>
+          <v-btn variant="text" @click="dialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="save">{{ t('context.apply') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -64,11 +64,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useDisplay } from 'vuetify'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useCalcContextStore } from '@/stores/calcContext'
 import { loadCurrencies } from '@/utils/currency'
+
+const { t } = useI18n()
 
 const { mdAndUp } = useDisplay()
 const isDesktop = computed(() => mdAndUp.value)
@@ -80,19 +83,19 @@ const saving = ref(false)
 const currencies = ref<any[]>([])
 
 const scopeOptions = [
-  { title: '全部地区', value: '' },
-  { title: '国家/地区', value: 'country' },
-  { title: '省份', value: 'province' },
-  { title: '城市', value: 'city' },
-  { title: '区县', value: 'county' },
+  { title: t('scope.all'), value: '' },
+  { title: t('scope.country'), value: 'country' },
+  { title: t('scope.province'), value: 'province' },
+  { title: t('scope.city'), value: 'city' },
+  { title: t('scope.county'), value: 'county' },
 ]
 
 // 地区级联
 const regionLevels = [
-  { label: '国家/地区', code: 0 },
-  { label: '省份', code: 1 },
-  { label: '城市', code: 2 },
-  { label: '区县', code: 3 },
+  { label: t('region.country'), code: 0 },
+  { label: t('region.province'), code: 1 },
+  { label: t('region.city'), code: 2 },
+  { label: t('region.district'), code: 3 },
 ]
 const regionSelections = ref<Array<number | null>>([null, null, null, null])
 const regionItems = ref<Array<Array<{ id: number; name: string; has_children: boolean }>>>([[], [], [], []])
@@ -106,19 +109,19 @@ const currencyValue = ref<string | null>(null)
 // 当前展示：会话覆盖优先，否则个人配置
 const scopeLabel = computed(() => {
   const scope = calcContext.scope ?? userStore.user?.default_calc_scope
-  return scopeOptions.find(o => o.value === scope)?.title || '国家/地区'
+  return scopeOptions.find(o => o.value === scope)?.title || t('region.country')
 })
 
 const currencyLabel = computed(() => {
   const c = calcContext.currency || userStore.user?.default_currency || userStore.user?.effective_currency
-  if (typeof c !== 'string' || !c) return '跟随地区'
+  if (typeof c !== 'string' || !c) return t('context.followRegion')
   const hit = currencies.value.find(item => item.code === c)
   return hit?.name && hit.name !== c ? hit.name : c
 })
 
 const regionLabel = computed(() => {
   const id = calcContext.regionId ?? userStore.user?.region_id
-  return id != null ? (regionNames.value[id] || '地区') : '全部地区'
+  return id != null ? (regionNames.value[id] || t('context.regionFallback')) : t('scope.all')
 })
 
 const contextSummary = computed(() => `${regionLabel.value} · ${scopeLabel.value} · ${currencyLabel.value}`)
