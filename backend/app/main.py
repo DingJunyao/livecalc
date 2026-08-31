@@ -7,6 +7,7 @@ import traceback
 import os
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
@@ -42,7 +43,8 @@ from app.api import exchange_rates  # 币种汇率 API
 from app.api import storage_config  # 图片存储配置 API
 from app.api import barcode_config  # 条码服务配置 API
 from app.core.database import Base, engine, get_db
-from app.core.exceptions import AppException
+from app.core.exceptions import AppException, LocalizedAppException, LocalizedHTTPException
+from app.core.i18n import request_locale, translate, translate_format
 from app.core.logging_config import setup_logging
 from app.config import settings
 from app import __version__
@@ -491,9 +493,67 @@ async def log_requests(request: Request, call_next):
 
 
 # === 全局异常处理器 ===
+VALIDATION_ERROR_MESSAGES: dict[str, str] = {
+    "missing": "此字段为必填项",
+    "string_too_short": "字符串长度过短",
+    "string_too_long": "字符串长度过长",
+    "string_pattern_mismatch": "字符串格式不匹配",
+    "int_parsing": "请输入有效的整数",
+    "enum": "输入值不在允许的选项内",
+    "literal_error": "输入值不在允许的选项内",
+    "value_error": "输入值无效",
+    "json_invalid": "请求体不是有效的 JSON",
+}
+
+
+def _translate_detail(value: Any, locale: str) -> Any:
+    """Translate user-visible detail/message leaves while preserving structure."""
+    if isinstance(value, str):
+        return translate(value, locale)
+
+    if isinstance(value, dict):
+        translated: dict[str, Any] = {}
+        for key, item in value.items():
+            if key in {"detail", "message"} and isinstance(item, str):
+                translated[key] = translate(item, locale)
+            elif key == "errors" and isinstance(item, list):
+                translated[key] = [_translate_detail(error, locale) for error in item]
+            else:
+                translated[key] = item
+        return translated
+
+    if isinstance(value, list):
+        return [_translate_detail(item, locale) for item in value]
+
+    return value
+
+
+def _validation_message(error: dict[str, Any], locale: str) -> str:
+    """Map known Pydantic validation errors to translated catalog messages."""
+    error_type = str(error.get("type", ""))
+    ctx = error.get("ctx") or {}
+
+    if error_type == "value_error" and "email" in str(error.get("loc", "")):
+        return translate("请输入有效的邮箱地址", locale)
+
+    message = VALIDATION_ERROR_MESSAGES.get(error_type)
+    if message is None:
+        return str(error.get("msg", ""))
+
+    if "{" in message:
+        return translate_format(message, locale, **ctx)
+    return translate(message, locale)
+
+
 @app.exception_handler(AppException)
 async def app_exception_handler(request: Request, exc: AppException):
     """处理应用自定义异常。"""
+    locale = request_locale(request)
+    if isinstance(exc, LocalizedAppException):
+        detail = translate_format(exc.message, locale, **exc.params)
+    else:
+        detail = _translate_detail(exc.detail, locale)
+
     logger.error(
         f"AppException: {request.method} {request.url.path} -> "
         f"{exc.status_code} {exc.detail}"
@@ -501,13 +561,19 @@ async def app_exception_handler(request: Request, exc: AppException):
     logger.debug(f"异常堆栈:\n{traceback.format_exc()}")
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"detail": detail},
     )
 
 
 @app.exception_handler(StarletteHTTPException)
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """处理 HTTP 异常（包括 FastAPI 的 HTTPException）。"""
+    locale = request_locale(request)
+    if isinstance(exc, LocalizedHTTPException):
+        detail = translate_format(exc.message, locale, **exc.params)
+    else:
+        detail = _translate_detail(exc.detail, locale)
+
     # 读取请求体用于错误日志
     request_body = None
     if request.method in ("POST", "PUT", "PATCH"):
@@ -537,18 +603,19 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.detail},
+        content={"detail": detail},
     )
 
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """处理请求参数验证错误 (422)。"""
+    locale = request_locale(request)
     errors = []
     for error in exc.errors():
         errors.append({
             "field": ".".join(str(loc) for loc in error.get("loc", [])),
-            "message": error.get("msg", ""),
+            "message": _validation_message(error, locale),
             "type": error.get("type", ""),
         })
 
@@ -576,7 +643,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={
-            "detail": "请求参数验证失败",
+            "detail": translate("请求参数验证失败", locale),
             "errors": errors,
         },
     )
@@ -585,6 +652,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """处理所有未捕获的通用异常 (500)。"""
+    locale = request_locale(request)
     # 读取请求体
     request_body = None
     if request.method in ("POST", "PUT", "PATCH"):
@@ -614,7 +682,7 @@ async def general_exception_handler(request: Request, exc: Exception):
 
     return JSONResponse(
         status_code=500,
-        content={"detail": "服务器内部错误"},
+        content={"detail": translate("服务器内部错误", locale)},
     )
 
 # 配置静态文件目录

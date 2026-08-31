@@ -1,18 +1,39 @@
-"""
-应用自定义异常类层次结构。
+"""应用自定义异常类层次结构。
 
 提供统一的业务异常类型，配合全局异常处理器使用，
 确保 API 返回结构化的错误响应。
 """
 
+from typing import Any
+
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 
 class AppException(Exception):
     """应用基础异常，所有自定义异常均继承此类。"""
 
-    def __init__(self, detail: str, status_code: int = 500):
+    def __init__(self, detail: str, status_code: int = 500, params: dict[str, Any] | None = None):
         self.detail = detail
         self.status_code = status_code
+        self.params = params or {}
         super().__init__(detail)
+
+
+class LocalizedAppException(AppException):
+    """携带中文 msgid 与插值参数的本地化应用异常。"""
+
+    def __init__(self, status_code: int, message: str, **params: Any):
+        super().__init__(detail=message, status_code=status_code, params=params)
+        self.message = message
+
+
+class LocalizedHTTPException(StarletteHTTPException):
+    """携带中文 msgid 与插值参数的本地化 HTTP 异常。"""
+
+    def __init__(self, status_code: int, message: str, **params: Any):
+        super().__init__(status_code=status_code, detail=message)
+        self.message = message
+        self.params = params
 
 
 class NotFoundException(AppException):

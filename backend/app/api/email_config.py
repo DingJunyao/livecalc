@@ -1,9 +1,10 @@
 """SMTP 配置与邮件模板管理 API（仅管理员）。"""
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 
 from app.core.database import get_db
+from app.core.exceptions import LocalizedHTTPException
 from app.core.i18n import DEFAULT_LOCALE, normalize_locale, request_locale
 from app.core.security import get_current_admin_user
 from app.models.user import User
@@ -69,7 +70,7 @@ def test_smtp_config(
 ):
     config = _get_or_create_smtp_config(db)
     if not config.host or not config.enabled:
-        raise HTTPException(status_code=400, detail="SMTP 未配置或未启用")
+        raise LocalizedHTTPException(status_code=400, message="SMTP 未配置或未启用")
     service = EmailService(config)
     service.send_test_async(body.to_email, request_locale(request))
     return {"message": f"测试邮件已异步发送至 {body.to_email}"}
@@ -102,7 +103,7 @@ def get_template(
         EmailTemplate.locale == _template_locale(locale),
     ).first()
     if not tpl:
-        raise HTTPException(status_code=404, detail="模板不存在")
+        raise LocalizedHTTPException(status_code=404, message="模板不存在")
     return tpl
 
 
@@ -119,7 +120,7 @@ def update_template(
         EmailTemplate.locale == _template_locale(locale),
     ).first()
     if not tpl:
-        raise HTTPException(status_code=404, detail="模板不存在")
+        raise LocalizedHTTPException(status_code=404, message="模板不存在")
     update_data = body.model_dump(exclude_unset=True)
     for k, v in update_data.items():
         setattr(tpl, k, v)

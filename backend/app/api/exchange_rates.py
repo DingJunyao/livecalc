@@ -1,11 +1,12 @@
 ﻿"""币种与汇率 API。"""
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.exceptions import LocalizedHTTPException
 from app.core.i18n import request_locale
 from app.core.security import get_current_user, get_current_admin_user
 from app.models.currency import Currency
@@ -98,7 +99,7 @@ def update_currency(code: str, body: CurrencyUpdate, db: Session = Depends(get_d
     """管理员：部分更新币种（name/symbol/decimals/is_active）。"""
     cur = db.query(Currency).filter(Currency.code == code).first()
     if not cur:
-        raise HTTPException(status_code=404, detail="币种不存在")
+        raise LocalizedHTTPException(status_code=404, message="币种不存在")
     data = body.model_dump(exclude_unset=True)
     if "name" in data and data["name"] is not None:
         cur.name = data["name"]
@@ -118,7 +119,7 @@ def delete_currency(code: str, db: Session = Depends(get_db), _=Depends(get_curr
     """管理员：软删除币种（is_active=False）。"""
     cur = db.query(Currency).filter(Currency.code == code).first()
     if not cur:
-        raise HTTPException(status_code=404, detail="币种不存在")
+        raise LocalizedHTTPException(status_code=404, message="币种不存在")
     cur.is_active = False
     db.commit()
     return {"code": cur.code, "is_active": False}
@@ -135,7 +136,7 @@ def refresh(db: Session = Depends(get_db), _=Depends(get_current_admin_user)):
     try:
         return exchange_rate_service.fetch_and_store_daily(db)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"汇率拉取失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=502, message="汇率拉取失败: {error}", error=str(e))
 
 
 @router.post("/admin/exchange-rates/manual")

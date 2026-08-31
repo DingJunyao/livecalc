@@ -1,10 +1,11 @@
 """行政区划 API（懒加载树形选择器）"""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 from typing import Optional
 
 from app.core.database import get_db
+from app.core.exceptions import LocalizedHTTPException
 from app.core.i18n import request_locale
 from app.core.security import get_current_admin_user
 from app.models.administrative_region import AdministrativeRegion
@@ -96,7 +97,7 @@ def get_region(request: Request, region_id: int, db: Session = Depends(get_db)):
         .first()
     )
     if not region:
-        raise HTTPException(status_code=404, detail="行政区划不存在")
+        raise LocalizedHTTPException(status_code=404, message="行政区划不存在")
 
     locale = request_locale(request)
 

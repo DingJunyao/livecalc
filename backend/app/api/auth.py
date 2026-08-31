@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, U
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.exceptions import LocalizedHTTPException
 from app.core.security import (
     create_access_token,
     create_refresh_token,
@@ -154,16 +155,16 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     """用户注册"""
     # 检查用户名是否存在
     if db.query(User).filter(User.username == user_data.username).first():
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户名已存在"
+            message="用户名已存在"
         )
 
     # 检查邮箱是否存在
     if db.query(User).filter(User.email == user_data.email).first():
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="邮箱已被注册"
+            message="邮箱已被注册"
         )
 
     # 检查邀请码（如需要）——动态读取配置
@@ -175,16 +176,16 @@ async def register(user_data: UserRegister, db: Session = Depends(get_db)):
     # 对于第一个用户，不需要邀请码，直接成为管理员
     if not is_first_user and require_invite:
         if not user_data.invite_code:
-            raise HTTPException(
+            raise LocalizedHTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="需要邀请码"
+                message="需要邀请码"
             )
 
         # 验证邀请码
         if not validate_invite_code(user_data.invite_code, db):
-            raise HTTPException(
+            raise LocalizedHTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="邀请码无效或已使用"
+                message="邀请码无效或已使用"
             )
 
     # 创建用户

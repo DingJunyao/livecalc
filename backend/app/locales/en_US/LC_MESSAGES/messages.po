@@ -10,7 +10,7 @@ msgid "服务器内部错误"
 msgstr "Internal server error"
 
 msgid "请求参数验证失败"
-msgstr "Request parameter validation failed"
+msgstr "Request validation failed"
 
 msgid "用户名已存在"
 msgstr "Username already exists"
@@ -29,6 +29,66 @@ msgstr "Administrator access only"
 
 msgid "未授权"
 msgstr "Unauthorized"
+
+msgid "无效的令牌"
+msgstr "Invalid token"
+
+msgid "无效的令牌类型"
+msgstr "Invalid token type"
+
+msgid "用户不存在"
+msgstr "User does not exist"
+
+msgid "账户已被禁用"
+msgstr "Account has been disabled"
+
+msgid "凭证已失效，请重新登录"
+msgstr "Credentials have expired, please log in again"
+
+msgid "需要邀请码"
+msgstr "Invitation code required"
+
+msgid "邀请码无效或已使用"
+msgstr "Invitation code is invalid or has already been used"
+
+msgid "币种不存在"
+msgstr "Currency does not exist"
+
+msgid "汇率拉取失败: {error}"
+msgstr "Failed to fetch exchange rates: {error}"
+
+msgid "SMTP 未配置或未启用"
+msgstr "SMTP is not configured or not enabled"
+
+msgid "模板不存在"
+msgstr "Template does not exist"
+
+msgid "行政区划不存在"
+msgstr "Administrative region does not exist"
+
+msgid "字符串长度过短"
+msgstr "String is too short"
+
+msgid "字符串长度过长"
+msgstr "String is too long"
+
+msgid "字符串格式不匹配"
+msgstr "String format does not match"
+
+msgid "请输入有效的整数"
+msgstr "Enter a valid integer"
+
+msgid "输入值不在允许的选项内"
+msgstr "Value is not one of the allowed options"
+
+msgid "输入值无效"
+msgstr "Value is invalid"
+
+msgid "请输入有效的邮箱地址"
+msgstr "Enter a valid email address"
+
+msgid "请求体不是有效的 JSON"
+msgstr "Request body is not valid JSON"
 
 msgid "测试邮件"
 msgstr "Test email"
