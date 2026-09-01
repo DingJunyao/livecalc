@@ -135,8 +135,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { computed, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
@@ -149,6 +148,7 @@ import {
   type SmtpConfig,
   type EmailTemplate,
 } from '@/api/emailConfig'
+import { createLatestRequestGuard } from '@/utils/latestRequest'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
@@ -216,6 +216,7 @@ const sendTest = async () => {
 
 const templates = ref<EmailTemplate[]>([])
 const savingTemplate = ref('')
+const runLatestTemplateRequest = createLatestRequestGuard()
 
 const saveTemplate = async (tpl: EmailTemplate) => {
   savingTemplate.value = tpl.key
@@ -244,9 +245,11 @@ const loadAll = async () => {
 
 const loadTemplates = async () => {
   try {
-    templates.value = await api.get('/admin/email-config/templates', {
-      params: { locale: templateLocale.value },
-    })
+    templates.value = await runLatestTemplateRequest(() =>
+      api.get('/admin/email-config/templates', {
+        params: { locale: templateLocale.value },
+      })
+    )
   } catch { /* ignore */ }
 }
 
