@@ -208,13 +208,13 @@ function renderTrendChart() {
             if (p.value > 0) {
               html += `<div style="display:flex;align-items:center;gap:4px">
                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
-                ${p.seriesName}: ${formatMoney(p.value, userCurrency.value, localeStore.effectiveFormatLocale)}
+                ${p.seriesName}: ${formatMoney(p.value, userCurrency.value)}
               </div>`
               total += p.value
             }
           }
           html += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:2px;font-weight:600">
-            ${t('recipes.total')}: ${formatMoney(total, userCurrency.value, localeStore.effectiveFormatLocale)}
+            ${t('recipes.total')}: ${formatMoney(total, userCurrency.value)}
           </div>`
           return html
         },
@@ -229,7 +229,7 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value, localeStore.effectiveFormatLocale), fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series,
@@ -250,9 +250,9 @@ function renderTrendChart() {
           const avg = params.find((p: any) => p.seriesName === t('recipes.averageCost'))
           const minP = params.find((p: any) => p.seriesName === t('recipes.minimum'))
           const maxP = params.find((p: any) => p.seriesName === t('recipes.maximum'))
-          const avgText = avg ? formatMoney(avg.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
-          const minText = minP ? formatMoney(minP.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
-          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
+          const avgText = avg ? formatMoney(avg.value, userCurrency.value) : '-'
+          const minText = minP ? formatMoney(minP.value, userCurrency.value) : '-'
+          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value) : '-'
           return `${date}<br/>${t('recipes.averageLabel')}: ${avgText}<br/>${t('recipes.rangeLabel')}: ${minText} ~ ${maxText}`
         },
       },
@@ -265,7 +265,7 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value, localeStore.effectiveFormatLocale), fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series: [

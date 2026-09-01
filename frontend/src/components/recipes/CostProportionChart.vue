@@ -25,7 +25,6 @@ import { getIngredientColor } from '@/utils/ingredientColors'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import { useI18n } from 'vue-i18n'
-import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{
   costBreakdown?: any[] | null
@@ -38,7 +37,6 @@ let chartInstance: echarts.ECharts | null = null
 
 const { currency: userCurrency } = useUserCurrency()
 const { t } = useI18n()
-const localeStore = useLocaleStore()
 
 interface ChartItem {
   name: string
@@ -74,10 +72,10 @@ const chartData = computed<ChartItem[]>(() => {
 
 const totalCostDisplay = computed(() => {
   if (props.totalCost !== null && props.totalCost !== undefined) {
-    return formatMoney(parseFloat(String(props.totalCost)), userCurrency.value, localeStore.effectiveFormatLocale)
+    return formatMoney(parseFloat(String(props.totalCost)), userCurrency.value)
   }
   const total = chartData.value.reduce((s, i) => s + i.value, 0)
-  return formatMoney(total, userCurrency.value, localeStore.effectiveFormatLocale)
+  return formatMoney(total, userCurrency.value)
 })
 
 function renderChart() {
@@ -92,7 +90,7 @@ function renderChart() {
     tooltip: {
       trigger: 'item',
       extraCssText: 'direction:ltr;',
-      formatter: (p: any) => `${p.name}: ${formatMoney(p.value, userCurrency.value, localeStore.effectiveFormatLocale)} (${p.percent}%)`,
+      formatter: (p: any) => `${p.name}: ${formatMoney(p.value, userCurrency.value)} (${p.percent}%)`,
     },
     series: [{
       type: 'pie',
@@ -106,7 +104,7 @@ function renderChart() {
       },
       label: {
         show: true,
-        formatter: (p: any) => `{b|${p.name}}\n{c|${formatMoney(p.value, userCurrency.value, localeStore.effectiveFormatLocale)}} {per|${p.percent}%}`,
+        formatter: (p: any) => `{b|${p.name}}\n{c|${formatMoney(p.value, userCurrency.value)}} {per|${p.percent}%}`,
         rich: {
           b: { fontSize: 12, lineHeight: 20 },
           c: { fontSize: 13, fontWeight: 'bold' as const },

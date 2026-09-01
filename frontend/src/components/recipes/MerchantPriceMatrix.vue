@@ -43,7 +43,7 @@
                   class="text-right"
                   :class="{ 'price-lowest': cell.isLowest, 'price-missing': !cell.hasPrice }"
                 >
-                  {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency, localeStore.effectiveFormatLocale) : '—' }}
+                  {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency) : '—' }}
                 </td>
               </tr>
             </tbody>

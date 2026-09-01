@@ -42,12 +42,12 @@
             </v-tooltip>
           </div>
           <div class="text-h5 font-weight-bold mb-1">
-            {{ formatMoney(Number(m.total_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }}
+            {{ formatMoney(Number(m.total_cost || 0), userCurrency) }}
           </div>
           <div class="text-caption mb-1">
-            <span class="text-green-darken-2">{{ t('recipes.inStore', { amount: formatMoney(Number(m.covered_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }) }}</span>
+            <span class="text-green-darken-2">{{ t('recipes.inStore', { amount: formatMoney(Number(m.covered_cost || 0), userCurrency) }) }}</span>
             <span v-if="Number(m.external_cost || 0) > 0" class="ml-2 text-orange-darken-2">
-              {{ t('recipes.external', { amount: formatMoney(Number(m.external_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }) }}
+              {{ t('recipes.external', { amount: formatMoney(Number(m.external_cost || 0), userCurrency) }) }}
             </span>
           </div>
           <div v-if="m.missing_ingredients?.length" class="text-caption text-warning">

@@ -210,7 +210,7 @@
                     {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
-                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency, localeStore.effectiveFormatLocale) }}
+                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
                   </div>
                 </v-card-text>
               </v-card>
@@ -253,7 +253,7 @@
                     {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
-                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency, localeStore.effectiveFormatLocale) }}
+                    {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
                   </div>
                 </v-card-text>
               </v-card>
@@ -530,7 +530,7 @@ import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
-import { nutrientKey, nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
+import { isDefaultNutrient, nutrientKey, nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
 import { useLocaleStore } from '@/stores/locale'
 import RecipeBasicCard from '@/components/recipes/RecipeBasicCard.vue'
 import RecipeIngredientCard from '@/components/recipes/RecipeIngredientCard.vue'
@@ -747,11 +747,15 @@ const displayNutritionItems = computed(() => {
   }
 
   // 获取默认显示的5个营养素的稳定键集合
-  const defaultKeys = new Set(coreNutritionItems.value.map(ci => nutrientKey(ci.key)))
+  const defaultKeys = new Set(
+    coreNutritionItems.value
+      .map(ci => nutrientKey(ci.key))
+      .filter((key): key is string => key !== null)
+  )
 
   // 获取 core_nutrients 中的其他营养素（如膳食纤维、钙、铁等）
   const otherCoreNutrients = Object.keys(coreNutrients)
-    .filter(key => !defaultKeys.has(key))
+    .filter(key => !isDefaultNutrient(key, defaultKeys))
     .map(key => ({
       key: key,
       label: nutrientLabel(key),
@@ -768,8 +772,7 @@ const displayNutritionItems = computed(() => {
       return data && typeof data === 'object' && 'value' in data
     })
     .filter(key => {
-      const stableKey = nutrientKey(key)
-      return !stableKey || !defaultKeys.has(stableKey)
+      return !isDefaultNutrient(key, defaultKeys)
     })
     .forEach(key => {
       const stableKey = nutrientKey(key) || key
@@ -823,10 +826,16 @@ const otherNutrientsCount = computed(() => {
   const allNutrients = nutritionData.value.per_serving_nutrition.all_nutrients || {}
 
   // 获取默认显示的5个营养素的稳定键集合
-  const defaultKeys = new Set(coreNutritionItems.value.map(ci => nutrientKey(ci.key)))
+  const defaultKeys = new Set(
+    coreNutritionItems.value
+      .map(ci => nutrientKey(ci.key))
+      .filter((key): key is string => key !== null)
+  )
 
   // 计算 core_nutrients 中的其他营养素数量（如膳食纤维、钙、铁等）
-  const otherCoreCount = Object.keys(coreNutrients).filter(key => !defaultKeys.has(key)).length
+  const otherCoreCount = Object.keys(coreNutrients)
+    .filter(key => !isDefaultNutrient(key, defaultKeys))
+    .length
 
   // 计算 all_nutrients 中的其他营养素数量
   const seenStableKeys = new Set<string>()
@@ -834,7 +843,7 @@ const otherNutrientsCount = computed(() => {
     const data = allNutrients[key]
     if (!data || typeof data !== 'object' || !('value' in data)) return false
     const stableKey = nutrientKey(key)
-    if (stableKey && !defaultKeys.has(stableKey) && !seenStableKeys.has(stableKey)) {
+    if (stableKey && !isDefaultNutrient(key, defaultKeys) && !seenStableKeys.has(stableKey)) {
       seenStableKeys.add(stableKey)
       return true
     }

@@ -581,7 +581,7 @@ const getDisplayCost = (recipe: Recipe) => {
   if (cost === null || cost === undefined) return '--'
   const servings = recipe.servings || 1
   return t('recipes.costPerServings', {
-    amount: formatMoney(Number(cost), userCurrency.value, localeStore.effectiveFormatLocale),
+    amount: formatMoney(Number(cost), userCurrency.value),
     count: formatNumber(servings, localeStore.effectiveFormatLocale),
   })
 }
