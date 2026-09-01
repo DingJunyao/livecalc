@@ -86,17 +86,13 @@ import MerchantPriceMatrix from '@/components/recipes/MerchantPriceMatrix.vue'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 import { unitDisplayName } from '@/utils/catalogLabels'
+import { QUANTITY_TYPE_KEYS, VAGUE_QUANTITY_GRAM_MAP } from '@/data/localValues'
 
 const route = useRoute()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { t } = useI18n()
 const localeStore = useLocaleStore()
-
-const QUANTITY_TYPE_KEYS: Record<string, string> = {
-  '适量': 'quantityTypes.toTaste',
-  '少许': 'quantityTypes.smallAmount',
-}
 
 function quantityTypeLabel(quantityType: string): string {
   return t(QUANTITY_TYPE_KEYS[quantityType] || 'quantityTypes.numeric')
@@ -196,7 +192,7 @@ async function loadMerchantCosts() {
 }
 
 // 模糊量 → 默认克数（与后端 VAGUE_QUANTITY_GRAM_MAP 对齐）
-const VAGUE_QUANTITY_GRAM: Record<string, number> = { '适量': 100, '少许': 5 }
+const VAGUE_QUANTITY_GRAM = VAGUE_QUANTITY_GRAM_MAP
 
 // 从 quantity / quantity_range / original_quantity 中提取有效数量
 function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay: string; qtyUnit: string } {
@@ -286,7 +282,7 @@ async function loadMerchantPrices() {
     for (let i = 0; i < validIngredients.length; i += CONCURRENCY) {
       // 全局超时检查，超时后至少保留已有结果
       if (Date.now() - startTime > GLOBAL_TIMEOUT) {
-        console.warn('[分析页] 商家比价请求超时，显示部分结果')
+        console.warn('[analysis] Merchant comparison timed out; showing partial results')
         break
       }
 

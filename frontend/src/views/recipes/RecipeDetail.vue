@@ -537,6 +537,7 @@ import RecipeIngredientCard from '@/components/recipes/RecipeIngredientCard.vue'
 import RecipeStepCard from '@/components/recipes/RecipeStepCard.vue'
 import RecipeTipCard from '@/components/recipes/RecipeTipCard.vue'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
+import { CORE_NUTRIENT_KEYS, NO_STANDARD_VALUES } from '@/data/localValues'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()
@@ -684,11 +685,11 @@ const maxDaysLoaded = ref(0)
 // 核心营养素配置（默认显示的营养素）——能量单位跟随用户偏好
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 const coreNutritionItems = computed(() => [
-  { key: '能量', label: nutrientLabel('能量'), unit: energyUnit.value },
-  { key: '蛋白质', label: nutrientLabel('蛋白质'), unit: 'g' },
-  { key: '脂肪', label: nutrientLabel('脂肪'), unit: 'g' },
-  { key: '碳水化合物', label: nutrientLabel('碳水化合物'), unit: 'g' },
-  { key: '钠', label: nutrientLabel('钠'), unit: 'mg' }
+  { key: CORE_NUTRIENT_KEYS[0], label: nutrientLabel(CORE_NUTRIENT_KEYS[0]), unit: energyUnit.value },
+  { key: CORE_NUTRIENT_KEYS[1], label: nutrientLabel(CORE_NUTRIENT_KEYS[1]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[2], label: nutrientLabel(CORE_NUTRIENT_KEYS[2]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[3], label: nutrientLabel(CORE_NUTRIENT_KEYS[3]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[4], label: nutrientLabel(CORE_NUTRIENT_KEYS[4]), unit: 'mg' }
 ])
 
 // 营养素排序顺序（展开时这些营养素排在前面）
@@ -862,7 +863,7 @@ const getNutritionValue = (item: any) => {
     const nutrient = nutritionData.value.per_serving_nutrition.core_nutrients?.[item.key]
     const v = nutrient?.value
     // 能量按用户偏好单位换算显示（库存 kcal）
-    if (item.key === '能量') return toDisplayCalorie(v as number) ?? v
+    if (item.key === CORE_NUTRIENT_KEYS[0]) return toDisplayCalorie(v as number) ?? v
     return v
   }
 
@@ -872,7 +873,7 @@ const getNutritionValue = (item: any) => {
 
 const getNutritionUnit = (item: any) => {
   // 能量单位跟随用户偏好（库存 kcal，显示按 energyUnit；覆盖后端返回的 kcal）
-  if (item.key === '能量') return energyUnit.value
+  if (item.key === CORE_NUTRIENT_KEYS[0]) return energyUnit.value
   if (item.isCore) {
     // 核心营养素从 core_nutrients 获取完整数据
     if (!nutritionData.value?.per_serving_nutrition) return null
@@ -920,7 +921,7 @@ const loadData = async () => {
     loadNutritionData()
     loadCostHistoryInBatches()
   } catch (e: any) {
-    console.error('加载菜谱失败', e)
+    console.error('Failed to load recipe', e)
     error.value = getErrorMessage(e, t('recipes.loadFailed'))
     loading.value = false
   }
@@ -934,7 +935,7 @@ const loadCostData = async () => {
     })
     costData.value = response
   } catch (e) {
-    console.error('加载成本失败', e)
+    console.error('Failed to load costs', e)
     costData.value = null
   } finally {
     loadingCostData.value = false
@@ -947,7 +948,7 @@ const loadNutritionData = async () => {
     const response = await api.get(`/recipes/${recipeId.value}/nutrition`)
     nutritionData.value = response
   } catch (e) {
-    console.error('加载营养失败', e)
+    console.error('Failed to load nutrition', e)
     nutritionData.value = null
   } finally {
     loadingNutritionData.value = false
@@ -1032,7 +1033,7 @@ const enqueueCostHistory = async (targetDays: number, showLoading: boolean) => {
       const { maxOffset } = await loadCostHistoryParallel(targetDays, maxDaysLoaded.value)
       maxDaysLoaded.value = Math.max(maxDaysLoaded.value, maxOffset)
     } catch (e) {
-      console.error('加载成本历史失败', e)
+      console.error('Failed to load cost history', e)
     } finally {
       if (showLoading) loadingCostHistory.value = false
     }
@@ -1086,7 +1087,7 @@ const loadAllCostHistory = async () => {
         if (hitEmpty) break
       }
     } catch (e) {
-      console.error('加载全部成本历史失败', e)
+      console.error('Failed to load full cost history', e)
     } finally {
       loadingCostHistory.value = false
     }
@@ -1165,7 +1166,7 @@ const getNutritionNRV = (item: any) => {
   if (!nutrient) return '-'
 
   // 如果 standard 是"无标准"或类似的，表示没有推荐摄入量，显示 "-"
-  if (nutrient.standard === '无标准' || nutrient.standard === '无标准值') {
+  if (NO_STANDARD_VALUES.includes(nutrient.standard)) {
     return '-'
   }
 
@@ -1294,7 +1295,7 @@ const handleDelete = async () => {
     notify(t('recipes.deleted'), 'success')
     router.push('/recipes')
   } catch (e: any) {
-    console.error('删除菜谱失败', e)
+    console.error('Failed to delete recipe', e)
     notify(getErrorMessage(e, t('recipes.deleteFailed')), 'error')
   } finally {
     deleting.value = false
@@ -1332,7 +1333,7 @@ const confirmPublish = async () => {
       await loadData()
     }
   } catch (e: any) {
-    console.error('发布菜谱失败', e)
+    console.error('Failed to publish recipe', e)
     notify(getErrorMessage(e, t('recipes.publishFailed')), 'error')
   } finally {
     publishing.value = false

@@ -404,7 +404,7 @@ const fetchUsers = async ({ page, itemsPerPage: limit }: { page: number; itemsPe
     }))
     totalItems.value = response.total
   } catch (error) {
-    console.error('获取用户列表失败:', error)
+    console.error('Failed to get users:', error)
     showSnackbar(t('admin.users.loadFailed'), 'error', 'mdi-alert-circle')
   } finally {
     loading.value = false

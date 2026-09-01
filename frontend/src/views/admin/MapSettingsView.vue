@@ -358,7 +358,7 @@ const fetchConfig = async () => {
     // 兜底：库里 default_map 不在启用列表时回退首个
     ensureDefaultMapValid()
   } catch (error) {
-    console.error('获取地图配置失败:', error)
+    console.error('Failed to get map config:', error)
   }
 }
 
@@ -370,7 +370,7 @@ const saveConfig = async () => {
     await useMapConfig().reload()
     showSuccess.value = true
   } catch (error) {
-    console.error('保存地图配置失败:', error)
+    console.error('Failed to save map config:', error)
   } finally {
     saving.value = false
   }

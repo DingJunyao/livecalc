@@ -543,7 +543,7 @@ async function doImport() {
               name: p.row.name
             })
           } catch (e: any) {
-            console.error('[paste-import] 添加别名失败:', e?.response?.status, e?.response?.data || e?.message || e)
+            console.error('[paste-import] Failed to add alias:', e?.response?.status, e?.response?.data || e?.message || e)
           }
         }
         return res

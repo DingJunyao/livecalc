@@ -1,10 +1,10 @@
 <template>
   <div class="map-picker">
     <!-- 地图切换按钮 -->
-    <div v-if="showSwitcher && availableMaps.length > 1" class="map-switcher mb-2">
+    <div v-if="showSwitcher && availableMapValues.length > 1" class="map-switcher mb-2">
       <v-btn-group density="compact">
         <v-btn
-          v-for="map in availableMaps"
+          v-for="map in mapOptions.filter((option) => availableMapValues.includes(option.value))"
           :key="map.value"
           :color="currentMap === map.value ? 'primary' : 'default'"
           :variant="currentMap === map.value ? 'elevated' : 'text'"
@@ -21,22 +21,22 @@
       <!-- 加载状态 -->
       <div v-if="isLoading" class="map-loading-overlay">
         <v-progress-circular indeterminate color="primary" size="48" />
-        <p class="mt-3 text-body-2">地图加载中...</p>
+        <p class="mt-3 text-body-2">{{ t('mapComponents.loading') }}</p>
       </div>
 
       <!-- 地图 -->
-      <div v-show="!isLoading" ref="mapContainer" class="map-container" :style="{ height: height }"></div>
+      <div v-show="!isLoading" ref="mapContainer" class="map-container" dir="ltr" :style="{ height: height }"></div>
     </div>
 
     <!-- 坐标显示 -->
-    <div class="coord-display mt-3">
+    <div class="coord-display mt-3" dir="ltr">
       <v-chip size="small" variant="tonal">
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
-        纬度: {{ wgs84Coordinate ? wgs84Coordinate.lat.toFixed(6) : '-' }}
+        {{ t('mapComponents.latitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lat.toFixed(6) : '-' }}
       </v-chip>
       <v-chip size="small" variant="tonal" class="ml-2">
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
-        经度: {{ wgs84Coordinate ? wgs84Coordinate.lng.toFixed(6) : '-' }}
+        {{ t('mapComponents.longitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lng.toFixed(6) : '-' }}
       </v-chip>
     </div>
 
@@ -44,7 +44,7 @@
     <div class="map-hint mt-2">
       <v-icon size="small" color="medium-emphasis">mdi-information-outline</v-icon>
       <span class="text-caption text-medium-emphasis ml-1">
-        点击地图选择商家位置
+        {{ t('mapComponents.clickToSelectMerchant') }}
       </span>
     </div>
   </div>
@@ -52,6 +52,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { MapEngineType, Coordinate, MapConfig } from '@/utils/map/mapTypes'
 import { mapEngineNames, defaultMapConfig } from '@/utils/map/mapTypes'
 import { mapEngineManager } from '@/utils/mapEngineManager'
@@ -73,6 +74,7 @@ const props = withDefaults(defineProps<Props>(), {
   readonly: false,
   showSwitcher: true
 })
+const { t } = useI18n()
 
 // Emits
 const emit = defineEmits<{
@@ -83,7 +85,7 @@ const emit = defineEmits<{
 // 响应式数据
 const mapContainer = ref<HTMLElement | null>(null)
 const currentMap = ref<MapEngineType>('osm')
-const availableMaps = ref<{ value: MapEngineType; label: string }[]>([])
+const availableMapValues = ref<MapEngineType[]>([])
 const apiKeys = ref<any>({})
 const isLoading = ref(true)
 
@@ -94,14 +96,11 @@ const wgs84Coordinate = ref<Coordinate | null>(null)
 let markerId: any = null
 let currentLeafletEngine: any = null
 
-// 所有地图选项
-const allMapsOptions: { value: MapEngineType; label: string }[] = [
-  { value: 'amap', label: '高德' },
-  { value: 'baidu', label: '百度' },
-  { value: 'tencent', label: '腾讯' },
-  { value: 'tianditu', label: '天地图' },
-  { value: 'osm', label: 'OSM' }
-]
+const allMapTypes: MapEngineType[] = ['amap', 'baidu', 'tencent', 'tianditu', 'osm']
+const mapOptions = computed(() => allMapTypes.map((value) => ({
+  value,
+  label: t(`mapComponents.providers.${value}`),
+})))
 
 // 计算当前地图需要显示的坐标（从 WGS84 转换到当前地图坐标系）
 const displayCoordinate = computed(() => {
@@ -151,7 +150,7 @@ onMounted(async () => {
   const userMap = preference?.currentMap
 
   // 确定使用的地图
-  if (userMap && availableMaps.value.find(m => m.value === userMap)) {
+  if (userMap && availableMapValues.value.includes(userMap)) {
     currentMap.value = userMap
   }
 
@@ -180,7 +179,7 @@ async function loadMapConfig() {
 
     if (backendMapConfig) {
       const enabledMaps = backendMapConfig.available_maps || ['amap', 'baidu', 'tencent', 'tianditu', 'osm']
-      availableMaps.value = allMapsOptions.filter(m => enabledMaps.includes(m.value))
+      availableMapValues.value = allMapTypes.filter((value) => enabledMaps.includes(value))
       apiKeys.value = backendMapConfig.map_api_keys || {}
 
       if (backendMapConfig.default_map && enabledMaps.includes(backendMapConfig.default_map)) {
@@ -188,8 +187,8 @@ async function loadMapConfig() {
       }
     }
   } catch (e) {
-    console.warn('获取地图配置失败，使用默认配置:', e)
-    availableMaps.value = allMapsOptions
+    console.warn('Failed to get map config; using defaults:', e)
+    availableMapValues.value = allMapTypes
   }
 }
 
@@ -201,7 +200,7 @@ async function initLeafletMap() {
 
   const config: MapConfig = {
     ...defaultMapConfig,
-    availableMaps: availableMaps.value.map(m => m.value),
+    availableMaps: availableMapValues.value,
     defaultMap: currentMap.value,
     mapApiKeys: apiKeys.value
   }

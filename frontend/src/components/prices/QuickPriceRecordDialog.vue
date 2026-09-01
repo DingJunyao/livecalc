@@ -131,6 +131,7 @@ import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
+import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 
 const { t } = useI18n()
 
@@ -195,11 +196,11 @@ const unitOptions = ref<{ title: string; value: string }[]>([])
 const FALLBACK_UNITS = computed(() => [
   { title: t('prices.units.gram'), value: 'g' },
   { title: t('prices.units.kilogram'), value: 'kg' },
-  { title: t('prices.units.jin'), value: '斤' },
-  { title: t('prices.units.liang'), value: '两' },
+  { title: t('prices.units.jin'), value: CHINESE_JIN_NAME },
+  { title: t('prices.units.liang'), value: CHINESE_LIANG_NAME },
   { title: t('prices.units.milliliter'), value: 'ml' },
   { title: t('prices.units.liter'), value: 'L' },
-  { title: t('prices.units.piece'), value: '个' },
+  { title: t('prices.units.piece'), value: CHINESE_PIECE_NAME },
 ])
 
 // 加载全局单位列表
@@ -267,7 +268,7 @@ const loadMerchants = async () => {
     merchantOptions.value = response.items || []
     await applyMerchantCurrency(form.value.merchant_id)
   } catch (e: any) {
-    console.error('加载商家失败', e)
+    console.error('Failed to load merchants', e)
   }
 }
 
@@ -355,7 +356,7 @@ const save = async () => {
     close()
     emit('saved')
   } catch (e: any) {
-    console.error('保存记录失败', e)
+    console.error('Failed to save record', e)
     saveError.value = getErrorMessage(e, t('prices.saveFailed'))
   } finally {
     saving.value = false

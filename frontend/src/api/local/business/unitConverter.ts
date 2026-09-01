@@ -42,6 +42,8 @@ export interface ConvertResult {
   to_unit_id: number
 }
 
+import { localError } from '../../../utils/localErrors'
+
 /**
  * 在两个单位之间转换数值。纯函数。
  *
@@ -70,7 +72,7 @@ export function convert(input: ConvertInput): ConvertResult {
   const toUnit = units.find(u => u.id === to_unit_id)
 
   if (!fromUnit || !toUnit) {
-    throw { status: 400, message: `单位未找到: ${from_unit_id} 或 ${to_unit_id}` }
+    throw localError('unitsNotFound', 400, { from_unit_id, to_unit_id })
   }
 
   // 同类型：直接 si_factor 换算
@@ -133,10 +135,10 @@ export function convert(input: ConvertInput): ConvertResult {
     }
   }
 
-  throw {
-    status: 400,
-    message: `无法在 ${fromUnit.unit_type} 和 ${toUnit.unit_type} 之间转换`,
-  }
+  throw localError('unitTypesNotConvertible', 400, {
+    from_type: fromUnit.unit_type,
+    to_type: toUnit.unit_type,
+  })
 }
 
 function isMassType(type: string): boolean {

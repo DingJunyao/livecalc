@@ -11,6 +11,8 @@ import {
 } from './barcodeServices'
 import { fixBlobMime } from '@/utils/image'
 import CryptoJS from 'crypto-js'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 async function getConfigValue(key: string): Promise<any> {
   const db = await getDb()
@@ -30,10 +32,10 @@ function friendlyErr(e: any): string {
   const name = e?.name || ''
   const msg = e?.message || String(e)
   if (name === 'TypeError' || /Failed to fetch|NetworkError|CORS/i.test(msg)) {
-    return `浏览器无法连接该端点（可能是 CORS 被拒、域名不通或证书问题）：${msg}`
+    return translate('localMessages.networkEndpointFailure', { message: msg })
   }
   if (name === 'TimeoutError' || /timeout|aborted/i.test(msg)) {
-    return `请求超时：${msg}`
+    return translate('localMessages.requestTimeoutWithMessage', { message: msg })
   }
   return `${name || 'Error'}: ${msg}`
 }
@@ -112,10 +114,10 @@ export async function testBarcodeService(
   } catch (error: any) {
     const label = service.name || service.id
     const message = error?.name === 'AbortError'
-      ? '请求超时'
+      ? translate('localMessages.requestTimeout')
       : error instanceof TypeError
-        ? '浏览器无法连接（可能是 CORS、网络或证书问题）'
-        : error?.message || '查询失败'
+        ? translate('localMessages.browserConnectionFailure')
+        : error?.message || translate('localMessages.lookupFailed')
     return { found: false, source: null, product: {}, errors: [`${label}: ${message}`] }
   }
 }
@@ -260,8 +262,8 @@ function buildS3ApiTarget(key: string, cfg: {
 }): { url: string; host: string; canonicalUri: string } {
   const rawEndpoint = (cfg.s3_endpoint || '').trim()
   const bucket = (cfg.s3_bucket || '').trim()
-  if (!rawEndpoint) throw new Error('S3 endpoint 不能为空')
-  if (!bucket) throw new Error('S3 bucket 不能为空')
+  if (!rawEndpoint) throw new Error('S3 endpoint is required')
+  if (!bucket) throw new Error('S3 bucket is required')
   const endpoint = rawEndpoint.includes('://') ? rawEndpoint : `https://${rawEndpoint}`
   const basePath = (cfg.s3_base_path || '').replace(/^\/+|\/+$/g, '')
   const logicalKey = normalizeStorageKey(key)
@@ -311,7 +313,7 @@ async function signedS3Fetch(
   const { url, host, canonicalUri } = buildS3ApiTarget(key, cfg)
   const accessKey = (cfg.s3_access_key || '').trim()
   const secretKey = (cfg.s3_secret_key || '').trim()
-  if (!accessKey || !secretKey) throw new Error('S3 access key / secret key 不能为空')
+  if (!accessKey || !secretKey) throw new Error('S3 access key and secret key are required')
   const region = (cfg.s3_region || 'us-east-1').trim()
   const payloadHash = body ? await sha256Blob(body) : CryptoJS.SHA256('').toString()
   const now = new Date()
@@ -375,13 +377,17 @@ async function mergeSavedS3Config(data: any): Promise<any> {
 export async function testStorageConfig(_params: Record<string, string>, data?: any): Promise<any> {
   if (data?.backend !== 's3') return { ok: true, error: null }
   const cfg = await mergeSavedS3Config(data)
-  if (!cfg.s3_endpoint || !cfg.s3_bucket) return { ok: false, error: 'endpoint 和 bucket 不能为空' }
-  if (!cfg.s3_access_key || !cfg.s3_secret_key) return { ok: false, error: 'access key / secret key 不能为空' }
+  if (!cfg.s3_endpoint || !cfg.s3_bucket) {
+    return { ok: false, error: translate('localMessages.s3EndpointAndBucketRequired') }
+  }
+  if (!cfg.s3_access_key || !cfg.s3_secret_key) {
+    return { ok: false, error: translate('localMessages.s3CredentialsRequired') }
+  }
   try {
     const resp = await signedS3Fetch('HEAD', '_storage_probe_test', cfg)
     // 200 = object exists, 404 = credentials valid but probe key missing. Both mean the config works.
     if (resp.status === 200 || resp.status === 404) return { ok: true, error: null }
-    return { ok: false, error: `S3 返回 ${resp.status}，请检查密钥/权限/CORS 配置` }
+    return { ok: false, error: translate('localMessages.s3ResponseFailure', { status: resp.status }) }
   } catch (e: any) {
     return { ok: false, error: friendlyErr(e) }
   }
@@ -390,14 +396,14 @@ export async function testStorageConfig(_params: Record<string, string>, data?: 
 export async function migrateStorage(_params: Record<string, string>, data?: any): Promise<any> {
   const direction = data?.direction
   if (direction !== 'to_s3' && direction !== 'to_local') {
-    throw { status: 400, message: '无效的迁移方向' }
+    throw localError('invalidMigrationDirection')
   }
   const db = await getDb()
   const total = await db.count('images')
   const taskId = await addOne('import_tasks', {
     task_type: 'storage_migrate',
     status: 'running',
-    progress: { stage: '准备中', current: 0, total, uploaded: 0, skipped: 0, failed: 0 },
+    progress: { stage: 'preparing', current: 0, total, uploaded: 0, skipped: 0, failed: 0 },
     stats: { uploaded: 0, skipped: 0, failed: 0 },
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -449,10 +455,10 @@ async function runStorageMigration(
       ? await mergeSavedS3Config(s3Config)
       : await mergeSavedS3Config(null)
     if (direction === 'to_s3' && !targetS3Config.s3_endpoint) {
-      throw new Error('S3 endpoint 不能为空')
+      throw new Error('S3 endpoint is required')
     }
     if (direction === 'to_local' && (!targetS3Config.s3_endpoint || !targetS3Config.s3_bucket)) {
-      throw new Error('当前存储不是有效的 S3 配置')
+      throw new Error('Current storage is not a valid S3 configuration')
     }
 
     const CHUNK_SIZE = 5
@@ -498,7 +504,7 @@ async function runStorageMigration(
       await updateMigrationTask(
         db,
         taskId,
-        `迁移中 ${Math.min(i + CHUNK_SIZE, allImages.length)}/${allImages.length}`,
+        'migrating',
         Math.min(i + CHUNK_SIZE, allImages.length),
         allImages.length,
         { uploaded, skipped, failed },
@@ -509,21 +515,21 @@ async function runStorageMigration(
     await updateMigrationTask(
       db,
       taskId,
-      '完成',
+      'completed',
       total,
       total,
       { uploaded, skipped, failed },
       'success',
-      failed > 0 ? `${failed} 张图片迁移失败` : null,
+      failed > 0 ? translate('localMessages.imagesMigrationFailed', { count: failed }) : null,
     )
   } catch (e: any) {
-    console.error('[migrate] 迁移任务失败:', e)
+    console.error('[migrate] migration failed:', e)
     const current = await db.get('import_tasks', taskId).catch(() => null)
     if (current && current.status !== 'cancelled') {
       await updateMigrationTask(
         db,
         taskId,
-        '失败',
+        'failed',
         total,
         total,
         { uploaded, skipped, failed },
@@ -558,7 +564,7 @@ export async function updateMapApiKeys(_params: Record<string, string>, data?: a
 
 export async function scanImages(): Promise<any> {
   const stats = await computeImageStats()
-  return { stats, message: '扫描完成' }
+  return { stats, message: translate('localMessages.scanCompleted') }
 }
 
 export async function getUnusedImages(): Promise<any> {
@@ -567,7 +573,7 @@ export async function getUnusedImages(): Promise<any> {
 
 export async function deleteUnusedImages(_params: Record<string, string>, data?: any): Promise<any> {
   const keys: string[] = data?.keys || []
-  if (!keys.length) throw { status: 400, message: '缺少 keys' }
+  if (!keys.length) throw localError('imageKeysRequired')
   const db = await getDb()
   const allImages = await db.getAll('images')
   const deleted: string[] = []
@@ -614,9 +620,9 @@ export async function listTemplates(): Promise<any> {
 export async function getEmailTemplate(params: Record<string, string>): Promise<any> {
   return {
     key: params.key,
-    name: '邮件模板',
-    subject: '通知',
-    body_html: '<p>内容</p>',
+    name: translate('localMessages.emailTemplate'),
+    subject: translate('localMessages.notification'),
+    body_html: `<p>${translate('localMessages.content')}</p>`,
     description: '',
   }
 }
@@ -674,14 +680,14 @@ export async function testTranslationConnection(_params: Record<string, string>,
     return {
       provider,
       ok: false,
-      detail: '本地模式不支持测试该 provider（需服务端能力）',
+      detail: translate('localMessages.providerTestUnsupported'),
     }
   }
 
   // DeepL：简单的 POST /translate
   if (provider === 'deepl') {
     const authKey = section?.auth_key
-    if (!authKey) return { provider, ok: false, detail: '未配置 Auth Key' }
+    if (!authKey) return { provider, ok: false, detail: translate('localMessages.authKeyMissing') }
     const isFree = String(authKey).endsWith(':fx')
     const host = isFree ? 'https://api-free.deepl.com' : 'https://api.deepl.com'
     try {
@@ -702,7 +708,9 @@ export async function testTranslationConnection(_params: Record<string, string>,
       return {
         provider,
         ok: !!out,
-        detail: out ? `连接成功（Water → ${out}）` : '调用成功但无有效译文',
+        detail: out
+          ? translate('localMessages.connectionSucceededWithResult', { result: out })
+          : translate('localMessages.noTranslationResult'),
       }
     } catch (e: any) {
       return { provider, ok: false, detail: friendlyErr(e) }
@@ -713,8 +721,8 @@ export async function testTranslationConnection(_params: Record<string, string>,
   if (provider === 'openai' || provider === 'anthropic') {
     const apiKey = section?.api_key
     const model = section?.model
-    if (!apiKey) return { provider, ok: false, detail: '未配置 API Key' }
-    if (!model) return { provider, ok: false, detail: '未配置 Model' }
+    if (!apiKey) return { provider, ok: false, detail: translate('localMessages.apiKeyMissing') }
+    if (!model) return { provider, ok: false, detail: translate('localMessages.modelMissing') }
 
     try {
       if (provider === 'anthropic') {
@@ -733,7 +741,7 @@ export async function testTranslationConnection(_params: Record<string, string>,
           const t = await res.text().catch(() => '')
           return { provider, ok: false, detail: `Anthropic ${res.status}: ${t || res.statusText}` }
         }
-        return { provider, ok: true, detail: '连接成功' }
+        return { provider, ok: true, detail: translate('localMessages.connectionSucceeded') }
       } else {
         const obase = String(section.base_url || 'https://api.openai.com/v1').replace(/\/$/, '')
         const res = await fetchWithTimeout(`${obase}/chat/completions`, {
@@ -748,14 +756,14 @@ export async function testTranslationConnection(_params: Record<string, string>,
           const t = await res.text().catch(() => '')
           return { provider, ok: false, detail: `OpenAI ${res.status}: ${t || res.statusText}` }
         }
-        return { provider, ok: true, detail: '连接成功' }
+        return { provider, ok: true, detail: translate('localMessages.connectionSucceeded') }
       }
     } catch (e: any) {
       return { provider, ok: false, detail: friendlyErr(e) }
     }
   }
 
-  return { provider, ok: false, detail: '未知的 provider' }
+  return { provider, ok: false, detail: translate('localMessages.unknownProvider') }
 }
 
 // ============================================================
@@ -812,14 +820,20 @@ async function computeUnusedImages(): Promise<{
   const now = Date.now()
   const DAY_MS = 86400000
   const groupDefs = [
-    { key: 'never_used', label: '从未引用', test: () => true },
-    { key: '180d', label: '创建超过 180 天', test: (t: number) => (now - t) / DAY_MS >= 180 },
-    { key: '90d', label: '创建 90~180 天', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 90 && d < 180 } },
-    { key: '60d', label: '创建 60~90 天', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 60 && d < 90 } },
-    { key: '30d', label: '创建 30~60 天', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 30 && d < 60 } },
-    { key: 'recent', label: '创建 30 天内', test: (t: number) => (now - t) / DAY_MS < 30 },
+    { key: 'never_used', label: 'localAdminImageFilters.neverUsed', test: () => true },
+    { key: '180d', label: 'localAdminImageFilters.olderThan180Days', test: (t: number) => (now - t) / DAY_MS >= 180 },
+    { key: '90d', label: 'localAdminImageFilters.days90to180', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 90 && d < 180 } },
+    { key: '60d', label: 'localAdminImageFilters.days60to90', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 60 && d < 90 } },
+    { key: '30d', label: 'localAdminImageFilters.days30to60', test: (t: number) => { const d = (now - t) / DAY_MS; return d >= 30 && d < 60 } },
+    { key: 'recent', label: 'localAdminImageFilters.recent30Days', test: (t: number) => (now - t) / DAY_MS < 30 },
   ]
-  const groups = groupDefs.map(g => ({ ...g, images: [] as any[], count: 0, total_size: 0 }))
+  const groups = groupDefs.map(g => ({
+    ...g,
+    label: translate(g.label),
+    images: [] as any[],
+    count: 0,
+    total_size: 0,
+  }))
   let totalImages = 0, usedImages = 0, unusedImages = 0
   let usedSize = 0, unusedSize = 0
   for (const img of allImages) {

@@ -288,6 +288,7 @@ import PasteImportDialog from '@/components/prices/PasteImportDialog.vue'
 import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { CHINESE_JIN_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 const { t } = useI18n()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
@@ -382,8 +383,8 @@ const searchDebounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const unitOptions = ref<UnitOption[]>([])
 const FALLBACK_UNIT_OPTIONS = computed(() => [
-  { title: t('prices.units.jin'), value: '斤' },
-  { title: t('prices.units.piece'), value: '个' },
+  { title: t('prices.units.jin'), value: CHINESE_JIN_NAME },
+  { title: t('prices.units.piece'), value: CHINESE_PIECE_NAME },
 ])
 const pasteDialog = ref(false)
 const scannerOpen = ref(false)
@@ -833,7 +834,7 @@ const saveAll = async () => {
         session_date: sessionDate,
       })
     } catch (e: any) {
-      console.warn('[quick-fill] 记录排序失败:', e?.response?.data || e?.message || e)
+      console.warn('[quick-fill] Failed to sort records:', e?.response?.data || e?.message || e)
     }
   }
 
@@ -861,7 +862,7 @@ async function onPasteImported(savedProductIds?: number[]) {
         session_date: sessionDate,
       })
     } catch (e: any) {
-      console.warn('[quick-fill] 记录粘贴导入排序失败:', e?.response?.data || e?.message || e)
+      console.warn('[quick-fill] Failed to sort pasted records:', e?.response?.data || e?.message || e)
     }
   }
   await onMerchantChange(selectedMerchantId.value)

@@ -290,7 +290,7 @@ const fetchStats = async () => {
   try {
     stats.value = await api.get('/admin/stats')
   } catch (error) {
-    console.error('获取统计信息失败:', error)
+    console.error('Failed to get statistics:', error)
   } finally {
     loading.value = false
   }

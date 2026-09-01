@@ -435,7 +435,7 @@
                   <!-- import 任务：进度条 / 统计 / 错误 -->
                   <template v-if="t._kind === 'import'">
                     <div v-if="t.progress?.stage" class="text-caption mt-1">
-                      {{ t.progress.stage }}: {{ t.progress.message }}
+                      {{ importTaskStageLabel(t.progress.stage) }}: {{ t.progress.message }}
                     </div>
                     <div v-if="t.progress?.total > 0" class="mt-1">
                       <v-progress-linear
@@ -527,7 +527,9 @@ import { createSession, getSession, listSessions, cancelSession, type AgentProvi
 import { api } from '@/api'
 import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
 import { formatDateTime, formatNumber } from '@/utils/format'
+import { importTaskStageLabel } from '@/utils/importTaskStages'
 import { useLocaleStore } from '@/stores/locale'
+import { ADMIN_BACKGROUND_MARKER } from '@/data/localValues'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { t } = useI18n()
@@ -706,7 +708,7 @@ onMounted(async () => {
   try {
     const recent = await listSessions(20)
     const relevant = recent.filter(
-      (s) => AGENT_TASK_TYPES.includes(s.task_type) && !(s.title || '').startsWith('[后台]')
+      (s) => AGENT_TASK_TYPES.includes(s.task_type) && !(s.title || '').startsWith(ADMIN_BACKGROUND_MARKER)
     )
     for (const s of relevant) {
       if (!agentTasks.value.find((t) => t.session_id === s.id)) {

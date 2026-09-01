@@ -4,6 +4,7 @@ import { ref, computed } from 'vue'
 import type { User } from '@/types'
 import { api } from '@/api'
 import { useLocaleStore } from '@/stores/locale'
+import { CHINESE_JIN_NAME, LOCAL_USER_NICKNAME } from '@/data/localValues'
 
 export const useUserStore = defineStore('user', () => {
   // ---- Local mode: return a fixed admin user without API calls ----
@@ -17,15 +18,15 @@ export const useUserStore = defineStore('user', () => {
       is_active: true,
       email_verified: true,
       avatar: null,
-      nickname: '本地用户',
+      nickname: LOCAL_USER_NICKNAME,
       created_at: new Date().toISOString(),
       nutrition_goals: null,
       daily_budget: null,
       unit_preferences: {
         energy_unit: 'kcal',
-        mass_unit: { id: 3, name: '斤', abbreviation: '斤' },
+        mass_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
         volume_unit: null,
-        price_unit: { id: 3, name: '斤', abbreviation: '斤' },
+        price_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
       },
       region_id: null,
       default_currency: null,

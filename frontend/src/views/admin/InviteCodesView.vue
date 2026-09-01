@@ -366,7 +366,7 @@ const fetchInviteCodes = async ({ page, itemsPerPage: limit }: { page: number; i
     inviteCodes.value = response.items
     totalItems.value = response.total
   } catch (error) {
-    console.error('获取邀请码列表失败:', error)
+    console.error('Failed to get invite codes:', error)
   } finally {
     loading.value = false
   }
@@ -378,7 +378,7 @@ const fetchRegistrationConfig = async () => {
     const config: any = await api.get('/auth/config')
     registrationEnabled.value = config.registration_require_invite_code || false
   } catch (error) {
-    console.error('获取注册配置失败:', error)
+    console.error('Failed to get registration config:', error)
   }
 }
 
@@ -490,7 +490,7 @@ const copyToClipboard = async (code: string) => {
     await navigator.clipboard.writeText(code)
     showSnackbar(t('admin.inviteCodes.copied'))
   } catch (error) {
-    console.error('复制失败:', error)
+    console.error('Failed to copy:', error)
   }
 }
 

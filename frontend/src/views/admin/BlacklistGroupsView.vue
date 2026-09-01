@@ -295,7 +295,7 @@ async function loadGroups() {
     const data = await api.get('/admin/blacklist-groups')
     groups.value = data
   } catch (e) {
-    console.error('加载分组失败', e)
+    console.error('Failed to load groups', e)
   } finally {
     loading.value = false
   }
@@ -467,7 +467,7 @@ async function loadAllergenStatus() {
     const data = await api.get('/admin/blacklist-groups/allergens-status')
     allergenStatus.value = data
   } catch (e) {
-    console.error('加载过敏原导入状态失败', e)
+    console.error('Failed to load allergen import status', e)
   }
 }
 

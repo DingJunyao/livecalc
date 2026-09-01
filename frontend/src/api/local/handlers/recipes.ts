@@ -14,6 +14,16 @@ import { aggregateIngredients, calcNRV, type AggregationInput, type AggregationI
 import { convert, type UnitInfo, type EntityOverride, type DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
 import { buildRegionFilter } from '../business/regionSubtree'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
+import {
+  CANONICAL_ENERGY_NAME,
+  DEFAULT_NUTRIENT_NAMES,
+  ENERGY_NUTRIENT_NAMES,
+  RECIPE_CORE_NUTRIENT_NAMES,
+  UNKNOWN_INGREDIENT_NAME,
+  VAGUE_QUANTITY_GRAM_MAP,
+} from '../../../data/localValues.ts'
 
 // ============================================================
 // 辅助函数
@@ -37,11 +47,10 @@ function withImageUrls<T extends Record<string, any>>(recipe: T): T & { image_ur
 }
 
 /** 模糊量关键词 → 默认克数（与云端 VAGUE_QUANTITY_GRAM_MAP 对齐） */
-const VAGUE_GRAM_MAP: Record<string, number> = { '适量': 100, '少许': 5 }
 function resolveVagueQty(original?: string | null): number {
   if (!original) return 0
   const text = typeof original === 'string' ? original : String(original)
-  for (const [kw, grams] of Object.entries(VAGUE_GRAM_MAP)) {
+  for (const [kw, grams] of Object.entries(VAGUE_QUANTITY_GRAM_MAP)) {
     if (text.includes(kw)) return grams
   }
   return 0
@@ -72,7 +81,7 @@ async function getRecipeIngredients(recipeId: number): Promise<any[]> {
   // 附加食材名（无 ingredient_id 的跳过，用 ingredient_name 字段）
   for (const ri of ingredients) {
     if (ri.ingredient_id == null) {
-      ri.ingredient_name = ri.ingredient_name || '未知原料'
+      ri.ingredient_name = ri.ingredient_name || UNKNOWN_INGREDIENT_NAME
       ri.ingredient = null
       ri.name = ri.ingredient_name  // 组件模板用 ingredient.name
       ri.unit = ri.unit || ri.unit_name || unitIdToName[ri.unit_id] || ''
@@ -199,11 +208,11 @@ export async function getRecipe(params: Record<string, string>, _query?: any): P
   const id = parseInt(params.id)
   if (!Number.isFinite(id)) {
     console.warn('[getRecipe] invalid id:', params.id)
-    throw { status: 400, message: `无效的菜谱ID: ${params.id}` }
+    throw localError('invalidRecipeId', 400, { id: params.id })
   }
   const recipe = await getById('recipes', id)
   if (!recipe || recipe.is_active === false) {
-    throw { status: 404, message: `菜谱 ${id} 未找到` }
+    throw localError('recipeNotFound', 404, { id })
   }
 
   const ingredients = await getRecipeIngredients(id)
@@ -213,7 +222,7 @@ export async function getRecipe(params: Record<string, string>, _query?: any): P
 export async function updateRecipe(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('recipes', id)
-  if (!existing) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!existing) throw localError('recipeNotFound', 404, { id })
 
   const { ingredients, ...recipeData } = data || {}
 
@@ -265,7 +274,7 @@ export async function updateRecipe(params: Record<string, string>, data?: any): 
 export async function deleteRecipe(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('recipes', id)
-  if (!existing) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!existing) throw localError('recipeNotFound', 404, { id })
   await putOne('recipes', { ...existing, id, is_active: false, updated_at: new Date().toISOString() })
   return { ok: true }
 }
@@ -277,7 +286,7 @@ export async function deleteRecipe(params: Record<string, string>): Promise<any>
 export async function getRecipeCost(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
-  if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!recipe) throw localError('recipeNotFound', 404, { id })
 
   const regionId = parseRegionId(query?.region_id)
   const input = await buildCostInput(id, recipe, regionId)
@@ -347,7 +356,7 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
         recipe_ingredient_id: ri.id,
         ingredient_id: ri.ingredient_id,
         ingredient_name: ri.ingredient_id == null
-          ? '未知原料'
+          ? UNKNOWN_INGREDIENT_NAME
           : (allIngredients.find((i: any) => i.id === ri.ingredient_id)?.name || `#${ri.ingredient_id}`),
         quantity: ri.quantity,
         quantity_range: ri.quantity_range,
@@ -388,7 +397,7 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
 
       estimatedCost = calculateCost(costInput).total_cost
     } catch (e) {
-      console.error('[batchCost] 成本计算失败', rid, e)
+      console.error('[batchCost] cost calculation failed', rid, e)
     }
 
     // --- 能量（卡路里）---
@@ -431,7 +440,7 @@ function computeBatchCalories(
 
   if (!aggInputs.length) return null
   const items = aggregateIngredients({ items: aggInputs })
-  const energy = items.find(n => n.nutrient_name === '能量' || n.nutrient_name === '热量')
+  const energy = items.find((n: any) => ENERGY_NUTRIENT_NAMES.includes(n.nutrient_name))
   const amount = energy?.amount
   return amount != null && Number.isFinite(amount) && amount > 0 ? Math.round(amount) : null
 }
@@ -471,7 +480,7 @@ function convertToGramsWith(
 export async function getRecipeNutrition(params: Record<string, string>, _query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
-  if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!recipe) throw localError('recipeNotFound', 404, { id })
 
   const recipeIngredients = await getByIndex('recipe_ingredients', 'by_recipe_id', id)
   const aggregationInputs: AggregationInput[] = []
@@ -502,8 +511,8 @@ export async function getRecipeNutrition(params: Record<string, string>, _query?
   const items = aggregateIngredients({ items: aggregationInputs })
 
   // 按营养素分类：核心营养素 vs 全部
-  const coreNames = ['能量', '蛋白质', '脂肪', '碳水化合物', '膳食纤维', '钠', '钙', '铁', '钾', '维生素A', '维生素C', '维生素B1', '维生素B2', '维生素B12', '维生素D', '维生素E', '维生素K']
-  const coreNutrients = items.filter(item => coreNames.includes(item.nutrient_name))
+  const coreNames = RECIPE_CORE_NUTRIENT_NAMES
+  const coreNutrients = items.filter((item: any) => coreNames.includes(item.nutrient_name))
   const allNutrients = items
 
   return {
@@ -512,10 +521,10 @@ export async function getRecipeNutrition(params: Record<string, string>, _query?
       core_nutrients: Object.fromEntries(coreNutrients.map(n => [n.nutrient_name, { value: n.amount, unit: n.unit, amount_per_100g: n.amount_per_100g, nrp_pct: calcNRV(n.nutrient_name, n.amount) }])),
       all_nutrients: Object.fromEntries(allNutrients.map(n => [n.nutrient_name, { value: n.amount, unit: n.unit, amount_per_100g: n.amount_per_100g, nrp_pct: calcNRV(n.nutrient_name, n.amount) }])),
     },
-    calories: allNutrients.find(n => n.nutrient_name === '能量')?.amount || 0,
-    protein: allNutrients.find(n => n.nutrient_name === '蛋白质')?.amount || 0,
-    fat: allNutrients.find(n => n.nutrient_name === '脂肪')?.amount || 0,
-    carbohydrate: allNutrients.find(n => n.nutrient_name === '碳水化合物')?.amount || 0,
+    calories: allNutrients.find((n: any) => n.nutrient_name === CANONICAL_ENERGY_NAME)?.amount || 0,
+    protein: allNutrients.find((n: any) => n.nutrient_name === DEFAULT_NUTRIENT_NAMES[1])?.amount || 0,
+    fat: allNutrients.find((n: any) => n.nutrient_name === DEFAULT_NUTRIENT_NAMES[2])?.amount || 0,
+    carbohydrate: allNutrients.find((n: any) => n.nutrient_name === DEFAULT_NUTRIENT_NAMES[3])?.amount || 0,
   }
 }
 
@@ -552,7 +561,7 @@ async function convertToGrams(quantity: number | null, unitId: number | null, in
 export async function getCostHistory(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
-  if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!recipe) throw localError('recipeNotFound', 404, { id })
 
   const days = parseInt(query?.days) || 90
   const regionId = parseRegionId(query?.region_id)
@@ -623,7 +632,7 @@ export async function getCostHistory(params: Record<string, string>, query?: any
 export async function getCostHistoryRange(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
-  if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!recipe) throw localError('recipeNotFound', 404, { id })
 
   const days = parseInt(query?.days) || 90
   const offsetDays = parseInt(query?.offset_days) || 0
@@ -745,7 +754,7 @@ export async function getCostHistoryRange(params: Record<string, string>, query?
 export async function getMerchantCosts(params: Record<string, string>, _query?: any): Promise<any> {
   const id = parseInt(params.id)
   const recipe = await getById('recipes', id)
-  if (!recipe) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!recipe) throw localError('recipeNotFound', 404, { id })
 
   const recipeIngredients = await getByIndex('recipe_ingredients', 'by_recipe_id', id)
   const units = await getAll('units')
@@ -801,7 +810,7 @@ export async function getMerchantCosts(params: Record<string, string>, _query?: 
         const pricePerUnit = qty && qty > 0 ? (rec as any).price / qty : (rec as any).price
         prices.push({
           merchantId,
-          merchantName: merchant?.name || `商家${merchantId}`,
+          merchantName: merchant?.name || translate('localMessages.merchantLabel', { id: merchantId }),
           pricePerUnit,
           unitId: (rec as any).standard_unit_id ?? (rec as any).unit_id,
           productId: prod.id,
@@ -837,7 +846,7 @@ export async function getMerchantCosts(params: Record<string, string>, _query?: 
         const merchant = allMerchants.find((m: any) => m.id === merchantId)
         merchantMap[merchantId] = {
           merchant_id: merchantId,
-          merchant_name: merchant?.name || `商家${merchantId}`,
+          merchant_name: merchant?.name || translate('localMessages.merchantLabel', { id: merchantId }),
           items: [],
           total_cost: 0,
         }
@@ -880,10 +889,10 @@ export async function getMerchantCosts(params: Record<string, string>, _query?: 
 export async function publishRecipe(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('recipes', id)
-  if (!existing) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!existing) throw localError('recipeNotFound', 404, { id })
   // 本地模式：直接标记为已发布
   await putOne('recipes', { ...existing, id, is_public: true, updated_at: new Date().toISOString() })
-  return { ok: true, message: '菜谱已发布' }
+  return { ok: true, message: translate('localMessages.recipePublished') }
 }
 
 // ============================================================
@@ -893,7 +902,7 @@ export async function publishRecipe(params: Record<string, string>): Promise<any
 export async function uploadImage(params: Record<string, string>, _data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('recipes', id)
-  if (!existing) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!existing) throw localError('recipeNotFound', 404, { id })
   // 本地模式：仅返回 mock 图片 URL
   const mockUrl = `/static/images/recipes/${id}_${Date.now()}.jpg`
   return { url: mockUrl, filename: `${id}_${Date.now()}.jpg` }
@@ -903,7 +912,7 @@ export async function deleteImage(params: Record<string, string>): Promise<any> 
   const id = parseInt(params.id)
   const filename = params.filename
   const existing = await getById('recipes', id)
-  if (!existing) throw { status: 404, message: `菜谱 ${id} 未找到` }
+  if (!existing) throw localError('recipeNotFound', 404, { id })
   // 本地模式：仅从 images 数组中去掉该文件名
   const images = (existing.images || []).filter((img: string) => !img.includes(filename))
   await putOne('recipes', { ...existing, id, images, updated_at: new Date().toISOString() })

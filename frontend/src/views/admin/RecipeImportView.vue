@@ -222,7 +222,7 @@
                   <!-- import 任务：进度条 / 统计 / 错误 -->
                   <template v-if="t._kind === 'import'">
                     <div v-if="t.progress?.stage" class="text-caption mt-1">
-                      {{ t.progress.stage }}: {{ t.progress.message }}
+                      {{ importTaskStageLabel(t.progress.stage) }}: {{ t.progress.message }}
                     </div>
                     <div v-if="t.progress?.total > 0" class="mt-1">
                       <v-progress-linear
@@ -274,6 +274,7 @@ import { getTranslationConfig } from '@/api/usda'
 import { createSession, getSession, listSessions } from '@/api/agent'
 import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
 import { formatDateTime, formatNumber } from '@/utils/format'
+import { importTaskStageLabel } from '@/utils/importTaskStages'
 import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()

@@ -1,5 +1,6 @@
 // api/client.ts
 import axios from 'axios'
+import { t } from '@/plugins/i18n'
 import { readStoredLocale } from '@/utils/localeStorage'
 
 // 请求超时（毫秒），可从 .env 配置
@@ -110,9 +111,9 @@ api.interceptors.response.use(
     if (detail) {
       error.userMessage = detail
     } else if (error.message === 'Network Error') {
-      error.userMessage = '网络连接失败，请检查网络后重试'
+      error.userMessage = t('errors.network')
     } else if (error.code === 'ECONNABORTED') {
-      error.userMessage = '请求超时，请稍后重试'
+      error.userMessage = t('errors.timeout')
     }
 
     return Promise.reject(error)

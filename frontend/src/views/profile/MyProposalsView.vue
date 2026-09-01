@@ -227,7 +227,7 @@ const loadList = async () => {
     const status = statusFilter.value === 'all' ? undefined : statusFilter.value
     proposals.value = await listProposals(status as any, 100, 'mine')
   } catch (e: any) {
-    console.error('加载提议列表失败', e)
+    console.error('Failed to load proposals', e)
   } finally {
     loading.value = false
   }

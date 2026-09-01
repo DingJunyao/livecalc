@@ -34,8 +34,8 @@ test('legacy USDA and stored nutrient aliases do not fall back to source keys', 
     'choline_from_sphingomyelin', 'choline_free',
     'choline_from_glycerophosphocholine',
     'choline_from_phosphotidyl_choline', 'choline_from_phosphocholine',
-    '维生素D2（麦角钙化醇）', '维生素K2（甲萘醌-4）',
-    '共轭亚油酸', '顺式-棕榈油酸', 'β-谷甾醇', '豆固醇',
+    '\u7ef4\u751f\u7d20D2\uff08\u9ea6\u89d2\u9499\u5316\u9187\uff09', '\u7ef4\u751f\u7d20K2\uff08\u7532\u8418\u918c-4\uff09',
+    '\u5171\u8f6d\u4e9a\u6cb9\u9178', '\u987a\u5f0f-\u68d5\u6988\u6cb9\u9178', '\u03b2-\u8c37\u753e\u9187', '\u8c46\u56fa\u9187',
   ]
 
   for (const source of sourceAliases) {
@@ -49,15 +49,15 @@ test('raw default nutrient keys are compared after normalization', () => {
   if (typeof isDefaultNutrient !== 'function') return
 
   const defaultKeys = new Set(
-    ['能量', '蛋白质', '脂肪', '碳水化合物', '钠']
+    ['\u80fd\u91cf', '\u86cb\u767d\u8d28', '\u8102\u80aa', '\u78b3\u6c34\u5316\u5408\u7269', '\u94a0']
       .map(nutrientKey)
       .filter((key): key is string => key !== null)
   )
 
-  for (const source of ['能量', 'energy_kcal', '蛋白质', 'protein', '脂肪', 'fat']) {
+  for (const source of ['\u80fd\u91cf', 'energy_kcal', '\u86cb\u767d\u8d28', 'protein', '\u8102\u80aa', 'fat']) {
     assert.equal(isDefaultNutrient(source, defaultKeys), true, `${source} should be excluded`)
   }
 
-  assert.equal(isDefaultNutrient('膳食纤维', defaultKeys), false)
+  assert.equal(isDefaultNutrient('\u81b3\u98df\u7ea4\u7ef4', defaultKeys), false)
   assert.equal(isDefaultNutrient('energy_kcal', new Set()), false)
 })

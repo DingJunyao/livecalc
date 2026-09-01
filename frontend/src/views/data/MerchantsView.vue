@@ -419,6 +419,7 @@ import { loadCurrencies } from '@/utils/currency'
 import type { Currency } from '@/types'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useMapConfig } from '@/composables/useMapConfig'
+import { PROPOSAL_MARKER } from '@/data/localValues'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -627,7 +628,7 @@ const loadMerchants = async () => {
     items.value = response.items || []
     total.value = response.total || 0
   } catch (e: any) {
-    console.error('加载商家失败', e)
+    console.error('Failed to load merchants', e)
     error.value = getErrorMessage(e, t('merchants.loadFailed'))
   } finally {
     loading.value = false
@@ -640,7 +641,7 @@ const loadFavorites = async () => {
     const favs: Merchant[] = await api.get('/merchants/favorites')
     favoriteIds.value = new Set((Array.isArray(favs) ? favs : []).map(m => m.id))
   } catch (e: any) {
-    console.error('加载收藏列表失败', e)
+    console.error('Failed to load favorites', e)
   }
 }
 
@@ -688,7 +689,7 @@ const loadPlaces = async () => {
       }
     }
   } catch (e: any) {
-    console.error('加载常用地点失败', e)
+    console.error('Failed to load favorite places', e)
   }
 }
 
@@ -704,7 +705,7 @@ const loadAllCoordinates = async () => {
     })
     allCoordinates.value = Array.isArray(data) ? data : []
   } catch (e: any) {
-    console.error('加载商家坐标失败', e)
+    console.error('Failed to load merchant coordinates', e)
   }
 }
 
@@ -861,7 +862,7 @@ const saveItem = async () => {
     }
     addDialog.value = false
   } catch (e: any) {
-    console.error('保存商家失败', e)
+    console.error('Failed to save merchant', e)
     notify(getErrorMessage(e, t('merchants.saveFailed')), 'error')
   } finally {
     saving.value = false
@@ -874,7 +875,7 @@ const deleteItem = async (id: number) => {
     // 共享池分流：普通用户提交提议（返回 {message: ... proposal_id ...}），
     // 管理员直写软删（返回 {message: ...}）。普通用户提议待审，列表暂不移除。
     const msg: string = (result && result.message) || ''
-    if (msg.includes('提议') || msg.includes('proposal')) {
+    if (msg.includes(PROPOSAL_MARKER) || msg.includes('proposal')) {
       notify(t('merchants.deleteProposalSubmitted'), 'info')
     } else {
       notify(t('merchants.deleted'), 'success')
@@ -889,7 +890,7 @@ const deleteItem = async (id: number) => {
       }
     }
   } catch (e: any) {
-    console.error('删除商家失败', e)
+    console.error('Failed to delete merchant', e)
     notify(getErrorMessage(e, t('merchants.deleteFailed')), 'error')
   }
 }

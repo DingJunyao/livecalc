@@ -509,10 +509,10 @@ let migrationPoller: ReturnType<typeof setInterval> | null = null
 
 const migrationStageLabel = computed(() => {
   const labels: Record<string, string> = {
-    '准备中': t('adminStorage.stagePreparing'),
-    '迁移到 S3': t('adminStorage.stageMigratingToS3'),
-    '迁移到本地': t('adminStorage.stageMigratingToLocal'),
-    '完成': t('adminStorage.completed'),
+    preparing: t('adminStorage.stagePreparing'),
+    migrating: t('adminStorage.stageMigrating'),
+    completed: t('adminStorage.completed'),
+    failed: t('adminStorage.migrationFailed'),
   }
   return migrationStage.value ? labels[migrationStage.value] || migrationStage.value : t('adminStorage.stagePreparing')
 })
@@ -724,7 +724,7 @@ const startMigrationPolling = () => {
       }
     } catch (error: unknown) {
       // 忽略轮询错误，继续下一轮
-      console.warn('迁移进度轮询失败', error)
+      console.warn('Failed to poll migration progress', error)
     }
   }, 2000)
 }
@@ -787,7 +787,7 @@ const fetchConfig = async () => {
   try {
     config.value = await api.get('/admin/storage-config')
   } catch (error: unknown) {
-    console.error('获取存储配置失败:', error)
+    console.error('Failed to get storage config:', error)
   } finally {
     loading.value = false
   }

@@ -2,6 +2,7 @@
 // 使用 idb 库提供类型安全的事务包装。
 
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb'
+import { localError } from '../../utils/localErrors.ts'
 
 export interface MerchantRecord {
   id?: number
@@ -361,7 +362,7 @@ export async function getAll<T = any>(storeName: any): Promise<T[]> {
 export async function getById<T = any>(storeName: any, id: number | string): Promise<T | undefined> {
   if (id == null || (typeof id === 'number' && !Number.isFinite(id))) {
     console.error(`[getById] invalid key for store "${storeName}":`, id)
-    throw { status: 400, message: `无效的查询键: ${id}` }
+    throw localError('invalidQueryKey', 400, { id })
   }
   const db = await getDb()
   return (db as any).get(storeName, id)

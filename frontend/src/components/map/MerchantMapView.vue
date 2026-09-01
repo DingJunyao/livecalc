@@ -5,24 +5,24 @@
       <!-- 加载状态 -->
       <div v-if="isLoading" class="map-loading-overlay">
         <v-progress-circular indeterminate color="primary" size="64" />
-        <p class="mt-4 text-body-1">地图加载中...</p>
+        <p class="mt-4 text-body-1">{{ t('mapComponents.loading') }}</p>
       </div>
 
       <!-- 空状态 -->
       <div v-else-if="validMerchants.length === 0" class="map-empty-state">
         <v-icon size="64" color="medium-emphasis">mdi-map-marker-off</v-icon>
-        <p class="mt-4 text-body-1 text-medium-emphasis">暂无商家位置信息</p>
+        <p class="mt-4 text-body-1 text-medium-emphasis">{{ t('mapComponents.noMerchantLocations') }}</p>
         <p class="text-caption text-medium-emphasis mt-2">
-          在商家信息中添加坐标后即可在地图上显示
+          {{ t('mapComponents.addCoordinatesHint') }}
         </p>
       </div>
 
       <!-- 地图控制按钮 -->
       <div v-show="!isLoading && validMerchants.length > 0" class="map-controls">
         <!-- 地图切换器（桌面端） -->
-        <v-btn-group v-if="isDesktop && availableMaps.length > 1" class="desktop-layer-selector" density="compact">
+        <v-btn-group v-if="isDesktop && availableMapValues.length > 1" class="desktop-layer-selector" density="compact">
           <v-btn
-            v-for="map in availableMaps"
+            v-for="map in mapOptions.filter((option) => availableMapValues.includes(option.value))"
             :key="map.value"
             :color="currentMapLayer === map.value ? 'primary' : 'default'"
             :variant="currentMapLayer === map.value ? 'elevated' : 'text'"
@@ -35,9 +35,9 @@
 
         <!-- 地图切换下拉（移动端） -->
         <v-select
-          v-else-if="!isDesktop && availableMaps.length > 1"
+          v-else-if="!isDesktop && availableMapValues.length > 1"
           :model-value="currentMapLayer"
-          :items="availableMaps"
+          :items="mapOptions.filter((option) => availableMapValues.includes(option.value))"
           item-title="label"
           item-value="value"
           density="compact"
@@ -67,7 +67,7 @@
           size="small"
           :color="hasCurrentLocation ? 'primary' : 'surface'"
           variant="elevated"
-          :title="'显示当前位置（5km 范围）'"
+          :title="t('mapComponents.showCurrentLocation')"
           @click="showCurrentLocation"
           class="control-btn"
         />
@@ -78,7 +78,7 @@
           size="small"
           color="surface"
           variant="elevated"
-          title="缩放到所有商家"
+          :title="t('mapComponents.fitAllMerchants')"
           @click="fitAllMerchants"
           class="control-btn"
         />
@@ -95,13 +95,14 @@
       </div>
 
       <!-- Leaflet 地图容器 -->
-      <div v-show="!isLoading && validMerchants.length > 0" ref="mapContainer" class="map-container"></div>
+      <div v-show="!isLoading && validMerchants.length > 0" ref="mapContainer" class="map-container" dir="ltr"></div>
     </div>
   </v-card>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { MapEngineType, Coordinate, MapConfig } from '@/utils/map/mapTypes'
 import { mapEngineNames, defaultMapConfig } from '@/utils/map/mapTypes'
 import { mapEngineManager } from '@/utils/mapEngineManager'
@@ -150,6 +151,7 @@ const props = withDefaults(defineProps<Props>(), {
   currentPlaceId: null,
   allCoordinates: () => []
 })
+const { t } = useI18n()
 
 const emit = defineEmits<{
   (e: 'update:currentPlaceId', value: number | null): void
@@ -180,7 +182,7 @@ const placeOptions = computed(() => {
     id: p.id,
     label: p.name
   }))
-  opts.push({ id: null, label: '全部商家' })
+  opts.push({ id: null, label: t('mapComponents.allMerchants') })
   return opts
 })
 
@@ -192,7 +194,7 @@ function onPlaceChange(val: any) {
 const mapContainer = ref<HTMLElement | null>(null)
 const mapWrapperRef = ref<HTMLElement | null>(null)
 const currentMapLayer = ref<MapEngineType>(props.engine)
-const availableMaps = ref<{ value: MapEngineType; label: string }[]>([])
+const availableMapValues = ref<MapEngineType[]>([])
 const apiKeys = ref<any>({})
 const isFullscreen = ref(false)
 const isLoading = ref(true)
@@ -207,14 +209,11 @@ const hasCurrentLocation = ref(false)
 let currentLocationMarker: any = null
 let currentLocationCircle: any = null
 
-// 所有地图选项
-const allMapsOptions: { value: MapEngineType; label: string }[] = [
-  { value: 'amap', label: '高德' },
-  { value: 'baidu', label: '百度' },
-  { value: 'tencent', label: '腾讯' },
-  { value: 'tianditu', label: '天地图' },
-  { value: 'osm', label: 'OSM' }
-]
+const allMapTypes: MapEngineType[] = ['amap', 'baidu', 'tencent', 'tianditu', 'osm']
+const mapOptions = computed(() => allMapTypes.map((value) => ({
+  value,
+  label: t(`mapComponents.providers.${value}`),
+})))
 
 // 检测当前是否使用 SDK 引擎
 const isSDKEngine = computed(() => {
@@ -253,7 +252,7 @@ async function loadMapConfig() {
     const config = await api.get('/merchants/map-config')
     if (config) {
       const enabledMaps = config.available_maps || ['amap', 'baidu', 'tencent', 'tianditu', 'osm']
-      availableMaps.value = allMapsOptions.filter(m => enabledMaps.includes(m.value))
+      availableMapValues.value = allMapTypes.filter((value) => enabledMaps.includes(value))
       apiKeys.value = config.map_api_keys || {}
 
       if (config.default_map && enabledMaps.includes(config.default_map)) {
@@ -262,7 +261,7 @@ async function loadMapConfig() {
     }
   } catch (error) {
     console.error('Failed to load map config:', error)
-    availableMaps.value = allMapsOptions
+    availableMapValues.value = allMapTypes
   }
 }
 
@@ -274,7 +273,7 @@ async function initMap() {
 
   const config: MapConfig = {
     ...defaultMapConfig,
-    availableMaps: availableMaps.value.map(m => m.value),
+    availableMaps: availableMapValues.value,
     defaultMap: currentMapLayer.value,
     mapApiKeys: apiKeys.value
   }
@@ -400,9 +399,9 @@ function updateMerchantsMarkers() {
               layer.setIcon(icon)
               const popupLines = [`<strong>${merchant.name}</strong>`]
               if (isClosed) {
-                popupLines.push('<span style="color:#f57c00;">（已关闭）</span>')
+                popupLines.push(`<span style="color:#f57c00;">${t('mapComponents.closed')}</span>`)
               }
-              popupLines.push(merchant.address || '无地址')
+              popupLines.push(merchant.address || t('mapComponents.noAddress'))
               layer.bindPopup(popupLines.join('<br>'))
             }
           }
@@ -646,7 +645,7 @@ function clearCurrentLocation() {
           currentLocationMarker.setMap(null)
         }
       } catch (e) {
-        console.warn('移除 SDK 当前位置标记失败:', e)
+        console.warn('Failed to remove SDK current-location marker:', e)
       }
     }
     currentLocationMarker = null
@@ -672,7 +671,7 @@ function clearCurrentLocation() {
           }
         }
       } catch (e) {
-        console.warn('移除 SDK 圆形失败:', e)
+        console.warn('Failed to remove SDK circle:', e)
       }
     }
     currentLocationCircle = null
@@ -693,7 +692,7 @@ async function showCurrentLocation() {
 
   // 检查浏览器是否支持地理位置
   if (!navigator.geolocation) {
-    console.warn('浏览器不支持地理位置定位')
+    console.warn('Geolocation is not supported by this browser')
     return
   }
 
@@ -770,7 +769,7 @@ async function showCurrentLocation() {
                 iconAnchor: [9, 9]
               })
               layer.setIcon(icon)
-              layer.bindPopup('<strong>当前位置</strong><br>半径 5 km')
+              layer.bindPopup(`<strong>${t('mapComponents.currentLocation')}</strong><br>${t('mapComponents.radiusKm', { count: 5 })}`)
             }
           }
         })
@@ -896,17 +895,17 @@ async function showCurrentLocation() {
 
     hasCurrentLocation.value = true
   } catch (error: any) {
-    console.error('获取当前位置失败:', error)
-    let errorMsg = '获取当前位置失败'
+    console.error('Failed to get current location:', error)
+    let errorMsg = 'Failed to get current location'
     switch (error.code) {
       case error.PERMISSION_DENIED:
-        errorMsg = '位置权限被拒绝，请在浏览器设置中允许访问位置信息'
+        errorMsg = 'Location permission was denied'
         break
       case error.POSITION_UNAVAILABLE:
-        errorMsg = '位置信息不可用'
+        errorMsg = 'Location information is unavailable'
         break
       case error.TIMEOUT:
-        errorMsg = '获取位置超时，请重试'
+        errorMsg = 'Getting location timed out'
         break
     }
     // 可以在这里添加一个 snackbar 通知

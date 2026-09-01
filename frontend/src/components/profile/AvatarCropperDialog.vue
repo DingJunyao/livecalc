@@ -2,7 +2,7 @@
   <v-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)" max-width="560" persistent>
     <v-card>
       <v-card-title class="d-flex align-center">
-        裁剪头像
+        {{ t('avatarCropper.title') }}
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" size="small" @click="$emit('update:modelValue', false)" />
       </v-card-title>
@@ -17,12 +17,12 @@
             @change="onChange"
           />
         </div>
-        <div class="text-caption text-medium-emphasis mt-2">拖动调整位置，滚轮缩放，输出 512×512</div>
+        <div class="text-caption text-medium-emphasis mt-2">{{ t('avatarCropper.hint') }}</div>
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="$emit('update:modelValue', false)">取消</v-btn>
-        <v-btn color="primary" :loading="processing" @click="confirm">确认裁剪</v-btn>
+        <v-btn variant="text" @click="$emit('update:modelValue', false)">{{ t('avatarCropper.cancel') }}</v-btn>
+        <v-btn color="primary" :loading="processing" @click="confirm">{{ t('avatarCropper.confirm') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -30,10 +30,12 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Cropper } from 'vue-advanced-cropper'
 import 'vue-advanced-cropper/dist/style.css'
 
 defineProps<{ modelValue: boolean; src: string }>()
+const { t } = useI18n()
 const emit = defineEmits<{ 'update:modelValue': [boolean]; cropped: [Blob] }>()
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -64,14 +66,14 @@ async function confirm() {
     const blob: Blob = await new Promise((resolve, reject) => {
       out.toBlob((b) => {
         if (b) resolve(b)
-        else reject(new Error('Canvas 转 Blob 失败'))
+        else reject(new Error('Failed to convert canvas to Blob'))
       }, 'image/jpeg', 0.9)
     })
     emit('cropped', blob)
     emit('update:modelValue', false)
   } catch (e) {
     // toBlob reject 或其他异常——processing 会在 finally 复位
-    console.error('裁剪失败:', e)
+    console.error('Failed to crop:', e)
   } finally {
     processing.value = false
   }

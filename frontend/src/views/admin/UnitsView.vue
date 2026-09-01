@@ -556,7 +556,7 @@ const fetchUnits = async () => {
 
     units.value = await api.get('/units/', { params })
   } catch (error) {
-    console.error('获取单位列表失败:', error)
+    console.error('Failed to get units:', error)
     showError.value = true
     errorMessage.value = t('admin.units.loadFailed')
   } finally {
@@ -634,7 +634,7 @@ const saveUnit = async () => {
     showSuccess.value = true
     fetchUnits()
   } catch (error: any) {
-    console.error('保存单位失败:', error)
+    console.error('Failed to save unit:', error)
     showError.value = true
     errorMessage.value = error.response?.data?.detail || t('admin.units.saveFailed')
   } finally {
@@ -662,7 +662,7 @@ const deleteUnit = async () => {
     }
     fetchUnits()
   } catch (error: any) {
-    console.error('删除单位失败:', error)
+    console.error('Failed to delete unit:', error)
     showError.value = true
     errorMessage.value = error.response?.data?.detail || t('admin.units.deleteFailed')
   } finally {

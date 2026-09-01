@@ -15,6 +15,7 @@ import type {
   MarkerOptions
 } from '@/types/map'
 import { MapAdapterFactory } from '@/utils/mapAdapters'
+import { t } from '@/plugins/i18n'
 
 /**
  * 地图引擎 composable 返回值
@@ -61,7 +62,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
    */
   const initMap = async (container: HTMLElement, options?: Partial<MapOptions>) => {
     if (!container) {
-      error.value = '地图容器不存在'
+      error.value = t('mapComponents.errors.containerMissing')
       return
     }
 
@@ -86,8 +87,8 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
       // 保存适配器引用到 map 实例（用于后续操作）
       ;(map as any)._adapter = adapter
     } catch (err) {
-      console.error('地图初始化失败:', err)
-      error.value = '地图加载失败，请检查网络或刷新页面重试'
+      console.error('Failed to initialize map:', err)
+      error.value = t('mapComponents.errors.loadFailed')
     } finally {
       isLoading.value = false
     }
@@ -98,7 +99,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
    */
   const addMarker = (position: LatLng, options?: MarkerOptions): Marker | null => {
     if (!mapInstance.value || !adapter) {
-      console.warn('地图未初始化，无法添加标记')
+      console.warn('Map is not initialized; cannot add marker')
       return null
     }
 
@@ -112,7 +113,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
 
       return marker
     } catch (err) {
-      console.error('添加标记失败:', err)
+      console.error('Failed to add marker:', err)
       return null
     }
   }
@@ -134,7 +135,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
         }
       }
     } catch (err) {
-      console.error('移除标记失败:', err)
+      console.error('Failed to remove marker:', err)
     }
   }
 
@@ -147,7 +148,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
     try {
       adapter.highlightMarker(marker, highlighted)
     } catch (err) {
-      console.error('高亮标记失败:', err)
+      console.error('Failed to highlight marker:', err)
     }
   }
 
@@ -170,7 +171,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
     try {
       adapter.setCenter(mapInstance.value, position)
     } catch (err) {
-      console.error('设置地图中心失败:', err)
+      console.error('Failed to set map center:', err)
     }
   }
 
@@ -183,7 +184,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
     try {
       adapter.setZoom(mapInstance.value, level)
     } catch (err) {
-      console.error('设置缩放级别失败:', err)
+      console.error('Failed to set zoom level:', err)
     }
   }
 
@@ -199,7 +200,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
       })
       markers.value.clear()
     } catch (err) {
-      console.error('清除标记失败:', err)
+      console.error('Failed to clear markers:', err)
     }
   }
 
@@ -220,7 +221,7 @@ export function useMapEngine(engine: MapEngine = 'osm', apiKey?: string): UseMap
       mapInstance.value = null
       adapter = null
     } catch (err) {
-      console.error('销毁地图失败:', err)
+      console.error('Failed to destroy map:', err)
     }
   }
 
@@ -257,7 +258,7 @@ export async function fetchMapConfig(): Promise<{
   try {
     const response = await fetch('/api/v1/admin/map-config')
     if (!response.ok) {
-      throw new Error('获取地图配置失败')
+      throw new Error('Failed to load map config')
     }
 
     const config = await response.json()
@@ -267,7 +268,7 @@ export async function fetchMapConfig(): Promise<{
       apiKey: config.map_api_keys?.[config.default_map] || undefined
     }
   } catch (err) {
-    console.warn('加载地图配置失败，使用默认配置:', err)
+    console.warn('Failed to load map config; using defaults:', err)
     return {
       defaultMap: 'osm'
     }

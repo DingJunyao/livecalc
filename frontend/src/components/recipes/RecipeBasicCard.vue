@@ -159,25 +159,16 @@ import {
   type RecipeDetail,
 } from './types'
 import { useI18n } from 'vue-i18n'
+import {
+  RECIPE_CATEGORY_KEYS,
+  RECIPE_CATEGORY_VALUES,
+} from '../../data/recipeCategories.ts'
 
 const props = defineProps<{
   recipe: RecipeDetail
 }>()
 
 const { t } = useI18n()
-
-const RECIPE_CATEGORY_KEYS: Record<string, string> = {
-  '荤菜': 'recipeCategories.meatDish',
-  '素菜': 'recipeCategories.vegetableDish',
-  '水产': 'recipeCategories.seafood',
-  '主食': 'recipeCategories.staple',
-  '汤与粥': 'recipeCategories.soupPorridge',
-  '早餐': 'recipeCategories.breakfast',
-  '甜品': 'recipeCategories.dessert',
-  '调料': 'recipeCategories.seasoning',
-  '半成品': 'recipeCategories.semiFinished',
-  '小食': 'recipeCategories.snack',
-}
 
 const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
   simple: 'recipeDifficulties.simple',
@@ -230,7 +221,7 @@ const onIngredientSearch = (q: string) => {
       const res = await api.get(`/ingredients/search-by-name/${encodeURIComponent(q.trim())}`)
       ingredientOptions.value = (res || []).map((i: any) => ({ id: i.id, name: i.name }))
     } catch (e) {
-      console.error('搜索原料失败', e)
+      console.error('Failed to search ingredients', e)
     } finally {
       ingredientSearching.value = false
     }
@@ -252,18 +243,10 @@ watch(() => props.recipe.result_ingredient_id, async (id) => {
   }
 }, { immediate: true })
 
-const categoryOptions = computed(() => [
-  { title: recipeCategoryLabel('荤菜'), value: '荤菜' },
-  { title: recipeCategoryLabel('素菜'), value: '素菜' },
-  { title: recipeCategoryLabel('水产'), value: '水产' },
-  { title: recipeCategoryLabel('主食'), value: '主食' },
-  { title: recipeCategoryLabel('汤与粥'), value: '汤与粥' },
-  { title: recipeCategoryLabel('早餐'), value: '早餐' },
-  { title: recipeCategoryLabel('甜品'), value: '甜品' },
-  { title: recipeCategoryLabel('调料'), value: '调料' },
-  { title: recipeCategoryLabel('半成品'), value: '半成品' },
-  { title: recipeCategoryLabel('小食'), value: '小食' },
-])
+const categoryOptions = computed(() => RECIPE_CATEGORY_VALUES.map((value) => ({
+  title: recipeCategoryLabel(value),
+  value,
+})))
 
 const difficultyOptions = computed(() => [
   { label: recipeDifficultyLabel('simple'), value: 'simple' },
@@ -311,7 +294,7 @@ const handleImageUpload = async (file: File) => {
       editImageUrls.value.push(result.image_url)
     }
   } catch (e: any) {
-    console.error('上传图片失败', e)
+    console.error('Failed to upload image', e)
   } finally {
     uploadingImage.value = false
   }
@@ -368,7 +351,7 @@ const handleSave = async () => {
     emit('images-changed')
     editing.value = false
   } catch (e: any) {
-    console.error('保存基本信息失败', e)
+    console.error('Failed to save basic information', e)
   } finally {
     saving.value = false
   }

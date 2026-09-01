@@ -396,6 +396,7 @@ import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies } from '@/utils/currency'
+import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 
 const { t } = useI18n()
 const { ask } = useConfirmDialog()
@@ -560,7 +561,7 @@ const loadCategories = async () => {
       title: c.display_name || c.name,
     }))
   } catch (e: any) {
-    console.error('加载分类失败', e)
+    console.error('Failed to load categories', e)
   }
 }
 
@@ -644,11 +645,11 @@ const unitOptions = ref<{ title: string; value: string }[]>([])
 const FALLBACK_UNITS = computed(() => [
   { title: t('prices.units.gram'), value: 'g' },
   { title: t('prices.units.kilogram'), value: 'kg' },
-  { title: t('prices.units.jin'), value: '斤' },
-  { title: t('prices.units.liang'), value: '两' },
+  { title: t('prices.units.jin'), value: CHINESE_JIN_NAME },
+  { title: t('prices.units.liang'), value: CHINESE_LIANG_NAME },
   { title: t('prices.units.milliliter'), value: 'ml' },
   { title: t('prices.units.liter'), value: 'L' },
-  { title: t('prices.units.piece'), value: '个' },
+  { title: t('prices.units.piece'), value: CHINESE_PIECE_NAME },
 ])
 
 // 加载全局单位列表
@@ -785,7 +786,7 @@ const loadMerchants = async () => {
     const response = await api.get('/merchants', { params: { limit: 100 } })
     merchantOptions.value = response.items || []
   } catch (e: any) {
-    console.error('加载商家失败', e)
+    console.error('Failed to load merchants', e)
   }
 }
 
@@ -801,9 +802,9 @@ const searchProducts = async () => {
       params: { q: productSearch.value, limit: 20 }
     })
     productSuggestions.value = response || []
-    console.log('[DEBUG] 搜索商品:', productSearch.value, '返回结果:', productSuggestions.value)
+    console.log('[DEBUG] Search products:', productSearch.value, 'results:', productSuggestions.value)
   } catch (e: any) {
-    console.error('搜索商品失败', e)
+    console.error('Failed to search products', e)
     productSuggestions.value = []
   } finally {
     productLoading.value = false
@@ -1000,7 +1001,7 @@ const saveRecord = async () => {
     closeDialog()
     loadRecords()
   } catch (e: any) {
-    console.error('保存记录失败', e)
+    console.error('Failed to save record', e)
     showSnackbar(getErrorMessage(e, t('prices.saveFailed')), 'error')
   } finally {
     saving.value = false
@@ -1013,7 +1014,7 @@ const deleteRecord = async (id: number) => {
     await api.delete(`/products/${id}`)
     loadRecords()
   } catch (e: any) {
-    console.error('删除失败', e)
+    console.error('Failed to delete', e)
     showSnackbar(getErrorMessage(e, t('prices.deleteFailed')), 'error')
   }
 }

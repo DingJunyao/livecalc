@@ -2,14 +2,14 @@
   <v-dialog :model-value="modelValue" @update:model-value="$emit('update:model-value', $event)" max-width="600">
     <v-card>
       <v-card-title class="d-flex align-center">
-        原料黑名单
+        {{ t('blacklistDialog.title') }}
         <v-spacer />
         <v-btn icon="mdi-close" variant="text" size="small" @click="$emit('update:model-value', false)" />
       </v-card-title>
       <v-card-text>
         <!-- 快速选择：原料黑名单分组（订阅/取消订阅） -->
         <div v-if="blacklistGroups.length > 0" class="mb-4">
-          <div class="text-caption text-medium-emphasis mb-2">快速选择</div>
+          <div class="text-caption text-medium-emphasis mb-2">{{ t('blacklistDialog.quickSelect') }}</div>
           <v-chip-group column>
             <v-chip
               v-for="group in blacklistGroups"
@@ -36,7 +36,7 @@
             :items="searchResults"
             item-title="name"
             item-value="id"
-            label="搜索原料添加到黑名单"
+            :label="t('blacklistDialog.searchLabel')"
             variant="outlined"
             density="compact"
             hide-details="auto"
@@ -46,7 +46,7 @@
           >
             <template #no-data>
               <v-list-item>
-                <v-list-item-title>未找到原料，请尝试其他关键词</v-list-item-title>
+                <v-list-item-title>{{ t('blacklistDialog.noIngredients') }}</v-list-item-title>
               </v-list-item>
             </template>
           </v-autocomplete>
@@ -54,12 +54,12 @@
 
         <!-- 已订阅的分组 -->
         <div v-if="subscribedGroups.length > 0" class="mb-4">
-          <div class="text-caption text-medium-emphasis mb-2">已订阅的分组</div>
+          <div class="text-caption text-medium-emphasis mb-2">{{ t('blacklistDialog.subscribedGroups') }}</div>
           <v-expansion-panels variant="accordion">
             <v-expansion-panel
               v-for="sg in subscribedGroups"
               :key="'sg-' + sg.id"
-              :title="sg.name + '（' + sg.ingredient_count + ' 种原料）'"
+              :title="t('blacklistDialog.groupTitle', { name: sg.name, count: sg.ingredient_count })"
             >
               <v-expansion-panel-text>
                 <v-chip
@@ -77,12 +77,12 @@
         </div>
 
         <!-- 手动黑名单列表 -->
-        <div class="text-caption text-medium-emphasis mb-2">手动添加</div>
+        <div class="text-caption text-medium-emphasis mb-2">{{ t('blacklistDialog.manualAdd') }}</div>
         <div v-if="loading" class="text-center pa-4">
           <v-progress-circular indeterminate />
         </div>
         <div v-else-if="manualBlacklistItems.length === 0" class="text-center pa-4 text-medium-emphasis">
-          暂无手动添加的原料
+          {{ t('blacklistDialog.manualEmpty') }}
         </div>
         <div v-else class="d-flex flex-wrap">
           <v-tooltip
@@ -113,7 +113,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000" location="top">
       {{ snackbar.message }}
       <template #actions>
-        <v-btn variant="text" @click="snackbar.show = false">关闭</v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">{{ t('blacklistDialog.close') }}</v-btn>
       </template>
     </v-snackbar>
   </v-dialog>
@@ -121,10 +121,12 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 
 const props = defineProps<{ modelValue: boolean }>()
 const emit = defineEmits<{ 'update:model-value': [value: boolean] }>()
+const { t } = useI18n()
 
 interface BlacklistItem {
   id: number
@@ -184,7 +186,7 @@ async function loadData() {
     subscribedGroups.value = Array.isArray(subGroupsData) ? subGroupsData : []
     subscribedGroupIds.value = new Set(subscribedGroups.value.map((g: SubscribedGroup) => g.id))
   } catch (e) {
-    console.error('加载黑名单数据失败', e)
+    console.error('Failed to load blacklist data', e)
   } finally {
     loading.value = false
   }
@@ -196,18 +198,20 @@ async function toggleGroup(gid: number) {
       await api.delete(`/blacklist/groups/${gid}`)
       subscribedGroupIds.value.delete(gid)
       subscribedGroupIds.value = new Set(subscribedGroupIds.value)
-      showSuccess('已取消订阅')
+      showSuccess(t('blacklistDialog.unsubscribed'))
     } else {
       await api.post('/blacklist/groups', { group_ids: [gid] })
       subscribedGroupIds.value.add(gid)
       subscribedGroupIds.value = new Set(subscribedGroupIds.value)
-      showSuccess('已订阅分组')
+      showSuccess(t('blacklistDialog.subscribed'))
     }
     // 重新加载分组详情
     const subGroupsData = await api.get('/blacklist/groups')
     subscribedGroups.value = Array.isArray(subGroupsData) ? subGroupsData : []
   } catch (e: any) {
-    showError('操作失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('blacklistDialog.actionFailed', {
+      message: e?.userMessage || e?.message || t('errors.unknown'),
+    }))
   }
 }
 
@@ -216,7 +220,9 @@ async function removeItem(item: BlacklistItem) {
     await api.delete(`/blacklist/${item.ingredient_id}`)
     manualBlacklistItems.value = manualBlacklistItems.value.filter(i => i.id !== item.id)
   } catch (e: any) {
-    showError('移除失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('blacklistDialog.removeFailed', {
+      message: e?.userMessage || e?.message || t('errors.unknown'),
+    }))
   }
 }
 
@@ -245,7 +251,9 @@ async function onSelectIngredient(ingredientId: number | null) {
     const manualData = await api.get('/blacklist', { params: { limit: 1000 } })
     manualBlacklistItems.value = Array.isArray(manualData) ? manualData : []
   } catch (e: any) {
-    showError('添加失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('blacklistDialog.addFailed', {
+      message: e?.userMessage || e?.message || t('errors.unknown'),
+    }))
   }
 }
 

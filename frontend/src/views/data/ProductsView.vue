@@ -512,7 +512,7 @@ const loadCategories = async () => {
       title: c.display_name || c.name,
     }))
   } catch (e: any) {
-    console.error('加载分类失败', e)
+    console.error('Failed to load categories', e)
   }
 }
 
@@ -523,7 +523,7 @@ const loadBrands = async () => {
     const uniqueBrands = [...new Set(products.map((p: any) => p.brand).filter(Boolean))]
     brandOptions.value = uniqueBrands.map(b => ({ value: b, title: b }))
   } catch (e: any) {
-    console.error('加载品牌列表失败', e)
+    console.error('Failed to load brands', e)
   }
 }
 
@@ -538,7 +538,7 @@ const loadIngredients = async (searchText?: string) => {
     const response = await api.get('/ingredients', { params })
     ingredients.value = response.items || []
   } catch (e: any) {
-    console.error('加载原料列表失败', e)
+    console.error('Failed to load ingredients', e)
   } finally {
     loadingIngredients.value = false
   }
@@ -608,7 +608,7 @@ const loadProducts = async () => {
     loadLatestPrices()
     if (items.value.length > 0) loadProductSparklines()
   } catch (e: any) {
-    console.error('加载商品失败', e)
+    console.error('Failed to load products', e)
     error.value = getErrorMessage(e, t('products.loadFailed'))
     loading.value = false
   }
@@ -643,7 +643,7 @@ const loadProductSparklines = async () => {
       }))
     }
   } catch (e) {
-    console.error('加载商品迷你图失败', e)
+    console.error('Failed to load product sparkline', e)
   }
 }
 
@@ -682,7 +682,7 @@ const saveItem = async () => {
       router.push(returnTo.value)
     }
   } catch (e: any) {
-    console.error('保存商品失败', e)
+    console.error('Failed to save product', e)
     notify(getErrorMessage(e, t('products.saveProductFailed')), 'error')
   } finally {
     saving.value = false

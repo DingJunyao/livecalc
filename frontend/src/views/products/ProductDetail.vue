@@ -1228,7 +1228,16 @@ import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
-import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
+import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP, nutrientLabel } from '@/utils/nutritionLabels'
+import {
+  CORE_NUTRIENT_KEYS,
+  DEFAULT_NUTRIENT_NAMES,
+  ENERGY_UNIT_ALIASES,
+  LOCAL_UNIT_VALUES,
+  NEW_NAME_SUFFIX,
+  NO_STANDARD_VALUES,
+  PENDING_REVIEW_MARKER,
+} from '@/data/localValues'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useUserStore } from '@/stores/user'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
@@ -1611,7 +1620,7 @@ const buildDynamicDef = (key: string) => {
   const rawUnit = (data.unit || 'g').toLowerCase()
   const label = key
   const isMassUnit = (u: string) => ['g', 'gram', 'grams', 'mg', 'milligram', 'milligrams', 'μg', 'mcg', 'ug', 'microgram', 'micrograms'].includes(u)
-  const isEnergyUnit = (u: string) => ['kcal', 'kj', 'calorie', 'calories', 'kilocalorie', 'kilocalories', '千卡', '千焦'].includes(u)
+  const isEnergyUnit = (u: string) => ['kcal', 'kj', 'calorie', 'calories', 'kilocalorie', 'kilocalories', ...ENERGY_UNIT_ALIASES].includes(u)
   const units = isEnergyUnit(rawUnit) ? ['kcal', 'kJ'] : isMassUnit(rawUnit) ? ['g', 'mg', 'μg'] : [rawUnit]
   return { key, label, units, defaultUnit: rawUnit }
 }
@@ -1771,7 +1780,7 @@ const loadPriceNormalizeData = async () => {
       weight_unit_name: x.weight_unit_name,
     }))
   } catch (e) {
-    console.error('加载价格归一化数据失败', e)
+    console.error('Failed to load normalized prices', e)
   }
 }
 const showUnitDialog = ref(false)
@@ -1841,7 +1850,7 @@ const loadEntityUnits = async () => {
     const response = await api.get(`/entities/product/${productId.value}/units`)
     entityUnits.value = response.items || response || []
   } catch (e) {
-    console.error('加载自定义单位失败', e)
+    console.error('Failed to load custom units', e)
     entityUnits.value = []
   } finally {
     loadingUnits.value = false
@@ -2054,20 +2063,15 @@ const snackbar = ref({
 
 // 营养素配置（默认显示的营养素）——能量单位跟随用户偏好
 const coreNutritionItems = computed(() => [
-  { key: '能量', label: '能量', unit: energyUnit.value },
-  { key: '蛋白质', label: '蛋白质', unit: 'g' },
-  { key: '脂肪', label: '脂肪', unit: 'g' },
-  { key: '碳水化合物', label: '碳水化合物', unit: 'g' },
-  { key: '钠', label: '钠', unit: 'mg' }
+  { key: CORE_NUTRIENT_KEYS[0], label: nutrientLabel(CORE_NUTRIENT_KEYS[0]), unit: energyUnit.value },
+  { key: CORE_NUTRIENT_KEYS[1], label: nutrientLabel(CORE_NUTRIENT_KEYS[1]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[2], label: nutrientLabel(CORE_NUTRIENT_KEYS[2]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[3], label: nutrientLabel(CORE_NUTRIENT_KEYS[3]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[4], label: nutrientLabel(CORE_NUTRIENT_KEYS[4]), unit: 'mg' },
 ])
 
 // 营养素排序顺序（展开时这些营养素排在前面）
-const nutrientSortOrder = [
-  '能量', '蛋白质', '脂肪', '碳水化合物', '钠',
-  '膳食纤维', '钙', '铁', '钾',
-  '维生素A', '维生素B1', '维生素B2', '维生素B12', '维生素C',
-  '维生素D', '维生素E', '维生素K'
-]
+const nutrientSortOrder = DEFAULT_NUTRIENT_NAMES
 
 // 展开状态
 const showAllNutrients = ref(false)
@@ -2210,7 +2214,7 @@ const getNutritionNRV = (item: any) => {
   if (!nutrient) return '-'
 
   // 如果 standard 是"无标准"或类似的，表示没有推荐摄入量，显示 "-"
-  if (nutrient.standard === '无标准' || nutrient.standard === '无标准值') {
+  if (nutrient.standard && NO_STANDARD_VALUES.includes(nutrient.standard)) {
     return '-'
   }
 
@@ -2291,9 +2295,7 @@ const latestChartTrend = computed(() => {
 const chartUnit = computed(() => massUnitName.value)
 
 // 单位选项
-const unitOptions = [
-  'g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐'
-]
+const unitOptions = LOCAL_UNIT_VALUES
 
 // 加载按商家分组的最新价格
 const loadMerchantPrices = async () => {
@@ -2406,7 +2408,7 @@ const loadData = async () => {
    loadUnmappedUnits()
     loadSiblingProducts()
   } catch (e: any) {
-    console.error('加载商品失败', e)
+    console.error('Failed to load products', e)
     error.value = getErrorMessage(e, t('products.loadFailed'))
     loading.value = false
   }
@@ -2427,7 +2429,7 @@ const loadPriceRecords = async () => {
     priceRecords.value = response.items || []
     priceTotal.value = response.total || 0
   } catch (e) {
-    console.error('加载价格记录失败', e)
+    console.error('Failed to load price records', e)
     priceRecords.value = []
   } finally {
     loadingPrices.value = false
@@ -2492,7 +2494,7 @@ const loadChartPriceRecords = async (startDate?: Date) => {
       chartEarliestDate.value = null
     }
   } catch (e) {
-    console.error('加载图表价格记录失败', e)
+    console.error('Failed to load chart price records', e)
   } finally {
     loadingChartPrices.value = false
   }
@@ -2570,7 +2572,7 @@ const loadIngredients = async (searchText?: string) => {
     const response = await api.get('/ingredients', { params })
     ingredients.value = response.items || []
   } catch (e: any) {
-    console.error('加载原料列表失败', e)
+    console.error('Failed to load ingredients', e)
   } finally {
     loadingIngredients.value = false
   }
@@ -2632,7 +2634,7 @@ const startEditBasicInfo = () => {
             ingredientSearch.value = ingredient.name
           }
         }).catch(err => {
-          console.error('获取当前关联原料失败', err)
+          console.error('Failed to get current linked ingredient', err)
         })
       }
     })
@@ -2828,7 +2830,7 @@ const saveNutritionEdit = async () => {
       // 共享数据分流：管理员直写 / 普通用户补空自动通过 / 普通用户有数据→manual 待审
       const res = await api.put(`/products/entity/${productId.value}/nutrition`, null)
       const msg: string = (res && res.message) || ''
-      if (msg.includes('待管理员审核')) {
+      if (msg.includes(PENDING_REVIEW_MARKER)) {
         // 普通用户有数据→manual 待审：营养未落地，无需刷新
         editingNutrition.value = false
         showMessage(t('products.proposalSubmitted'), 'info')
@@ -2850,7 +2852,7 @@ const saveNutritionEdit = async () => {
       // 普通用户有数据→manual 待审（status=pending，营养未变）。
       // 按后端返回 message 区分提示，避免普通用户待审时误报「已保存」。
       const msg: string = (res && res.message) || ''
-      if (msg.includes('待管理员审核')) {
+      if (msg.includes(PENDING_REVIEW_MARKER)) {
         // 普通用户有数据→manual 待审：营养未落地，无需刷新
         editingNutrition.value = false
         showMessage(t('products.proposalSubmitted'), 'info')
@@ -2948,7 +2950,7 @@ const handleSplitToIngredient = async () => {
     // 同名冲突（409）时，打开重命名对话框
     if (e.response?.status === 409) {
       splitRenameMessage.value = detail
-      splitNewName.value = product.value?.name ? `${product.value.name}(新)` : ''
+      splitNewName.value = product.value?.name ? `${product.value.name}${NEW_NAME_SUFFIX}` : ''
       showSplitRenameDialog.value = true
     } else {
       showMessage(getErrorMessage(e, t('products.splitFailed')), 'error')
@@ -3033,7 +3035,7 @@ const reloadLatestPrice = async () => {
       product.value.latest_price_date = response.latest_price_date
     }
   } catch (e) {
-    console.error('刷新最新价格失败', e)
+    console.error('Failed to refresh latest price', e)
   }
 }
 

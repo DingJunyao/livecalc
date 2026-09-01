@@ -1792,7 +1792,18 @@ import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
 import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
-import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
+import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP, nutrientLabel } from '@/utils/nutritionLabels'
+import {
+  CHART_UNIT_FACTORS_TO_GRAMS,
+  CHINESE_JIN_NAME,
+  CORE_NUTRIENT_KEYS,
+  DEFAULT_NUTRIENT_NAMES,
+  ENERGY_UNIT_ALIASES,
+  LOCAL_UNIT_TRANSLATION_KEYS,
+  LOCAL_UNIT_VALUES,
+  NO_STANDARD_VALUES,
+  PENDING_REVIEW_MARKER,
+} from '@/data/localValues'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
@@ -2358,7 +2369,7 @@ const onRecipeSearch = (q: string) => {
       const items = (res as any)?.items || (res as any)?.data || []
       recipeOptions.value = items.map((r: any) => ({ id: r.id, name: r.name }))
     } catch (e) {
-      console.error('搜索菜谱失败', e)
+      console.error('Failed to search recipes', e)
     } finally {
       recipeSearching.value = false
     }
@@ -2428,7 +2439,7 @@ const buildDynamicDef = (key: string) => {
   const label = key
   // 标准化单位名：USDA 数据可能用 "milligrams"、"grams" 等全称
   const isMassUnit = (u: string) => ['g', 'gram', 'grams', 'mg', 'milligram', 'milligrams', 'μg', 'mcg', 'ug', 'microgram', 'micrograms'].includes(u)
-  const isEnergyUnit = (u: string) => ['kcal', 'kj', 'calorie', 'calories', 'kilocalorie', 'kilocalories', '千卡', '千焦'].includes(u)
+  const isEnergyUnit = (u: string) => ['kcal', 'kj', 'calorie', 'calories', 'kilocalorie', 'kilocalories', ...ENERGY_UNIT_ALIASES].includes(u)
   const units = isEnergyUnit(rawUnit) ? ['kcal', 'kJ'] : isMassUnit(rawUnit) ? ['g', 'mg', 'μg'] : [rawUnit]
   return { key, label, units, defaultUnit: rawUnit }
 }
@@ -2678,7 +2689,7 @@ const loadEntityUnits = async () => {
     const response = await api.get(`/entities/ingredient/${ingredientId.value}/units`)
     entityUnits.value = response.items || response || []
   } catch (e) {
-    console.error('加载自定义单位失败', e)
+    console.error('Failed to load custom units', e)
     entityUnits.value = []
   } finally {
     loadingUnits.value = false
@@ -2909,20 +2920,15 @@ const snackbar = ref({
 
 // 营养素配置（默认显示的营养素）——能量单位跟随用户偏好
 const coreNutritionItems = computed(() => [
-  { key: '能量', label: '能量', unit: energyUnit.value },
-  { key: '蛋白质', label: '蛋白质', unit: 'g' },
-  { key: '脂肪', label: '脂肪', unit: 'g' },
-  { key: '碳水化合物', label: '碳水化合物', unit: 'g' },
-  { key: '钠', label: '钠', unit: 'mg' }
+  { key: CORE_NUTRIENT_KEYS[0], label: nutrientLabel(CORE_NUTRIENT_KEYS[0]), unit: energyUnit.value },
+  { key: CORE_NUTRIENT_KEYS[1], label: nutrientLabel(CORE_NUTRIENT_KEYS[1]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[2], label: nutrientLabel(CORE_NUTRIENT_KEYS[2]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[3], label: nutrientLabel(CORE_NUTRIENT_KEYS[3]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[4], label: nutrientLabel(CORE_NUTRIENT_KEYS[4]), unit: 'mg' },
 ])
 
 // 营养素排序顺序（展开时这些营养素排在前面）
-const nutrientSortOrder = [
-  '能量', '蛋白质', '脂肪', '碳水化合物', '钠',
-  '膳食纤维', '钙', '铁', '钾',
-  '维生素A', '维生素B1', '维生素B2', '维生素B12', '维生素C',
-  '维生素D', '维生素E', '维生素K'
-]
+const nutrientSortOrder = DEFAULT_NUTRIENT_NAMES
 
 // 展开状态
 const showAllNutrients = ref(false)
@@ -3066,7 +3072,7 @@ const getNutritionNRV = (item: any) => {
   if (!nutrient) return '-'
 
   // 如果 standard 是"无标准"或类似的，表示没有推荐摄入量，显示 "-"
-  if (nutrient.standard === '无标准' || nutrient.standard === '无标准值') {
+  if (nutrient.standard && NO_STANDARD_VALUES.includes(nutrient.standard)) {
     return '-'
   }
 
@@ -3094,7 +3100,7 @@ const chartData = computed(() => {
   // 图表按用户质量偏好单位归一化（与 chartUnit 对齐；unitFactors 表覆盖 mass/volume）
   // ⚠️ 用单位缩写（abbr）作 key 查 unitFactors，不能用 name——
   // 表里是 'kg':1000 而非 '千克':1000，用 name 会命中不到→toFactor=1→单价少算 1000 倍
-  const defaultUnit = massUnit.value?.abbreviation ?? '斤'
+  const defaultUnit = massUnit.value?.abbreviation ?? CHINESE_JIN_NAME
   const dailyAll = new Map<string, number[]>()
   const dailyByProduct = new Map<string, Map<number, number[]>>()
 
@@ -3105,18 +3111,7 @@ const chartData = computed(() => {
     const dateKey = date.toISOString().split('T')[0]
 
     // 常用单位转换系数（相对于g）
-    const unitFactors: Record<string, number> = {
-      'g': 1,
-      'kg': 1000,
-      '斤': 500,
-      '两': 50,
-      'mg': 0.001,
-      'oz': 28.3495,
-      'lb': 453.592,
-      'mL': 1,
-      'ml': 1,
-      'L': 1000,
-    }
+    const unitFactors = CHART_UNIT_FACTORS_TO_GRAMS
 
     // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
     // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
@@ -3251,7 +3246,7 @@ const loadData = async () => {
     loadDensity()
     loadUnmappedUnits()
   } catch (e: any) {
-    console.error('加载原料失败', e)
+    console.error('Failed to load ingredient', e)
     error.value = getErrorMessage(e, t('ingredients.loadFailed'))
     loading.value = false
   }
@@ -3365,7 +3360,7 @@ const loadProductPrice = async (product: Product) => {
       })
     info.sparklineData = pricePoints
   } catch (e) {
-    console.error(`加载商品 ${product.name} 价格数据失败`, e)
+    console.error(`Failed to load price data for product ${product.name}`, e)
   } finally {
     if (productPrices.value[pid]) {
       productPrices.value[pid].loading = false
@@ -3389,7 +3384,7 @@ const loadPriceRecords = async () => {
     priceRecords.value = response.items || []
     priceTotal.value = response.total || 0
   } catch (e) {
-    console.error('加载价格记录失败', e)
+    console.error('Failed to load price records', e)
     priceRecords.value = []
   } finally {
     loadingPrices.value = false
@@ -3452,7 +3447,7 @@ const loadChartPriceRecords = async (startDate?: Date) => {
       chartEarliestDate.value = null
     }
   } catch (e) {
-    console.error('加载图表价格记录失败', e)
+    console.error('Failed to load chart price records', e)
   } finally {
     loadingChartPrices.value = false
   }
@@ -3496,7 +3491,7 @@ const loadNutritionData = async () => {
     nutritionData.value = response
     nutritionPendingProposal.value = response.pending_proposal || null
   } catch (e) {
-    console.error('加载营养失败', e)
+    console.error('Failed to load nutrition', e)
     nutritionData.value = null
     nutritionPendingProposal.value = null
   } finally {
@@ -3556,7 +3551,7 @@ const loadHierarchy = async () => {
     })
     hierarchyData.value = response
   } catch (e) {
-    console.error('加载层级关系失败', e)
+    console.error('Failed to load hierarchy relations', e)
     hierarchyData.value = { parent_relations: [], child_relations: [] }
   } finally {
     loadingHierarchy.value = false
@@ -3579,7 +3574,7 @@ const searchIngredients = async (search: string) => {
     availableIngredients.value = (response.items || []).filter(
       (item: Ingredient) => item.id !== ingredientId.value
     )
-    console.log('[DEBUG] 搜索原料:', search, '返回结果:', availableIngredients.value)
+    console.log('[DEBUG] Search ingredients:', search, 'results:', availableIngredients.value)
   } catch (e) {
     availableIngredients.value = []
   } finally {
@@ -4169,7 +4164,7 @@ const saveNutritionEdit = async () => {
     // 按后端返回 message 区分提示，避免普通用户待审时误报「已保存」。
     editingNutrition.value = false
     const msg: string = (res && res.message) || ''
-    if (msg.includes('待管理员审核')) {
+    if (msg.includes(PENDING_REVIEW_MARKER)) {
       // 普通用户有数据→manual 待审：营养未落地，无需刷新
       showMessage(t('ingredients.proposalSubmitted'), 'info')
     } else {
@@ -4195,16 +4190,14 @@ const goToAddPrice = () => {
 const unitOptions = computed(() => [
   { title: t('prices.units.gram'), value: 'g' },
   { title: t('prices.units.kilogram'), value: 'kg' },
-  { title: t('prices.units.jin'), value: '斤' },
-  { title: t('prices.units.liang'), value: '两' },
+  { title: t(LOCAL_UNIT_TRANSLATION_KEYS[LOCAL_UNIT_VALUES[2]]), value: LOCAL_UNIT_VALUES[2] },
+  { title: t(LOCAL_UNIT_TRANSLATION_KEYS[LOCAL_UNIT_VALUES[3]]), value: LOCAL_UNIT_VALUES[3] },
   { title: t('prices.units.milliliter'), value: 'ml' },
   { title: t('prices.units.liter'), value: 'L' },
-  { title: t('prices.units.piece'), value: '个' },
-  { title: t('prices.units.package'), value: '包' },
-  { title: t('prices.units.bag'), value: '袋' },
-  { title: t('prices.units.box'), value: '盒' },
-  { title: t('prices.units.bottle'), value: '瓶' },
-  { title: t('prices.units.can'), value: '罐' },
+  ...LOCAL_UNIT_VALUES.slice(4).map((unit) => ({
+    title: t(LOCAL_UNIT_TRANSLATION_KEYS[unit]),
+    value: unit,
+  })),
 ])
 
 // 商家列表
@@ -4334,7 +4327,7 @@ const doMerge = async () => {
       target_ingredient_id: mergeTargetId.value
     })
     const msg: string = (response && response.message) || ''
-    if (msg.includes('待管理员审核')) {
+    if (msg.includes(PENDING_REVIEW_MARKER)) {
       showMessage(t('ingredients.mergeProposalSubmitted'), 'info')
     } else {
       showMessage(msg || t('ingredients.mergeSuccessFallback'), 'success')
@@ -4343,7 +4336,7 @@ const doMerge = async () => {
     showMergeDialog.value = false
     showMergeConfirmDialog.value = false
     // 管理员直写→跳转；普通用户待审→留在当前页
-    if (!msg.includes('待管理员审核')) {
+    if (!msg.includes(PENDING_REVIEW_MARKER)) {
       router.push(`/data/ingredients/${mergeTargetId.value}`)
     }
   } catch (e: any) {

@@ -1,3 +1,5 @@
+import { t } from '@/plugins/i18n'
+
 export interface ProviderOption {
   value: string
   label: string
@@ -6,14 +8,14 @@ export interface ProviderOption {
 export const AI_PROVIDER_ORDER = ['claude_code', 'codex', 'openai', 'anthropic']
 export const MACHINE_PROVIDER_ORDER = ['baidu', 'aliyun', 'deepl']
 
-export const PROVIDER_LABELS: Record<string, string> = {
-  claude_code: 'Claude Code',
-  codex: 'Codex',
-  openai: 'OpenAI 兼容',
-  anthropic: 'Anthropic 兼容',
-  baidu: '百度翻译',
-  aliyun: '阿里云机器翻译',
-  deepl: 'DeepL',
+const PROVIDER_LABEL_KEYS: Record<string, string> = {
+  claude_code: 'adminAI.providers.claudeCode',
+  codex: 'adminAI.providers.codex',
+  openai: 'adminAI.providers.openaiCompatible',
+  anthropic: 'adminAI.providers.anthropicCompatible',
+  baidu: 'adminAI.providers.baidu',
+  aliyun: 'adminAI.providers.aliyun',
+  deepl: 'adminAI.providers.deepl',
 }
 
 export function enabledProviderOptions(
@@ -35,7 +37,8 @@ export function enabledProviderOptions(
       if (localMode && (key === 'openai' || key === 'anthropic') && !value.api_key) continue
       if (seen.has(key)) continue
       seen.add(key)
-      options.push({ value: key, label: PROVIDER_LABELS[key] || key })
+      const labelKey = PROVIDER_LABEL_KEYS[key]
+      options.push({ value: key, label: labelKey ? t(labelKey) : key })
     }
   }
   return options

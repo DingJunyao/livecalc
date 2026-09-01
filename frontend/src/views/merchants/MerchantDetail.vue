@@ -358,6 +358,7 @@ import { formatToLocalDateTimeShort } from '@/utils/timezone'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
+import { CURRENCY_PREFIX } from '@/data/localValues'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { useLocaleStore } from '@/stores/locale'
 import { formatNumber } from '@/utils/format'
@@ -498,7 +499,7 @@ const loadData = async () => {
     setDetailTitle(merchant.value.name || t('pageTitle.unnamedMerchant'), t('detailTypes.merchant'), t('pageTitle.detailFallback'))
     await loadProductPrices()
   } catch (e: any) {
-    console.error('加载商家详情失败', e)
+    console.error('Failed to load merchant details', e)
     error.value = getErrorMessage(e, t('merchants.loadFailed'))
   } finally {
     loading.value = false
@@ -593,7 +594,7 @@ const saveItem = async () => {
       await loadData()
     }
   } catch (e: any) {
-    console.error('保存商家失败', e)
+    console.error('Failed to save merchant', e)
   } finally {
     saving.value = false
   }
@@ -623,7 +624,7 @@ const formatUnitPrice = (price: any) => {
 // 后端 label 形如 "元/斤"，主行已有 ¥ 前缀，去掉"元"并规范为 " / 单位" 后缀
 const formatUnitSuffix = (label: string | null) => {
   if (!label) return ''
-  const unit = label.replace(/^元/, '').replace(/^[\s/]+/, '').trim()
+  const unit = label.replace(new RegExp(`^${CURRENCY_PREFIX}`), '').replace(/^[\s/]+/, '').trim()
   return unit ? ` / ${unit}` : ''
 }
 

@@ -9,6 +9,7 @@ import {
   ingredientsWithTrustedNutrition,
   recipeIngredientIdSet,
 } from './_filter'
+import { localError } from '../../../utils/localErrors'
 
 export async function listIngredients(_params: Record<string, string>, query?: any): Promise<any> {
   const lower = (query?.q || query?.search || query?.name)?.toLowerCase()
@@ -99,7 +100,7 @@ export async function listIngredients(_params: Record<string, string>, query?: a
 export async function getIngredient(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const ingredient = await getById('ingredients', id)
-  if (!ingredient) throw { status: 404, message: `Ingredient ${id} not found` }
+  if (!ingredient) throw localError('ingredientNotFound', 404, { id })
   return ingredient
 }
 
@@ -117,7 +118,7 @@ export async function createIngredient(_params: Record<string, string>, data?: a
 export async function updateIngredient(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('ingredients', id)
-  if (!existing) throw { status: 404, message: `Ingredient ${id} not found` }
+  if (!existing) throw localError('ingredientNotFound', 404, { id })
   await putOne('ingredients', { ...existing, ...data, id, updated_at: new Date().toISOString() })
   return await getById('ingredients', id)
 }
@@ -125,7 +126,7 @@ export async function updateIngredient(params: Record<string, string>, data?: an
 export async function deleteIngredient(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('ingredients', id)
-  if (!existing) throw { status: 404, message: `Ingredient ${id} not found` }
+  if (!existing) throw localError('ingredientNotFound', 404, { id })
   await putOne('ingredients', { ...existing, id, is_active: false, updated_at: new Date().toISOString() })
   return { ok: true }
 }
@@ -152,7 +153,7 @@ export async function searchByName(params: Record<string, string>, query?: any):
 export async function mergeIngredients(_params: Record<string, string>, data?: any): Promise<any> {
   // Stub: mark source as inactive, keep target
   const { source_id, target_id } = data || {}
-  if (!source_id || !target_id) throw { status: 400, message: 'source_id and target_id are required' }
+  if (!source_id || !target_id) throw localError('mergeIngredientsFieldsRequired')
 
   const source = await getById('ingredients', parseInt(source_id))
   if (source) {
@@ -172,7 +173,7 @@ export async function batchCreateProducts(_params: Record<string, string>, data?
   // data = { ingredient_id, names: string[] }
   const ingredientId = parseInt(data?.ingredient_id || data?.ingredientId)
   const names: string[] = data?.names || []
-  if (!ingredientId || names.length === 0) throw { status: 400, message: 'ingredient_id and names are required' }
+  if (!ingredientId || names.length === 0) throw localError('batchProductFieldsRequired')
 
   const created: any[] = []
   for (const name of names) {

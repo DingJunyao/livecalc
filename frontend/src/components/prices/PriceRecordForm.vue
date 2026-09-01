@@ -144,6 +144,7 @@ import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
+import { FALLBACK_PRICE_UNIT_VALUES } from '@/data/localValues'
 
 const { t } = useI18n()
 
@@ -182,7 +183,7 @@ const formRef = ref()
 const units = ref<string[]>([])
 
 // 基本单位列表（API 加载失败时的回退）
-const FALLBACK_UNITS = ['斤', '个', 'kg', '克', '升', '毫升', '盒', '包', '袋', '瓶']
+const FALLBACK_UNITS = FALLBACK_PRICE_UNIT_VALUES
 
 // 加载全局单位列表
 const loadUnits = async () => {

@@ -5,23 +5,11 @@ import type { Proposal } from '@/api/proposals'
 import { resolveImageUrl } from '@/utils/image'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
+import { RECIPE_CATEGORY_KEYS } from '@/data/recipeCategories'
 
 const props = defineProps<{ proposal: Proposal }>()
 const { t } = useI18n()
 const localeStore = useLocaleStore()
-
-const RECIPE_CATEGORY_KEYS: Record<string, string> = {
-  '荤菜': 'recipeCategories.meatDish',
-  '素菜': 'recipeCategories.vegetableDish',
-  '水产': 'recipeCategories.seafood',
-  '主食': 'recipeCategories.staple',
-  '汤与粥': 'recipeCategories.soupPorridge',
-  '早餐': 'recipeCategories.breakfast',
-  '甜品': 'recipeCategories.dessert',
-  '调料': 'recipeCategories.seasoning',
-  '半成品': 'recipeCategories.semiFinished',
-  '小食': 'recipeCategories.snack',
-}
 
 const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
   simple: 'recipeDifficulties.simple',

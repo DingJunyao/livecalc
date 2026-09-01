@@ -407,7 +407,7 @@ const loadCategories = async () => {
       title: c.display_name || c.name,
     }))
   } catch (e: any) {
-    console.error('加载分类失败', e)
+    console.error('Failed to load categories', e)
   }
 }
 
@@ -448,7 +448,7 @@ const openPriceDialog = async (ingredient: Ingredient) => {
     priceDialogProducts.value = products
     showPriceDialog.value = true
   } catch (e: any) {
-    console.error('加载商品失败', e)
+    console.error('Failed to load products', e)
     snackbarText.value = t('ingredients.loadProductsFailed')
     snackbarColor.value = 'error'
     showSnackbar.value = true
@@ -469,7 +469,7 @@ const loadIngredientSparklines = async () => {
       }))
     }
   } catch (e) {
-    console.error('加载原料迷你图失败', e)
+    console.error('Failed to load ingredient sparkline', e)
   }
 }
 
@@ -483,7 +483,7 @@ const loadOptions = async () => {
     const categoriesRes = await api.get('/ingredients/categories')
     categories.value = categoriesRes || []
   } catch (e: any) {
-    console.error('加载分类失败', e)
+    console.error('Failed to load categories', e)
   }
 }
 
@@ -520,7 +520,7 @@ const loadIngredients = async () => {
     loadLatestPrices()
     if (items.value.length > 0) loadIngredientSparklines()
   } catch (e: any) {
-    console.error('加载原料失败', e)
+    console.error('Failed to load ingredient', e)
     error.value = getErrorMessage(e, t('ingredients.loadFailed'))
     loading.value = false
   }
@@ -565,7 +565,7 @@ const saveItem = async () => {
       aliases: [],
     }
   } catch (e: any) {
-    console.error('保存原料失败', e)
+    console.error('Failed to save ingredient', e)
   } finally {
     saving.value = false
   }

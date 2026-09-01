@@ -99,6 +99,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { seedBasicData, BASE_UNITS } from '@/api/local/seed'
 import { fixBlobMime } from '@/utils/image'
+import { LOCAL_UNIT_ALIASES } from '@/data/localValues'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -305,7 +306,7 @@ async function importFromRepo() {
         await tx.done
       }
     } catch (e) {
-      console.warn('[repo-import] 营养数据导入失败，已跳过', e)
+      console.warn('[repo-import] Nutrition import failed; skipped', e)
       nutritionSkipped = true
     }
     importProgress.value = 50
@@ -334,11 +335,9 @@ async function importFromRepo() {
     for (const u of allUnits) {
       unitNameToId[u.name] = u.id; if (u.abbreviation) unitNameToId[u.abbreviation] = u.id
     }
-    unitNameToId['g'] = unitNameToId['克'] || 2; unitNameToId['ml'] = unitNameToId['mL'] || 5
-    unitNameToId['l'] = unitNameToId['升'] || 4; unitNameToId['kg'] = unitNameToId['千克'] || 1
-    unitNameToId['片'] = unitNameToId['克'] || 2; unitNameToId['根'] = unitNameToId['个'] || 6
-    unitNameToId['瓣'] = unitNameToId['个'] || 6; unitNameToId['颗'] = unitNameToId['个'] || 6
-    unitNameToId['只'] = unitNameToId['个'] || 6
+    for (const [alias, target] of Object.entries(LOCAL_UNIT_ALIASES)) {
+      unitNameToId[alias] = unitNameToId[target.preferredName] || target.fallbackId
+    }
 
     // 逐个下载并导入菜谱（非强制：每条失败重试 3 次后跳过，可随时中止）
     canCancel.value = true
@@ -373,7 +372,7 @@ async function importFromRepo() {
         const result = results[r]
         if (result.status === 'rejected') {
           recipeFailures++
-          console.warn(`[repo-import] 菜谱导入失败: ${batch[r].name}`, result.reason)
+          console.warn(`[repo-import] Failed to import recipe: ${batch[r].name}`, result.reason)
           continue
         }
         const { json } = result.value
@@ -452,7 +451,7 @@ async function importFromRepo() {
             await singleTx.done
             downloadedImages++
           } catch (e) {
-            console.warn(`[img] 图片下载失败: ${imagePath}`, e)
+            console.warn(`[img] Failed to download image: ${imagePath}`, e)
           }
         }
       }

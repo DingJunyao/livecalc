@@ -330,6 +330,7 @@ import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 import { useI18n } from 'vue-i18n'
+import { QUANTITY_TYPE_KEYS, VAGUE_QUANTITY_VALUES } from '@/data/localValues'
 import { unitDisplayName } from '@/utils/catalogLabels'
 
 const props = defineProps<{
@@ -368,11 +369,6 @@ const { currency: userCurrency } = useUserCurrency()
 const { t } = useI18n()
 const localeStore = useLocaleStore()
 
-const QUANTITY_TYPE_KEYS: Record<string, string> = {
-  '适量': 'quantityTypes.toTaste',
-  '少许': 'quantityTypes.smallAmount',
-}
-
 function quantityTypeLabel(quantityType: string): string {
   return t(QUANTITY_TYPE_KEYS[quantityType] || 'quantityTypes.numeric')
 }
@@ -402,8 +398,10 @@ const searchingIngredient = ref(false)
 
 const quantityTypeOptions = computed(() => [
   { label: quantityTypeLabel(''), value: '' },
-  { label: quantityTypeLabel('适量'), value: '适量' },
-  { label: quantityTypeLabel('少许'), value: '少许' },
+  ...VAGUE_QUANTITY_VALUES.map((value) => ({
+    label: quantityTypeLabel(value),
+    value,
+  })),
 ])
 
 // 原始配方份数
@@ -442,7 +440,7 @@ const ingredientUnit = (unit?: string) => {
 }
 
 const originalQuantityLabel = (quantity: string) => (
-  quantity === '适量' || quantity === '少许' ? quantityTypeLabel(quantity) : quantity
+  VAGUE_QUANTITY_VALUES.includes(quantity) ? quantityTypeLabel(quantity) : quantity
 )
 
 // 调 POST /units/convert 把原料数量转到用户偏好单位（先质量后体积，跨类走密度）。成功缓存并返回 true。
@@ -486,7 +484,7 @@ const toggleConvert = async (ingredient: RecipeIngredient) => {
     return
   }
   const orig = String(ingredient.original_quantity || '')
-  if (['适量', '少许'].includes(orig)) return
+  if (VAGUE_QUANTITY_VALUES.includes(orig)) return
   if (!ingredient.unit || ingredient.quantity === undefined || ingredient.quantity === null) return
   converting.value[ingredient.id] = true
   try {
@@ -534,7 +532,7 @@ const onSearchIngredient = async (query: string) => {
       aliases: i.aliases || [],
     }))
   } catch (e) {
-    console.error('搜索原料失败', e)
+    console.error('Failed to search ingredients', e)
   } finally {
     searchingIngredient.value = false
   }
@@ -564,7 +562,7 @@ const loadUnits = async () => {
     })
     unitMap.value = map
   } catch (e) {
-    console.error('加载单位列表失败', e)
+    console.error('Failed to load units', e)
   }
 }
 
@@ -572,7 +570,7 @@ const loadUnits = async () => {
 const startEdit = () => {
   editRows.value = (props.recipe.ingredients || []).map(ing => {
     let qType = ''
-    if (ing.original_quantity === '适量' || ing.original_quantity === '少许') {
+    if (ing.original_quantity && VAGUE_QUANTITY_VALUES.includes(ing.original_quantity)) {
       qType = ing.original_quantity
     }
 
@@ -713,7 +711,7 @@ const handleSave = async () => {
     emit('saved', result)
     editing.value = false
   } catch (e: any) {
-    console.error('保存原料失败', e)
+    console.error('Failed to save ingredient', e)
     saveError.value = e.response?.data?.detail || t('recipes.saveFailedRetry')
   } finally {
     saving.value = false

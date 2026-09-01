@@ -891,7 +891,7 @@ import { resolveImageUrl } from '@/utils/image'
 import { loadCurrencies, formatMoney } from '@/utils/currency'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { appInfo } from '@/config/appInfo'
-import { FORMAT_LOCALES } from '@/utils/localeStorage'
+import { FORMAT_LOCALES, UI_LOCALES } from '@/utils/localeStorage'
 
 const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
@@ -942,21 +942,13 @@ const localeForm = ref<{ locale: string; formatLocale: string | null }>({
 })
 
 function localeEndonym(locale: string): string {
-  switch (locale) {
-    case 'en-US':
-      return 'English (US)'
-    case 'ar':
-      return 'العربية'
-    default:
-      return '简体中文'
-  }
+  return new Intl.DisplayNames([locale], { type: 'language' }).of(locale) || locale
 }
 
-const localeOptions = computed(() => [
-  { title: '简体中文', value: 'zh-CN' },
-  { title: 'English (US)', value: 'en-US' },
-  { title: 'العربية', value: 'ar' },
-])
+const localeOptions = computed(() => UI_LOCALES.map((value) => ({
+  title: localeEndonym(value),
+  value,
+})))
 
 const formatLocaleOptions = computed(() => {
   const concrete = FORMAT_LOCALES.filter((value): value is string => value !== null)
@@ -1154,7 +1146,7 @@ const doExport = async () => {
     window.URL.revokeObjectURL(url)
     exportDialog.value = false
   } catch (e: any) {
-    console.error('数据导出失败', e)
+    console.error('Failed to export data', e)
     notify(t('profile.dataExportFailed', { message: e?.userMessage || e?.message || t('errors.unknown') }), 'error')
   } finally {
     exporting.value = false
@@ -1583,7 +1575,7 @@ const loadStats = async () => {
       monthlyExpense.value = 0
     }
   } catch (e: any) {
-    console.error('加载统计数据失败', e)
+    console.error('Failed to load statistics', e)
   } finally {
     loadingStats.value = false
   }

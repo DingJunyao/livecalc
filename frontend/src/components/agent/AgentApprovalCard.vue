@@ -11,7 +11,7 @@
     <v-card-text class="pa-3">
       <div class="d-flex align-center mb-2">
         <v-icon size="18" class="mr-2" :color="iconColor">{{ icon }}</v-icon>
-        <span class="text-subtitle-2 font-weight-bold">SQL 写操作审批</span>
+        <span class="text-subtitle-2 font-weight-bold">{{ t('agent.approval.title') }}</span>
         <v-spacer />
         <v-chip size="x-small" :color="statusColor" variant="tonal">{{ statusLabel }}</v-chip>
       </div>
@@ -21,20 +21,24 @@
       </div>
 
       <div v-if="approval.affected_estimate != null" class="text-caption text-medium-emphasis mb-2">
-        预计影响行数：{{ approval.affected_estimate }}
+        {{ t('agent.approval.estimatedRows', { count: approval.affected_estimate }) }}
       </div>
 
       <pre class="sql-block"><code>{{ approval.sql }}</code></pre>
 
       <div v-if="!isPending" class="mt-2 text-caption text-medium-emphasis">
         <span v-if="approval.status === 'approved' || approval.status === 'auto_executed'">
-          已同意{{ approval.decided_at ? ` · ${formatTime(approval.decided_at)}` : '' }}
+          {{ approval.decided_at
+            ? t('agent.approval.approvedAt', { time: formatTime(approval.decided_at) })
+            : t('agent.approval.approved') }}
         </span>
         <span v-else-if="approval.status === 'rejected'">
-          已拒绝{{ approval.decided_at ? ` · ${formatTime(approval.decided_at)}` : '' }}
+          {{ approval.decided_at
+            ? t('agent.approval.rejectedAt', { time: formatTime(approval.decided_at) })
+            : t('agent.approval.rejected') }}
         </span>
-        <span v-else-if="approval.status === 'failed'">执行失败</span>
-        <span v-else-if="approval.status === 'timeout'">等待超时</span>
+        <span v-else-if="approval.status === 'failed'">{{ t('agent.approval.failed') }}</span>
+        <span v-else-if="approval.status === 'timeout'">{{ t('agent.approval.timeout') }}</span>
       </div>
     </v-card-text>
 
@@ -47,7 +51,7 @@
         :disabled="loading === 'approve'"
         @click="onDecide(false)"
       >
-        <v-icon start>mdi-close</v-icon>拒绝
+        <v-icon start>mdi-close</v-icon>{{ t('agent.approval.reject') }}
       </v-btn>
       <v-btn
         variant="flat"
@@ -56,7 +60,7 @@
         :disabled="loading === 'reject'"
         @click="onDecide(true)"
       >
-        <v-icon start>mdi-check</v-icon>同意执行
+        <v-icon start>mdi-check</v-icon>{{ t('agent.approval.approve') }}
       </v-btn>
     </v-card-actions>
   </v-card>
@@ -64,11 +68,13 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { AgentApproval } from '@/types/agent'
 import { formatDateTime } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ approval: AgentApproval }>()
+const { t } = useI18n()
 const emit = defineEmits<{
   (e: 'decide', aid: number, approved: boolean): void
 }>()
@@ -98,12 +104,12 @@ const statusColor = computed(() => {
 
 const statusLabel = computed(() => {
   const map: Record<string, string> = {
-    pending: '待审批',
-    approved: '已同意',
-    auto_executed: '已执行',
-    rejected: '已拒绝',
-    failed: '执行失败',
-    timeout: '已超时',
+    pending: t('agent.approval.statusPending'),
+    approved: t('agent.approval.statusApproved'),
+    auto_executed: t('agent.approval.statusExecuted'),
+    rejected: t('agent.approval.statusRejected'),
+    failed: t('agent.approval.failed'),
+    timeout: t('agent.approval.statusTimedOut'),
   }
   return map[props.approval.status] || props.approval.status
 })

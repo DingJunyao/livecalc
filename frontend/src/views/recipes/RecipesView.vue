@@ -252,6 +252,11 @@ import FilterBar from '@/components/common/FilterBar.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useUserCurrency } from '@/composables/useUserCurrency'
+import {
+  DEFAULT_RECIPE_CATEGORY,
+  RECIPE_CATEGORY_KEYS,
+  RECIPE_CATEGORY_VALUES,
+} from '../../data/recipeCategories.ts'
 import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
@@ -284,19 +289,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const { currency: userCurrency } = useUserCurrency()
 const { t } = useI18n()
-
-const RECIPE_CATEGORY_KEYS: Record<string, string> = {
-  '荤菜': 'recipeCategories.meatDish',
-  '素菜': 'recipeCategories.vegetableDish',
-  '水产': 'recipeCategories.seafood',
-  '主食': 'recipeCategories.staple',
-  '汤与粥': 'recipeCategories.soupPorridge',
-  '早餐': 'recipeCategories.breakfast',
-  '甜品': 'recipeCategories.dessert',
-  '调料': 'recipeCategories.seasoning',
-  '半成品': 'recipeCategories.semiFinished',
-  '小食': 'recipeCategories.snack',
-}
 
 const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
   simple: 'recipeDifficulties.simple',
@@ -389,18 +381,10 @@ const recipeFilters = computed<FilterConfig[]>(() => [
     key: 'categories',
     label: t('recipes.category'),
     type: 'select',
-    items: [
-      { value: '荤菜', title: recipeCategoryLabel('荤菜') },
-      { value: '素菜', title: recipeCategoryLabel('素菜') },
-      { value: '水产', title: recipeCategoryLabel('水产') },
-      { value: '主食', title: recipeCategoryLabel('主食') },
-      { value: '汤与粥', title: recipeCategoryLabel('汤与粥') },
-      { value: '早餐', title: recipeCategoryLabel('早餐') },
-      { value: '甜品', title: recipeCategoryLabel('甜品') },
-      { value: '调料', title: recipeCategoryLabel('调料') },
-      { value: '半成品', title: recipeCategoryLabel('半成品') },
-      { value: '小食', title: recipeCategoryLabel('小食') },
-    ],
+    items: RECIPE_CATEGORY_VALUES.map((value) => ({
+      value,
+      title: recipeCategoryLabel(value),
+    })),
     minWidth: '140px',
     maxWidth: '200px',
   },
@@ -449,25 +433,17 @@ const onFilterChange = (filterState: Record<string, any>) => {
 // 菜谱创建相关
 const createForm = ref({
   name: '',
-  category: '荤菜',
+  category: DEFAULT_RECIPE_CATEGORY,
   difficulty: 'easy',
 })
 const creating = ref(false)
 const createError = ref('')
 const createErrors = ref<Record<string, string>>({})
 
-const categoryOptions = computed(() => [
-  { title: recipeCategoryLabel('荤菜'), value: '荤菜' },
-  { title: recipeCategoryLabel('素菜'), value: '素菜' },
-  { title: recipeCategoryLabel('水产'), value: '水产' },
-  { title: recipeCategoryLabel('主食'), value: '主食' },
-  { title: recipeCategoryLabel('汤与粥'), value: '汤与粥' },
-  { title: recipeCategoryLabel('早餐'), value: '早餐' },
-  { title: recipeCategoryLabel('甜品'), value: '甜品' },
-  { title: recipeCategoryLabel('调料'), value: '调料' },
-  { title: recipeCategoryLabel('半成品'), value: '半成品' },
-  { title: recipeCategoryLabel('小食'), value: '小食' },
-])
+const categoryOptions = computed(() => RECIPE_CATEGORY_VALUES.map((value) => ({
+  title: recipeCategoryLabel(value),
+  value,
+})))
 
 const difficultyOptions = computed(() => [
   { label: recipeDifficultyLabel('simple'), value: 'simple' },
@@ -478,7 +454,7 @@ const difficultyOptions = computed(() => [
 ])
 
 const resetCreateForm = () => {
-  createForm.value = { name: '', category: '荤菜', difficulty: 'easy' }
+  createForm.value = { name: '', category: DEFAULT_RECIPE_CATEGORY, difficulty: 'easy' }
   createError.value = ''
   createErrors.value = {}
 }
@@ -509,7 +485,7 @@ const handleCreate = async () => {
     closeCreateDialog()
     router.push(`/recipes/${result.id}`)
   } catch (e: any) {
-    console.error('创建菜谱失败', e)
+    console.error('Failed to create recipe', e)
     createError.value = e.response?.data?.detail || e.message || t('recipes.createFailed')
   } finally {
     creating.value = false
@@ -554,7 +530,7 @@ const loadRecipes = async () => {
     // 基础数据渲染后，后台加载成本
     loadCostsForVisibleRecipes()
   } catch (e: any) {
-    console.error('加载菜谱失败', e)
+    console.error('Failed to load recipes', e)
     error.value = getErrorMessage(e, t('recipes.loadFailed'))
   } finally {
     loading.value = false
@@ -607,7 +583,7 @@ const loadCostsForVisibleRecipes = async () => {
     const result = await api.post('/recipes/batch-cost', { ids, region_id: null })
     costMap.value = result || {}
   } catch (e) {
-    console.error('加载成本失败', e)
+    console.error('Failed to load costs', e)
     // 超时或失败：不显示错误，卡片保持 --
   } finally {
     loadingCosts.value = false
@@ -628,7 +604,7 @@ const loadIngredients = async () => {
     const items = (response.items || []) as { id: number; name: string }[]
     ingFilter.items = items.map(ing => ({ value: ing.id, title: ing.name }))
   } catch (e: any) {
-    console.error('加载食材列表失败', e)
+    console.error('Failed to load ingredients', e)
   }
 }
 

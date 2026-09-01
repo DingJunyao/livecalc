@@ -1,6 +1,8 @@
 // Local handler for admin blacklist-group management endpoints.
 // 对齐云端 /admin/blacklist-groups 契约（列表返回数组，其余返回分组对象）。
 import { getAll, getById, addOne, putOne, getByIndex } from '../database'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 interface BlGroupRow {
   id: number
@@ -54,7 +56,7 @@ export async function listGroups(): Promise<any> {
 export async function createGroup(_params: Record<string, string>, data?: any): Promise<any> {
   const all = await getAll<BlGroupRow>('blacklist_groups')
   if (all.some((g) => g.name === data?.name)) {
-    throw { status: 400, message: '分组名已存在' }
+    throw localError('blacklistGroupExists')
   }
   const now = new Date().toISOString()
   const id = await addOne('blacklist_groups', {
@@ -70,7 +72,7 @@ export async function createGroup(_params: Record<string, string>, data?: any): 
 export async function updateGroup(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const group = await getById<BlGroupRow>('blacklist_groups', id)
-  if (!group) throw { status: 404, message: '分组不存在' }
+  if (!group) throw localError('blacklistGroupNotFound', 404)
   await putOne('blacklist_groups', {
     ...group,
     name: data?.name ?? group.name,
@@ -84,16 +86,16 @@ export async function updateGroup(params: Record<string, string>, data?: any): P
 export async function deleteGroup(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const group = await getById<BlGroupRow>('blacklist_groups', id)
-  if (!group) throw { status: 404, message: '分组不存在' }
+  if (!group) throw localError('blacklistGroupNotFound', 404)
   // 软删除：与云端一致，仅置 is_active=false
   await putOne('blacklist_groups', { ...group, is_active: false })
-  return { message: '已删除' }
+  return { message: translate('localMessages.deleted') }
 }
 
 export async function addIngredients(params: Record<string, string>, data?: any): Promise<any> {
   const groupId = parseInt(params.id)
   const group = await getById<BlGroupRow>('blacklist_groups', groupId)
-  if (!group) throw { status: 404, message: '分组不存在' }
+  if (!group) throw localError('blacklistGroupNotFound', 404)
   const ingredientIds: number[] = data?.ingredient_ids || []
   const existing = await getByIndex<BlGroupIngRow>('blacklist_group_ingredients', 'by_group_id', groupId)
   const now = new Date().toISOString()
@@ -121,18 +123,18 @@ export async function removeIngredient(params: Record<string, string>): Promise<
   const ingredientId = parseInt(params.ingredientId)
   const rows = await getByIndex<BlGroupIngRow>('blacklist_group_ingredients', 'by_group_id', groupId)
   const row = rows.find((r) => r.ingredient_id === ingredientId && r.is_active !== false)
-  if (!row) throw { status: 404, message: '该原料不在分组中' }
+  if (!row) throw localError('blacklistGroupIngredientNotFound', 404)
   await putOne('blacklist_group_ingredients', { ...row, is_active: false })
-  return { message: '已移除' }
+  return { message: translate('localMessages.removed') }
 }
 
 // 本地模式无 AI 服务与过敏原种子数据，以下端点降级返回
 export async function aiMatch(): Promise<any> {
-  return { agent_session_id: 0, message: '本地模式暂不支持 AI 匹配' }
+  return { agent_session_id: 0, message: translate('localMessages.localAiMatchUnsupported') }
 }
 
 export async function aiMatchAll(): Promise<any> {
-  return { agent_session_id: 0, message: '本地模式暂不支持 AI 匹配' }
+  return { agent_session_id: 0, message: translate('localMessages.localAiMatchUnsupported') }
 }
 
 export async function allergensStatus(): Promise<any> {
@@ -140,5 +142,5 @@ export async function allergensStatus(): Promise<any> {
 }
 
 export async function seedAllergens(): Promise<any> {
-  return { message: '本地模式无需导入过敏原分组' }
+  return { message: translate('localMessages.localAllergenImportUnnecessary') }
 }

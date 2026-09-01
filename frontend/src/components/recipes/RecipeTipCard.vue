@@ -184,7 +184,7 @@ const handleSave = async () => {
     emit('saved', result)
     editing.value = false
   } catch (e: any) {
-    console.error('保存小贴士失败', e)
+    console.error('Failed to save tip', e)
   } finally {
     saving.value = false
   }

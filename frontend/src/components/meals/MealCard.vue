@@ -113,25 +113,13 @@ import { formatNumber } from '@/utils/format'
 import { resolveImageUrl, loadLocalImageBlob } from '@/utils/image'
 import { useI18n } from 'vue-i18n'
 import { useLocaleStore } from '@/stores/locale'
+import { RECIPE_CATEGORY_KEYS } from '@/data/recipeCategories'
 
 const router = useRouter()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 const { currency: userCurrency } = useUserCurrency()
 const localeStore = useLocaleStore()
 const { t } = useI18n()
-
-const RECIPE_CATEGORY_KEYS: Record<string, string> = {
-  '荤菜': 'recipeCategories.meatDish',
-  '素菜': 'recipeCategories.vegetableDish',
-  '水产': 'recipeCategories.seafood',
-  '主食': 'recipeCategories.staple',
-  '汤与粥': 'recipeCategories.soupPorridge',
-  '早餐': 'recipeCategories.breakfast',
-  '甜品': 'recipeCategories.dessert',
-  '调料': 'recipeCategories.seasoning',
-  '半成品': 'recipeCategories.semiFinished',
-  '小食': 'recipeCategories.snack',
-}
 
 function recipeCategoryLabel(category?: string): string {
   const key = category ? RECIPE_CATEGORY_KEYS[category] : null

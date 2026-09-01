@@ -277,7 +277,7 @@ const handleSave = async () => {
     emit('saved', result)
     editing.value = false
   } catch (e: any) {
-    console.error('保存步骤失败', e)
+    console.error('Failed to save step', e)
   } finally {
     saving.value = false
   }

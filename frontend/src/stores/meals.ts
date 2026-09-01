@@ -1,6 +1,7 @@
 // stores/meals.ts
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { t } from '@/plugins/i18n'
 import {
   getDailyRecommendations,
   triggerRecommendationGeneration,
@@ -100,7 +101,7 @@ export const useMealsStore = defineStore('meals', () => {
           if (_pollCount >= MAX_POLLS) {
             _clearPoll()
             generating.value = false
-            error.value = '推荐计算超时，请稍后刷新重试'
+            error.value = t('meals.recommendationTimeout')
             reject(new Error('poll timeout'))
             return
           }
@@ -113,7 +114,7 @@ export const useMealsStore = defineStore('meals', () => {
           }
           _clearPoll()
           generating.value = false
-          error.value = e.userMessage || '加载推荐失败'
+          error.value = e.userMessage || t('meals.loadFailed')
           reject(e)
         }
       }
@@ -156,7 +157,7 @@ export const useMealsStore = defineStore('meals', () => {
           }
 
           if (count >= maxPolls) {
-            reject(new Error('刷新超时，请稍后重试'))
+            reject(new Error(t('meals.refreshTimeout')))
             return
           }
 
@@ -217,7 +218,7 @@ export const useMealsStore = defineStore('meals', () => {
       await _pollUntilReady()
     } catch (e: any) {
       if (error.value) return // poll 已设 error
-      error.value = e.userMessage || '加载推荐失败'
+      error.value = e.userMessage || t('meals.loadFailed')
       loading.value = false
     }
   }

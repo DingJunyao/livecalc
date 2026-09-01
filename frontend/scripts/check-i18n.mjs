@@ -1,10 +1,23 @@
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
 const localesDir = join(root, 'src', 'locales')
 const localeFiles = ['zh-CN.json', 'en-US.json', 'ar.json']
+const sourceIgnorePaths = [
+  'src/data',
+  'src/locales',
+  'src/api/local/seed.ts',
+  'src/api/agent.ts',
+  'src/api/local/agent',
+  'src/utils/currencyNames.ts',
+  'src/utils/catalogLabels.ts',
+  'src/utils/pastePriceParser.ts',
+  'src/utils/coordinateTransform.ts',
+  'src/utils/coordTransform.ts',
+  'src/utils/map*',
+]
 
 function flattenKeys(value, prefix = '', out = new Set()) {
   if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
@@ -75,54 +88,294 @@ function walkFiles(dir, extensions) {
   return files
 }
 
-function collectSourceKeys() {
-  const sourceRoot = join(root, 'src')
-  const files = walkFiles(sourceRoot, ['.ts', '.vue', '.js'])
-  const keys = new Set()
-  const sourcePattern = /[^A-Za-z0-9_.]t\(\s*(['"])([^'"]+)\1\s*(?:,|\))/g
+function toRelativePath(file) {
+  return relative(root, file).replaceAll('\\', '/')
+}
 
-  for (const file of files) {
-    const source = readFileSync(file, 'utf8')
-    for (const match of source.matchAll(sourcePattern)) {
-      keys.add(match[2])
+function isIgnoredSource(relativePath) {
+  if (relativePath.startsWith('src/utils/')) {
+    const firstSegment = relativePath.slice('src/utils/'.length).split('/')[0]
+    if (firstSegment.startsWith('map')) return true
+  }
+  return sourceIgnorePaths.some((ignored) => (
+    relativePath === ignored || relativePath.startsWith(`${ignored}/`)
+  ))
+}
+
+export function stripSourceComments(source) {
+  let result = ''
+  let cursor = 0
+  const contextStack = []
+  let mode = 'code'
+  const canStartRegex = (index) => {
+    let previous = index - 1
+    while (previous >= 0 && /\s/.test(source[previous])) previous -= 1
+    if (previous < 0) return true
+
+    const char = source[previous]
+    if ('=([{,;:!&|?+-%<>'.includes(char)) return true
+
+    const beforeChar = source.slice(0, previous + 1).match(/[\w$]+$/)?.[0]
+    return ['case', 'delete', 'in', 'instanceof', 'new', 'return', 'typeof', 'void'].includes(beforeChar ?? '')
+  }
+
+  while (cursor < source.length) {
+    if (mode === 'templateText') {
+      if (source.startsWith('${', cursor)) {
+        result += '${'
+        cursor += 2
+        contextStack.push({ type: 'expression', braceDepth: 0 })
+        mode = 'expression'
+        continue
+      }
+
+      result += source[cursor]
+      if (source[cursor] === '\\') {
+        cursor += 1
+        if (cursor < source.length) {
+          result += source[cursor]
+          cursor += 1
+        }
+        continue
+      }
+      if (source[cursor] === '`') {
+        cursor += 1
+        contextStack.pop()
+        const parent = contextStack.at(-1)
+        mode = parent?.type === 'expression' ? 'expression' : 'code'
+      } else {
+        cursor += 1
+      }
+      continue
+    }
+
+    if (mode === 'expression' && source[cursor] === '}') {
+      const expression = contextStack.at(-1)
+      if (expression?.braceDepth === 0) {
+        result += source[cursor]
+        cursor += 1
+        contextStack.pop()
+        const parent = contextStack.at(-1)
+        mode = parent?.type === 'template' ? 'templateText' : 'expression'
+        continue
+      }
+      expression.braceDepth -= 1
+    }
+
+    if (mode === 'expression' && source[cursor] === '{') {
+      const expression = contextStack.at(-1)
+      if (expression) expression.braceDepth += 1
+    }
+
+    if (source.startsWith('//', cursor)) {
+      while (cursor < source.length && source[cursor] !== '\n') {
+        result += ' '
+        cursor += 1
+      }
+      continue
+    }
+
+    if (source.startsWith('/*', cursor)) {
+      while (cursor < source.length && !source.startsWith('*/', cursor)) {
+        result += source[cursor] === '\n' ? '\n' : ' '
+        cursor += 1
+      }
+      if (cursor < source.length) {
+        result += '  '
+        cursor += 2
+      }
+      continue
+    }
+
+    if (source.startsWith('<!--', cursor)) {
+      while (cursor < source.length && !source.startsWith('-->', cursor)) {
+        result += source[cursor] === '\n' ? '\n' : ' '
+        cursor += 1
+      }
+      if (cursor < source.length) {
+        result += '   '
+        cursor += 3
+      }
+      continue
+    }
+
+    if (source[cursor] === '/' && canStartRegex(cursor)) {
+      result += source[cursor]
+      cursor += 1
+      let inCharacterClass = false
+      while (cursor < source.length) {
+        result += source[cursor]
+        if (source[cursor] === '\\') {
+          cursor += 1
+          if (cursor < source.length) {
+            result += source[cursor]
+            cursor += 1
+          }
+          continue
+        }
+        if (source[cursor] === '\n') break
+        if (source[cursor] === '[') inCharacterClass = true
+        else if (source[cursor] === ']' && inCharacterClass) inCharacterClass = false
+        else if (source[cursor] === '/' && !inCharacterClass) {
+          cursor += 1
+          break
+        }
+        cursor += 1
+      }
+      continue
+    }
+
+    if (source[cursor] === '`') {
+      result += source[cursor]
+      cursor += 1
+      contextStack.push({ type: 'template' })
+      mode = 'templateText'
+      continue
+    }
+
+    const quote = source[cursor]
+    if (quote === '\'' || quote === '"') {
+      result += quote
+      cursor += 1
+      while (cursor < source.length) {
+        result += source[cursor]
+        if (source[cursor] === '\\') {
+          cursor += 1
+          if (cursor < source.length) {
+            result += source[cursor]
+            cursor += 1
+          }
+          continue
+        }
+        if (source[cursor] === quote) {
+          cursor += 1
+          break
+        }
+        if (source[cursor] === '\n' && quote !== '`') break
+        cursor += 1
+      }
+      continue
+    }
+
+    result += source[cursor]
+    cursor += 1
+  }
+
+  return result
+}
+
+function collectSourceFiles() {
+  const sourceRoot = join(root, 'src')
+  return walkFiles(sourceRoot, ['.ts', '.vue', '.js'])
+    .map((file) => ({ file, relativePath: toRelativePath(file) }))
+    .filter(({ relativePath }) => !isIgnoredSource(relativePath))
+}
+
+export function collectTranslationKeys(source) {
+  const keys = new Set()
+  const sourcePattern = /\b(?:t|translate)\(\s*(['"])([^'"]+)\1\s*(?:,|\))/g
+
+  for (const match of stripSourceComments(source).matchAll(sourcePattern)) {
+    keys.add(match[2])
+  }
+
+  return [...keys].sort()
+}
+
+function collectSourceKeys(sourceFiles) {
+  const keys = new Set()
+
+  for (const { file } of sourceFiles) {
+    for (const key of collectTranslationKeys(readFileSync(file, 'utf8'))) {
+      keys.add(key)
     }
   }
 
   return keys
 }
 
-function checkSources() {
-  const catalogs = localeFiles.map((file) => ({ file, keys: flattenKeys(readCatalog(file)) }))
-  const sourceKeys = collectSourceKeys()
-  const missing = []
+function lineForIndex(source, index) {
+  return source.slice(0, index).split('\n').length
+}
 
-  for (const key of sourceKeys) {
-    if (!catalogs[0].keys.has(key)) {
-      missing.push(key)
+export function auditSourceText(source, relativePath, catalogs) {
+  const findings = []
+  const stripped = stripSourceComments(source)
+  const lines = stripped.split('\n')
+  const hanPattern = /[\u3400-\u9fff]/
+  const throwPattern = /\bthrow\s*\{[\s\S]*?\bmessage\s*:\s*['"`]/g
+  const localErrorPattern = /\blocalError\(\s*(['"])([A-Za-z0-9_.-]+)\1/g
+
+  lines.forEach((line, index) => {
+    if (hanPattern.test(line)) {
+      findings.push(`${relativePath}:${index + 1}: Han text: ${line.trim()}`)
+    }
+  })
+
+  if (relativePath.startsWith('src/api/local/')) {
+    for (const match of stripped.matchAll(throwPattern)) {
+      findings.push(`${relativePath}:${lineForIndex(stripped, match.index)}: literal local throw`)
     }
   }
 
-  if (missing.length > 0) {
-    console.error('Source references translation keys missing from locale catalogs:')
-    for (const key of missing) console.error(`- ${key}`)
-    process.exit(1)
+  for (const match of stripped.matchAll(new RegExp(localErrorPattern.source, 'g'))) {
+    const key = `localErrors.${match[2]}`
+    const missing = catalogs.filter(({ keys }) => !keys.has(key)).map(({ file }) => file)
+    if (missing.length > 0) {
+      findings.push(
+        `${relativePath}:${lineForIndex(stripped, match.index)}: missing ${key} in ${missing.join(', ')}`,
+      )
+    }
   }
 
-  console.log(`Checked ${sourceKeys.size} source translation keys against all locale catalogs.`)
+  return findings
 }
 
-const mode = process.argv[2]
+function collectSourceFindings(sourceFiles, catalogs) {
+  return sourceFiles.flatMap(({ file, relativePath }) => (
+    auditSourceText(readFileSync(file, 'utf8'), relativePath, catalogs)
+  ))
+}
 
-try {
-  if (mode === 'keys') {
-    checkKeys()
-  } else if (mode === 'sources') {
-    checkSources()
-  } else {
-    console.error('Usage: node scripts/check-i18n.mjs <keys|sources>')
+function checkSources() {
+  const catalogs = localeFiles.map((file) => ({ file, keys: flattenKeys(readCatalog(file)) }))
+  const sourceFiles = collectSourceFiles()
+  const sourceKeys = collectSourceKeys(sourceFiles)
+  const missing = []
+
+  for (const key of sourceKeys) {
+    const missingIn = catalogs.filter(({ keys }) => !keys.has(key)).map(({ file }) => file)
+    if (missingIn.length > 0) missing.push(`${key} (${missingIn.join(', ')})`)
+  }
+
+  const findings = [...missing.map((key) => `missing source key: ${key}`), ...collectSourceFindings(sourceFiles, catalogs)]
+  if (findings.length > 0) {
+    console.error('Source i18n audit failed:')
+    for (const finding of findings) console.error(`- ${finding}`)
     process.exit(1)
   }
-} catch (error) {
-  console.error(error instanceof Error ? error.message : String(error))
-  process.exit(1)
+
+  console.log(
+    `Checked ${sourceKeys.size} source translation keys and localized source rules across all locale catalogs.`,
+  )
+}
+
+const isCli = process.argv[1] === fileURLToPath(import.meta.url)
+
+if (isCli) {
+  const mode = process.argv[2]
+
+  try {
+    if (mode === 'keys') {
+      checkKeys()
+    } else if (mode === 'sources') {
+      checkSources()
+    } else {
+      console.error('Usage: node scripts/check-i18n.mjs <keys|sources>')
+      process.exit(1)
+    }
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
 }
