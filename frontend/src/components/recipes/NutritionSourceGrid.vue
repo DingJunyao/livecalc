@@ -2,11 +2,11 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="success">mdi-food-apple-outline</v-icon>
-      营养贡献溯源
+      {{ t('recipes.nutritionSources') }}
       <v-spacer />
       <v-btn-toggle v-model="showAll" mandatory density="compact">
-        <v-btn :value="false" size="small">NRV 指标</v-btn>
-        <v-btn :value="true" size="small">全部</v-btn>
+        <v-btn :value="false" size="small">{{ t('recipes.nrvMetrics') }}</v-btn>
+        <v-btn :value="true" size="small">{{ t('recipes.all') }}</v-btn>
       </v-btn-toggle>
     </v-card-title>
     <v-divider />
@@ -16,7 +16,7 @@
       </div>
       <div v-else-if="!displayNutrients.length" class="text-center py-8 text-medium-emphasis">
         <v-icon size="48" color="medium-emphasis">mdi-food-apple-outline</v-icon>
-        <div class="text-body-2 mt-2">暂无营养数据</div>
+        <div class="text-body-2 mt-2">{{ t('recipes.noNutritionData') }}</div>
       </div>
       <div v-else class="nutrition-grid">
         <div
@@ -37,13 +37,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, nextTick, onUnmounted } from 'vue'
 import * as echarts from 'echarts'
-import { ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
+import { nutrientKey, nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
 import { getIngredientColor } from '@/utils/ingredientColors'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   nutritionData?: any | null
   loading?: boolean
 }>()
+
+const { t, locale } = useI18n()
+const localeStore = useLocaleStore()
 
 const showAll = ref(false)
 const chartRefs = new Map<string, HTMLElement>()
@@ -60,13 +66,6 @@ const NRV_KEYS = new Set([
   'vitamin_b12', 'vitamin_d', 'vitamin_e', 'vitamin_k',
 ])
 
-const NRV_LABELS: Record<string, string> = {
-  energy: '能量', protein: '蛋白质', fat: '脂肪', carbohydrate: '碳水化合物',
-  fiber: '膳食纤维', calcium: '钙', iron: '铁', sodium: '钠', potassium: '钾',
-  vitamin_a_rae: '维生素A', vitamin_c: '维生素C', vitamin_b1: '维生素B1',
-  vitamin_b2: '维生素B2', vitamin_b12: '维生素B12', vitamin_d: '维生素D',
-  vitamin_e: '维生素E', vitamin_k: '维生素K',
-}
 
 interface NutrientDisplay {
   key: string
@@ -98,7 +97,7 @@ const displayNutrients = computed<NutrientDisplay[]>(() => {
     }
   }
   const result: NutrientDisplay[] = []
-  const usedLabels = new Set<string>()  // 同名营养素去重（vitamin_a_rae 和 vitamin_a_iu 都标"维生素A"）
+  const usedStableKeys = new Set<string>()
 
   for (const [key, data] of Object.entries(allNutrients)) {
     const nData = data as any
@@ -107,22 +106,27 @@ const displayNutrients = computed<NutrientDisplay[]>(() => {
     const isNrv = NRV_KEYS.has(key)
     if (!showAll.value && !isNrv) continue
 
-    const label = NRV_LABELS[key] || nData.name_zh || ENGLISH_TO_CHINESE_MAP[key] || key
+    const stableKey = nutrientKey(key) || key
+    const label = nutrientKey(key) ? nutrientLabel(key) : (nData.name_zh || key)
     // "全部"模式下同名营养素只显示第一个（优先保留有 NRV 的）
-    if (showAll.value && usedLabels.has(label)) continue
-    usedLabels.add(label)
+    if (showAll.value && usedStableKeys.has(stableKey)) continue
+    usedStableKeys.add(stableKey)
     const totalValue = typeof nData.value === 'number' ? nData.value : parseFloat(nData.value) || 0
     const unit = nData.unit || ''
     // all_nutrients 的 nrp_pct 为 null，从 core_nutrients 的 key 映射中查找
     const nrpPct = nData.nrp_pct != null ? Math.round(nData.nrp_pct) : (nrpPctMap[key] ?? null)
-    const totalText = `${totalValue}${unit ? ` ${unit}` : ''}`
+    const totalText = `${formatNumber(totalValue, localeStore.effectiveFormatLocale)}${unit ? ` ${nutrientUnitLabel(unit)}` : ''}`
 
     const ingredientItems: { name: string; value: number; color: string }[] = []
     for (const detail of nutrition.ingredient_details) {
-      const contrib = detail.nutrition_contribution?.[label] || detail.nutrition_contribution?.[key]
+      const contributions = detail.nutrition_contribution || {}
+      const contributionKey = Object.keys(contributions).find(
+        candidate => candidate === key || nutrientKey(candidate) === stableKey,
+      )
+      const contrib = contributionKey ? contributions[contributionKey] : null
       if (contrib && contrib.value != null && Number(contrib.value) > 0) {
         ingredientItems.push({
-          name: detail.ingredient_name || '未知食材',
+          name: detail.ingredient_name || t('recipes.unknownIngredient'),
           value: Number(contrib.value) || 0,
           color: getIngredientColor(detail.ingredient_id),
         })
@@ -135,11 +139,11 @@ const displayNutrients = computed<NutrientDisplay[]>(() => {
     const totalIngredientValue = ingredientItems.reduce((s, i) => s + i.value, 0)
     const top2 = ingredientItems.slice(0, 2)
     const topContributors = top2
-      .map(i => `${i.name} ${Math.round((i.value / totalIngredientValue) * 100)}%`)
+      .map(i => `${i.name} ${formatNumber(Math.round((i.value / totalIngredientValue) * 100), localeStore.effectiveFormatLocale)}%`)
       .join(' · ')
 
     result.push({
-      key,
+      key: stableKey,
       label,
       totalValue,
       unit,
@@ -152,14 +156,14 @@ const displayNutrients = computed<NutrientDisplay[]>(() => {
 
   // 与菜谱详情页营养素成分排序保持一致
   const nutrientSortOrder = [
-    '能量', '蛋白质', '脂肪', '碳水化合物', '钠',
-    '膳食纤维', '钙', '铁', '钾',
-    '维生素A', '维生素B1', '维生素B2', '维生素B12', '维生素C',
-    '维生素D', '维生素E', '维生素K'
+    'nutrients.energy', 'nutrients.protein', 'nutrients.fat', 'nutrients.carbohydrate', 'nutrients.sodium',
+    'nutrients.fiber', 'nutrients.calcium', 'nutrients.iron', 'nutrients.potassium',
+    'nutrients.vitaminA', 'nutrients.vitaminB1', 'nutrients.vitaminB2', 'nutrients.vitaminB12', 'nutrients.vitaminC',
+    'nutrients.vitaminD', 'nutrients.vitaminE', 'nutrients.vitaminK'
   ]
   result.sort((a, b) => {
-    const idxA = nutrientSortOrder.indexOf(a.label)
-    const idxB = nutrientSortOrder.indexOf(b.label)
+    const idxA = nutrientSortOrder.indexOf(a.key)
+    const idxB = nutrientSortOrder.indexOf(b.key)
     if (idxA !== -1 && idxB !== -1) return idxA - idxB
     if (idxA !== -1) return -1
     if (idxB !== -1) return 1
@@ -181,11 +185,13 @@ function renderDonuts() {
     }
 
     instance.setOption({
+      rtl: false,
       tooltip: {
         trigger: 'item',
+        extraCssText: 'direction:ltr;',
         formatter: (p: any) => {
           const pct = p.percent != null ? `${Math.round(p.percent)}%` : ''
-          return `<b>${p.name}</b><br/>${nutrient.label}: ${p.value.toFixed(2)} ${nutrient.unit}${pct ? ' (' + pct + ')' : ''}`
+          return `<b>${p.name}</b><br/>${nutrient.label}: ${formatNumber(p.value, localeStore.effectiveFormatLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${nutrientUnitLabel(nutrient.unit)}${pct ? ' (' + pct + ')' : ''}`
         },
       },
       series: [{
@@ -223,6 +229,9 @@ function renderDonuts() {
 }
 
 watch(showAll, () => nextTick(renderDonuts))
+watch(() => [locale.value, localeStore.effectiveFormatLocale], () => {
+  nextTick(renderDonuts)
+})
 watch(() => [props.nutritionData, props.loading], () => {
   nextTick(() => {
     if (!props.loading && displayNutrients.value.length) renderDonuts()

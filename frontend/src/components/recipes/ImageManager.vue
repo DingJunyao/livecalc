@@ -32,6 +32,8 @@
           color="error"
           variant="flat"
           class="image-delete-btn"
+          :title="t('recipes.removeImage')"
+          :aria-label="t('recipes.removeImage')"
           @click="$emit('remove', index)"
         />
         <!-- 封面标记 -->
@@ -41,7 +43,7 @@
           color="primary"
           variant="flat"
           class="image-cover-badge"
-        >封面</v-chip>
+        >{{ t('recipes.cover') }}</v-chip>
         <!-- 左右移动按钮 -->
         <div class="image-move-btns">
           <v-btn
@@ -50,6 +52,8 @@
             variant="text"
             density="compact"
             :disabled="index === 0"
+            :title="t('recipes.moveLeft')"
+            :aria-label="t('recipes.moveLeft')"
             @click.stop="moveLeft(index)"
           />
           <v-btn
@@ -58,6 +62,8 @@
             variant="text"
             density="compact"
             :disabled="index === modelValue.length - 1"
+            :title="t('recipes.moveRight')"
+            :aria-label="t('recipes.moveRight')"
             @click.stop="moveRight(index)"
           />
         </div>
@@ -68,6 +74,8 @@
         variant="outlined"
         class="image-add-btn"
         :loading="uploading"
+        :title="t('recipes.addImage')"
+        :aria-label="t('recipes.addImage')"
         @click="triggerUpload"
       >
         <v-icon>mdi-plus</v-icon>
@@ -84,7 +92,7 @@
 
     <!-- 提示文字 -->
     <div class="text-caption text-medium-emphasis mt-1">
-      第一张图片为封面图。支持 JPG、PNG、GIF、WebP 格式。
+      {{ t('recipes.imageManagerHint') }}
     </div>
   </div>
 </template>
@@ -93,6 +101,9 @@
 import { ref, watch, onUnmounted } from 'vue'
 import { api } from '@/api'
 import { resolveImageUrl, loadLocalImageBlob } from '@/utils/image'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: string[]

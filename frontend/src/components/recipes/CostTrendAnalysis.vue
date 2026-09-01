@@ -2,7 +2,7 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="tertiary">mdi-chart-timeline-variant</v-icon>
-      成本趋势
+      {{ t('recipes.costTrend') }}
       <v-spacer />
       <v-btn-toggle v-model="selectedFilter" mandatory density="compact" variant="outlined" divided>
         <v-btn v-for="f in filters" :key="f.value" :value="f.value" size="small">
@@ -18,13 +18,13 @@
       </div>
       <div v-else-if="!chartData.length" class="text-center py-8 text-medium-emphasis">
         <v-icon size="48" color="medium-emphasis">mdi-chart-line</v-icon>
-        <div class="text-body-2 mt-2">暂无成本趋势数据</div>
+        <div class="text-body-2 mt-2">{{ t('recipes.noCostTrendData') }}</div>
       </div>
       <div v-show="!loading && chartData.length">
         <div class="trend-layout">
           <div ref="chartRef" class="trend-chart" style="flex:1;min-height:300px" />
           <div class="ingredient-tags">
-            <div class="text-caption text-medium-emphasis mb-2">图例（点击高亮）</div>
+            <div class="text-caption text-medium-emphasis mb-2">{{ t('recipes.legendClickHighlight') }}</div>
             <v-btn
               v-for="(item, i) in breakdownIngredients"
               :key="i"
@@ -54,6 +54,8 @@ import * as echarts from 'echarts'
 import { getIngredientColor } from '@/utils/ingredientColors'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { useI18n } from 'vue-i18n'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{
   recipeId: number
@@ -72,14 +74,16 @@ const chartRef = ref<HTMLElement | null>(null)
 let chartInstance: echarts.ECharts | null = null
 
 const { currency: userCurrency } = useUserCurrency()
+const { t, locale } = useI18n()
+const localeStore = useLocaleStore()
 
-const filters = [
-  { label: '周', value: 'week' },
-  { label: '月', value: 'month' },
-  { label: '季', value: 'quarter' },
-  { label: '年', value: 'year' },
-  { label: '全部', value: 'all' },
-]
+const filters = computed(() => [
+  { label: t('recipes.week'), value: 'week' },
+  { label: t('recipes.month'), value: 'month' },
+  { label: t('recipes.quarter'), value: 'quarter' },
+  { label: t('recipes.year'), value: 'year' },
+  { label: t('recipes.all'), value: 'all' },
+])
 const selectedFilter = ref('quarter')
 
 const selectedIngredientIndex = ref<number | null>(null)
@@ -113,7 +117,7 @@ const breakdownIngredients = computed(() => {
   const total = props.costBreakdown.reduce((s: number, b: any) => s + (parseFloat(b.cost) || 0), 0)
   const sorted = [...props.costBreakdown].sort((a, b) => (parseFloat(b.cost) || 0) - (parseFloat(a.cost) || 0))
   return sorted.slice(0, 12).map((b: any) => ({
-    name: b.ingredient_name || '未知食材',
+    name: b.ingredient_name || t('recipes.unknownIngredient'),
     color: getIngredientColor(b.ingredient_id),
     ingredientId: b.ingredient_id,
     percent: total > 0 ? `${Math.round((parseFloat(b.cost) || 0) / total * 100)}%` : '',
@@ -192,8 +196,10 @@ function renderTrendChart() {
     }
 
     chartInstance.setOption({
+      rtl: false,
       tooltip: {
         trigger: 'axis',
+        extraCssText: 'direction:ltr;',
         formatter: (params: any[]) => {
           const date = params[0]?.axisValue || ''
           let html = `<div style="font-weight:600;margin-bottom:4px">${date}</div>`
@@ -202,13 +208,13 @@ function renderTrendChart() {
             if (p.value > 0) {
               html += `<div style="display:flex;align-items:center;gap:4px">
                 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>
-                ${p.seriesName}: ${formatMoney(p.value, userCurrency.value)}
+                ${p.seriesName}: ${formatMoney(p.value, userCurrency.value, localeStore.effectiveFormatLocale)}
               </div>`
               total += p.value
             }
           }
           html += `<div style="border-top:1px solid #ddd;margin-top:4px;padding-top:2px;font-weight:600">
-            合计: ${formatMoney(total, userCurrency.value)}
+            ${t('recipes.total')}: ${formatMoney(total, userCurrency.value, localeStore.effectiveFormatLocale)}
           </div>`
           return html
         },
@@ -223,7 +229,7 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value, localeStore.effectiveFormatLocale), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series,
@@ -235,17 +241,19 @@ function renderTrendChart() {
     const maxValues = chartData.value.map((d: any) => d.max_cost || 0)
 
     chartInstance.setOption({
+      rtl: false,
       tooltip: {
         trigger: 'axis',
+        extraCssText: 'direction:ltr;',
         formatter: (params: any[]) => {
           const date = params[0]?.axisValue || ''
-          const avg = params.find((p: any) => p.seriesName === '平均成本')
-          const minP = params.find((p: any) => p.seriesName === '最低')
-          const maxP = params.find((p: any) => p.seriesName === '最高')
-          const avgText = avg ? formatMoney(avg.value, userCurrency.value) : '-'
-          const minText = minP ? formatMoney(minP.value, userCurrency.value) : '-'
-          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value) : '-'
-          return `${date}<br/>平均: ${avgText}<br/>区间: ${minText} ~ ${maxText}`
+          const avg = params.find((p: any) => p.seriesName === t('recipes.averageCost'))
+          const minP = params.find((p: any) => p.seriesName === t('recipes.minimum'))
+          const maxP = params.find((p: any) => p.seriesName === t('recipes.maximum'))
+          const avgText = avg ? formatMoney(avg.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
+          const minText = minP ? formatMoney(minP.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
+          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value, localeStore.effectiveFormatLocale) : '-'
+          return `${date}<br/>${t('recipes.averageLabel')}: ${avgText}<br/>${t('recipes.rangeLabel')}: ${minText} ~ ${maxText}`
         },
       },
       grid: { left: 50, right: 16, top: 8, bottom: 24 },
@@ -257,12 +265,12 @@ function renderTrendChart() {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value), fontSize: 10 },
+        axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value, localeStore.effectiveFormatLocale), fontSize: 10 },
         splitLine: { lineStyle: { type: 'dashed' } },
       },
       series: [
         {
-          name: '最低',
+          name: t('recipes.minimum'),
           type: 'line',
           data: minValues,
           lineStyle: { width: 0 },
@@ -271,7 +279,7 @@ function renderTrendChart() {
           stack: 'total',
         },
         {
-          name: '平均成本',
+          name: t('recipes.averageCost'),
           type: 'line',
           data: avgValues,
           smooth: true,
@@ -287,7 +295,7 @@ function renderTrendChart() {
           },
         },
         {
-          name: '最高',
+          name: t('recipes.maximum'),
           type: 'line',
           data: maxValues,
           lineStyle: { width: 0 },
@@ -319,6 +327,10 @@ watch(() => [props.costHistory, props.loading], () => {
     if (!props.loading && chartData.value.length) renderTrendChart()
   })
 }, { deep: true })
+
+watch(() => [locale.value, localeStore.effectiveFormatLocale], () => {
+  nextTick(renderTrendChart)
+})
 
 onMounted(() => {
   nextTick(() => {

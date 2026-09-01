@@ -35,10 +35,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useI18n } from 'vue-i18n'
 import MealCard from './MealCard.vue'
 import type { MealRecommendation } from '@/api/meals'
 
 const { mdAndUp } = useDisplay()
+const { t } = useI18n()
 const isDesktop = computed(() => mdAndUp.value)
 
 defineProps<{
@@ -52,9 +54,9 @@ defineEmits<{
 
 function mealLabel(type: string) {
   const map: Record<string, string> = {
-    breakfast: '早餐',
-    lunch: '午餐',
-    dinner: '晚餐',
+    breakfast: t('meals.breakfast'),
+    lunch: t('meals.lunch'),
+    dinner: t('meals.dinner'),
   }
   return map[type] || type
 }

@@ -1,9 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { searchUsdaFoods, getUsdaFood, matchIngredient, matchProduct } from '@/api/usda'
 import { useUserStore } from '@/stores/user'
+import { useLocaleStore } from '@/stores/locale'
+import { formatNumber } from '@/utils/format'
+import { usdaDescription } from '@/utils/catalogLabels'
+import { nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
 
 const userStore = useUserStore()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const props = defineProps<{
   modelValue: boolean
@@ -28,6 +35,20 @@ const loading = ref(false)
 const selected = ref<any | null>(null)
 const matching = ref(false)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
+
+const SOURCE_TYPE_KEYS: Record<string, string> = {
+  foundation: 'usda.sources.foundation',
+  sr_legacy: 'usda.sources.srLegacy',
+  survey_fndds: 'usda.sources.surveyFndds',
+  branded: 'usda.sources.branded',
+  suggested: 'usda.sources.suggested',
+}
+
+function sourceTypeLabel(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '_')
+  const key = SOURCE_TYPE_KEYS[normalized]
+  return key ? t(key) : value
+}
 
 async function onSearch() {
   if (!query.value || !query.value.trim()) {
@@ -81,19 +102,19 @@ async function confirmMatch() {
     const isPending = message.includes('待管理员审核') || /status=pending/.test(message)
 
     if (isAdmin) {
-      snackbar.value = { show: true, message: 'USDA 匹配成功', color: 'success' }
+      snackbar.value = { show: true, message: t('usda.matchSuccess'), color: 'success' }
     } else if (isPending) {
       // 普通用户、有数据：提议待审，营养数据未变
       snackbar.value = {
         show: true,
-        message: message || '已提交，待管理员审核',
+        message: t('usda.submittedPendingReview'),
         color: 'info',
       }
     } else {
       // 普通用户补空自动通过
       snackbar.value = {
         show: true,
-        message: message || 'USDA 匹配成功（补空自动通过）',
+        message: t('usda.matchSuccessAutoApproved'),
         color: 'success',
       }
     }
@@ -117,11 +138,11 @@ async function confirmMatch() {
     @update:model-value="emit('update:modelValue', $event)"
   >
     <v-card>
-      <v-card-title>匹配 USDA 食材</v-card-title>
+      <v-card-title>{{ t('usda.matchFoodTitle') }}</v-card-title>
       <v-card-text>
         <v-text-field
           v-model="query"
-          label="搜索（空格分词，原文/译文任意命中）"
+          :label="t('usda.searchLabel')"
           prepend-inner-icon="mdi-magnify"
           @update:model-value="onInput"
           @keyup.enter="onSearch"
@@ -131,26 +152,34 @@ async function confirmMatch() {
 
         <v-list v-if="results.length && !selected" density="compact">
           <v-list-item v-for="r in results" :key="r.fdc_id" @click="pick(r.fdc_id)">
-            <v-list-item-title>{{ r.description_zh || r.description }}</v-list-item-title>
+            <v-list-item-title>{{ usdaDescription(r, localeStore.locale) }}</v-list-item-title>
             <v-list-item-subtitle>
-              {{ r.description }} · {{ r.data_type }} · {{ r.nutrient_count }} 项营养素
+              {{ t('usda.resultMetadata', {
+                source: r.description,
+                type: sourceTypeLabel(r.data_type),
+                count: formatNumber(r.nutrient_count, localeStore.effectiveFormatLocale),
+              }) }}
             </v-list-item-subtitle>
           </v-list-item>
         </v-list>
 
         <div v-if="selected">
-          <v-btn variant="text" size="small" @click="selected = null">← 返回列表</v-btn>
-          <h3 class="mt-2">{{ selected.description_zh || selected.description }}</h3>
+          <v-btn variant="text" size="small" @click="selected = null">{{ t('usda.backToResults') }}</v-btn>
+          <h3 class="mt-2">{{ usdaDescription(selected, localeStore.locale) }}</h3>
           <p class="text-caption">{{ selected.description }}</p>
           <v-table density="compact" class="mt-2">
             <thead>
-              <tr><th>营养素</th><th>值</th><th>单位</th></tr>
+              <tr>
+                <th>{{ t('usda.nutrient') }}</th>
+                <th>{{ t('usda.value') }}</th>
+                <th>{{ t('usda.unit') }}</th>
+              </tr>
             </thead>
             <tbody>
               <tr v-for="n in selected.nutrients" :key="n.name">
-                <td>{{ n.name_zh || n.name }}</td>
-                <td>{{ n.amount }}</td>
-                <td>{{ n.unit_name }}</td>
+                <td>{{ nutrientLabel(n.name) }}</td>
+                <td>{{ formatNumber(n.amount, localeStore.effectiveFormatLocale) }}</td>
+                <td>{{ nutrientUnitLabel(n.unit_name) }}</td>
               </tr>
             </tbody>
           </v-table>
@@ -158,9 +187,9 @@ async function confirmMatch() {
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" @click="emit('update:modelValue', false)">取消</v-btn>
+        <v-btn variant="text" @click="emit('update:modelValue', false)">{{ t('usda.cancel') }}</v-btn>
         <v-btn color="primary" :disabled="!selected" :loading="matching" @click="onConfirmClick">
-          确认匹配
+          {{ t('usda.confirmMatch') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -171,15 +200,15 @@ async function confirmMatch() {
     <v-card>
       <v-card-title class="text-h6 d-flex align-center">
         <v-icon color="warning" class="mr-2">mdi-alert-circle-outline</v-icon>
-        确认匹配
+        {{ t('usda.confirmMatch') }}
       </v-card-title>
       <v-card-text>
-        将清空当前营养数据并写入所选 USDA 食材的营养数据，此操作不可撤销。是否继续？
+        {{ t('usda.confirmMatchBody') }}
       </v-card-text>
       <v-card-actions>
         <v-spacer />
-        <v-btn variant="text" :disabled="matching" @click="confirmDialog = false">取消</v-btn>
-        <v-btn color="primary" :loading="matching" @click="confirmMatch">确认写入</v-btn>
+        <v-btn variant="text" :disabled="matching" @click="confirmDialog = false">{{ t('usda.cancel') }}</v-btn>
+        <v-btn color="primary" :loading="matching" @click="confirmMatch">{{ t('usda.confirmWrite') }}</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>

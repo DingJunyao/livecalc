@@ -2,7 +2,7 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="primary">mdi-information-outline</v-icon>
-      菜谱介绍
+      {{ t('recipes.introduction') }}
       <v-spacer />
       <template v-if="!editing">
         <v-btn
@@ -11,7 +11,7 @@
           color="primary"
           prepend-icon="mdi-pencil"
           @click="startEdit"
-        >编辑</v-btn>
+        >{{ t('recipes.edit') }}</v-btn>
       </template>
       <template v-else>
         <v-btn
@@ -21,7 +21,7 @@
           prepend-icon="mdi-check"
           :loading="saving"
           @click="handleSave"
-        >保存</v-btn>
+        >{{ t('recipes.save') }}</v-btn>
         <v-btn
           size="small"
           variant="text"
@@ -30,7 +30,7 @@
           :disabled="saving"
           @click="cancelEdit"
           class="ml-1"
-        >取消</v-btn>
+        >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
     <v-divider />
@@ -44,7 +44,7 @@
             size="small"
             variant="tonal"
             color="primary"
-          >{{ recipe.category }}</v-chip>
+          >{{ recipeCategoryLabel(recipe.category) }}</v-chip>
           <v-chip
             v-if="recipe.difficulty"
             size="small"
@@ -56,7 +56,7 @@
             size="small"
             variant="tonal"
             color="success"
-          >⤴ 成品：{{ resultIngredientName }}</v-chip>
+          >{{ t('recipes.resultOutput', { name: resultIngredientName }) }}</v-chip>
         </div>
         <div
           v-if="recipe.description"
@@ -66,7 +66,7 @@
         <div
           v-else
           class="text-body-2 text-medium-emphasis"
-        >暂未填写介绍</div>
+        >{{ t('recipes.noIntroduction') }}</div>
       </v-card-text>
     </template>
 
@@ -74,7 +74,7 @@
     <v-card-text v-else>
       <v-text-field
         v-model="editForm.name"
-        label="菜谱名称"
+        :label="t('recipes.name')"
         variant="outlined"
         density="compact"
         maxlength="200"
@@ -85,7 +85,7 @@
         <v-col cols="6">
           <v-select
             v-model="editForm.category"
-            label="分类"
+            :label="t('recipes.category')"
             variant="outlined"
             density="compact"
             :items="categoryOptions"
@@ -95,7 +95,7 @@
         <v-col cols="6">
           <v-select
             v-model="editForm.difficulty"
-            label="难度"
+            :label="t('recipes.difficulty')"
             variant="outlined"
             density="compact"
             :items="difficultyOptions"
@@ -107,7 +107,7 @@
       </v-row>
       <v-textarea
         v-model="editForm.description"
-        label="菜谱简介"
+        :label="t('recipes.description')"
         variant="outlined"
         density="compact"
         auto-grow
@@ -118,14 +118,14 @@
       />
 
       <!-- 成品产出原料（半成品菜谱） -->
-      <div class="text-subtitle-2 mb-1">成品产出</div>
-      <div class="text-caption text-medium-emphasis mb-2">若本菜谱产出的成品可作为其它菜谱的原料（如蒸米饭→米饭），请选择对应原料，其成本将由本菜谱推导。</div>
+      <div class="text-subtitle-2 mb-1">{{ t('recipes.resultOutputTitle') }}</div>
+      <div class="text-caption text-medium-emphasis mb-2">{{ t('recipes.resultOutputHint') }}</div>
       <v-autocomplete
         v-model="editForm.result_ingredient_id"
         :items="ingredientOptions"
         item-title="name"
         item-value="id"
-        label="成品产出原料"
+        :label="t('recipes.resultIngredient')"
         variant="outlined"
         density="compact"
         clearable
@@ -137,7 +137,7 @@
 
       <!-- 配图管理 -->
       <v-divider class="mb-3" />
-      <div class="text-subtitle-2 mb-2">配图管理</div>
+      <div class="text-subtitle-2 mb-2">{{ t('recipes.imageManagement') }}</div>
       <ImageManager
         :model-value="editImages"
         :image-urls="editImageUrls"
@@ -155,11 +155,47 @@
 import { ref, computed, watch } from 'vue'
 import { api } from '@/api'
 import ImageManager from './ImageManager.vue'
-import type { RecipeDetail } from './types'
+import {
+  type RecipeDetail,
+} from './types'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   recipe: RecipeDetail
 }>()
+
+const { t } = useI18n()
+
+const RECIPE_CATEGORY_KEYS: Record<string, string> = {
+  '荤菜': 'recipeCategories.meatDish',
+  '素菜': 'recipeCategories.vegetableDish',
+  '水产': 'recipeCategories.seafood',
+  '主食': 'recipeCategories.staple',
+  '汤与粥': 'recipeCategories.soupPorridge',
+  '早餐': 'recipeCategories.breakfast',
+  '甜品': 'recipeCategories.dessert',
+  '调料': 'recipeCategories.seasoning',
+  '半成品': 'recipeCategories.semiFinished',
+  '小食': 'recipeCategories.snack',
+}
+
+const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
+  simple: 'recipeDifficulties.simple',
+  easy: 'recipeDifficulties.easy',
+  medium: 'recipeDifficulties.medium',
+  hard: 'recipeDifficulties.hard',
+  expert: 'recipeDifficulties.expert',
+}
+
+function recipeCategoryLabel(category?: string): string {
+  const key = category ? RECIPE_CATEGORY_KEYS[category] : null
+  return key && category ? t(key) : (category || '')
+}
+
+function recipeDifficultyLabel(difficulty?: string): string {
+  const key = difficulty ? RECIPE_DIFFICULTY_KEYS[difficulty] : null
+  return key && difficulty ? t(key) : (difficulty || '')
+}
 
 const emit = defineEmits<{
   (e: 'saved', recipe: RecipeDetail): void
@@ -216,29 +252,29 @@ watch(() => props.recipe.result_ingredient_id, async (id) => {
   }
 }, { immediate: true })
 
-const categoryOptions = [
-  { title: '荤菜', value: '荤菜' },
-  { title: '素菜', value: '素菜' },
-  { title: '水产', value: '水产' },
-  { title: '主食', value: '主食' },
-  { title: '汤与粥', value: '汤与粥' },
-  { title: '早餐', value: '早餐' },
-  { title: '甜品', value: '甜品' },
-  { title: '调料', value: '调料' },
-  { title: '半成品', value: '半成品' },
-  { title: '小食', value: '小食' },
-]
+const categoryOptions = computed(() => [
+  { title: recipeCategoryLabel('荤菜'), value: '荤菜' },
+  { title: recipeCategoryLabel('素菜'), value: '素菜' },
+  { title: recipeCategoryLabel('水产'), value: '水产' },
+  { title: recipeCategoryLabel('主食'), value: '主食' },
+  { title: recipeCategoryLabel('汤与粥'), value: '汤与粥' },
+  { title: recipeCategoryLabel('早餐'), value: '早餐' },
+  { title: recipeCategoryLabel('甜品'), value: '甜品' },
+  { title: recipeCategoryLabel('调料'), value: '调料' },
+  { title: recipeCategoryLabel('半成品'), value: '半成品' },
+  { title: recipeCategoryLabel('小食'), value: '小食' },
+])
 
-const difficultyOptions = [
-  { label: '简易', value: 'simple' },
-  { label: '简单', value: 'easy' },
-  { label: '中等', value: 'medium' },
-  { label: '困难', value: 'hard' },
-  { label: '专家', value: 'expert' },
-]
+const difficultyOptions = computed(() => [
+  { label: recipeDifficultyLabel('simple'), value: 'simple' },
+  { label: recipeDifficultyLabel('easy'), value: 'easy' },
+  { label: recipeDifficultyLabel('medium'), value: 'medium' },
+  { label: recipeDifficultyLabel('hard'), value: 'hard' },
+  { label: recipeDifficultyLabel('expert'), value: 'expert' },
+])
 
 const difficultyLabel = computed(() => {
-  const opt = difficultyOptions.find(d => d.value === props.recipe.difficulty)
+  const opt = difficultyOptions.value.find(d => d.value === props.recipe.difficulty)
   return opt?.label || props.recipe.difficulty || ''
 })
 

@@ -2,9 +2,9 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="primary">mdi-chef-hat</v-icon>
-      做法步骤
+      {{ t('recipes.steps') }}
       <v-chip size="small" class="ml-2" v-if="recipe.cooking_steps?.length">
-        {{ editing ? editRows.length : recipe.cooking_steps.length }}
+        {{ formatNumber(editing ? editRows.length : recipe.cooking_steps.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
       <template v-if="!editing">
@@ -14,7 +14,7 @@
           color="primary"
           prepend-icon="mdi-pencil"
           @click="startEdit"
-        >编辑</v-btn>
+        >{{ t('recipes.edit') }}</v-btn>
       </template>
       <template v-else>
         <v-btn
@@ -24,7 +24,7 @@
           prepend-icon="mdi-check"
           :loading="saving"
           @click="handleSave"
-        >保存</v-btn>
+        >{{ t('recipes.save') }}</v-btn>
         <v-btn
           size="small"
           variant="text"
@@ -33,7 +33,7 @@
           :disabled="saving"
           @click="cancelEdit"
           class="ml-1"
-        >取消</v-btn>
+        >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
     <v-divider />
@@ -66,7 +66,7 @@
         </v-timeline>
       </v-card-text>
       <v-card-text v-else class="text-center py-4 text-medium-emphasis">
-        暂无做法数据
+        {{ t('recipes.noSteps') }}
       </v-card-text>
     </template>
 
@@ -88,14 +88,30 @@
             <div class="d-flex ga-2 mb-2">
               <!-- 上下移动 -->
               <div class="d-flex flex-column move-btns">
-                <v-btn icon="mdi-chevron-up" size="x-small" variant="text" :disabled="index === 0" @click="moveUp(index)" />
-                <v-btn icon="mdi-chevron-down" size="x-small" variant="text" :disabled="index === editRows.length - 1" @click="moveDown(index)" />
+                <v-btn
+                  icon="mdi-chevron-up"
+                  size="x-small"
+                  variant="text"
+                  :disabled="index === 0"
+                  :title="t('recipes.moveUp')"
+                  :aria-label="t('recipes.moveUp')"
+                  @click="moveUp(index)"
+                />
+                <v-btn
+                  icon="mdi-chevron-down"
+                  size="x-small"
+                  variant="text"
+                  :disabled="index === editRows.length - 1"
+                  :title="t('recipes.moveDown')"
+                  :aria-label="t('recipes.moveDown')"
+                  @click="moveDown(index)"
+                />
               </div>
 
               <!-- 描述 -->
               <v-textarea
                 v-model="row.content"
-                label="步骤描述"
+                :label="t('recipes.stepDescription')"
                 variant="outlined"
                 density="compact"
                 auto-grow
@@ -107,7 +123,7 @@
               <!-- 小贴士 -->
               <v-text-field
                 v-model="row.tips"
-                label="小贴士"
+                :label="t('recipes.tip')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -123,6 +139,8 @@
                 color="error"
                 variant="text"
                 class="mt-2"
+                :title="t('recipes.removeStep')"
+                :aria-label="t('recipes.removeStep')"
                 @click="removeRow(index)"
               />
             </div>
@@ -133,7 +151,7 @@
               <v-text-field
                 v-model="row.duration_minutes"
                 type="number"
-                label="时长（分钟）"
+                :label="t('recipes.durationMinutes')"
                 variant="outlined"
                 density="compact"
                 hide-details
@@ -154,7 +172,7 @@
           prepend-icon="mdi-plus"
           size="small"
           @click="addRow"
-        >添加步骤</v-btn>
+        >{{ t('recipes.addStep') }}</v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -164,10 +182,16 @@
 import { ref } from 'vue'
 import { api } from '@/api'
 import type { RecipeDetail, StepEditRow } from './types'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   recipe: RecipeDetail
 }>()
+
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const emit = defineEmits<{
   (e: 'saved', recipe: RecipeDetail): void

@@ -2,9 +2,9 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="primary">mdi-food-apple-outline</v-icon>
-      原料列表
+      {{ t('recipes.ingredients') }}
       <v-chip size="small" class="ml-2" v-if="recipe.ingredients?.length">
-        {{ editing ? editRows.length : recipe.ingredients.length }}
+        {{ formatNumber(editing ? editRows.length : recipe.ingredients.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
       <template v-if="!editing">
@@ -14,7 +14,7 @@
           color="primary"
           prepend-icon="mdi-pencil"
           @click="startEdit"
-        >编辑</v-btn>
+        >{{ t('recipes.edit') }}</v-btn>
       </template>
       <template v-else>
         <v-btn
@@ -24,7 +24,7 @@
           prepend-icon="mdi-check"
           :loading="saving"
           @click="handleSave"
-        >保存</v-btn>
+        >{{ t('recipes.save') }}</v-btn>
         <v-btn
           size="small"
           variant="text"
@@ -33,7 +33,7 @@
           :disabled="saving"
           @click="cancelEdit"
           class="ml-1"
-        >取消</v-btn>
+        >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
     <v-divider />
@@ -48,7 +48,7 @@
         :disabled="displayServings <= 1"
         @click="onDecrementServings"
       >−</v-btn>
-      <span class="text-body-1 mx-3">{{ displayServings }} 人份</span>
+      <span class="text-body-1 mx-3">{{ t('recipes.servingsUnit', { count: formatNumber(displayServings, localeStore.effectiveFormatLocale) }) }}</span>
       <v-btn
         variant="outlined"
         size="small"
@@ -64,7 +64,7 @@
         class="ml-2"
         @click="onResetServings"
       >
-        配方默认 {{ servings }} 人份
+        {{ t('recipes.recipeDefaultServings', { count: formatNumber(servings, localeStore.effectiveFormatLocale) }) }}
       </v-chip>
     </div>
     <v-divider v-if="!editing" />
@@ -94,30 +94,33 @@
               @click="goToIngredient(ingredient.ingredient_id)"
             >
               {{ ingredient.name }}
-              <v-chip v-if="ingredient.is_optional" size="x-small" color="info" variant="flat" class="ml-1">可选</v-chip>
+              <v-chip v-if="ingredient.is_optional" size="x-small" color="info" variant="flat" class="ml-1">{{ t('recipes.optional') }}</v-chip>
               <v-icon size="x-small" class="ml-1">mdi-chevron-right</v-icon>
             </div>
             <div
               class="ingredient-quantity text-body-2 text-right mr-4 ingredient-clickable"
               style="min-width: 80px"
               @click="toggleConvert(ingredient)"
-              :title="convertState[ingredient.id] === 'converted' ? '点击切回原始单位' : '点击转换为我偏好的单位'"
+              :title="convertState[ingredient.id] === 'converted' ? t('recipes.clickOriginalUnit') : t('recipes.clickPreferredUnit')"
             >
               <v-icon v-if="converting[ingredient.id]" size="small" class="mr-1">mdi-loading</v-icon>
               <template v-if="convertState[ingredient.id] === 'converted' && convertedDisplay[ingredient.id]">
                 {{ convertedDisplay[ingredient.id].value }} {{ convertedDisplay[ingredient.id].unit }}
               </template>
               <template v-else-if="ingredient.quantity && ingredient.quantity_range">
-                {{ ingredient.quantity_range.min }}~{{ ingredient.quantity_range.max }} {{ ingredient.unit }}
-                <span class="text-medium-emphasis">（推荐 {{ ingredient.quantity }} {{ ingredient.unit }}）</span>
+                {{ formatNumber(ingredient.quantity_range.min, localeStore.effectiveFormatLocale) }}~{{ formatNumber(ingredient.quantity_range.max, localeStore.effectiveFormatLocale) }} {{ ingredientUnit(ingredient.unit) }}
+                <span class="text-medium-emphasis">{{ t('recipes.recommendedParenthetical', {
+                  amount: formatNumber(ingredient.quantity, localeStore.effectiveFormatLocale),
+                  unit: ingredientUnit(ingredient.unit),
+                }) }}</span>
               </template>
               <span v-else-if="scaleQuantity(ingredient.quantity, originalServings)">
-                {{ scaleQuantity(ingredient.quantity, originalServings) }} {{ ingredient.unit }}
+                {{ scaleQuantity(ingredient.quantity, originalServings) }} {{ ingredientUnit(ingredient.unit) }}
               </span>
               <span v-else-if="ingredient.quantity_range">
-                {{ ingredient.quantity_range.min }}~{{ ingredient.quantity_range.max }} {{ ingredient.unit }}
+                {{ formatNumber(ingredient.quantity_range.min, localeStore.effectiveFormatLocale) }}~{{ formatNumber(ingredient.quantity_range.max, localeStore.effectiveFormatLocale) }} {{ ingredientUnit(ingredient.unit) }}
               </span>
-              <span v-else-if="ingredient.original_quantity">{{ ingredient.original_quantity }}</span>
+              <span v-else-if="ingredient.original_quantity">{{ originalQuantityLabel(ingredient.original_quantity) }}</span>
               <span v-else>-</span>
             </div>
             <div class="ingredient-cost text-body-2 text-right d-flex align-center justify-end" style="min-width: 60px">
@@ -127,7 +130,7 @@
                     <v-icon v-bind="props" size="small" color="info" class="mr-1">mdi-information</v-icon>
                   </template>
                   <div>
-                    <div class="text-caption">根据以下食材计算成本：</div>
+                    <div class="text-caption">{{ t('recipes.calculatedFromIngredientsCost') }}</div>
                     <div class="text-body-2 font-weight-bold">{{ getIngredientFallbackChain(ingredient) }}</div>
                   </div>
                 </v-tooltip>
@@ -141,7 +144,7 @@
         </div>
       </v-card-text>
       <v-card-text v-else class="text-center py-4 text-medium-emphasis">
-        暂无原料数据
+        {{ t('recipes.noIngredients') }}
       </v-card-text>
     </template>
 
@@ -151,12 +154,12 @@
         <!-- 表头 -->
         <div class="edit-table-header d-none d-md-flex text-caption text-medium-emphasis px-3 py-2">
           <div style="width: 30px"></div>
-          <div class="flex-grow-1" style="min-width: 130px">原料</div>
-          <div style="width: 65px" class="text-center">类型</div>
-          <div style="width: 70px" class="text-center">推荐值</div>
+          <div class="flex-grow-1" style="min-width: 130px">{{ t('recipes.ingredient') }}</div>
+          <div style="width: 65px" class="text-center">{{ t('recipes.type') }}</div>
+          <div style="width: 70px" class="text-center">{{ t('recipes.recommended') }}</div>
           <div style="width: 70px" class="text-center">min</div>
           <div style="width: 70px" class="text-center">max</div>
-          <div style="width: 70px" class="text-center">单位</div>
+          <div style="width: 70px" class="text-center">{{ t('recipes.unit') }}</div>
           <div style="width: 30px"></div>
         </div>
 
@@ -170,8 +173,24 @@
           <!-- 第1行：原料 + 类型 + 删除 -->
           <div class="d-flex flex-wrap align-start ga-2 mb-1">
             <div class="d-flex flex-column move-btns">
-              <v-btn icon="mdi-chevron-up" size="x-small" variant="text" :disabled="index === 0" @click="moveUp(index)" />
-              <v-btn icon="mdi-chevron-down" size="x-small" variant="text" :disabled="index === editRows.length - 1" @click="moveDown(index)" />
+              <v-btn
+                icon="mdi-chevron-up"
+                size="x-small"
+                variant="text"
+                :disabled="index === 0"
+                :title="t('recipes.moveUp')"
+                :aria-label="t('recipes.moveUp')"
+                @click="moveUp(index)"
+              />
+              <v-btn
+                icon="mdi-chevron-down"
+                size="x-small"
+                variant="text"
+                :disabled="index === editRows.length - 1"
+                :title="t('recipes.moveDown')"
+                :aria-label="t('recipes.moveDown')"
+                @click="moveDown(index)"
+              />
             </div>
 
             <v-autocomplete
@@ -179,7 +198,7 @@
               :items="ingredientSearchResults"
               item-title="name"
               item-value="name"
-              label="原料"
+              :label="t('recipes.ingredient')"
               variant="outlined"
               density="compact"
               hide-details
@@ -196,7 +215,7 @@
               :items="quantityTypeOptions"
               item-title="label"
               item-value="value"
-              label="类型"
+              :label="t('recipes.type')"
               variant="outlined"
               density="compact"
               hide-details
@@ -209,6 +228,8 @@
               color="error"
               variant="text"
               class="mt-1"
+              :title="t('recipes.removeIngredient')"
+              :aria-label="t('recipes.removeIngredient')"
               @click="removeRow(index)"
             />
           </div>
@@ -218,7 +239,7 @@
             <v-text-field
               v-model="row.quantity_recommended"
               type="number"
-              label="推荐"
+              :label="t('recipes.recommended')"
               variant="outlined"
               density="compact"
               hide-details
@@ -253,7 +274,7 @@
               :items="unitOptions"
               item-title="label"
               item-value="value"
-              label="单位"
+              :label="t('recipes.unit')"
               variant="outlined"
               density="compact"
               hide-details
@@ -266,7 +287,7 @@
           <div class="d-flex flex-wrap align-center ga-2 pl-7">
             <v-text-field
               v-model="row.note"
-              label="备注"
+              :label="t('recipes.note')"
               variant="outlined"
               density="compact"
               hide-details
@@ -276,7 +297,7 @@
             />
             <v-checkbox
               v-model="row.is_optional"
-              label="可选"
+              :label="t('recipes.optional')"
               density="compact"
               hide-details
               class="mt-0 pt-0"
@@ -291,7 +312,7 @@
             prepend-icon="mdi-plus"
             size="small"
             @click="addRow"
-          >添加原料</v-btn>
+          >{{ t('recipes.addIngredient') }}</v-btn>
         </div>
       </div>
     </v-card-text>
@@ -306,6 +327,10 @@ import type { RecipeDetail, RecipeIngredient, IngredientEditRow, IngredientOptio
 import { useUserUnits, type UnitPref } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
+import { unitDisplayName } from '@/utils/catalogLabels'
 
 const props = defineProps<{
   recipe: RecipeDetail
@@ -340,6 +365,17 @@ const onResetServings = () => {
 
 const router = useRouter()
 const { currency: userCurrency } = useUserCurrency()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
+
+const QUANTITY_TYPE_KEYS: Record<string, string> = {
+  '适量': 'quantityTypes.toTaste',
+  '少许': 'quantityTypes.smallAmount',
+}
+
+function quantityTypeLabel(quantityType: string): string {
+  return t(QUANTITY_TYPE_KEYS[quantityType] || 'quantityTypes.numeric')
+}
 const editing = ref(false)
 const saving = ref(false)
 const editRows = ref<IngredientEditRow[]>([])
@@ -356,15 +392,19 @@ const moveDown = (index: number) => {
   editRows.value.splice(index + 1, 0, item)
 }
 const ingredientSearchResults = ref<IngredientOption[]>([])
-const unitOptions = ref<{ label: string; value: string }[]>([])
+const unitRows = ref<UnitOption[]>([])
+const unitOptions = computed(() => unitRows.value.map(unit => ({
+  label: unitDisplayName(unit),
+  value: unit.abbreviation || unit.name,
+})))
 const unitMap = ref<Record<string, number>>({})
 const searchingIngredient = ref(false)
 
-const quantityTypeOptions = [
-  { label: '数值', value: '' },
-  { label: '适量', value: '适量' },
-  { label: '少许', value: '少许' },
-]
+const quantityTypeOptions = computed(() => [
+  { label: quantityTypeLabel(''), value: '' },
+  { label: quantityTypeLabel('适量'), value: '适量' },
+  { label: quantityTypeLabel('少许'), value: '少许' },
+])
 
 // 原始配方份数
 const originalServings = computed(() => props.servings ?? props.recipe.servings ?? 1)
@@ -376,8 +416,10 @@ const scaleQuantity = (quantity: string | number | undefined, origServings: numb
   if (isNaN(num) || num === 0) return ''
   const ratio = displayServings.value / (origServings || 1)
   const scaled = num * ratio
-  if (Number.isInteger(scaled)) return scaled.toString()
-  return scaled.toFixed(1).replace(/\.0$/, '')
+  return formatNumber(scaled, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 1,
+  })
 }
 
 // 点击转换单位：每行独立 original | converted
@@ -388,9 +430,20 @@ const converting = ref<Record<number, boolean>>({})
 
 const formatQty = (n: number): string => {
   if (!Number.isFinite(n)) return ''
-  if (Number.isInteger(n)) return n.toString()
-  return n.toFixed(2).replace(/\.?0+$/, '')
+  return formatNumber(n, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
 }
+
+const ingredientUnit = (unit?: string) => {
+  if (!unit) return ''
+  return unitDisplayName({ name: unit, abbreviation: unit })
+}
+
+const originalQuantityLabel = (quantity: string) => (
+  quantity === '适量' || quantity === '少许' ? quantityTypeLabel(quantity) : quantity
+)
 
 // 调 POST /units/convert 把原料数量转到用户偏好单位（先质量后体积，跨类走密度）。成功缓存并返回 true。
 const ensureConverted = async (ingredient: RecipeIngredient): Promise<boolean> => {
@@ -403,7 +456,7 @@ const ensureConverted = async (ingredient: RecipeIngredient): Promise<boolean> =
     if (target.abbreviation === fromUnit) {
       convertedDisplay.value[ingredient.id] = {
         value: formatQty(Number(ingredient.quantity) * ratio),
-        unit: target.name,
+        unit: unitDisplayName(target),
       }
       return true
     }
@@ -416,7 +469,7 @@ const ensureConverted = async (ingredient: RecipeIngredient): Promise<boolean> =
       if (res?.value !== undefined && res?.value !== null) {
         convertedDisplay.value[ingredient.id] = {
           value: formatQty(Number(res.value) * ratio),
-          unit: target.name,
+          unit: unitDisplayName(target),
         }
         return true
       }
@@ -450,7 +503,7 @@ const formatIngredientCost = (ingredient: RecipeIngredient) => {
   const item = props.costBreakdown.find((b: any) => b.recipe_ingredient_id === ingredient.id)
   if (!item) return '-'
   const ratio = displayServings.value / originalServings.value
-  return formatMoney((item.cost || 0) * ratio, userCurrency.value)
+  return formatMoney((item.cost || 0) * ratio, userCurrency.value, localeStore.effectiveFormatLocale)
 }
 
 const getIngredientFallbackChain = (ingredient: RecipeIngredient): string | null => {
@@ -500,10 +553,14 @@ const loadUnits = async () => {
     const res = await api.get('/units/')
     const items: any[] = Array.isArray(res) ? res : (res?.items || [])
     const map: Record<string, number> = {}
-    unitOptions.value = items.map((u: any) => {
+    unitRows.value = items.map((u: any) => ({
+      id: u.id,
+      name: u.name,
+      abbreviation: u.abbreviation,
+    }))
+    items.forEach((u: any) => {
       const key = u.abbreviation || u.name
       if (key && u.id) map[key] = u.id
-      return { label: key, value: key }
     })
     unitMap.value = map
   } catch (e) {
@@ -605,7 +662,9 @@ const handleSave = async () => {
   })
 
   if (invalidRows.length > 0) {
-    saveError.value = `第 ${invalidRows.join('、')} 行的用量组合不完整。用量字段仅支持：①仅推荐值 ②推荐值+min+max ③仅min+max`
+    saveError.value = t('recipes.incompleteQuantityRows', {
+      rows: new Intl.ListFormat(localeStore.effectiveFormatLocale, { type: 'conjunction' }).format(invalidRows),
+    })
     saving.value = false
     return
   }
@@ -655,7 +714,7 @@ const handleSave = async () => {
     editing.value = false
   } catch (e: any) {
     console.error('保存原料失败', e)
-    saveError.value = e.response?.data?.detail || '保存失败，请重试'
+    saveError.value = e.response?.data?.detail || t('recipes.saveFailedRetry')
   } finally {
     saving.value = false
   }

@@ -1,369 +1,189 @@
-/**
- * 营养素标签映射
- * 用于统一管理原料、商品、菜谱详情页面的营养素显示
- */
+import { t } from '@/plugins/i18n'
 
 /**
- * 中文营养素名称到显示标签的映射
- * 用于营养素显示标签的统一
+ * Stable nutrient keys are shared by recipe, nutrition, USDA, product, and
+ * ingredient surfaces. English source keys and common stored Chinese aliases
+ * normalize to these catalog keys before display.
  */
-export const NUTRITION_LABEL_MAP: Record<string, string> = {
-  '能量': '热量',
-  '蛋白质': '蛋白质',
-  '脂肪': '脂肪',
-  '碳水化合物': '碳水化合物',
-  '膳食纤维': '膳食纤维',
-  '钙': '钙',
-  '铁': '铁',
-  '钠': '钠',
-  '钾': '钾',
-  '镁': '镁',
-  '磷': '磷',
-  '锌': '锌',
-  '铜': '铜',
-  '锰': '锰',
-  '硒': '硒',
-  '维生素A': '维生素A',
-  '维生素C': '维生素C',
-  '维生素B1': '维生素B1',
-  '维生素B2': '维生素B2',
-  '维生素B3（烟酸）': '维生素B3（烟酸）',
-  '维生素B3': '维生素B3（烟酸）',
-  '维生素B5（泛酸）': '维生素B5（泛酸）',
-  '维生素B5': '维生素B5（泛酸）',
-  '维生素B6': '维生素B6',
-  '维生素B12': '维生素B12',
-  '维生素B12（强化）': '维生素B12（强化）',
-  '维生素D': '维生素D',
-  '维生素E': '维生素E',
-  '维生素E（强化）': '维生素E（强化）',
-  '维生素K': '维生素K',
-  '叶酸': '叶酸',
-  '生物素': '生物素',
-  '胆碱': '胆碱',
-  '饱和脂肪': '饱和脂肪',
-  '单不饱和脂肪酸': '单不饱和脂肪',
-  '多不饱和脂肪酸': '多不饱和脂肪',
-  '反式脂肪酸': '反式脂肪',
-  '胆固醇': '胆固醇',
-  '总糖': '总糖',
-  '蔗糖': '蔗糖',
-  '葡萄糖': '葡萄糖',
-  '果糖': '果糖',
-  '半乳糖': '半乳糖',
-  '乳糖': '乳糖',
-  '麦芽糖': '麦芽糖',
-  '淀粉': '淀粉',
-  '水分': '水分',
-  '灰分': '灰分',
-  '酒精': '酒精',
-  '咖啡因': '咖啡因',
-  '可可碱': '可可碱',
-  '视黄醇': '视黄醇',
-  'α-胡萝卜素': 'α-胡萝卜素',
-  'β-胡萝卜素': 'β-胡萝卜素',
-  'β-隐黄质': 'β-隐黄质',
-  '番茄红素': '番茄红素',
-  '叶黄素和玉米黄质': '叶黄素和玉米黄质',
-  'α-生育酚': 'α-生育酚',
-  'β-生育酚': 'β-生育酚',
-  'γ-生育酚': 'γ-生育酚',
-  'δ-生育酚': 'δ-生育酚',
-  'α-生育三烯酚': 'α-生育三烯酚',
-  'β-生育三烯酚': 'β-生育三烯酚',
-  'γ-生育三烯酚': 'γ-生育三烯酚',
-  'δ-生育三烯酚': 'δ-生育三烯酚',
-  '丁酸': '丁酸',
-  '己酸': '己酸',
-  '辛酸': '辛酸',
-  '癸酸': '癸酸',
-  '月桂酸': '月桂酸',
-  '肉豆蔻酸': '肉豆蔻酸',
-  '十五烷酸': '十五烷酸',
-  '棕榈酸': '棕榈酸',
-  '十七烷酸': '十七烷酸',
-  '硬脂酸': '硬脂酸',
-  '花生酸': '花生酸',
-  '山嵛酸': '山嵛酸',
-  '木焦油酸': '木焦油酸',
-  '肉豆蔻油酸': '肉豆蔻油酸',
-  '十五碳烯酸': '十五碳烯酸',
-  '棕榈油酸': '棕榈油酸',
-  '顺式-棕榈油酸': '棕榈油酸',
-  '十七碳烯酸': '十七碳烯酸',
-  '油酸': '油酸',
-  '顺式-油酸': '油酸',
-  '二十碳烯酸': '二十碳烯酸',
-  '二十二碳烯酸': '二十二碳烯酸',
-  '顺式-二十二碳烯酸': '二十二碳烯酸',
-  '顺式-二十四碳烯酸': '二十四碳烯酸',
-  '亚油酸': '亚油酸',
-  '共轭亚油酸': '共轭亚油酸',
-  '顺式-亚油酸': '亚油酸',
-  '亚麻酸': '亚麻酸',
-  'α-亚麻酸': 'α-亚麻酸',
-  'γ-亚麻酸': 'γ-亚麻酸',
-  '十八碳四烯酸': '十八碳四烯酸',
-  '二十碳二烯酸': '二十碳二烯酸',
-  '二十碳三烯酸': '二十碳三烯酸',
-  '二高-γ-亚麻酸': '二高-γ-亚麻酸',
-  '花生四烯酸': '花生四烯酸',
-  '二十碳五烯酸': '二十碳五烯酸（EPA）',
-  '二十二碳四烯酸': '二十二碳四烯酸',
-  '二十二碳五烯酸': '二十二碳五烯酸（DPA）',
-  '二十二碳六烯酸': '二十二碳六烯酸（DHA）',
-  '反式-棕榈油酸': '反式-棕榈油酸',
-  '反式-油酸': '反式-油酸',
-  '反式-亚油酸': '反式-亚油酸',
-  '反式-二十二碳烯酸': '反式-二十二碳烯酸',
-  // 菜谱详情中的额外映射
-  'β-谷甾醇': 'β-谷甾醇',
-  '丙氨酸': '丙氨酸',
-  '丝氨酸': '丝氨酸',
-  '二十一碳五烯酸': '二十一碳五烯酸',
-  '亚油酸异构体': '亚油酸异构体',
-  '亚麻酸异构体': '亚麻酸异构体',
-  '亮氨酸': '亮氨酸',
-  '十三烷酸': '十三烷酸',
-  '单不饱和脂肪': '单不饱和脂肪',
-  '单烯反式脂肪酸': '单烯反式脂肪酸',
-  '反式-11-油酸': '反式-11-油酸',
-  '反式-亚油酸二反式异构体': '反式-亚油酸二反式异构体',
-  '多不饱和脂肪': '多不饱和脂肪',
-  '多烯反式脂肪酸': '多烯反式脂肪酸',
-  '天冬氨酸': '天冬氨酸',
-  '异亮氨酸': '异亮氨酸',
-  '植物固醇': '植物固醇',
-  '氟': '氟',
-  '甘氨酸': '甘氨酸',
-  '甜菜碱': '甜菜碱',
-  '精氨酸': '精氨酸',
-  '组氨酸': '组氨酸',
-  '维生素D2（麦角钙化醇）': '维生素D2（麦角钙化醇）',
-  '维生素D3（胆钙化醇）': '维生素D3（胆钙化醇）',
-  '维生素K1（二氢叶绿醌）': '维生素K1（二氢叶绿醌）',
-  '维生素K2（甲萘醌-4）': '维生素K2（甲萘醌-4）',
-  '缬氨酸': '缬氨酸',
-  '羟脯氨酸': '羟脯氨酸',
-  '胱氨酸': '胱氨酸',
-  '脯氨酸': '脯氨酸',
-  '色氨酸': '色氨酸',
-  '苏氨酸': '苏氨酸',
-  '苯丙氨酸': '苯丙氨酸',
-  '菜油固醇': '菜油固醇',
-  '蛋氨酸': '蛋氨酸',
-  '谷氨酸': '谷氨酸',
-  '豆固醇': '豆固醇',
-  '赖氨酸': '赖氨酸',
-  '酪氨酸': '酪氨酸'
+export const NUTRIENT_KEYS: Record<string, string> = {
+  energy_kcal: 'nutrients.energy', energy: 'nutrients.energy',
+  calorie: 'nutrients.energy', calories: 'nutrients.energy',
+  protein: 'nutrients.protein',
+  total_fat: 'nutrients.fat', fat: 'nutrients.fat',
+  carbohydrate: 'nutrients.carbohydrate', carbs: 'nutrients.carbohydrate',
+  fiber: 'nutrients.fiber', dietary_fiber: 'nutrients.fiber',
+  sugar: 'nutrients.sugars', total_sugars: 'nutrients.sugars',
+  starch: 'nutrients.starch', water: 'nutrients.water',
+  alcohol: 'nutrients.alcohol', alcohol_ethyl: 'nutrients.alcohol',
+  ash: 'nutrients.ash',
+  saturated: 'nutrients.saturatedFat', saturated_fat: 'nutrients.saturatedFat',
+  monounsaturated: 'nutrients.monounsaturatedFat', monounsaturated_fat: 'nutrients.monounsaturatedFat',
+  polyunsaturated: 'nutrients.polyunsaturatedFat', polyunsaturated_fat: 'nutrients.polyunsaturatedFat',
+  trans: 'nutrients.transFat', trans_fat: 'nutrients.transFat', fatty_acids_total_trans: 'nutrients.transFat',
+  cholesterol: 'nutrients.cholesterol',
+  'sfa_4:0': 'nutrients.butyricAcid', 'sfa_6:0': 'nutrients.caproicAcid',
+  'sfa_8:0': 'nutrients.caprylicAcid', 'sfa_10:0': 'nutrients.capricAcid',
+  'sfa_12:0': 'nutrients.lauricAcid', 'sfa_14:0': 'nutrients.myristicAcid',
+  'sfa_16:0': 'nutrients.palmiticAcid', 'sfa_18:0': 'nutrients.stearicAcid',
+  'mufa_14:1': 'nutrients.myristoleicAcid', 'mufa_15:1': 'nutrients.pentadecenoicAcid',
+  'mufa_16:1': 'nutrients.palmitoleicAcid', 'mufa_17:1': 'nutrients.heptadecenoicAcid',
+  'mufa_18:1': 'nutrients.oleicAcid', 'mufa_20:1': 'nutrients.gondoicAcid',
+  'mufa_22:1': 'nutrients.erucicAcid', 'mufa_24:1': 'nutrients.nervonicAcid',
+  'pufa_18:2': 'nutrients.linoleicAcid', 'pufa_18:3': 'nutrients.linolenicAcid',
+  'pufa_18:4': 'nutrients.stearidonicAcid', 'pufa_20:2': 'nutrients.eicosadienoicAcid',
+  'pufa_20:3': 'nutrients.meadAcid', 'pufa_20:4': 'nutrients.arachidonicAcid',
+  'pufa_20:5_n_3_epa': 'nutrients.epa', 'pufa_20:5_n_3_(epa)': 'nutrients.epa',
+  'pufa_22:5_n_3_dpa': 'nutrients.dpa', 'pufa_22:5_n_3_(dpa)': 'nutrients.dpa',
+  'pufa_22:6_n_3_dha': 'nutrients.dha', 'pufa_22:6_n_3_(dha)': 'nutrients.dha',
+  vitamin_a: 'nutrients.vitaminA', vitamin_a_rae: 'nutrients.vitaminA',
+  vitamin_a_iu: 'nutrients.vitaminA', retinol: 'nutrients.retinol',
+  vitamin_c: 'nutrients.vitaminC', vitamin_d: 'nutrients.vitaminD',
+  vitamin_e: 'nutrients.vitaminE', vitamin_k: 'nutrients.vitaminK',
+  thiamin: 'nutrients.vitaminB1', vitamin_b1: 'nutrients.vitaminB1',
+  riboflavin: 'nutrients.vitaminB2', vitamin_b2: 'nutrients.vitaminB2',
+  niacin: 'nutrients.niacin', vitamin_b3: 'nutrients.niacin',
+  pantothenic_acid: 'nutrients.vitaminB5', vitamin_b5: 'nutrients.vitaminB5',
+  b6: 'nutrients.vitaminB6', vitamin_b6: 'nutrients.vitaminB6',
+  b12: 'nutrients.vitaminB12', vitamin_b12: 'nutrients.vitaminB12',
+  folate: 'nutrients.folate', folate_food: 'nutrients.folate',
+  folate_dfe: 'nutrients.folate', folic_acid: 'nutrients.folate',
+  biotin: 'nutrients.biotin', choline: 'nutrients.choline', choline_total: 'nutrients.choline',
+  betaine: 'nutrients.betaine', vitamin_e_added: 'nutrients.vitaminEAdded',
+  vitamin_b_12_added: 'nutrients.vitaminB12Added',
+  carotene_beta: 'nutrients.betaCarotene', carotene_alpha: 'nutrients.alphaCarotene',
+  cryptoxanthin_beta: 'nutrients.betaCryptoxanthin',
+  calcium: 'nutrients.calcium', iron: 'nutrients.iron', magnesium: 'nutrients.magnesium',
+  phosphorus: 'nutrients.phosphorus', potassium: 'nutrients.potassium',
+  sodium: 'nutrients.sodium', zinc: 'nutrients.zinc', copper: 'nutrients.copper',
+  manganese: 'nutrients.manganese', selenium: 'nutrients.selenium',
+  iodine: 'nutrients.iodine', chromium: 'nutrients.chromium',
+  molybdenum_mo: 'nutrients.molybdenum', molybdenum: 'nutrients.molybdenum',
+  fluoride_f: 'nutrients.fluoride', fluoride: 'nutrients.fluoride',
+  tryptophan: 'nutrients.tryptophan', threonine: 'nutrients.threonine',
+  isoleucine: 'nutrients.isoleucine', leucine: 'nutrients.leucine',
+  lysine: 'nutrients.lysine', methionine: 'nutrients.methionine',
+  phenylalanine: 'nutrients.phenylalanine', tyrosine: 'nutrients.tyrosine',
+  valine: 'nutrients.valine', arginine: 'nutrients.arginine',
+  histidine: 'nutrients.histidine', alanine: 'nutrients.alanine',
+  aspartic_acid: 'nutrients.asparticAcid', glutamic_acid: 'nutrients.glutamicAcid',
+  glycine: 'nutrients.glycine', proline: 'nutrients.proline', serine: 'nutrients.serine',
+  caffeine: 'nutrients.caffeine', theobromine: 'nutrients.theobromine',
+  lutein_plus_zeaxanthin: 'nutrients.luteinAndZeaxanthin',
+  'lutein_+_zeaxanthin': 'nutrients.luteinAndZeaxanthin', lutein: 'nutrients.lutein',
+  zeaxanthin: 'nutrients.zeaxanthin', lycopene: 'nutrients.lycopene',
+  beta_glucan: 'nutrients.betaGlucan', glutathione: 'nutrients.glutathione',
+  nitrogen: 'nutrients.nitrogen',
 }
 
-/**
- * 英文营养素键名到中文键名的映射
- * 用于后端数据到前端显示的转换
- */
-export const ENGLISH_TO_CHINESE_MAP: Record<string, string> = {
-  'energy': '能量',
-  'protein': '蛋白质',
-  'fat': '脂肪',
-  'carbohydrate': '碳水化合物',
-  'fiber': '膳食纤维',
-  'calcium': '钙',
-  'iron': '铁',
-  'sodium': '钠',
-  'potassium': '钾',
-  'magnesium': '镁',
-  'phosphorus': '磷',
-  'zinc': '锌',
-  'copper': '铜',
-  'manganese': '锰',
-  'selenium': '硒',
-  'vitamin_a_rae': '维生素A',
-  'vitamin_c': '维生素C',
-  'vitamin_b1': '维生素B1',
-  'vitamin_b2': '维生素B2',
-  'vitamin_b3': '维生素B3（烟酸）',
-  'niacin': '维生素B3（烟酸）',
-  'pantothenic_acid': '维生素B5（泛酸）',
-  'vitamin_b6': '维生素B6',
-  'biotin': '生物素',
-  'vitamin_b12': '维生素B12',
-  'vitamin_b_12_added': '维生素B12（强化）',
-  'vitamin_d': '维生素D',
-  'vitamin_d2': '维生素D2',
-  'vitamin_d2_(ergocalciferol)': '维生素D2（麦角钙化醇）',
-  'vitamin_d3': '维生素D3',
-  'vitamin_d3_(cholecalciferol)': '维生素D3（胆钙化醇）',
-  'vitamin_e': '维生素E',
-  'vitamin_e_added': '维生素E（强化）',
-  'vitamin_k': '维生素K',
-  'vitamin_k1': '维生素K1',
-  'vitamin_k2': '维生素K2',
-  'vitamin_k_(dihydrophylloquinone)': '维生素K1（二氢叶绿醌）',
-  'vitamin_k_(menaquinone_4)': '维生素K2（甲萘醌-4）',
-  'saturated_fat': '饱和脂肪',
-  'monounsaturated_fat': '单不饱和脂肪',
-  'polyunsaturated_fat': '多不饱和脂肪',
-  'cholesterol': '胆固醇',
-  'folate': '叶酸',
-  'folic_acid': '叶酸',
-  'folate_food': '叶酸',
-  'folate_dfe': '叶酸',
-  'choline_total': '胆碱',
-  'betaine': '甜菜碱',
-  'alcohol_ethyl': '酒精',
-  'caffeine': '咖啡因',
-  'theobromine': '可可碱',
-  'water': '水分',
-  'ash': '灰分',
-  'retinol': '视黄醇',
-  'carotene_alpha': 'α-胡萝卜素',
-  'carotene_beta': 'β-胡萝卜素',
-  'cryptoxanthin_beta': 'β-隐黄质',
-  'lycopene': '番茄红素',
-  'lutein_+_zeaxanthin': '叶黄素和玉米黄质',
-  'tocopherol_alpha': 'α-生育酚',
-  'tocopherol_beta': 'β-生育酚',
-  'tocopherol_gamma': 'γ-生育酚',
-  'tocopherol_delta': 'δ-生育酚',
-  'tocotrienol_alpha': 'α-生育三烯酚',
-  'tocotrienol_beta': 'β-生育三烯酚',
-  'tocotrienol_gamma': 'γ-生育三烯酚',
-  'tocotrienol_delta': 'δ-生育三烯酚',
-  'vitamin_a_iu': '维生素A',
-  'vitamin_d_(d2_+_d3)_international_units': '维生素D',
-  'thiamin': '维生素B1',
-  'riboflavin': '维生素B2',
-  // 氨基酸
-  'alanine': '丙氨酸',
-  'arginine': '精氨酸',
-  'aspartic_acid': '天冬氨酸',
-  'cystine': '胱氨酸',
-  'glutamic_acid': '谷氨酸',
-  'glycine': '甘氨酸',
-  'histidine': '组氨酸',
-  'hydroxyproline': '羟脯氨酸',
-  'isoleucine': '异亮氨酸',
-  'leucine': '亮氨酸',
-  'lysine': '赖氨酸',
-  'methionine': '蛋氨酸',
-  'phenylalanine': '苯丙氨酸',
-  'proline': '脯氨酸',
-  'serine': '丝氨酸',
-  'threonine': '苏氨酸',
-  'tryptophan': '色氨酸',
-  'tyrosine': '酪氨酸',
-  'valine': '缬氨酸',
-  // 糖类
-  'total_sugars': '总糖',
-  'sucrose': '蔗糖',
-  'glucose': '葡萄糖',
-  'fructose': '果糖',
-  'lactose': '乳糖',
-  'maltose': '麦芽糖',
-  'galactose': '半乳糖',
-  'starch': '淀粉',
-  // 脂肪酸（饱和）
-  'sfa_4:0': '丁酸',
-  'sfa_6:0': '己酸',
-  'sfa_8:0': '辛酸',
-  'sfa_10:0': '癸酸',
-  'sfa_12:0': '月桂酸',
-  'sfa_14:0': '肉豆蔻酸',
-  'sfa_15:0': '十五烷酸',
-  'sfa_16:0': '棕榈酸',
-  'sfa_17:0': '十七烷酸',
-  'sfa_18:0': '硬脂酸',
-  'sfa_20:0': '花生酸',
-  'sfa_22:0': '山嵛酸',
-  'sfa_24:0': '木焦油酸',
-  // 脂肪酸（单不饱和）
-  'mufa_14:1': '肉豆蔻油酸',
-  'mufa_15:1': '十五碳烯酸',
-  'mufa_16:1': '棕榈油酸',
-  'mufa_17:1': '十七碳烯酸',
-  'mufa_18:1': '油酸',
-  'mufa_20:1': '二十碳烯酸',
-  'mufa_22:1': '二十二碳烯酸',
-  'mufa_24:1': '二十四碳烯酸',
-  'mufa_16:1_c': '棕榈油酸',
-  'mufa_18:1_c': '油酸',
-  'mufa_22:1_c': '二十二碳烯酸',
-  'mufa_24:1_c': '二十四碳烯酸',
-  // 脂肪酸（多不饱和）
-  'pufa_18:2': '亚油酸',
-  'pufa_18:3': '亚麻酸',
-  'pufa_18:4': '十八碳四烯酸',
-  'pufa_20:2': '二十碳二烯酸',
-  'pufa_20:3': '二十碳三烯酸',
-  'pufa_20:4': '花生四烯酸',
-  'pufa_20:5_n_3_(epa)': '二十碳五烯酸（EPA）',
-  'pufa_22:4': '二十二碳四烯酸',
-  'pufa_22:5_n_3_(dpa)': '二十二碳五烯酸（DPA）',
-  'pufa_22:6_n_3_(dha)': '二十二碳六烯酸（DHA）',
-  'pufa_18:2_n_6_cc': '亚油酸',
-  'pufa_18:2_clas': '亚油酸',
-  'pufa_18:3_n_3_ccc_(ala)': 'α-亚麻酸',
-  'pufa_18:3_n_6_ccc': 'γ-亚麻酸',
-  'pufa_20:3_n_3': '二十碳三烯酸',
-  'pufa_20:3_n_6': '二高-γ-亚麻酸',
-  'pufa_20:2_n_6_cc': '二十碳二烯酸',
-  'pufa_22:5': '二十二碳五烯酸',
-  // 反式脂肪酸
-  'fatty_acids_total_trans': '反式脂肪酸',
-  'fatty_acids_total_trans_monoenoic': '单烯反式脂肪酸',
-  'fatty_acids_total_trans_polyenoic': '多烯反式脂肪酸',
-  'tfa_16:1_t': '反式-棕榈油酸',
-  'tfa_18:1_t': '反式-油酸',
-  'tfa_18:2_t_not_further_defined': '反式-亚油酸',
-  'tfa_22:1_t': '反式-二十二碳烯酸',
-  'tfa_18:2_tt': '反式-亚油酸二反式异构体',
-  // 植物固醇
-  'beta_sitosterol': 'β-谷甾醇',
-  'campesterol': '菜油固醇',
-  'stigmasterol': '豆固醇',
-  'phytosterols': '植物固醇',
-  // 其他脂肪酸
-  'mufa_18:1_11_t_(18:1t_n_7)': '反式-11-油酸',
-  'pufa_18:2_i': '亚油酸异构体',
-  'pufa_18:3i': '亚麻酸异构体',
-  'pufa_21:5': '二十一碳五烯酸',
-  'sfa_13:0': '十三烷酸',
-  'fluoride_f': '氟',
-  // 高频缺失营养素（来自 HowToCook_json 导入数据）
-  'nitrogen': '氮',
-  'molybdenum_mo': '钼',
-  // 脂肪酸变体（无括号版，与 _get_nutrient_key 自动生成一致）
-  'pufa_22:6_n_3_dha': '二十二碳六烯酸（DHA）',
-  'pufa_20:5_n_3_epa': '二十碳五烯酸（EPA）',
-  'pufa_22:5_n_3_dpa': '二十二碳五烯酸（DPA）',
-  'pufa_20:2_n_6_c,c': '二十碳二烯酸',
-  'pufa_18:3_n_3_c,c,c_ala': 'α-亚麻酸',
-  'pufa_18:3_n_6_c,c,c': 'γ-亚麻酸',
-  'pufa_18:2_n_6_c,c': '亚油酸',
-  'pufa_20:4_n_6': '花生四烯酸',
-  'tfa_18:2_t,t': '反式-亚油酸',
-  // 罕见植物固醇/甾醇
-  'delta_7_stigmastenol': 'δ7-豆甾烷醇',
-  'beta_sitostanol': 'β-谷烷醇',
-  'delta_5_avenasterol': 'δ5-燕麦固醇',
-  'ergosterol': '麦角固醇',
-  'ergothioneine': '麦角硫因',
-  'brassicasterol': '菜籽固醇',
-  'campestanol': '菜烷醇',
-  'cysteine': '半胱氨酸',
-  'lutein': '叶黄素',
-  'zeaxanthin': '玉米黄质',
-  // 微量营养素变体
-  'pufa_22:2': '二十二碳二烯酸',
-  'sfa_11:0': '十一烷酸',
-  'total_fat_nlea': '总脂肪（NLEA）',
-  'beta_glucan': 'β-葡聚糖',
-  'glutathione': '谷胱甘肽',
-  // 胆碱衍生物
-  'choline_from_sphingomyelin': '鞘磷脂来源胆碱',
-  'choline_free': '游离胆碱',
-  'choline_from_glycerophosphocholine': '甘油磷胆碱来源胆碱',
-  'choline_from_phosphotidyl_choline': '磷脂酰胆碱来源胆碱',
-  'choline_from_phosphocholine': '磷酸胆碱来源胆碱',
+const CHINESE_ALIASES: Record<string, string> = {
+  '能量': 'nutrients.energy', '热量': 'nutrients.energy',
+  '蛋白质': 'nutrients.protein', '脂肪': 'nutrients.fat',
+  '碳水化合物': 'nutrients.carbohydrate', '膳食纤维': 'nutrients.fiber',
+  '糖': 'nutrients.sugars', '总糖': 'nutrients.sugars', '淀粉': 'nutrients.starch',
+  '水分': 'nutrients.water', '酒精': 'nutrients.alcohol', '灰分': 'nutrients.ash',
+  '饱和脂肪': 'nutrients.saturatedFat', '饱和脂肪酸': 'nutrients.saturatedFat',
+  '单不饱和脂肪': 'nutrients.monounsaturatedFat', '单不饱和脂肪酸': 'nutrients.monounsaturatedFat',
+  '多不饱和脂肪': 'nutrients.polyunsaturatedFat', '多不饱和脂肪酸': 'nutrients.polyunsaturatedFat',
+  '反式脂肪': 'nutrients.transFat', '反式脂肪酸': 'nutrients.transFat',
+  '胆固醇': 'nutrients.cholesterol', '维生素A': 'nutrients.vitaminA',
+  '维生素C': 'nutrients.vitaminC', '维生素D': 'nutrients.vitaminD',
+  '维生素E': 'nutrients.vitaminE', '维生素K': 'nutrients.vitaminK',
+  '维生素B1': 'nutrients.vitaminB1', '维生素B2': 'nutrients.vitaminB2',
+  '维生素B3（烟酸）': 'nutrients.niacin', '维生素B5（泛酸）': 'nutrients.vitaminB5',
+  '维生素B6': 'nutrients.vitaminB6', '维生素B12': 'nutrients.vitaminB12',
+  '叶酸': 'nutrients.folate', '烟酸': 'nutrients.niacin', '泛酸': 'nutrients.vitaminB5',
+  '生物素': 'nutrients.biotin', '胆碱': 'nutrients.choline', '甜菜碱': 'nutrients.betaine',
+  '钙': 'nutrients.calcium', '铁': 'nutrients.iron', '镁': 'nutrients.magnesium',
+  '磷': 'nutrients.phosphorus', '钾': 'nutrients.potassium', '钠': 'nutrients.sodium',
+  '锌': 'nutrients.zinc', '铜': 'nutrients.copper', '锰': 'nutrients.manganese',
+  '硒': 'nutrients.selenium', '碘': 'nutrients.iodine', '铬': 'nutrients.chromium',
+  '钼': 'nutrients.molybdenum', '氟': 'nutrients.fluoride',
 }
+
+export function nutrientKey(name: string): string | null {
+  return NUTRIENT_KEYS[name] ?? CHINESE_ALIASES[name] ?? null
+}
+
+export function nutrientLabel(name: string): string {
+  const key = nutrientKey(name)
+  return key ? t(key) : name
+}
+
+const NUTRIENT_UNIT_KEYS: Record<string, string> = {
+  kcal: 'nutrientUnits.kcal',
+  kJ: 'nutrientUnits.kJ',
+  g: 'nutrientUnits.g',
+  mg: 'nutrientUnits.mg',
+  ug: 'nutrientUnits.ug',
+  IU: 'nutrientUnits.IU',
+}
+
+export function nutrientUnitLabel(unit: string): string {
+  const key = NUTRIENT_UNIT_KEYS[unit]
+  return key ? t(key) : unit
+}
+
+function translatedKeyFor(target: string): string | null {
+  const key = nutrientKey(target)
+  if (key) return key
+  const stableKeys = new Set(Object.values(NUTRIENT_KEYS))
+  for (const stableKey of stableKeys) {
+    if (t(stableKey) === target) return stableKey
+  }
+  return null
+}
+
+function stringKey(key: string | symbol): string | null {
+  return typeof key === 'string' ? key : null
+}
+
+function proxiedDescriptor(key: string | symbol, hasValue: boolean) {
+  if (!hasValue || typeof key !== 'string') return undefined
+  return {
+    enumerable: true,
+    configurable: true,
+    get: () => nutrientLabel(key),
+  }
+}
+
+/** Compatibility display map for consumers outside this task. */
+export const NUTRITION_LABEL_MAP: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get(_target, key) {
+    const name = stringKey(key)
+    if (!name) return undefined
+    return translatedKeyFor(name) ? nutrientLabel(name) : undefined
+  },
+  has(_target, key) {
+    const name = stringKey(key)
+    return !!name && !!translatedKeyFor(name)
+  },
+  ownKeys() {
+    return [...Object.keys(NUTRIENT_KEYS), ...Object.keys(CHINESE_ALIASES)]
+  },
+  getOwnPropertyDescriptor(_target, key) {
+    const name = stringKey(key)
+    return proxiedDescriptor(key, !!name && !!translatedKeyFor(name))
+  },
+})
+
+/**
+ * Legacy exported name retained for unlisted product/ingredient consumers.
+ * Its values are catalog translations rather than hard-coded display strings.
+ */
+export const ENGLISH_TO_CHINESE_MAP: Record<string, string> = new Proxy({} as Record<string, string>, {
+  get(_target, key) {
+    const name = stringKey(key)
+    return name && NUTRIENT_KEYS[name] ? nutrientLabel(name) : undefined
+  },
+  has(_target, key) {
+    const name = stringKey(key)
+    return !!name && !!NUTRIENT_KEYS[name]
+  },
+  ownKeys() {
+    return Object.keys(NUTRIENT_KEYS)
+  },
+  getOwnPropertyDescriptor(_target, key) {
+    const name = stringKey(key)
+    return proxiedDescriptor(key, !!name && !!NUTRIENT_KEYS[name])
+  },
+})

@@ -20,7 +20,7 @@
             <div class="summary-item">
               <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                 <v-icon size="small">mdi-cash</v-icon>
-                今日预估
+                {{ t('meals.estimatedToday') }}
               </span>
               <span class="text-h6 font-weight-bold ml-1">
                 {{ totals.cost != null ? formatMoney(Number(totals.cost), totals.currency || userCurrency.value) : '--' }}
@@ -31,10 +31,10 @@
             <div class="summary-item">
               <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                 <v-icon size="small">mdi-fire</v-icon>
-                热量
+                {{ t('meals.calories') }}
               </span>
               <span class="font-weight-medium ml-1">
-                {{ totals.calories != null ? `${toDisplayCalorie(totals.calories)} ${energyUnit}` : '--' }}
+                {{ totals.calories != null ? `${formatNumber(toDisplayCalorie(totals.calories), localeStore.effectiveFormatLocale)} ${energyUnitLabel}` : '--' }}
               </span>
             </div>
 
@@ -42,28 +42,28 @@
               <div class="summary-item">
                 <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                   <v-icon size="small">mdi-food-drumstick-outline</v-icon>
-                  蛋白
+                  {{ t('meals.protein') }}
                 </span>
                 <span class="font-weight-medium ml-1">
-                  {{ totals.protein_g != null ? `${totals.protein_g}g` : '--' }}
+                  {{ totals.protein_g != null ? `${formatNumber(totals.protein_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>
               <div class="summary-item">
                 <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                   <v-icon size="small">mdi-grain</v-icon>
-                  碳水
+                  {{ t('meals.carbs') }}
                 </span>
                 <span class="font-weight-medium ml-1">
-                  {{ totals.carbs_g != null ? `${totals.carbs_g}g` : '--' }}
+                  {{ totals.carbs_g != null ? `${formatNumber(totals.carbs_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>
               <div class="summary-item">
                 <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                   <v-icon size="small">mdi-oil</v-icon>
-                  脂肪
+                  {{ t('meals.fat') }}
                 </span>
                 <span class="font-weight-medium ml-1">
-                  {{ totals.fat_g != null ? `${totals.fat_g}g` : '--' }}
+                  {{ totals.fat_g != null ? `${formatNumber(totals.fat_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>
             </div>
@@ -73,7 +73,7 @@
           <div v-if="goalProgress" class="progress-area mt-2 mt-md-0" style="min-width: 180px">
             <div class="d-flex justify-space-between text-caption mb-1">
               <span>{{ goalProgress.label }}</span>
-              <span>{{ goalProgress.pct }}%</span>
+              <span>{{ formatNumber(goalProgress.pct, localeStore.effectiveFormatLocale) }}%</span>
             </div>
             <v-progress-linear
               :model-value="goalProgress.pct"
@@ -86,7 +86,7 @@
       </template>
 
       <div v-else class="text-caption text-medium-emphasis text-center py-2">
-        暂无数据
+        {{ t('meals.noData') }}
       </div>
     </v-sheet>
   </div>
@@ -95,14 +95,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useDisplay } from 'vuetify'
+import { useI18n } from 'vue-i18n'
 import type { DailyTotals } from '@/api/meals'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useUserUnits } from '@/composables/useUserUnits'
+import { useLocaleStore } from '@/stores/locale'
 
 const { mdAndUp } = useDisplay()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 const { currency: userCurrency } = useUserCurrency()
+const localeStore = useLocaleStore()
+const { t } = useI18n()
 const isDesktop = computed(() => mdAndUp.value)
 
 const props = defineProps<{
@@ -117,8 +122,13 @@ const goalProgress = computed(() => {
   const target = 2000  // 库存 kcal（默认目标；pct 按同单位比例算不受单位影响）
   const pct = Math.min(Math.round((consumed / target) * 100), 100)
   const color = pct > 100 ? 'error' : pct > 80 ? 'warning' : 'success'
-  return { label: `热量目标 ${toDisplayCalorie(target)} ${energyUnit.value}`, pct, color }
+  const amount = formatNumber(toDisplayCalorie(target), localeStore.effectiveFormatLocale)
+  return { label: t('meals.calorieGoal', { amount, unit: energyUnitLabel.value }), pct, color }
 })
+
+const energyUnitLabel = computed(() => (
+  energyUnit.value === 'kJ' ? t('nutrientUnits.kJ') : t('nutrientUnits.kcal')
+))
 </script>
 
 <style scoped>

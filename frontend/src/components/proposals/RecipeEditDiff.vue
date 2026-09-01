@@ -1,9 +1,45 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
 import { resolveImageUrl } from '@/utils/image'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
+
+const RECIPE_CATEGORY_KEYS: Record<string, string> = {
+  '荤菜': 'recipeCategories.meatDish',
+  '素菜': 'recipeCategories.vegetableDish',
+  '水产': 'recipeCategories.seafood',
+  '主食': 'recipeCategories.staple',
+  '汤与粥': 'recipeCategories.soupPorridge',
+  '早餐': 'recipeCategories.breakfast',
+  '甜品': 'recipeCategories.dessert',
+  '调料': 'recipeCategories.seasoning',
+  '半成品': 'recipeCategories.semiFinished',
+  '小食': 'recipeCategories.snack',
+}
+
+const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
+  simple: 'recipeDifficulties.simple',
+  easy: 'recipeDifficulties.easy',
+  medium: 'recipeDifficulties.medium',
+  hard: 'recipeDifficulties.hard',
+  expert: 'recipeDifficulties.expert',
+}
+
+function recipeCategoryLabel(category?: string): string {
+  const key = category ? RECIPE_CATEGORY_KEYS[category] : null
+  return key && category ? t(key) : (category || '')
+}
+
+function recipeDifficultyLabel(difficulty?: string): string {
+  const key = difficulty ? RECIPE_DIFFICULTY_KEYS[difficulty] : null
+  return key && difficulty ? t(key) : (difficulty || '')
+}
 
 const snap = computed(() => props.proposal.snapshot || {})
 const updateData = computed(() => (props.proposal.payload || {}).update_data || {})
@@ -39,16 +75,18 @@ interface IngItem { name: string; qty: string; unit: string; note: string }
 interface IngRow { oldItem?: IngItem; newItem?: IngItem; kind: 'added' | 'removed' | 'changed' | 'unchanged' }
 
 function fmtQty(q: any, qr: any): string {
-  const base = (q != null && q !== '') ? String(q) : null
+  const base = (q != null && q !== '') ? formatNumber(q, localeStore.effectiveFormatLocale) : null
   let range: string | null = null
   if (qr && typeof qr === 'object') {
     const min = (qr as any).min, max = (qr as any).max
-    if (min != null && max != null) range = `${min}~${max}`
+    if (min != null && max != null) {
+      range = `${formatNumber(min, localeStore.effectiveFormatLocale)}~${formatNumber(max, localeStore.effectiveFormatLocale)}`
+    }
   }
-  if (base && range) return `${base}（${range}）`
+  if (base && range) return t('recipes.quantityWithRange', { value: base, range })
   if (range) return range
   if (base) return base
-  return '—'
+  return t('proposals.emptyValue')
 }
 
 const oldIngs = computed<IngItem[]>(() =>
@@ -162,7 +200,14 @@ function renderStepItem(item: any): string {
 function stepSubFields(item: any): Array<{ icon: string; text: string }> {
   if (!item || typeof item !== 'object') return []
   const lines: Array<{ icon: string; text: string }> = []
-  if (item.duration_minutes != null) lines.push({ icon: 'mdi-timer-outline', text: `${item.duration_minutes}min` })
+  if (item.duration_minutes != null) {
+    lines.push({
+      icon: 'mdi-timer-outline',
+      text: t('recipes.minuteShort', {
+        count: formatNumber(item.duration_minutes, localeStore.effectiveFormatLocale),
+      }),
+    })
+  }
   if (item.tips) lines.push({ icon: 'mdi-lightbulb-on-outline', text: item.tips })
   return lines
 }
@@ -172,23 +217,44 @@ function stepSubChanged(os: any, ns: any): boolean {
 }
 
 const STEP_LABELS: Record<string, string> = {
-  cooking_steps: '操作步骤',
-  tips: '小贴士',
-  steps: '步骤',
+  cooking_steps: 'proposals.operationSteps',
+  tips: 'proposals.tips',
+  steps: 'proposals.steps',
 }
-function stepLabel(f: string): string { return STEP_LABELS[f] || f }
+function stepLabel(f: string): string {
+  const key = STEP_LABELS[f]
+  return key ? t(key) : f
+}
 
 const FIELD_LABELS: Record<string, string> = {
-  name: '名称', category: '分类', difficulty: '难度', description: '描述',
-  servings: '份数', total_time_minutes: '总时长(分)', tags: '标签',
-  result_ingredient_id: '成品原料', image_url: '图片',
+  name: 'proposals.recipeName',
+  category: 'proposals.category',
+  difficulty: 'proposals.difficulty',
+  description: 'proposals.description',
+  servings: 'proposals.servings',
+  total_time_minutes: 'proposals.totalTimeMinutes',
+  tags: 'proposals.tags',
+  result_ingredient_id: 'proposals.resultIngredient',
+  image_url: 'proposals.images',
 }
-function fieldLabel(f: string): string { return FIELD_LABELS[f] || f }
+function fieldLabel(f: string): string {
+  const key = FIELD_LABELS[f]
+  return key ? t(key) : f
+}
 
 function formatValue(v: any): string {
-  if (v === null || v === undefined) return '—'
+  if (v === null || v === undefined) return t('proposals.emptyValue')
   if (typeof v === 'object') return JSON.stringify(v)
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    return formatNumber(v, localeStore.effectiveFormatLocale)
+  }
   return String(v)
+}
+
+function formatFieldValue(field: string, value: any): string {
+  if (field === 'category') return recipeCategoryLabel(value)
+  if (field === 'difficulty') return recipeDifficultyLabel(value)
+  return formatValue(value)
 }
 </script>
 
@@ -196,7 +262,7 @@ function formatValue(v: any): string {
   <div>
     <!-- scalar fields -->
     <div v-if="scalarRows.length" class="mb-4">
-      <div class="text-subtitle-2 mb-2">基本字段</div>
+      <div class="text-subtitle-2 mb-2">{{ t('proposals.basicFields') }}</div>
       <v-table density="compact" class="diff-table scalar-diff-table">
         <colgroup>
           <col style="width: 22%" />
@@ -208,15 +274,15 @@ function formatValue(v: any): string {
           <tr v-for="row in scalarRows" :key="row.field">
             <td class="text-caption text-medium-emphasis diff-field-label">{{ fieldLabel(row.field) }}</td>
             <td :class="['diff-cell', 'before', row.kind]">
-              <span v-if="row.before === null" class="text-medium-emphasis">—</span>
+              <span v-if="row.before === null" class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
               <img v-else-if="row.field === 'image_url' && typeof row.before === 'string' && row.before" :src="row.before" style="max-height:60px;max-width:120px;object-fit:cover;border-radius:4px" />
-              <span v-else class="cell-text">{{ formatValue(row.before) }}</span>
+              <span v-else class="cell-text">{{ formatFieldValue(row.field, row.before) }}</span>
             </td>
             <td class="text-center text-medium-emphasis">→</td>
             <td :class="['diff-cell', 'after', row.kind]">
-              <span v-if="row.after === null" class="text-medium-emphasis">—</span>
+              <span v-if="row.after === null" class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
               <img v-else-if="row.field === 'image_url' && typeof row.after === 'string' && row.after" :src="row.after" style="max-height:60px;max-width:120px;object-fit:cover;border-radius:4px" />
-              <span v-else class="cell-text">{{ formatValue(row.after) }}</span>
+              <span v-else class="cell-text">{{ formatFieldValue(row.field, row.after) }}</span>
             </td>
           </tr>
         </tbody>
@@ -225,9 +291,10 @@ function formatValue(v: any): string {
 
     <!-- images 缩略图对比 -->
     <template v-if="hasImagesChange">
-    <div class="text-subtitle-2 mb-2">图片</div>
+    <div class="text-subtitle-2 mb-2">{{ t('proposals.images') }}</div>
     <div class="diff-head">
-      <div>当前（{{ oldImgs.length }} 张）</div><div>新（{{ newImgs.length }} 张）</div>
+      <div>{{ t('proposals.currentImages', { count: formatNumber(oldImgs.length, localeStore.effectiveFormatLocale) }) }}</div>
+      <div>{{ t('proposals.newImages', { count: formatNumber(newImgs.length, localeStore.effectiveFormatLocale) }) }}</div>
     </div>
     <div class="diff-row">
       <div class="diff-cell old">
@@ -236,30 +303,30 @@ function formatValue(v: any): string {
             <img :src="getImageUrl(img)" />
           </div>
         </div>
-        <span v-else class="text-medium-emphasis">无</span>
+        <span v-else class="text-medium-emphasis">{{ t('proposals.none') }}</span>
       </div>
       <div class="diff-cell new">
         <div v-if="newImgs.length" class="d-flex flex-wrap ga-2">
           <div v-for="(img, i) in newImgs" :key="'ni'+i" class="image-diff-thumb"
                :class="{ 'is-new': !oldImgs.includes(img) }">
             <img :src="getImageUrl(img)" />
-            <v-chip v-if="i === 0" size="x-small" color="primary" variant="flat" class="cover-badge">封面</v-chip>
-            <v-chip v-if="!oldImgs.includes(img)" size="x-small" color="success" variant="flat" class="new-badge">新增</v-chip>
+            <v-chip v-if="i === 0" size="x-small" color="primary" variant="flat" class="cover-badge">{{ t('proposals.coverImage') }}</v-chip>
+            <v-chip v-if="!oldImgs.includes(img)" size="x-small" color="success" variant="flat" class="new-badge">{{ t('proposals.added') }}</v-chip>
           </div>
         </div>
-        <span v-else class="text-medium-emphasis">无</span>
+        <span v-else class="text-medium-emphasis">{{ t('proposals.none') }}</span>
       </div>
     </div>
     </template>
 
     <!-- ingredients two-column -->
     <template v-if="hasIngredientsChange">
-    <div class="text-subtitle-2 mb-2">食材列表</div>
+    <div class="text-subtitle-2 mb-2">{{ t('proposals.ingredientList') }}</div>
     <div v-if="!hasOldIngredients" class="text-caption text-medium-emphasis mb-2">
-      历史提议，旧食材数据缺失（仅展示新食材）
+      {{ t('proposals.missingOldIngredients') }}
     </div>
     <div class="diff-head">
-      <div>当前</div><div>新</div>
+      <div>{{ t('proposals.current') }}</div><div>{{ t('proposals.new') }}</div>
     </div>
     <div class="diff-rows">
       <div v-for="(row, i) in ingRows" :key="i" class="diff-row">
@@ -271,7 +338,7 @@ function formatValue(v: any): string {
               <span v-if="row.oldItem.note">· {{ row.oldItem.note }}</span>
             </div>
           </template>
-          <span v-else class="text-medium-emphasis">—</span>
+          <span v-else class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
         </div>
         <div :class="['diff-cell', 'new', row.kind === 'added' ? 'add' : (row.kind === 'changed' ? 'mod-new' : '')]">
           <template v-if="row.newItem">
@@ -281,19 +348,19 @@ function formatValue(v: any): string {
               <span v-if="row.newItem.note">· {{ row.newItem.note }}</span>
             </div>
           </template>
-          <span v-else class="text-medium-emphasis">—</span>
+          <span v-else class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
         </div>
       </div>
     </div>
     </template>
-    <div v-else class="text-caption text-medium-emphasis mb-3">食材未修改</div>
+    <div v-else class="text-caption text-medium-emphasis mb-3">{{ t('proposals.ingredientsUnchanged') }}</div>
 
     <!-- text-list fields（cooking_steps / tips / steps）：逐行左右对齐 -->
     <div v-if="textListFields.length" class="mt-4">
       <div v-for="field in textListFields" :key="field" class="mb-3">
         <div class="text-subtitle-2 mb-2">{{ stepLabel(field) }}</div>
         <div class="diff-head">
-          <div>当前</div><div>新</div>
+          <div>{{ t('proposals.current') }}</div><div>{{ t('proposals.new') }}</div>
         </div>
         <div class="diff-rows">
           <div v-for="(r, i) in (stepRowsMap.get(field) ?? [])" :key="i" class="diff-row">
@@ -305,7 +372,7 @@ function formatValue(v: any): string {
                   <v-icon size="x-small">{{ sf.icon }}</v-icon>{{ sf.text }}
                 </div>
               </template>
-              <span v-else class="text-medium-emphasis">—</span>
+              <span v-else class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
             </div>
             <div :class="['diff-cell', 'new', r.kind === 'added' ? 'add' : (r.kind === 'changed' ? 'mod-new' : '')]">
               <template v-if="r.newItem">
@@ -315,7 +382,7 @@ function formatValue(v: any): string {
                   <v-icon size="x-small">{{ sf.icon }}</v-icon>{{ sf.text }}
                 </div>
               </template>
-              <span v-else class="text-medium-emphasis">—</span>
+              <span v-else class="text-medium-emphasis">{{ t('proposals.emptyValue') }}</span>
             </div>
           </div>
         </div>

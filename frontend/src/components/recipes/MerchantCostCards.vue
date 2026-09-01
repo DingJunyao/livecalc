@@ -2,7 +2,7 @@
   <div class="mb-4">
     <div class="d-flex align-center mb-3">
       <v-icon start color="info">mdi-store-outline</v-icon>
-      <span class="text-h6 font-weight-regular">按商家预估成本</span>
+      <span class="text-h6 font-weight-regular">{{ t('recipes.merchantCostEstimates') }}</span>
     </div>
 
     <div v-if="loading" class="d-flex ga-3">
@@ -10,7 +10,7 @@
     </div>
     <div v-else-if="!merchantList.length" class="text-center py-6 text-medium-emphasis">
       <v-icon size="40" color="medium-emphasis">mdi-store-off</v-icon>
-      <div class="text-body-2 mt-2">暂无商家价格数据</div>
+      <div class="text-body-2 mt-2">{{ t('recipes.noMerchantPriceData') }}</div>
     </div>
     <div v-else class="merchant-cards">
       <v-card
@@ -25,31 +25,34 @@
             <span class="text-body-1 font-weight-medium text-truncate">{{ m.merchant_name }}</span>
             <v-spacer />
             <v-chip v-if="m.is_recommended" size="x-small" color="orange-darken-2" variant="flat" class="font-weight-bold text-white">
-              最实惠 ✓
+              {{ t('recipes.bestValue') }}
             </v-chip>
           </div>
           <div class="text-caption text-medium-emphasis mb-2">
-            覆盖 {{ m.covered_count }}/{{ m.total_ingredients }} 种食材
+            {{ t('recipes.coveredIngredients', {
+              covered: formatNumber(m.covered_count, localeStore.effectiveFormatLocale),
+              total: formatNumber(m.total_ingredients, localeStore.effectiveFormatLocale),
+            }) }}
             <v-tooltip v-if="m.fallback_chains?.length" location="top">
               <template #activator="{ props }">
                 <v-icon v-bind="props" size="x-small" color="info" class="ml-1">mdi-information</v-icon>
               </template>
-              <div class="text-caption">根据以下食材计算价格：</div>
+              <div class="text-caption">{{ t('recipes.calculatedFromIngredients') }}</div>
               <div v-for="chain in m.fallback_chains" :key="chain" class="text-body-2 font-weight-bold">{{ chain }}</div>
             </v-tooltip>
           </div>
           <div class="text-h5 font-weight-bold mb-1">
-            {{ formatMoney(Number(m.total_cost || 0), userCurrency) }}
+            {{ formatMoney(Number(m.total_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }}
           </div>
           <div class="text-caption mb-1">
-            <span class="text-green-darken-2">本店 {{ formatMoney(Number(m.covered_cost || 0), userCurrency) }}</span>
+            <span class="text-green-darken-2">{{ t('recipes.inStore', { amount: formatMoney(Number(m.covered_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }) }}</span>
             <span v-if="Number(m.external_cost || 0) > 0" class="ml-2 text-orange-darken-2">
-              外部 {{ formatMoney(Number(m.external_cost || 0), userCurrency) }}
+              {{ t('recipes.external', { amount: formatMoney(Number(m.external_cost || 0), userCurrency, localeStore.effectiveFormatLocale) }) }}
             </span>
           </div>
           <div v-if="m.missing_ingredients?.length" class="text-caption text-warning">
             <v-icon size="12" color="warning">mdi-alert-circle-outline</v-icon>
-            需外购 {{ m.missing_ingredients.join('、') }}
+            {{ t('recipes.missingIngredients', { ingredients: formatIngredientList(m.missing_ingredients) }) }}
           </div>
         </v-card-text>
       </v-card>
@@ -61,6 +64,9 @@
 import { computed } from 'vue'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   merchantCosts?: { merchants?: any[] } | null
@@ -68,10 +74,18 @@ const props = defineProps<{
 }>()
 
 const { currency: userCurrency } = useUserCurrency()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const merchantList = computed(() => {
   return props.merchantCosts?.merchants || []
 })
+
+function formatIngredientList(ingredients: string[]) {
+  return new Intl.ListFormat(localeStore.effectiveFormatLocale, {
+    type: 'conjunction',
+  }).format(ingredients)
+}
 </script>
 
 <style scoped>

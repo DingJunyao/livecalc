@@ -4,8 +4,8 @@
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
     <v-app-bar-title class="text-h6">
       <div class="d-flex align-center ga-2">
-        <span class="text-truncate">{{ recipe?.name || '菜谱分析' }}</span>
-        <v-chip size="x-small" variant="tonal" color="primary">分析</v-chip>
+        <span class="text-truncate">{{ recipe?.name || t('recipes.analysis') }}</span>
+        <v-chip size="x-small" variant="tonal" color="primary">{{ t('recipes.analysisChip') }}</v-chip>
       </div>
     </v-app-bar-title>
     <template #append>
@@ -16,13 +16,13 @@
   <v-container fluid class="pa-0">
     <div v-if="!recipe && loading" class="text-center py-16">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('recipes.loading') }}</div>
     </div>
 
     <v-alert v-else-if="error" type="error" class="ma-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="retry">重试</v-btn>
+        <v-btn variant="text" @click="retry">{{ t('recipes.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -74,6 +74,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
@@ -82,10 +83,24 @@ import CostTrendAnalysis from '@/components/recipes/CostTrendAnalysis.vue'
 import NutritionSourceGrid from '@/components/recipes/NutritionSourceGrid.vue'
 import MerchantCostCards from '@/components/recipes/MerchantCostCards.vue'
 import MerchantPriceMatrix from '@/components/recipes/MerchantPriceMatrix.vue'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { unitDisplayName } from '@/utils/catalogLabels'
 
 const route = useRoute()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
+
+const QUANTITY_TYPE_KEYS: Record<string, string> = {
+  '适量': 'quantityTypes.toTaste',
+  '少许': 'quantityTypes.smallAmount',
+}
+
+function quantityTypeLabel(quantityType: string): string {
+  return t(QUANTITY_TYPE_KEYS[quantityType] || 'quantityTypes.numeric')
+}
 const recipeIdRaw = Number(route.params.id)
 const recipeId = Number.isFinite(recipeIdRaw) ? recipeIdRaw : 0
 
@@ -119,7 +134,7 @@ async function retry() {
 
 async function loadAllData() {
   if (!recipeId) {
-    error.value = '无效的菜谱ID'
+    error.value = t('recipes.invalidId')
     loading.value = false
     return
   }
@@ -145,7 +160,7 @@ async function loadAllData() {
     loadMerchantPrices()
 
   } catch (e: any) {
-    error.value = e?.userMessage || '加载菜谱失败'
+    error.value = e?.userMessage || t('recipes.loadFailed')
     loading.value = false
   }
 }
@@ -191,7 +206,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
 
   if (ingredient.quantity) {
     qty = parseFloat(ingredient.quantity)
-    qtyDisplay = `${ingredient.quantity}${qtyUnit ? ` ${qtyUnit}` : ''}`
+    qtyDisplay = formatQuantity(ingredient.quantity, qtyUnit)
   } else if (ingredient.quantity_range) {
     let qr = ingredient.quantity_range
     if (typeof qr === 'string') {
@@ -201,7 +216,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
       const min = parseFloat(qr.min) || 0
       const max = parseFloat(qr.max) || 0
       qty = (min + max) / 2
-      qtyDisplay = `${qr.min}-${qr.max}${qtyUnit ? ` ${qtyUnit}` : ''}`
+      qtyDisplay = `${formatNumber(qr.min, localeStore.effectiveFormatLocale)}-${formatNumber(qr.max, localeStore.effectiveFormatLocale)}${qtyUnit ? ` ${unitDisplayName({ name: qtyUnit, abbreviation: qtyUnit })}` : ''}`
     }
   }
 
@@ -214,7 +229,7 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
     for (const [keyword, gramQty] of Object.entries(VAGUE_QUANTITY_GRAM)) {
       if (orig.includes(keyword)) {
         qty = gramQty
-        qtyDisplay = `${keyword}(${gramQty}g)`
+        qtyDisplay = `${quantityTypeLabel(keyword)} (${formatNumber(gramQty, localeStore.effectiveFormatLocale)} g)`
         qtyUnit = 'g'
         break
       }
@@ -222,6 +237,11 @@ function getEffectiveQuantity(ingredient: any): { qty: number | null; qtyDisplay
   }
 
   return { qty, qtyDisplay, qtyUnit }
+}
+
+function formatQuantity(quantity: number | string, unit: string) {
+  const formatted = formatNumber(quantity, localeStore.effectiveFormatLocale)
+  return unit ? `${formatted} ${unitDisplayName({ name: unit, abbreviation: unit })}` : formatted
 }
 
 function fetchMerchantPrice(ingredient: any): Promise<any> {

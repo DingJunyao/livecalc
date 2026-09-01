@@ -2,9 +2,9 @@
   <v-card elevation="0" class="ma-4">
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="warning">mdi-lightbulb-outline</v-icon>
-      小贴士
+      {{ t('recipes.tips') }}
       <v-chip size="small" class="ml-2" v-if="tipsList.length">
-        {{ editing ? editRows.length : tipsList.length }}
+        {{ formatNumber(editing ? editRows.length : tipsList.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
       <template v-if="!editing">
@@ -14,7 +14,7 @@
           color="primary"
           prepend-icon="mdi-pencil"
           @click="startEdit"
-        >编辑</v-btn>
+        >{{ t('recipes.edit') }}</v-btn>
       </template>
       <template v-else>
         <v-btn
@@ -24,7 +24,7 @@
           prepend-icon="mdi-check"
           :loading="saving"
           @click="handleSave"
-        >保存</v-btn>
+        >{{ t('recipes.save') }}</v-btn>
         <v-btn
           size="small"
           variant="text"
@@ -33,7 +33,7 @@
           :disabled="saving"
           @click="cancelEdit"
           class="ml-1"
-        >取消</v-btn>
+        >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
     <v-divider />
@@ -56,13 +56,29 @@
         :class="{ 'border-bottom': index < editRows.length - 1 }"
       >
         <div class="d-flex flex-column move-btns mr-2">
-          <v-btn icon="mdi-chevron-up" size="x-small" variant="text" :disabled="index === 0" @click="moveUp(index)" />
-          <v-btn icon="mdi-chevron-down" size="x-small" variant="text" :disabled="index === editRows.length - 1" @click="moveDown(index)" />
+          <v-btn
+            icon="mdi-chevron-up"
+            size="x-small"
+            variant="text"
+            :disabled="index === 0"
+            :title="t('recipes.moveUp')"
+            :aria-label="t('recipes.moveUp')"
+            @click="moveUp(index)"
+          />
+          <v-btn
+            icon="mdi-chevron-down"
+            size="x-small"
+            variant="text"
+            :disabled="index === editRows.length - 1"
+            :title="t('recipes.moveDown')"
+            :aria-label="t('recipes.moveDown')"
+            @click="moveDown(index)"
+          />
         </div>
 
         <v-textarea
           v-model="editRows[index]"
-          label="小贴士"
+          :label="t('recipes.tip')"
           variant="outlined"
           density="compact"
           auto-grow
@@ -77,6 +93,8 @@
           color="error"
           variant="text"
           class="ml-2"
+          :title="t('recipes.removeTip')"
+          :aria-label="t('recipes.removeTip')"
           @click="removeRow(index)"
         />
       </div>
@@ -89,7 +107,7 @@
           prepend-icon="mdi-plus"
           size="small"
           @click="addRow"
-        >添加小贴士</v-btn>
+        >{{ t('recipes.addTip') }}</v-btn>
       </div>
     </v-card-text>
   </v-card>
@@ -99,10 +117,16 @@
 import { ref, computed } from 'vue'
 import { api } from '@/api'
 import type { RecipeDetail } from './types'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{
   recipe: RecipeDetail
 }>()
+
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const emit = defineEmits<{
   (e: 'saved', recipe: RecipeDetail): void

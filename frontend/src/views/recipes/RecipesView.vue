@@ -2,7 +2,7 @@
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
-    <v-app-bar-title class="text-h6">菜谱管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('recipes.title') }}</v-app-bar-title>
     <template #append>
       <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadRecipes" />
@@ -14,7 +14,7 @@
     <div class="d-flex ga-2 mb-4 align-center">
       <v-text-field
         v-model="searchQuery"
-        label="搜索菜谱..."
+        :label="t('recipes.search')"
         prepend-inner-icon="mdi-magnify"
         variant="outlined"
         density="compact"
@@ -33,14 +33,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-8">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('recipes.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="mb-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadRecipes">重试</v-btn>
+        <v-btn variant="text" @click="loadRecipes">{{ t('recipes.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -86,14 +86,14 @@
               color="warning"
               variant="tonal"
               class="ms-1"
-            >未发布</v-chip>
+            >{{ t('recipes.unpublished') }}</v-chip>
             <v-chip
               v-if="hasPending(['recipe', 'recipe_edit'], recipe.id)"
               size="x-small"
               color="info"
               variant="tonal"
               class="ms-1"
-            >修改待审</v-chip>
+            >{{ t('recipes.pendingChanges') }}</v-chip>
           </div>
 
           <v-card-text class="text-center pa-2">
@@ -114,8 +114,8 @@
       <v-col v-if="recipes.length === 0 && !loading" cols="12">
         <div class="text-center py-16 text-medium-emphasis">
           <v-icon size="80" color="medium-emphasis">mdi-book-open-variant</v-icon>
-          <div class="text-h6 mt-4">暂无菜谱</div>
-          <div class="text-body-2 mt-2">点击下方按钮添加第一个菜谱</div>
+          <div class="text-h6 mt-4">{{ t('recipes.emptyTitle') }}</div>
+          <div class="text-body-2 mt-2">{{ t('recipes.emptyBody') }}</div>
         </div>
       </v-col>
     </v-row>
@@ -134,14 +134,16 @@
         <v-select
           v-model="pageSize"
           :items="[10, 20, 50, 100]"
-          label="每页"
+          :label="t('recipes.perPage')"
           variant="outlined"
           density="compact"
           hide-details
           style="max-width: 90px"
           @update:model-value="handlePageSizeChange"
         />
-        <span class="text-caption text-medium-emphasis">共 {{ total }} 条</span>
+        <span class="text-caption text-medium-emphasis">
+          {{ t('recipes.totalCount', { count: formatNumber(total, localeStore.effectiveFormatLocale) }) }}
+        </span>
       </div>
     </div>
 
@@ -161,13 +163,13 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start color="primary">mdi-plus-circle-outline</v-icon>
-          创建菜谱
+          {{ t('recipes.createTitle') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-4">
           <v-text-field
             v-model="createForm.name"
-            label="菜谱名称 *"
+            :label="t('recipes.nameRequired')"
             variant="outlined"
             density="compact"
             maxlength="200"
@@ -179,7 +181,7 @@
             <v-col cols="6">
               <v-select
                 v-model="createForm.category"
-                label="分类 *"
+                :label="t('recipes.categoryRequired')"
                 variant="outlined"
                 density="compact"
                 :items="categoryOptions"
@@ -191,7 +193,7 @@
             <v-col cols="6">
               <v-select
                 v-model="createForm.difficulty"
-                label="难度 *"
+                :label="t('recipes.difficultyRequired')"
                 variant="outlined"
                 density="compact"
                 :items="difficultyOptions"
@@ -220,14 +222,14 @@
             variant="text"
             @click="closeCreateDialog"
             :disabled="creating"
-          >取消</v-btn>
+          >{{ t('recipes.cancel') }}</v-btn>
           <v-btn
             color="primary"
             variant="tonal"
             :loading="creating"
             :disabled="!createForm.name || !createForm.category"
             @click="handleCreate"
-          >创建</v-btn>
+          >{{ t('recipes.create') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -251,6 +253,9 @@ import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { smAndDown, mdAndDown, md, lgAndUp } = useDisplay()
@@ -278,6 +283,39 @@ interface Recipe {
 const router = useRouter()
 const userStore = useUserStore()
 const { currency: userCurrency } = useUserCurrency()
+const { t } = useI18n()
+
+const RECIPE_CATEGORY_KEYS: Record<string, string> = {
+  '荤菜': 'recipeCategories.meatDish',
+  '素菜': 'recipeCategories.vegetableDish',
+  '水产': 'recipeCategories.seafood',
+  '主食': 'recipeCategories.staple',
+  '汤与粥': 'recipeCategories.soupPorridge',
+  '早餐': 'recipeCategories.breakfast',
+  '甜品': 'recipeCategories.dessert',
+  '调料': 'recipeCategories.seasoning',
+  '半成品': 'recipeCategories.semiFinished',
+  '小食': 'recipeCategories.snack',
+}
+
+const RECIPE_DIFFICULTY_KEYS: Record<string, string> = {
+  simple: 'recipeDifficulties.simple',
+  easy: 'recipeDifficulties.easy',
+  medium: 'recipeDifficulties.medium',
+  hard: 'recipeDifficulties.hard',
+  expert: 'recipeDifficulties.expert',
+}
+
+function recipeCategoryLabel(category?: string): string {
+  const key = category ? RECIPE_CATEGORY_KEYS[category] : null
+  return key && category ? t(key) : (category || '')
+}
+
+function recipeDifficultyLabel(difficulty?: string): string {
+  const key = difficulty ? RECIPE_DIFFICULTY_KEYS[difficulty] : null
+  return key && difficulty ? t(key) : (difficulty || '')
+}
+const localeStore = useLocaleStore()
 
 const recipes = ref<Recipe[]>([])
 const localImageUrls = ref<Record<number, string>>({})
@@ -346,43 +384,43 @@ const debouncedSearch = () => {
 }
 
 // 筛选器配置
-const recipeFilters: FilterConfig[] = reactive([
+const recipeFilters = computed<FilterConfig[]>(() => [
   {
     key: 'categories',
-    label: '分类',
+    label: t('recipes.category'),
     type: 'select',
     items: [
-      { value: '荤菜', title: '荤菜' },
-      { value: '素菜', title: '素菜' },
-      { value: '水产', title: '水产' },
-      { value: '主食', title: '主食' },
-      { value: '汤与粥', title: '汤与粥' },
-      { value: '早餐', title: '早餐' },
-      { value: '甜品', title: '甜品' },
-      { value: '调料', title: '调料' },
-      { value: '半成品', title: '半成品' },
-      { value: '小食', title: '小食' },
+      { value: '荤菜', title: recipeCategoryLabel('荤菜') },
+      { value: '素菜', title: recipeCategoryLabel('素菜') },
+      { value: '水产', title: recipeCategoryLabel('水产') },
+      { value: '主食', title: recipeCategoryLabel('主食') },
+      { value: '汤与粥', title: recipeCategoryLabel('汤与粥') },
+      { value: '早餐', title: recipeCategoryLabel('早餐') },
+      { value: '甜品', title: recipeCategoryLabel('甜品') },
+      { value: '调料', title: recipeCategoryLabel('调料') },
+      { value: '半成品', title: recipeCategoryLabel('半成品') },
+      { value: '小食', title: recipeCategoryLabel('小食') },
     ],
     minWidth: '140px',
     maxWidth: '200px',
   },
   {
     key: 'difficulties',
-    label: '难度',
+    label: t('recipes.difficulty'),
     type: 'select',
     items: [
-      { value: 'simple', title: '简易' },
-      { value: 'easy', title: '简单' },
-      { value: 'medium', title: '中等' },
-      { value: 'hard', title: '困难' },
-      { value: 'expert', title: '专家' },
+      { value: 'simple', title: recipeDifficultyLabel('simple') },
+      { value: 'easy', title: recipeDifficultyLabel('easy') },
+      { value: 'medium', title: recipeDifficultyLabel('medium') },
+      { value: 'hard', title: recipeDifficultyLabel('hard') },
+      { value: 'expert', title: recipeDifficultyLabel('expert') },
     ],
     minWidth: '120px',
     maxWidth: '160px',
   },
   {
     key: 'ingredient_ids',
-    label: '所用食材',
+    label: t('recipes.ingredientsUsed'),
     type: 'autocomplete',
     items: [],
     minWidth: '160px',
@@ -390,11 +428,11 @@ const recipeFilters: FilterConfig[] = reactive([
   },
   {
     key: 'special_conditions',
-    label: '特殊条件',
+    label: t('recipes.specialConditions'),
     type: 'multicheck',
     items: [
-      { value: 'has_unpriced_ingredient', title: '存在原料没有维护价格' },
-      { value: 'has_unnourished_ingredient', title: '存在原料没有维护营养成分' },
+      { value: 'has_unpriced_ingredient', title: t('recipes.hasUnpricedIngredient') },
+      { value: 'has_unnourished_ingredient', title: t('recipes.hasUnnourishedIngredient') },
     ],
     minWidth: '220px',
   },
@@ -418,26 +456,26 @@ const creating = ref(false)
 const createError = ref('')
 const createErrors = ref<Record<string, string>>({})
 
-const categoryOptions = [
-  { title: '荤菜', value: '荤菜' },
-  { title: '素菜', value: '素菜' },
-  { title: '水产', value: '水产' },
-  { title: '主食', value: '主食' },
-  { title: '汤与粥', value: '汤与粥' },
-  { title: '早餐', value: '早餐' },
-  { title: '甜品', value: '甜品' },
-  { title: '调料', value: '调料' },
-  { title: '半成品', value: '半成品' },
-  { title: '小食', value: '小食' },
-]
+const categoryOptions = computed(() => [
+  { title: recipeCategoryLabel('荤菜'), value: '荤菜' },
+  { title: recipeCategoryLabel('素菜'), value: '素菜' },
+  { title: recipeCategoryLabel('水产'), value: '水产' },
+  { title: recipeCategoryLabel('主食'), value: '主食' },
+  { title: recipeCategoryLabel('汤与粥'), value: '汤与粥' },
+  { title: recipeCategoryLabel('早餐'), value: '早餐' },
+  { title: recipeCategoryLabel('甜品'), value: '甜品' },
+  { title: recipeCategoryLabel('调料'), value: '调料' },
+  { title: recipeCategoryLabel('半成品'), value: '半成品' },
+  { title: recipeCategoryLabel('小食'), value: '小食' },
+])
 
-const difficultyOptions = [
-  { label: '简易', value: 'simple' },
-  { label: '简单', value: 'easy' },
-  { label: '中等', value: 'medium' },
-  { label: '困难', value: 'hard' },
-  { label: '专家', value: 'expert' },
-]
+const difficultyOptions = computed(() => [
+  { label: recipeDifficultyLabel('simple'), value: 'simple' },
+  { label: recipeDifficultyLabel('easy'), value: 'easy' },
+  { label: recipeDifficultyLabel('medium'), value: 'medium' },
+  { label: recipeDifficultyLabel('hard'), value: 'hard' },
+  { label: recipeDifficultyLabel('expert'), value: 'expert' },
+])
 
 const resetCreateForm = () => {
   createForm.value = { name: '', category: '荤菜', difficulty: 'easy' }
@@ -453,7 +491,7 @@ const closeCreateDialog = () => {
 const handleCreate = async () => {
   // 验证
   if (!createForm.value.name.trim()) {
-    createErrors.value = { name: '请输入菜谱名称' }
+    createErrors.value = { name: t('recipes.nameRequiredError') }
     return
   }
   createErrors.value = {}
@@ -472,7 +510,7 @@ const handleCreate = async () => {
     router.push(`/recipes/${result.id}`)
   } catch (e: any) {
     console.error('创建菜谱失败', e)
-    createError.value = e.response?.data?.detail || e.message || '创建失败，请重试'
+    createError.value = e.response?.data?.detail || e.message || t('recipes.createFailed')
   } finally {
     creating.value = false
   }
@@ -517,7 +555,7 @@ const loadRecipes = async () => {
     loadCostsForVisibleRecipes()
   } catch (e: any) {
     console.error('加载菜谱失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    error.value = getErrorMessage(e, t('recipes.loadFailed'))
   } finally {
     loading.value = false
   }
@@ -542,7 +580,10 @@ const getDisplayCost = (recipe: Recipe) => {
   const cost = costMap.value[recipe.id]?.estimated_cost ?? recipe.estimated_cost
   if (cost === null || cost === undefined) return '--'
   const servings = recipe.servings || 1
-  return `${formatMoney(Number(cost), userCurrency.value)} / ${servings} 人份`
+  return t('recipes.costPerServings', {
+    amount: formatMoney(Number(cost), userCurrency.value, localeStore.effectiveFormatLocale),
+    count: formatNumber(servings, localeStore.effectiveFormatLocale),
+  })
 }
 
 const getDisplayCalories = (recipe: Recipe) => {
@@ -550,7 +591,10 @@ const getDisplayCalories = (recipe: Recipe) => {
   if (cal === null || cal === undefined) return '-'
   const servings = recipe.servings || 1
   const perServing = Math.round(cal / servings)
-  return `${toDisplayCalorie(perServing)} ${energyUnit.value} / 份`
+  return t('recipes.caloriesPerServing', {
+    amount: formatNumber(Number(toDisplayCalorie(perServing)), localeStore.effectiveFormatLocale),
+    unit: energyUnit.value,
+  })
 }
 
 // 页面渲染完后台加载当前页菜谱的成本和卡路里

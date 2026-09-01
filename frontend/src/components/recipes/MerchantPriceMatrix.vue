@@ -2,7 +2,7 @@
   <div>
     <div class="d-flex align-center mb-3">
       <v-icon start color="info">mdi-table-compare</v-icon>
-      <span class="text-h6 font-weight-regular">商家比价推荐</span>
+      <span class="text-h6 font-weight-regular">{{ t('recipes.merchantPriceRecommendations') }}</span>
     </div>
 
     <v-card elevation="0" variant="outlined">
@@ -12,13 +12,13 @@
         </div>
         <div v-else-if="!merchantNames.length" class="text-center py-6 text-medium-emphasis">
           <v-icon size="40" color="medium-emphasis">mdi-table-off</v-icon>
-          <div class="text-body-2 mt-2">暂无比价数据</div>
+          <div class="text-body-2 mt-2">{{ t('recipes.noPriceComparisonData') }}</div>
         </div>
         <div v-else class="price-table-wrapper">
           <table class="price-matrix">
             <thead>
               <tr>
-                <th class="sticky-col" style="min-width:160px">食材 / 用量</th>
+                <th class="sticky-col" style="min-width:160px">{{ t('recipes.ingredientAndAmount') }}</th>
                 <th v-for="m in merchantNames" :key="m" class="text-right">
                   <span class="text-truncate d-inline-block" style="max-width:80px">{{ m }}</span>
                 </th>
@@ -33,7 +33,7 @@
                     <template #activator="{ props }">
                       <v-icon v-bind="props" size="x-small" color="info" class="ml-1">mdi-information</v-icon>
                     </template>
-                    <div class="text-caption">根据以下食材计算价格：</div>
+                    <div class="text-caption">{{ t('recipes.calculatedFromIngredients') }}</div>
                     <div class="text-body-2 font-weight-bold">{{ row.fallbackChain }}</div>
                   </v-tooltip>
                 </td>
@@ -43,7 +43,7 @@
                   class="text-right"
                   :class="{ 'price-lowest': cell.isLowest, 'price-missing': !cell.hasPrice }"
                 >
-                  {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency) : '—' }}
+                  {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency, localeStore.effectiveFormatLocale) : '—' }}
                 </td>
               </tr>
             </tbody>
@@ -58,6 +58,10 @@
 import { computed } from 'vue'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { useI18n } from 'vue-i18n'
+import { unitDisplayName } from '@/utils/catalogLabels'
 
 const props = defineProps<{
   recipeIngredients?: any[] | null
@@ -66,13 +70,15 @@ const props = defineProps<{
 }>()
 
 const { currency: userCurrency } = useUserCurrency()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const merchantNames = computed(() => {
   if (!props.merchantPrices?.length) return []
   const names = new Set<string>()
   for (const item of props.merchantPrices) {
     for (const p of (item.prices || [])) {
-      names.add(p.merchant_name || `商家${p.merchant_id}`)
+      names.add(p.merchant_name || t('recipes.merchantFallbackName', { id: p.merchant_id }))
     }
   }
   return Array.from(names)
@@ -107,14 +113,17 @@ const tableRows = computed<TableRow[]>(() => {
       const merchantPriceList = priceItem?.prices || []
       for (const mName of merchantNames.value) {
         const match = merchantPriceList.find(
-          (p: any) => (p.merchant_name || `商家${p.merchant_id}`) === mName
+          (p: any) => (p.merchant_name || t('recipes.merchantFallbackName', { id: p.merchant_id })) === mName
         )
         if (match) {
           // 优先显示 total_cost（预估总价），回退到 price（单价）
           const displayVal = match.total_cost != null ? match.total_cost : (match.price || 0)
           merchantPrices[mName] = {
             hasPrice: true,
-            displayValue: displayVal.toFixed(2),
+            displayValue: formatNumber(displayVal, localeStore.effectiveFormatLocale, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            }),
             rawValue: displayVal,
             isLowest: match.is_lowest || false,
           }
@@ -131,14 +140,14 @@ const tableRows = computed<TableRow[]>(() => {
       let qtyDisplay = priceItem?.qtyDisplay || ''
       if (!qtyDisplay) {
         if (ing.quantity) {
-          qtyDisplay = `${ing.quantity}${ing.unit ? ` ${ing.unit}` : ''}`
+          qtyDisplay = formatQuantity(ing.quantity, ing.unit)
         } else if (ing.quantity_range) {
           let qr = ing.quantity_range
           if (typeof qr === 'string') {
             try { qr = JSON.parse(qr) } catch { /* ignore */ }
           }
           if (qr && typeof qr === 'object' && qr.min != null && qr.max != null) {
-            qtyDisplay = `${qr.min}-${qr.max}${ing.unit ? ` ${ing.unit}` : ''}`
+            qtyDisplay = `${formatNumber(qr.min, localeStore.effectiveFormatLocale)}-${formatNumber(qr.max, localeStore.effectiveFormatLocale)}${ing.unit ? ` ${unitDisplayName({ name: ing.unit, abbreviation: ing.unit })}` : ''}`
           }
         }
       }
@@ -152,6 +161,11 @@ const tableRows = computed<TableRow[]>(() => {
       }
     })
 })
+
+function formatQuantity(quantity: number | string, unit?: string) {
+  const formatted = formatNumber(quantity, localeStore.effectiveFormatLocale)
+  return unit ? `${formatted} ${unitDisplayName({ name: unit, abbreviation: unit })}` : formatted
+}
 </script>
 
 <style scoped>

@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
 const snap = computed(() => props.proposal.snapshot || {})
 const p = computed(() => props.proposal.payload || {})
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
-const RELATION_LABELS: Record<string, string> = {
-  contains: '包含',
-  is_parent: '上级',
-  is_child: '下级',
-  equivalent: '等同',
-  alternative: '替代',
+const RELATION_KEYS: Record<string, string> = {
+  contains: 'hierarchyRelations.contains',
+  is_parent: 'hierarchyRelations.parent',
+  is_child: 'hierarchyRelations.child',
+  equivalent: 'hierarchyRelations.equivalent',
+  alternative: 'hierarchyRelations.alternative',
 }
 
 const rows = computed(() => {
@@ -31,7 +36,12 @@ const rows = computed(() => {
 
 function fmtRelation(v: any): string {
   if (v === null || v === undefined) return '—'
-  return RELATION_LABELS[String(v)] || String(v)
+  const key = RELATION_KEYS[String(v)]
+  return key ? t(key) : String(v)
+}
+
+function fmtStrength(v: any): string {
+  return v == null ? '—' : formatNumber(v, localeStore.effectiveFormatLocale)
 }
 </script>
 
@@ -40,19 +50,19 @@ function fmtRelation(v: any): string {
     <tbody>
       <tr v-for="r in rows" :key="r.field">
         <td class="text-caption text-medium-emphasis" style="width:28%">
-          {{ r.field === 'relation_type' ? '关系类型' : '关联强度' }}
+          {{ r.field === 'relation_type' ? t('proposals.relationType') : t('proposals.relationStrength') }}
         </td>
         <td :class="['diff-cell', 'before', r.kind]">
-          {{ r.field === 'relation_type' ? fmtRelation(r.before) : (r.before ?? '—') }}
+          {{ r.field === 'relation_type' ? fmtRelation(r.before) : fmtStrength(r.before) }}
         </td>
         <td class="text-center text-medium-emphasis" style="width:32px">→</td>
         <td :class="['diff-cell', 'after', r.kind]">
-          {{ r.field === 'relation_type' ? fmtRelation(r.after) : (r.after ?? '—') }}
+          {{ r.field === 'relation_type' ? fmtRelation(r.after) : fmtStrength(r.after) }}
         </td>
       </tr>
     </tbody>
   </v-table>
-  <div v-else class="text-caption text-medium-emphasis">父子食材信息见上方「目标实体」</div>
+  <div v-else class="text-caption text-medium-emphasis">{{ t('proposals.hierarchyTargetHint') }}</div>
 </template>
 
 <style scoped>
