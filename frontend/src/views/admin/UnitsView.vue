@@ -3,11 +3,11 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">单位管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('admin.units.title') }}</v-app-bar-title>
     <template #append>
       <v-btn color="primary" variant="tonal" @click="openCreateDialog">
         <v-icon start>mdi-plus</v-icon>
-        添加单位
+        {{ t('admin.units.add') }}
       </v-btn>
     </template>
   </v-app-bar>
@@ -21,7 +21,7 @@
             <v-select
               v-model="filterSystem"
               :items="unitSystemOptions"
-              label="单位体系"
+              :label="t('admin.units.system')"
               clearable
               prepend-icon="mdi-filter-outline"
               variant="outlined"
@@ -34,7 +34,7 @@
             <v-select
               v-model="filterType"
               :items="unitTypeOptions"
-              label="单位类型"
+              :label="t('admin.units.type')"
               clearable
               variant="outlined"
               density="compact"
@@ -45,7 +45,7 @@
           <v-col cols="12" sm="6">
             <v-text-field
               v-model="searchQuery"
-              label="搜索单位"
+              :label="t('admin.units.search')"
               prepend-icon="mdi-magnify"
               variant="outlined"
               density="compact"
@@ -71,7 +71,7 @@
               <v-icon class="mr-2" :icon="group.icon" :color="group.color" />
               <span class="font-weight-bold">{{ group.label }}</span>
               <v-chip size="x-small" class="ml-2" variant="tonal">
-                {{ getFilteredUnitsForSystem(group.key).length }}
+                {{ formatCount(getFilteredUnitsForSystem(group.key).length) }}
               </v-chip>
               <v-spacer />
               <v-icon>
@@ -102,10 +102,10 @@
                           <div class="text-caption text-medium-emphasis">{{ unit.name }}</div>
                           <div class="d-flex justify-center align-center mt-1 ga-1">
                             <v-chip v-if="unit.is_common" color="primary" size="x-small" label>
-                              常用
+                              {{ t('admin.units.common') }}
                             </v-chip>
                             <v-chip v-if="unit.is_si_base" color="success" size="x-small" label>
-                              基准
+                              {{ t('admin.units.base') }}
                             </v-chip>
                             <v-chip
                               v-if="unit.default_estimate != null"
@@ -113,7 +113,7 @@
                               label
                               variant="outlined"
                             >
-                              ~{{ unit.default_estimate }}{{ getBaseUnitAbbr(unit) ? ' ' + getBaseUnitAbbr(unit) : '' }}
+                              ~{{ formatDecimal(unit.default_estimate) }}{{ getBaseUnitAbbr(unit) ? ' ' + getBaseUnitAbbr(unit) : '' }}
                             </v-chip>
                           </div>
                         </v-card-text>
@@ -124,7 +124,7 @@
                       cols="12"
                       class="text-center text-medium-emphasis py-4 text-body-2"
                     >
-                      暂无单位
+                      {{ t('admin.units.noUnits') }}
                     </v-col>
                   </v-row>
                 </v-card-text>
@@ -138,7 +138,7 @@
           class="text-center text-medium-emphasis py-8"
         >
           <v-icon size="48" color="grey">mdi-magnify-close</v-icon>
-          <div class="mt-2">没有找到匹配的单位</div>
+          <div class="mt-2">{{ t('admin.units.noMatches') }}</div>
         </div>
       </v-col>
 
@@ -147,34 +147,34 @@
         <v-card v-if="selectedUnit" class="rounded-lg" sticky>
           <v-card-title class="d-flex align-center py-3">
             <v-icon class="mr-2" color="info">mdi-swap-horizontal</v-icon>
-            <span>换算预览</span>
+            <span>{{ t('admin.units.conversionPreview') }}</span>
             <v-spacer />
             <v-tooltip location="top">
               <template #activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-pencil" size="small" variant="text" color="primary" @click="openEditDialog(selectedUnit!)" />
               </template>
-              <span>编辑</span>
+              <span>{{ t('admin.units.edit') }}</span>
             </v-tooltip>
             <v-tooltip location="top">
               <template #activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(selectedUnit!)" />
               </template>
-              <span>删除</span>
+              <span>{{ t('admin.units.delete') }}</span>
             </v-tooltip>
             <v-btn icon="mdi-close" size="small" variant="text" @click="selectedUnit = null" />
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-4 pb-4">
-            <div class="text-h6 mb-2">{{ selectedUnit.name }}（{{ selectedUnit.abbreviation }}）</div>
+            <div class="text-h6 mb-2">{{ selectedUnit.name }} ({{ selectedUnit.abbreviation }})</div>
             <div class="mb-3">
-              <div class="text-body-2 text-medium-emphasis">SI 因子</div>
+              <div class="text-body-2 text-medium-emphasis">{{ t('admin.units.siFactor') }}</div>
               <div class="text-body-1 font-weight-medium">
-                {{ selectedUnit.si_factor ?? '未设置' }}
-                <span v-if="selectedUnit.is_si_base" class="text-success text-body-2">(基准单位)</span>
+                {{ selectedUnit.si_factor == null ? t('admin.units.notSet') : formatDecimal(selectedUnit.si_factor) }}
+                <span v-if="selectedUnit.is_si_base" class="text-success text-body-2">({{ t('admin.units.baseUnit') }})</span>
               </div>
             </div>
             <div v-if="conversionPreviews.length > 0" class="mb-2">
-              <div class="text-body-2 text-medium-emphasis mb-2">同类型换算</div>
+              <div class="text-body-2 text-medium-emphasis mb-2">{{ t('admin.units.sameTypeConversions') }}</div>
               <div class="d-flex flex-wrap ga-2">
                 <v-chip
                   v-for="conv in conversionPreviews"
@@ -182,19 +182,19 @@
                   variant="tonal"
                   size="small"
                 >
-                  1 {{ selectedUnit.abbreviation }} = {{ conv.factor }} {{ conv.unit.abbreviation }}
+                  1 {{ selectedUnit.abbreviation }} = {{ formatDecimal(conv.factor) }} {{ conv.unit.abbreviation }}
                 </v-chip>
               </div>
             </div>
             <div v-else class="text-body-2 text-medium-emphasis">
-              暂无可计算的换算关系
+              {{ t('admin.units.noConversions') }}
             </div>
           </v-card-text>
         </v-card>
         <v-card v-else class="rounded-lg">
           <v-card-text class="text-center text-medium-emphasis py-8">
             <v-icon size="40" color="grey-lighten-1">mdi-cursor-default-click</v-icon>
-            <div class="mt-2 text-body-2">点击单位查看换算预览</div>
+            <div class="mt-2 text-body-2">{{ t('admin.units.selectPreviewHint') }}</div>
           </v-card-text>
         </v-card>
       </v-col>
@@ -212,81 +212,81 @@
           <v-icon class="mr-2">
             {{ editingUnit ? 'mdi-pencil' : 'mdi-plus' }}
           </v-icon>
-          <span>{{ editingUnit ? '编辑单位' : '添加单位' }}</span>
+          <span>{{ editingUnit ? t('admin.units.editTitle') : t('admin.units.add') }}</span>
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
           <v-form ref="formRef" @submit.prevent="saveUnit">
             <v-text-field
               v-model="unitForm.name"
-              label="单位名称"
+              :label="t('admin.units.name')"
               variant="outlined"
               required
-              :rules="[(v: string) => !!v || '请输入单位名称']"
+              :rules="[(v: string) => !!v || t('admin.units.nameRequired')]"
             />
             <v-text-field
               v-model="unitForm.abbreviation"
-              label="单位缩写"
+              :label="t('admin.units.abbreviation')"
               variant="outlined"
               required
-              :rules="[(v: string) => !!v || '请输入单位缩写']"
+              :rules="[(v: string) => !!v || t('admin.units.abbreviationRequired')]"
             />
             <v-text-field
               v-model="unitForm.plural_form"
-              label="复数形式（可选）"
+              :label="t('admin.units.pluralForm')"
               variant="outlined"
-              hint="例如：pounds"
+              :hint="t('admin.units.pluralFormHint')"
               persistent-hint
             />
             <v-select
               v-model="unitForm.unit_system"
               :items="unitSystemOptions"
-              label="单位体系"
+              :label="t('admin.units.system')"
               variant="outlined"
               required
-              :rules="[(v: string) => !!v || '请选择单位体系']"
+              :rules="[(v: string) => !!v || t('admin.units.systemRequired')]"
             />
             <v-select
               v-model="unitForm.unit_type"
               :items="unitTypeOptions"
-              label="单位类型"
+              :label="t('admin.units.type')"
               variant="outlined"
               required
               :disabled="unitForm.unit_system === 'vague'"
-              :rules="[(v: string) => !!v || '请选择单位类型']"
+              :rules="[(v: string) => !!v || t('admin.units.typeRequired')]"
             />
             <v-text-field
               v-model.number="unitForm.si_factor"
-              label="SI 转换因子"
+              :label="t('admin.units.siConversionFactor')"
               type="number"
               variant="outlined"
-              hint="转换为国际单位制的因子，基准单位设为 1"
+              :hint="t('admin.units.siConversionFactorHint')"
               persistent-hint
             />
             <!-- 模糊量类型的默认估算值 -->
             <v-text-field
               v-if="unitForm.unit_system === 'vague'"
               v-model.number="unitForm.default_estimate"
-              label="默认估算值（克）"
+              :label="t('admin.units.defaultEstimate')"
               type="number"
               variant="outlined"
-              hint="模糊量的默认质量估算值（单位：克）"
+              :hint="t('admin.units.defaultEstimateHint')"
               persistent-hint
             />
             <v-row>
               <v-col cols="6">
-                <v-switch v-model="unitForm.is_si_base" label="SI 基本单位" color="success" />
+                <v-switch v-model="unitForm.is_si_base" :label="t('admin.units.siBaseUnit')" color="success" />
               </v-col>
               <v-col cols="6">
-                <v-switch v-model="unitForm.is_common" label="常用单位" color="primary" />
+                <v-switch v-model="unitForm.is_common" :label="t('admin.units.commonUnit')" color="primary" />
               </v-col>
             </v-row>
             <v-text-field
               v-model.number="unitForm.display_order"
-              label="显示顺序"
+              :label="t('admin.units.displayOrder')"
               type="number"
               variant="outlined"
-              hint="数值越小越靠前"
+              :hint="t('admin.units.displayOrderHint')"
               persistent-hint
             />
           </v-form>
@@ -294,8 +294,8 @@
         <v-divider />
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="tonal" @click="unitDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveUnit">保存</v-btn>
+          <v-btn variant="tonal" @click="unitDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveUnit">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -303,15 +303,14 @@
     <!-- 删除确认对话框 -->
     <v-dialog v-model="deleteDialog" max-width="400px">
       <v-card class="rounded-lg">
-        <v-card-title class="text-h6">确认删除</v-card-title>
+        <v-card-title class="text-h6">{{ t('admin.units.deleteTitle') }}</v-card-title>
         <v-card-text>
-          确定要删除单位 <strong>{{ deleteTarget?.name }}</strong>（{{ deleteTarget?.abbreviation }}）吗？
-          此操作不可撤销。
+          {{ t('admin.units.deleteConfirm', { name: deleteTarget?.name ?? '', abbreviation: deleteTarget?.abbreviation ?? '' }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" @click="deleteDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="deleting" @click="deleteUnit">删除</v-btn>
+          <v-btn variant="tonal" @click="deleteDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="error" :loading="deleting" @click="deleteUnit">{{ t('admin.units.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -332,12 +331,17 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 import type { Unit } from '@/types'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 const router = useRouter()
 
 const goBack = () => {
@@ -347,34 +351,34 @@ const goBack = () => {
 // ============ 单位体系与类型配置 ============
 
 // 单位体系选项
-const unitSystemOptions = [
-  { title: '公制', value: 'metric' },
-  { title: '市制', value: 'market' },
-  { title: '英制', value: 'imperial' },
-  { title: '计数', value: 'count' },
-  { title: '模糊量', value: 'vague' },
-]
+const unitSystemOptions = computed(() => [
+  { title: t('admin.units.systems.metric'), value: 'metric' },
+  { title: t('admin.units.systems.market'), value: 'market' },
+  { title: t('admin.units.systems.imperial'), value: 'imperial' },
+  { title: t('admin.units.systems.count'), value: 'count' },
+  { title: t('admin.units.systems.vague'), value: 'vague' },
+])
 
 // 单位类型选项
-const unitTypeOptions = [
-  { title: '质量', value: 'mass' },
-  { title: '体积', value: 'volume' },
-  { title: '长度', value: 'length' },
-  { title: '面积', value: 'area' },
-  { title: '温度', value: 'temperature' },
-  { title: '时间', value: 'time' },
-  { title: '计数', value: 'count' },
-]
+const unitTypeOptions = computed(() => [
+  { title: t('admin.units.types.mass'), value: 'mass' },
+  { title: t('admin.units.types.volume'), value: 'volume' },
+  { title: t('admin.units.types.length'), value: 'length' },
+  { title: t('admin.units.types.area'), value: 'area' },
+  { title: t('admin.units.types.temperature'), value: 'temperature' },
+  { title: t('admin.units.types.time'), value: 'time' },
+  { title: t('admin.units.types.count'), value: 'count' },
+])
 
 // 分组展示配置
-const unitSystemGroups = [
-  { key: 'metric', label: '公制', icon: 'mdi-weight-kilogram', color: 'primary' },
-  { key: 'market', label: '市制', icon: 'mdi-store', color: 'orange' },
-  { key: 'imperial', label: '英制', icon: 'mdi-weight-pound', color: 'indigo' },
-  { key: 'count', label: '计数', icon: 'mdi-numeric', color: 'teal' },
-  { key: 'vague', label: '模糊量', icon: 'mdi-water-outline', color: 'purple' },
-  { key: 'other', label: '未分类', icon: 'mdi-help-circle-outline', color: 'grey' },
-]
+const unitSystemGroups = computed(() => [
+  { key: 'metric', label: t('admin.units.systems.metric'), icon: 'mdi-weight-kilogram', color: 'primary' },
+  { key: 'market', label: t('admin.units.systems.market'), icon: 'mdi-store', color: 'orange' },
+  { key: 'imperial', label: t('admin.units.systems.imperial'), icon: 'mdi-weight-pound', color: 'indigo' },
+  { key: 'count', label: t('admin.units.systems.count'), icon: 'mdi-numeric', color: 'teal' },
+  { key: 'vague', label: t('admin.units.systems.vague'), icon: 'mdi-water-outline', color: 'purple' },
+  { key: 'other', label: t('admin.units.systems.other'), icon: 'mdi-help-circle-outline', color: 'grey' },
+])
 
 // ============ 数据状态 ============
 
@@ -427,6 +431,10 @@ const successMessage = ref('')
 const showError = ref(false)
 const errorMessage = ref('')
 
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
+const formatDecimal = (value: number | null | undefined) =>
+  formatNumber(value, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })
+
 // ============ 计算属性 ============
 
 // 搜索关键词过滤
@@ -445,10 +453,10 @@ const searchFilteredUnits = computed(() => {
 const displayedGroups = computed(() => {
   if (filterSystem.value) {
     // 如果选了特定体系筛选，只显示该体系
-    return unitSystemGroups.filter((g) => g.key === filterSystem.value || g.key === 'other')
+    return unitSystemGroups.value.filter((g) => g.key === filterSystem.value || g.key === 'other')
   }
   // 没有体系筛选时，显示所有有单位的分组
-  return unitSystemGroups.filter((g) => getFilteredUnitsForSystem(g.key).length > 0 || expandedGroups[g.key])
+  return unitSystemGroups.value.filter((g) => getFilteredUnitsForSystem(g.key).length > 0 || expandedGroups[g.key])
 })
 
 // 换算预览数据
@@ -480,7 +488,7 @@ const conversionPreviews = computed(() => {
 const getSystemGroupKey = (unit: Unit): string => {
   if (unit.unit_system) {
     // 检查是否在已知体系中
-    const known = unitSystemGroups.some((g) => g.key === unit.unit_system)
+    const known = unitSystemGroups.value.some((g) => g.key === unit.unit_system)
     if (known) return unit.unit_system
   }
   return 'other'
@@ -493,7 +501,7 @@ const getFilteredUnitsForSystem = (systemKey: string): Unit[] => {
   // 按体系分组
   if (systemKey === 'other') {
     filtered = filtered.filter(
-      (u) => !u.unit_system || !unitSystemGroups.some((g) => g.key === u.unit_system)
+      (u) => !u.unit_system || !unitSystemGroups.value.some((g) => g.key === u.unit_system)
     )
   } else {
     filtered = filtered.filter((u) => u.unit_system === systemKey)
@@ -550,7 +558,7 @@ const fetchUnits = async () => {
   } catch (error) {
     console.error('获取单位列表失败:', error)
     showError.value = true
-    errorMessage.value = '获取单位列表失败'
+    errorMessage.value = t('admin.units.loadFailed')
   } finally {
     loading.value = false
   }
@@ -617,10 +625,10 @@ const saveUnit = async () => {
 
     if (editingUnit.value) {
       await api.put(`/units/${editingUnit.value.id}`, data)
-      successMessage.value = '单位更新成功'
+      successMessage.value = t('admin.units.updated')
     } else {
       await api.post('/units/', data)
-      successMessage.value = '单位创建成功'
+      successMessage.value = t('admin.units.created')
     }
     unitDialog.value = false
     showSuccess.value = true
@@ -628,7 +636,7 @@ const saveUnit = async () => {
   } catch (error: any) {
     console.error('保存单位失败:', error)
     showError.value = true
-    errorMessage.value = error.response?.data?.detail || '保存单位失败'
+    errorMessage.value = error.response?.data?.detail || t('admin.units.saveFailed')
   } finally {
     saving.value = false
   }
@@ -647,7 +655,7 @@ const deleteUnit = async () => {
     await api.delete(`/units/${deleteTarget.value.id}`)
     deleteDialog.value = false
     showSuccess.value = true
-    successMessage.value = '单位已删除'
+    successMessage.value = t('admin.units.deleted')
     // 如果删除的是当前选中的单位，清除选择
     if (selectedUnit.value?.id === deleteTarget.value.id) {
       selectedUnit.value = null
@@ -656,7 +664,7 @@ const deleteUnit = async () => {
   } catch (error: any) {
     console.error('删除单位失败:', error)
     showError.value = true
-    errorMessage.value = error.response?.data?.detail || '删除单位失败'
+    errorMessage.value = error.response?.data?.detail || t('admin.units.deleteFailed')
   } finally {
     deleting.value = false
   }

@@ -1,5 +1,7 @@
 <!-- 单个翻译 provider 的配置卡片：按 fields 配置渲染表单 + 测试连接就地反馈 -->
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
 defineProps<{
   title: string
   fields: Array<{ key: string; label: string; type?: 'text' | 'password' | 'switch' }>
@@ -13,6 +15,8 @@ const emit = defineEmits<{
   (e: 'update:field', payload: { field: string; value: any }): void
   (e: 'test'): void
 }>()
+
+const { t } = useI18n()
 </script>
 
 <template>
@@ -40,7 +44,7 @@ const emit = defineEmits<{
         />
       </template>
       <div class="d-flex align-center mt-2">
-        <v-btn :loading="testing" @click="emit('test')">测试连接</v-btn>
+        <v-btn :loading="testing" @click="emit('test')">{{ t('adminAI.testConnection') }}</v-btn>
         <span
           v-if="testResult"
           class="ml-3 text-body-2"

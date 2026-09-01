@@ -2,7 +2,7 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">菜谱导入管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('adminData.recipeImport.title') }}</v-app-bar-title>
   </v-app-bar>
 
   <v-container class="pa-4">
@@ -18,18 +18,18 @@
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2" color="github">mdi-source-repository</v-icon>
-            <span>从 Git 仓库导入</span>
+            <span>{{ t('adminData.maintenance.repoImport') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-6">
             <p class="text-body-2 mb-4">
-              从环境变量配置的 Git 仓库导入菜谱数据。
-              仓库地址、分支和数据目录由服务器配置（<code>DATA_REPO_URL</code>、
-              <code>DATA_REPO_BRANCH</code>、<code>DATA_REPO_DIR</code>）。
+              {{ t('adminData.maintenance.repoIntro') }}
+              <code>DATA_REPO_URL</code>, <code>DATA_REPO_BRANCH</code>,
+              <code>DATA_REPO_DIR</code>.
             </p>
             <v-alert type="info" variant="tonal" density="compact">
               <div class="text-caption">
-                支持格式：HowToCook_json / 系统导出格式（自动检测）
+                {{ t('adminData.maintenance.supportedFormatsAuto') }}
               </div>
             </v-alert>
           </v-card-text>
@@ -44,7 +44,7 @@
               @click="importFromRepo"
             >
               <v-icon start>mdi-source-repository</v-icon>
-              开始导入
+              {{ t('adminData.maintenance.startImport') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -55,28 +55,26 @@
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2" color="primary">mdi-folder-open</v-icon>
-            <span>从本地路径导入</span>
+            <span>{{ t('adminData.maintenance.localImport') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-6">
             <p class="text-body-2 mb-4">
-              从服务器上的本地目录导入数据。目录结构可以是
-              HowToCook_json 格式或系统导出格式（自动检测）。
+              {{ t('adminData.recipeImport.localIntro') }}
             </p>
             <v-text-field
               v-model="localPath"
-              label="本地目录绝对路径"
+              :label="t('adminData.recipeImport.localPath')"
               variant="outlined"
               placeholder="/data/recipes/out"
               prepend-icon="mdi-folder-path"
-              hint="输入服务器上的数据目录路径"
+              :hint="t('adminData.recipeImport.localPathHint')"
               persistent-hint
               :disabled="submitting.local"
             />
             <v-alert type="info" variant="tonal" class="mt-4" density="compact">
               <div class="text-caption">
-                支持格式：HowToCook_json（ingredients.json + 菜谱 JSON）/<br />
-                系统导出格式（manifest.json）
+                {{ t('adminData.maintenance.supportedFormatsDetailed') }}
               </div>
             </v-alert>
           </v-card-text>
@@ -92,7 +90,7 @@
               @click="importFromLocalPath"
             >
               <v-icon start>mdi-folder-open</v-icon>
-              开始导入
+              {{ t('adminData.maintenance.startImport') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -103,17 +101,16 @@
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2" color="success">mdi-upload</v-icon>
-            <span>上传压缩包导入</span>
+            <span>{{ t('adminData.maintenance.uploadImport') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-6">
             <p class="text-body-2 mb-4">
-              上传 ZIP 压缩包导入数据。支持 HowToCook_json 格式的压缩包，
-              以及通过系统导出功能生成的压缩包（含价格记录等数据）。
+              {{ t('adminData.maintenance.uploadIntro') }}
             </p>
             <v-file-input
               v-model="uploadFile"
-              label="选择 ZIP 文件"
+              :label="t('adminData.maintenance.chooseZip')"
               accept=".zip"
               variant="outlined"
               prepend-icon="mdi-zip-box"
@@ -134,7 +131,7 @@
               @click="uploadImport"
             >
               <v-icon start>mdi-upload</v-icon>
-              上传并导入
+              {{ t('adminData.maintenance.uploadAndImport') }}
             </v-btn>
           </v-card-actions>
         </v-card>
@@ -145,13 +142,12 @@
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2" color="purple">mdi-robot</v-icon>
-            <span>AI 推测处理</span>
+            <span>{{ t('adminData.recipeImport.ai.title') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-6">
             <p class="text-body-2 mb-4">
-              使用 AI 推测原料的模糊用量（如鸡蛋 1 个 ≈ 55g）和密度值
-              （如食用油 ≈ 0.92 g/cm³）。请先在 AI 配置页启用至少一个后端。
+              {{ t('adminData.recipeImport.ai.intro') }}
             </p>
 
             <!-- AI 提供方选择 -->
@@ -160,10 +156,10 @@
               :items="providerOptions"
               item-title="label"
               item-value="value"
-              label="AI 提供方"
+              :label="t('adminData.recipeImport.ai.provider')"
               variant="outlined"
               prepend-icon="mdi-robot"
-              :hint="enabledProviders.length ? '' : '请先在 AI 配置页启用后端'"
+              :hint="enabledProviders.length ? '' : t('adminData.recipeImport.ai.configureProvider')"
               persistent-hint
               hide-details
               class="mb-3"
@@ -180,11 +176,11 @@
                   @click="inferDensities"
                 >
                   <v-icon start>mdi-database</v-icon>
-                  推测密度
+                  {{ t('adminData.maintenance.ai.densities') }}
                 </v-btn>
               </v-col>
             </v-row>
-            <v-checkbox v-model="aiForce" label="强制重新处理全部" hide-details class="mt-2" />
+            <v-checkbox v-model="aiForce" :label="t('adminData.maintenance.ai.force')" hide-details class="mt-2" />
           </v-card-text>
         </v-card>
       </v-col>
@@ -194,14 +190,14 @@
         <v-card class="rounded-lg">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
-            <span>任务列表</span>
+            <span>{{ t('adminData.maintenance.tasks.title') }}</span>
             <v-spacer />
-            <v-btn variant="text" size="small" @click="fetchTasks(10)">刷新</v-btn>
+            <v-btn variant="text" size="small" @click="fetchTasks(10)">{{ t('common.refresh') }}</v-btn>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-4">
             <v-alert v-if="mergedTasks.length === 0" type="info" variant="tonal" density="compact">
-              暂无任务记录
+              {{ t('adminData.maintenance.tasks.empty') }}
             </v-alert>
             <v-list v-else>
               <v-list-item
@@ -234,8 +230,8 @@
                         height="6" rounded color="primary"
                       />
                       <div class="text-caption text-medium-emphasis mt-1">
-                        {{ t.progress.current }} / {{ t.progress.total }}
-                        ({{ Math.round((t.progress.current / t.progress.total) * 100) }}%)
+                        {{ formatCount(t.progress.current) }} / {{ formatCount(t.progress.total) }}
+                        ({{ formatPercent(Math.round((t.progress.current / t.progress.total) * 100)) }})
                       </div>
                     </div>
                     <div v-if="t.stats && Object.keys(t.stats).length" class="text-caption mt-1">
@@ -249,7 +245,7 @@
                     <div v-if="agentErrorMap[t.session_id]" class="text-caption text-error mt-1">
                       {{ agentErrorMap[t.session_id] }}
                     </div>
-                    <div class="text-caption text-medium-emphasis mt-1">点击查看实时详情</div>
+                    <div class="text-caption text-medium-emphasis mt-1">{{ t('adminData.maintenance.tasks.viewLive') }}</div>
                   </template>
                   <div class="text-caption text-medium-emphasis mt-1">{{ formatTime(t.created_at) }}</div>
                 </v-list-item-subtitle>
@@ -270,19 +266,30 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useImportTask } from '@/composables/useImportTask'
-  import { getTranslationConfig } from '@/api/usda'
-  import { createSession, getSession, listSessions } from '@/api/agent'
-  import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
+import { getTranslationConfig } from '@/api/usda'
+import { createSession, getSession, listSessions } from '@/api/agent'
+import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
+import { formatDateTime, formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 const { tasks, fetchTasks, startTask, startUploadTask } = useImportTask()
-  const router = useRouter()
-  const isLocalMode = computed(() => import.meta.env.VITE_STORAGE_MODE === 'local')
+const router = useRouter()
+const isLocalMode = computed(() => import.meta.env.VITE_STORAGE_MODE === 'local')
 
 const goBack = () => router.back()
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
+const formatPercent = (value: number) =>
+  formatNumber(value / 100, localeStore.effectiveFormatLocale, {
+    style: 'percent',
+    maximumFractionDigits: 0,
+  })
 
 // 各卡片提交中状态
 const submitting = reactive({
@@ -345,7 +352,9 @@ onMounted(async () => {
         agentTasks.value.push({
           session_id: s.id,
           task_type: s.task_type,
-          label: s.task_type === 'infer_quantities' ? 'Agent 模糊量推测' : 'Agent 密度推测',
+          label: s.task_type === 'infer_quantities'
+            ? t('adminData.maintenance.tasks.agentQuantities')
+            : t('adminData.maintenance.tasks.agentDensities'),
           status: s.status === 'completed' ? 'success' : (s.status as any),
           created_at: s.created_at || new Date().toISOString(),
         })
@@ -373,7 +382,7 @@ async function importFromRepo() {
   submitting.repo = true
   const taskId = await startTask('/import/data/import-from-repo')
   if (!taskId) {
-    errorMessage.value = '仓库导入任务启动失败，请检查后端状态'
+    errorMessage.value = t('adminData.maintenance.repoStartFailed')
   }
   submitting.repo = false
 }
@@ -384,7 +393,7 @@ async function importFromLocalPath() {
     params: { local_path: localPath.value.trim() },
   })
   if (!taskId) {
-    errorMessage.value = '本地导入任务启动失败，请检查路径和后端状态'
+    errorMessage.value = t('adminData.maintenance.localStartFailed')
   }
   submitting.local = false
 }
@@ -396,12 +405,9 @@ async function uploadImport() {
   if (taskId) {
     uploadFile.value = null
   } else {
-    errorMessage.value = '上传导入任务启动失败，请检查文件和后端状态'
+    errorMessage.value = t('adminData.maintenance.uploadStartFailed')
   }
   submitting.upload = false
-}
-
-  submitting.aiQuantities = false
 }
 
 async function inferDensities() {
@@ -410,7 +416,7 @@ async function inferDensities() {
     params: { force: aiForce.value, provider: aiProvider.value || 'claude_code' },
   })
   if (!taskId) {
-    errorMessage.value = 'AI 密度推测任务启动失败，请检查后端状态'
+    errorMessage.value = t('adminData.maintenance.densitiesStartFailed')
   }
   submitting.aiDensities = false
 }
@@ -482,36 +488,36 @@ const mergedTasks = computed<MergedTask[]>(() => {
   )
 })
 
-const taskTypeLabels: Record<string, string> = {
-  git_import: 'Git 仓库导入',
-  local_import: '本地路径导入',
-  upload_import: '上传导入',
-  ai_quantities: 'AI 模糊量推测',
-  ai_densities: 'AI 密度推测',
-}
+const taskTypeLabels = computed<Record<string, string>>(() => ({
+  git_import: t('adminData.maintenance.tasks.gitImport'),
+  local_import: t('adminData.maintenance.tasks.localImport'),
+  upload_import: t('adminData.maintenance.tasks.uploadImport'),
+  ai_quantities: t('adminData.maintenance.tasks.aiQuantities'),
+  ai_densities: t('adminData.maintenance.tasks.aiDensities'),
+}))
 
 function taskTypeLabel(type: string): string {
-  return taskTypeLabels[type] || type
+  return taskTypeLabels.value[type] || type
 }
 
-const statusConfig: Record<string, { color: string; icon: string; label: string }> = {
-  pending: { color: 'grey', icon: 'mdi-clock-outline', label: '等待中' },
-  running: { color: 'primary', icon: 'mdi-loading', label: '运行中' },
-  success: { color: 'success', icon: 'mdi-check-circle', label: '完成' },
-  failed: { color: 'error', icon: 'mdi-alert-circle', label: '失败' },
-  cancelled: { color: 'warning', icon: 'mdi-cancel', label: '已取消' },
-}
+const statusConfig = computed<Record<string, { color: string; icon: string; label: string }>>(() => ({
+  pending: { color: 'grey', icon: 'mdi-clock-outline', label: t('adminData.status.pending') },
+  running: { color: 'primary', icon: 'mdi-loading', label: t('adminData.status.running') },
+  success: { color: 'success', icon: 'mdi-check-circle', label: t('adminData.status.success') },
+  failed: { color: 'error', icon: 'mdi-alert-circle', label: t('adminData.status.failed') },
+  cancelled: { color: 'warning', icon: 'mdi-cancel', label: t('adminData.status.cancelled') },
+}))
 
 function statusColor(status: string): string {
-  return statusConfig[status]?.color || 'grey'
+  return statusConfig.value[status]?.color || 'grey'
 }
 
 function statusIcon(status: string): string {
-  return statusConfig[status]?.icon || 'mdi-help-circle'
+  return statusConfig.value[status]?.icon || 'mdi-help-circle'
 }
 
 function statusLabel(status: string): string {
-  return statusConfig[status]?.label || status
+  return statusConfig.value[status]?.label || status
 }
 
 function taskRunningClass(status: string): string {
@@ -519,14 +525,7 @@ function taskRunningClass(status: string): string {
 }
 
 function formatTime(iso: string): string {
-  if (!iso) return ''
-  try {
-    const d = new Date(iso)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
-  } catch {
-    return iso
-  }
+  return iso ? formatDateTime(iso, localeStore.effectiveFormatLocale) : ''
 }
 </script>
 

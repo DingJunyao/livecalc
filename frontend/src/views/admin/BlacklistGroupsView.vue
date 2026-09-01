@@ -3,15 +3,15 @@
     <v-app-bar elevation="0" color="background" density="comfortable" fixed>
       <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
       <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-      <v-app-bar-title>原料黑名单分组管理</v-app-bar-title>
+      <v-app-bar-title>{{ t('admin.blacklist.title') }}</v-app-bar-title>
       <template #append>
         <v-select
           v-if="providerOptions.length"
           v-model="aiProvider"
-          :items="providerOptions"
+          :items="localizedProviderOptions"
           item-title="label"
           item-value="value"
-          label="AI Provider"
+          :label="t('admin.provider')"
           variant="outlined"
           density="compact"
           hide-details
@@ -26,9 +26,9 @@
           :disabled="!providerOptions.length || !groups.length"
           @click="triggerAiMatchAll"
         >
-          AI 匹配全部
+          {{ t('admin.blacklist.aiMatchAll') }}
         </v-btn>
-        <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openCreate">新建分组</v-btn>
+        <v-btn color="primary" prepend-icon="mdi-plus" size="small" @click="openCreate">{{ t('admin.blacklist.createGroup') }}</v-btn>
       </template>
     </v-app-bar>
 
@@ -42,14 +42,14 @@
         closable
       >
         <div class="text-body-2 mb-2">
-          检测到系统尚未完整导入 GB 7718-2025 的 13 类过敏原分组
+          {{ t('admin.blacklist.allergenIntro') }}
           <span v-if="allergenStatus.missing_groups.length">
-            （缺失 {{ allergenStatus.missing_groups.length }} 个）
+            {{ t('admin.blacklist.allergenMissing', { count: formatCount(allergenStatus.missing_groups.length) }) }}
           </span>
           <span v-if="allergenStatus.empty_groups.length">
-            （{{ allergenStatus.empty_groups.length }} 个分组无原料映射）
+            {{ t('admin.blacklist.allergenEmpty', { count: formatCount(allergenStatus.empty_groups.length) }) }}
           </span>
-          ，可一键补全。
+          {{ t('admin.blacklist.allergenComplete') }}
         </div>
         <v-btn
           color="primary"
@@ -59,7 +59,7 @@
           @click="seedAllergens"
         >
           <v-icon start>mdi-shield-sync</v-icon>
-          快速导入过敏原分组
+          {{ t('admin.blacklist.importAllergens') }}
         </v-btn>
       </v-alert>
 
@@ -67,7 +67,7 @@
         <v-card-title class="d-flex align-center">
           <v-icon icon="mdi-shield-alert" class="mr-2" />
           {{ group.name }}
-          <v-chip size="small" class="ml-2">{{ group.ingredient_count }} 种原料</v-chip>
+          <v-chip size="small" class="ml-2">{{ t('admin.blacklist.ingredientCount', { count: formatCount(group.ingredient_count) }) }}</v-chip>
           <v-spacer />
           <v-btn icon="mdi-pencil" variant="text" size="small" @click="openEdit(group)" />
           <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="confirmDelete(group)" />
@@ -85,16 +85,16 @@
               @click:close="removeIngredient(group.id, ing.ingredient_id)"
             >
               {{ ing.ingredient_name }}
-              <v-tooltip v-if="ing.is_ai_matched" activator="parent" text="AI 匹配" />
+              <v-tooltip v-if="ing.is_ai_matched" activator="parent" :text="t('admin.blacklist.aiMatched')" />
             </v-chip>
           </div>
           <div v-else class="text-caption text-medium-emphasis">
-            暂无原料，请添加或使用 AI 匹配
+            {{ t('admin.blacklist.noIngredients') }}
           </div>
         </v-card-text>
         <v-card-actions>
           <v-btn variant="text" size="small" color="primary" @click="openAddIngredients(group)">
-            <v-icon start>mdi-plus</v-icon> 添加原料
+            <v-icon start>mdi-plus</v-icon> {{ t('admin.blacklist.addIngredients') }}
           </v-btn>
           <v-btn
             variant="text"
@@ -103,29 +103,29 @@
             :loading="aiMatchingGroups.has(group.id)"
             @click="triggerAiMatch(group)"
           >
-            <v-icon start>mdi-robot</v-icon> AI 匹配
+            <v-icon start>mdi-robot</v-icon> {{ t('admin.blacklist.aiMatch') }}
           </v-btn>
         </v-card-actions>
       </v-card>
 
       <div v-if="groups.length === 0 && !loading" class="text-center pa-8 text-medium-emphasis">
-        暂无原料黑名单分组，点击右上角「新建分组」创建
+        {{ t('admin.blacklist.empty') }}
       </div>
     </v-container>
 
     <!-- 创建/编辑对话框 -->
     <v-dialog v-model="editDialog" max-width="400">
       <v-card>
-        <v-card-title>{{ editingGroup ? '编辑分组' : '新建分组' }}</v-card-title>
+        <v-card-title>{{ editingGroup ? t('admin.blacklist.editGroup') : t('admin.blacklist.createGroup') }}</v-card-title>
         <v-card-text>
-          <v-text-field v-model="form.name" label="分组名称" variant="outlined" density="compact" />
-          <v-text-field v-model.number="form.display_order" label="排序" type="number" variant="outlined" density="compact" />
-          <v-switch v-if="editingGroup" v-model="form.is_active" label="启用" density="compact" hide-details />
+          <v-text-field v-model="form.name" :label="t('admin.blacklist.groupName')" variant="outlined" density="compact" />
+          <v-text-field v-model.number="form.display_order" :label="t('admin.blacklist.order')" type="number" variant="outlined" density="compact" />
+          <v-switch v-if="editingGroup" v-model="form.is_active" :label="t('admin.blacklist.enabled')" density="compact" hide-details />
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="editDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveGroup">保存</v-btn>
+          <v-btn variant="text" @click="editDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveGroup">{{ t('actions.save') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -133,14 +133,14 @@
     <!-- 添加原料对话框 -->
     <v-dialog v-model="addIngredientsDialog" max-width="500">
       <v-card>
-        <v-card-title>添加原料到「{{ selectedGroupForAdd?.name }}」</v-card-title>
+        <v-card-title>{{ t('admin.blacklist.addIngredientsTo', { name: selectedGroupForAdd?.name ?? '' }) }}</v-card-title>
         <v-card-text>
           <v-autocomplete
             v-model="selectedIngredientIds"
             :items="ingredientOptions"
             item-title="name"
             item-value="id"
-            label="搜索原料"
+            :label="t('admin.blacklist.searchIngredients')"
             variant="outlined"
             density="compact"
             multiple
@@ -151,22 +151,22 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="addIngredientsDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="saving" @click="saveIngredients">确认添加</v-btn>
+          <v-btn variant="text" @click="addIngredientsDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="saving" @click="saveIngredients">{{ t('admin.blacklist.confirmAdd') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
     <!-- 删除确认对话框 -->
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
-        <v-card-title>确认删除</v-card-title>
+        <v-card-title>{{ t('admin.blacklist.deleteTitle') }}</v-card-title>
         <v-card-text>
-          确定删除分组「{{ deleteTarget?.name }}」吗？此操作不可撤销。
+          {{ t('admin.blacklist.deleteConfirm', { name: deleteTarget?.name ?? '' }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="deleteDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="saving" @click="doDelete">删除</v-btn>
+          <v-btn variant="text" @click="deleteDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="error" :loading="saving" @click="doDelete">{{ t('admin.blacklist.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -175,7 +175,7 @@
     <v-snackbar v-model="snackbar.show" :color="snackbar.color" timeout="4000" location="top">
       {{ snackbar.message }}
       <template #actions>
-        <v-btn variant="text" @click="snackbar.show = false">关闭</v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">{{ t('actions.close') }}</v-btn>
       </template>
     </v-snackbar>
   </v-container>
@@ -183,11 +183,18 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+
 const { toggleSidebar, isDesktop } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
 const router = useRouter()
 const isLocalMode = computed(() => import.meta.env.VITE_STORAGE_MODE === 'local')
 
@@ -227,6 +234,21 @@ const aiMatchingAll = ref(false)
 const providerOptions = computed<ProviderOption[]>(() =>
   enabledProviderOptions(translationConfig.value, ['ai'], isLocalMode.value),
 )
+const providerLabels = computed<Record<string, string>>(() => ({
+  claude_code: 'Claude Code',
+  codex: 'Codex',
+  openai: t('adminAI.providers.openaiCompatible'),
+  anthropic: t('adminAI.providers.anthropicCompatible'),
+  baidu: t('adminAI.providers.baidu'),
+  aliyun: t('adminAI.providers.aliyun'),
+  deepl: t('adminAI.providers.deepl'),
+}))
+const localizedProviderOptions = computed<ProviderOption[]>(() =>
+  providerOptions.value.map((option) => ({
+    ...option,
+    label: providerLabels.value[option.value] || option.label,
+  })),
+)
 const allergenStatus = ref<AllergenStatus>({
   needed: false,
   total: 13,
@@ -248,6 +270,10 @@ function showError(msg: string) {
 
 function showInfo(msg: string) {
   snackbar.value = { show: true, message: msg, color: 'info' }
+}
+
+function messageFrom(error: any): string {
+  return error?.userMessage || error?.message || t('errors.unknown')
 }
 
 // 编辑
@@ -305,7 +331,7 @@ async function saveGroup() {
     editDialog.value = false
     await loadGroups()
   } catch (e: any) {
-    showError('保存失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.saveFailed', { message: messageFrom(e) }))
   } finally {
     saving.value = false
   }
@@ -325,7 +351,7 @@ async function doDelete() {
     deleteTarget.value = null
     await loadGroups()
   } catch (e: any) {
-    showError('删除失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.deleteFailed', { message: messageFrom(e) }))
   } finally {
     saving.value = false
   }
@@ -388,7 +414,7 @@ async function saveIngredients() {
     addIngredientsDialog.value = false
     await loadGroups()
   } catch (e: any) {
-    showError('添加失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.addFailed', { message: messageFrom(e) }))
   } finally {
     saving.value = false
   }
@@ -404,7 +430,7 @@ async function removeIngredient(groupId: number, ingredientId: number) {
       group.ingredient_count = group.ingredients.length
     }
   } catch (e: any) {
-    showError('移除失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.removeFailed', { message: messageFrom(e) }))
   }
 }
 
@@ -414,9 +440,9 @@ async function triggerAiMatch(group: BlacklistGroup) {
     const data = await api.post(`/admin/blacklist-groups/${group.id}/ai-match`, {
       provider: aiProvider.value,
     })
-    showInfo(`AI 匹配任务已触发（任务 ID: ${data.agent_session_id}），可在 Agent 任务台查看进度。完成后请刷新本页。`)
+    showInfo(t('admin.blacklist.aiTaskStarted', { id: formatCount(data.agent_session_id) }))
   } catch (e: any) {
-    showError('触发失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.triggerFailed', { message: messageFrom(e) }))
   } finally {
     aiMatchingGroups.value.delete(group.id)
   }
@@ -428,9 +454,9 @@ async function triggerAiMatchAll() {
     const data = await api.post('/admin/blacklist-groups/ai-match-all', {
       provider: aiProvider.value,
     })
-    showInfo(`全部启用分组 AI 匹配任务已触发（任务 ID: ${data.agent_session_id}），可在 Agent 任务台查看进度。完成后请刷新本页。`)
+    showInfo(t('admin.blacklist.aiAllTaskStarted', { id: formatCount(data.agent_session_id) }))
   } catch (e: any) {
-    showError('触发失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.triggerFailed', { message: messageFrom(e) }))
   } finally {
     aiMatchingAll.value = false
   }
@@ -452,7 +478,7 @@ async function seedAllergens() {
     showInfo(data.message)
     await Promise.all([loadGroups(), loadAllergenStatus()])
   } catch (e: any) {
-    showError('导入失败：' + (e?.userMessage || e?.message || '未知错误'))
+    showError(t('admin.blacklist.importFailed', { message: messageFrom(e) }))
   } finally {
     seedingAllergens.value = false
   }

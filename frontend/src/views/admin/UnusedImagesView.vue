@@ -2,7 +2,7 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">未使用图片清理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('admin.unusedImages.title') }}</v-app-bar-title>
     <template #append>
       <v-btn
         v-if="selected.length > 0"
@@ -15,7 +15,7 @@
         @click="confirmDelete"
       >
         <v-icon start size="small">mdi-delete</v-icon>
-        删除选中（{{ selected.length }}）
+        {{ t('admin.unusedImages.deleteSelected', { count: formatCount(selected.length) }) }}
       </v-btn>
     </template>
   </v-app-bar>
@@ -50,17 +50,17 @@
         <v-card-text class="d-flex ga-4 flex-wrap">
           <div class="text-body-2">
             <v-icon class="mr-1" color="success">mdi-check-circle</v-icon>
-            已用: <strong>{{ stats.used_images }}</strong> 张
+            {{ t('admin.unusedImages.used', { count: formatCount(stats.used_images) }) }}
             · {{ formatSize(stats.used_size) }}
           </div>
           <div class="text-body-2">
             <v-icon class="mr-1" color="warning">mdi-alert-circle</v-icon>
-            未用: <strong>{{ stats.unused_images }}</strong> 张
+            {{ t('admin.unusedImages.unused', { count: formatCount(stats.unused_images) }) }}
             · {{ formatSize(stats.unused_size) }}
           </div>
           <div class="text-body-2">
             <v-icon class="mr-1" color="medium-emphasis">mdi-folder</v-icon>
-            总计: <strong>{{ stats.total_images }}</strong> 张
+            {{ t('admin.unusedImages.total', { count: formatCount(stats.total_images) }) }}
             · {{ formatSize(stats.used_size + stats.unused_size) }}
           </div>
         </v-card-text>
@@ -70,9 +70,9 @@
       <v-expansion-panels v-model="expandedPanels" multiple>
         <v-expansion-panel v-for="group in groups" :key="group.key" :value="group.key">
           <v-expansion-panel-title class="text-subtitle-2 font-weight-medium">
-            <span>{{ group.label }}</span>
+            <span>{{ groupLabel(group) }}</span>
             <v-chip size="x-small" class="ml-2">
-              {{ group.count }} 张 · {{ formatSize(group.total_size) }}
+              {{ t('admin.unusedImages.imageCount', { count: formatCount(group.count) }) }} · {{ formatSize(group.total_size) }}
             </v-chip>
             <v-spacer />
             <v-btn
@@ -83,7 +83,7 @@
               @click.stop="toggleGroup(group.key)"
             >
               <v-icon size="small">mdi-checkbox-{{ isGroupAllSelected(group.key) ? 'marked' : 'blank-outline' }}</v-icon>
-              {{ isGroupAllSelected(group.key) ? '取消全选' : '选择本组' }}
+              {{ isGroupAllSelected(group.key) ? t('admin.unusedImages.clearSelection') : t('admin.unusedImages.selectGroup') }}
             </v-btn>
           </v-expansion-panel-title>
           <v-expansion-panel-text>
@@ -123,7 +123,7 @@
             </v-row>
 
             <div v-if="group.images.length === 0" class="text-center py-4 text-body-2 text-medium-emphasis">
-              无
+              {{ t('admin.unusedImages.none') }}
             </div>
           </v-expansion-panel-text>
         </v-expansion-panel>
@@ -134,7 +134,7 @@
         class="text-center py-8"
       >
         <v-icon size="64" color="success">mdi-check-circle-outline</v-icon>
-        <div class="text-body-1 mt-2">没有未使用的图片</div>
+        <div class="text-body-1 mt-2">{{ t('admin.unusedImages.empty') }}</div>
       </v-card-text>
     </template>
   </v-container>
@@ -142,12 +142,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useDisplay } from 'vuetify'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 const router = useRouter()
 
 const goBack = () => { router.back() }
@@ -186,13 +191,30 @@ const stats = ref<Stats>({ total_images: 0, used_images: 0, unused_images: 0, us
 const groups = ref<ImageGroup[]>([])
 const selected = ref<string[]>([])
 
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
+
 const formatSize = (bytes: number): string => {
   if (bytes === 0) return '0 B'
   const units = ['B', 'KB', 'MB', 'GB']
   const i = Math.floor(Math.log(bytes) / Math.log(1024))
   const idx = Math.min(i, units.length - 1)
-  return `${(bytes / Math.pow(1024, idx)).toFixed(1)} ${units[idx]}`
+  const size = formatNumber(bytes / Math.pow(1024, idx), localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
+  return `${size} ${units[idx]}`
 }
+
+const groupLabels = computed<Record<string, string>>(() => ({
+  never_used: t('admin.unusedImages.groups.neverUsed'),
+  '180d': t('admin.unusedImages.groups.over180Days'),
+  '90d': t('admin.unusedImages.groups.days90To180'),
+  '60d': t('admin.unusedImages.groups.days60To90'),
+  '30d': t('admin.unusedImages.groups.days30To60'),
+  recent: t('admin.unusedImages.groups.recent'),
+}))
+
+const groupLabel = (group: ImageGroup) => groupLabels.value[group.key] || group.label
 
 const isGroupAllSelected = (groupKey: string): boolean => {
   const group = groups.value.find(g => g.key === groupKey)
@@ -239,7 +261,7 @@ const loadData = async () => {
     // 默认展开所有组
     expandedPanels.value = (resp.groups || []).map((g: ImageGroup) => g.key)
   } catch (e: any) {
-    errorMsg.value = e.response?.data?.detail || e.message || '加载失败'
+    errorMsg.value = e.response?.data?.detail || e.message || t('admin.unusedImages.loadFailed')
   } finally {
     scanning.value = false
   }
@@ -254,13 +276,13 @@ const confirmDelete = async () => {
     const resp = await api.post('/admin/images/unused/delete', {
       keys: selected.value,
     })
-    successMsg.value = `已删除 ${resp.deleted?.length || 0} 张图片`
+    successMsg.value = t('admin.unusedImages.deleted', { count: formatCount(resp.deleted?.length || 0) })
     if (resp.errors?.length) {
-      errorMsg.value = `删除失败：${resp.errors.join('；')}`
+      errorMsg.value = t('admin.unusedImages.deleteFailedWithErrors', { errors: resp.errors.join('; ') })
     }
     await loadData()
   } catch (e: any) {
-    errorMsg.value = e.response?.data?.detail || e.message || '删除失败'
+    errorMsg.value = e.response?.data?.detail || e.message || t('admin.unusedImages.deleteFailed')
   } finally {
     deleting.value = false
   }

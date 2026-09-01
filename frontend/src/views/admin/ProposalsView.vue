@@ -2,11 +2,11 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">提议审核台</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('admin.proposals.title') }}</v-app-bar-title>
     <template #append>
       <v-btn color="warning" variant="tonal" @click="antiSpamDialog = true">
         <v-icon start>mdi-shield-account-variant</v-icon>
-        反垃圾回退
+        {{ t('admin.proposals.antiSpam') }}
       </v-btn>
       <v-btn icon="mdi-refresh" variant="text" @click="loadList" />
     </template>
@@ -20,7 +20,7 @@
       variant="tonal"
       class="mb-4"
     >
-      无权访问：仅管理员可使用提议审核台。
+      {{ t('admin.proposals.forbidden') }}
     </v-alert>
 
     <template v-else>
@@ -28,11 +28,11 @@
       <v-tabs v-model="activeTab" color="primary" density="comfortable" class="mb-4">
         <v-tab value="list">
           <v-icon start size="small">mdi-clipboard-list-outline</v-icon>
-          提议列表
+          {{ t('admin.proposals.listTab') }}
         </v-tab>
         <v-tab value="policies">
           <v-icon start size="small">mdi-tune-vertical</v-icon>
-          策略配置
+          {{ t('admin.proposals.policiesTab') }}
         </v-tab>
       </v-tabs>
 
@@ -41,7 +41,7 @@
       <!-- 状态筛选 -->
       <v-card class="rounded-lg mb-4">
         <v-card-text class="d-flex flex-wrap align-center ga-3 py-3">
-          <div class="text-subtitle-2 text-medium-emphasis me-2">状态：</div>
+          <div class="text-subtitle-2 text-medium-emphasis me-2">{{ t('admin.proposals.status') }}</div>
           <v-chip-group v-model="statusFilter" mandatory column>
             <v-chip
               v-for="opt in statusOptions"
@@ -58,7 +58,7 @@
           </v-chip-group>
           <v-spacer class="d-none d-sm-block" />
           <div class="text-caption text-medium-emphasis">
-            共 {{ proposals.length }} 条{{ statusFilter ? '' : '（全部）' }}
+            {{ statusFilter === 'all' ? t('admin.proposals.totalAll', { count: formatCount(proposals.length) }) : t('admin.proposals.totalCount', { count: formatCount(proposals.length) }) }}
           </div>
         </v-card-text>
       </v-card>
@@ -74,7 +74,7 @@
           :items-per-page="itemsPerPage"
           :items-per-page-options="[10, 20, 50, 100]"
           density="comfortable"
-          no-data-text="暂无提议"
+          :no-data-text="t('admin.proposals.noProposals')"
         >
           <!-- 状态列 -->
           <template #item.status="{ item }">
@@ -130,13 +130,13 @@
           <template #item.time="{ item }">
             <div class="text-caption">
               <div v-if="item.applied_at" class="text-success">
-                生效：{{ formatToLocalDateTimeShort(item.applied_at) }}
+                {{ t('admin.proposals.appliedAt', { time: formatToLocalDateTimeShort(item.applied_at) }) }}
               </div>
               <div v-else-if="item.reviewed_at" class="text-medium-emphasis">
-                审核：{{ formatToLocalDateTimeShort(item.reviewed_at) }}
+                {{ t('admin.proposals.reviewedAt', { time: formatToLocalDateTimeShort(item.reviewed_at) }) }}
               </div>
               <div v-else class="text-warning">
-                提交：{{ formatToLocalDateTimeShort(submitTime(item)) }}
+                {{ t('admin.proposals.submittedAt', { time: formatToLocalDateTimeShort(submitTime(item)) }) }}
               </div>
             </div>
           </template>
@@ -155,7 +155,7 @@
                     @click="openDetail(item)"
                   />
                 </template>
-                <span>详情 / 影响预览</span>
+                <span>{{ t('admin.proposals.detailAndPreview') }}</span>
               </v-tooltip>
               <v-tooltip v-if="item.status === 'pending'" location="top">
                 <template #activator="{ props }">
@@ -168,7 +168,7 @@
                     @click="quickApprove(item)"
                   />
                 </template>
-                <span>批准</span>
+                <span>{{ t('admin.proposals.approve') }}</span>
               </v-tooltip>
               <v-tooltip v-if="canRevert(item)" location="top">
                 <template #activator="{ props }">
@@ -181,7 +181,7 @@
                     @click="confirmRevert(item)"
                   />
                 </template>
-                <span>回滚</span>
+                <span>{{ t('admin.proposals.revert') }}</span>
               </v-tooltip>
             </div>
           </template>
@@ -195,7 +195,7 @@
           <v-card-text class="py-3 d-flex align-center ga-2 flex-wrap">
             <v-icon color="primary">mdi-tune-vertical</v-icon>
             <span class="text-body-2 text-medium-emphasis">
-              为每种「实体类型 · 动作」配置审核策略。改动即时保存，重启后保持。
+              {{ t('admin.proposals.policyIntro') }}
             </span>
             <v-spacer />
             <v-btn icon="mdi-refresh" variant="text" size="small" @click="loadPolicies" />
@@ -208,7 +208,7 @@
             :loading="policiesLoading"
             density="comfortable"
             item-value="entity_type"
-            no-data-text="暂无已注册的提议类型"
+            :no-data-text="t('admin.proposals.noPolicyTypes')"
           >
             <template #item.type="{ item }">
               <span class="text-body-2 font-weight-medium">
@@ -245,7 +245,7 @@
                   variant="text"
                   color="warning"
                 >
-                  已自定义
+                  {{ t('admin.proposals.customized') }}
                 </v-chip>
               </div>
             </template>
@@ -259,7 +259,7 @@
       <v-card class="rounded-lg" v-if="detailItem">
         <v-card-title class="d-flex align-center py-4 pe-2">
           <v-icon class="mr-2">mdi-clipboard-text-clock</v-icon>
-          <span class="text-h6">提议 #{{ detailItem.id }}</span>
+          <span class="text-h6">{{ t('admin.proposals.proposalId', { id: formatCount(detailItem.id) }) }}</span>
           <v-spacer />
           <v-chip :color="statusColor(detailItem.status)" size="small" variant="tonal" class="me-2">
             {{ statusLabel(detailItem.status) }}
@@ -277,48 +277,48 @@
             density="comfortable"
             class="mb-4"
           >
-            <div class="text-caption text-medium-emphasis">目标实体</div>
+            <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.targetEntity') }}</div>
             <div class="text-body-2">{{ detailItem.entity_label }}</div>
           </v-alert>
 
           <!-- 基本信息 -->
           <v-row dense>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">实体类型</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.entityType') }}</div>
               <div class="text-body-2">{{ entityTypeLabel(detailItem.entity_type) }}</div>
             </v-col>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">动作</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.action') }}</div>
               <div class="text-body-2">{{ actionLabel(detailItem.action) }}</div>
             </v-col>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">实体 ID</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.entityId') }}</div>
               <div class="text-body-2">{{ detailItem.entity_id ?? '—' }}</div>
             </v-col>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">提议人</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.proposer') }}</div>
               <div class="text-body-2">#{{ detailItem.proposer_id }}</div>
             </v-col>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">审核策略</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.reviewPolicy') }}</div>
               <div class="text-body-2">{{ policyLabel(detailItem.review_policy) }}</div>
             </v-col>
             <v-col cols="6" sm="4">
-              <div class="text-caption text-medium-emphasis">风险等级</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.riskLevel') }}</div>
               <v-chip :color="riskColor(detailItem.risk_level)" size="x-small" variant="outlined">
                 {{ riskLabel(detailItem.risk_level) }}
               </v-chip>
             </v-col>
             <v-col cols="6" sm="4" v-if="detailItem.applied_at">
-              <div class="text-caption text-medium-emphasis">生效时间</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.appliedTime') }}</div>
               <div class="text-body-2">{{ formatToLocalDateTimeShort(detailItem.applied_at) }}</div>
             </v-col>
             <v-col cols="6" sm="4" v-if="detailItem.revertable_until">
-              <div class="text-caption text-medium-emphasis">可回滚至</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.revertableUntil') }}</div>
               <div class="text-body-2">{{ formatToLocalDateTimeShort(detailItem.revertable_until) }}</div>
             </v-col>
             <v-col cols="6" sm="4" v-if="detailItem.reviewer_id">
-              <div class="text-caption text-medium-emphasis">审核人</div>
+              <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.reviewer') }}</div>
               <div class="text-body-2">#{{ detailItem.reviewer_id }}</div>
             </v-col>
           </v-row>
@@ -331,7 +331,7 @@
             density="comfortable"
             class="mt-4"
           >
-            <div class="text-caption text-medium-emphasis">审核备注</div>
+            <div class="text-caption text-medium-emphasis">{{ t('admin.proposals.reviewNote') }}</div>
             <div>{{ detailItem.review_note }}</div>
           </v-alert>
 
@@ -339,9 +339,9 @@
           <div class="mt-4">
             <div class="text-subtitle-2 mb-2">
               <v-icon size="small" start>mdi-compare-horizontal</v-icon>
-              变更内容
-              <span v-if="detailItem.action === 'delete'" class="text-caption text-medium-emphasis ms-2">（将删除）</span>
-              <span v-else-if="detailItem.action === 'create'" class="text-caption text-medium-emphasis ms-2">（将新增）</span>
+              {{ t('admin.proposals.changes') }}
+              <span v-if="detailItem.action === 'delete'" class="text-caption text-medium-emphasis ms-2">{{ t('admin.proposals.willDelete') }}</span>
+              <span v-else-if="detailItem.action === 'create'" class="text-caption text-medium-emphasis ms-2">{{ t('admin.proposals.willCreate') }}</span>
             </div>
 
             <!-- 级联影响提示（如删除商品时连带的价格记录） -->
@@ -374,14 +374,14 @@
                     </td>
                     <td class="text-center text-medium-emphasis" style="width: 32px">→</td>
                     <td :class="['diff-cell', 'after', row.kind]">
-                      <span v-if="row.kind === 'removed'" class="text-medium-emphasis">（删除）</span>
+                      <span v-if="row.kind === 'removed'" class="text-medium-emphasis">{{ t('admin.proposals.deletedValue') }}</span>
                       <span v-else-if="row.after === null" class="text-medium-emphasis">—</span>
                       <span v-else>{{ formatFieldValue(row.field, row.after) }}</span>
                     </td>
                   </tr>
                 </tbody>
               </v-table>
-              <div v-else class="text-caption text-medium-emphasis">无变更字段（如仅触发动作，无数据变更）</div>
+              <div v-else class="text-caption text-medium-emphasis">{{ t('admin.proposals.noChangedFields') }}</div>
             </template>
           </div>
 
@@ -390,7 +390,7 @@
             <div class="d-flex align-center mb-2">
               <div class="text-subtitle-2 me-2">
                 <v-icon size="small" start>mdi-file-eye-outline</v-icon>
-                影响预览
+                {{ t('admin.proposals.impactPreview') }}
               </div>
               <v-btn
                 size="small"
@@ -400,7 +400,7 @@
                 @click="loadPreview"
               >
                 <v-icon start>mdi-refresh</v-icon>
-                {{ previewData ? '刷新' : '加载预览' }}
+                {{ previewData ? t('admin.proposals.refresh') : t('admin.proposals.loadPreview') }}
               </v-btn>
             </div>
             <v-progress-circular
@@ -412,7 +412,7 @@
             />
             <pre v-else-if="previewData" class="payload-block pa-3 rounded">{{ formatJson(previewData) }}</pre>
             <div v-else class="text-caption text-medium-emphasis">
-              点击「加载预览」查看此变更会影响哪些数据（如合并会影响多少引用）。
+              {{ t('admin.proposals.previewHint') }}
             </div>
           </div>
 
@@ -420,7 +420,7 @@
           <div v-if="detailItem.status === 'pending'" class="mt-4">
             <v-textarea
               v-model="rejectNote"
-              label="审核备注（驳回建议填写理由，批准可留空）"
+              :label="t('admin.proposals.reviewNoteLabel')"
               variant="outlined"
               density="comfortable"
               rows="2"
@@ -432,7 +432,7 @@
 
         <v-divider />
         <v-card-actions class="pa-4 flex-wrap ga-2">
-          <v-btn variant="tonal" @click="detailDialog = false">关闭</v-btn>
+          <v-btn variant="tonal" @click="detailDialog = false">{{ t('actions.close') }}</v-btn>
           <v-spacer />
           <template v-if="detailItem.status === 'pending'">
             <v-btn
@@ -442,7 +442,7 @@
               @click="reviewCurrent(false)"
             >
               <v-icon start>mdi-close</v-icon>
-              驳回
+              {{ t('admin.proposals.reject') }}
             </v-btn>
             <v-btn
               color="success"
@@ -450,7 +450,7 @@
               @click="reviewCurrent(true)"
             >
               <v-icon start>mdi-check</v-icon>
-              批准并生效
+              {{ t('admin.proposals.approveAndApply') }}
             </v-btn>
           </template>
           <v-btn
@@ -460,7 +460,7 @@
             @click="confirmRevert(detailItem)"
           >
             <v-icon start>mdi-undo</v-icon>
-            回滚
+            {{ t('admin.proposals.revert') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -471,20 +471,20 @@
       <v-card class="rounded-lg">
         <v-card-title class="text-h6">
           <v-icon class="mr-2" color="error">mdi-undo</v-icon>
-          确认回滚
+          {{ t('admin.proposals.confirmRevert') }}
         </v-card-title>
         <v-card-text>
-          确定要回滚提议 <code>#{{ revertTarget?.id }}</code> 吗？
+          {{ t('admin.proposals.revertQuestion', { id: formatCount(revertTarget?.id || 0) }) }}
           <span class="text-medium-emphasis">
             （{{ entityTypeLabel(revertTarget?.entity_type) }} ·
             {{ actionLabel(revertTarget?.action) }}）
           </span>
-          此操作将撤销该提议产生的数据变更，操作不可撤销。
+          {{ t('admin.proposals.revertWarning') }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" @click="revertDialog = false">取消</v-btn>
-          <v-btn color="error" :loading="reverting" @click="doRevert">确认回滚</v-btn>
+          <v-btn variant="tonal" @click="revertDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="error" :loading="reverting" @click="doRevert">{{ t('admin.proposals.confirmRevert') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -494,16 +494,16 @@
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
           <v-icon class="mr-2" color="warning">mdi-shield-account-variant</v-icon>
-          反垃圾批量回退
+          {{ t('admin.proposals.antiSpamBulk') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-4">
           <p class="text-body-2 mb-3">
-            输入用户 ID，一键回退该用户全部「已生效」提议。仅管理员可用，常用于处理垃圾提交。
+            {{ t('admin.proposals.antiSpamIntro') }}
           </p>
           <v-text-field
             v-model.number="antiSpamUserId"
-            label="用户 ID"
+            :label="t('admin.proposals.userId')"
             prepend-icon="mdi-account"
             variant="outlined"
             density="comfortable"
@@ -518,20 +518,20 @@
             density="comfortable"
             class="mt-3"
           >
-            已回退 <strong>{{ antiSpamResult }}</strong> 条提议。
+            {{ t('admin.proposals.antiSpamResult', { count: formatCount(antiSpamResult) }) }}
           </v-alert>
         </v-card-text>
         <v-divider />
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="tonal" @click="antiSpamDialog = false">关闭</v-btn>
+          <v-btn variant="tonal" @click="antiSpamDialog = false">{{ t('actions.close') }}</v-btn>
           <v-btn
             color="warning"
             :loading="antiSpamLoading"
             :disabled="!antiSpamUserId || antiSpamUserId < 1"
             @click="doAntiSpam"
           >
-            执行回退
+            {{ t('admin.proposals.executeRevert') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -541,16 +541,16 @@
       <v-card>
         <v-card-title class="d-flex align-center ga-2">
           <v-icon color="warning">mdi-alert-circle-outline</v-icon>
-          确认批准
+          {{ t('admin.proposals.confirmApprove') }}
         </v-card-title>
         <v-card-text>
-          确定批准并生效提议 <strong>#{{ approveConfirmItem?.id }}</strong>？
+          {{ t('admin.proposals.approveQuestion', { id: formatCount(approveConfirmItem?.id || 0) }) }}
          （{{ entityTypeLabel(approveConfirmItem?.entity_type) }} · {{ actionLabel(approveConfirmItem?.action) }}）
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" @click="approveConfirmDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="reviewing" @click="doQuickApprove">确定</v-btn>
+          <v-btn variant="tonal" @click="approveConfirmDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="reviewing" @click="doQuickApprove">{{ t('common.confirm') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -559,11 +559,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useUserStore } from '@/stores/user'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { formatToLocalDateTimeShort } from '@/utils/timezone'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 import {
   listProposals,
   getProposal,
@@ -578,13 +581,21 @@ import {
   type PolicyItem,
   type ReviewPolicy,
 } from '@/api/proposals'
-import { resolveProposalRenderer } from '@/proposalRenderers'
+import {
+  resolveProposalRenderer,
+  proposalEntityTypeLabel as sharedEntityTypeLabel,
+  proposalActionLabel as sharedActionLabel,
+} from '@/proposalRenderers'
 import { api } from '@/api'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
 const userStore = useUserStore()
 const { notify } = useGlobalSnackbar()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
+
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
 
 const goBack = () => router.back()
 
@@ -598,17 +609,17 @@ const policies = ref<PolicyItem[]>([])
 const policiesLoading = ref(false)
 const policySavingKey = ref<string | null>(null)
 
-const policyHeaders = [
-  { title: '实体类型 · 动作', key: 'type', sortable: false },
-  { title: '风险', key: 'risk_level', sortable: false, width: 90 },
-  { title: '审核策略', key: 'policy', sortable: false, width: 280 },
-]
+const policyHeaders = computed(() => [
+  { title: t('admin.proposals.entityAction'), key: 'type', sortable: false },
+  { title: t('admin.proposals.risk'), key: 'risk_level', sortable: false, width: 90 },
+  { title: t('admin.proposals.reviewPolicy'), key: 'policy', sortable: false, width: 280 },
+])
 
-const policyOptions: { value: ReviewPolicy; label: string }[] = [
-  { value: 'auto_approve', label: '自动批准生效' },
-  { value: 'auto_review', label: '自动审核（辅助）' },
-  { value: 'manual', label: '人工审核' },
-]
+const policyOptions = computed<{ value: ReviewPolicy; label: string }[]>(() => [
+  { value: 'auto_approve', label: t('admin.proposals.policyOptions.autoApprove') },
+  { value: 'auto_review', label: t('admin.proposals.policyOptions.autoReview') },
+  { value: 'manual', label: t('admin.proposals.policyOptions.manual') },
+])
 
 const loadPolicies = async () => {
   if (!isAdmin.value) return
@@ -616,7 +627,7 @@ const loadPolicies = async () => {
   try {
     policies.value = await listPolicies()
   } catch (e: any) {
-    notify(e?.userMessage || '加载策略配置失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.loadPoliciesFailed'), 'error')
   } finally {
     policiesLoading.value = false
   }
@@ -637,19 +648,23 @@ const onPolicyChange = async (item: PolicyItem, newPolicy: ReviewPolicy) => {
     // 用服务端返回覆盖（含 is_default 重算）
     Object.assign(item, updated)
     notify(
-      `${entityTypeLabel(item.entity_type)} · ${actionLabel(item.action)} 策略已更新为「${policyOptionLabel(newPolicy)}」`,
+      t('admin.proposals.policyUpdated', {
+        entityType: entityTypeLabel(item.entity_type),
+        action: actionLabel(item.action),
+        policy: policyOptionLabel(newPolicy),
+      }),
       'success',
     )
   } catch (e: any) {
     item.policy = prev // 回滚
-    notify(e?.userMessage || '保存策略失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.savePolicyFailed'), 'error')
   } finally {
     policySavingKey.value = null
   }
 }
 
 function policyOptionLabel(v: string): string {
-  return policyOptions.find((o) => o.value === v)?.label || v
+  return policyOptions.value.find((o) => o.value === v)?.label || v
 }
 
 function policyChipColor(p: string): string {
@@ -664,28 +679,28 @@ function policyChipColor(p: string): string {
 // ---------- 状态筛选 ----------
 type FilterValue = 'pending' | 'applied' | 'rejected' | 'reverted' | 'all'
 const statusFilter = ref<FilterValue>('pending')
-const statusOptions: { value: FilterValue; label: string; color: string; icon: string }[] = [
-  { value: 'pending', label: '待审', color: 'warning', icon: 'mdi-clock-outline' },
-  { value: 'applied', label: '已生效', color: 'success', icon: 'mdi-check-circle' },
-  { value: 'rejected', label: '已驳回', color: 'error', icon: 'mdi-close-circle' },
-  { value: 'reverted', label: '已回滚', color: 'info', icon: 'mdi-undo' },
-  { value: 'all', label: '全部', color: 'default', icon: 'mdi-format-list-bulleted' },
-]
+const statusOptions = computed<{ value: FilterValue; label: string; color: string; icon: string }[]>(() => [
+  { value: 'pending', label: t('admin.proposals.statuses.pending'), color: 'warning', icon: 'mdi-clock-outline' },
+  { value: 'applied', label: t('admin.proposals.statuses.applied'), color: 'success', icon: 'mdi-check-circle' },
+  { value: 'rejected', label: t('admin.proposals.statuses.rejected'), color: 'error', icon: 'mdi-close-circle' },
+  { value: 'reverted', label: t('admin.proposals.statuses.reverted'), color: 'info', icon: 'mdi-undo' },
+  { value: 'all', label: t('admin.proposals.statuses.all'), color: 'default', icon: 'mdi-format-list-bulleted' },
+])
 
 // ---------- 列表 ----------
 const proposals = ref<Proposal[]>([])
 const loading = ref(false)
 const itemsPerPage = ref(20)
 
-const headers = [
-  { title: '状态', key: 'status', sortable: false, width: 110 },
-  { title: '类型 · 动作', key: 'type', sortable: false },
-  { title: '摘要', key: 'summary', sortable: false },
-  { title: '风险', key: 'risk_level', sortable: false, width: 90 },
-  { title: '提议人', key: 'proposer_id', sortable: false, width: 100 },
-  { title: '时间', key: 'time', sortable: false, width: 180 },
-  { title: '操作', key: 'actions', sortable: false, align: 'end' as const, width: 130 },
-]
+const headers = computed(() => [
+  { title: t('admin.proposals.status'), key: 'status', sortable: false, width: 110 },
+  { title: t('admin.proposals.entityAction'), key: 'type', sortable: false },
+  { title: t('admin.proposals.summary'), key: 'summary', sortable: false },
+  { title: t('admin.proposals.risk'), key: 'risk_level', sortable: false, width: 90 },
+  { title: t('admin.proposals.proposer'), key: 'proposer_id', sortable: false, width: 100 },
+  { title: t('admin.proposals.time'), key: 'time', sortable: false, width: 180 },
+  { title: t('admin.proposals.actions'), key: 'actions', sortable: false, align: 'end' as const, width: 130 },
+])
 
 const loadList = async () => {
   if (!isAdmin.value) return
@@ -694,7 +709,7 @@ const loadList = async () => {
     const status = statusFilter.value === 'all' ? undefined : (statusFilter.value as ProposalStatus)
     proposals.value = await listProposals(status, 100)
   } catch (e: any) {
-    notify(e?.userMessage || '加载提议列表失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.loadFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -732,7 +747,7 @@ const loadPreview = async () => {
       payload: detailItem.value.payload,
     })
   } catch (e: any) {
-    notify(e?.userMessage || '加载影响预览失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.loadPreviewFailed'), 'error')
   } finally {
     previewing.value = false
   }
@@ -755,10 +770,10 @@ const doQuickApprove = async () => {
   reviewing.value = true
   try {
     await reviewProposal(item.id, { approved: true })
-    notify(`提议 #${item.id} 已批准并生效`, 'success')
+    notify(t('admin.proposals.approved', { id: formatCount(item.id) }), 'success')
     await loadList()
   } catch (e: any) {
-    notify(e?.userMessage || '审核操作失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.reviewFailed'), 'error')
   } finally {
     reviewing.value = false
     approveConfirmItem.value = null
@@ -774,7 +789,9 @@ const reviewCurrent = async (approved: boolean) => {
       note: approved ? '' : rejectNote.value.trim(),
     })
     notify(
-      approved ? `提议 #${detailItem.value.id} 已批准并生效` : `提议 #${detailItem.value.id} 已驳回`,
+      approved
+        ? t('admin.proposals.approved', { id: formatCount(detailItem.value.id) })
+        : t('admin.proposals.rejected', { id: formatCount(detailItem.value.id) }),
       approved ? 'success' : 'info',
     )
     // 局部刷新当前条目（保持列表筛选不变）
@@ -786,7 +803,7 @@ const reviewCurrent = async (approved: boolean) => {
     await loadList()
     detailDialog.value = false
   } catch (e: any) {
-    notify(e?.userMessage || '审核操作失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.reviewFailed'), 'error')
   } finally {
     reviewing.value = false
   }
@@ -805,7 +822,7 @@ const canRevert = (item: Proposal | null): boolean => {
 
 const confirmRevert = (item: Proposal) => {
   if (!canRevert(item)) {
-    notify('该提议不在可回滚窗口内', 'warning')
+    notify(t('admin.proposals.revertWindowClosed'), 'warning')
     return
   }
   revertTarget.value = item
@@ -817,12 +834,12 @@ const doRevert = async () => {
   reverting.value = true
   try {
     const updated = await revertProposal(revertTarget.value.id)
-    notify(`提议 #${updated.id} 已回滚`, 'success')
+    notify(t('admin.proposals.reverted', { id: formatCount(updated.id) }), 'success')
     revertDialog.value = false
     if (detailItem.value?.id === updated.id) detailItem.value = updated
     await loadList()
   } catch (e: any) {
-    notify(e?.userMessage || '回滚操作失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.revertFailed'), 'error')
   } finally {
     reverting.value = false
   }
@@ -841,10 +858,10 @@ const doAntiSpam = async () => {
   try {
     const res = await revertByUser(antiSpamUserId.value)
     antiSpamResult.value = res.reverted_count
-    notify(`已回退 ${res.reverted_count} 条提议`, 'success')
+    notify(t('admin.proposals.antiSpamResult', { count: formatCount(res.reverted_count) }), 'success')
     await loadList()
   } catch (e: any) {
-    notify(e?.userMessage || '反垃圾回退失败', 'error')
+    notify(e?.userMessage || t('admin.proposals.antiSpamFailed'), 'error')
   } finally {
     antiSpamLoading.value = false
   }
@@ -871,10 +888,10 @@ function statusIcon(s: string): string {
 }
 function statusLabel(s: string): string {
   switch (s) {
-    case 'pending': return '待审'
-    case 'applied': return '已生效'
-    case 'rejected': return '已驳回'
-    case 'reverted': return '已回滚'
+    case 'pending': return t('admin.proposals.statuses.pending')
+    case 'applied': return t('admin.proposals.statuses.applied')
+    case 'rejected': return t('admin.proposals.statuses.rejected')
+    case 'reverted': return t('admin.proposals.statuses.reverted')
     default: return s
   }
 }
@@ -888,49 +905,26 @@ function riskColor(r: string): string {
 }
 function riskLabel(r: string): string {
   switch (r) {
-    case 'high': return '高'
-    case 'mid': return '中'
-    case 'medium': return '中'
-    case 'low': return '低'
+    case 'high': return t('admin.proposals.risks.high')
+    case 'mid':
+    case 'medium': return t('admin.proposals.risks.medium')
+    case 'low': return t('admin.proposals.risks.low')
     default: return r || '—'
   }
 }
 function policyLabel(p: string): string {
   switch (p) {
-    case 'auto_approve': return '自动生效'
-    case 'auto_review': return '自动审核'
-    case 'manual': return '人工审核'
+    case 'auto_approve': return t('admin.proposals.policyLabels.autoApprove')
+    case 'auto_review': return t('admin.proposals.policyLabels.autoReview')
+    case 'manual': return t('admin.proposals.policyLabels.manual')
     default: return p
   }
 }
 function entityTypeLabel(t: string): string {
-  const map: Record<string, string> = {
-    ingredient: '原料',
-    nutrition: '营养',
-    unit: '单位',
-    hierarchy: '食材层级关系',
-    merchant: '商家',
-    merchant_merge: '商家合并',
-    product_split: '商品拆分',
-    product_merge: '商品合并',
-    product: '商品',
-    recipe: '菜谱',
-    entity_unit_override: '实体单位覆盖',
-    entity_density: '实体密度',
-    usda_ingredient_match: 'USDA 原料匹配',
-    usda_product_match: 'USDA 商品匹配',
-  }
-  return map[t] || t
+  return sharedEntityTypeLabel(t)
 }
 function actionLabel(a: string): string {
-  const map: Record<string, string> = {
-    create: '创建',
-    update: '更新',
-    delete: '删除',
-    merge: '合并',
-    publish: '发布',
-  }
-  return map[a] || a
+  return sharedActionLabel(a)
 }
 function payloadSummary(item: Proposal): string {
   // 目标实体可读标签前置（如「原料「鸡蛋」单位「盒」」），无则降级
@@ -945,11 +939,11 @@ function payloadSummary(item: Proposal): string {
   ]
   const parts: string[] = []
   for (const key of candidates) {
-    if (p[key] != null) parts.push(`${FIELD_LABELS[key] || key}: ${p[key]}`)
+    if (p[key] != null) parts.push(`${FIELD_LABELS.value[key] || key}: ${p[key]}`)
   }
   let detail: string
   if (parts.length) {
-    detail = parts.slice(0, 2).join('，')
+    detail = parts.slice(0, 2).join(', ')
   } else {
     // 兜底：截断 JSON
     try {
@@ -1005,66 +999,74 @@ const cascadeEffectInfo = computed<{ type: string; text: string } | null>(() => 
   if (!snap) return null
   const parts: string[] = []
   const rc = snap.cascade_record_count
-  if (rc != null && rc > 0) parts.push(`${rc} 条价格记录`)
+  if (rc != null && rc > 0) {
+    parts.push(t('admin.proposals.cascade.priceRecords', { count: formatCount(rc) }))
+  }
   const pc = snap.cascade_product_count
-  if (pc != null && pc > 0) parts.push(`${pc} 个关联商品`)
+  if (pc != null && pc > 0) {
+    parts.push(t('admin.proposals.cascade.linkedProducts', { count: formatCount(pc) }))
+  }
   const hc = snap.cascade_hierarchy_count
-  if (hc != null && hc > 0) parts.push(`${hc} 条层级关系`)
+  if (hc != null && hc > 0) {
+    parts.push(t('admin.proposals.cascade.hierarchyRelations', { count: formatCount(hc) }))
+  }
   if (!parts.length) return null
   return {
     type: 'warning',
-    text: `此操作将同时级联删除 ${parts.join('、')}。`,
+    text: t('admin.proposals.cascade.deleteWarning', {
+      items: parts.join(t('admin.proposals.cascade.listSeparator')),
+    }),
   }
 })
 
-const FIELD_LABELS: Record<string, string> = {
-  name: '名称',
-  aliases: '别名',
-  brand: '品牌',
-  barcode: '条码',
-  category: '分类',
-  unit_name: '单位名',
-  density: '密度',
-  confidence: '置信度',
-  condition: '条件',
-  factor: '换算系数',
-  is_standard: '标准单位',
-  parent_id: '父食材',
-  child_id: '子食材',
-  relation_type: '关系类型',
-  strength: '关联强度',
-  entity_type: '实体类型',
-  entity_id: '实体 ID',
-  source_id: '源 ID',
-  target_id: '目标 ID',
-  source_name: '源名称',
-  target_name: '目标名称',
-  is_optional: '可选',
-  quantity: '用量',
-  quantity_range: '用量范围',
-  unit_id: '单位 ID',
-  note: '备注',
-  original_quantity: '原始用量',
-  cooking_steps: '操作步骤',
-  tips: '小贴士',
-  description: '描述',
-  tags: '标签',
-  is_open: '开放状态',
-  is_public: '公开',
-  serving_weight: '份重(g)',
-  review_policy: '审核策略',
-  risk_level: '风险等级',
-  phone: '电话',
-  address: '地址',
-  longitude: '经度',
-  latitude: '纬度',
-  category_id: '分类',
-  default_unit: '默认单位',
-  updated_by: '修改者',
-  cascade_record_count: '级联价格记录',
-}
+const FIELD_LABELS = computed<Record<string, string>>(() => ({
+  name: t('admin.proposals.fields.name'),
+  aliases: t('admin.proposals.fields.aliases'),
+  brand: t('admin.proposals.fields.brand'),
+  barcode: t('admin.proposals.fields.barcode'),
+  category: t('admin.proposals.fields.category'),
+  unit_name: t('admin.proposals.fields.unitName'),
+  density: t('admin.proposals.fields.density'),
+  confidence: t('admin.proposals.fields.confidence'),
+  condition: t('admin.proposals.fields.condition'),
+  factor: t('admin.proposals.fields.conversionFactor'),
+  is_standard: t('admin.proposals.fields.standardUnit'),
+  parent_id: t('admin.proposals.fields.parentIngredient'),
+  child_id: t('admin.proposals.fields.childIngredient'),
+  relation_type: t('admin.proposals.fields.relationType'),
+  strength: t('admin.proposals.fields.relationStrength'),
+  entity_type: t('admin.proposals.fields.entityType'),
+  entity_id: t('admin.proposals.fields.entityId'),
+  source_id: t('admin.proposals.fields.sourceId'),
+  target_id: t('admin.proposals.fields.targetId'),
+  source_name: t('admin.proposals.fields.sourceName'),
+  target_name: t('admin.proposals.fields.targetName'),
+  is_optional: t('admin.proposals.fields.optional'),
+  quantity: t('admin.proposals.fields.quantity'),
+  quantity_range: t('admin.proposals.fields.quantityRange'),
+  unit_id: t('admin.proposals.fields.unitId'),
+  note: t('admin.proposals.fields.note'),
+  original_quantity: t('admin.proposals.fields.originalQuantity'),
+  cooking_steps: t('admin.proposals.fields.cookingSteps'),
+  tips: t('admin.proposals.fields.tips'),
+  description: t('admin.proposals.fields.description'),
+  tags: t('admin.proposals.fields.tags'),
+  is_open: t('admin.proposals.fields.openStatus'),
+  is_public: t('admin.proposals.fields.public'),
+  serving_weight: t('admin.proposals.fields.servingWeight'),
+  review_policy: t('admin.proposals.fields.reviewPolicy'),
+  risk_level: t('admin.proposals.fields.riskLevel'),
+  phone: t('admin.proposals.fields.phone'),
+  address: t('admin.proposals.fields.address'),
+  longitude: t('admin.proposals.fields.longitude'),
+  latitude: t('admin.proposals.fields.latitude'),
+  category_id: t('admin.proposals.fields.category'),
+  default_unit: t('admin.proposals.fields.defaultUnit'),
+  updated_by: t('admin.proposals.fields.updatedBy'),
+  cascade_record_count: t('admin.proposals.fields.cascadePriceRecords'),
+}))
 function fieldLabel(f: string): string {
-  return FIELD_LABELS[f] || f
+  return FIELD_LABELS.value[f] || f
 }
 
 // ---- ID 字段 → 名称解析（数字 ID 显示为可读名称）----
@@ -1134,7 +1136,7 @@ function formatFieldValue(field: string, v: any): string {
     if (name) return name
     return `#${v}`
   }
-  if (typeof v === 'boolean') return v ? '是' : '否'
+  if (typeof v === 'boolean') return v ? t('admin.proposals.yes') : t('admin.proposals.no')
   return String(v)
 }
 function formatValue(v: any): string {

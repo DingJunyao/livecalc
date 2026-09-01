@@ -6,7 +6,7 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="$router.push('/admin')" />
-    <v-app-bar-title class="text-h6">Agent 任务台</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('adminData.agent.title') }}</v-app-bar-title>
     <template #append>
       <v-chip size="small" :color="statusColor" variant="tonal">
         <v-icon start size="small" :color="connected ? 'success' : 'grey'">
@@ -37,9 +37,9 @@
       density="compact"
       class="ma-2"
     >
-      本地模式由浏览器直连 AI。请先在「AI 与机翻配置」中填写 OpenAI 或 Anthropic 兼容的 API Key（注意：浏览器直连需端点支持 CORS；OpenAI 官方接口不支持）。
+      {{ t('adminData.agent.localModeIntro') }}
       <template #append>
-        <v-btn size="small" variant="text" @click="$router.push('/admin/ai-config')">去配置</v-btn>
+        <v-btn size="small" variant="text" @click="$router.push('/admin/ai-config')">{{ t('adminData.agent.configure') }}</v-btn>
       </template>
     </v-alert>
 
@@ -47,7 +47,7 @@
       <!-- 左栏：任务按钮 + 历史会话 -->
       <v-col cols="12" md="3" class="agent-sidebar d-none d-md-flex">
         <div class="sidebar-section">
-          <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">任务类型</div>
+          <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">{{ t('adminData.agent.taskTypes') }}</div>
           <div class="px-3 pb-2">
             <v-select
               v-model="provider"
@@ -75,7 +75,7 @@
               <v-list-item-subtitle class="text-caption">{{ t.task_type }}</v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="!taskTypes.length && !loadingMeta">
-              <v-list-item-subtitle class="text-caption">无可用任务</v-list-item-subtitle>
+              <v-list-item-subtitle class="text-caption">{{ t('adminData.agent.noTasks') }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </div>
@@ -84,7 +84,7 @@
 
         <div class="sidebar-section sidebar-history">
           <div class="d-flex align-center px-3 pt-3 pb-1">
-            <span class="text-caption text-medium-emphasis">历史会话</span>
+            <span class="text-caption text-medium-emphasis">{{ t('adminData.agent.history') }}</span>
             <v-spacer />
             <v-btn icon="mdi-refresh" size="x-small" variant="text" @click="loadSessions" />
           </div>
@@ -108,7 +108,7 @@
               </v-list-item-subtitle>
             </v-list-item>
             <v-list-item v-if="!sessions.length && !loadingMeta">
-              <v-list-item-subtitle class="text-caption">暂无历史</v-list-item-subtitle>
+              <v-list-item-subtitle class="text-caption">{{ t('adminData.agent.noHistory') }}</v-list-item-subtitle>
             </v-list-item>
           </v-list>
         </div>
@@ -120,12 +120,12 @@
         <div v-if="!currentSid" class="pa-3 text-center">
           <template v-if="!$vuetify.display.mdAndUp">
             <v-btn variant="tonal" color="primary" @click="mobileShowSidebar = true">
-              <v-icon start>mdi-menu</v-icon>选择任务或历史会话
+              <v-icon start>mdi-menu</v-icon>{{ t('adminData.agent.selectTaskOrHistory') }}
             </v-btn>
           </template>
           <div v-else class="text-medium-emphasis pa-8">
             <v-icon size="48" class="mb-2">mdi-robot-outline</v-icon>
-            <div>从左侧选择一个任务类型开始，或查看历史会话</div>
+            <div>{{ t('adminData.agent.emptySession') }}</div>
           </div>
         </div>
 
@@ -138,7 +138,7 @@
             <span class="text-body-2 font-weight-medium">{{ statusLabel }}</span>
             <v-spacer />
             <span v-if="costUsd != null" class="text-caption text-medium-emphasis mr-3">
-              <v-icon size="12" class="mr-1">mdi-currency-usd</v-icon>${{ costUsd.toFixed(4) }}
+              <v-icon size="12" class="mr-1">mdi-currency-usd</v-icon>{{ formatCost(costUsd) }}
             </span>
             <v-progress-circular
               v-if="isRunning"
@@ -153,11 +153,11 @@
           <div ref="streamEl" class="stream-area">
             <div v-if="!messages.length && isRunning" class="text-center text-medium-emphasis pa-8">
               <v-progress-circular indeterminate size="32" color="primary" class="mb-2" />
-              <div class="text-body-2">任务运行中，等待 Agent 输出</div>
+              <div class="text-body-2">{{ t('adminData.agent.running') }}</div>
             </div>
             <div v-if="!messages.length && !isRunning" class="text-center text-medium-emphasis pa-8">
               <v-icon size="48" class="mb-2">mdi-robot-outline</v-icon>
-              <div class="text-body-2">从左侧选择一个任务类型开始，或查看历史会话</div>
+              <div class="text-body-2">{{ t('adminData.agent.emptySession') }}</div>
             </div>
 
             <template v-for="m in messages" :key="m.key">
@@ -195,7 +195,7 @@
               @click="onInterject"
             >
               <v-icon>mdi-send</v-icon>
-              <span class="ml-1 d-none d-sm-inline">发送</span>
+              <span class="ml-1 d-none d-sm-inline">{{ t('adminData.agent.send') }}</span>
             </v-btn>
           </div>
         </template>
@@ -211,7 +211,7 @@
       width="300"
     >
       <div class="sidebar-section">
-        <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">任务类型</div>
+        <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">{{ t('adminData.agent.taskTypes') }}</div>
         <div class="px-3 pb-2">
           <v-select
             v-model="provider"
@@ -242,7 +242,7 @@
       </div>
       <v-divider />
       <div class="sidebar-section">
-        <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">历史会话</div>
+        <div class="text-caption text-medium-emphasis px-3 pt-3 pb-1">{{ t('adminData.agent.history') }}</div>
         <v-list density="compact" nav>
           <v-list-item
             v-for="s in sessions"
@@ -270,6 +270,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useAgentSession } from '@/composables/useAgentSession'
@@ -279,10 +280,11 @@ import type { AgentSession, TaskType } from '@/types/agent'
 import { enabledProviderOptions } from '@/utils/agentProviders'
 import AgentMessageBubble from '@/components/agent/AgentMessageBubble.vue'
 import AgentApprovalCard from '@/components/agent/AgentApprovalCard.vue'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatMoney, formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const localeStore = useLocaleStore()
@@ -347,23 +349,25 @@ const canInterject = computed(() => {
 })
 
 const interjectPlaceholder = computed(() => {
-  if (!currentSid.value) return '请先选择/开始会话'
-  if (status.value === 'awaiting_approval') return '等待审批中…'
-  return '向 Agent 插话（Enter 发送，Shift+Enter 换行）'
+  if (!currentSid.value) return t('adminData.agent.selectFirst')
+  if (status.value === 'awaiting_approval') return t('adminData.agent.awaitingApproval')
+  return t('adminData.agent.interjectPlaceholder')
 })
 
 const statusLabel = computed(() => {
   const map: Record<string, string> = {
-    pending: '等待中',
-    running: '运行中',
-    awaiting_approval: '待审批',
-    success: '成功',
-    completed: '完成',
-    failed: '失败',
-    cancelled: '已取消',
+    pending: t('adminData.status.pending'),
+    running: t('adminData.status.running'),
+    awaiting_approval: t('adminData.status.awaitingApproval'),
+    success: t('adminData.status.success'),
+    completed: t('adminData.status.completed'),
+    failed: t('adminData.status.failed'),
+    cancelled: t('adminData.status.cancelled'),
   }
   return map[status.value] || status.value
 })
+
+const formatCost = (value: number) => formatMoney(value, 'USD', localeStore.effectiveFormatLocale)
 
 const statusColor = computed(() => sessionStatusColor(status.value))
 
@@ -413,9 +417,13 @@ function formatRelative(s: string | null): string {
     const utcStr = hasTz ? s : s + 'Z'
     const d = new Date(utcStr)
     const diff = Date.now() - d.getTime()
-    if (diff < 60_000) return '刚刚'
-    if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
-    if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
+    if (diff < 60_000) return t('adminData.agent.justNow')
+    if (diff < 3_600_000) {
+      return t('adminData.agent.minutesAgo', { count: formatNumber(Math.floor(diff / 60_000), localeStore.effectiveFormatLocale) })
+    }
+    if (diff < 86_400_000) {
+      return t('adminData.agent.hoursAgo', { count: formatNumber(Math.floor(diff / 3_600_000), localeStore.effectiveFormatLocale) })
+    }
     return formatDate(d, localeStore.effectiveFormatLocale)
   } catch {
     return s
@@ -460,7 +468,7 @@ async function loadMeta() {
     taskTypes.value = types
     sessions.value = sess
   } catch (e: any) {
-    error.value = e?.message || '加载元数据失败'
+    error.value = e?.message || t('adminData.agent.loadMetadataFailed')
   } finally {
     loadingMeta.value = false
   }
@@ -470,7 +478,7 @@ async function loadSessions() {
   try {
     sessions.value = await listSessions(50)
   } catch (e: any) {
-    error.value = e?.message || '加载历史失败'
+    error.value = e?.message || t('adminData.agent.loadHistoryFailed')
   }
 }
 
@@ -485,7 +493,7 @@ async function onStartTask(taskType: string) {
     await loadSessions()
     await scrollToBottom()
   } catch (e: any) {
-    error.value = e?.message || '启动任务失败'
+    error.value = e?.message || t('adminData.agent.startFailed')
   } finally {
     starting.value = false
   }
@@ -502,7 +510,7 @@ async function onSelectSession(sid: number) {
     await router.replace({ query: { ...route.query, session_id: String(sid) } })
     await scrollToBottom()
   } catch (e: any) {
-    error.value = e?.message || '连接会话失败'
+    error.value = e?.message || t('adminData.agent.connectFailed')
   }
 }
 
@@ -516,7 +524,7 @@ async function onInterject() {
     interjectText.value = ''
     await scrollToBottom()
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || '插话失败'
+    error.value = e?.response?.data?.detail || e?.message || t('adminData.agent.interjectFailed')
   } finally {
     sending.value = false
   }
@@ -526,7 +534,7 @@ async function onDecide(aid: number, approved: boolean) {
   try {
     await approve(aid, approved)
   } catch (e: any) {
-    error.value = e?.response?.data?.detail || e?.message || '审批失败'
+    error.value = e?.response?.data?.detail || e?.message || t('adminData.agent.approvalFailed')
   }
 }
 

@@ -3,11 +3,11 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">地图配置</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('admin.map.title') }}</v-app-bar-title>
     <template #append>
       <v-btn color="primary" variant="tonal" :loading="saving" @click="saveConfig">
         <v-icon start>mdi-content-save</v-icon>
-        保存配置
+        {{ t('admin.map.saveConfig') }}
       </v-btn>
     </template>
   </v-app-bar>
@@ -20,13 +20,13 @@
         <v-switch
           v-model="config.map_enabled"
           color="primary"
-          label="启用地图功能"
+          :label="t('admin.map.enableMaps')"
           hide-details
           density="compact"
         />
         <v-icon class="ml-4">mdi-map</v-icon>
         <div class="ml-2 text-body-2 text-medium-emphasis">
-          关闭后前端所有地图隐藏、商家经纬度改为不必填、常用地点入口隐藏。配置保留，重新启用后恢复。
+          {{ t('admin.map.disableDescription') }}
         </div>
       </v-card-text>
     </v-card>
@@ -37,21 +37,21 @@
         <v-card class="rounded-lg h-100" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2">mdi-map</v-icon>
-            <span>可用地图</span>
+            <span>{{ t('admin.map.availableMaps') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-4">
             <v-select
               v-model="config.default_map"
               :items="availableMaps"
-              label="默认地图"
+              :label="t('admin.map.defaultMap')"
               variant="outlined"
               prepend-icon="mdi-star"
-              hint="默认使用的地图服务"
+              :hint="t('admin.map.defaultMapHint')"
               persistent-hint
             />
             <v-divider class="my-4" />
-            <div class="text-caption text-medium-emphasis mb-2">启用的地图服务</div>
+            <div class="text-caption text-medium-emphasis mb-2">{{ t('admin.map.enabledServices') }}</div>
             <v-chip-group v-model="config.available_maps" multiple column>
               <v-chip
                 v-for="map in allMaps"
@@ -73,7 +73,7 @@
         <v-card class="rounded-lg h-100" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2">mdi-key</v-icon>
-            <span>API 密钥配置</span>
+            <span>{{ t('admin.map.apiKeys') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-4">
@@ -82,7 +82,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2" color="success">mdi-map-marker</v-icon>
-                  高德地图
+                  {{ t('admin.map.maps.amap') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-text-field
@@ -91,16 +91,16 @@
                     variant="outlined"
                     type="password"
                     persistent-placeholder
-                    placeholder="留空则使用默认密钥"
+                    :placeholder="t('admin.map.defaultKeyPlaceholder')"
                   />
                   <v-text-field
                     v-model="config.map_api_keys.amap_security"
-                    label="安全密钥 (JSAPI)"
+                    :label="t('admin.map.amapSecurityKey')"
                     variant="outlined"
                     type="password"
                     persistent-placeholder
                     class="mt-2"
-                    hint="用于 Web 端调用的安全密钥"
+                    :hint="t('admin.map.amapSecurityKeyHint')"
                   />
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -109,7 +109,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2" color="primary">mdi-map-marker-radius</v-icon>
-                  百度地图
+                  {{ t('admin.map.maps.baidu') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-text-field
@@ -118,7 +118,7 @@
                     variant="outlined"
                     type="password"
                     persistent-placeholder
-                    placeholder="留空则使用默认密钥"
+                    :placeholder="t('admin.map.defaultKeyPlaceholder')"
                   />
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -127,7 +127,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2" color="info">mdi-map-marker-plus</v-icon>
-                  腾讯地图
+                  {{ t('admin.map.maps.tencent') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-text-field
@@ -136,7 +136,7 @@
                     variant="outlined"
                     type="password"
                     persistent-placeholder
-                    placeholder="留空则使用默认密钥"
+                    :placeholder="t('admin.map.defaultKeyPlaceholder')"
                   />
                 </v-expansion-panel-text>
               </v-expansion-panel>
@@ -145,7 +145,7 @@
               <v-expansion-panel>
                 <v-expansion-panel-title>
                   <v-icon class="mr-2" color="warning">mdi-earth</v-icon>
-                  天地图
+                  {{ t('admin.map.maps.tianditu') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
                   <v-text-field
@@ -154,7 +154,7 @@
                     variant="outlined"
                     type="password"
                     persistent-placeholder
-                    placeholder="留空则使用默认密钥"
+                    :placeholder="t('admin.map.defaultKeyPlaceholder')"
                   />
                   <!-- 天地图引擎固定加载矢量底图（TianDiTu.Normal.Map），「地图类型」切换不生效，故不暴露；type 字段保留默认值 'vec' 供结构兼容与后端透传 -->
                 </v-expansion-panel-text>
@@ -169,7 +169,7 @@
         <v-card class="rounded-lg" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
             <v-icon class="mr-2">mdi-crosshairs-gps</v-icon>
-            <span>地理编码服务</span>
+            <span>{{ t('admin.map.geocoding') }}</span>
           </v-card-title>
           <v-divider />
           <v-card-text class="pt-4">
@@ -178,41 +178,41 @@
                 <v-select
                   v-model="config.geocoding.enabled_service"
                   :items="geocodingServices"
-                  label="启用的地理编码服务"
+                  :label="t('admin.map.enabledGeocodingService')"
                   variant="outlined"
                   prepend-icon="mdi-server"
-                  hint="用于地址解析和逆地理编码的服务"
+                  :hint="t('admin.map.geocodingHint')"
                   persistent-hint
                 />
               </v-col>
               <v-col cols="12" sm="6" md="4">
                 <v-text-field
                   v-model="config.geocoding.amap_key"
-                  label="高德地图密钥"
+                  :label="t('admin.map.amapKey')"
                   variant="outlined"
                   type="password"
                   persistent-placeholder
-                  placeholder="留空则使用默认密钥"
+                  :placeholder="t('admin.map.defaultKeyPlaceholder')"
                 />
               </v-col>
               <v-col cols="12" sm="6" md="4">
                 <v-text-field
                   v-model="config.geocoding.baidu_key"
-                  label="百度地图密钥"
+                  :label="t('admin.map.baiduKey')"
                   variant="outlined"
                   type="password"
                   persistent-placeholder
-                  placeholder="留空则使用默认密钥"
+                  :placeholder="t('admin.map.defaultKeyPlaceholder')"
                 />
               </v-col>
               <v-col cols="12" sm="6" md="4">
                 <v-text-field
                   v-model="config.geocoding.tencent_key"
-                  label="腾讯地图密钥"
+                  :label="t('admin.map.tencentKey')"
                   variant="outlined"
                   type="password"
                   persistent-placeholder
-                  placeholder="留空则使用默认密钥"
+                  :placeholder="t('admin.map.defaultKeyPlaceholder')"
                 />
               </v-col>
               <v-col cols="12" sm="6" md="4">
@@ -222,7 +222,7 @@
                   variant="outlined"
                   persistent-placeholder
                   placeholder="https://nominatim.openstreetmap.org/search"
-                  hint="OpenStreetMap 的 Nominatim 服务地址"
+                  :hint="t('admin.map.nominatimUrlHint')"
                 />
               </v-col>
               <v-col cols="12" sm="6" md="4">
@@ -233,7 +233,7 @@
                   type="email"
                   persistent-placeholder
                   placeholder="your@email.com"
-                  hint="使用 Nominatim API 时需要提供邮箱"
+                  :hint="t('admin.map.nominatimEmailHint')"
                 />
               </v-col>
             </v-row>
@@ -245,19 +245,21 @@
     <!-- 保存成功提示 -->
     <v-snackbar v-model="showSuccess" color="success" timeout="3000">
       <v-icon start>mdi-check-circle</v-icon>
-      配置保存成功
+      {{ t('admin.map.saved') }}
     </v-snackbar>
   </v-container>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { api } from '@/api'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
 const router = useRouter()
 
 const goBack = () => {
@@ -292,20 +294,20 @@ interface MapConfig {
   geocoding: GeocodingConfig
 }
 
-const allMaps = [
-  { title: '高德地图', value: 'amap', icon: 'mdi-map-marker' },
-  { title: '百度地图', value: 'baidu', icon: 'mdi-map-marker-radius' },
-  { title: '腾讯地图', value: 'tencent', icon: 'mdi-map-marker-plus' },
-  { title: '天地图', value: 'tianditu', icon: 'mdi-earth' },
+const allMaps = computed(() => [
+  { title: t('admin.map.maps.amap'), value: 'amap', icon: 'mdi-map-marker' },
+  { title: t('admin.map.maps.baidu'), value: 'baidu', icon: 'mdi-map-marker-radius' },
+  { title: t('admin.map.maps.tencent'), value: 'tencent', icon: 'mdi-map-marker-plus' },
+  { title: t('admin.map.maps.tianditu'), value: 'tianditu', icon: 'mdi-earth' },
   { title: 'OpenStreetMap', value: 'osm', icon: 'mdi-open-in-new' },
-]
+])
 
-const geocodingServices = [
-  { title: '高德地图', value: 'amap' },
-  { title: '百度地图', value: 'baidu' },
-  { title: '腾讯地图', value: 'tencent' },
+const geocodingServices = computed(() => [
+  { title: t('admin.map.maps.amap'), value: 'amap' },
+  { title: t('admin.map.maps.baidu'), value: 'baidu' },
+  { title: t('admin.map.maps.tencent'), value: 'tencent' },
   { title: 'Nominatim (OSM)', value: 'nominatim' },
-]
+])
 
 const config = reactive<MapConfig>({
   map_enabled: true,
@@ -336,7 +338,7 @@ const showSuccess = ref(false)
 
 // 默认地图下拉项跟随「启用的地图服务」联动
 const availableMaps = computed(() =>
-  allMaps.filter((m) => config.available_maps.includes(m.value))
+  allMaps.value.filter((m) => config.available_maps.includes(m.value))
 )
 
 // 默认地图不在启用列表时，回退到首个启用项

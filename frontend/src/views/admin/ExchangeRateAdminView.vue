@@ -2,44 +2,47 @@
   <v-container fluid>
     <v-card elevation="0">
       <v-card-title class="d-flex align-center">
-        <span class="mr-auto">汇率管理</span>
+        <span class="mr-auto">{{ t('admin.exchange.title') }}</span>
         <v-btn color="primary" prepend-icon="mdi-pencil-plus-outline" @click="openManualDialog">
-          手动补汇率
+          {{ t('admin.exchange.manualEntry') }}
         </v-btn>
       </v-card-title>
       <v-card-text>
         <v-alert type="info" variant="tonal" class="mb-4">
-          最新快照：{{ status.latest || '暂无' }}（{{ status.source || '-' }}）
+          {{ t('admin.exchange.latestSnapshot', {
+            time: status.latest ? formatToLocalDateTimeShort(status.latest) : t('statuses.none'),
+            source: status.source || '-',
+          }) }}
         </v-alert>
-        <v-btn color="primary" :loading="loading" @click="onRefresh">立即刷新</v-btn>
+        <v-btn color="primary" :loading="loading" @click="onRefresh">{{ t('admin.exchange.refreshNow') }}</v-btn>
       </v-card-text>
     </v-card>
 
     <!-- 手动补汇率对话框 -->
     <v-dialog v-model="manualDialog" max-width="520px" persistent>
       <v-card>
-        <v-card-title>手动补汇率</v-card-title>
+        <v-card-title>{{ t('admin.exchange.manualEntry') }}</v-card-title>
         <v-card-text>
           <v-form @submit.prevent="submitManual">
             <v-text-field
               v-model="form.rate_date"
-              label="日期"
+              :label="t('admin.exchange.date')"
               type="date"
               required
             />
             <v-text-field
               v-model="form.base_currency"
-              label="基准币种（3 位大写字母）"
+              :label="t('admin.exchange.baseCurrencyLabel')"
               counter
               required
-              hint="如 EUR / CNY"
+              :hint="t('admin.exchange.baseCurrencyHint')"
               @input="form.base_currency = form.base_currency.toUpperCase()"
             />
             <v-textarea
               v-model="form.ratesText"
-              label="汇率（每行一个：币种代码 + 数值）"
+              :label="t('admin.exchange.ratesLabel')"
               rows="6"
-              hint="格式：USD 1.1（也支持 USD:1.1 / USD=1.1）"
+              :hint="t('admin.exchange.ratesHint')"
               persistent-hint
               required
             />
@@ -47,8 +50,8 @@
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="text" @click="manualDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="manualSaving" @click="submitManual">提交</v-btn>
+          <v-btn variant="text" @click="manualDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="manualSaving" @click="submitManual">{{ t('admin.exchange.submit') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -57,10 +60,13 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ratesStatus, refreshRates, manualRate } from '@/api/currencies'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
+import { formatToLocalDateTimeShort } from '@/utils/timezone'
 
 const { notify } = useGlobalSnackbar()
+const { t } = useI18n()
 
 const status = ref<{ latest: string | null; source: string | null }>({ latest: null, source: null })
 const loading = ref(false)
@@ -75,7 +81,7 @@ async function loadStatus() {
   try {
     status.value = await ratesStatus()
   } catch (e: any) {
-    notify(e?.userMessage || '获取汇率状态失败', 'error')
+    notify(e?.userMessage || t('admin.exchange.loadStatusFailed'), 'error')
   }
 }
 
@@ -84,9 +90,9 @@ async function onRefresh() {
   try {
     await refreshRates()
     await loadStatus()
-    notify('汇率已刷新', 'success')
+    notify(t('admin.exchange.refreshed'), 'success')
   } catch (e: any) {
-    notify(e?.userMessage || '刷新失败', 'error')
+    notify(e?.userMessage || t('admin.exchange.refreshFailed'), 'error')
   } finally {
     loading.value = false
   }
@@ -106,43 +112,43 @@ function parseRates(text: string): Record<string, number> {
     const trimmed = line.trim()
     if (!trimmed) continue
     const parts = trimmed.split(/[\s:=]+/)
-    if (parts.length < 2) throw new Error(`无法解析行：${trimmed}`)
+    if (parts.length < 2) throw new Error(t('admin.exchange.parseLineFailed', { line: trimmed }))
     const code = parts[0].toUpperCase()
     const value = Number(parts[1])
     if (!/^[A-Z]{3}$/.test(code) || Number.isNaN(value)) {
-      throw new Error(`无法解析行：${trimmed}`)
+      throw new Error(t('admin.exchange.parseLineFailed', { line: trimmed }))
     }
     rates[code] = value
   }
-  if (Object.keys(rates).length === 0) throw new Error('请至少填写一条汇率')
+  if (Object.keys(rates).length === 0) throw new Error(t('admin.exchange.ratesRequired'))
   return rates
 }
 
 async function submitManual() {
   if (!form.rate_date) {
-    notify('请选择日期', 'warning')
+    notify(t('admin.exchange.dateRequired'), 'warning')
     return
   }
   const base = form.base_currency.trim()
   if (!/^[A-Z]{3}$/.test(base)) {
-    notify('基准币种需为 3 位大写字母', 'warning')
+    notify(t('admin.exchange.baseCurrencyInvalid'), 'warning')
     return
   }
   let rates: Record<string, number>
   try {
     rates = parseRates(form.ratesText)
   } catch (e: any) {
-    notify(e?.message || '汇率格式错误', 'warning')
+    notify(e?.message || t('admin.exchange.ratesInvalid'), 'warning')
     return
   }
   manualSaving.value = true
   try {
     await manualRate({ rate_date: form.rate_date, base_currency: base, rates })
     manualDialog.value = false
-    notify('汇率已手动写入', 'success')
+    notify(t('admin.exchange.manualSaved'), 'success')
     await loadStatus()
   } catch (e: any) {
-    notify(e?.userMessage || '提交失败', 'error')
+    notify(e?.userMessage || t('admin.exchange.submitFailed'), 'error')
   } finally {
     manualSaving.value = false
   }

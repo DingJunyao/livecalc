@@ -3,7 +3,7 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">图片存储配置</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('adminStorage.title') }}</v-app-bar-title>
   </v-app-bar>
 
   <v-container class="pa-4">
@@ -11,14 +11,14 @@
     <v-card class="rounded-lg mb-4">
       <v-card-title class="d-flex align-center py-4">
         <v-icon class="mr-2">mdi-cloud-outline</v-icon>
-        <span>当前配置</span>
+        <span>{{ t('adminStorage.currentConfig') }}</span>
       </v-card-title>
       <v-divider />
       <v-card-text class="pt-4">
         <v-row v-if="config">
           <v-col cols="12" sm="6">
-            <div class="text-caption text-medium-emphasis mb-1">存储后端</div>
-            <div class="text-h6">{{ config.backend === 'local' ? '本地存储' : 'S3 对象存储' }}</div>
+            <div class="text-caption text-medium-emphasis mb-1">{{ t('adminStorage.backend') }}</div>
+            <div class="text-h6">{{ backendLabel(config.backend) }}</div>
           </v-col>
 
           <template v-if="config.backend === 's3'">
@@ -29,7 +29,7 @@
                   {{ sourceLabel(config.sources?.s3_endpoint) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_endpoint || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_endpoint || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -38,7 +38,7 @@
                   {{ sourceLabel(config.sources?.s3_bucket) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_bucket || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_bucket || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -47,7 +47,7 @@
                   {{ sourceLabel(config.sources?.s3_region) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_region || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_region || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -65,7 +65,7 @@
                   {{ sourceLabel(config.sources?.s3_base_path) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_base_path || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_base_path || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -74,7 +74,7 @@
                   {{ sourceLabel(config.sources?.s3_custom_domain) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_custom_domain || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_custom_domain || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -83,7 +83,7 @@
                   {{ sourceLabel(config.sources?.s3_url_suffix) }}
                 </v-chip>
               </div>
-              <div class="text-body-2">{{ config.s3_url_suffix || '(未设置)' }}</div>
+              <div class="text-body-2">{{ config.s3_url_suffix || t('adminStorage.notSetParens') }}</div>
             </v-col>
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
@@ -93,7 +93,7 @@
                 </v-chip>
               </div>
               <div class="text-body-2">
-                {{ config.has_access_key ? '*** 已设置 ***' : '未设置' }}
+                {{ config.has_access_key ? t('adminStorage.maskedSet') : t('adminStorage.notSet') }}
               </div>
             </v-col>
             <v-col cols="12" sm="6">
@@ -104,20 +104,20 @@
                 </v-chip>
               </div>
               <div class="text-body-2">
-                {{ config.has_secret_key ? '*** 已设置 ***' : '未设置' }}
+                {{ config.has_secret_key ? t('adminStorage.maskedSet') : t('adminStorage.notSet') }}
               </div>
             </v-col>
           </template>
         </v-row>
 
-        <v-alert v-if="!config" type="info" text="正在加载配置..." class="mt-4" />
+        <v-alert v-if="!config" type="info" :text="t('adminStorage.loading')" class="mt-4" />
       </v-card-text>
       <v-divider />
       <v-card-actions>
         <v-spacer />
         <v-btn color="primary" variant="tonal" @click="openWizard">
           <v-icon start>mdi-swap-horizontal</v-icon>
-          切换存储后端
+          {{ t('adminStorage.switchBackend') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -127,7 +127,7 @@
       <v-card>
         <v-card-title class="d-flex align-center py-4">
           <v-icon class="mr-2">mdi-cloud-sync</v-icon>
-          <span>切换存储后端向导</span>
+          <span>{{ t('adminStorage.wizardTitle') }}</span>
         </v-card-title>
         <v-divider />
 
@@ -137,21 +137,21 @@
 
           <!-- 步骤 1: 选目标 backend -->
           <div v-if="wizardStep === 1" class="mt-4">
-            <div class="text-h6 mb-4">选择目标存储后端</div>
+            <div class="text-h6 mb-4">{{ t('adminStorage.selectTarget') }}</div>
             <v-radio-group v-model="wizardConfig.targetBackend">
-              <v-radio label="本地存储" value="local">
+              <v-radio :label="t('adminStorage.local')" value="local">
                 <template #label>
                   <div class="d-flex align-center">
                     <v-icon class="mr-2">mdi-harddisk</v-icon>
-                    <span>本地存储</span>
+                    <span>{{ t('adminStorage.local') }}</span>
                   </div>
                 </template>
               </v-radio>
-              <v-radio label="S3 对象存储" value="s3">
+              <v-radio :label="t('adminStorage.s3')" value="s3">
                 <template #label>
                   <div class="d-flex align-center">
                     <v-icon class="mr-2">mdi-cloud</v-icon>
-                    <span>S3 对象存储</span>
+                    <span>{{ t('adminStorage.s3') }}</span>
                   </div>
                 </template>
               </v-radio>
@@ -160,7 +160,7 @@
 
           <!-- 步骤 2: 填目标配置（本地存储无需配置，跳过） -->
           <div v-if="wizardStep === 2 && wizardConfig.targetBackend === 's3'" class="mt-4">
-            <div class="text-h6 mb-4">填写目标配置</div>
+            <div class="text-h6 mb-4">{{ t('adminStorage.targetConfig') }}</div>
 
             <!-- S3 配置 -->
             <template v-if="wizardConfig.targetBackend === 's3'">
@@ -168,7 +168,7 @@
                 v-model="wizardConfig.s3_endpoint"
                 label="endpoint"
                 variant="outlined"
-                hint="S3 服务端点（如 https://s3.amazonaws.com）"
+                :hint="t('adminStorage.endpointHint')"
                 persistent-hint
                 class="mb-2"
               />
@@ -176,7 +176,7 @@
                 v-model="wizardConfig.s3_bucket"
                 label="bucket"
                 variant="outlined"
-                hint="存储桶名称"
+                :hint="t('adminStorage.bucketHint')"
                 persistent-hint
                 class="mb-2"
               />
@@ -184,7 +184,7 @@
                 v-model="wizardConfig.s3_region"
                 label="region"
                 variant="outlined"
-                hint="区域（如 us-east-1）"
+                :hint="t('adminStorage.regionHint')"
                 persistent-hint
                 class="mb-2"
               />
@@ -192,7 +192,7 @@
                 v-model="wizardConfig.s3_access_key"
                 label="access_key"
                 variant="outlined"
-                hint="访问密钥 ID"
+                :hint="t('adminStorage.accessKeyHint')"
                 persistent-hint
                 class="mb-2"
               />
@@ -201,44 +201,44 @@
                 label="secret_key"
                 variant="outlined"
                 type="password"
-                hint="密钥（未修改时留空保持不变）"
+                :hint="t('adminStorage.secretKeyHint')"
                 persistent-hint
-                placeholder="未修改时留空"
+                :placeholder="t('adminStorage.secretKeyPlaceholder')"
                 class="mb-2"
               />
               <v-text-field
                 v-model="wizardConfig.s3_base_path"
-                label="存储路径前缀（可选）"
+                :label="t('adminStorage.basePath')"
                 variant="outlined"
-                hint="如 livecalc/（留空则存 bucket 根目录）"
+                :hint="t('adminStorage.basePathHint')"
                 persistent-hint
-                placeholder="留空则存 bucket 根目录"
+                :placeholder="t('adminStorage.basePathPlaceholder')"
                 class="mb-2"
               />
               <v-text-field
                 v-model="wizardConfig.s3_custom_domain"
-                label="自定义域名（可选）"
+                :label="t('adminStorage.customDomain')"
                 variant="outlined"
-                hint="如 https://cdn.example.com（留空用 endpoint 拼）"
+                :hint="t('adminStorage.customDomainHint')"
                 persistent-hint
-                placeholder="留空用 endpoint 拼"
+                :placeholder="t('adminStorage.customDomainPlaceholder')"
                 class="mb-2"
               />
               <v-text-field
                 v-model="wizardConfig.s3_url_suffix"
-                label="网址后缀（可选）"
+                :label="t('adminStorage.urlSuffix')"
                 variant="outlined"
-                hint="如 ?imageslim（图床处理参数）"
+                :hint="t('adminStorage.urlSuffixHint')"
                 persistent-hint
-                placeholder="如 ?imageslim"
+                :placeholder="t('adminStorage.urlSuffixPlaceholder')"
                 class="mb-2"
               />
               <v-radio-group v-model="wizardConfig.s3_url_style" label="url_style">
-                <v-radio label="Path（路径风格）" value="path" />
-                <v-radio label="Virtual-hosted（虚拟主机风格）" value="virtual" />
+                <v-radio :label="t('adminStorage.pathStyle')" value="path" />
+                <v-radio :label="t('adminStorage.virtualHostedStyle')" value="virtual" />
               </v-radio-group>
               <div class="text-caption text-medium-emphasis mb-2">
-                OSS / AWS S3 选「虚拟主机」（&lt;bucket&gt;.&lt;host&gt;）；MinIO / 自建选「路径风格」（&lt;host&gt;/&lt;bucket&gt;）。不确定时 OSS/AWS 选 virtual，自建选 path。
+                {{ t('adminStorage.urlStyleHint') }}
               </div>
             </template>
 
@@ -247,7 +247,7 @@
 
           <!-- 步骤 3: 测试连接（本地存储无需测试，跳过） -->
           <div v-if="wizardStep === 3 && wizardConfig.targetBackend === 's3'" class="mt-4">
-            <div class="text-h6 mb-4">测试连接</div>
+            <div class="text-h6 mb-4">{{ t('adminStorage.testConnection') }}</div>
             <div>
               <v-btn
                 color="primary"
@@ -257,23 +257,23 @@
                 block
               >
                 <v-icon start>mdi-network-outline</v-icon>
-                测试 S3 连接
+                {{ t('adminStorage.testS3Connection') }}
               </v-btn>
-              <v-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" class="mt-4" :text="testResult.error || '连接成功'" />
+              <v-alert v-if="testResult" :type="testResult.ok ? 'success' : 'error'" class="mt-4" :text="testResult.error || t('adminStorage.connectionSuccess')" />
             </div>
           </div>
 
           <!-- 步骤 4: 迁移现有图片（可选） -->
           <div v-if="wizardStep === 4" class="mt-4">
-            <div class="text-h6 mb-4">迁移现有图片</div>
-            <v-alert v-if="!needsMigration" type="info" text="目标后端与当前相同，无需迁移" class="mb-4" />
+            <div class="text-h6 mb-4">{{ t('adminStorage.migrateImages') }}</div>
+            <v-alert v-if="!needsMigration" type="info" :text="t('adminStorage.noMigrationNeeded')" class="mb-4" />
             <template v-else>
               <v-alert type="warning" class="mb-4">
                 <template #prepend>
                   <v-icon>mdi-alert</v-icon>
                 </template>
                 <div>
-                  <div class="font-weight-bold">迁移说明</div>
+                  <div class="font-weight-bold">{{ t('adminStorage.migrationNotes') }}</div>
                   <div class="text-caption">
                     {{ migrationDirectionText }}
                   </div>
@@ -284,13 +284,13 @@
               <div v-if="migrationTaskId">
                 <v-progress-linear :model-value="migrationProgress" color="primary" class="mb-2" />
                 <div class="text-caption text-medium-emphasis mb-2">
-                  {{ migrationStage || '准备中...' }} ({{ migrationCurrent || 0 }}/{{ migrationTotal || 0 }})
+                  {{ migrationStageLabel }} ({{ formatCount(migrationCurrent || 0) }}/{{ formatCount(migrationTotal || 0) }})
                 </div>
                 <div v-if="migrationStats" class="text-caption mb-1">
-                  已上传: {{ migrationStats.uploaded || 0 }} | 跳过: {{ migrationStats.skipped || 0 }} | 失败: {{ migrationStats.failed || 0 }}
+                  {{ t('adminStorage.stats', { uploaded: formatCount(migrationStats.uploaded || 0), skipped: formatCount(migrationStats.skipped || 0), failed: formatCount(migrationStats.failed || 0) }) }}
                 </div>
                 <div v-if="migrationCancelled" class="text-caption text-warning mb-1">
-                  迁移已中止
+                  {{ t('adminStorage.migrationCancelled') }}
                 </div>
                 <v-btn
                   v-if="!migrationComplete"
@@ -302,7 +302,7 @@
                   @click="cancelMigration"
                 >
                   <v-icon start>mdi-stop-circle-outline</v-icon>
-                  中止迁移
+                  {{ t('adminStorage.cancelMigration') }}
                 </v-btn>
               </div>
 
@@ -316,7 +316,7 @@
                   block
                 >
                   <v-icon start>mdi-cloud-upload</v-icon>
-                  开始迁移
+                  {{ t('adminStorage.startMigration') }}
                 </v-btn>
                 <v-btn
                   color="warning"
@@ -325,7 +325,7 @@
                   block
                 >
                   <v-icon start>mdi-skip-next</v-icon>
-                  跳过迁移（源端独有图片将无法访问）
+                  {{ t('adminStorage.skipMigration') }}
                 </v-btn>
               </div>
             </template>
@@ -333,11 +333,11 @@
 
           <!-- 步骤 5: 确认切换 -->
           <div v-if="wizardStep === 5" class="mt-4">
-            <div class="text-h6 mb-4">确认切换</div>
+            <div class="text-h6 mb-4">{{ t('adminStorage.confirmSwitch') }}</div>
             <v-alert type="info" class="mb-4">
-              <div>即将切换到：{{ wizardConfig.targetBackend === 'local' ? '本地存储' : 'S3 对象存储' }}</div>
+              <div>{{ t('adminStorage.switchingTo', { backend: backendLabel(wizardConfig.targetBackend) }) }}</div>
               <div class="text-caption mt-2" v-if="needsMigration">
-                迁移状态：{{ migrationTaskId ? (migrationComplete ? '已完成' : '进行中') : '已跳过' }}
+                {{ t('adminStorage.migrationStatus', { status: migrationTaskId ? (migrationComplete ? t('adminStorage.completed') : t('adminStorage.inProgress')) : t('adminStorage.skipped') }) }}
               </div>
             </v-alert>
           </div>
@@ -346,15 +346,15 @@
         <v-divider />
         <v-card-actions class="pa-4">
           <v-btn v-if="wizardStep > 1" variant="text" @click="prevStep" :disabled="applyingConfig">
-            上一步
+            {{ t('adminStorage.previous') }}
           </v-btn>
           <v-spacer />
           <v-btn v-if="wizardStep < 5" variant="text" @click="nextStep" :disabled="!canNextStep">
-            下一步
+            {{ t('adminStorage.next') }}
           </v-btn>
           <v-btn v-else color="error" variant="tonal" :loading="applyingConfig" @click="applyConfig">
             <v-icon start>mdi-check-circle</v-icon>
-            确认切换
+            {{ t('adminStorage.confirmSwitch') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -376,12 +376,17 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api } from '@/api'
 import { preloadStorageConfig } from '@/utils/image'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 const router = useRouter()
 
 const goBack = () => {
@@ -454,7 +459,7 @@ const extractErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     return error.message
   }
-  return '未知错误'
+  return t('errors.unknown')
 }
 
 const config = ref<StorageConfig | null>(null)
@@ -463,7 +468,13 @@ const loading = ref(false)
 // 向导状态
 const wizardDialog = ref(false)
 const wizardStep = ref(1)
-const wizardItems = ['选择后端', '填写配置', '测试连接', '迁移图片', '确认切换']
+const wizardItems = computed(() => [
+  t('adminStorage.steps.selectBackend'),
+  t('adminStorage.steps.configure'),
+  t('adminStorage.steps.test'),
+  t('adminStorage.steps.migrate'),
+  t('adminStorage.steps.confirm'),
+])
 
 const wizardConfig = reactive({
   targetBackend: 'local' as 'local' | 's3',
@@ -496,6 +507,16 @@ const cancellingMigration = ref(false)
 const migrationCancelled = ref(false)
 let migrationPoller: ReturnType<typeof setInterval> | null = null
 
+const migrationStageLabel = computed(() => {
+  const labels: Record<string, string> = {
+    '准备中': t('adminStorage.stagePreparing'),
+    '迁移到 S3': t('adminStorage.stageMigratingToS3'),
+    '迁移到本地': t('adminStorage.stageMigratingToLocal'),
+    '完成': t('adminStorage.completed'),
+  }
+  return migrationStage.value ? labels[migrationStage.value] || migrationStage.value : t('adminStorage.stagePreparing')
+})
+
 // 应用配置
 const applyingConfig = ref(false)
 
@@ -504,6 +525,10 @@ const showSuccess = ref(false)
 const successMessage = ref('')
 const showError = ref(false)
 const errorMessage = ref('')
+
+const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
+const backendLabel = (backend: 'local' | 's3') =>
+  backend === 'local' ? t('adminStorage.local') : t('adminStorage.s3')
 
 // source chip 辅助
 const sourceColor = (source?: string) => {
@@ -514,7 +539,7 @@ const sourceColor = (source?: string) => {
 }
 
 const sourceLabel = (source?: string) => {
-  if (!source) return '默认'
+  if (!source) return t('adminStorage.defaultSource')
   return source
 }
 
@@ -528,10 +553,10 @@ const needsMigration = computed(() => {
 const migrationDirectionText = computed(() => {
   if (!config.value) return ''
   if (config.value.backend === 'local' && wizardConfig.targetBackend === 's3') {
-    return '从本地存储迁移到 S3 对象存储'
+    return t('adminStorage.migrateToS3')
   }
   if (config.value.backend === 's3' && wizardConfig.targetBackend === 'local') {
-    return '从 S3 对象存储迁移到本地存储'
+    return t('adminStorage.migrateToLocal')
   }
   return ''
 })
@@ -626,7 +651,7 @@ const testConnection = async () => {
     })
     testResult.value = { ok: result.ok, error: result.error }
   } catch (error: unknown) {
-    testResult.value = { ok: false, error: extractErrorMessage(error) || '测试失败' }
+    testResult.value = { ok: false, error: extractErrorMessage(error) || t('adminStorage.testFailed') }
   } finally {
     testingConnection.value = false
   }
@@ -655,7 +680,7 @@ const startMigration = async () => {
     startMigrationPolling()
   } catch (error: unknown) {
     showError.value = true
-    errorMessage.value = extractErrorMessage(error) || '启动迁移失败'
+    errorMessage.value = extractErrorMessage(error) || t('adminStorage.startMigrationFailed')
   } finally {
     startingMigration.value = false
   }
@@ -692,7 +717,7 @@ const startMigrationPolling = () => {
         migrationComplete.value = true
         if (status === 'failed') {
           showError.value = true
-          errorMessage.value = result.error || '迁移失败'
+          errorMessage.value = result.error || t('adminStorage.migrationFailed')
         } else if (status === 'cancelled') {
           migrationCancelled.value = true
         }
@@ -712,7 +737,7 @@ const cancelMigration = async () => {
     // 不立即置完成——轮询会在后台置 cancelled 后接管显示
   } catch (error: unknown) {
     showError.value = true
-    errorMessage.value = extractErrorMessage(error) || '中止失败'
+    errorMessage.value = extractErrorMessage(error) || t('adminStorage.cancelFailed')
   } finally {
     cancellingMigration.value = false
   }
@@ -743,7 +768,7 @@ const applyConfig = async () => {
       payload.s3_url_style = wizardConfig.s3_url_style
     }
     await api.put('/admin/storage-config', payload)
-    successMessage.value = '存储配置切换成功'
+    successMessage.value = t('adminStorage.switchSuccess')
     showSuccess.value = true
     wizardDialog.value = false
     await fetchConfig()
@@ -751,7 +776,7 @@ const applyConfig = async () => {
     await preloadStorageConfig()
   } catch (error: unknown) {
     showError.value = true
-    errorMessage.value = extractErrorMessage(error) || '切换失败'
+    errorMessage.value = extractErrorMessage(error) || t('adminStorage.switchFailed')
   } finally {
     applyingConfig.value = false
   }

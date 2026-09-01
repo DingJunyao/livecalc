@@ -2,11 +2,11 @@
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
-    <v-app-bar-title class="text-h6">用户管理</v-app-bar-title>
+    <v-app-bar-title class="text-h6">{{ t('admin.users.title') }}</v-app-bar-title>
     <template #append>
       <v-btn color="primary" variant="tonal" @click="openCreateDialog">
         <v-icon start>mdi-plus</v-icon>
-        新增用户
+        {{ t('admin.users.create') }}
       </v-btn>
     </template>
   </v-app-bar>
@@ -17,7 +17,7 @@
       <v-card-text class="pb-0">
         <v-text-field
           v-model="search"
-          label="搜索用户名或邮箱"
+          :label="t('admin.users.search')"
           prepend-inner-icon="mdi-magnify"
           clearable
           hide-details
@@ -49,9 +49,9 @@
             variant="tonal"
           >
             <v-icon start size="16">mdi-shield-account</v-icon>
-            管理员
+            {{ t('admin.users.administrator') }}
           </v-chip>
-          <span v-else class="text-medium-emphasis">普通用户</span>
+          <span v-else class="text-medium-emphasis">{{ t('admin.users.normalUser') }}</span>
         </template>
 
         <!-- 状态列 -->
@@ -61,7 +61,7 @@
             size="small"
             variant="tonal"
           >
-            {{ item.is_active ? '活跃' : '已失效' }}
+            {{ item.is_active ? t('admin.users.active') : t('admin.users.inactive') }}
           </v-chip>
         </template>
 
@@ -77,7 +77,7 @@
               <template #activator="{ props }">
                 <v-btn v-bind="props" icon="mdi-pencil" size="small" variant="text" color="primary" @click="openEditDialog(item)" />
               </template>
-              <span>编辑</span>
+              <span>{{ t('admin.users.edit') }}</span>
             </v-tooltip>
             <v-tooltip location="top">
               <template #activator="{ props }">
@@ -101,14 +101,14 @@
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
           <v-icon class="mr-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
-          <span>{{ isEditing ? '修改用户' : '新增用户' }}</span>
+          <span>{{ isEditing ? t('admin.users.editTitle') : t('admin.users.create') }}</span>
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
           <v-form ref="form" @submit.prevent="saveUser">
             <v-text-field
               v-model="formData.username"
-              label="用户名"
+              :label="t('admin.users.username')"
               prepend-icon="mdi-account"
               required
               :rules="[rules.required]"
@@ -117,7 +117,7 @@
             />
             <v-text-field
               v-model="formData.email"
-              label="邮箱"
+              :label="t('admin.users.email')"
               prepend-icon="mdi-email"
               required
               :rules="[rules.required, rules.email]"
@@ -126,7 +126,7 @@
             />
             <v-text-field
               v-model="formData.phone"
-              label="手机号"
+              :label="t('admin.users.phone')"
               prepend-icon="mdi-phone"
               variant="outlined"
               density="comfortable"
@@ -134,7 +134,7 @@
             <v-text-field
               v-if="!isEditing"
               v-model="formData.password"
-              label="密码"
+              :label="t('admin.users.password')"
               prepend-icon="mdi-lock"
               variant="outlined"
               density="comfortable"
@@ -149,15 +149,15 @@
                 prepend-icon="mdi-lock-reset"
                 @click="openResetPasswordDialog"
               >
-                重置密码
+                {{ t('admin.users.resetPassword') }}
               </v-btn>
               <div class="text-caption text-medium-emphasis mt-1">
-                重置后该用户的所有登录将立即失效，需用新密码重新登录。
+                {{ t('admin.users.resetPasswordHint') }}
               </div>
             </div>
             <v-checkbox
               v-model="formData.is_admin"
-              label="设为管理员"
+              :label="t('admin.users.setAdministrator')"
               color="primary"
               density="comfortable"
             />
@@ -166,9 +166,9 @@
         <v-divider />
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="tonal" @click="formDialog = false">取消</v-btn>
+          <v-btn variant="tonal" @click="formDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveUser">
-            {{ isEditing ? '保存' : '创建' }}
+            {{ isEditing ? t('actions.save') : t('admin.users.create') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -179,14 +179,14 @@
       <v-card class="rounded-lg">
         <v-card-title class="text-h6 d-flex align-center py-4">
           <v-icon class="mr-2">mdi-lock-reset</v-icon>
-          <span>重置「{{ resetUsername }}」的密码</span>
+          <span>{{ t('admin.users.resetPasswordTitle', { name: resetUsername }) }}</span>
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
           <v-form ref="resetFormRef" @submit.prevent="submitResetPassword">
             <v-text-field
               v-model="resetFormData.newPassword"
-              label="新密码"
+              :label="t('admin.users.newPassword')"
               prepend-icon="mdi-lock"
               type="password"
               required
@@ -196,7 +196,7 @@
             />
             <v-text-field
               v-model="resetFormData.confirmPassword"
-              label="确认新密码"
+              :label="t('admin.users.confirmNewPassword')"
               prepend-icon="mdi-lock-check"
               type="password"
               required
@@ -209,9 +209,9 @@
         <v-divider />
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="tonal" @click="resetDialog = false">取消</v-btn>
+          <v-btn variant="tonal" @click="resetDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="resetting" @click="submitResetPassword">
-            确认重置
+            {{ t('admin.users.confirmReset') }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -221,16 +221,15 @@
     <v-dialog v-model="adminDialog" max-width="400px">
       <v-card class="rounded-lg">
         <v-card-title class="text-h6">
-          {{ adminTarget?.is_admin ? '取消管理员' : '设为管理员' }}
+          {{ adminTarget?.is_admin ? t('admin.users.removeAdministrator') : t('admin.users.setAdministrator') }}
         </v-card-title>
         <v-card-text>
-          确定要{{ adminTarget?.is_admin ? '取消' : '授予' }}
-          <strong>{{ adminTarget?.username }}</strong> 的管理员权限吗？
+          {{ adminTarget?.is_admin ? t('admin.users.adminConfirmRemove', { name: adminTarget?.username ?? '' }) : t('admin.users.adminConfirmGrant', { name: adminTarget?.username ?? '' }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" @click="adminDialog = false">取消</v-btn>
-          <v-btn color="primary" :loading="toggling" @click="toggleAdmin">确定</v-btn>
+          <v-btn variant="tonal" @click="adminDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn color="primary" :loading="toggling" @click="toggleAdmin">{{ t('common.confirm') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -239,16 +238,15 @@
     <v-dialog v-model="activeDialog" max-width="400px">
       <v-card class="rounded-lg">
         <v-card-title class="text-h6">
-          {{ activeTarget?.is_active ? '失效用户' : '激活用户' }}
+          {{ activeTarget?.is_active ? t('admin.users.deactivateUser') : t('admin.users.activateUser') }}
         </v-card-title>
         <v-card-text>
-          确定要{{ activeTarget?.is_active ? '失效' : '激活' }}
-          <strong>{{ activeTarget?.username }}</strong> 吗？
+          {{ activeTarget?.is_active ? t('admin.users.activeConfirmDeactivate', { name: activeTarget?.username ?? '' }) : t('admin.users.activeConfirmActivate', { name: activeTarget?.username ?? '' }) }}
         </v-card-text>
         <v-card-actions>
           <v-spacer />
-          <v-btn variant="tonal" @click="activeDialog = false">取消</v-btn>
-          <v-btn :color="activeTarget?.is_active ? 'error' : 'success'" :loading="toggling" @click="toggleActive">确定</v-btn>
+          <v-btn variant="tonal" @click="activeDialog = false">{{ t('actions.cancel') }}</v-btn>
+          <v-btn :color="activeTarget?.is_active ? 'error' : 'success'" :loading="toggling" @click="toggleActive">{{ t('common.confirm') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -263,6 +261,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useUserStore } from '@/stores/user'
@@ -271,6 +270,7 @@ import { formatToLocalDateTimeShort } from '@/utils/timezone'
 import { hashPassword } from '@/utils/crypto'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -291,16 +291,16 @@ interface User {
   created_at: string | null
 }
 
-const headers = [
+const headers = computed(() => [
   { title: 'ID', key: 'id', width: 60, sortable: false },
-  { title: '用户名', key: 'username', sortable: false },
-  { title: '邮箱', key: 'email', sortable: false },
-  { title: '手机号', key: 'phone', sortable: false },
-  { title: '角色', key: 'is_admin', sortable: false, width: 100 },
-  { title: '状态', key: 'is_active', sortable: false, width: 90 },
-  { title: '注册时间', key: 'created_at', sortable: false },
-  { title: '操作', key: 'actions', sortable: false, align: 'end', width: 140 },
-]
+  { title: t('admin.users.username'), key: 'username', sortable: false },
+  { title: t('admin.users.email'), key: 'email', sortable: false },
+  { title: t('admin.users.phone'), key: 'phone', sortable: false },
+  { title: t('admin.users.role'), key: 'is_admin', sortable: false, width: 100 },
+  { title: t('admin.users.status'), key: 'is_active', sortable: false, width: 90 },
+  { title: t('admin.users.registeredAt'), key: 'created_at', sortable: false },
+  { title: t('admin.users.actions'), key: 'actions', sortable: false, align: 'end' as const, width: 140 },
+])
 
 const users = ref<User[]>([])
 const loading = ref(false)
@@ -309,11 +309,11 @@ const itemsPerPage = ref(20)
 const search = ref('')
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
-const rules = {
-  required: (v: string) => !!v || '必填',
-  email: (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || '邮箱格式不正确',
-  minPassword: (v: string) => (v && v.length >= 6) || '密码至少6位',
-}
+const rules = computed(() => ({
+  required: (v: string) => !!v || t('admin.users.required'),
+  email: (v: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) || t('admin.users.emailInvalid'),
+  minPassword: (v: string) => (v && v.length >= 6) || t('admin.users.passwordMin'),
+}))
 
 // 表单
 const formDialog = ref(false)
@@ -348,7 +348,7 @@ const resetFormData = reactive({
 })
 const resetFormRef = ref()
 const confirmPasswordRule = (v: string) =>
-  v === resetFormData.newPassword || '两次输入的密码不一致'
+  v === resetFormData.newPassword || t('admin.users.passwordMismatch')
 
 // 提示
 const snackbar = reactive({
@@ -379,15 +379,15 @@ const canToggleActive = (user: User): boolean => {
 }
 
 const adminTooltip = (user: User): string => {
-  if (user.id === currentUserId.value) return '不能修改自己的管理员权限'
-  if (user.id === 1) return '不能修改系统初始管理员'
-  return user.is_admin ? '取消管理员' : '设为管理员'
+  if (user.id === currentUserId.value) return t('admin.users.cannotChangeOwnAdmin')
+  if (user.id === 1) return t('admin.users.cannotChangeInitialAdmin')
+  return user.is_admin ? t('admin.users.removeAdministrator') : t('admin.users.setAdministrator')
 }
 
 const activeTooltip = (user: User): string => {
-  if (user.id === currentUserId.value) return '不能失效自己的账户'
-  if (user.id === 1) return '不能失效系统初始管理员'
-  return user.is_active ? '失效用户' : '激活用户'
+  if (user.id === currentUserId.value) return t('admin.users.cannotDeactivateSelf')
+  if (user.id === 1) return t('admin.users.cannotDeactivateInitialAdmin')
+  return user.is_active ? t('admin.users.deactivateUser') : t('admin.users.activateUser')
 }
 
 // 获取用户列表
@@ -405,7 +405,7 @@ const fetchUsers = async ({ page, itemsPerPage: limit }: { page: number; itemsPe
     totalItems.value = response.total
   } catch (error) {
     console.error('获取用户列表失败:', error)
-    showSnackbar('获取用户列表失败', 'error', 'mdi-alert-circle')
+    showSnackbar(t('admin.users.loadFailed'), 'error', 'mdi-alert-circle')
   } finally {
     loading.value = false
   }
@@ -460,15 +460,15 @@ const saveUser = async () => {
 
     if (isEditing.value) {
       await api.put(`/auth/users/${editingUserId.value}`, payload)
-      showSnackbar('用户信息已更新')
+      showSnackbar(t('admin.users.updated'))
     } else {
       await api.post('/auth/users', payload)
-      showSnackbar('用户创建成功')
+      showSnackbar(t('admin.users.created'))
     }
     formDialog.value = false
     fetchUsers({ page: 1, itemsPerPage: itemsPerPage.value })
   } catch (error: any) {
-    const msg = error?.response?.data?.detail || error?.message || '操作失败'
+    const msg = error?.response?.data?.detail || error?.message || t('admin.users.operationFailed')
     showSnackbar(msg, 'error', 'mdi-alert-circle')
   } finally {
     saving.value = false
@@ -489,12 +489,14 @@ const toggleAdmin = async () => {
       is_admin: !adminTarget.value.is_admin,
     })
     showSnackbar(
-      `${adminTarget.value.username} ${adminTarget.value.is_admin ? '已取消管理员' : '已设为管理员'}`
+      adminTarget.value.is_admin
+        ? t('admin.users.adminRemoved', { name: adminTarget.value.username })
+        : t('admin.users.adminGranted', { name: adminTarget.value.username })
     )
     adminDialog.value = false
     fetchUsers({ page: 1, itemsPerPage: itemsPerPage.value })
   } catch (error: any) {
-    const msg = error?.response?.data?.detail || error?.message || '操作失败'
+    const msg = error?.response?.data?.detail || error?.message || t('admin.users.operationFailed')
     showSnackbar(msg, 'error', 'mdi-alert-circle')
   } finally {
     toggling.value = false
@@ -515,12 +517,14 @@ const toggleActive = async () => {
       is_active: !activeTarget.value.is_active,
     })
     showSnackbar(
-      `${activeTarget.value.username} ${activeTarget.value.is_active ? '已失效' : '已激活'}`
+      activeTarget.value.is_active
+        ? t('admin.users.deactivated', { name: activeTarget.value.username })
+        : t('admin.users.activated', { name: activeTarget.value.username })
     )
     activeDialog.value = false
     fetchUsers({ page: 1, itemsPerPage: itemsPerPage.value })
   } catch (error: any) {
-    const msg = error?.response?.data?.detail || error?.message || '操作失败'
+    const msg = error?.response?.data?.detail || error?.message || t('admin.users.operationFailed')
     showSnackbar(msg, 'error', 'mdi-alert-circle')
   } finally {
     toggling.value = false
@@ -545,10 +549,10 @@ const submitResetPassword = async () => {
     await api.put(`/auth/users/${resetUserId.value}`, {
       password_hash: hashPassword(resetFormData.newPassword),
     })
-    showSnackbar(`已重置「${resetUsername.value}」的密码，该用户需重新登录`)
+    showSnackbar(t('admin.users.passwordReset', { name: resetUsername.value }))
     resetDialog.value = false
   } catch (error: any) {
-    const msg = error?.response?.data?.detail || error?.message || '重置失败'
+    const msg = error?.response?.data?.detail || error?.message || t('admin.users.resetFailed')
     showSnackbar(msg, 'error', 'mdi-alert-circle')
   } finally {
     resetting.value = false
