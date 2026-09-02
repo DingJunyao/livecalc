@@ -238,7 +238,7 @@
                       <v-chip v-for="(v, k) in t.stats" :key="k" size="x-small" variant="tonal"
                               class="mr-1 mb-1">{{ k }}: {{ v }}</v-chip>
                     </div>
-                    <div v-if="t.error" class="text-caption text-error mt-1">{{ t.error }}</div>
+                    <div v-if="t.error" class="text-caption text-error mt-1">{{ importTaskErrorLabel(t.error) }}</div>
                   </template>
                   <!-- agent 任务：简洁状态 -->
                   <template v-else>
@@ -275,6 +275,7 @@ import { createSession, getSession, listSessions } from '@/api/agent'
 import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
 import { formatDateTime, formatNumber } from '@/utils/format'
 import { importTaskStageLabel } from '@/utils/importTaskStages'
+import { importTaskErrorLabel } from '@/utils/importTaskErrors'
 import { useLocaleStore } from '@/stores/locale'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()

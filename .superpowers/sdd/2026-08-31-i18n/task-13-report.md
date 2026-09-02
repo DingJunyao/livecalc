@@ -103,3 +103,49 @@ All commands below were run fresh from `frontend` after the final self-review:
 
 - None task-blocking. The production build still reports the pre-existing database chunk-import overlap and large-chunk warnings; both are warnings only and the build exits 0.
 - Browser `Intl.DisplayNames` supplies locale-specific spelling and casing, so exact native display strings can vary by runtime as intended.
+
+## Fix Round 1
+
+### Changes
+
+- Added `frontend/src/utils/localDisplay.ts` so local-mode display values are locale keys/functions instead of `src/data/localValues.ts` literals.
+- Removed `LOCAL_USER_NICKNAME`, `ADMIN_BACKGROUND_MARKER`, `UNKNOWN_INGREDIENT_NAME`, `PENDING_REVIEW_MARKER`, `PROPOSAL_MARKER`, `NEW_NAME_SUFFIX`, and `FALLBACK_PRICE_UNIT_VALUES` from `src/data/localValues.ts`; remaining values are lookup/data aliases only.
+- Added identical `localValues` and storage-migration `localErrors` keys to `zh-CN`, `en-US`, and `ar`.
+- Updated local user and unit fallbacks to derive from the active locale; the local Pinia user is rebuilt on locale changes.
+- Converted S3 target/credential/current-config failures to stable `localErrors.*` codes, persisted `toStableTaskError(error)` in failed migration task data, and added `importTaskErrorLabel` for display at task-error render sites.
+- Normalized legacy Chinese import-task stage values in `importTaskStageLabel`, and updated every stage/error display path including `ImportUploadDialog.vue` and `StorageConfigView.vue`.
+
+### RED Evidence
+
+- New focused tests initially failed before implementation with `ERR_MODULE_NOT_FOUND` for the missing `importTaskErrors.ts` and `localDisplay.ts` modules, plus unresolved `@/plugins/i18n` in `importTaskStages.ts`. Exit code was 1.
+- `npm run check:i18n:sources` initially failed after adding the legacy-stage mapping because the checker reported Han text in `src/utils/importTaskStages.ts:4-9`. The mapping was changed to Unicode escapes and the command then passed.
+
+### GREEN Evidence
+
+Commands run fresh from `frontend` after the final implementation:
+
+- `node --test src/utils/importTaskStages.test.ts src/utils/importTaskErrors.test.ts src/utils/localDisplay.test.ts src/utils/localErrors.test.ts`
+  - Exit code: 0
+  - Output: 4 tests passed, 0 failed.
+- `npm run check:i18n`
+  - Exit code: 0
+  - Output: `Checked 3 locale catalogs; all key trees match.`
+- `npm run check:i18n:sources`
+  - Exit code: 0
+  - Output: `Checked 2028 source translation keys and localized source rules across all locale catalogs.`
+- `npm run build`
+  - Exit code: 0
+  - Output: Vite transformed 2,021 modules, built successfully, and generated the PWA service worker with 170 precache entries.
+  - Non-failing warnings: the pre-existing static/dynamic database import overlap and chunks larger than 500 kB.
+- `git diff --check`
+  - Exit code: 0 with no findings.
+
+### Files Changed
+
+- New: `frontend/src/utils/localDisplay.ts`, `frontend/src/utils/importTaskErrors.ts`
+- New tests: `frontend/src/utils/localDisplay.test.ts`, `frontend/src/utils/importTaskErrors.test.ts`, `frontend/src/utils/importTaskStages.test.ts`
+- Modified: `frontend/src/data/localValues.ts`, `frontend/src/utils/localErrors.ts`, `frontend/src/utils/importTaskStages.ts`, `frontend/src/api/local/handlers/admin.ts`, `frontend/src/api/local/handlers/recipes.ts`, `frontend/src/composables/useImportTask.ts`, `frontend/src/composables/useUserUnits.ts`, `frontend/src/stores/user.ts`, all three locale catalogs, and affected import/storage/admin components/views.
+
+### Concerns
+
+- None task-blocking. `importTaskErrorLabel` intentionally leaves legacy string errors unchanged so already-persisted raw task errors are still visible; new migration failures persist stable structured error data.

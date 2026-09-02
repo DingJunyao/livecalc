@@ -3,9 +3,6 @@ export const CHINESE_GRAM_NAME = '克'
 export const CHINESE_JIN_NAME = '斤'
 export const CHINESE_LIANG_NAME = '两'
 export const CHINESE_PIECE_NAME = '个'
-export const LOCAL_USER_NICKNAME = '本地用户'
-export const ADMIN_BACKGROUND_MARKER = '[后台]'
-export const UNKNOWN_INGREDIENT_NAME = '未知原料'
 
 export const VAGUE_QUANTITY_GRAM_MAP: Record<string, number> = {
   '适量': 100,
@@ -74,10 +71,7 @@ export const RECIPE_CORE_NUTRIENT_NAMES = [
 export const NO_STANDARD_VALUES = ['无标准', '无标准值'] as const
 export const ENERGY_UNIT_ALIASES = ['千卡', '千焦'] as const
 export const CHINESE_MASS_UNITS = ['斤', '两'] as const
-export const PENDING_REVIEW_MARKER = '待管理员审核'
-export const PROPOSAL_MARKER = '提议'
 export const CURRENCY_PREFIX = '元'
-export const NEW_NAME_SUFFIX = '(新)'
 
 export const CORE_NUTRIENT_KEYS = [
   '能量',
@@ -99,19 +93,6 @@ export const CHART_UNIT_FACTORS_TO_GRAMS: Record<string, number> = {
   ml: 1,
   L: 1000,
 }
-
-export const FALLBACK_PRICE_UNIT_VALUES = [
-  CHINESE_JIN_NAME,
-  CHINESE_PIECE_NAME,
-  'kg',
-  CHINESE_GRAM_NAME,
-  '升',
-  '毫升',
-  '盒',
-  '包',
-  '袋',
-  '瓶',
-]
 
 export const COMMON_SI_FACTORS_TO_KILOGRAMS: Record<string, number> = {
   kg: 1,

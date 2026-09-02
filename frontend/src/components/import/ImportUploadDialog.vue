@@ -45,7 +45,7 @@
             v-if="currentTask?.progress?.total"
             class="text-caption text-medium-emphasis mt-1"
           >
-            {{ currentTask.progress.stage }}：{{ currentTask.progress.current }}/{{
+            {{ importTaskStageLabel(currentTask.progress.stage) }}：{{ currentTask.progress.current }}/{{
               currentTask.progress.total
             }}
           </div>
@@ -71,6 +71,8 @@ import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useImportTask } from '@/composables/useImportTask'
 import type { ImportTask } from '@/composables/useImportTask'
+import { importTaskStageLabel } from '@/utils/importTaskStages'
+import { importTaskErrorLabel } from '@/utils/importTaskErrors'
 
 const { t } = useI18n()
 
@@ -130,14 +132,14 @@ watch(
       result.value = {
         success: true,
         stats: snapshot.stats,
-        warnings: snapshot.error ? [snapshot.error] : [],
+        warnings: snapshot.error ? [importTaskErrorLabel(snapshot.error)] : [],
       }
       uploading.value = false
       currentTaskId.value = null
     } else if (snapshot.status === 'failed') {
       result.value = {
         success: false,
-        errors: [snapshot.error || t('imports.importFailed')],
+        errors: [snapshot.error ? importTaskErrorLabel(snapshot.error) : t('imports.importFailed')],
       }
       uploading.value = false
       currentTaskId.value = null

@@ -2,7 +2,8 @@
 // 用户级单位偏好读取 + 能量单位转换。NULL 字段由前端 fallback。
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
-import { CHINESE_JIN_NAME, COMMON_SI_FACTORS_TO_KILOGRAMS } from '@/data/localValues'
+import { COMMON_SI_FACTORS_TO_KILOGRAMS } from '@/data/localValues'
+import { t } from '@/plugins/i18n'
 
 export interface UnitPref {
   id: number
@@ -10,9 +11,7 @@ export interface UnitPref {
   abbreviation: string
 }
 
-const FALLBACK_MASS_NAME = CHINESE_JIN_NAME
 const FALLBACK_VOLUME_NAME = 'mL'
-const FALLBACK_PRICE_NAME = CHINESE_JIN_NAME
 
 export function useUserUnits() {
   const userStore = useUserStore()
@@ -23,9 +22,9 @@ export function useUserUnits() {
   const volumeUnit = computed<UnitPref | null>(() => up.value?.volume_unit ?? null)
   const priceUnit = computed<UnitPref | null>(() => up.value?.price_unit ?? null)
 
-  const massUnitName = computed(() => massUnit.value?.name ?? FALLBACK_MASS_NAME)
+  const massUnitName = computed(() => massUnit.value?.name ?? t('prices.units.jin'))
   const volumeUnitName = computed(() => volumeUnit.value?.name ?? FALLBACK_VOLUME_NAME)
-  const priceUnitName = computed(() => priceUnit.value?.name ?? FALLBACK_PRICE_NAME)
+  const priceUnitName = computed(() => priceUnit.value?.name ?? t('prices.units.jin'))
 
   // 从「元/斤」折算到用户质量偏好单位（用于价格趋势/单价显示）。
   // si_factor：1 单位 = ? kg。元/X = 元/斤 × (si_factor_X / si_factor_斤)。

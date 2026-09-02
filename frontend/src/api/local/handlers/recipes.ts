@@ -21,7 +21,6 @@ import {
   DEFAULT_NUTRIENT_NAMES,
   ENERGY_NUTRIENT_NAMES,
   RECIPE_CORE_NUTRIENT_NAMES,
-  UNKNOWN_INGREDIENT_NAME,
   VAGUE_QUANTITY_GRAM_MAP,
 } from '../../../data/localValues.ts'
 
@@ -81,7 +80,7 @@ async function getRecipeIngredients(recipeId: number): Promise<any[]> {
   // 附加食材名（无 ingredient_id 的跳过，用 ingredient_name 字段）
   for (const ri of ingredients) {
     if (ri.ingredient_id == null) {
-      ri.ingredient_name = ri.ingredient_name || UNKNOWN_INGREDIENT_NAME
+      ri.ingredient_name = ri.ingredient_name || translate('localValues.unknownIngredientName')
       ri.ingredient = null
       ri.name = ri.ingredient_name  // 组件模板用 ingredient.name
       ri.unit = ri.unit || ri.unit_name || unitIdToName[ri.unit_id] || ''
@@ -356,7 +355,7 @@ export async function batchCost(_params: Record<string, string>, data?: any): Pr
         recipe_ingredient_id: ri.id,
         ingredient_id: ri.ingredient_id,
         ingredient_name: ri.ingredient_id == null
-          ? UNKNOWN_INGREDIENT_NAME
+          ? translate('localValues.unknownIngredientName')
           : (allIngredients.find((i: any) => i.id === ri.ingredient_id)?.name || `#${ri.ingredient_id}`),
         quantity: ri.quantity,
         quantity_range: ri.quantity_range,

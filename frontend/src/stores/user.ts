@@ -1,42 +1,50 @@
 // stores/user.ts
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { User } from '@/types'
 import { api } from '@/api'
 import { useLocaleStore } from '@/stores/locale'
-import { CHINESE_JIN_NAME, LOCAL_USER_NICKNAME } from '@/data/localValues'
+import i18n from '@/plugins/i18n'
+import { localUserNickname } from '@/utils/localDisplay'
 
 export const useUserStore = defineStore('user', () => {
   // ---- Local mode: return a fixed admin user without API calls ----
   if (import.meta.env.VITE_STORAGE_MODE === 'local') {
-    const localUserData: User = {
-      id: 1,
-      username: 'local',
-      email: 'local@local.dev',
-      phone: null,
-      is_admin: true,
-      is_active: true,
-      email_verified: true,
-      avatar: null,
-      nickname: LOCAL_USER_NICKNAME,
-      created_at: new Date().toISOString(),
-      nutrition_goals: null,
-      daily_budget: null,
-      unit_preferences: {
-        energy_unit: 'kcal',
-        mass_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
-        volume_unit: null,
-        price_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
-      },
-      region_id: null,
-      default_currency: null,
-      default_calc_scope: null,
-      locale: null,
-      format_locale: null,
+    const createLocalUserData = (): User => {
+      const jinName = i18n.global.t('prices.units.jin')
+      return {
+        id: 1,
+        username: 'local',
+        email: 'local@local.dev',
+        phone: null,
+        is_admin: true,
+        is_active: true,
+        email_verified: true,
+        avatar: null,
+        nickname: localUserNickname(),
+        created_at: new Date().toISOString(),
+        nutrition_goals: null,
+        daily_budget: null,
+        unit_preferences: {
+          energy_unit: 'kcal',
+          mass_unit: { id: 3, name: jinName, abbreviation: jinName },
+          volume_unit: null,
+          price_unit: { id: 3, name: jinName, abbreviation: jinName },
+        },
+        region_id: null,
+        default_currency: null,
+        default_calc_scope: null,
+        locale: null,
+        format_locale: null,
+      }
     }
 
-    const user = ref<User | null>(localUserData)
+    const user = ref<User | null>(createLocalUserData())
     const token = ref<string | null>('local-mode')
+
+    watch(() => i18n.global.locale.value, () => {
+      user.value = createLocalUserData()
+    })
 
     return {
       user,
@@ -44,8 +52,8 @@ export const useUserStore = defineStore('user', () => {
       isLoggedIn: computed(() => true),
       fetchUser: async () => {},
       setTokens: () => {},
-      login: async () => { user.value = localUserData; token.value = 'local-mode' },
-      register: async () => { user.value = localUserData; token.value = 'local-mode' },
+      login: async () => { user.value = createLocalUserData(); token.value = 'local-mode' },
+      register: async () => { user.value = createLocalUserData(); token.value = 'local-mode' },
       logout: () => { user.value = null; token.value = null },
     }
   }

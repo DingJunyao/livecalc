@@ -11,7 +11,8 @@ import {
 } from './barcodeServices'
 import { fixBlobMime } from '@/utils/image'
 import CryptoJS from 'crypto-js'
-import { localError } from '../../../utils/localErrors'
+import { isLocalError, localError, translateLocalError } from '../../../utils/localErrors'
+import { toStableTaskError } from '../../../utils/importTaskErrors'
 import { t as translate } from '../../../plugins/i18n.ts'
 
 async function getConfigValue(key: string): Promise<any> {
@@ -31,6 +32,9 @@ async function setConfigValue(key: string, value: any): Promise<void> {
 function friendlyErr(e: any): string {
   const name = e?.name || ''
   const msg = e?.message || String(e)
+  if (isLocalError(e)) {
+    return (translateLocalError(e) as { message?: string }).message || msg
+  }
   if (name === 'TypeError' || /Failed to fetch|NetworkError|CORS/i.test(msg)) {
     return translate('localMessages.networkEndpointFailure', { message: msg })
   }
@@ -262,8 +266,8 @@ function buildS3ApiTarget(key: string, cfg: {
 }): { url: string; host: string; canonicalUri: string } {
   const rawEndpoint = (cfg.s3_endpoint || '').trim()
   const bucket = (cfg.s3_bucket || '').trim()
-  if (!rawEndpoint) throw new Error('S3 endpoint is required')
-  if (!bucket) throw new Error('S3 bucket is required')
+  if (!rawEndpoint) throw localError('s3EndpointRequired')
+  if (!bucket) throw localError('s3BucketRequired')
   const endpoint = rawEndpoint.includes('://') ? rawEndpoint : `https://${rawEndpoint}`
   const basePath = (cfg.s3_base_path || '').replace(/^\/+|\/+$/g, '')
   const logicalKey = normalizeStorageKey(key)
@@ -313,7 +317,7 @@ async function signedS3Fetch(
   const { url, host, canonicalUri } = buildS3ApiTarget(key, cfg)
   const accessKey = (cfg.s3_access_key || '').trim()
   const secretKey = (cfg.s3_secret_key || '').trim()
-  if (!accessKey || !secretKey) throw new Error('S3 access key and secret key are required')
+  if (!accessKey || !secretKey) throw localError('s3CredentialsRequired')
   const region = (cfg.s3_region || 'us-east-1').trim()
   const payloadHash = body ? await sha256Blob(body) : CryptoJS.SHA256('').toString()
   const now = new Date()
@@ -425,7 +429,7 @@ async function updateMigrationTask(
   total: number,
   stats: { uploaded: number; skipped: number; failed: number },
   status?: string,
-  error?: string | null,
+  error?: unknown,
 ): Promise<void> {
   const task = await db.get('import_tasks', taskId)
   if (!task || task.status === 'cancelled') return
@@ -455,10 +459,10 @@ async function runStorageMigration(
       ? await mergeSavedS3Config(s3Config)
       : await mergeSavedS3Config(null)
     if (direction === 'to_s3' && !targetS3Config.s3_endpoint) {
-      throw new Error('S3 endpoint is required')
+      throw localError('s3EndpointRequired')
     }
     if (direction === 'to_local' && (!targetS3Config.s3_endpoint || !targetS3Config.s3_bucket)) {
-      throw new Error('Current storage is not a valid S3 configuration')
+      throw localError('s3CurrentConfigInvalid')
     }
 
     const CHUNK_SIZE = 5
@@ -534,7 +538,7 @@ async function runStorageMigration(
         total,
         { uploaded, skipped, failed },
         'failed',
-        e?.message || String(e),
+        toStableTaskError(e),
       )
     }
   }

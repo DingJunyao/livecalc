@@ -466,14 +466,14 @@
                                 class="mr-1 mb-1">{{ k }}: {{ v }}</v-chip>
                       </template>
                     </div>
-                    <div v-if="t.error" class="text-caption text-error mt-1">{{ t.error }}</div>
+                    <div v-if="t.error" class="text-caption text-error mt-1">{{ importTaskErrorLabel(t.error) }}</div>
                   </template>
                   <!-- usda 任务：完成统计 / 错误 / 运行中提示 -->
                   <template v-else-if="t._kind === 'usda'">
                     <div v-if="t.progress?.foods != null" class="text-caption mt-1">
                       {{ t('adminData.maintenance.usda.foods') }}: {{ formatCount(t.progress.foods) }}
                     </div>
-                    <div v-if="t.error" class="text-caption text-error mt-1">{{ t.error }}</div>
+                    <div v-if="t.error" class="text-caption text-error mt-1">{{ importTaskErrorLabel(t.error) }}</div>
                     <div v-else-if="t.status === 'running' || t.status === 'pending'" class="text-caption text-medium-emphasis mt-1">
                       {{ t('adminData.maintenance.tasks.background') }}
                     </div>
@@ -528,8 +528,9 @@ import { api } from '@/api'
 import { enabledProviderOptions, type ProviderOption } from '@/utils/agentProviders'
 import { formatDateTime, formatNumber } from '@/utils/format'
 import { importTaskStageLabel } from '@/utils/importTaskStages'
+import { importTaskErrorLabel } from '@/utils/importTaskErrors'
 import { useLocaleStore } from '@/stores/locale'
-import { ADMIN_BACKGROUND_MARKER } from '@/data/localValues'
+import { adminBackgroundMarker } from '@/utils/localDisplay'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { t } = useI18n()
@@ -708,7 +709,7 @@ onMounted(async () => {
   try {
     const recent = await listSessions(20)
     const relevant = recent.filter(
-      (s) => AGENT_TASK_TYPES.includes(s.task_type) && !(s.title || '').startsWith(ADMIN_BACKGROUND_MARKER)
+      (s) => AGENT_TASK_TYPES.includes(s.task_type) && !(s.title || '').startsWith(adminBackgroundMarker())
     )
     for (const s of relevant) {
       if (!agentTasks.value.find((t) => t.session_id === s.id)) {

@@ -1209,6 +1209,11 @@
     "productNotFound": "Product {id} was not found",
     "recipeNotFound": "Recipe {id} was not found",
     "regionNotFound": "Region {id} was not found",
+    "s3BucketRequired": "S3 bucket is required",
+    "s3CredentialsRequired": "S3 access key and secret key are required",
+    "s3CurrentConfigInvalid": "Current storage is not a valid S3 configuration",
+    "s3EndpointRequired": "S3 endpoint is required",
+    "storageMigrationFailed": "Storage migration failed",
     "taskNotFound": "Task {id} was not found",
     "unitConversionNotFound": "No conversion found between units {from_unit_id} and {to_unit_id}",
     "unitNotFound": "Unit {id} was not found",
@@ -1219,6 +1224,14 @@
     "usdaFoodNotFound": "USDA food {id} was not found",
     "usdaZipJsonMissing": "No JSON files were found in the ZIP",
     "userPlaceNotFound": "Frequent place was not found"
+  },
+  "localValues": {
+    "adminBackgroundMarker": "[Admin]",
+    "newNameSuffix": " (new)",
+    "pendingReviewMarker": "Pending admin review",
+    "proposalMarker": "Proposal",
+    "unknownIngredientName": "Unknown ingredient",
+    "userNickname": "Local user"
   },
   "localMessages": {
     "apiKeyMissing": "API Key is not configured",

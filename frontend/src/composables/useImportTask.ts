@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { api } from '@/api'
+import type { ImportTaskError } from '@/utils/importTaskErrors'
 
 export interface ImportTask {
   id: number
@@ -12,7 +13,7 @@ export interface ImportTask {
     message: string
   }
   stats: Record<string, number>
-  error: string | null
+  error: ImportTaskError
   created_at: string
   updated_at: string
 }

@@ -383,6 +383,8 @@ import { api } from '@/api'
 import { preloadStorageConfig } from '@/utils/image'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
+import { importTaskStageLabel } from '@/utils/importTaskStages'
+import { importTaskErrorLabel } from '@/utils/importTaskErrors'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { t } = useI18n()
@@ -508,13 +510,7 @@ const migrationCancelled = ref(false)
 let migrationPoller: ReturnType<typeof setInterval> | null = null
 
 const migrationStageLabel = computed(() => {
-  const labels: Record<string, string> = {
-    preparing: t('adminStorage.stagePreparing'),
-    migrating: t('adminStorage.stageMigrating'),
-    completed: t('adminStorage.completed'),
-    failed: t('adminStorage.migrationFailed'),
-  }
-  return migrationStage.value ? labels[migrationStage.value] || migrationStage.value : t('adminStorage.stagePreparing')
+  return migrationStage.value ? importTaskStageLabel(migrationStage.value) : t('adminStorage.stagePreparing')
 })
 
 // 应用配置
@@ -717,7 +713,7 @@ const startMigrationPolling = () => {
         migrationComplete.value = true
         if (status === 'failed') {
           showError.value = true
-          errorMessage.value = result.error || t('adminStorage.migrationFailed')
+          errorMessage.value = importTaskErrorLabel(result.error) || t('adminStorage.migrationFailed')
         } else if (status === 'cancelled') {
           migrationCancelled.value = true
         }

@@ -1209,6 +1209,11 @@
     "productNotFound": "لم يتم العثور على المنتج {id}",
     "recipeNotFound": "لم يتم العثور على الوصفة {id}",
     "regionNotFound": "لم يتم العثور على المنطقة {id}",
+    "s3BucketRequired": "الحاوية مطلوبة",
+    "s3CredentialsRequired": "مفتاح الوصول والمفتاح السري مطلوبان",
+    "s3CurrentConfigInvalid": "التخزين الحالي ليس إعداد S3 صالحًا",
+    "s3EndpointRequired": "نقطة النهاية مطلوبة",
+    "storageMigrationFailed": "فشل ترحيل التخزين",
     "taskNotFound": "لم يتم العثور على المهمة {id}",
     "unitConversionNotFound": "لا يوجد تحويل بين الوحدتين {from_unit_id} و {to_unit_id}",
     "unitNotFound": "لم يتم العثور على الوحدة {id}",
@@ -1219,6 +1224,14 @@
     "usdaFoodNotFound": "لم يتم العثور على طعام USDA {id}",
     "usdaZipJsonMissing": "لم يتم العثور على ملفات JSON في ملف ZIP",
     "userPlaceNotFound": "لم يتم العثور على المكان المتكرر"
+  },
+  "localValues": {
+    "adminBackgroundMarker": "[المشرف]",
+    "newNameSuffix": " (جديد)",
+    "pendingReviewMarker": "بانتظار مراجعة المشرف",
+    "proposalMarker": "اقتراح",
+    "unknownIngredientName": "مكوّن غير معروف",
+    "userNickname": "المستخدم المحلي"
   },
   "localMessages": {
     "apiKeyMissing": "لم يتم تكوين مفتاح API",

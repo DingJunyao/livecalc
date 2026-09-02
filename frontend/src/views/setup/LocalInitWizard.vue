@@ -100,6 +100,7 @@ import { useRouter } from 'vue-router'
 import { seedBasicData, BASE_UNITS } from '@/api/local/seed'
 import { fixBlobMime } from '@/utils/image'
 import { LOCAL_UNIT_ALIASES } from '@/data/localValues'
+import { importTaskErrorLabel } from '@/utils/importTaskErrors'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -526,7 +527,7 @@ async function handleZipUpload(event: any) {
       .join(t('setup.statsSeparator'))
     importMessage.value = t('setup.importCompleteStats', { stats: statsText || t('setup.noDataToImport') })
     if (task?.error) {
-      importMessage.value += `\n${task.error}`
+      importMessage.value += `\n${importTaskErrorLabel(task.error)}`
     }
     importProgress.value = 100
     step.value = 3

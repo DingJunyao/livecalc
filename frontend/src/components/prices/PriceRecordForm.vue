@@ -144,7 +144,7 @@ import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
-import { FALLBACK_PRICE_UNIT_VALUES } from '@/data/localValues'
+import { fallbackPriceUnitValues } from '@/utils/localDisplay'
 
 const { t } = useI18n()
 
@@ -182,9 +182,6 @@ const formRef = ref()
 // 单位选项（从 API 动态加载）
 const units = ref<string[]>([])
 
-// 基本单位列表（API 加载失败时的回退）
-const FALLBACK_UNITS = FALLBACK_PRICE_UNIT_VALUES
-
 // 加载全局单位列表
 const loadUnits = async () => {
   try {
@@ -192,7 +189,7 @@ const loadUnits = async () => {
     const unitList = res.items || res || []
     units.value = unitList.map((u: any) => u.abbreviation)
   } catch (e) {
-    units.value = [...FALLBACK_UNITS]
+    units.value = fallbackPriceUnitValues()
   }
 }
 

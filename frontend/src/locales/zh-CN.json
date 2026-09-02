@@ -1209,6 +1209,11 @@
     "productNotFound": "商品 {id} 未找到",
     "recipeNotFound": "菜谱 {id} 未找到",
     "regionNotFound": "地区 {id} 不存在",
+    "s3BucketRequired": "bucket 不能为空",
+    "s3CredentialsRequired": "access key / secret key 不能为空",
+    "s3CurrentConfigInvalid": "当前存储不是有效的 S3 配置",
+    "s3EndpointRequired": "endpoint 不能为空",
+    "storageMigrationFailed": "存储迁移失败",
     "taskNotFound": "任务 {id} 未找到",
     "unitConversionNotFound": "未找到单位 {from_unit_id} 和 {to_unit_id} 之间的转换",
     "unitNotFound": "单位 {id} 未找到",
@@ -1219,6 +1224,14 @@
     "usdaFoodNotFound": "USDA 食物 {id} 未找到",
     "usdaZipJsonMissing": "ZIP 内未找到 JSON 文件",
     "userPlaceNotFound": "常用地点不存在"
+  },
+  "localValues": {
+    "adminBackgroundMarker": "[后台]",
+    "newNameSuffix": "(新)",
+    "pendingReviewMarker": "待管理员审核",
+    "proposalMarker": "提议",
+    "unknownIngredientName": "未知原料",
+    "userNickname": "本地用户"
   },
   "localMessages": {
     "apiKeyMissing": "未配置 API Key",

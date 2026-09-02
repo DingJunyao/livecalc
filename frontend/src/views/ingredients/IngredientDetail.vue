@@ -1802,8 +1802,8 @@ import {
   LOCAL_UNIT_TRANSLATION_KEYS,
   LOCAL_UNIT_VALUES,
   NO_STANDARD_VALUES,
-  PENDING_REVIEW_MARKER,
 } from '@/data/localValues'
+import { pendingReviewMarker } from '@/utils/localDisplay'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
@@ -4164,7 +4164,7 @@ const saveNutritionEdit = async () => {
     // 按后端返回 message 区分提示，避免普通用户待审时误报「已保存」。
     editingNutrition.value = false
     const msg: string = (res && res.message) || ''
-    if (msg.includes(PENDING_REVIEW_MARKER)) {
+    if (msg.includes(pendingReviewMarker())) {
       // 普通用户有数据→manual 待审：营养未落地，无需刷新
       showMessage(t('ingredients.proposalSubmitted'), 'info')
     } else {
@@ -4327,7 +4327,7 @@ const doMerge = async () => {
       target_ingredient_id: mergeTargetId.value
     })
     const msg: string = (response && response.message) || ''
-    if (msg.includes(PENDING_REVIEW_MARKER)) {
+    if (msg.includes(pendingReviewMarker())) {
       showMessage(t('ingredients.mergeProposalSubmitted'), 'info')
     } else {
       showMessage(msg || t('ingredients.mergeSuccessFallback'), 'success')
@@ -4336,7 +4336,7 @@ const doMerge = async () => {
     showMergeDialog.value = false
     showMergeConfirmDialog.value = false
     // 管理员直写→跳转；普通用户待审→留在当前页
-    if (!msg.includes(PENDING_REVIEW_MARKER)) {
+    if (!msg.includes(pendingReviewMarker())) {
       router.push(`/data/ingredients/${mergeTargetId.value}`)
     }
   } catch (e: any) {
