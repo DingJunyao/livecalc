@@ -149,3 +149,48 @@ Commands run fresh from `frontend` after the final implementation:
 ### Concerns
 
 - None task-blocking. `importTaskErrorLabel` intentionally leaves legacy string errors unchanged so already-persisted raw task errors are still visible; new migration failures persist stable structured error data.
+
+## Fix Round 2
+
+### Changes
+
+- Restored canonical local unit preference values in `frontend/src/stores/user.ts` to `CHINESE_JIN_NAME` (`斤`) while keeping only `nickname` locale-dependent.
+- Changed `useUserUnits()` so `massUnitName` and `priceUnitName` prefer canonical `abbreviation` values and fall back to `CHINESE_JIN_NAME`; added separate `massUnitLabel` and `priceUnitLabel` helpers for rendered text.
+- Updated rendered unit text in `IngredientDetail.vue` and `ProductDetail.vue` to use the new label helpers, while all API submission/conversion call sites continue to use canonical unit values.
+- Changed `fallbackPriceUnitValues()` to return canonical unit values and updated `PriceRecordForm.vue` to render `{ title, value }` unit options for both API-loaded and fallback units.
+- Changed `adminBackgroundMarker()`, `pendingReviewMarker()`, and `proposalMarker()` to return fixed escaped protocol literals, independent of locale; removed the now-unused localized marker keys from all catalogs.
+
+### RED Evidence
+
+- Adjusted `src/utils/localDisplay.test.ts` before implementation to require `canonicalMassUnitName`, `canonicalPriceUnitName`, `localizedUnitLabel`, `localizedMassUnitLabel`, and `localizedPriceUnitLabel`.
+  - Command: `node --test src/utils/localDisplay.test.ts`
+  - Exit code: 1
+  - Output: `SyntaxError: The requested module './localDisplay.ts' does not provide an export named 'canonicalMassUnitName'`.
+
+### GREEN Evidence
+
+Commands run fresh from `frontend` after implementation:
+
+- `node --test src/utils/localDisplay.test.ts src/utils/importTaskStages.test.ts src/utils/importTaskErrors.test.ts src/utils/localErrors.test.ts`
+  - Exit code: 0
+  - Output: 4 tests passed, 0 failed.
+- `npm run check:i18n`
+  - Exit code: 0
+  - Output: `Checked 3 locale catalogs; all key trees match.`
+- `npm run check:i18n:sources`
+  - Exit code: 0
+  - Output: `Checked 2021 source translation keys and localized source rules across all locale catalogs.`
+- `npm run build`
+  - Exit code: 0
+  - Output: Vite transformed 2,021 modules, built successfully, and generated the PWA service worker with 170 precache entries.
+  - Non-failing warnings: existing static/dynamic database import overlap and chunks larger than 500 kB.
+- `git diff --check`
+  - Exit code: 0 with no findings.
+
+### Files Changed
+
+- Modified: `frontend/src/stores/user.ts`, `frontend/src/composables/useUserUnits.ts`, `frontend/src/components/prices/PriceRecordForm.vue`, `frontend/src/views/ingredients/IngredientDetail.vue`, `frontend/src/views/products/ProductDetail.vue`, `frontend/src/utils/localDisplay.ts`, `frontend/src/utils/localDisplay.test.ts`, and all three locale catalogs.
+
+### Concerns
+
+- None task-blocking. `localizedUnitLabel` intentionally returns an unknown canonical unit unchanged rather than guessing a translated label.

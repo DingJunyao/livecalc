@@ -6,12 +6,12 @@ import { api } from '@/api'
 import { useLocaleStore } from '@/stores/locale'
 import i18n from '@/plugins/i18n'
 import { localUserNickname } from '@/utils/localDisplay'
+import { CHINESE_JIN_NAME } from '@/data/localValues'
 
 export const useUserStore = defineStore('user', () => {
   // ---- Local mode: return a fixed admin user without API calls ----
   if (import.meta.env.VITE_STORAGE_MODE === 'local') {
     const createLocalUserData = (): User => {
-      const jinName = i18n.global.t('prices.units.jin')
       return {
         id: 1,
         username: 'local',
@@ -27,9 +27,9 @@ export const useUserStore = defineStore('user', () => {
         daily_budget: null,
         unit_preferences: {
           energy_unit: 'kcal',
-          mass_unit: { id: 3, name: jinName, abbreviation: jinName },
+          mass_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
           volume_unit: null,
-          price_unit: { id: 3, name: jinName, abbreviation: jinName },
+          price_unit: { id: 3, name: CHINESE_JIN_NAME, abbreviation: CHINESE_JIN_NAME },
         },
         region_id: null,
         default_currency: null,

@@ -231,7 +231,7 @@
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitName }}</span>
+              {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
             </div>
             <template v-if="latestChartTrend">
               <v-divider vertical class="d-none d-sm-flex" />
@@ -313,7 +313,7 @@
             <div v-if="latestPrice" class="d-flex justify-space-between align-center px-1 pt-2">
               <span class="text-caption text-medium-emphasis">{{ t('ingredients.weightedCompositePrice') }}</span>
               <span class="font-weight-bold text-tertiary">
-                {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-caption font-weight-regular"> / {{ massUnitName }}</span>
+                {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-caption font-weight-regular"> / {{ massUnitLabel }}</span>
               </span>
             </div>
           </v-card-text>
@@ -2001,7 +2001,7 @@ const overlaidAliases = computed(() => {
 })
 
 // 用户级单位偏好（能量/质量/记价单位）——须在 editPriceForm 等引用前声明，否则触发 TDZ
-const { energyUnit, priceUnitName, massUnitName, massUnit } = useUserUnits()
+const { energyUnit, priceUnitName, massUnitLabel, massUnit } = useUserUnits()
 
 const overlaidServingWeight = computed(() => {
   if (pendingProposal.value?.action === 'update' && pendingProposal.value?.payload?.serving_weight !== undefined) {
@@ -3210,7 +3210,7 @@ const latestChartTrend = computed(() => {
 })
 
 // 图表使用用户偏好的质量单位（默认斤）
-const chartUnit = computed(() => massUnitName.value)
+const chartUnit = computed(() => massUnitLabel.value)
 
 // 加载数据
 const loadData = async () => {

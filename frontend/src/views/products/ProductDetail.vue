@@ -1076,7 +1076,7 @@
                   :label="t('products.unit')"
                   variant="outlined"
                   required
-                  :hint="t('products.yourDefaultPriceUnit', { unit: priceUnitName })"
+                  :hint="t('products.yourDefaultPriceUnit', { unit: priceUnitLabel })"
                   persistent-hint
                 />
               </v-col>
@@ -1569,7 +1569,7 @@ const editingNutrition = ref(false)
 const savingNutrition = ref(false)
 
 // 营养素定义：key 匹配后端 all_nutrients 的英文键名（能量行跟随用户能量单位偏好）
-const { energyUnit, priceUnitName, massUnitName, convertFromJin } = useUserUnits()
+const { energyUnit, priceUnitName, priceUnitLabel, massUnitLabel, convertFromJin } = useUserUnits()
 const NUTRIENT_DEFINITIONS = computed(() => buildNutrientDefinitions(energyUnit.value))
 
 // 营养素同义键映射：将别名 key 映射到标准 key，避免编辑时重复
@@ -2291,7 +2291,7 @@ const latestChartTrend = computed(() => {
 })
 
 // 图表使用用户偏好的质量单位（默认斤）
-const chartUnit = computed(() => massUnitName.value)
+const chartUnit = computed(() => massUnitLabel.value)
 
 // 单位选项
 const unitOptions = LOCAL_UNIT_VALUES

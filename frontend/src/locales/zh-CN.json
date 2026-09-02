@@ -1226,10 +1226,7 @@
     "userPlaceNotFound": "常用地点不存在"
   },
   "localValues": {
-    "adminBackgroundMarker": "[后台]",
     "newNameSuffix": "(新)",
-    "pendingReviewMarker": "待管理员审核",
-    "proposalMarker": "提议",
     "unknownIngredientName": "未知原料",
     "userNickname": "本地用户"
   },

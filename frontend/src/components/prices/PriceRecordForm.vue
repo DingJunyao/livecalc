@@ -92,6 +92,8 @@
                 v-model="form.unit"
                 :label="t('prices.unit') + ' *'"
                 :items="units"
+                item-title="title"
+                item-value="value"
                 variant="outlined"
                 required
               />
@@ -144,7 +146,7 @@ import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
-import { fallbackPriceUnitValues } from '@/utils/localDisplay'
+import { fallbackPriceUnitValues, localizedUnitLabel } from '@/utils/localDisplay'
 
 const { t } = useI18n()
 
@@ -180,16 +182,22 @@ const recordCurrency = ref<string>('CNY')
 const formRef = ref()
 
 // 单位选项（从 API 动态加载）
-const units = ref<string[]>([])
+const units = ref<Array<{ title: string; value: string }>>([])
 
 // 加载全局单位列表
 const loadUnits = async () => {
   try {
     const res = await api.get('/units/', { params: { limit: 100 } })
     const unitList = res.items || res || []
-    units.value = unitList.map((u: any) => u.abbreviation)
+    units.value = unitList.map((u: any) => ({
+      title: localizedUnitLabel(u.abbreviation),
+      value: u.abbreviation,
+    }))
   } catch (e) {
-    units.value = fallbackPriceUnitValues()
+    units.value = fallbackPriceUnitValues().map((value) => ({
+      title: localizedUnitLabel(value),
+      value,
+    }))
   }
 }
 

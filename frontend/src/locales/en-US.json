@@ -1226,10 +1226,7 @@
     "userPlaceNotFound": "Frequent place was not found"
   },
   "localValues": {
-    "adminBackgroundMarker": "[Admin]",
     "newNameSuffix": " (new)",
-    "pendingReviewMarker": "Pending admin review",
-    "proposalMarker": "Proposal",
     "unknownIngredientName": "Unknown ingredient",
     "userNickname": "Local user"
   },

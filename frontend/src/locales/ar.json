@@ -1226,10 +1226,7 @@
     "userPlaceNotFound": "لم يتم العثور على المكان المتكرر"
   },
   "localValues": {
-    "adminBackgroundMarker": "[المشرف]",
     "newNameSuffix": " (جديد)",
-    "pendingReviewMarker": "بانتظار مراجعة المشرف",
-    "proposalMarker": "اقتراح",
     "unknownIngredientName": "مكوّن غير معروف",
     "userNickname": "المستخدم المحلي"
   },
