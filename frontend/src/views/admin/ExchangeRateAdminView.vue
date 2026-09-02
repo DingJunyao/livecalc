@@ -2,7 +2,7 @@
   <v-container fluid>
     <v-card elevation="0">
       <v-card-title class="d-flex align-center">
-        <span class="mr-auto">{{ t('admin.exchange.title') }}</span>
+        <span class="me-auto">{{ t('admin.exchange.title') }}</span>
         <v-btn color="primary" prepend-icon="mdi-pencil-plus-outline" @click="openManualDialog">
           {{ t('admin.exchange.manualEntry') }}
         </v-btn>

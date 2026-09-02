@@ -143,7 +143,7 @@
       </v-col>
 
       <!-- 右侧/下方：换算预览面板（1/3） -->
-      <v-col cols="12" md="4" class="pl-md-4 pt-4 pt-md-0">
+      <v-col cols="12" md="4" class="ps-md-4 pt-4 pt-md-0">
         <v-card v-if="selectedUnit" class="rounded-lg" sticky>
           <v-card-title class="d-flex align-center py-3">
             <v-icon class="me-2" color="info">mdi-swap-horizontal</v-icon>

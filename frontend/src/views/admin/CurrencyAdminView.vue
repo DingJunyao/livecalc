@@ -2,7 +2,7 @@
   <v-container fluid>
     <v-card elevation="0">
       <v-card-title class="d-flex align-center">
-        <span class="mr-auto">{{ t('admin.currency.title') }}</span>
+        <span class="me-auto">{{ t('admin.currency.title') }}</span>
         <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">{{ t('admin.currency.create') }}</v-btn>
       </v-card-title>
       <v-card-text>

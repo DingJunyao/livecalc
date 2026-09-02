@@ -27,7 +27,7 @@ DONE
   - `NutritionSourceGrid` / `CostProportionChart` ECharts `left: center`
   - map marker arrow geometry in `MerchantDiff.vue` and `MerchantMapView.vue`
   - centering `left: 50%` in `ImageManager.vue` and `RecipeDetail.vue`
-- After conversion, no Vuetify `mr/ml/pr/pl` classes, `text-left/right`, or `location="left/right"` remain under `frontend/src`.
+- After conversion and Fix Round 1, no Vuetify physical-direction helper classes (`mr/ml/pr/pl` with numeric or responsive/auto suffixes), `text-left/right`, or `location="left/right"` remain in `frontend/src` class attributes.
 
 ## Browser Review
 
@@ -91,3 +91,17 @@ No locale JSON catalogs changed because no new UI labels were needed.
 - The browser review is limited to the login route because no authenticated account was available.
 - The locale-store fix is a necessary correction to Task 7's Vuetify RTL wiring, not an unrelated refactor.
 - Vite still reports the existing large-chunk warning; it does not fail the build.
+
+## Fix Round 1
+
+- `frontend/src/views/admin/ExchangeRateAdminView.vue`: `mr-auto` -> `me-auto`
+- `frontend/src/views/admin/CurrencyAdminView.vue`: `mr-auto` -> `me-auto`
+- `frontend/src/views/admin/UnitsView.vue`: `pl-md-4` -> `ps-md-4`
+
+Verification:
+
+- `npm run check:i18n` exited 0: `Checked 3 locale catalogs; all key trees match.`
+- `npm run check:i18n:sources` exited 0: `Checked 2021 source translation keys and localized source rules across all locale catalogs.`
+- `npm run test:format` exited 0: `pass 1`, `fail 0`.
+- `npm run build` exited 0: Vite completed successfully.
+- `git diff --check` exited 0 with no whitespace errors.
