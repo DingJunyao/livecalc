@@ -403,8 +403,8 @@ function formatFieldValue(field: string, value: any): string {
 .image-diff-thumb { position: relative; }
 .image-diff-thumb img { width: 80px; height: 80px; object-fit: cover; border-radius: 4px; border: 1px solid rgba(var(--v-theme-on-surface), 0.15); }
 .image-diff-thumb.is-new img { border-color: rgb(var(--v-theme-success)); box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.3); }
-.image-diff-thumb .cover-badge { position: absolute; top: 2px; left: 2px; }
-.image-diff-thumb .new-badge { position: absolute; bottom: 2px; left: 2px; }
+.image-diff-thumb .cover-badge { position: absolute; top: 2px; inset-inline-start: 2px; }
+.image-diff-thumb .new-badge { position: absolute; bottom: 2px; inset-inline-start: 2px; }
 
 .diff-pane { border: 1px solid rgba(var(--v-theme-on-surface), 0.12); border-radius: 6px; padding: 6px; min-height: 48px; }
 .diff-line { padding: 4px 6px; border-radius: 4px; margin-bottom: 4px; }

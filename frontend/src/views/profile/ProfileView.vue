@@ -358,7 +358,7 @@
             />
             <div class="text-caption text-medium-emphasis cursor-pointer" @click="triggerAvatarUpload">
               <template v-if="avatarUploading">
-                <v-progress-circular indeterminate size="16" width="2" class="mr-1" />{{ t('profile.uploadingAvatar') }}
+                <v-progress-circular indeterminate size="16" width="2" class="me-1" />{{ t('profile.uploadingAvatar') }}
               </template>
               <template v-else>{{ t('profile.changeAvatar') }}</template>
             </div>
@@ -841,7 +841,7 @@
           <div class="text-body-2 text-medium-emphasis mb-3">{{ appInfo.description }}</div>
           <div class="text-caption text-medium-emphasis mb-2">{{ appInfo.copyright }}</div>
           <v-divider class="mb-2" />
-          <v-list density="compact" class="bg-transparent text-left">
+          <v-list density="compact" class="bg-transparent text-start">
             <v-list-item :href="appInfo.homepage" target="_blank" rel="noopener">
               <template #prepend>
                 <v-icon>mdi-github</v-icon>

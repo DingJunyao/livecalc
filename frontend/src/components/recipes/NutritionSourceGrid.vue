@@ -25,7 +25,7 @@
           class="nutrition-donut-card"
         >
           <div class="text-body-2 font-weight-medium text-center mb-1">{{ nutrient.label }}</div>
-          <div :ref="el => setChartRef(nutrient.key, el as HTMLElement)" class="mini-donut" />
+          <div :ref="el => setChartRef(nutrient.key, el as HTMLElement)" class="mini-donut" dir="ltr" />
           <div class="text-caption text-center text-medium-emphasis mt-1">{{ nutrient.totalText }}</div>
           <div class="text-caption text-center text-disabled">{{ nutrient.topContributors }}</div>
         </div>

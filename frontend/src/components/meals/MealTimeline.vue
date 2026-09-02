@@ -14,7 +14,7 @@
         </div>
         <div class="timeline-label">
           <span class="text-body-2 font-weight-medium">{{ mealLabel(rec.meal_type) }}</span>
-          <span class="text-caption text-medium-emphasis ml-2">{{ mealTime(rec.meal_type) }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ mealTime(rec.meal_type) }}</span>
         </div>
         <!-- 连线 -->
         <div v-if="index < recommendations.length - 1" class="timeline-line" />
@@ -110,7 +110,7 @@ function mealIcon(type: string) {
 .meal-timeline:not(.meal-timeline--mobile) .timeline-line {
   position: absolute;
   top: 16px;
-  left: calc(50% + 24px);
+  inset-inline-start: calc(50% + 24px);
   width: calc(100% - 48px);
   height: 2px;
   background: rgba(var(--v-border-color), 0.5);
@@ -133,14 +133,14 @@ function mealIcon(type: string) {
   display: flex;
   align-items: flex-start;
   position: relative;
-  padding-left: 40px;
+  padding-inline-start: 40px;
   min-height: 100px;
   margin-bottom: 16px;
 }
 
 .meal-timeline--mobile .timeline-marker {
   position: absolute;
-  left: 8px;
+  inset-inline-start: 8px;
   top: 0;
   bottom: 0;
   display: flex;
@@ -163,7 +163,7 @@ function mealIcon(type: string) {
 .meal-timeline--mobile .timeline-card {
   flex: 1;
   width: 100%;
-  padding-right: 16px;
+  padding-inline-end: 16px;
 }
 
 /* 通用样式 */

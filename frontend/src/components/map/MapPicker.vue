@@ -34,7 +34,7 @@
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
         {{ t('mapComponents.latitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lat.toFixed(6) : '-' }}
       </v-chip>
-      <v-chip size="small" variant="tonal" class="ml-2">
+      <v-chip size="small" variant="tonal" class="ms-2">
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
         {{ t('mapComponents.longitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lng.toFixed(6) : '-' }}
       </v-chip>
@@ -43,7 +43,7 @@
     <!-- 操作提示 -->
     <div class="map-hint mt-2">
       <v-icon size="small" color="medium-emphasis">mdi-information-outline</v-icon>
-      <span class="text-caption text-medium-emphasis ml-1">
+      <span class="text-caption text-medium-emphasis ms-1">
         {{ t('mapComponents.clickToSelectMerchant') }}
       </span>
     </div>

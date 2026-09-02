@@ -22,7 +22,7 @@
       <v-col v-if="!isLocalMode" cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="github">mdi-source-repository</v-icon>
+            <v-icon class="me-2" color="github">mdi-source-repository</v-icon>
             <span>{{ t('adminData.maintenance.repoImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -59,7 +59,7 @@
       <v-col v-if="!isLocalMode" cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="primary">mdi-folder-open</v-icon>
+            <v-icon class="me-2" color="primary">mdi-folder-open</v-icon>
             <span>{{ t('adminData.maintenance.localImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -112,7 +112,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="success">mdi-upload</v-icon>
+            <v-icon class="me-2" color="success">mdi-upload</v-icon>
             <span>{{ t('adminData.maintenance.uploadImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -153,7 +153,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="deep-orange">mdi-database</v-icon>
+            <v-icon class="me-2" color="deep-orange">mdi-database</v-icon>
             <span>{{ t('adminData.maintenance.usda.title') }}</span>
           </v-card-title>
           <v-divider />
@@ -163,10 +163,10 @@
             </p>
             <!-- Statistics -->
             <div v-if="usdaStats.total != null && usdaStats.total > 0" class="mb-4">
-              <v-chip size="small" variant="tonal" class="mr-2 mb-2">
+              <v-chip size="small" variant="tonal" class="me-2 mb-2">
                 {{ t('adminData.maintenance.usda.foods') }}: {{ formatCount(usdaStats.total) }}
               </v-chip>
-              <v-chip size="small" variant="tonal" class="mr-2 mb-2">
+              <v-chip size="small" variant="tonal" class="me-2 mb-2">
                 {{ t('adminData.maintenance.usda.nutrients') }}: {{ formatCount(usdaStats.nutrients || 0) }}
               </v-chip>
               <v-chip size="small" variant="tonal" class="mb-2">
@@ -227,7 +227,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="blue">mdi-map-marker-multiple</v-icon>
+            <v-icon class="me-2" color="blue">mdi-map-marker-multiple</v-icon>
             <span>{{ t('adminData.maintenance.regions.title') }}</span>
           </v-card-title>
           <v-divider />
@@ -267,7 +267,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="purple">mdi-robot</v-icon>
+            <v-icon class="me-2" color="purple">mdi-robot</v-icon>
             <span>{{ t('adminData.maintenance.ai.title') }}</span>
           </v-card-title>
           <v-divider />
@@ -376,7 +376,7 @@
             style="cursor: pointer;"
             @click="showUnmapped = !showUnmapped"
           >
-            <v-icon class="mr-2" color="warning">mdi-alert-outline</v-icon>
+            <v-icon class="me-2" color="warning">mdi-alert-outline</v-icon>
             <span>{{ t('adminData.maintenance.unmappedNutrients', { count: formatCount(unmappedNutrients.length) }) }}</span>
             <v-spacer />
             <v-icon>{{ showUnmapped ? 'mdi-chevron-up' : 'mdi-chevron-down' }}</v-icon>
@@ -389,7 +389,7 @@
               size="small"
               variant="tonal"
               color="warning"
-              class="mr-2 mb-2"
+              class="me-2 mb-2"
             >
               {{ name }}
             </v-chip>
@@ -401,7 +401,7 @@
       <v-col cols="12">
         <v-card class="rounded-lg">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
+            <v-icon class="me-2">mdi-format-list-bulleted</v-icon>
             <span>{{ t('adminData.maintenance.tasks.title') }}</span>
             <v-spacer />
             <v-btn variant="text" size="small" @click="fetchTasks(10)">{{ t('common.refresh') }}</v-btn>
@@ -421,13 +421,13 @@
                 @click="onTaskClick(t)"
               >
                 <template #prepend>
-                  <v-icon :color="statusColor(t.status)" class="mr-3">
+                  <v-icon :color="statusColor(t.status)" class="me-3">
                     {{ statusIcon(t.status) }}
                   </v-icon>
                 </template>
                 <v-list-item-title class="font-weight-medium">
                   {{ t._kind === 'agent' ? t.label : taskTypeLabel(t.task_type, t.stats) }}
-                  <v-chip :color="statusColor(t.status)" size="x-small" variant="tonal" class="ml-2">
+                  <v-chip :color="statusColor(t.status)" size="x-small" variant="tonal" class="ms-2">
                     {{ statusLabel(t.status) }}
                   </v-chip>
                 </v-list-item-title>
@@ -450,20 +450,20 @@
                     <div v-if="t.stats && Object.keys(t.stats).length" class="text-caption mt-1">
                       <!-- storage_migrate 任务的友好统计显示 -->
                       <template v-if="t.task_type === 'storage_migrate'">
-                        <v-chip v-if="t.stats.uploaded != null" size="x-small" variant="tonal" color="success" class="mr-1 mb-1">
+                        <v-chip v-if="t.stats.uploaded != null" size="x-small" variant="tonal" color="success" class="me-1 mb-1">
                           {{ t('adminData.maintenance.tasks.succeeded', { count: formatCount(t.stats.uploaded) }) }}
                         </v-chip>
-                        <v-chip v-if="t.stats.skipped != null" size="x-small" variant="tonal" color="grey" class="mr-1 mb-1">
+                        <v-chip v-if="t.stats.skipped != null" size="x-small" variant="tonal" color="grey" class="me-1 mb-1">
                           {{ t('adminData.maintenance.tasks.skipped', { count: formatCount(t.stats.skipped) }) }}
                         </v-chip>
-                        <v-chip v-if="t.stats.failed != null" size="x-small" variant="tonal" color="error" class="mr-1 mb-1">
+                        <v-chip v-if="t.stats.failed != null" size="x-small" variant="tonal" color="error" class="me-1 mb-1">
                           {{ t('adminData.maintenance.tasks.failedCount', { count: formatCount(t.stats.failed) }) }}
                         </v-chip>
                       </template>
                       <!-- 其他任务显示所有 stats 字段 -->
                       <template v-else>
                         <v-chip v-for="(v, k) in t.stats" :key="k" size="x-small" variant="tonal"
-                                class="mr-1 mb-1">{{ k }}: {{ v }}</v-chip>
+                                class="me-1 mb-1">{{ k }}: {{ v }}</v-chip>
                       </template>
                     </div>
                     <div v-if="t.error" class="text-caption text-error mt-1">{{ importTaskErrorLabel(t.error) }}</div>

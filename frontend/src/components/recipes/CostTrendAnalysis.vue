@@ -22,7 +22,7 @@
       </div>
       <div v-show="!loading && chartData.length">
         <div class="trend-layout">
-          <div ref="chartRef" class="trend-chart" style="flex:1;min-height:300px" />
+          <div ref="chartRef" class="trend-chart" dir="ltr" style="flex:1;min-height:300px" />
           <div class="ingredient-tags">
             <div class="text-caption text-medium-emphasis mb-2">{{ t('recipes.legendClickHighlight') }}</div>
             <v-btn

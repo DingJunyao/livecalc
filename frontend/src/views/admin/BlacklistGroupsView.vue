@@ -15,13 +15,13 @@
           variant="outlined"
           density="compact"
           hide-details
-          class="mr-2 provider-select"
+          class="me-2 provider-select"
         />
         <v-btn
           color="primary"
           prepend-icon="mdi-robot"
           size="small"
-          class="mr-2"
+          class="me-2"
           :loading="aiMatchingAll"
           :disabled="!providerOptions.length || !groups.length"
           @click="triggerAiMatchAll"
@@ -65,9 +65,9 @@
 
       <v-card v-for="group in groups" :key="group.id" class="mb-4" elevation="0">
         <v-card-title class="d-flex align-center">
-          <v-icon icon="mdi-shield-alert" class="mr-2" />
+          <v-icon icon="mdi-shield-alert" class="me-2" />
           {{ group.name }}
-          <v-chip size="small" class="ml-2">{{ t('admin.blacklist.ingredientCount', { count: formatCount(group.ingredient_count) }) }}</v-chip>
+          <v-chip size="small" class="ms-2">{{ t('admin.blacklist.ingredientCount', { count: formatCount(group.ingredient_count) }) }}</v-chip>
           <v-spacer />
           <v-btn icon="mdi-pencil" variant="text" size="small" @click="openEdit(group)" />
           <v-btn icon="mdi-delete" variant="text" size="small" color="error" @click="confirmDelete(group)" />
@@ -79,7 +79,7 @@
               v-for="ing in group.ingredients"
               :key="ing.id"
               size="small"
-              class="mr-1 mb-1"
+              class="me-1 mb-1"
               :color="ing.is_ai_matched ? 'info' : undefined"
               closable
               @click:close="removeIngredient(group.id, ing.ingredient_id)"

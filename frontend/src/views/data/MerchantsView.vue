@@ -262,7 +262,7 @@
               <v-card elevation="0" class="list-grid-card cursor-pointer h-100" @click="selectMerchant(item)">
                 <v-card-text>
                   <div class="d-flex align-center mb-2">
-                    <v-avatar color="tertiary" size="40" class="mr-3"><v-icon>mdi-store</v-icon></v-avatar>
+                    <v-avatar color="tertiary" size="40" class="me-3"><v-icon>mdi-store</v-icon></v-avatar>
                     <div class="text-body-2 font-weight-medium text-truncate">
                       {{ pendingName(item) }}
                       <v-chip v-if="pendingIsOpen(item) === false" size="x-small" color="warning" variant="tonal" class="ms-1">{{ t('merchants.closed') }}</v-chip>
@@ -323,7 +323,7 @@
         size="large"
         elevation="8"
         class="position-fixed"
-        style="bottom: 80px; right: 24px"
+        style="bottom: 80px; inset-inline-end: 24px"
         @click="openEditDialog()"
       />
     </div>
@@ -982,7 +982,7 @@ onUnmounted(() => {
 .fab-button {
   position: absolute;
   bottom: 16px;
-  right: 16px;
+  inset-inline-end: 16px;
   z-index: 10;
 }
 
@@ -1073,7 +1073,7 @@ onUnmounted(() => {
   /* 移动端 FAB 按钮优化 */
   .fab-button {
     bottom: 12px;
-    right: 12px;
+    inset-inline-end: 12px;
     width: 48px !important;
     height: 48px !important;
   }

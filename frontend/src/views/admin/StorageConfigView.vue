@@ -10,7 +10,7 @@
     <!-- 当前配置展示卡 -->
     <v-card class="rounded-lg mb-4">
       <v-card-title class="d-flex align-center py-4">
-        <v-icon class="mr-2">mdi-cloud-outline</v-icon>
+        <v-icon class="me-2">mdi-cloud-outline</v-icon>
         <span>{{ t('adminStorage.currentConfig') }}</span>
       </v-card-title>
       <v-divider />
@@ -25,7 +25,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 endpoint
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_endpoint)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_endpoint)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_endpoint) }}
                 </v-chip>
               </div>
@@ -34,7 +34,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 bucket
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_bucket)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_bucket)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_bucket) }}
                 </v-chip>
               </div>
@@ -43,7 +43,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 region
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_region)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_region)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_region) }}
                 </v-chip>
               </div>
@@ -52,7 +52,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 url_style
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_url_style)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_url_style)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_url_style) }}
                 </v-chip>
               </div>
@@ -61,7 +61,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 base_path
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_base_path)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_base_path)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_base_path) }}
                 </v-chip>
               </div>
@@ -70,7 +70,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 custom_domain
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_custom_domain)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_custom_domain)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_custom_domain) }}
                 </v-chip>
               </div>
@@ -79,7 +79,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 url_suffix
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_url_suffix)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_url_suffix)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_url_suffix) }}
                 </v-chip>
               </div>
@@ -88,7 +88,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 access_key
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_access_key)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_access_key)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_access_key) }}
                 </v-chip>
               </div>
@@ -99,7 +99,7 @@
             <v-col cols="12" sm="6">
               <div class="text-caption text-medium-emphasis mb-1">
                 secret_key
-                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_secret_key)" class="ml-2">
+                <v-chip size="x-small" :color="sourceColor(config.sources?.s3_secret_key)" class="ms-2">
                   {{ sourceLabel(config.sources?.s3_secret_key) }}
                 </v-chip>
               </div>
@@ -126,7 +126,7 @@
     <v-dialog v-model="wizardDialog" max-width="800px" persistent>
       <v-card>
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2">mdi-cloud-sync</v-icon>
+          <v-icon class="me-2">mdi-cloud-sync</v-icon>
           <span>{{ t('adminStorage.wizardTitle') }}</span>
         </v-card-title>
         <v-divider />
@@ -142,7 +142,7 @@
               <v-radio :label="t('adminStorage.local')" value="local">
                 <template #label>
                   <div class="d-flex align-center">
-                    <v-icon class="mr-2">mdi-harddisk</v-icon>
+                    <v-icon class="me-2">mdi-harddisk</v-icon>
                     <span>{{ t('adminStorage.local') }}</span>
                   </div>
                 </template>
@@ -150,7 +150,7 @@
               <v-radio :label="t('adminStorage.s3')" value="s3">
                 <template #label>
                   <div class="d-flex align-center">
-                    <v-icon class="mr-2">mdi-cloud</v-icon>
+                    <v-icon class="me-2">mdi-cloud</v-icon>
                     <span>{{ t('adminStorage.s3') }}</span>
                   </div>
                 </template>

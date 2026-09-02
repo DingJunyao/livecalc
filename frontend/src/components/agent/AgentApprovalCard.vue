@@ -10,14 +10,14 @@
   >
     <v-card-text class="pa-3">
       <div class="d-flex align-center mb-2">
-        <v-icon size="18" class="mr-2" :color="iconColor">{{ icon }}</v-icon>
+        <v-icon size="18" class="me-2" :color="iconColor">{{ icon }}</v-icon>
         <span class="text-subtitle-2 font-weight-bold">{{ t('agent.approval.title') }}</span>
         <v-spacer />
         <v-chip size="x-small" :color="statusColor" variant="tonal">{{ statusLabel }}</v-chip>
       </div>
 
       <div v-if="approval.danger_reason" class="text-body-2 mb-2" :class="dangerTextClass">
-        <v-icon size="14" class="mr-1">mdi-alert</v-icon>{{ approval.danger_reason }}
+        <v-icon size="14" class="me-1">mdi-alert</v-icon>{{ approval.danger_reason }}
       </div>
 
       <div v-if="approval.affected_estimate != null" class="text-caption text-medium-emphasis mb-2">

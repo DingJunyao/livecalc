@@ -206,7 +206,7 @@
                 <v-divider />
                 <v-card-text class="text-center py-6">
                   <div v-if="loadingCostData" class="text-h6 text-medium-emphasis">
-                    <v-progress-circular indeterminate size="24" class="mr-2" />
+                    <v-progress-circular indeterminate size="24" class="me-2" />
                     {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
@@ -249,7 +249,7 @@
                 <v-divider />
                 <v-card-text class="text-center py-6">
                   <div v-if="loadingCostData" class="text-h6 text-medium-emphasis">
-                    <v-progress-circular indeterminate size="24" class="mr-2" />
+                    <v-progress-circular indeterminate size="24" class="me-2" />
                     {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
@@ -1402,7 +1402,7 @@ onMounted(() => { loadData(); loadProposalStatus() })
 .lightbox-close {
   position: absolute;
   top: 12px;
-  right: 12px;
+  inset-inline-end: 12px;
   z-index: 10;
 }
 
@@ -1432,11 +1432,11 @@ onMounted(() => { loadData(); loadProposalStatus() })
 }
 
 .lightbox-prev {
-  left: 12px;
+  inset-inline-start: 12px;
 }
 
 .lightbox-next {
-  right: 12px;
+  inset-inline-end: 12px;
 }
 
 .lightbox-thumbnails {

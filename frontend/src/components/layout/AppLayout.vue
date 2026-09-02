@@ -13,7 +13,7 @@
         <!-- 本地模式：图标 + 名称 + slogan -->
         <v-list-item v-if="isLocalMode" class="pa-2">
           <template #prepend>
-            <v-avatar size="36" color="primary" class="mr-2">
+            <v-avatar size="36" color="primary" class="me-2">
               <v-img src="/logo.svg" :alt="t('app.name')" />
             </v-avatar>
           </template>
@@ -27,7 +27,7 @@
         <!-- 云模式：用户信息 -->
         <v-list-item v-else class="pa-2">
           <template #prepend>
-            <v-avatar size="36" color="primary" class="mr-2">
+            <v-avatar size="36" color="primary" class="me-2">
               <v-img v-if="userStore.user.avatar" :src="resolveImageUrl(userStore.user.avatar)" alt="avatar" />
               <v-icon v-else>mdi-account</v-icon>
             </v-avatar>
@@ -102,7 +102,7 @@
       :model-value="mobileDrawer"
       temporary
       fixed
-      location="left"
+      location="start"
       width="280"
       scrim
       :z-index="1000"
@@ -113,7 +113,7 @@
         <!-- 本地模式：图标 + 名称 + slogan -->
         <v-list-item v-if="isLocalMode" class="pa-2">
           <template #prepend>
-            <v-avatar size="40" color="primary" class="mr-2">
+            <v-avatar size="40" color="primary" class="me-2">
               <v-img src="/logo.svg" :alt="t('app.name')" />
             </v-avatar>
           </template>
@@ -127,7 +127,7 @@
         <!-- 云模式：用户信息 -->
         <v-list-item v-else class="pa-2">
           <template #prepend>
-            <v-avatar size="40" color="primary" class="mr-2">
+            <v-avatar size="40" color="primary" class="me-2">
               <v-img v-if="userStore.user.avatar" :src="resolveImageUrl(userStore.user.avatar)" alt="avatar" />
               <v-icon v-else>mdi-account</v-icon>
             </v-avatar>
@@ -253,7 +253,7 @@ const handleMobileDrawerUpdate = (value: boolean) => {
   max-height: 100vh !important;
   position: fixed !important;
   top: 0 !important;
-  left: 0 !important;
+  inset-inline-start: 0 !important;
 }
 
 :deep(.v-navigation-drawer__content) {
@@ -266,8 +266,8 @@ const handleMobileDrawerUpdate = (value: boolean) => {
    改用 CSS 自定义属性从布局系统读取侧边栏偏移量。 */
 :deep(.v-app-bar) {
   position: fixed !important;
-  left: var(--v-layout-left, 0px) !important;
-  width: calc(100% - var(--v-layout-left, 0px) - var(--v-layout-right, 0px)) !important;
+  inset-inline-start: var(--v-layout-left, 0px) !important;
+  inset-inline-end: var(--v-layout-right, 0px) !important;
 }
 
 /* 移动端抽屉的遮罩层 */

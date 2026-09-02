@@ -108,7 +108,7 @@
     <v-dialog v-model="detailDialog" max-width="780px" scrollable>
       <v-card class="rounded-lg" v-if="detailItem">
         <v-card-title class="d-flex align-center py-4 pe-2">
-          <v-icon class="mr-2">mdi-clipboard-text-clock</v-icon>
+          <v-icon class="me-2">mdi-clipboard-text-clock</v-icon>
           <span class="text-h6">{{ t('proposals.detailTitle', { id: detailItem.id }) }}</span>
           <v-spacer />
           <v-chip :color="statusColor(detailItem.status)" size="small" variant="tonal">

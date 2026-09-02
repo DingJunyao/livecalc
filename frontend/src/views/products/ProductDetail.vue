@@ -101,7 +101,7 @@
               <v-list-item-title>{{ t('products.linkedIngredient') }}</v-list-item-title>
               <v-list-item-subtitle class="d-flex align-center">
                 <span class="text-primary text-decoration-underline">{{ overlaidIngredientName }}</span>
-                <v-icon size="small" color="primary" class="ml-1">mdi-arrow-right</v-icon>
+                <v-icon size="small" color="primary" class="ms-1">mdi-arrow-right</v-icon>
               </v-list-item-subtitle>
             </v-list-item>
 
@@ -115,7 +115,7 @@
                   v-for="alias in overlaidAliases!"
                   :key="alias"
                   size="x-small"
-                  class="mr-1"
+                  class="me-1"
                 >
                   {{ alias }}
                 </v-chip>
@@ -132,7 +132,7 @@
                   v-for="tag in overlaidTags!"
                   :key="tag"
                   size="x-small"
-                  class="mr-1"
+                  class="me-1"
                 >
                   {{ tag }}
                 </v-chip>
@@ -309,7 +309,7 @@
         <template v-if="loadingMerchantPrices">
           <v-divider />
           <v-card-text class="text-center py-4">
-            <v-progress-circular indeterminate size="18" class="mr-2" />
+            <v-progress-circular indeterminate size="18" class="me-2" />
             <span class="text-caption text-medium-emphasis">{{ t('products.loadingMerchantPrices') }}</span>
           </v-card-text>
         </template>
@@ -386,12 +386,12 @@
                   size="small"
                   variant="outlined"
                   color="warning"
-                  class="mr-1 mb-1"
+                  class="me-1 mb-1"
                   style="cursor: pointer"
                   @click="quickAddUnmappedUnit(item)"
                 >
                   {{ item.unit_name }}
-                  <span class="text-caption ml-1">({{ item.usage_count }})</span>
+                  <span class="text-caption ms-1">({{ item.usage_count }})</span>
                 </v-chip>
               </div>
 
@@ -406,17 +406,17 @@
                   class="px-0"
                 >
                   <template #prepend>
-                    <v-chip size="small" :variant="(unit as any)._pending ? 'outlined' : 'tonal'" :color="(unit as any)._pending ? 'info' : 'primary'" class="mr-3">
+                    <v-chip size="small" :variant="(unit as any)._pending ? 'outlined' : 'tonal'" :color="(unit as any)._pending ? 'info' : 'primary'" class="me-3">
                       {{ unit.unit_name }}
                     </v-chip>
                   </template>
                   <v-list-item-title class="text-body-2">
                     <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ unit.conversion_factor }}</span>
-                    <span v-if="unit.weight_per_unit" class="ml-2">
+                    <span v-if="unit.weight_per_unit" class="ms-2">
                       <v-icon size="x-small">mdi-weight</v-icon>
                       {{ unit.weight_per_unit }}g
                     </span>
-                    <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('products.pending') }}</v-chip>
+                    <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pending') }}</v-chip>
                   </v-list-item-title>
                   <v-list-item-subtitle class="text-caption">
                     <template v-if="unit.is_default">
@@ -475,7 +475,7 @@
                     size="x-small"
                     variant="text"
                     color="primary"
-                    class="mr-1"
+                    class="me-1"
                     @click="openDensityDialog(entityDensity)"
                   />
                   <v-btn
@@ -489,7 +489,7 @@
               </div>
 
               <div v-if="displayDensity" class="d-flex align-center py-2">
-                <v-icon size="small" color="medium-emphasis" class="mr-2">mdi-water</v-icon>
+                <v-icon size="small" color="medium-emphasis" class="me-2">mdi-water</v-icon>
                 <span class="text-body-2">
                   {{ displayDensityValue }}
                 </span>
@@ -497,18 +497,18 @@
                   size="x-small"
                   variant="tonal"
                   color="primary"
-                  class="ml-1 cursor-pointer"
+                  class="ms-1 cursor-pointer"
                   @click="toggleDisplayDensityUnit"
                   :title="t('products.toggleDensityUnit', { unit: densityDisplayUnit === 'g/cm3' ? 'kg/m³' : 'g/cm³' })"
                 >
                   {{ densityDisplayUnit === 'g/cm3' ? 'g/cm³' : 'kg/m³' }}
                   <v-icon end size="x-small">mdi-swap-horizontal</v-icon>
                 </v-chip>
-                <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('products.pending') }}</v-chip>
-                <span v-if="displayDensity.temperature" class="text-caption text-medium-emphasis ml-2">
+                <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pending') }}</v-chip>
+                <span v-if="displayDensity.temperature" class="text-caption text-medium-emphasis ms-2">
                   ({{ displayDensity.temperature }}°C)
                 </span>
-                <span v-if="displayDensity.source" class="text-caption text-medium-emphasis ml-2">
+                <span v-if="displayDensity.source" class="text-caption text-medium-emphasis ms-2">
                   {{ t('products.source') }}: {{ displayDensity.source }}
                 </span>
               </div>
@@ -635,7 +635,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('products.nutrition') }}
-          <span class="text-caption text-medium-emphasis ml-2">{{ t('products.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
           <v-spacer />
           <template v-if="!editingNutrition">
             <v-btn
@@ -781,7 +781,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('products.nutrition') }}
-          <span class="text-caption text-medium-emphasis ml-2">{{ t('products.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
           <v-spacer />
           <v-btn
             v-if="!loadingNutrition"
@@ -1143,7 +1143,7 @@
           <!-- 加载中 -->
           <div v-if="loadingSiblings" class="text-center py-4">
             <v-progress-circular indeterminate size="24" />
-            <span class="ml-2 text-body-2">{{ t('products.loadingSiblings') }}</span>
+            <span class="ms-2 text-body-2">{{ t('products.loadingSiblings') }}</span>
           </div>
 
           <!-- 无关联商品 -->
@@ -3157,7 +3157,7 @@ onMounted(() => {
 .merchant-price-badge {
   position: absolute;
   top: -8px;
-  right: -4px;
+  inset-inline-end: -4px;
 }
 
 /* === 响应式布局 === */

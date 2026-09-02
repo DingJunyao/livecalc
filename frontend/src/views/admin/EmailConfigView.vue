@@ -13,7 +13,7 @@
       <!-- 面板一：SMTP 配置 -->
       <v-expansion-panel :value="0">
         <v-expansion-panel-title>
-          <v-icon start class="mr-2">mdi-server-network-outline</v-icon>
+          <v-icon start class="me-2">mdi-server-network-outline</v-icon>
           {{ t('adminEmail.smtpConfig') }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -76,7 +76,7 @@
       <!-- 面板二：邮件模板 -->
       <v-expansion-panel :value="1">
         <v-expansion-panel-title>
-          <v-icon start class="mr-2">mdi-email-edit-outline</v-icon>
+          <v-icon start class="me-2">mdi-email-edit-outline</v-icon>
           {{ t('adminEmail.templates') }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
@@ -105,7 +105,7 @@
             <v-card-text>
               <div class="text-subtitle-2 mb-2">
                 {{ tpl.name }}
-                <v-chip size="x-small" variant="tonal" class="ml-2">{{ tpl.key }}</v-chip>
+                <v-chip size="x-small" variant="tonal" class="ms-2">{{ tpl.key }}</v-chip>
               </div>
               <div class="text-caption text-medium-emphasis mb-2">{{ tpl.description }}</div>
 

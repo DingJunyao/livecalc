@@ -200,7 +200,7 @@ async function confirmMatch() {
   <v-dialog v-model="confirmDialog" max-width="420" persistent>
     <v-card>
       <v-card-title class="text-h6 d-flex align-center">
-        <v-icon color="warning" class="mr-2">mdi-alert-circle-outline</v-icon>
+        <v-icon color="warning" class="me-2">mdi-alert-circle-outline</v-icon>
         {{ t('usda.confirmMatch') }}
       </v-card-title>
       <v-card-text>

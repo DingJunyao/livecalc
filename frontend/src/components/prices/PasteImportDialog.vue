@@ -44,7 +44,7 @@
           <v-btn color="primary" variant="tonal" prepend-icon="mdi-text-search" :loading="parsing" @click="doParse">
             {{ t('prices.parseAndMatch') }}
           </v-btn>
-          <span v-if="summaryText" class="text-caption text-medium-emphasis ml-3">{{ summaryText }}</span>
+          <span v-if="summaryText" class="text-caption text-medium-emphasis ms-3">{{ summaryText }}</span>
         </div>
 
         <v-table v-if="rows.length > 0" density="compact" class="paste-preview-table">
@@ -121,7 +121,7 @@
                   <template v-else>
                     <!-- 未展开：可点击商品名 -->
                     <span class="paste-editable" @click="openEditor(row)">
-                      {{ row.name }}<v-icon size="x-small" class="ml-1">mdi-chevron-down</v-icon>
+                      {{ row.name }}<v-icon size="x-small" class="ms-1">mdi-chevron-down</v-icon>
                     </span>
                   </template>
                 </td>

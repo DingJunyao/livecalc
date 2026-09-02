@@ -96,7 +96,7 @@
                   v-for="alias in overlaidAliases!"
                   :key="alias"
                   size="small"
-                  class="mr-1 mb-1"
+                  class="me-1 mb-1"
                   label
                 >
                   {{ alias }}
@@ -274,7 +274,7 @@
         <template v-if="loadingMerchantPrices">
           <v-divider />
           <v-card-text class="text-center py-4">
-            <v-progress-circular indeterminate size="18" class="mr-2" />
+            <v-progress-circular indeterminate size="18" class="me-2" />
             <span class="text-caption text-medium-emphasis">{{ t('ingredients.loadingMerchantPrices') }}</span>
           </v-card-text>
         </template>
@@ -341,7 +341,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-package-variant</v-icon>
           {{ t('ingredients.relatedProducts') }}
-          <v-chip size="small" class="ml-2" v-if="products.length > 0">
+          <v-chip size="small" class="ms-2" v-if="products.length > 0">
             {{ products.length }}
           </v-chip>
           <v-spacer />
@@ -375,7 +375,7 @@
               <!-- 右侧：加载中/价格 + 迷你图 + 操作按钮 -->
               <div class="d-flex align-center ga-1 flex-shrink-0">
                 <!-- 价格区域 -->
-                <div v-if="productPrices[product.id]" class="text-right" style="min-width: 68px">
+                <div v-if="productPrices[product.id]" class="text-end" style="min-width: 68px">
                   <div v-if="productPrices[product.id].loading" class="text-center">
                     <v-progress-circular indeterminate size="14" width="2" />
                   </div>
@@ -520,7 +520,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="primary">mdi-chef-hat</v-icon>
           {{ t('ingredients.relatedRecipes') }}
-          <v-chip size="small" class="ml-2" v-if="recipeTotal > 0">
+          <v-chip size="small" class="ms-2" v-if="recipeTotal > 0">
             {{ recipeTotal }}
           </v-chip>
         </v-card-title>
@@ -537,7 +537,7 @@
                 <v-icon color="white">mdi-food</v-icon>
               </v-avatar>
             </template>
-            <v-list-item-title>{{ recipe.name }}<v-chip v-if="!recipe.is_public" size="x-small" color="warning" variant="tonal" class="ml-2">{{ t('ingredients.unpublished') }}</v-chip></v-list-item-title>
+            <v-list-item-title>{{ recipe.name }}<v-chip v-if="!recipe.is_public" size="x-small" color="warning" variant="tonal" class="ms-2">{{ t('ingredients.unpublished') }}</v-chip></v-list-item-title>
             <v-list-item-subtitle v-if="recipe.category || recipe.usages?.length">
               <div v-if="recipe.category">{{ recipe.category }}</div>
               <div v-if="recipe.usages?.length" class="text-caption text-medium-emphasis mt-1">{{ formatUsages(recipe) }}</div>
@@ -574,7 +574,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('ingredients.nutrition') }}
-          <span class="text-caption text-medium-emphasis ml-2">{{ t('ingredients.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ t('ingredients.per100g') }}</span>
           <v-spacer />
           <template v-if="!editingNutrition">
             <v-btn
@@ -720,7 +720,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('ingredients.nutrition') }}
-          <span class="text-caption text-medium-emphasis ml-2">{{ t('ingredients.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ t('ingredients.per100g') }}</span>
           <v-spacer />
           <v-btn
             v-if="!loadingNutrition"
@@ -907,14 +907,14 @@
                 class="d-flex align-center flex-grow-1 py-2 relation-item-content"
                 @click="goToIngredient(rel.child_id)"
               >
-                <v-icon color="info" size="small" class="mr-3">mdi-arrow-down-right</v-icon>
+                <v-icon color="info" size="small" class="me-3">mdi-arrow-down-right</v-icon>
                 <div class="flex-grow-1">
                   <div class="text-body-2" v-html="getRelationListDisplayText(rel, 'child')"></div>
                   <div class="text-caption text-medium-emphasis mt-1">
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
-                    <span class="ml-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
+                    <span class="ms-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -922,7 +922,7 @@
                   size="x-small"
                   variant="text"
                   color="primary"
-                  class="mr-1"
+                  class="me-1"
                   @click.stop="openEditRelationDialog(rel)"
                 />
                 <v-btn
@@ -948,14 +948,14 @@
                 class="d-flex align-center flex-grow-1 py-2 relation-item-content"
                 @click="goToIngredient(rel.parent_id)"
               >
-                <v-icon color="success" size="small" class="mr-3">mdi-arrow-up-right</v-icon>
+                <v-icon color="success" size="small" class="me-3">mdi-arrow-up-right</v-icon>
                 <div class="flex-grow-1">
                   <div class="text-body-2" v-html="getRelationListDisplayText(rel, 'parent')"></div>
                   <div class="text-caption text-medium-emphasis mt-1">
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
-                    <span class="ml-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
+                    <span class="ms-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -963,7 +963,7 @@
                   size="x-small"
                   variant="text"
                   color="primary"
-                  class="mr-1"
+                  class="me-1"
                   @click.stop="openEditRelationDialog(rel)"
                 />
                 <v-btn
@@ -1014,12 +1014,12 @@
               size="small"
               variant="outlined"
               color="warning"
-              class="mr-1 mb-1"
+              class="me-1 mb-1"
               style="cursor: pointer"
               @click="quickAddUnmappedUnit(item)"
             >
               {{ item.unit_name }}
-              <span class="text-caption ml-1">({{ item.usage_count }})</span>
+              <span class="text-caption ms-1">({{ item.usage_count }})</span>
             </v-chip>
           </div>
 
@@ -1034,17 +1034,17 @@
               class="px-0"
             >
               <template #prepend>
-                <v-chip size="small" :variant="(unit as any)._pending ? 'outlined' : 'tonal'" :color="(unit as any)._pending ? 'info' : 'primary'" class="mr-3">
+                <v-chip size="small" :variant="(unit as any)._pending ? 'outlined' : 'tonal'" :color="(unit as any)._pending ? 'info' : 'primary'" class="me-3">
                   {{ unit.unit_name }}
                 </v-chip>
               </template>
               <v-list-item-title class="text-body-2">
                 <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ unit.conversion_factor }}</span>
-                <span v-if="unit.weight_per_unit" class="ml-2">
+                <span v-if="unit.weight_per_unit" class="ms-2">
                   <v-icon size="x-small">mdi-weight</v-icon>
                   {{ unit.weight_per_unit }}g
                 </span>
-                <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('ingredients.pending') }}</v-chip>
+                <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('ingredients.pending') }}</v-chip>
               </v-list-item-title>
               <v-list-item-subtitle class="text-caption">
                 <template v-if="unit.is_default">
@@ -1103,7 +1103,7 @@
                 size="x-small"
                 variant="text"
                 color="primary"
-                class="mr-1"
+                class="me-1"
                 @click="openDensityDialog(entityDensity)"
               />
               <v-btn
@@ -1117,7 +1117,7 @@
           </div>
 
           <div v-if="displayDensity" class="d-flex align-center py-2">
-            <v-icon size="small" color="medium-emphasis" class="mr-2">mdi-water</v-icon>
+            <v-icon size="small" color="medium-emphasis" class="me-2">mdi-water</v-icon>
             <span class="text-body-2">
               {{ displayDensityValue }}
             </span>
@@ -1125,18 +1125,18 @@
               size="x-small"
               variant="tonal"
               color="primary"
-              class="ml-1 cursor-pointer"
+              class="ms-1 cursor-pointer"
               @click="toggleDisplayDensityUnit"
               :title="t('ingredients.toggleDensityUnit', { unit: densityDisplayUnit === 'g/cm3' ? 'kg/m³' : 'g/cm³' })"
             >
               {{ densityDisplayUnit === 'g/cm3' ? 'g/cm³' : 'kg/m³' }}
               <v-icon end size="x-small">mdi-swap-horizontal</v-icon>
             </v-chip>
-            <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ml-1">{{ t('ingredients.pending') }}</v-chip>
-            <span v-if="displayDensity.temperature" class="text-caption text-medium-emphasis ml-2">
+            <v-chip v-if="(displayDensity as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('ingredients.pending') }}</v-chip>
+            <span v-if="displayDensity.temperature" class="text-caption text-medium-emphasis ms-2">
               ({{ displayDensity.temperature }}°C)
             </span>
-            <span v-if="displayDensity.source" class="text-caption text-medium-emphasis ml-2">
+            <span v-if="displayDensity.source" class="text-caption text-medium-emphasis ms-2">
               {{ t('ingredients.source') }}: {{ displayDensity.source }}
             </span>
           </div>
@@ -3789,13 +3789,13 @@ const getRelationListDisplayText = (rel: any, direction: 'child' | 'parent') => 
     const otherName = rel.parent_name
     switch (rel.relation_type) {
       case 'contains':
-        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentContains', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentContains', { current: currentShort }))}</span> <span class="text-medium-emphasis ms-1">${escapeHtml(otherName)}</span>`
       case 'fallback':
         // 对于 fallback，parent 是具体原料，child 是抽象原料
         // 在当前原料(child)的详情中，显示"当前原料 可回退到 具体原料"
-        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentFallback', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentFallback', { current: currentShort }))}</span> <span class="text-medium-emphasis ms-1">${escapeHtml(otherName)}</span>`
       case 'substitutable':
-        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentSubstitute', { current: currentShort }))}</span> <span class="text-medium-emphasis ml-1">${escapeHtml(otherName)}</span>`
+        return `<span class="text-caption text-primary font-weight-bold">${escapeHtml(t('ingredients.relationListParentSubstitute', { current: currentShort }))}</span> <span class="text-medium-emphasis ms-1">${escapeHtml(otherName)}</span>`
       default:
         return escapeHtml(otherName)
     }
@@ -4594,7 +4594,7 @@ onMounted(() => {
 .merchant-price-badge {
   position: absolute;
   top: -8px;
-  right: -4px;
+  inset-inline-end: -4px;
 }
 
 /* === 响应式布局 === */

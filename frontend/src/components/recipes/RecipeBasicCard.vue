@@ -29,7 +29,7 @@
           prepend-icon="mdi-close"
           :disabled="saving"
           @click="cancelEdit"
-          class="ml-1"
+          class="ms-1"
         >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>

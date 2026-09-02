@@ -215,7 +215,7 @@ function onRefresh() {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .meal-card--current {
-  border-left: 4px solid rgb(var(--v-theme-primary));
+  border-inline-start: 4px solid rgb(var(--v-theme-primary));
   animation: pulse-glow 2s ease-in-out infinite;
 }
 .meal-card--empty {

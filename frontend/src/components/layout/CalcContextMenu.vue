@@ -5,7 +5,7 @@
       v-if="isDesktop"
       variant="text"
       size="large"
-      class="context-button ml-2"
+      class="context-button ms-2"
       :title="t('context.openTitleDesktop')"
       @click="open"
     >

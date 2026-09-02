@@ -70,7 +70,7 @@
                   :key="alias"
                   size="x-small"
                   variant="tonal"
-                  class="mr-1"
+                  class="me-1"
                 >{{ alias }}</v-chip>
                 <br>
               </template>
@@ -83,7 +83,7 @@
             <template #append>
               <div
                 v-if="item.sparkline_data"
-                style="width: 64px; height: 36px; position: relative; flex-shrink: 0; margin-right: 4px"
+                style="width: 64px; height: 36px; position: relative; flex-shrink: 0; margin-inline-end: 4px"
               >
                 <SparklineBackground :data="item.sparkline_data" color="primary" height="36" />
               </div>
@@ -124,7 +124,7 @@
             />
             <v-card-text style="position: relative; z-index: 1">
               <div class="d-flex align-center mb-2">
-                <v-avatar color="primary" size="40" class="mr-3">
+                <v-avatar color="primary" size="40" class="me-3">
                   <span class="text-white">{{ item.name?.charAt(0) }}</span>
                 </v-avatar>
                 <div class="text-body-2 font-weight-medium text-truncate">
@@ -138,7 +138,7 @@
                   :key="alias"
                   size="x-small"
                   variant="tonal"
-                  class="mr-1"
+                  class="me-1"
                 >{{ alias }}</v-chip>
               </div>
               <div class="text-caption text-medium-emphasis">{{ item.brand || t('products.noBrand') }}</div>
@@ -192,7 +192,7 @@
       size="large"
       elevation="8"
       class="position-fixed"
-      style="bottom: 80px; right: 24px"
+      style="bottom: 80px; inset-inline-end: 24px"
       @click="showAddDialog = true"
     />
 

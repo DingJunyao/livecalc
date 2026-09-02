@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4">
         <v-btn icon="mdi-arrow-left" variant="text" @click="close" />
-        <span class="text-h6 ml-2">{{ isEdit ? t('prices.editRecord') : t('prices.addRecord') }}</span>
+        <span class="text-h6 ms-2">{{ isEdit ? t('prices.editRecord') : t('prices.addRecord') }}</span>
         <v-spacer />
         <v-btn
           color="primary"

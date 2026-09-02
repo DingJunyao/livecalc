@@ -56,7 +56,7 @@
               v-if="isExhausted(item)"
               color="warning"
               size="x-small"
-              class="ml-2"
+              class="ms-2"
               variant="tonal"
             >
               {{ t('admin.inviteCodes.exhausted') }}
@@ -65,7 +65,7 @@
               v-else-if="isExpired(item.expiresAt)"
               color="error"
               size="x-small"
-              class="ml-2"
+              class="ms-2"
               variant="tonal"
             >
               {{ t('admin.inviteCodes.expired') }}
@@ -74,7 +74,7 @@
               v-else
               color="success"
               size="x-small"
-              class="ml-2"
+              class="ms-2"
               variant="outlined"
             >
               {{ t('admin.inviteCodes.valid') }}
@@ -134,7 +134,7 @@
     <v-dialog v-model="createDialog" max-width="500px" persistent>
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2">mdi-ticket-outline</v-icon>
+          <v-icon class="me-2">mdi-ticket-outline</v-icon>
           <span>{{ t('admin.inviteCodes.create') }}</span>
         </v-card-title>
         <v-divider />
@@ -198,7 +198,7 @@
     <v-dialog v-model="editDialog" max-width="500px" persistent>
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2">mdi-pencil</v-icon>
+          <v-icon class="me-2">mdi-pencil</v-icon>
           <span>{{ t('admin.inviteCodes.editTitle') }}</span>
         </v-card-title>
         <v-divider />

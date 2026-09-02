@@ -24,8 +24,8 @@
           hide-details
           density="compact"
         />
-        <v-icon class="ml-4">mdi-map</v-icon>
-        <div class="ml-2 text-body-2 text-medium-emphasis">
+        <v-icon class="ms-4">mdi-map</v-icon>
+        <div class="ms-2 text-body-2 text-medium-emphasis">
           {{ t('admin.map.disableDescription') }}
         </div>
       </v-card-text>
@@ -36,7 +36,7 @@
       <v-col cols="12" md="6">
         <v-card class="rounded-lg h-100" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2">mdi-map</v-icon>
+            <v-icon class="me-2">mdi-map</v-icon>
             <span>{{ t('admin.map.availableMaps') }}</span>
           </v-card-title>
           <v-divider />
@@ -72,7 +72,7 @@
       <v-col cols="12" md="6">
         <v-card class="rounded-lg h-100" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2">mdi-key</v-icon>
+            <v-icon class="me-2">mdi-key</v-icon>
             <span>{{ t('admin.map.apiKeys') }}</span>
           </v-card-title>
           <v-divider />
@@ -81,7 +81,7 @@
               <!-- 高德地图 -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon class="mr-2" color="success">mdi-map-marker</v-icon>
+                  <v-icon class="me-2" color="success">mdi-map-marker</v-icon>
                   {{ t('admin.map.maps.amap') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -108,7 +108,7 @@
               <!-- 百度地图 -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon class="mr-2" color="primary">mdi-map-marker-radius</v-icon>
+                  <v-icon class="me-2" color="primary">mdi-map-marker-radius</v-icon>
                   {{ t('admin.map.maps.baidu') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -126,7 +126,7 @@
               <!-- 腾讯地图 -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon class="mr-2" color="info">mdi-map-marker-plus</v-icon>
+                  <v-icon class="me-2" color="info">mdi-map-marker-plus</v-icon>
                   {{ t('admin.map.maps.tencent') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -144,7 +144,7 @@
               <!-- 天地图 -->
               <v-expansion-panel>
                 <v-expansion-panel-title>
-                  <v-icon class="mr-2" color="warning">mdi-earth</v-icon>
+                  <v-icon class="me-2" color="warning">mdi-earth</v-icon>
                   {{ t('admin.map.maps.tianditu') }}
                 </v-expansion-panel-title>
                 <v-expansion-panel-text>
@@ -168,7 +168,7 @@
       <v-col cols="12">
         <v-card class="rounded-lg" :class="{ 'config-disabled': !config.map_enabled }">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2">mdi-crosshairs-gps</v-icon>
+            <v-icon class="me-2">mdi-crosshairs-gps</v-icon>
             <span>{{ t('admin.map.geocoding') }}</span>
           </v-card-title>
           <v-divider />

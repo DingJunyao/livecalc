@@ -258,7 +258,7 @@
     <v-dialog v-model="detailDialog" max-width="780px" scrollable>
       <v-card class="rounded-lg" v-if="detailItem">
         <v-card-title class="d-flex align-center py-4 pe-2">
-          <v-icon class="mr-2">mdi-clipboard-text-clock</v-icon>
+          <v-icon class="me-2">mdi-clipboard-text-clock</v-icon>
           <span class="text-h6">{{ t('admin.proposals.proposalId', { id: formatCount(detailItem.id) }) }}</span>
           <v-spacer />
           <v-chip :color="statusColor(detailItem.status)" size="small" variant="tonal" class="me-2">
@@ -470,7 +470,7 @@
     <v-dialog v-model="revertDialog" max-width="460px">
       <v-card class="rounded-lg">
         <v-card-title class="text-h6">
-          <v-icon class="mr-2" color="error">mdi-undo</v-icon>
+          <v-icon class="me-2" color="error">mdi-undo</v-icon>
           {{ t('admin.proposals.confirmRevert') }}
         </v-card-title>
         <v-card-text>
@@ -493,7 +493,7 @@
     <v-dialog v-model="antiSpamDialog" max-width="460px">
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2" color="warning">mdi-shield-account-variant</v-icon>
+          <v-icon class="me-2" color="warning">mdi-shield-account-variant</v-icon>
           {{ t('admin.proposals.antiSpamBulk') }}
         </v-card-title>
         <v-divider />

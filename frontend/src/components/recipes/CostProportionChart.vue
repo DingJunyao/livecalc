@@ -13,7 +13,7 @@
         <v-icon size="48" color="medium-emphasis">mdi-chart-pie</v-icon>
         <div class="text-body-2 mt-2">{{ t('recipes.noCostData') }}</div>
       </div>
-      <div v-else ref="chartRef" class="cost-proportion-chart" style="width:100%;height:320px" />
+      <div v-else ref="chartRef" class="cost-proportion-chart" dir="ltr" style="width:100%;height:320px" />
     </v-card-text>
   </v-card>
 </template>

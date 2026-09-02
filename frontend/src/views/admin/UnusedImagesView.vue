@@ -9,7 +9,7 @@
         color="error"
         variant="tonal"
         size="small"
-        class="mr-2"
+        class="me-2"
         :loading="deleting"
         :disabled="deleting"
         @click="confirmDelete"
@@ -49,17 +49,17 @@
       <v-card class="mb-4" elevation="0">
         <v-card-text class="d-flex ga-4 flex-wrap">
           <div class="text-body-2">
-            <v-icon class="mr-1" color="success">mdi-check-circle</v-icon>
+            <v-icon class="me-1" color="success">mdi-check-circle</v-icon>
             {{ t('admin.unusedImages.used', { count: formatCount(stats.used_images) }) }}
             · {{ formatSize(stats.used_size) }}
           </div>
           <div class="text-body-2">
-            <v-icon class="mr-1" color="warning">mdi-alert-circle</v-icon>
+            <v-icon class="me-1" color="warning">mdi-alert-circle</v-icon>
             {{ t('admin.unusedImages.unused', { count: formatCount(stats.unused_images) }) }}
             · {{ formatSize(stats.unused_size) }}
           </div>
           <div class="text-body-2">
-            <v-icon class="mr-1" color="medium-emphasis">mdi-folder</v-icon>
+            <v-icon class="me-1" color="medium-emphasis">mdi-folder</v-icon>
             {{ t('admin.unusedImages.total', { count: formatCount(stats.total_images) }) }}
             · {{ formatSize(stats.used_size + stats.unused_size) }}
           </div>
@@ -71,7 +71,7 @@
         <v-expansion-panel v-for="group in groups" :key="group.key" :value="group.key">
           <v-expansion-panel-title class="text-subtitle-2 font-weight-medium">
             <span>{{ groupLabel(group) }}</span>
-            <v-chip size="x-small" class="ml-2">
+            <v-chip size="x-small" class="ms-2">
               {{ t('admin.unusedImages.imageCount', { count: formatCount(group.count) }) }} · {{ formatSize(group.total_size) }}
             </v-chip>
             <v-spacer />

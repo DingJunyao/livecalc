@@ -154,7 +154,7 @@
       size="large"
       elevation="8"
       class="position-fixed"
-      style="bottom: 80px; right: 24px"
+      style="bottom: 80px; inset-inline-end: 24px"
       @click="showAddDialog = true"
     />
 

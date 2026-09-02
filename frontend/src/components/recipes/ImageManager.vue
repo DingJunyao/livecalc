@@ -191,7 +191,7 @@ const getImageUrl = resolveImageUrl
 .image-delete-btn {
   position: absolute;
   top: -6px;
-  right: -6px;
+  inset-inline-end: -6px;
   z-index: 2;
   min-width: 0;
   width: 20px;
@@ -201,7 +201,7 @@ const getImageUrl = resolveImageUrl
 .image-cover-badge {
   position: absolute;
   bottom: 2px;
-  left: 2px;
+  inset-inline-start: 2px;
   z-index: 2;
   font-size: 10px;
   height: 18px;

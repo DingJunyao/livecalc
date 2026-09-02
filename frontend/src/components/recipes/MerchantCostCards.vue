@@ -35,7 +35,7 @@
             }) }}
             <v-tooltip v-if="m.fallback_chains?.length" location="top">
               <template #activator="{ props }">
-                <v-icon v-bind="props" size="x-small" color="info" class="ml-1">mdi-information</v-icon>
+                <v-icon v-bind="props" size="x-small" color="info" class="ms-1">mdi-information</v-icon>
               </template>
               <div class="text-caption">{{ t('recipes.calculatedFromIngredients') }}</div>
               <div v-for="chain in m.fallback_chains" :key="chain" class="text-body-2 font-weight-bold">{{ chain }}</div>
@@ -46,7 +46,7 @@
           </div>
           <div class="text-caption mb-1">
             <span class="text-green-darken-2">{{ t('recipes.inStore', { amount: formatMoney(Number(m.covered_cost || 0), userCurrency) }) }}</span>
-            <span v-if="Number(m.external_cost || 0) > 0" class="ml-2 text-orange-darken-2">
+            <span v-if="Number(m.external_cost || 0) > 0" class="ms-2 text-orange-darken-2">
               {{ t('recipes.external', { amount: formatMoney(Number(m.external_cost || 0), userCurrency) }) }}
             </span>
           </div>

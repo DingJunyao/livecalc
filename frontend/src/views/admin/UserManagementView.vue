@@ -100,7 +100,7 @@
     <v-dialog v-model="formDialog" max-width="500px" persistent>
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
+          <v-icon class="me-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span>{{ isEditing ? t('admin.users.editTitle') : t('admin.users.create') }}</span>
         </v-card-title>
         <v-divider />
@@ -178,7 +178,7 @@
     <v-dialog v-model="resetDialog" max-width="420px" persistent>
       <v-card class="rounded-lg">
         <v-card-title class="text-h6 d-flex align-center py-4">
-          <v-icon class="mr-2">mdi-lock-reset</v-icon>
+          <v-icon class="me-2">mdi-lock-reset</v-icon>
           <span>{{ t('admin.users.resetPasswordTitle', { name: resetUsername }) }}</span>
         </v-card-title>
         <v-divider />

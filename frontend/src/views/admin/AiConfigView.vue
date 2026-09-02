@@ -156,7 +156,7 @@ async function save() {
     <v-expansion-panels multiple v-model="openPanels" class="my-3">
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <v-icon class="mr-2">mdi-robot</v-icon>{{ t('adminAI.aiTranslation') }}
+          <v-icon class="me-2">mdi-robot</v-icon>{{ t('adminAI.aiTranslation') }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <ProviderCard
@@ -176,7 +176,7 @@ async function save() {
 
       <v-expansion-panel>
         <v-expansion-panel-title>
-          <v-icon class="mr-2">mdi-translate</v-icon>{{ t('adminAI.machineTranslation') }}
+          <v-icon class="me-2">mdi-translate</v-icon>{{ t('adminAI.machineTranslation') }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
           <ProviderCard

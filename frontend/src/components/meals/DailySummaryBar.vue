@@ -22,7 +22,7 @@
                 <v-icon size="small">mdi-cash</v-icon>
                 {{ t('meals.estimatedToday') }}
               </span>
-              <span class="text-h6 font-weight-bold ml-1">
+              <span class="text-h6 font-weight-bold ms-1">
                 {{ totals.cost != null ? formatMoney(Number(totals.cost), totals.currency || userCurrency.value) : '--' }}
               </span>
             </div>
@@ -33,7 +33,7 @@
                 <v-icon size="small">mdi-fire</v-icon>
                 {{ t('meals.calories') }}
               </span>
-              <span class="font-weight-medium ml-1">
+              <span class="font-weight-medium ms-1">
                 {{ totals.calories != null ? `${formatNumber(toDisplayCalorie(totals.calories), localeStore.effectiveFormatLocale)} ${energyUnitLabel}` : '--' }}
               </span>
             </div>
@@ -44,7 +44,7 @@
                   <v-icon size="small">mdi-food-drumstick-outline</v-icon>
                   {{ t('meals.protein') }}
                 </span>
-                <span class="font-weight-medium ml-1">
+                <span class="font-weight-medium ms-1">
                   {{ totals.protein_g != null ? `${formatNumber(totals.protein_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>
@@ -53,7 +53,7 @@
                   <v-icon size="small">mdi-grain</v-icon>
                   {{ t('meals.carbs') }}
                 </span>
-                <span class="font-weight-medium ml-1">
+                <span class="font-weight-medium ms-1">
                   {{ totals.carbs_g != null ? `${formatNumber(totals.carbs_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>
@@ -62,7 +62,7 @@
                   <v-icon size="small">mdi-oil</v-icon>
                   {{ t('meals.fat') }}
                 </span>
-                <span class="font-weight-medium ml-1">
+                <span class="font-weight-medium ms-1">
                   {{ totals.fat_g != null ? `${formatNumber(totals.fat_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
                 </span>
               </div>

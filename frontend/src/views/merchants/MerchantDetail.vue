@@ -146,7 +146,7 @@
           <v-card-title class="d-flex align-center pb-2">
             <v-icon start color="tertiary">mdi-cart-outline</v-icon>
             {{ t('merchants.prices') }}
-            <v-chip v-if="priceTotal > 0" size="x-small" variant="tonal" color="tertiary" class="ml-2">
+            <v-chip v-if="priceTotal > 0" size="x-small" variant="tonal" color="tertiary" class="ms-2">
               {{ priceTotal }}
             </v-chip>
           </v-card-title>
@@ -173,7 +173,7 @@
 
               <v-list-item-title class="d-flex align-center">
                 {{ record.product_name }}
-                <v-icon size="small" color="primary" class="ml-1">mdi-arrow-right</v-icon>
+                <v-icon size="small" color="primary" class="ms-1">mdi-arrow-right</v-icon>
               </v-list-item-title>
               <v-list-item-subtitle>
                 {{ formatToLocalDateTimeShort(record.recorded_at) }}
@@ -204,7 +204,7 @@
               <v-card elevation="0" class="list-grid-card cursor-pointer h-100" @click="goToProduct(record.product_id)">
                 <v-card-text>
                   <div class="d-flex align-center mb-2">
-                    <v-avatar color="primary" size="40" class="mr-3">
+                    <v-avatar color="primary" size="40" class="me-3">
                       <span class="text-white">{{ record.product_name?.charAt(0) }}</span>
                     </v-avatar>
                     <div class="text-body-2 font-weight-medium text-truncate">{{ record.product_name }}</div>

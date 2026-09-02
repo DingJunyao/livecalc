@@ -10,7 +10,7 @@
     </div>
     <div class="agent-bubble">
       <div v-if="!msg.content && !msg.toolDone" class="text-caption text-medium-emphasis">
-        <v-progress-circular indeterminate size="14" width="2" class="mr-2" />
+        <v-progress-circular indeterminate size="14" width="2" class="me-2" />
         {{ t('agent.message.thinking') }}
       </div>
       <div v-else class="md-body" v-html="rendered"></div>
@@ -22,7 +22,7 @@
       <v-expansion-panel elevation="0" rounded="lg" class="tool-panel">
         <v-expansion-panel-title class="py-2">
           <div class="d-flex align-center w-100">
-            <v-icon size="18" class="mr-2" :color="statusColor">
+            <v-icon size="18" class="me-2" :color="statusColor">
               {{ msg.toolDone ? 'mdi-check-circle' : 'mdi-tools' }}
             </v-icon>
             <span class="text-body-2 font-weight-medium text-truncate">{{ toolLabel }}</span>
@@ -40,7 +40,7 @@
           <div v-if="msg.toolDone">
             <div class="text-caption text-medium-emphasis mb-1">{{ t('agent.message.result') }}</div>
             <div v-if="resultIsError" class="text-error text-body-2">
-              <v-icon size="16" class="mr-1">mdi-alert-circle</v-icon>{{ resultErrorText }}
+              <v-icon size="16" class="me-1">mdi-alert-circle</v-icon>{{ resultErrorText }}
             </div>
             <template v-else>
               <component
@@ -63,7 +63,7 @@
             </template>
           </div>
           <div v-else class="text-caption text-medium-emphasis d-flex align-center">
-            <v-progress-circular indeterminate size="12" width="2" class="mr-2" />
+            <v-progress-circular indeterminate size="12" width="2" class="me-2" />
             {{ t('agent.message.waitingForTool') }}
           </div>
         </v-expansion-panel-text>
@@ -246,7 +246,7 @@ function renderInline(s: string): string {
 }
 .md-body :deep(.md-ul) {
   margin: 4px 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
 }
 .code-block,
 .md-body :deep(.code-block) {
@@ -280,7 +280,7 @@ function renderInline(s: string): string {
 .result-table td {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   padding: 4px 8px;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 .result-table thead th {

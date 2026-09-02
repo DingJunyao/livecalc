@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="warning">mdi-lightbulb-outline</v-icon>
       {{ t('recipes.tips') }}
-      <v-chip size="small" class="ml-2" v-if="tipsList.length">
+      <v-chip size="small" class="ms-2" v-if="tipsList.length">
         {{ formatNumber(editing ? editRows.length : tipsList.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
@@ -32,7 +32,7 @@
           prepend-icon="mdi-close"
           :disabled="saving"
           @click="cancelEdit"
-          class="ml-1"
+          class="ms-1"
         >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
@@ -41,7 +41,7 @@
     <!-- 查看模式 -->
     <template v-if="!editing">
       <v-card-text v-if="tipsList.length">
-        <ul class="text-body-2 pl-4 mb-0">
+        <ul class="text-body-2 ps-4 mb-0">
           <li v-for="(tip, i) in tipsList" :key="i" class="mb-1">{{ tip }}</li>
         </ul>
       </v-card-text>
@@ -55,7 +55,7 @@
         class="d-flex align-center pa-3"
         :class="{ 'border-bottom': index < editRows.length - 1 }"
       >
-        <div class="d-flex flex-column move-btns mr-2">
+        <div class="d-flex flex-column move-btns me-2">
           <v-btn
             icon="mdi-chevron-up"
             size="x-small"
@@ -92,7 +92,7 @@
           size="x-small"
           color="error"
           variant="text"
-          class="ml-2"
+          class="ms-2"
           :title="t('recipes.removeTip')"
           :aria-label="t('recipes.removeTip')"
           @click="removeRow(index)"

@@ -28,7 +28,6 @@ export const useLocaleStore = defineStore('locale', () => {
   function applyLocale(nextLocale: UiLocale) {
     i18n.global.locale.value = nextLocale
     vuetify.locale.current.value = nextLocale
-    vuetify.rtl.current.value = nextLocale === 'ar'
     if (typeof document !== 'undefined') {
       document.documentElement.lang = nextLocale
       document.documentElement.dir = nextLocale === 'ar' ? 'rtl' : 'ltr'

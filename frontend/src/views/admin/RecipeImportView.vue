@@ -17,7 +17,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="github">mdi-source-repository</v-icon>
+            <v-icon class="me-2" color="github">mdi-source-repository</v-icon>
             <span>{{ t('adminData.maintenance.repoImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -54,7 +54,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="primary">mdi-folder-open</v-icon>
+            <v-icon class="me-2" color="primary">mdi-folder-open</v-icon>
             <span>{{ t('adminData.maintenance.localImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -100,7 +100,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="success">mdi-upload</v-icon>
+            <v-icon class="me-2" color="success">mdi-upload</v-icon>
             <span>{{ t('adminData.maintenance.uploadImport') }}</span>
           </v-card-title>
           <v-divider />
@@ -141,7 +141,7 @@
       <v-col cols="12" md="6" lg="4">
         <v-card class="rounded-lg h-100">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2" color="purple">mdi-robot</v-icon>
+            <v-icon class="me-2" color="purple">mdi-robot</v-icon>
             <span>{{ t('adminData.recipeImport.ai.title') }}</span>
           </v-card-title>
           <v-divider />
@@ -189,7 +189,7 @@
       <v-col cols="12">
         <v-card class="rounded-lg">
           <v-card-title class="d-flex align-center py-4">
-            <v-icon class="mr-2">mdi-format-list-bulleted</v-icon>
+            <v-icon class="me-2">mdi-format-list-bulleted</v-icon>
             <span>{{ t('adminData.maintenance.tasks.title') }}</span>
             <v-spacer />
             <v-btn variant="text" size="small" @click="fetchTasks(10)">{{ t('common.refresh') }}</v-btn>
@@ -208,13 +208,13 @@
                 @click="t._kind === 'agent' ? router.push('/admin/agent-console?session_id=' + t.session_id) : undefined"
               >
                 <template #prepend>
-                  <v-icon :color="statusColor(t.status)" class="mr-3">
+                  <v-icon :color="statusColor(t.status)" class="me-3">
                     {{ statusIcon(t.status) }}
                   </v-icon>
                 </template>
                 <v-list-item-title class="font-weight-medium">
                   {{ t._kind === 'agent' ? t.label : taskTypeLabel(t.task_type) }}
-                  <v-chip :color="statusColor(t.status)" size="x-small" variant="tonal" class="ml-2">
+                  <v-chip :color="statusColor(t.status)" size="x-small" variant="tonal" class="ms-2">
                     {{ statusLabel(t.status) }}
                   </v-chip>
                 </v-list-item-title>
@@ -236,7 +236,7 @@
                     </div>
                     <div v-if="t.stats && Object.keys(t.stats).length" class="text-caption mt-1">
                       <v-chip v-for="(v, k) in t.stats" :key="k" size="x-small" variant="tonal"
-                              class="mr-1 mb-1">{{ k }}: {{ v }}</v-chip>
+                              class="me-1 mb-1">{{ k }}: {{ v }}</v-chip>
                     </div>
                     <div v-if="t.error" class="text-caption text-error mt-1">{{ importTaskErrorLabel(t.error) }}</div>
                   </template>

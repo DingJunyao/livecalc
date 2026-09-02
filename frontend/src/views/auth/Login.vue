@@ -50,7 +50,7 @@
 
           <v-card-actions class="pa-4 pt-0">
             <span class="text-body-2 text-medium-emphasis">{{ t('auth.noAccount') }}</span>
-            <v-btn variant="text" color="primary" to="/register" class="ml-1">
+            <v-btn variant="text" color="primary" to="/register" class="ms-1">
               {{ t('auth.registerNow') }}
             </v-btn>
           </v-card-actions>

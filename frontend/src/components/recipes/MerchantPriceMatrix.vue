@@ -19,7 +19,7 @@
             <thead>
               <tr>
                 <th class="sticky-col" style="min-width:160px">{{ t('recipes.ingredientAndAmount') }}</th>
-                <th v-for="m in merchantNames" :key="m" class="text-right">
+                <th v-for="m in merchantNames" :key="m" class="text-end">
                   <span class="text-truncate d-inline-block" style="max-width:80px">{{ m }}</span>
                 </th>
               </tr>
@@ -31,7 +31,7 @@
                   <span class="qty-badge">{{ row.quantityDisplay }}</span>
                   <v-tooltip v-if="row.fallbackChain" location="top">
                     <template #activator="{ props }">
-                      <v-icon v-bind="props" size="x-small" color="info" class="ml-1">mdi-information</v-icon>
+                      <v-icon v-bind="props" size="x-small" color="info" class="ms-1">mdi-information</v-icon>
                     </template>
                     <div class="text-caption">{{ t('recipes.calculatedFromIngredients') }}</div>
                     <div class="text-body-2 font-weight-bold">{{ row.fallbackChain }}</div>
@@ -40,7 +40,7 @@
                 <td
                   v-for="(cell, mName) in row.merchantPrices"
                   :key="mName"
-                  class="text-right"
+                  class="text-end"
                   :class="{ 'price-lowest': cell.isLowest, 'price-missing': !cell.hasPrice }"
                 >
                   {{ cell.hasPrice ? formatMoney(cell.rawValue, userCurrency) : '—' }}
@@ -193,7 +193,7 @@ function formatQuantity(quantity: number | string, unit?: string) {
 }
 .sticky-col {
   position: sticky;
-  left: 0;
+  inset-inline-start: 0;
   background: white;
   z-index: 1;
   min-width: 120px;
@@ -209,7 +209,7 @@ function formatQuantity(quantity: number | string, unit?: string) {
   display: inline-block;
   color: #888;
   font-size: 12px;
-  margin-left: 6px;
+  margin-inline-start: 6px;
   white-space: nowrap;
 }
 .price-lowest {
@@ -219,7 +219,7 @@ function formatQuantity(quantity: number | string, unit?: string) {
 .price-missing {
   color: #ccc;
 }
-.text-right {
-  text-align: right;
+.text-end {
+  text-align: end;
 }
 </style>

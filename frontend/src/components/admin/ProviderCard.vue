@@ -47,7 +47,7 @@ const { t } = useI18n()
         <v-btn :loading="testing" @click="emit('test')">{{ t('adminAI.testConnection') }}</v-btn>
         <span
           v-if="testResult"
-          class="ml-3 text-body-2"
+          class="ms-3 text-body-2"
           :class="testResult.ok ? 'text-success' : 'text-error'"
         >
           {{ testResult.detail }}

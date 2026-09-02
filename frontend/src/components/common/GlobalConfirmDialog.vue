@@ -2,7 +2,7 @@
   <v-dialog v-model="visible" max-width="420">
     <v-card>
       <v-card-title class="d-flex align-center">
-        <v-icon v-if="options.color === 'error'" class="mr-2" color="error">mdi-alert-circle-outline</v-icon>
+        <v-icon v-if="options.color === 'error'" class="me-2" color="error">mdi-alert-circle-outline</v-icon>
         {{ options.title || t('common.confirmTitle') }}
       </v-card-title>
       <v-card-text class="text-body-1" style="white-space: pre-line;">{{ options.text }}</v-card-text>

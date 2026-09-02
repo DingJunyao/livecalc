@@ -83,7 +83,7 @@
 
           <v-card-actions class="pa-4 pt-0">
             <span class="text-body-2 text-medium-emphasis">{{ t('auth.haveAccount') }}</span>
-            <v-btn variant="text" color="primary" to="/login" class="ml-1">
+            <v-btn variant="text" color="primary" to="/login" class="ms-1">
               {{ t('auth.loginNow') }}
             </v-btn>
           </v-card-actions>

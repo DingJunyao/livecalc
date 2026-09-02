@@ -269,7 +269,7 @@ onMounted(() => {
 .fab-button {
   position: fixed;
   bottom: 16px;
-  right: 16px;
+  inset-inline-end: 16px;
   z-index: 10;
 }
 </style>

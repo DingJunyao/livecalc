@@ -73,7 +73,7 @@
             <template #append>
               <div
                 v-if="item.sparkline_data"
-                style="width: 64px; height: 36px; position: relative; flex-shrink: 0; margin-right: 4px"
+                style="width: 64px; height: 36px; position: relative; flex-shrink: 0; margin-inline-end: 4px"
               >
                 <SparklineBackground :data="item.sparkline_data" color="secondary" height="36" />
               </div>
@@ -120,7 +120,7 @@
             />
             <v-card-text style="position: relative; z-index: 1">
               <div class="d-flex align-center mb-2">
-                <v-avatar color="secondary" size="40" class="mr-3">
+                <v-avatar color="secondary" size="40" class="me-3">
                   <span class="text-white font-weight-bold">{{ item.name?.charAt(0) }}</span>
                 </v-avatar>
                 <div class="text-body-2 font-weight-medium text-truncate">
@@ -187,7 +187,7 @@
       size="large"
       elevation="8"
       class="position-fixed"
-      style="bottom: 80px; right: 24px"
+      style="bottom: 80px; inset-inline-end: 24px"
       @click="showAddDialog = true"
     />
 

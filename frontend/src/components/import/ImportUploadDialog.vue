@@ -11,7 +11,7 @@
                  variant="tonal" class="mb-4" closable>
           <div v-if="result.success">
             {{ t('imports.completed') }}
-            <span v-for="(v, k) in displayStats" :key="k" class="mr-2">
+            <span v-for="(v, k) in displayStats" :key="k" class="me-2">
               {{ k }}={{ v }}
             </span>
             <div v-if="skippedItems.length" class="mt-2">

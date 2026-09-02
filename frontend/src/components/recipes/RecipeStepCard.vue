@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="primary">mdi-chef-hat</v-icon>
       {{ t('recipes.steps') }}
-      <v-chip size="small" class="ml-2" v-if="recipe.cooking_steps?.length">
+      <v-chip size="small" class="ms-2" v-if="recipe.cooking_steps?.length">
         {{ formatNumber(editing ? editRows.length : recipe.cooking_steps.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
@@ -32,7 +32,7 @@
           prepend-icon="mdi-close"
           :disabled="saving"
           @click="cancelEdit"
-          class="ml-1"
+          class="ms-1"
         >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
@@ -57,8 +57,8 @@
             </div>
             <div
               v-if="typeof step === 'object' && step.tips"
-              class="text-caption text-medium-emphasis mt-1 pl-2"
-              style="border-left: 2px solid var(--v-warning-base)"
+              class="text-caption text-medium-emphasis mt-1 ps-2"
+              style="border-inline-start: 2px solid var(--v-warning-base)"
             >
               {{ step.tips }}
             </div>

@@ -66,7 +66,7 @@
                   v-for="ing in sg.ingredients"
                   :key="'sgi-' + ing.id"
                   size="small"
-                  class="mr-1 mb-1"
+                  class="me-1 mb-1"
                   label
                 >
                   {{ ing.name }}
@@ -97,7 +97,7 @@
                 v-bind="props"
                 closable
                 size="small"
-                class="mr-1 mb-1"
+                class="me-1 mb-1"
                 label
                 @click:close="removeItem(item)"
               >

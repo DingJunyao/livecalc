@@ -7,7 +7,7 @@
     multi-line
   >
     <div class="d-flex align-center">
-      <v-icon class="mr-2">mdi-update</v-icon>
+      <v-icon class="me-2">mdi-update</v-icon>
       <span>{{ t('common.updateAvailable') }}</span>
     </div>
     <template #actions>

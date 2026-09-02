@@ -3,7 +3,7 @@
     <v-card-title class="d-flex align-center pb-2">
       <v-icon start color="primary">mdi-food-apple-outline</v-icon>
       {{ t('recipes.ingredients') }}
-      <v-chip size="small" class="ml-2" v-if="recipe.ingredients?.length">
+      <v-chip size="small" class="ms-2" v-if="recipe.ingredients?.length">
         {{ formatNumber(editing ? editRows.length : recipe.ingredients.length, localeStore.effectiveFormatLocale) }}
       </v-chip>
       <v-spacer />
@@ -32,7 +32,7 @@
           prepend-icon="mdi-close"
           :disabled="saving"
           @click="cancelEdit"
-          class="ml-1"
+          class="ms-1"
         >{{ t('recipes.cancel') }}</v-btn>
       </template>
     </v-card-title>
@@ -61,7 +61,7 @@
         size="x-small"
         variant="text"
         color="medium-emphasis"
-        class="ml-2"
+        class="ms-2"
         @click="onResetServings"
       >
         {{ t('recipes.recipeDefaultServings', { count: formatNumber(servings, localeStore.effectiveFormatLocale) }) }}
@@ -94,16 +94,16 @@
               @click="goToIngredient(ingredient.ingredient_id)"
             >
               {{ ingredient.name }}
-              <v-chip v-if="ingredient.is_optional" size="x-small" color="info" variant="flat" class="ml-1">{{ t('recipes.optional') }}</v-chip>
-              <v-icon size="x-small" class="ml-1">mdi-chevron-right</v-icon>
+              <v-chip v-if="ingredient.is_optional" size="x-small" color="info" variant="flat" class="ms-1">{{ t('recipes.optional') }}</v-chip>
+              <v-icon size="x-small" class="ms-1">mdi-chevron-right</v-icon>
             </div>
             <div
-              class="ingredient-quantity text-body-2 text-right mr-4 ingredient-clickable"
+              class="ingredient-quantity text-body-2 text-end me-4 ingredient-clickable"
               style="min-width: 80px"
               @click="toggleConvert(ingredient)"
               :title="convertState[ingredient.id] === 'converted' ? t('recipes.clickOriginalUnit') : t('recipes.clickPreferredUnit')"
             >
-              <v-icon v-if="converting[ingredient.id]" size="small" class="mr-1">mdi-loading</v-icon>
+              <v-icon v-if="converting[ingredient.id]" size="small" class="me-1">mdi-loading</v-icon>
               <template v-if="convertState[ingredient.id] === 'converted' && convertedDisplay[ingredient.id]">
                 {{ convertedDisplay[ingredient.id].value }} {{ convertedDisplay[ingredient.id].unit }}
               </template>
@@ -123,11 +123,11 @@
               <span v-else-if="ingredient.original_quantity">{{ originalQuantityLabel(ingredient.original_quantity) }}</span>
               <span v-else>-</span>
             </div>
-            <div class="ingredient-cost text-body-2 text-right d-flex align-center justify-end" style="min-width: 60px">
+            <div class="ingredient-cost text-body-2 text-end d-flex align-center justify-end" style="min-width: 60px">
               <template v-if="getIngredientFallbackChain(ingredient)">
                 <v-tooltip location="top">
                   <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" color="info" class="mr-1">mdi-information</v-icon>
+                    <v-icon v-bind="props" size="small" color="info" class="me-1">mdi-information</v-icon>
                   </template>
                   <div>
                     <div class="text-caption">{{ t('recipes.calculatedFromIngredientsCost') }}</div>
@@ -138,7 +138,7 @@
               <span>{{ formatIngredientCost(ingredient) }}</span>
             </div>
           </div>
-          <div v-if="ingredient.note" class="text-caption text-medium-emphasis pl-2 pb-1">
+          <div v-if="ingredient.note" class="text-caption text-medium-emphasis ps-2 pb-1">
             {{ ingredient.note }}
           </div>
         </div>
@@ -235,7 +235,7 @@
           </div>
 
           <!-- 第2行：推荐值 min max 单位（仅数值类型时显示） -->
-          <div v-if="!row.quantity_type" class="d-flex flex-wrap align-start ga-2 mb-1 pl-7">
+          <div v-if="!row.quantity_type" class="d-flex flex-wrap align-start ga-2 mb-1 ps-7">
             <v-text-field
               v-model="row.quantity_recommended"
               type="number"
@@ -284,7 +284,7 @@
           </div>
 
           <!-- 第3行：备注 + 可选 -->
-          <div class="d-flex flex-wrap align-center ga-2 pl-7">
+          <div class="d-flex flex-wrap align-center ga-2 ps-7">
             <v-text-field
               v-model="row.note"
               :label="t('recipes.note')"

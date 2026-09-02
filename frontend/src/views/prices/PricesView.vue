@@ -68,8 +68,8 @@
             </v-list-item-subtitle>
 
             <template #append>
-              <v-btn icon="mdi-tag-multiple" size="small" variant="text" class="mr-1" @click.stop="openRecordAgainDialog(record)" />
-              <v-btn icon="mdi-pencil" size="small" variant="text" color="primary" class="mr-1" @click.stop="openEditDialog(record)" />
+              <v-btn icon="mdi-tag-multiple" size="small" variant="text" class="me-1" @click.stop="openRecordAgainDialog(record)" />
+              <v-btn icon="mdi-pencil" size="small" variant="text" color="primary" class="me-1" @click.stop="openEditDialog(record)" />
               <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click.stop="deleteRecord(record.id)" />
             </template>
           </v-list-item>
@@ -95,7 +95,7 @@
                  @click="goToProduct(record)">
             <v-card-text>
               <div class="d-flex align-center mb-2">
-                <v-avatar color="primary" size="40" class="mr-3">
+                <v-avatar color="primary" size="40" class="me-3">
                   <span class="text-white">{{ record.product_name?.charAt(0) }}</span>
                 </v-avatar>
                 <div class="text-body-2 font-weight-medium text-truncate">{{ record.product_name }}</div>
@@ -163,7 +163,7 @@
       size="large"
       elevation="8"
       class="position-fixed"
-      style="bottom: 80px; right: 24px"
+      style="bottom: 80px; inset-inline-end: 24px"
       @click="openAddDialog"
     />
 

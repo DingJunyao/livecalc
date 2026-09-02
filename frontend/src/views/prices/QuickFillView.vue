@@ -5,7 +5,7 @@
     <v-app-bar-title class="text-h6">{{ t('prices.quickFill') }}</v-app-bar-title>
     <template #append>
       <div class="d-flex align-center">
-        <span v-if="saveProgress" class="text-caption text-medium-emphasis mr-2">
+        <span v-if="saveProgress" class="text-caption text-medium-emphasis me-2">
           {{ saveProgress.current }}/{{ saveProgress.total }}
         </span>
         <v-btn

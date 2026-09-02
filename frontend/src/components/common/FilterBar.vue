@@ -9,7 +9,7 @@
       @click="dialogOpen = true"
     >
       <v-icon size="20" :color="hasActiveFilters ? 'primary' : 'default'">mdi-filter-variant</v-icon>
-      <span v-if="hasActiveFilters" class="ml-1 text-caption font-weight-bold text-primary">{{ activeFilterCount }}</span>
+      <span v-if="hasActiveFilters" class="ms-1 text-caption font-weight-bold text-primary">{{ activeFilterCount }}</span>
     </v-btn>
 
     <v-dialog v-model="dialogOpen" max-width="480">
@@ -51,7 +51,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -83,7 +83,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -158,7 +158,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -253,7 +253,7 @@
 
       <!-- 日期范围 -->
       <div v-if="f.type === 'date-range'" class="d-flex align-center ga-1" :style="{ minWidth: f.minWidth || '340px' }">
-        <span class="text-caption text-medium-emphasis mr-1">{{ f.label }}</span>
+        <span class="text-caption text-medium-emphasis me-1">{{ f.label }}</span>
         <v-text-field
           :model-value="getValue(f.key)?.start || ''"
           type="date"

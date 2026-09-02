@@ -8,7 +8,7 @@
       />
       <v-app-bar-title>
         {{ t('meals.title') }}
-        <span class="text-caption text-medium-emphasis ml-2">
+        <span class="text-caption text-medium-emphasis ms-2">
           {{ formattedDate }}
         </span>
       </v-app-bar-title>

@@ -132,13 +132,13 @@
         <template v-else>
           <!-- 顶部状态条 -->
           <div class="status-bar px-3 py-2 d-flex align-center">
-            <v-icon size="18" :color="statusColor" class="mr-2">
+            <v-icon size="18" :color="statusColor" class="me-2">
               {{ sessionStatusIcon(status) }}
             </v-icon>
             <span class="text-body-2 font-weight-medium">{{ statusLabel }}</span>
             <v-spacer />
-            <span v-if="costUsd != null" class="text-caption text-medium-emphasis mr-3">
-              <v-icon size="12" class="mr-1">mdi-currency-usd</v-icon>{{ formatCost(costUsd) }}
+            <span v-if="costUsd != null" class="text-caption text-medium-emphasis me-3">
+              <v-icon size="12" class="me-1">mdi-currency-usd</v-icon>{{ formatCost(costUsd) }}
             </span>
             <v-progress-circular
               v-if="isRunning"
@@ -189,13 +189,13 @@
             <v-btn
               color="primary"
               variant="flat"
-              class="ml-2"
+              class="ms-2"
               :disabled="!canInterject || !interjectText.trim()"
               :loading="sending"
               @click="onInterject"
             >
               <v-icon>mdi-send</v-icon>
-              <span class="ml-1 d-none d-sm-inline">{{ t('adminData.agent.send') }}</span>
+              <span class="ms-1 d-none d-sm-inline">{{ t('adminData.agent.send') }}</span>
             </v-btn>
           </div>
         </template>
@@ -206,7 +206,7 @@
     <v-navigation-drawer
       v-if="!$vuetify.display.mdAndUp"
       v-model="mobileShowSidebar"
-      location="left"
+      location="start"
       temporary
       width="300"
     >
@@ -584,7 +584,7 @@ onUnmounted(() => {
   height: 100%;
 }
 .agent-sidebar {
-  border-right: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  border-inline-end: 1px solid rgba(var(--v-theme-on-surface), 0.08);
   display: flex;
   flex-direction: column;
   height: 100%;

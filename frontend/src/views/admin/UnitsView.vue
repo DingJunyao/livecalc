@@ -68,9 +68,9 @@
               class="d-flex align-center py-3 cursor-pointer"
               @click="toggleGroup(group.key)"
             >
-              <v-icon class="mr-2" :icon="group.icon" :color="group.color" />
+              <v-icon class="me-2" :icon="group.icon" :color="group.color" />
               <span class="font-weight-bold">{{ group.label }}</span>
-              <v-chip size="x-small" class="ml-2" variant="tonal">
+              <v-chip size="x-small" class="ms-2" variant="tonal">
                 {{ formatCount(getFilteredUnitsForSystem(group.key).length) }}
               </v-chip>
               <v-spacer />
@@ -146,7 +146,7 @@
       <v-col cols="12" md="4" class="pl-md-4 pt-4 pt-md-0">
         <v-card v-if="selectedUnit" class="rounded-lg" sticky>
           <v-card-title class="d-flex align-center py-3">
-            <v-icon class="mr-2" color="info">mdi-swap-horizontal</v-icon>
+            <v-icon class="me-2" color="info">mdi-swap-horizontal</v-icon>
             <span>{{ t('admin.units.conversionPreview') }}</span>
             <v-spacer />
             <v-tooltip location="top">
@@ -209,7 +209,7 @@
     <v-dialog v-model="unitDialog" max-width="600px" persistent>
       <v-card class="rounded-lg">
         <v-card-title class="d-flex align-center py-4">
-          <v-icon class="mr-2">
+          <v-icon class="me-2">
             {{ editingUnit ? 'mdi-pencil' : 'mdi-plus' }}
           </v-icon>
           <span>{{ editingUnit ? t('admin.units.editTitle') : t('admin.units.add') }}</span>

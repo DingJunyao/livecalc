@@ -1032,7 +1032,7 @@ onUnmounted(() => {
 .map-controls {
   position: absolute;
   top: 10px;
-  right: 10px;
+  inset-inline-end: 10px;
   z-index: 9999;
   display: flex;
   gap: 8px;
