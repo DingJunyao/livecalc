@@ -5,7 +5,7 @@ from typing import List
 
 from app.core.database import get_db
 from app.core.exceptions import LocalizedHTTPException
-from app.core.i18n import DEFAULT_LOCALE, normalize_locale, request_locale
+from app.core.i18n import DEFAULT_LOCALE, api_message, normalize_locale, request_locale
 from app.core.security import get_current_admin_user
 from app.models.user import User
 from app.models.smtp_config import SmtpConfig
@@ -73,7 +73,7 @@ def test_smtp_config(
         raise LocalizedHTTPException(status_code=400, message="SMTP 未配置或未启用")
     service = EmailService(config)
     service.send_test_async(body.to_email, request_locale(request))
-    return {"message": f"测试邮件已异步发送至 {body.to_email}"}
+    return {"message": api_message(request, "测试邮件已异步发送至 {email}", email=body.to_email)}
 
 
 @router.get("/admin/email-config/templates", response_model=List[EmailTemplateResponse])

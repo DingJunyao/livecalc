@@ -1,8 +1,9 @@
 """用户偏好 API 路由"""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.core.exceptions import LocalizedHTTPException
 from app.models.user import User
@@ -115,6 +116,7 @@ def update_preference(
 @router.delete("/preferences/{ingredient_id}/")
 def delete_preference(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -130,4 +132,4 @@ def delete_preference(
     preference.is_active = False
     preference.updated_by = current_user.id
     db.commit()
-    return {"message": "Preference deleted successfully"}
+    return {"message": api_message(request, "Preference deleted successfully")}

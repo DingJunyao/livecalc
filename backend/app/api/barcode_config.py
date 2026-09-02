@@ -2,11 +2,12 @@ from dataclasses import asdict
 import json
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_admin_user
 from app.core.exceptions import LocalizedHTTPException
 from app.models.barcode_lookup_cache import BarcodeLookupCache
@@ -70,6 +71,7 @@ def put_barcode_config(
 @router.post("/test")
 def test_barcode_service(
     payload: BarcodeServiceTestRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
@@ -86,5 +88,5 @@ def test_barcode_service(
 
     source = provider_source(service)
     if product is None:
-        return asdict(LookupOutcome(False, None, {}, ["Product not found"]))
+        return asdict(LookupOutcome(False, None, {}, [api_message(request, "Product not found")]))
     return asdict(LookupOutcome(True, source, product, []))

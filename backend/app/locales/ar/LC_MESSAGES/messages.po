@@ -884,3 +884,144 @@ msgstr "فشل التحديث: {error}"
 
 msgid "合并失败: {detail}"
 msgstr "فشل الدمج: {detail}"
+
+msgid "食材已永久删除"
+msgstr "تم حذف المكوّن نهائيًا"
+
+msgid "原料已删除（管理员直写，级联软删商品和层级关系）"
+msgstr "تم حذف المكوّن (كتابة مباشرة من المسؤول، وحذف المنتجات والعلاقات الهرمية المرتبطة بشكل ناعم)"
+
+msgid "删除提议已提交（proposal_id={proposal_id}, status={status}）"
+msgstr "تم إرسال اقتراح الحذف (proposal_id={proposal_id}, status={status})"
+
+msgid "批量创建商品完成：创建 {created_count}，跳过 {skipped_count}，失败 {failed_count}"
+msgstr "اكتمل إنشاء المنتجات الدفعي: أُنشئ {created_count}، وتُجوهل {skipped_count}، وفشل {failed_count}"
+
+msgid "已删除覆盖，回退到全局权重"
+msgstr "تم حذف التجاوز والعودة إلى الوزن العام"
+
+msgid "合并完成（管理员直写）"
+msgstr "اكتمل الدمج (كتابة مباشرة من المسؤول)"
+
+msgid "合并提议已提交（proposal_id={proposal_id}, status={status}）"
+msgstr "تم إرسال اقتراح الدمج (proposal_id={proposal_id}, status={status})"
+
+msgid "已保存 {count} 条排序记录"
+msgstr "تم حفظ {count} من سجلات الترتيب"
+
+msgid "商家已停用（管理员直写，价格记录引用已置空）"
+msgstr "تم تعطيل التاجر (كتابة مباشرة من المسؤول، وتم مسح مراجع سجلات الأسعار)"
+
+msgid "单位已删除（管理员直写）"
+msgstr "تم حذف الوحدة (كتابة مباشرة من المسؤول)"
+
+msgid "换算关系已删除"
+msgstr "تم حذف علاقة التحويل"
+
+msgid "实体单位覆盖已删除（管理员直写，软删）"
+msgstr "تم حذف تجاوز وحدة الكيان (كتابة مباشرة من المسؤول، حذف ناعم)"
+
+msgid "实体密度记录已删除（管理员直写，软删）"
+msgstr "تم حذف سجل كثافة الكيان (كتابة مباشرة من المسؤول، حذف ناعم)"
+
+msgid "扫描完成"
+msgstr "اكتمل الفحص"
+
+msgid "价格记录已删除"
+msgstr "تم حذف سجل السعر"
+
+msgid "层级关系删除成功（管理员直写）"
+msgstr "تم حذف علاقة التسلسل الهرمي بنجاح (كتابة مباشرة من المسؤول)"
+
+msgid "常用地点已删除"
+msgstr "تم حذف المكان المتكرر"
+
+msgid "已删除"
+msgstr "تم الحذف"
+
+msgid "已移除"
+msgstr "تمت الإزالة"
+
+msgid "导入完成：新建 {created} 个分组，复活 {reactivated} 个分组，映射 {mapped} 条原料"
+msgstr "اكتمل الاستيراد: أُنشئت {created} مجموعات، وأُعيد تفعيل {reactivated} مجموعة، وتمت مطابقة {mapped} مكوّنًا"
+
+msgid "Preference deleted successfully"
+msgstr "تم حذف التفضيل بنجاح"
+
+msgid "商品已删除（管理员直写，级联软删价格记录）"
+msgstr "تم حذف المنتج (كتابة مباشرة من المسؤول، وحذف سجلات الأسعار المرتبطة بشكل ناعم)"
+
+msgid "营养数据更新成功（管理员直写）"
+msgstr "تم تحديث بيانات التغذية بنجاح (كتابة مباشرة من المسؤول)"
+
+msgid "营养数据更新成功（补空自动通过）"
+msgstr "تم تحديث بيانات التغذية بنجاح (اعتماد تلقائي لسد النقص)"
+
+msgid "营养数据更新提议已提交（status={status}，待管理员审核）"
+msgstr "تم إرسال اقتراح تحديث التغذية (status={status}، بانتظار مراجعة المسؤول)"
+
+msgid "商品已拆分为原料「{ingredient_name}」"
+msgstr "تم تقسيم المنتج إلى المكوّن «{ingredient_name}»"
+
+msgid "拆分提议已提交，待管理员审核（proposal_id={proposal_id}）"
+msgstr "تم إرسال اقتراح التقسيم بانتظار مراجعة المسؤول (proposal_id={proposal_id})"
+
+msgid "已合并到「{target_name}」"
+msgstr "تم الدمج في «{target_name}»"
+
+msgid "合并提议已提交，待管理员审核（proposal_id={proposal_id}）"
+msgstr "تم إرسال اقتراح الدمج بانتظار مراجعة المسؤول (proposal_id={proposal_id})"
+
+msgid "编辑已提交，待管理员审核"
+msgstr "تم إرسال التعديل بانتظار مراجعة المسؤول"
+
+msgid "USDA 匹配成功（管理员直写）"
+msgstr "نجحت مطابقة USDA (كتابة مباشرة من المسؤول)"
+
+msgid "USDA 匹配成功（补空自动通过）"
+msgstr "نجحت مطابقة USDA (اعتماد تلقائي لسد النقص)"
+
+msgid "USDA 匹配提议已提交（status={status}，待管理员审核）"
+msgstr "تم إرسال اقتراح مطابقة USDA (status={status}، بانتظار مراجعة المسؤول)"
+
+msgid "下载任务已启动"
+msgstr "بدأت مهمة التنزيل"
+
+msgid "上传解析任务已启动"
+msgstr "بدأت مهمة الرفع والتحليل"
+
+msgid "翻译任务已启动（{provider}）"
+msgstr "بدأت مهمة الترجمة ({provider})"
+
+msgid "营养素翻译任务已启动（{provider}）"
+msgstr "بدأت مهمة ترجمة العناصر الغذائية ({provider})"
+
+msgid "更正成功"
+msgstr "تم التصحيح بنجاح"
+
+msgid "测试邮件已异步发送至 {email}"
+msgstr "تم إرسال البريد الاختباري بشكل غير متزامن إلى {email}"
+
+msgid "已订阅 {count} 个分组"
+msgstr "تم الاشتراك في {count} مجموعة"
+
+msgid "已取消订阅"
+msgstr "تم إلغاء الاشتراك"
+
+msgid "准备 AI 推测..."
+msgstr "جارٍ التحضير لاستنتاج AI..."
+
+msgid "推测完成"
+msgstr "اكتمل الاستنتاج"
+
+msgid "使用 {provider} 翻译..."
+msgstr "جارٍ الترجمة باستخدام {provider}..."
+
+msgid "Agent 翻译中（{total} 条待处理）"
+msgstr "الوكيل يترجم ({total} عنصرًا قيد المعالجة)"
+
+msgid "翻译完成"
+msgstr "اكتملت الترجمة"
+
+msgid "Product not found"
+msgstr "لم يتم العثور على المنتج"

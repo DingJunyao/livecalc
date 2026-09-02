@@ -1,7 +1,8 @@
 """商品价格权重的用户覆盖 API（个人偏好，不走审核）。"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.product_entity import Product
@@ -73,7 +74,7 @@ def set_my_weight(product_id: int, body: ProductWeightOverrideCreate,
 
 @router.delete("/products/{product_id}/my-weight")
 @router.delete("/products/{product_id}/my-weight/")
-def delete_my_weight(product_id: int, db: Session = Depends(get_db),
+def delete_my_weight(product_id: int, request: Request, db: Session = Depends(get_db),
                      current_user: User = Depends(get_current_user)):
     """删除当前用户对该商品的权重覆盖（回退到全局）。"""
     existing = db.query(UserProductWeightOverride).filter(
@@ -85,4 +86,4 @@ def delete_my_weight(product_id: int, db: Session = Depends(get_db),
     existing.is_active = False
     existing.updated_by = current_user.id
     db.commit()
-    return {"message": "已删除覆盖，回退到全局权重"}
+    return {"message": api_message(request, "已删除覆盖，回退到全局权重")}

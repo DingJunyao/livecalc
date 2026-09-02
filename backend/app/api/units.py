@@ -5,11 +5,12 @@
 from decimal import Decimal
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.models.unit import Unit, UnitConversion
 from app.models.user import User
@@ -219,7 +220,7 @@ def update_unit(
 
 
 @router.delete("/{unit_id}")
-def delete_unit(unit_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_unit(unit_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     删除单位（分流：管理员直写 / 普通用户提议）。
 
@@ -236,14 +237,23 @@ def delete_unit(unit_id: int, db: Session = Depends(get_db), current_user: User 
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "单位已删除（管理员直写）"}
+        return {"message": api_message(request, "单位已删除（管理员直写）")}
 
     p = proposal_service.submit(
         db, entity_type="unit", entity_id=unit_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 # ============ 换算关系管理 ============
@@ -313,7 +323,7 @@ def create_conversion(conversion_data: UnitConversionCreate, db: Session = Depen
 
 
 @router.delete("/conversions/{conversion_id}")
-def delete_conversion(conversion_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
+def delete_conversion(conversion_id: int, request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_admin_user)):
     """删除换算关系"""
     conversion = db.query(UnitConversion).filter(UnitConversion.id == conversion_id).first()
     if not conversion:
@@ -321,7 +331,7 @@ def delete_conversion(conversion_id: int, db: Session = Depends(get_db), current
 
     db.delete(conversion)
     db.commit()
-    return {"message": "换算关系已删除"}
+    return {"message": api_message(request, "换算关系已删除")}
 
 
 # ============ 单位匹配 ============
@@ -559,6 +569,7 @@ def delete_entity_unit_override(
     entity_type: str,
     entity_id: int,
     override_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -591,14 +602,23 @@ def delete_entity_unit_override(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "实体单位覆盖已删除（管理员直写，软删）"}
+        return {"message": api_message(request, "实体单位覆盖已删除（管理员直写，软删）")}
 
     p = proposal_service.submit(
         db, entity_type="entity_unit_override", entity_id=override_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 @entities_unit_router.get("/unmapped-units", response_model=List[UnmappedUnitItem])
@@ -741,6 +761,7 @@ def delete_entity_density(
     entity_type: str,
     entity_id: int,
     density_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -773,11 +794,20 @@ def delete_entity_density(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "实体密度记录已删除（管理员直写，软删）"}
+        return {"message": api_message(request, "实体密度记录已删除（管理员直写，软删）")}
 
     p = proposal_service.submit(
         db, entity_type="entity_density", entity_id=density_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }

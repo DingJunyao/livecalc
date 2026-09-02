@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from app.core.security import get_current_user, get_current_admin_user
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.models.user import User
 from app.models.product import ProductRecord
 from app.models.product_entity import Product as ProductEntity
@@ -387,6 +388,7 @@ async def get_unused_images(
 
 @router.post("/images/scan")
 async def scan_images(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
@@ -397,7 +399,7 @@ async def scan_images(
     """
     from app.services.image_tracking import scan_all_images
     stats = scan_all_images(db)
-    return {"stats": stats, "message": "扫描完成"}
+    return {"stats": stats, "message": api_message(request, "扫描完成")}
 
 
 @router.post("/images/unused/delete")

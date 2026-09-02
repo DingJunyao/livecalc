@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, BackgroundTasks, Request
 from app.schemas.common import PaginatedResponse
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session, load_only, joinedload
 from typing import List, Optional
 import json
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.api.deps import get_timezone
 from app.utils.date_range_utils import utc_datetime_to_local_date, local_date_range_to_utc_range
@@ -530,6 +531,7 @@ async def update_ingredient(
 @router.delete("/ingredients/{ingredient_id}")
 async def soft_delete_ingredient(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -561,14 +563,23 @@ async def soft_delete_ingredient(
                 action="delete", payload={}, admin=current_user,
             )
             db.commit()
-            return {"message": "原料已删除（管理员直写，级联软删商品和层级关系）"}
+            return {"message": api_message(request, "原料已删除（管理员直写，级联软删商品和层级关系）")}
 
         p = proposal_service.submit(
             db, entity_type="ingredient", entity_id=ingredient_id,
             action="delete", payload={}, proposer=current_user,
         )
         db.commit()
-        return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+        return {
+            "message": api_message(
+                request,
+                "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+                proposal_id=p.id,
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -610,7 +621,8 @@ async def match_ingredient_nutrition(
 
 @router.post("/correct")
 async def correct_nutrition_mapping(
-    request: NutritionCorrectRequest,
+    body: NutritionCorrectRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ):
@@ -618,13 +630,13 @@ async def correct_nutrition_mapping(
     try:
         from app.services.nutrition_service import correct_mapping
         success = await correct_mapping(
-            request.ingredient_name,
-            request.nutrition_id,
+            body.ingredient_name,
+            body.nutrition_id,
             db=db
         )
         if not success:
             raise LocalizedHTTPException(status_code=404, message='更正失败')
-        return {"success": True, "message": "更正成功"}
+        return {"success": True, "message": api_message(request, "更正成功")}
     except Exception as e:
         raise LocalizedHTTPException(status_code=500, message='更正失败: {error}', error=str(e))
 

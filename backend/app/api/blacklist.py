@@ -1,8 +1,9 @@
 """用户原料黑名单 API（支持手动添加 + 原料黑名单分组订阅）"""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Set
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.user_ingredient_blacklist import UserIngredientBlacklist
@@ -136,6 +137,7 @@ def add_to_blacklist(
 @router.delete("/blacklist/{ingredient_id}/")
 def remove_from_blacklist(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -151,7 +153,7 @@ def remove_from_blacklist(
     entry.is_active = False
     entry.updated_by = current_user.id
     db.commit()
-    return {"message": "已移除"}
+    return {"message": api_message(request, "已移除")}
 
 
 # ---- 原料黑名单分组订阅 ----
@@ -193,6 +195,7 @@ def list_subscribed_groups(
 @router.post("/blacklist/groups/")
 def subscribe_groups(
     body: BlacklistGroupSubscribe,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -217,13 +220,17 @@ def subscribe_groups(
             db.add(sub)
             added += 1
     db.commit()
-    return {"message": f"已订阅 {added} 个分组", "count": added}
+    return {
+        "message": api_message(request, "已订阅 {count} 个分组", count=added),
+        "count": added,
+    }
 
 
 @router.delete("/blacklist/groups/{group_id}")
 @router.delete("/blacklist/groups/{group_id}/")
 def unsubscribe_group(
     group_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -238,7 +245,7 @@ def unsubscribe_group(
     sub.is_active = False
     sub.updated_by = current_user.id
     db.commit()
-    return {"message": "已取消订阅"}
+    return {"message": api_message(request, "已取消订阅")}
 
 
 # ---- 有效黑名单（手动 + 分组订阅的并集） ----

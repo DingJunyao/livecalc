@@ -16,6 +16,7 @@ export interface UnitPreferences {
 export interface Currency {
   code: string
   name: string
+  display_name?: string | null
   symbol: string | null
   decimals: number
   is_active?: boolean

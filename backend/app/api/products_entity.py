@@ -1,7 +1,7 @@
 """商品实体 API 路由"""
 from dataclasses import asdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, and_, or_, func
@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.api.deps import get_timezone
 from app.utils.date_range_utils import utc_datetime_to_local_date, local_date_range_to_utc_range
@@ -504,6 +505,7 @@ def update_product(
 @router.delete("/products/entity/{product_id}/")
 def delete_product(
     product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -532,14 +534,23 @@ def delete_product(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "商品已删除（管理员直写，级联软删价格记录）"}
+        return {"message": api_message(request, "商品已删除（管理员直写，级联软删价格记录）")}
 
     p = proposal_service.submit(
         db, entity_type="product", entity_id=product_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 # ==================== 条码管理端点 ====================
@@ -1031,6 +1042,7 @@ async def get_product_nutrition(
 @router.put("/products/entity/{product_id}/nutrition")
 async def update_product_nutrition(
     product_id: int,
+    request: Request,
     nutrition: Optional[dict] = Body(None, description="营养数据，传 null 清空自定义数据"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1079,7 +1091,7 @@ async def update_product_nutrition(
             )
             db.commit()
             return {
-                "message": "营养数据更新成功（管理员直写）",
+                "message": api_message(request, "营养数据更新成功（管理员直写）"),
                 "custom_nutrition_data": nutrition,
             }
 
@@ -1097,11 +1109,17 @@ async def update_product_nutrition(
         db.commit()
         if p.status == "applied":
             return {
-                "message": "营养数据更新成功（补空自动通过）",
+                "message": api_message(request, "营养数据更新成功（补空自动通过）"),
                 "custom_nutrition_data": nutrition,
             }
         return {
-            "message": f"营养数据更新提议已提交（status={p.status}，待管理员审核）",
+            "message": api_message(
+                request,
+                "营养数据更新提议已提交（status={status}，待管理员审核）",
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
             "custom_nutrition_data": product.custom_nutrition_data,  # 待审未变，返旧值
         }
     except HTTPException:
@@ -1180,6 +1198,7 @@ def _merge_nutrition_data(product_nutrition: dict, ingredient_nutrition: dict) -
 @router.post("/products/entity/{product_id}/split-to-ingredient")
 async def split_product_to_ingredient(
     product_id: int,
+    request: Request,
     new_name: Optional[str] = Body(None, embed=True, description="新原料名称，同名冲突时指定"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1243,7 +1262,11 @@ async def split_product_to_ingredient(
         # 重新读取刷新后的商品
         db.refresh(product)
         return {
-            "message": f"商品已拆分为原料「{ingredient_name}」",
+            "message": api_message(
+                request,
+                "商品已拆分为原料「{ingredient_name}」",
+                ingredient_name=ingredient_name,
+            ),
             "ingredient_id": product.ingredient_id,
             "ingredient_name": ingredient_name,
         }
@@ -1254,8 +1277,13 @@ async def split_product_to_ingredient(
     )
     db.commit()
     return {
-        "message": f"拆分提议已提交，待管理员审核（proposal_id={p.id}）",
+        "message": api_message(
+            request,
+            "拆分提议已提交，待管理员审核（proposal_id={proposal_id}）",
+            proposal_id=p.id,
+        ),
         "proposal_id": p.id,
+        "status": p.status,
     }
 
 
@@ -1263,6 +1291,7 @@ async def split_product_to_ingredient(
 def merge_product_into(
     product_id: int,
     target_product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1313,7 +1342,11 @@ def merge_product_into(
         ).count()
 
         return {
-            "message": f"已合并到「{target_product.name}」",
+            "message": api_message(
+                request,
+                "已合并到「{target_name}」",
+                target_name=target_product.name,
+            ),
             "target_id": target_product.id,
             "target_name": target_product.name,
             "price_record_count": price_record_count,
@@ -1325,8 +1358,13 @@ def merge_product_into(
     )
     db.commit()
     return {
-        "message": f"合并提议已提交，待管理员审核（proposal_id={p.id}）",
+        "message": api_message(
+            request,
+            "合并提议已提交，待管理员审核（proposal_id={proposal_id}）",
+            proposal_id=p.id,
+        ),
         "proposal_id": p.id,
+        "status": p.status,
     }
 
 

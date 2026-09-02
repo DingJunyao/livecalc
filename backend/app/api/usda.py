@@ -1,10 +1,11 @@
 # backend/app/api/usda.py
 """USDA 用户路由：搜索 / 详情 / 匹配写入（原料/商品）。"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.schemas.auth import UserResponse
 from app.schemas.usda import UsdaSearchItem, UsdaFoodDetail, UsdaNutrientItem, UsdaMatchRequest
@@ -100,6 +101,7 @@ async def get_usda_food(
 async def match_ingredient_endpoint(
     ingredient_id: int,
     body: UsdaMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -123,7 +125,7 @@ async def match_ingredient_endpoint(
             action="create", payload=payload, admin=current_user,
         )
         db.commit()
-        return {"ingredient_id": ingredient_id, "fdc_id": body.fdc_id, "message": "USDA 匹配成功（管理员直写）"}
+        return {"ingredient_id": ingredient_id, "fdc_id": body.fdc_id, "message": api_message(request, "USDA 匹配成功（管理员直写）")}
 
     has_data = db.query(NutritionData).filter(
         NutritionData.ingredient_id == ingredient_id).count() > 0
@@ -134,14 +136,27 @@ async def match_ingredient_endpoint(
     )
     db.commit()
     if p.status == "applied":
-        return {"ingredient_id": ingredient_id, "fdc_id": body.fdc_id, "message": "USDA 匹配成功（补空自动通过）"}
-    return {"ingredient_id": ingredient_id, "fdc_id": body.fdc_id, "message": f"USDA 匹配提议已提交（status={p.status}，待管理员审核）"}
+        return {
+            "ingredient_id": ingredient_id,
+            "fdc_id": body.fdc_id,
+            "message": api_message(request, "USDA 匹配成功（补空自动通过）"),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
+    return {
+        "ingredient_id": ingredient_id,
+        "fdc_id": body.fdc_id,
+        "message": api_message(request, "USDA 匹配提议已提交（status={status}，待管理员审核）", status=p.status),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 @router.post("/match/product/{product_id}")
 async def match_product_endpoint(
     product_id: int,
     body: UsdaMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: UserResponse = Depends(get_current_user),
 ):
@@ -164,7 +179,7 @@ async def match_product_endpoint(
             action="create", payload=payload, admin=current_user,
         )
         db.commit()
-        return {"product_id": product_id, "fdc_id": body.fdc_id, "message": "USDA 匹配成功（管理员直写）"}
+        return {"product_id": product_id, "fdc_id": body.fdc_id, "message": api_message(request, "USDA 匹配成功（管理员直写）")}
 
     has_data = bool(product.custom_nutrition_data)
     policy = "manual" if has_data else "auto_approve"
@@ -174,5 +189,17 @@ async def match_product_endpoint(
     )
     db.commit()
     if p.status == "applied":
-        return {"product_id": product_id, "fdc_id": body.fdc_id, "message": "USDA 匹配成功（补空自动通过）"}
-    return {"product_id": product_id, "fdc_id": body.fdc_id, "message": f"USDA 匹配提议已提交（status={p.status}，待管理员审核）"}
+        return {
+            "product_id": product_id,
+            "fdc_id": body.fdc_id,
+            "message": api_message(request, "USDA 匹配成功（补空自动通过）"),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
+    return {
+        "product_id": product_id,
+        "fdc_id": body.fdc_id,
+        "message": api_message(request, "USDA 匹配提议已提交（status={status}，待管理员审核）", status=p.status),
+        "proposal_id": p.id,
+        "status": p.status,
+    }

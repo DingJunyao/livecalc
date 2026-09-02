@@ -125,3 +125,8 @@ def translate(text: str, locale: str = DEFAULT_LOCALE) -> str:
 
 def translate_format(text: str, locale: str, /, **params: object) -> str:
     return translate(text, locale).format(**params)
+
+
+def api_message(request: Request, text: str, /, **params: object) -> str:
+    """Translate a non-exception API status message using request locale."""
+    return translate_format(text, request_locale(request), **params)

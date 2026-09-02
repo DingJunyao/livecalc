@@ -120,7 +120,10 @@ class EmailService:
             msg["Subject"] = subject
             msg["From"] = f"{cfg.from_name} <{cfg.from_address}>"
             recipients = [to_email] if isinstance(to_email, str) else list(to_email)
-            msg["To"] = ", ".join(recipients)
+            if recipients:
+                msg["To"] = recipients[0]
+            if len(recipients) > 1:
+                msg["Bcc"] = ", ".join(recipients[1:])
             msg.attach(MIMEText(body_html, "html", "utf-8"))
 
             if cfg.use_ssl:

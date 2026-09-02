@@ -4,11 +4,12 @@ import asyncio
 import os
 import threading
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.database import get_db, SessionLocal
+from app.core.i18n import DEFAULT_LOCALE, request_locale, translate, translate_format
 from app.core.security import get_current_admin_user, get_current_user
 from app.models.import_task import ImportTask
 from app.models.usda import TranslationConfig
@@ -261,6 +262,7 @@ def _create_ai_caller(provider: str, db: Session):
 def _run_ai_inference(
     task_id: int, inference_type: str, force: bool, provider: str, db_session_factory,
     main_loop: "asyncio.AbstractEventLoop | None" = None,
+    locale: str = DEFAULT_LOCALE,
 ):
     """后台运行 AI 推测。"""
     db = db_session_factory()
@@ -273,7 +275,7 @@ def _run_ai_inference(
             "stage": "初始化",
             "current": 0,
             "total": 0,
-            "message": "准备 AI 推测...",
+            "message": translate("准备 AI 推测...", locale),
         }
         db.commit()
 
@@ -327,7 +329,7 @@ def _run_ai_inference(
                 "stage": "完成",
                 "current": 1,
                 "total": 1,
-                "message": "推测完成",
+                "message": translate("推测完成", locale),
             }
             task.stats = result.stats if hasattr(result, "stats") else {}
             if hasattr(result, "errors") and result.errors:
@@ -350,6 +352,7 @@ def _run_ai_inference(
 async def infer_fuzzy_quantities(
     force: bool = False,
     provider: str = Query("claude_code", description="AI 提供方名称"),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -368,7 +371,7 @@ async def infer_fuzzy_quantities(
     main_loop = asyncio.get_running_loop()
     thread = threading.Thread(
         target=_run_ai_inference,
-        args=(task.id, "quantities", force, provider, SessionLocal, main_loop),
+        args=(task.id, "quantities", force, provider, SessionLocal, main_loop, request_locale(request)),
         daemon=True,
     )
     thread.start()
@@ -380,6 +383,7 @@ async def infer_fuzzy_quantities(
 async def infer_densities(
     force: bool = False,
     provider: str = Query("claude_code", description="AI 提供方名称"),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -398,7 +402,7 @@ async def infer_densities(
     main_loop = asyncio.get_running_loop()
     thread = threading.Thread(
         target=_run_ai_inference,
-        args=(task.id, "densities", force, provider, SessionLocal, main_loop),
+        args=(task.id, "densities", force, provider, SessionLocal, main_loop, request_locale(request)),
         daemon=True,
     )
     thread.start()
@@ -415,6 +419,7 @@ def _run_translate_task(
     provider: str,
     db_session_factory,
     force: bool = False,
+    locale: str = DEFAULT_LOCALE,
 ):
     """后台运行 USDA 翻译任务（食材名或营养素），带 ImportTask 进度跟踪。
 
@@ -434,7 +439,7 @@ def _run_translate_task(
             "stage": "翻译中",
             "current": 0,
             "total": 0,
-            "message": f"使用 {provider} 翻译...",
+            "message": translate_format("使用 {provider} 翻译...", locale, provider=provider),
         }
         db.commit()
 
@@ -532,7 +537,7 @@ def _run_translate_task(
                                     "stage": "翻译中",
                                     "current": done,
                                     "total": total,
-                                    "message": f"Agent 翻译中（{total} 条待处理）",
+                                    "message": translate_format("Agent 翻译中（{total} 条待处理）", locale, total=total),
                                 }
                                 sync_db.commit()
 
@@ -601,7 +606,7 @@ def _run_translate_task(
                     "stage": "完成",
                     "current": 1,
                     "total": 1,
-                    "message": "翻译完成",
+                    "message": translate("翻译完成", locale),
                 }
                 final_task.stats = (
                     result_box[0] if isinstance(result_box[0], dict) else {}
@@ -633,6 +638,7 @@ def _run_translate_task(
 def translate_foods(
     provider: str = Query("claude_code", description="翻译后端名称"),
     force: bool = False,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -647,7 +653,7 @@ def translate_foods(
     thread = threading.Thread(
         target=_run_translate_task,
         args=(task.id, "foods", provider, SessionLocal),
-        kwargs={"force": force},
+        kwargs={"force": force, "locale": request_locale(request)},
         daemon=True,
     )
     thread.start()
@@ -659,6 +665,7 @@ def translate_foods(
 def translate_nutrients(
     provider: str = Query("claude_code", description="AI 翻译后端名称"),
     force: bool = False,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -673,7 +680,7 @@ def translate_nutrients(
     thread = threading.Thread(
         target=_run_translate_task,
         args=(task.id, "nutrients", provider, SessionLocal),
-        kwargs={"force": force},
+        kwargs={"force": force, "locale": request_locale(request)},
         daemon=True,
     )
     thread.start()

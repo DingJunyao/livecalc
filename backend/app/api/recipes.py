@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from copy import deepcopy
 from sqlalchemy.orm import Session, load_only
 import os
@@ -6,6 +6,7 @@ from sqlalchemy import or_, and_
 from typing import List, Optional
 from decimal import Decimal
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.api.deps import get_timezone
 from app.models.recipe import Recipe, RecipeIngredient, RecipeCostHistory
@@ -722,6 +723,7 @@ async def get_recipe_detail(
 async def update_recipe(
     recipe_id: int,
     update_data: RecipeUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -750,7 +752,11 @@ async def update_recipe(
                 proposer=current_user,
             )
             db.commit()
-            return {"proposal_id": p.id, "status": p.status, "message": "编辑已提交，待管理员审核"}
+            return {
+                "proposal_id": p.id,
+                "status": p.status,
+                "message": api_message(request, "编辑已提交，待管理员审核"),
+            }
 
         # 管理员直写已发布菜谱，或作者编辑自己的菜谱
         exclude_unset = update_data.model_dump(exclude_unset=True)

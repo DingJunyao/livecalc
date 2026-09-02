@@ -884,3 +884,144 @@ msgstr "Refresh failed: {error}"
 
 msgid "合并失败: {detail}"
 msgstr "Merge failed: {detail}"
+
+msgid "食材已永久删除"
+msgstr "Ingredient permanently deleted"
+
+msgid "原料已删除（管理员直写，级联软删商品和层级关系）"
+msgstr "Ingredient deleted (admin direct write, related products and hierarchy soft-deleted)"
+
+msgid "删除提议已提交（proposal_id={proposal_id}, status={status}）"
+msgstr "Deletion proposal submitted (proposal_id={proposal_id}, status={status})"
+
+msgid "批量创建商品完成：创建 {created_count}，跳过 {skipped_count}，失败 {failed_count}"
+msgstr "Batch product creation completed: {created_count} created, {skipped_count} skipped, {failed_count} failed"
+
+msgid "已删除覆盖，回退到全局权重"
+msgstr "Override deleted; reverted to global weight"
+
+msgid "合并完成（管理员直写）"
+msgstr "Merge completed (admin direct write)"
+
+msgid "合并提议已提交（proposal_id={proposal_id}, status={status}）"
+msgstr "Merge proposal submitted (proposal_id={proposal_id}, status={status})"
+
+msgid "已保存 {count} 条排序记录"
+msgstr "Saved {count} sort records"
+
+msgid "商家已停用（管理员直写，价格记录引用已置空）"
+msgstr "Merchant disabled (admin direct write; price record references cleared)"
+
+msgid "单位已删除（管理员直写）"
+msgstr "Unit deleted (admin direct write)"
+
+msgid "换算关系已删除"
+msgstr "Conversion relation deleted"
+
+msgid "实体单位覆盖已删除（管理员直写，软删）"
+msgstr "Entity unit override deleted (admin direct write, soft delete)"
+
+msgid "实体密度记录已删除（管理员直写，软删）"
+msgstr "Entity density record deleted (admin direct write, soft delete)"
+
+msgid "扫描完成"
+msgstr "Scan completed"
+
+msgid "价格记录已删除"
+msgstr "Price record deleted"
+
+msgid "层级关系删除成功（管理员直写）"
+msgstr "Hierarchy relation deleted successfully (admin direct write)"
+
+msgid "常用地点已删除"
+msgstr "Frequent place deleted"
+
+msgid "已删除"
+msgstr "Deleted"
+
+msgid "已移除"
+msgstr "Removed"
+
+msgid "导入完成：新建 {created} 个分组，复活 {reactivated} 个分组，映射 {mapped} 条原料"
+msgstr "Import completed: {created} groups created, {reactivated} groups reactivated, {mapped} ingredients mapped"
+
+msgid "Preference deleted successfully"
+msgstr "Preference deleted successfully"
+
+msgid "商品已删除（管理员直写，级联软删价格记录）"
+msgstr "Product deleted (admin direct write, related price records soft-deleted)"
+
+msgid "营养数据更新成功（管理员直写）"
+msgstr "Nutrition data updated successfully (admin direct write)"
+
+msgid "营养数据更新成功（补空自动通过）"
+msgstr "Nutrition data updated successfully (auto-approved backfill)"
+
+msgid "营养数据更新提议已提交（status={status}，待管理员审核）"
+msgstr "Nutrition update proposal submitted (status={status}, pending admin review)"
+
+msgid "商品已拆分为原料「{ingredient_name}」"
+msgstr "Product split into ingredient \"{ingredient_name}\""
+
+msgid "拆分提议已提交，待管理员审核（proposal_id={proposal_id}）"
+msgstr "Split proposal submitted, pending admin review (proposal_id={proposal_id})"
+
+msgid "已合并到「{target_name}」"
+msgstr "Merged into \"{target_name}\""
+
+msgid "合并提议已提交，待管理员审核（proposal_id={proposal_id}）"
+msgstr "Merge proposal submitted, pending admin review (proposal_id={proposal_id})"
+
+msgid "编辑已提交，待管理员审核"
+msgstr "Edit submitted, pending admin review"
+
+msgid "USDA 匹配成功（管理员直写）"
+msgstr "USDA match succeeded (admin direct write)"
+
+msgid "USDA 匹配成功（补空自动通过）"
+msgstr "USDA match succeeded (auto-approved backfill)"
+
+msgid "USDA 匹配提议已提交（status={status}，待管理员审核）"
+msgstr "USDA match proposal submitted (status={status}, pending admin review)"
+
+msgid "下载任务已启动"
+msgstr "Download task started"
+
+msgid "上传解析任务已启动"
+msgstr "Upload and parse task started"
+
+msgid "翻译任务已启动（{provider}）"
+msgstr "Translation task started ({provider})"
+
+msgid "营养素翻译任务已启动（{provider}）"
+msgstr "Nutrient translation task started ({provider})"
+
+msgid "更正成功"
+msgstr "Correction succeeded"
+
+msgid "测试邮件已异步发送至 {email}"
+msgstr "Test email sent asynchronously to {email}"
+
+msgid "已订阅 {count} 个分组"
+msgstr "Subscribed to {count} groups"
+
+msgid "已取消订阅"
+msgstr "Unsubscribed"
+
+msgid "准备 AI 推测..."
+msgstr "Preparing AI inference..."
+
+msgid "推测完成"
+msgstr "Inference completed"
+
+msgid "使用 {provider} 翻译..."
+msgstr "Translating with {provider}..."
+
+msgid "Agent 翻译中（{total} 条待处理）"
+msgstr "Agent translating ({total} items pending)"
+
+msgid "翻译完成"
+msgstr "Translation completed"
+
+msgid "Product not found"
+msgstr "Product not found"

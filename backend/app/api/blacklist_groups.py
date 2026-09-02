@@ -1,10 +1,11 @@
 """原料黑名单分组 API（管理员维护 + 公开只读）"""
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.models.user import User
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
@@ -113,6 +114,7 @@ def update_group(
 @blacklist_group_admin_router.delete("/blacklist-groups/{group_id}/")
 def delete_group(
     group_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -127,7 +129,7 @@ def delete_group(
     group.is_active = False
     group.updated_by = admin.id
     db.commit()
-    return {"message": "已删除"}
+    return {"message": api_message(request, "已删除")}
 
 
 @blacklist_group_admin_router.post("/blacklist-groups/{group_id}/ingredients", response_model=BlacklistGroupResponse)
@@ -170,6 +172,7 @@ def add_ingredients_to_group(
 def remove_ingredient_from_group(
     group_id: int,
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -184,7 +187,7 @@ def remove_ingredient_from_group(
     agi.is_active = False
     agi.updated_by = admin.id
     db.commit()
-    return {"message": "已移除"}
+    return {"message": api_message(request, "已移除")}
 
 
 class AiMatchResponse(BaseModel):
@@ -274,6 +277,7 @@ def get_allergens_status(
 @blacklist_group_admin_router.post("/blacklist-groups/seed-allergens")
 @blacklist_group_admin_router.post("/blacklist-groups/seed-allergens/")
 def seed_allergens(
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -281,9 +285,12 @@ def seed_allergens(
     from app.services.allergen_seed import upsert_allergen_groups
     result = upsert_allergen_groups(db)
     return {
-        "message": (
-            f"导入完成：新建 {result['created']} 个分组，"
-            f"复活 {result['reactivated']} 个分组，映射 {result['mapped']} 条原料"
+        "message": api_message(
+            request,
+            "导入完成：新建 {created} 个分组，复活 {reactivated} 个分组，映射 {mapped} 条原料",
+            created=result["created"],
+            reactivated=result["reactivated"],
+            mapped=result["mapped"],
         ),
         "stats": result,
     }

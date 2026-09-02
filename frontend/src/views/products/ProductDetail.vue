@@ -1236,7 +1236,7 @@ import {
   LOCAL_UNIT_VALUES,
   NO_STANDARD_VALUES,
 } from '@/data/localValues'
-import { newNameSuffix, pendingReviewMarker } from '@/utils/localDisplay'
+import { newNameSuffix } from '@/utils/localDisplay'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useUserStore } from '@/stores/user'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
@@ -2828,8 +2828,8 @@ const saveNutritionEdit = async () => {
       // 商品允许删除全部覆盖数据，回退到继承原料的营养成分
       // 共享数据分流：管理员直写 / 普通用户补空自动通过 / 普通用户有数据→manual 待审
       const res = await api.put(`/products/entity/${productId.value}/nutrition`, null)
-      const msg: string = (res && res.message) || ''
-      if (msg.includes(pendingReviewMarker())) {
+      const isPending = res?.status === 'pending' || !!res?.proposal_id
+      if (isPending) {
         // 普通用户有数据→manual 待审：营养未落地，无需刷新
         editingNutrition.value = false
         showMessage(t('products.proposalSubmitted'), 'info')
@@ -2850,8 +2850,8 @@ const saveNutritionEdit = async () => {
       // 共享数据分流：管理员直写 / 普通用户补空自动通过（applied，营养已变）/
       // 普通用户有数据→manual 待审（status=pending，营养未变）。
       // 按后端返回 message 区分提示，避免普通用户待审时误报「已保存」。
-      const msg: string = (res && res.message) || ''
-      if (msg.includes(pendingReviewMarker())) {
+      const isPending = res?.status === 'pending' || !!res?.proposal_id
+      if (isPending) {
         // 普通用户有数据→manual 待审：营养未落地，无需刷新
         editingNutrition.value = false
         showMessage(t('products.proposalSubmitted'), 'info')

@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.user_place import UserPlace
 from app.models.map_config import MapConfiguration
@@ -115,6 +116,7 @@ async def update_user_place(
 @router.delete("/{place_id}")
 async def delete_user_place(
     place_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -129,7 +131,7 @@ async def delete_user_place(
             raise LocalizedHTTPException(status_code=404, message='常用地点不存在')
         db.delete(db_place)
         db.commit()
-        return {"message": "常用地点已删除"}
+        return {"message": api_message(request, "常用地点已删除")}
     except HTTPException:
         raise
     except SQLAlchemyError:

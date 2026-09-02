@@ -2,6 +2,7 @@
 // 每个工具包含名称、中文描述、JSON Schema 参数和 execute 执行函数。
 
 import { getAll, getById, getByIndex, countAll, getDb, batchAdd } from '../database'
+import { agentErrorMessage } from '@/utils/localAgentErrors'
 
 // ============================================================
 // 类型定义
@@ -330,7 +331,7 @@ const update_nutrition: ToolDefinition = {
     const nutrients: any[] = args.nutrients || []
 
     if (nutrients.length > 200) {
-      return { error: `营养数据条数 ${nutrients.length} 超过最大限制 200` }
+      return { error: agentErrorMessage('agentNutritionLimit', { count: nutrients.length }) }
     }
 
     const db = await getDb()
@@ -451,11 +452,11 @@ const batch_update: ToolDefinition = {
     const updates: any[] = args.updates || []
 
     if (updates.length > 50) {
-      return { error: `更新条数 ${updates.length} 超过最大限制 50` }
+      return { error: agentErrorMessage('agentUpdateLimit', { count: updates.length }) }
     }
 
     if (storeName === 'nutrition_data') {
-      return { error: '请使用 update_nutrition 工具更新营养数据' }
+      return { error: agentErrorMessage('agentUseUpdateNutrition') }
     }
 
     const db = await getDb()
@@ -527,10 +528,10 @@ const batch_insert: ToolDefinition = {
       'images',
     ])
     if (FORBIDDEN.has(storeName)) {
-      return { error: `不允许通过 batch_insert 写入 ${storeName}` }
+      return { error: agentErrorMessage('agentInsertForbiddenStore', { store: storeName }) }
     }
     if (items.length > 50) {
-      return { error: `新增条数 ${items.length} 超过最大限制 50` }
+      return { error: agentErrorMessage('agentInsertLimit', { count: items.length }) }
     }
     try {
       const now = new Date().toISOString()
@@ -548,7 +549,7 @@ const batch_insert: ToolDefinition = {
         ids: keys,
       }
     } catch (e: any) {
-      return { error: `写入失败: ${e?.message || String(e)}` }
+      return { error: agentErrorMessage('agentWriteFailed', { detail: e?.message || String(e) }) }
     }
   },
 }

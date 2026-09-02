@@ -41,7 +41,7 @@
           <v-select v-model="scopeValue" :items="scopeOptions" item-title="title" item-value="value"
             :label="t('context.scope')" variant="outlined" density="compact" class="mb-3" hide-details />
           <div class="text-subtitle-2 mb-1">{{ t('context.currency') }}</div>
-          <v-autocomplete v-model="currencyValue" :items="currencies" item-title="name" item-value="code"
+          <v-autocomplete v-model="currencyValue" :items="currencies" :item-title="(item: any) => currencyDisplayName(item)" item-value="code"
             :label="t('context.currency')" variant="outlined" density="compact" clearable :placeholder="t('context.currencyPlaceholder')" hide-details>
             <template #selection="{ item }">
               {{ currencyOptionLabel(item.raw) }}
@@ -69,7 +69,7 @@ import { useDisplay } from 'vuetify'
 import { api } from '@/api'
 import { useUserStore } from '@/stores/user'
 import { useCalcContextStore } from '@/stores/calcContext'
-import { loadCurrencies } from '@/utils/currency'
+import { currencyDisplayName, currencyOptionLabel, loadCurrencies } from '@/utils/currency'
 
 const { t } = useI18n()
 
@@ -116,7 +116,7 @@ const currencyLabel = computed(() => {
   const c = calcContext.currency || userStore.user?.default_currency || userStore.user?.effective_currency
   if (typeof c !== 'string' || !c) return t('context.followRegion')
   const hit = currencies.value.find(item => item.code === c)
-  return hit?.name && hit.name !== c ? hit.name : c
+  return currencyDisplayName(hit || { code: c, name: c })
 })
 
 const regionLabel = computed(() => {
@@ -125,10 +125,6 @@ const regionLabel = computed(() => {
 })
 
 const contextSummary = computed(() => `${regionLabel.value} · ${scopeLabel.value} · ${currencyLabel.value}`)
-
-function currencyOptionLabel(item: { code: string; name?: string }) {
-  return item.name && item.name !== item.code ? `${item.name} (${item.code})` : item.code
-}
 
 async function loadRegionLevel(level: number, parentId: number | null) {
   regionLoading.value[level] = true
@@ -179,7 +175,6 @@ onMounted(() => {
 })
 
 async function ensureCurrencyOptions() {
-  if (currencies.value.length) return
   try {
     currencies.value = await loadCurrencies()
   } catch { /* keep the code-only fallback */ }

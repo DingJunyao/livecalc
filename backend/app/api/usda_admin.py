@@ -6,13 +6,14 @@ import logging
 import traceback
 import zipfile
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
 
 from app.config import settings
 from app.core.database import get_db, SessionLocal
+from app.core.i18n import api_message
 from app.core.security import get_current_admin_user
 from app.models.usda import UsdaFood, UsdaFoodNutrient, UsdaTask, TranslationConfig
 from app.services.usda.importer import UsdaImporter
@@ -171,6 +172,7 @@ def _do_download(db_factory, task_id, datasets):
 async def usda_download(
     background_tasks: BackgroundTasks,
     datasets: str | None = None,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_admin_user),
 ):
@@ -181,13 +183,14 @@ async def usda_download(
     db.commit()
     db.refresh(task)
     background_tasks.add_task(_do_download, SessionLocal, task.id, ds_list)
-    return {"task_id": task.id, "message": "下载任务已启动"}
+    return {"task_id": task.id, "message": api_message(request, "下载任务已启动")}
 
 
 @router.post("/usda/upload")
 async def usda_upload(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    request: Request = None,
     current_user=Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -235,7 +238,11 @@ async def usda_upload(
             d.close()
 
     background_tasks.add_task(_run)
-    return {"task_id": upload_task_id, "message": "上传解析任务已启动", "foods_parsed": len(deduped)}
+    return {
+        "task_id": upload_task_id,
+        "message": api_message(request, "上传解析任务已启动"),
+        "foods_parsed": len(deduped),
+    }
 
 
 @router.get("/usda/task")
@@ -324,6 +331,7 @@ async def put_translation_config(
 async def usda_translate(
     body: TranslateRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     current_user=Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -343,7 +351,7 @@ async def usda_translate(
             d.close()
 
     background_tasks.add_task(_run)
-    return {"message": f"翻译任务已启动（{body.provider}）"}
+    return {"message": api_message(request, "翻译任务已启动（{provider}）", provider=body.provider)}
 
 
 class TranslateNutrientsRequest(BaseModel):
@@ -354,6 +362,7 @@ class TranslateNutrientsRequest(BaseModel):
 async def usda_translate_nutrients(
     body: TranslateNutrientsRequest,
     background_tasks: BackgroundTasks,
+    request: Request,
     current_user=Depends(get_current_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -374,7 +383,7 @@ async def usda_translate_nutrients(
         finally:
             d.close()
     background_tasks.add_task(_run_nutrients)
-    return {"message": f"营养素翻译任务已启动（{body.provider}）"}
+    return {"message": api_message(request, "营养素翻译任务已启动（{provider}）", provider=body.provider)}
 
 
 @router.post("/translation-config/test")

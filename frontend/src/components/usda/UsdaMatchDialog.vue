@@ -7,7 +7,6 @@ import { useLocaleStore } from '@/stores/locale'
 import { formatNumber } from '@/utils/format'
 import { usdaDescription } from '@/utils/catalogLabels'
 import { nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
-import { pendingReviewMarker } from '@/utils/localDisplay'
 
 const userStore = useUserStore()
 const { t } = useI18n()
@@ -98,9 +97,8 @@ async function confirmMatch() {
     }
 
     // 后端返回 message：管理员直写 / 补空自动通过 / 待审核
-    const message: string = res?.message || ''
     const isAdmin = !!userStore.user?.is_admin
-    const isPending = message.includes(pendingReviewMarker()) || /status=pending/.test(message)
+    const isPending = res?.status === 'pending' || !!res?.proposal_id
 
     if (isAdmin) {
       snackbar.value = { show: true, message: t('usda.matchSuccess'), color: 'success' }

@@ -2,14 +2,19 @@ import type { Currency } from '@/types'
 import { api } from '@/api'
 import { formatMoney as formatMoneyWithLocale } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
+import { currencyDisplayName, currencyOptionLabel } from './currencyLabels'
 
-let cache: Currency[] | null = null
+let cache: { locale: string; items: Currency[] } | null = null
+
+export { currencyDisplayName, currencyOptionLabel }
 
 export async function loadCurrencies(force = false): Promise<Currency[]> {
-  if (!force && cache) return cache
+  const locale = useLocaleStore().locale
+  if (!force && cache?.locale === locale) return cache.items
   const res = await api.get('/currencies')
-  cache = Array.isArray(res) ? res : ((res as any)?.items || [])
-  return cache
+  const items = Array.isArray(res) ? res : ((res as any)?.items || [])
+  cache = { locale, items }
+  return items
 }
 
 export function symbolFromIntl(code: string): string {

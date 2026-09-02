@@ -1,11 +1,12 @@
 # 食材扩展 API - 支持别名搜索（最后修改: 2026-03-27 23:35）
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from sqlalchemy.orm import Session, load_only, joinedload
 from sqlalchemy import func
 from typing import List, Optional
 from decimal import Decimal
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.services.unit_conversion_service import UnitConversionService
 from app.services.ingredient_matcher import IngredientMatcher
@@ -667,6 +668,7 @@ async def update_ingredient(
 @router.delete("/{ingredient_id}/hard")
 async def hard_delete_ingredient(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_admin_user)
 ):
@@ -679,7 +681,7 @@ async def hard_delete_ingredient(
         db.delete(ingredient)
         db.commit()
 
-        return {"message": "食材已永久删除"}
+        return {"message": api_message(request, "食材已永久删除")}
     except Exception as e:
         db.rollback()
         raise LocalizedHTTPException(status_code=500, message='硬删除食材失败: {error}', error=str(e))
@@ -926,6 +928,7 @@ async def get_ingredient(
 @router.delete("/{ingredient_id}")
 async def soft_delete_ingredient(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -956,14 +959,23 @@ async def soft_delete_ingredient(
                 action="delete", payload={}, admin=current_user,
             )
             db.commit()
-            return {"message": "原料已删除（管理员直写，级联软删商品和层级关系）"}
+            return {"message": api_message(request, "原料已删除（管理员直写，级联软删商品和层级关系）")}
 
         p = proposal_service.submit(
             db, entity_type="ingredient", entity_id=ingredient_id,
             action="delete", payload={}, proposer=current_user,
         )
         db.commit()
-        return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+        return {
+            "message": api_message(
+                request,
+                "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+                proposal_id=p.id,
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -973,6 +985,7 @@ async def soft_delete_ingredient(
 
 @router.post("/batch-create-products", response_model=dict)
 async def batch_create_products(
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -1021,7 +1034,13 @@ async def batch_create_products(
         db.commit()
 
         return {
-            "message": f"批量创建商品完成：创建 {created_count}，跳过 {skipped_count}，失败 {failed_count}",
+            "message": api_message(
+                request,
+                "批量创建商品完成：创建 {created_count}，跳过 {skipped_count}，失败 {failed_count}",
+                created_count=created_count,
+                skipped_count=skipped_count,
+                failed_count=failed_count,
+            ),
             "created": created_count,
             "skipped": skipped_count,
             "failed": failed_count

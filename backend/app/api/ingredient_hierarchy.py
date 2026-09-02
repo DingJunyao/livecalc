@@ -1,11 +1,12 @@
 """
 食材层级关系管理API
 """
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Body, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Set
 from app.core.security import get_current_user, get_current_admin_user
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.models.user import User
 from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType
 from app.models.ingredient_merge_record import IngredientMergeRecord
@@ -343,6 +344,7 @@ def update_hierarchy_relation(
 @router.delete("/ingredients/hierarchy/{relation_id}")
 def delete_hierarchy_relation(
     relation_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -362,14 +364,23 @@ def delete_hierarchy_relation(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "层级关系删除成功（管理员直写）"}
+        return {"message": api_message(request, "层级关系删除成功（管理员直写）")}
 
     p = proposal_service.submit(
         db, entity_type="hierarchy", entity_id=relation_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 # 食材合并功能接口

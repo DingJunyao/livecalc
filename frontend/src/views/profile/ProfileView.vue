@@ -769,7 +769,7 @@
           <v-autocomplete
             v-model="currencyValue"
             :items="currencies"
-            item-title="name"
+            :item-title="(item: any) => currencyDisplayName(item)"
             item-value="code"
             :label="t('profile.defaultCurrency')"
             variant="outlined"
@@ -782,7 +782,7 @@
               {{ item.raw.code }}
             </template>
             <template #item="{ props, item }">
-              <v-list-item v-bind="props" :title="`${item.raw.name} ${item.raw.code}`" />
+              <v-list-item v-bind="props" :title="currencyOptionLabel(item.raw)" />
             </template>
           </v-autocomplete>
         </v-card-text>
@@ -888,7 +888,7 @@ import { useThemeToggle } from '@/composables/useTheme'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { hashPassword } from '@/utils/crypto'
 import { resolveImageUrl } from '@/utils/image'
-import { loadCurrencies, formatMoney } from '@/utils/currency'
+import { currencyDisplayName, currencyOptionLabel, loadCurrencies, formatMoney } from '@/utils/currency'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { appInfo } from '@/config/appInfo'
 import { FORMAT_LOCALES, UI_LOCALES } from '@/utils/localeStorage'
@@ -1010,6 +1010,9 @@ const scopeLabel = computed(() => scopeOptions.value.find(o => o.value === userS
 function openCurrencyDialog() {
   currencyValue.value = userStore.user?.default_currency ?? null
   currencyDialog.value = true
+  loadCurrencies(true)
+    .then(list => { currencies.value = list })
+    .catch(() => { /* 忽略本地模式无币种路由 */ })
 }
 
 function openScopeDialog() {

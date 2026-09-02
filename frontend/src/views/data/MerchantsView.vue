@@ -419,7 +419,6 @@ import { loadCurrencies } from '@/utils/currency'
 import type { Currency } from '@/types'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useMapConfig } from '@/composables/useMapConfig'
-import { proposalMarker } from '@/utils/localDisplay'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -874,8 +873,8 @@ const deleteItem = async (id: number) => {
     const result = await api.delete(`/merchants/${id}`)
     // 共享池分流：普通用户提交提议（返回 {message: ... proposal_id ...}），
     // 管理员直写软删（返回 {message: ...}）。普通用户提议待审，列表暂不移除。
-    const msg: string = (result && result.message) || ''
-    if (msg.includes(proposalMarker()) || msg.includes('proposal')) {
+    const isPending = result?.status === 'pending' || !!result?.proposal_id
+    if (isPending) {
       notify(t('merchants.deleteProposalSubmitted'), 'info')
     } else {
       notify(t('merchants.deleted'), 'success')

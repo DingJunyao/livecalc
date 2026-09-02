@@ -1,11 +1,12 @@
 # 价格记录 API - 支持通过食材别名搜索（最后修改: 2026-03-27 23:30）
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, text, or_, and_
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
@@ -785,6 +786,7 @@ async def update_product_record(
 @router.delete("/{record_id}")
 async def delete_product_record(
     record_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -805,7 +807,7 @@ async def delete_product_record(
 
         db_record.is_active = False
         db.commit()
-        return {"message": "价格记录已删除"}
+        return {"message": api_message(request, "价格记录已删除")}
     except HTTPException:
         raise
     except Exception as e:

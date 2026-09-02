@@ -1,10 +1,11 @@
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import or_, text
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.merchant import Merchant
 from app.models.map_config import MapConfiguration
@@ -208,6 +209,7 @@ async def get_merchant_coordinates(
 @router.post("/merge")
 async def merge_merchants(
     body: dict,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -240,7 +242,7 @@ async def merge_merchants(
             db.commit()
             return {
                 "success": True,
-                "message": "合并完成（管理员直写）",
+                "message": api_message(request, "合并完成（管理员直写）"),
                 "merged_count": len(source_ids),
             }
 
@@ -251,7 +253,14 @@ async def merge_merchants(
         db.commit()
         return {
             "success": True,
-            "message": f"合并提议已提交（proposal_id={p.id}, status={p.status}）",
+            "message": api_message(
+                request,
+                "合并提议已提交（proposal_id={proposal_id}, status={status}）",
+                proposal_id=p.id,
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
             "merged_count": 0,
         }
     except HTTPException:
@@ -582,6 +591,7 @@ async def get_merchant_product_prices(
 async def save_product_orders(
     merchant_id: int,
     body: ProductOrderCreate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
@@ -642,7 +652,13 @@ async def save_product_orders(
             next_sort += 1
 
         db.commit()
-        return {"message": f"已保存 {len(body.product_ids)} 条排序记录"}
+        return {
+            "message": api_message(
+                request,
+                "已保存 {count} 条排序记录",
+                count=len(body.product_ids),
+            )
+        }
 
     except HTTPException:
         raise
@@ -706,6 +722,7 @@ async def update_merchant(
 @router.delete("/{merchant_id}")
 async def delete_merchant(
     merchant_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -726,14 +743,23 @@ async def delete_merchant(
                 action="delete", payload={}, admin=current_user,
             )
             db.commit()
-            return {"message": "商家已停用（管理员直写，价格记录引用已置空）"}
+            return {"message": api_message(request, "商家已停用（管理员直写，价格记录引用已置空）")}
 
         p = proposal_service.submit(
             db, entity_type="merchant", entity_id=merchant_id,
             action="delete", payload={}, proposer=current_user,
         )
         db.commit()
-        return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+        return {
+            "message": api_message(
+                request,
+                "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+                proposal_id=p.id,
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
     except HTTPException:
         raise
     except SQLAlchemyError:
