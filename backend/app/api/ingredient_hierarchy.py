@@ -49,6 +49,8 @@ class IngredientMergeResponse(BaseModel):
     updated_products_count: int
     updated_mappings_count: int
     stats_change: dict
+    status: Optional[str] = None
+    proposal_id: Optional[int] = None
 
 class ExpandedIngredientRelations(BaseModel):
     """某个关联食材的下一级关系"""
@@ -387,6 +389,7 @@ def delete_hierarchy_relation(
 @router.post("/ingredients/merge", response_model=IngredientMergeResponse)
 def merge_ingredients(
     merge_request: IngredientMergeRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -453,7 +456,7 @@ def merge_ingredients(
         db.commit()
         return IngredientMergeResponse(
             success=True,
-            message="合并完成（管理员直写）",
+            message=api_message(request, "合并完成（管理员直写）"),
             merged_count=len(source_ids),
             updated_recipes_count=recipe_count,
             updated_products_count=product_link_count,
@@ -471,13 +474,20 @@ def merge_ingredients(
     db.commit()
     return IngredientMergeResponse(
         success=True,
-        message=f"合并提议已提交，待管理员审核（proposal_id={p.id}）",
+        message=api_message(
+            request,
+            "合并提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
         merged_count=len(source_ids),
         updated_recipes_count=recipe_count,
         updated_products_count=product_link_count,
         updated_mappings_count=nutrition_count,
         updated_hierarchies_count=hierarchy_count,
         stats_change={},
+        status=p.status,
+        proposal_id=p.id,
     )
 
 

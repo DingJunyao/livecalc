@@ -19,3 +19,5 @@ class IngredientMergeResponse(BaseModel):
     updated_hierarchies_count: Optional[int] = 0
     merged_nutrition_count: Optional[int] = 0
     stats_change: Optional[Dict[str, Any]] = None
+    status: Optional[str] = None
+    proposal_id: Optional[int] = None

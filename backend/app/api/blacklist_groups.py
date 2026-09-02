@@ -203,6 +203,7 @@ class AiMatchRequest(BaseModel):
 @blacklist_group_admin_router.post("/blacklist-groups/ai-match-all/", response_model=AiMatchResponse)
 async def trigger_ai_match_all(
     body: AiMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -228,7 +229,10 @@ async def trigger_ai_match_all(
     )
     return AiMatchResponse(
         agent_session_id=session_id,
-        message="已触发全部启用分组 AI 匹配任务，可在 Agent 任务台查看进度",
+        message=api_message(
+            request,
+            "已触发全部启用分组 AI 匹配任务，可在 Agent 任务台查看进度",
+        ),
     )
 
 
@@ -237,6 +241,7 @@ async def trigger_ai_match_all(
 async def trigger_ai_match(
     group_id: int,
     body: AiMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -259,7 +264,10 @@ async def trigger_ai_match(
 
     return AiMatchResponse(
         agent_session_id=session_id,
-        message="已触发 AI 匹配任务，可在 Agent 任务台查看进度",
+        message=api_message(
+            request,
+            "已触发 AI 匹配任务，可在 Agent 任务台查看进度",
+        ),
     )
 
 

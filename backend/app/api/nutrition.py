@@ -1647,6 +1647,7 @@ def _build_structured_nutrients(request: NutritionEditRequest) -> dict:
 @router.post("/ingredients/{ingredient_id}/nutrition", response_model=NutritionEditResponse)
 async def edit_ingredient_nutrition(
     ingredient_id: int,
+    http_request: Request,
     request: NutritionEditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1683,7 +1684,8 @@ async def edit_ingredient_nutrition(
             )
             db.commit()
             return NutritionEditResponse(
-                success=True, message="营养数据保存成功（管理员直写）",
+                success=True,
+                message=api_message(http_request, "营养数据更新成功（管理员直写）"),
                 ingredient_id=ingredient_id,
             )
 
@@ -1692,12 +1694,19 @@ async def edit_ingredient_nutrition(
             action="update", payload=payload, proposer=current_user,
         )
         db.commit()
-        msg = (
-            "营养数据保存成功（补空自动通过）" if p.status == "applied"
-            else f"营养数据提议已提交（status={p.status}，待管理员审核）"
+        msg = api_message(
+            http_request,
+            "营养数据更新成功（补空自动通过）"
+            if p.status == "applied"
+            else "营养数据更新提议已提交（status={status}，待管理员审核）",
+            status=p.status,
         )
         return NutritionEditResponse(
-            success=True, message=msg, ingredient_id=ingredient_id,
+            success=True,
+            message=msg,
+            ingredient_id=ingredient_id,
+            status=p.status,
+            proposal_id=p.id,
         )
 
     except HTTPException:
@@ -1710,6 +1719,7 @@ async def edit_ingredient_nutrition(
 @router.post("/products/{product_id}/nutrition", response_model=NutritionEditResponse)
 async def edit_product_nutrition(
     product_id: int,
+    http_request: Request,
     request: NutritionEditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1817,7 +1827,7 @@ async def edit_product_nutrition(
             db.commit()
             return NutritionEditResponse(
                 success=True,
-                message="商品营养数据保存成功（管理员直写）",
+                message=api_message(http_request, "营养数据更新成功（管理员直写）"),
                 product_id=product_id,
             )
 
@@ -1829,9 +1839,20 @@ async def edit_product_nutrition(
             policy_override=policy,
         )
         db.commit()
-        msg = ("商品营养数据保存成功（补空自动通过）" if p.status == "applied"
-               else f"商品营养数据提议已提交（status={p.status}，待管理员审核）")
-        return NutritionEditResponse(success=True, message=msg, product_id=product_id)
+        msg = api_message(
+            http_request,
+            "营养数据更新成功（补空自动通过）"
+            if p.status == "applied"
+            else "营养数据更新提议已提交（status={status}，待管理员审核）",
+            status=p.status,
+        )
+        return NutritionEditResponse(
+            success=True,
+            message=msg,
+            product_id=product_id,
+            status=p.status,
+            proposal_id=p.id,
+        )
 
     except HTTPException:
         raise
