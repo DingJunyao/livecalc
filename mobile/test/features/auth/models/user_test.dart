@@ -1,6 +1,34 @@
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
 import 'package:com_a4ding_livecalc/core/api/api_client.dart';
 import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
+import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
+
+class _MockApiClient extends Mock implements ApiClient {}
+
+class _RecordingAdapter implements HttpClientAdapter {
+  RequestOptions? request;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    request = options;
+    return ResponseBody.fromString('{"id":1,"username":"u","email":"e"}', 200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        });
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
 
 void main() {
   setUp(() {
@@ -70,5 +98,35 @@ void main() {
     final prefs = UnitPreferences.fromJson({});
     expect(prefs.energyUnit, isNull);
     expect(prefs.massUnit, isNull);
+  });
+
+  test('User.fromJson reads locale payload keys', () {
+    final user = User.fromJson({
+      'id': 1,
+      'username': 'ding',
+      'email': 'ding@example.test',
+      'locale': 'ar',
+      'format_locale': 'de-DE',
+    });
+
+    expect(user.locale, 'ar');
+    expect(user.formatLocale, 'de-DE');
+  });
+
+  test('updateLocalePreferences sends only locale payload keys', () async {
+    final adapter = _RecordingAdapter();
+    final dio = Dio()..httpClientAdapter = adapter;
+    final client = _MockApiClient();
+    when(() => client.dio).thenReturn(dio);
+
+    final user = await AuthRepository(client: client)
+        .updateLocalePreferences(locale: 'ar', formatLocale: 'de-DE');
+
+    expect(adapter.request!.path, '/auth/me');
+    expect(adapter.request!.data, {
+      'locale': 'ar',
+      'format_locale': 'de-DE',
+    });
+    expect(user.id, 1);
   });
 }

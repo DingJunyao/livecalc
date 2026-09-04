@@ -63,6 +63,16 @@ class AuthRepository {
     return updateMe(body);
   }
 
+  Future<User> updateLocalePreferences({
+    required String locale,
+    String? formatLocale,
+  }) {
+    return updateMe({
+      'locale': locale,
+      if (formatLocale != null) 'format_locale': formatLocale,
+    });
+  }
+
   /// 更新账号信息（用户名/邮箱/手机/昵称），返回用户 + 可能的新 token。
   Future<UserAccountResponse> updateAccount(Map<String, dynamic> body) async {
     final response = await _client.dio.put('/auth/me/account', data: body);

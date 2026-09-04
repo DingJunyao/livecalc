@@ -66,6 +66,8 @@ class User {
   final String? defaultCalcScope;
   final String? effectiveCurrency;
   final int? regionId;
+  final String? locale;
+  final String? formatLocale;
 
   const User({
     required this.id,
@@ -82,6 +84,8 @@ class User {
     this.defaultCalcScope,
     this.effectiveCurrency,
     this.regionId,
+    this.locale,
+    this.formatLocale,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -110,6 +114,8 @@ class User {
       defaultCalcScope: json['default_calc_scope'] as String?,
       effectiveCurrency: json['effective_currency'] as String?,
       regionId: (json['region_id'] as num?)?.toInt(),
+      locale: json['locale'] as String?,
+      formatLocale: json['format_locale'] as String?,
     );
   }
 

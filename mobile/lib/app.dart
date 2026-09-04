@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'core/i18n/app_locale.dart' as locale_utils;
+import 'core/i18n/locale_settings.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'l10n/app_localizations.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/providers/server_provider.dart';
 import 'features/profile/providers/startup_page_provider.dart';
@@ -43,8 +45,13 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
   }
 
   Future<void> _bootstrap() async {
-    // Restore the server address first (the auth check needs the base URL),
-    // then restore the session / auto-login from saved credentials.
+    // Locale is restored before auth so cached authenticated preferences can
+    // cover the startup frame while the user is being fetched.
+    await ref.read(localeSettingsProvider.notifier).load(
+          systemLocales: WidgetsBinding.instance.platformDispatcher.locales,
+        );
+    // Restore the server address (the auth check needs the base URL), then
+    // restore the session / auto-login from saved credentials.
     await ref.read(serverConfigProvider.notifier).load();
     // 起始页配置与服务器地址一样只存在本地，认证恢复前先加载，
     // 保证认证后的首次 redirect 就能落到用户配置的起始页。
@@ -54,9 +61,17 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
 
   @override
   Widget build(BuildContext context) {
+    final localeSettings = ref.watch(localeSettingsProvider);
     // Whenever auth or server state changes, nudge the router so its redirect
     // runs again with the fresh values.
-    ref.listen(authProvider, (_, __) => _refreshNotifier.refresh());
+    ref.listen(authProvider, (_, authState) {
+      if (authState.status == AuthStatus.authenticated ||
+          authState.status == AuthStatus.unauthenticated ||
+          authState.status == AuthStatus.error) {
+        ref.read(localeSettingsProvider.notifier).applyUser(authState.user);
+      }
+      _refreshNotifier.refresh();
+    });
     ref.listen(serverConfigProvider, (_, __) => _refreshNotifier.refresh());
     return MaterialApp.router(
       title: '生计 - 生活成本计算器',
@@ -64,11 +79,13 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
       darkTheme: AppTheme.darkTheme,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
-      // 中文 localization：系统组件（返回按钮 tooltip、长按复制粘贴菜单等）
-      // 全部显示中文，否则 Material 内置文案走默认英文。
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      supportedLocales: const [Locale('zh', 'CN')],
-      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: locale_utils.supportedUiLocales
+          .map(locale_utils.flutterLocaleFor)
+          .toList(growable: false),
+      locale: locale_utils.flutterLocaleFor(localeSettings.uiLocale),
+      localeResolutionCallback: (_, __) =>
+          locale_utils.flutterLocaleFor(localeSettings.uiLocale),
       builder: (context, child) {
         // 系统状态栏/导航栏透明并跟随明暗主题，使 Android 全面屏下
         // 底部手势提示线区域显示应用背景色而非黑色。

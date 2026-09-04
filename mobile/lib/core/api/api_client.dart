@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'dart:developer';
 
 import 'auth_interceptor.dart';
+import 'locale_interceptor.dart';
+import '../i18n/locale_settings.dart';
 import '../../shared/providers/calc_context_provider.dart';
 
 class ApiClient {
@@ -16,6 +18,7 @@ class ApiClient {
       headers: {'Content-Type': 'application/json'},
     ));
     dio.interceptors.add(AuthInterceptor(dio));
+    dio.interceptors.add(LocaleInterceptor(localeSettingsStore));
     dio.interceptors.add(CalcContextInterceptor());
     dio.interceptors.add(LogInterceptor(
       request: true,
@@ -40,7 +43,6 @@ class ApiClient {
 
   String get baseUrl => _baseUrl;
 }
-
 
 /// 会话级临时覆盖拦截器：导航栏切换币种/地区后，向请求注入 X-Currency / X-Region 头。
 class CalcContextInterceptor extends Interceptor {
