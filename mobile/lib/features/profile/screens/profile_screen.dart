@@ -564,12 +564,7 @@ Future<void> _saveLocalePreferences(
       formatLocale: formatLocale,
     );
     ref.read(authProvider.notifier).applyUser(user);
-    ref.read(localeSettingsProvider.notifier).update(
-          LocaleSettings(
-            uiLocale: user.locale ?? uiLocale,
-            formatLocale: formatLocale,
-          ),
-        );
+    await ref.read(localeSettingsProvider.notifier).applyUser(user);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(localizedFallback.authSaved)),

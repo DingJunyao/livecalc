@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:com_a4ding_livecalc/core/api/api_client.dart';
 import 'package:com_a4ding_livecalc/core/i18n/locale_settings.dart';
 import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
@@ -17,10 +18,11 @@ import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 class MockAuthRepository extends Mock implements AuthRepository {}
 
 class _RecordingAdapter implements HttpClientAdapter {
-  final Map<String, dynamic> user;
+  final List<Map<String, dynamic>> _users;
   final requests = <RequestOptions>[];
 
-  _RecordingAdapter(this.user);
+  _RecordingAdapter(Iterable<Map<String, dynamic>> users)
+      : _users = List.of(users);
 
   @override
   Future<ResponseBody> fetch(
@@ -29,8 +31,11 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests.add(options);
+    if (_users.isEmpty) {
+      throw StateError('No mocked users remain.');
+    }
     return ResponseBody.fromString(
-      jsonEncode(user),
+      jsonEncode(_users.removeAt(0)),
       200,
       headers: {
         'Content-Type': ['application/json']
@@ -50,6 +55,7 @@ void main() {
     repository = MockAuthRepository();
     notifier = AuthNotifier(repository);
     ApiClient.instance.updateBaseUrl('https://example.test');
+    SharedPreferences.setMockInitialValues({});
     const storageChannel =
         MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -101,12 +107,15 @@ void main() {
       (tester) async {
     final localeSettings = LocaleSettingsController()
       ..update(const LocaleSettings(uiLocale: 'zh-CN'));
-    final adapter = _RecordingAdapter({
-      'id': 1,
-      'username': 'alice',
-      'email': 'a@test.com',
-      'locale': 'en-US',
-    });
+    final adapter = _RecordingAdapter([
+      {
+        'id': 1,
+        'username': 'alice',
+        'email': 'a@test.com',
+        'locale': 'ar',
+        'format_locale': 'ja-JP',
+      },
+    ]);
     await pumpProfile(
       tester,
       locale: const Locale('en', 'US'),
@@ -133,20 +142,29 @@ void main() {
     expect(adapter.requests, hasLength(1));
     expect(adapter.requests.single.path, '/auth/me');
     expect(requestBody(adapter.requests.single), {'locale': 'en-US'});
-    expect(localeSettings.current.uiLocale, 'en-US');
+    expect(localeSettings.current.uiLocale, 'ar');
+    expect(localeSettings.current.formatLocale, 'ja-JP');
   });
 
   testWidgets('regional format offers all locales and sends exact payloads',
       (tester) async {
     final localeSettings = LocaleSettingsController()
       ..update(const LocaleSettings(uiLocale: 'en-US'));
-    final responseUser = <String, dynamic>{
-      'id': 1,
-      'username': 'alice',
-      'email': 'a@test.com',
-      'locale': 'en-US',
-    };
-    final adapter = _RecordingAdapter(responseUser);
+    final adapter = _RecordingAdapter([
+      {
+        'id': 1,
+        'username': 'alice',
+        'email': 'a@test.com',
+        'locale': 'en-US',
+        'format_locale': 'id-ID',
+      },
+      {
+        'id': 1,
+        'username': 'alice',
+        'email': 'a@test.com',
+        'locale': 'en-US',
+      },
+    ]);
     await pumpProfile(
       tester,
       locale: const Locale('en', 'US'),
@@ -178,13 +196,13 @@ void main() {
 
     await tester.tap(find.text('German (Germany)'));
     await tester.pumpAndSettle();
-    responseUser['format_locale'] = 'de-DE';
     expect(adapter.requests, hasLength(1));
     expect(requestBody(adapter.requests.first), {
       'locale': 'en-US',
       'format_locale': 'de-DE',
     });
-    expect(localeSettings.current.formatLocale, 'de-DE');
+    expect(localeSettings.current.uiLocale, 'en-US');
+    expect(localeSettings.current.formatLocale, 'id-ID');
 
     await tester.tap(find.text('Regional format'));
     await tester.pumpAndSettle();
@@ -199,12 +217,14 @@ void main() {
       (tester) async {
     final localeSettings = LocaleSettingsController()
       ..update(const LocaleSettings(uiLocale: 'ar'));
-    final adapter = _RecordingAdapter({
-      'id': 1,
-      'username': 'alice',
-      'email': 'a@test.com',
-      'locale': 'ar',
-    });
+    final adapter = _RecordingAdapter([
+      {
+        'id': 1,
+        'username': 'alice',
+        'email': 'a@test.com',
+        'locale': 'ar',
+      },
+    ]);
     await pumpProfile(
       tester,
       locale: const Locale('ar'),
