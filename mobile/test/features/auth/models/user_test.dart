@@ -123,6 +123,7 @@ void main() {
         .updateLocalePreferences(locale: 'ar', formatLocale: 'de-DE');
 
     expect(adapter.request!.path, '/auth/me');
+    expect(adapter.request!.method, 'PATCH');
     expect(adapter.request!.data, {
       'locale': 'ar',
       'format_locale': 'de-DE',
