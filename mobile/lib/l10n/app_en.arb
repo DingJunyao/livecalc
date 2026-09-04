@@ -1,0 +1,9 @@
+{
+  "@@locale": "en",
+  "appTitle": "LiveCalc - Living Cost Calculator",
+  "@appTitle": {},
+  "commonSave": "Save",
+  "@commonSave": {},
+  "commonCancel": "Cancel",
+  "@commonCancel": {}
+}

@@ -1,0 +1,9 @@
+{
+  "@@locale": "zh",
+  "appTitle": "生计 - 生活成本计算器",
+  "@appTitle": {},
+  "commonSave": "保存",
+  "@commonSave": {},
+  "commonCancel": "取消",
+  "@commonCancel": {}
+}
