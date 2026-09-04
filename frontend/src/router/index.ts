@@ -2,8 +2,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useMapConfig } from '@/composables/useMapConfig'
-
-const SITE_NAME = '生计 - 生活成本计算器'
+import { t } from '@/plugins/i18n'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,19 +11,19 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: () => import('@/views/auth/Login.vue'),
-      meta: { requiresAuth: false, title: '登录' },
+      meta: { requiresAuth: false, titleKey: 'routes.login' },
     },
     {
       path: '/register',
       name: 'register',
       component: () => import('@/views/auth/Register.vue'),
-      meta: { requiresAuth: false, title: '注册' },
+      meta: { requiresAuth: false, titleKey: 'routes.register' },
     },
     {
       path: '/setup',
       name: 'local-setup',
       component: () => import('@/views/setup/LocalInitWizard.vue'),
-      meta: { requiresAuth: false, title: '初始化' },
+      meta: { requiresAuth: false, titleKey: 'routes.setup' },
     },
     {
       path: '/',
@@ -35,37 +34,37 @@ const router = createRouter({
           path: '',
           name: 'daily-meals',
           component: () => import('@/views/meals/DailyMealsView.vue'),
-          meta: { title: '今日推荐' },
+          meta: { titleKey: 'routes.today' },
         },
         {
           path: 'prices',
           name: 'prices',
           component: () => import('@/views/prices/PricesView.vue'),
-          meta: { title: '价格记录' },
+          meta: { titleKey: 'routes.prices' },
         },
         {
           path: 'prices/quick-fill',
           name: 'quick-fill',
           component: () => import('@/views/prices/QuickFillView.vue'),
-          meta: { title: '快速填写' },
+          meta: { titleKey: 'routes.quickFill' },
         },
         {
           path: 'recipes',
           name: 'recipes',
           component: () => import('@/views/recipes/RecipesView.vue'),
-          meta: { title: '菜谱管理' },
+          meta: { titleKey: 'routes.recipes' },
         },
         {
           path: 'recipes/:id',
           name: 'recipe-detail',
           component: () => import('@/views/recipes/RecipeDetail.vue'),
-          meta: { detailType: '菜谱' },
+          meta: { detailTypeKey: 'detailTypes.recipe' },
         },
         {
           path: 'recipes/:id/analysis',
           name: 'recipe-analysis',
           component: () => import('@/views/recipes/RecipeAnalysisView.vue'),
-          meta: { detailType: '菜谱', title: '菜谱分析' },
+          meta: { detailTypeKey: 'detailTypes.recipe', titleKey: 'routes.recipeAnalysis' },
         },
         {
           path: 'data',
@@ -76,102 +75,102 @@ const router = createRouter({
           path: 'data/products',
           name: 'products',
           component: () => import('@/views/data/ProductsView.vue'),
-          meta: { title: '商品管理' },
+          meta: { titleKey: 'routes.products' },
         },
         {
           path: 'data/products/:id',
           name: 'product-detail',
           component: () => import('@/views/products/ProductDetail.vue'),
-          meta: { detailType: '商品' },
+          meta: { detailTypeKey: 'detailTypes.product' },
         },
         {
           path: 'data/ingredients',
           name: 'ingredients',
           component: () => import('@/views/data/IngredientsView.vue'),
-          meta: { title: '原料管理' },
+          meta: { titleKey: 'routes.ingredients' },
         },
         {
           path: 'data/ingredients/:id',
           name: 'ingredient-detail',
           component: () => import('@/views/ingredients/IngredientDetail.vue'),
-          meta: { detailType: '原料' },
+          meta: { detailTypeKey: 'detailTypes.ingredient' },
         },
         {
           path: 'data/merchants',
           name: 'merchants',
           component: () => import('@/views/data/MerchantsView.vue'),
-          meta: { title: '商家管理' },
+          meta: { titleKey: 'routes.merchants' },
         },
         {
           path: 'data/merchants/:id',
           name: 'merchant-detail',
           component: () => import('@/views/merchants/MerchantDetail.vue'),
-          meta: { detailType: '商家' },
+          meta: { detailTypeKey: 'detailTypes.merchant' },
         },
         {
           path: 'profile',
           name: 'profile',
           component: () => import('@/views/profile/ProfileView.vue'),
-          meta: { title: '个人中心' },
+          meta: { titleKey: 'routes.profile' },
         },
         {
           path: 'profile/places',
           name: 'profile-places',
           component: () => import('@/views/profile/UserPlacesView.vue'),
-          meta: { title: '我的常用地点' },
+          meta: { titleKey: 'routes.profilePlaces' },
         },
         {
           path: 'profile/proposals',
           name: 'profile-proposals',
           component: () => import('@/views/profile/MyProposalsView.vue'),
-          meta: { title: '我的提议' },
+          meta: { titleKey: 'routes.profileProposals' },
         },
         {
           path: 'admin',
           name: 'admin',
-          meta: { adminOnly: true, title: '后台管理' },
+          meta: { adminOnly: true, titleKey: 'routes.admin' },
           component: () => import('@/views/admin/AdminDashboard.vue'),
         },
         {
           path: 'admin/invite-codes',
           name: 'admin-invite-codes',
-          meta: { adminOnly: true, title: '邀请码管理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminInviteCodes' },
           component: () => import('@/views/admin/InviteCodesView.vue'),
         },
         {
           path: 'admin/units',
           name: 'admin-units',
-          meta: { adminOnly: true, title: '单位管理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminUnits' },
           component: () => import('@/views/admin/UnitsView.vue'),
         },
         {
           path: 'admin/currencies',
           name: 'admin-currencies',
-          meta: { adminOnly: true, title: '币种管理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminCurrencies' },
           component: () => import('@/views/admin/CurrencyAdminView.vue'),
         },
         {
           path: 'admin/exchange-rates',
           name: 'admin-exchange-rates',
-          meta: { adminOnly: true, title: '汇率管理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminExchangeRates' },
           component: () => import('@/views/admin/ExchangeRateAdminView.vue'),
         },
         {
           path: 'admin/barcode-services',
           name: 'admin-barcode-services',
-          meta: { adminOnly: true, title: '条码服务配置' },
+          meta: { adminOnly: true, titleKey: 'routes.adminBarcodeServices' },
           component: () => import('@/views/admin/BarcodeServicesView.vue'),
         },
         {
           path: 'admin/map-settings',
           name: 'admin-map-settings',
-          meta: { adminOnly: true, title: '地图配置' },
+          meta: { adminOnly: true, titleKey: 'routes.adminMapSettings' },
           component: () => import('@/views/admin/MapSettingsView.vue'),
         },
         {
           path: 'admin/ai-config',
           name: 'admin-ai-config',
-          meta: { adminOnly: true, title: 'AI 与机翻配置' },
+          meta: { adminOnly: true, titleKey: 'routes.adminAiConfig' },
           component: () => import('@/views/admin/AiConfigView.vue'),
         },
         {
@@ -181,7 +180,7 @@ const router = createRouter({
         {
           path: 'admin/users',
           name: 'admin-users',
-          meta: { adminOnly: true, title: '用户管理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminUsers' },
           component: () => import('@/views/admin/UserManagementView.vue'),
         },
         {
@@ -191,43 +190,43 @@ const router = createRouter({
         {
           path: 'admin/data-maintenance',
           name: 'admin-data-maintenance',
-          meta: { adminOnly: true, title: '数据维护' },
+          meta: { adminOnly: true, titleKey: 'routes.adminDataMaintenance' },
           component: () => import('@/views/admin/DataMaintenanceView.vue'),
         },
         {
           path: 'admin/agent-console',
           name: 'admin-agent-console',
-          meta: { adminOnly: true, title: 'Agent 任务台' },
+          meta: { adminOnly: true, titleKey: 'routes.adminAgentConsole' },
           component: () => import('@/views/admin/AgentTaskConsole.vue'),
         },
         {
           path: 'admin/blacklist-groups',
           name: 'admin-blacklist-groups',
-          meta: { adminOnly: true, title: '原料黑名单分组' },
+          meta: { adminOnly: true, titleKey: 'routes.adminBlacklistGroups' },
           component: () => import('@/views/admin/BlacklistGroupsView.vue'),
         },
         {
           path: 'admin/proposals',
           name: 'admin-proposals',
-          meta: { adminOnly: true, title: '提议审核台' },
+          meta: { adminOnly: true, titleKey: 'routes.adminProposals' },
           component: () => import('@/views/admin/ProposalsView.vue'),
         },
         {
           path: 'admin/email-config',
           name: 'admin-email-config',
-          meta: { adminOnly: true, title: '邮件配置' },
+          meta: { adminOnly: true, titleKey: 'routes.adminEmailConfig' },
           component: () => import('@/views/admin/EmailConfigView.vue'),
         },
         {
           path: 'admin/images-unused',
           name: 'admin-images-unused',
-          meta: { adminOnly: true, title: '未使用图片清理' },
+          meta: { adminOnly: true, titleKey: 'routes.adminImagesUnused' },
           component: () => import('@/views/admin/UnusedImagesView.vue'),
         },
         {
           path: 'admin/storage',
           name: 'admin-storage',
-          meta: { adminOnly: true, title: '图片存储' },
+          meta: { adminOnly: true, titleKey: 'routes.adminStorage' },
           component: () => import('@/views/admin/StorageConfigView.vue'),
         },
       ],
@@ -304,13 +303,14 @@ router.beforeEach(async (to, from, next) => {
 
 // 路由切换后自动设置页面标题
 router.afterEach((to) => {
-  let title = to.meta.title as string | undefined
-  if (title) {
+  const titleKey = to.meta.titleKey as string | undefined
+  if (titleKey) {
+    let title = t(titleKey)
     // 本地模式下「个人中心」改称「设置」
-    if (import.meta.env.VITE_STORAGE_MODE === 'local' && title === '个人中心') {
-      title = '设置'
+    if (import.meta.env.VITE_STORAGE_MODE === 'local' && titleKey === 'routes.profile') {
+      title = t('routes.settings')
     }
-    document.title = `${title} - ${SITE_NAME}`
+    document.title = `${title} - ${t('app.name')}`
   }
 })
 

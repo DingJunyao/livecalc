@@ -1,7 +1,8 @@
-// 菜谱成本计算模块 — 纯函数，不依赖 IndexedDB。
-// 基于原料用量、商品加权价格、单位换算和层级回退计算菜谱总成本。
-
 import { convertAmount } from '@/utils/currency'
+import {
+  CHINESE_GRAM_NAME,
+  VAGUE_QUANTITY_GRAM_MAP,
+} from '../../../data/localValues.ts'
 
 export interface CostCalcIngredient {
   recipe_ingredient_id?: number
@@ -98,11 +99,6 @@ export interface CostResult {
 const GRAM_UNIT_ID = 2 // 克 unit ID in local DB
 
 /** 模糊量关键词 → 默认克数映射（与云端 VAGUE_QUANTITY_GRAM_MAP 对齐） */
-const VAGUE_QUANTITY_GRAM_MAP: Record<string, number> = {
-  '适量': 100,
-  '少许': 5,
-}
-
 /**
  * 解析 original_quantity 中的模糊量关键词。
  * @returns 克数 或 null（无匹配）
@@ -269,7 +265,7 @@ export function calculateCost(input: CostInput): CostResult {
     const containsResult = findContainsPrice(ing.ingredient_id, input, records)
     if (containsResult != null) {
       // CONTAINS price is per-gram; convert recipe quantity to grams
-      const gramUnit = input.units.find(u => u.name === '克')
+      const gramUnit = input.units.find(u => u.name === CHINESE_GRAM_NAME)
       let convertedQty = effectiveQty
       const recipeUnit = input.units.find(u => u.id === effectiveUnitId)
       if (recipeUnit && gramUnit && effectiveUnitId !== gramUnit.id) {

@@ -6,6 +6,12 @@ import { aggregatePrices } from '../business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
 import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
+import { localError } from '../../../utils/localErrors'
+import {
+  BASIC_NUTRIENT_NAMES,
+  CANONICAL_ENERGY_NAME,
+  ENERGY_NUTRIENT_NAMES,
+} from '../../../data/localValues.ts'
 
 /** 从 query 解析可选 region_id；null/空值表示全局。 */
 function parseRegionId(value: any): number | null {
@@ -48,19 +54,19 @@ export async function getIngredientNutrition(params: Record<string, string>): Pr
   if (!Number.isFinite(id)) return { items: [], total: 0, nutrition: { core_nutrients: {}, all_nutrients: {} } }
   const all = await getByIndex('nutrition_data', 'by_ingredient_id', id)
   // 构建前端需要的 nutrition 格式
-  const coreNames = ['能量', '热量', '蛋白质', '脂肪', '碳水化合物', '钠']
+  const coreNames = BASIC_NUTRIENT_NAMES
   const allNutrients: Record<string, any> = {}
   const coreNutrients: Record<string, any> = {}
   for (const n of all) {
     let key = n.nutrient_name || ''
     // 统一能量键名：USDA → 能量，HowToCook → 热量
-    if (key.includes('热量') || key.includes('能量') || key.includes('calorie') || key.includes('energy')) {
-      key = '能量'
+    if (ENERGY_NUTRIENT_NAMES.some((name) => key.includes(name)) || key.includes('calorie') || key.includes('energy')) {
+      key = CANONICAL_ENERGY_NAME
     }
     const nrpPct = calcNRV(n.nutrient_name || '', n.amount_per_100g ?? 0)
     const entry = { value: n.amount_per_100g ?? 0, unit: n.unit || 'g', nrp_pct: nrpPct }
     // 只保留第一个匹配的能量值（避免多个热量字段重复）
-    if (key === '能量' && allNutrients[key]) continue
+    if (key === CANONICAL_ENERGY_NAME && allNutrients[key]) continue
     allNutrients[key] = entry
     if (coreNames.includes(key)) coreNutrients[key] = entry
   }
@@ -216,7 +222,7 @@ export async function getProductWeights(params: Record<string, string>): Promise
 export async function getProductNutrition(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const product = await getById('products', id)
-  if (!product) throw { status: 404, message: `Product ${id} not found` }
+  if (!product) throw localError('productNotFound', 404, { id })
 
   // Mixin 机制：从原料营养数据为基础，用 custom_nutrition_data 覆盖
   let baseNutrients: any[] = []
@@ -225,16 +231,16 @@ export async function getProductNutrition(params: Record<string, string>): Promi
   }
 
   // 构建基础营养映射
-  const coreNames = ['能量', '热量', '蛋白质', '脂肪', '碳水化合物', '钠']
+  const coreNames = BASIC_NUTRIENT_NAMES
   const allNutrients: Record<string, any> = {}
   const coreNutrients: Record<string, any> = {}
   for (const n of baseNutrients) {
     let key = n.nutrient_name || ''
     // 统一能量键名
-    if (key.includes('热量') || key.includes('能量') || key.includes('calorie') || key.includes('energy')) {
-      key = '能量'
+    if (ENERGY_NUTRIENT_NAMES.some((name) => key.includes(name)) || key.includes('calorie') || key.includes('energy')) {
+      key = CANONICAL_ENERGY_NAME
     }
-    if (key === '能量' && allNutrients[key]) continue
+    if (key === CANONICAL_ENERGY_NAME && allNutrients[key]) continue
     const nrpPct = calcNRV(n.nutrient_name || '', n.amount_per_100g ?? 0)
     const entry = { value: n.amount_per_100g ?? 0, unit: n.unit || 'g', nrp_pct: nrpPct }
     allNutrients[key] = entry
@@ -293,7 +299,7 @@ export async function getProductNutrition(params: Record<string, string>): Promi
 export async function updateProductNutrition(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const product = await getById('products', id)
-  if (!product) throw { status: 404, message: `Product ${id} not found` }
+  if (!product) throw localError('productNotFound', 404, { id })
 
   // 提取自定义营养素数据
   let customData: any = null

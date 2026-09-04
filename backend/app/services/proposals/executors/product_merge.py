@@ -8,6 +8,7 @@ from typing import Optional
 from fastapi import HTTPException
 
 from app.services.proposals.base import ApplyResult, ProposalExecutor
+from app.core.exceptions import LocalizedHTTPException
 
 
 class ProductMergeExecutor(ProposalExecutor):
@@ -44,26 +45,24 @@ class ProductMergeExecutor(ProposalExecutor):
         payload = proposal.payload or {}
         target_id = payload.get("target_product_id")
         if eid is None or target_id is None:
-            raise HTTPException(status_code=400, detail="需要源商品 ID 和目标商品 ID")
+            raise LocalizedHTTPException(status_code=400, message='需要源商品 ID 和目标商品 ID')
         if eid == target_id:
-            raise HTTPException(status_code=400, detail="不能合并到自身")
+            raise LocalizedHTTPException(status_code=400, message='不能合并到自身')
 
         src = db.query(Product).filter(
             Product.id == eid, Product.is_active == True
         ).first()
         if src is None:
-            raise HTTPException(status_code=404, detail="源商品不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='源商品不存在或已删除')
 
         tgt = db.query(Product).filter(
             Product.id == target_id, Product.is_active == True
         ).first()
         if tgt is None:
-            raise HTTPException(status_code=404, detail="目标商品不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='目标商品不存在或已删除')
 
         if src.ingredient_id != tgt.ingredient_id:
-            raise HTTPException(
-                status_code=400, detail="只能合并同一原料下的商品"
-            )
+            raise LocalizedHTTPException(status_code=400, message='只能合并同一原料下的商品')
 
     def preview(self, db, proposal) -> dict:
         from app.models.product_entity import Product
@@ -99,7 +98,7 @@ class ProductMergeExecutor(ProposalExecutor):
             Product.id == target_id, Product.is_active == True
         ).first()
         if not src or not tgt:
-            raise HTTPException(status_code=404, detail="源商品或目标商品不存在")
+            raise LocalizedHTTPException(status_code=404, message='源商品或目标商品不存在')
 
         # 快照
         record_ids = [

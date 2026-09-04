@@ -9,6 +9,7 @@ from app.core.security import get_current_user
 
 from fastapi import Depends, Header, HTTPException, Request
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from app.core.exceptions import LocalizedHTTPException
 
 _OFFSET_PATTERN = re.compile(r'^UTC([+-])(\d{2}):(\d{2})$')
 
@@ -19,12 +20,12 @@ def get_timezone(x_timezone: Optional[str] = Header(None, alias="X-Timezone")) -
     缺失或非法均返回 400（非 422）。前端拦截器统一注入，正常流程不会触发。
     """
     if not x_timezone:
-        raise HTTPException(status_code=400, detail="缺少 X-Timezone 请求头")
+        raise LocalizedHTTPException(status_code=400, message='缺少 X-Timezone 请求头')
     try:
         ZoneInfo(x_timezone)
     except (ZoneInfoNotFoundError, ValueError):
         if not _OFFSET_PATTERN.match(x_timezone):
-            raise HTTPException(status_code=400, detail=f"无效时区: {x_timezone}")
+            raise LocalizedHTTPException(status_code=400, message='无效时区: {x_timezone}', x_timezone=x_timezone)
     return x_timezone
 
 
@@ -62,7 +63,7 @@ async def get_session_currency_override(
             Currency.is_active == True,  # noqa: E712
         ).first()
         if not cur:
-            raise HTTPException(status_code=400, detail=f"未知币种: {code}")
+            raise LocalizedHTTPException(status_code=400, message='未知币种: {code}', code=code)
 
         user_currency = get_user_default_currency(db, user)
         if code == user_currency:
@@ -70,10 +71,7 @@ async def get_session_currency_override(
         else:
             rate = exchange_rate_service.convert(db, Decimal("1"), user_currency, code, date.today())
             if rate is None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"无法获取 {user_currency} → {code} 汇率，请稍后重试",
-                )
+                raise LocalizedHTTPException(status_code=400, message='无法获取 {user_currency} → {code} 汇率，请稍后重试', user_currency=user_currency, code=code)
         set_session_currency(code, float(rate))
     # 会话级地区覆盖（X-Region）：前端已解析到生效节点；all 表示明确不筛选。
     region_override = None
@@ -81,13 +79,13 @@ async def get_session_currency_override(
         if region_raw != "all":
             from app.models.administrative_region import AdministrativeRegion
             if not region_raw.isdigit():
-                raise HTTPException(status_code=400, detail="无效地区 X-Region")
+                raise LocalizedHTTPException(status_code=400, message='无效地区 X-Region')
             rnode = db.query(AdministrativeRegion).filter(
                 AdministrativeRegion.id == int(region_raw),
                 AdministrativeRegion.is_active == True,  # noqa: E712
             ).first()
             if not rnode:
-                raise HTTPException(status_code=400, detail="未知地区")
+                raise LocalizedHTTPException(status_code=400, message='未知地区')
             region_override = rnode.id
     from app.services.session_context import set_session_region
     if region_raw:

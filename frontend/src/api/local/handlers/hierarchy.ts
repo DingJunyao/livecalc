@@ -1,6 +1,7 @@
 // Hierarchy handler — ingredient parent/child relationships.
 
 import { getDb, getById, addOne, putOne, deleteOne, getByIndex } from '../database'
+import { localError } from '../../../utils/localErrors'
 
 export async function getHierarchy(params: Record<string, string>, _query?: any): Promise<any> {
   const id = parseInt(params.id)
@@ -68,7 +69,7 @@ export async function updateHierarchyRelation(params: Record<string, string>, da
 
   const existing = await getByIndex('ingredient_hierarchy', 'by_parent', parentId)
   const relation = existing.find((r: any) => r.child_id === childId)
-  if (!relation) throw { status: 404, message: `Hierarchy relation not found for parent ${parentId}, child ${childId}` }
+  if (!relation) throw localError('hierarchyRelationNotFound', 404, { parentId, childId })
 
   await putOne('ingredient_hierarchy', { ...relation, ...data, updated_at: new Date().toISOString() })
   return await getById('ingredient_hierarchy', relation.id)
@@ -80,7 +81,7 @@ export async function deleteHierarchyRelation(params: Record<string, string>): P
 
   const existing = await getByIndex('ingredient_hierarchy', 'by_parent', parentId)
   const relation = existing.find((r: any) => r.child_id === childId)
-  if (!relation) throw { status: 404, message: `Hierarchy relation not found for parent ${parentId}, child ${childId}` }
+  if (!relation) throw localError('hierarchyRelationNotFound', 404, { parentId, childId })
 
   await deleteOne('ingredient_hierarchy', relation.id)
   return { ok: true }

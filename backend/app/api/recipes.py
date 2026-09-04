@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from copy import deepcopy
 from sqlalchemy.orm import Session, load_only
 import os
@@ -6,6 +6,7 @@ from sqlalchemy import or_, and_
 from typing import List, Optional
 from decimal import Decimal
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.api.deps import get_timezone
 from app.models.recipe import Recipe, RecipeIngredient, RecipeCostHistory
@@ -39,6 +40,7 @@ from app.services.recipe_service import (
 from app.services.recipe_import_service import RecipeImportService
 import shutil
 import tempfile
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -347,7 +349,7 @@ async def create_recipe(
         return db_recipe
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"创建菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='创建菜谱失败: {error}', error=str(e))
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -557,7 +559,7 @@ async def get_recipes(
             page_size=limit
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取菜谱列表失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取菜谱列表失败: {error}', error=str(e))
 
 
 @router.post("/batch-cost")
@@ -612,7 +614,7 @@ async def get_recipe_detail(
             ).first()
 
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 单独查询原料和食材信息
         recipe_ingredients = db.query(RecipeIngredient).filter(
@@ -714,13 +716,14 @@ async def get_recipe_detail(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取菜谱详情失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取菜谱详情失败: {error}', error=str(e))
 
 
 @router.put("/{recipe_id}")
 async def update_recipe(
     recipe_id: int,
     update_data: RecipeUpdate,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -732,12 +735,12 @@ async def update_recipe(
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         is_public_recipe = getattr(recipe, "is_public", False)
 
         # 未发布且非作者的私有菜谱 → 拒绝
         if not is_public_recipe and recipe.user_id != current_user.id and not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="无权修改此菜谱")
+            raise LocalizedHTTPException(status_code=403, message='无权修改此菜谱')
 
         # 已发布/公共菜谱 + 非管理员 → 提交提议待审核
         if is_public_recipe and not current_user.is_admin:
@@ -749,7 +752,11 @@ async def update_recipe(
                 proposer=current_user,
             )
             db.commit()
-            return {"proposal_id": p.id, "status": p.status, "message": "编辑已提交，待管理员审核"}
+            return {
+                "proposal_id": p.id,
+                "status": p.status,
+                "message": api_message(request, "编辑已提交，待管理员审核"),
+            }
 
         # 管理员直写已发布菜谱，或作者编辑自己的菜谱
         exclude_unset = update_data.model_dump(exclude_unset=True)
@@ -813,7 +820,7 @@ async def update_recipe(
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"更新菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='更新菜谱失败: {error}', error=str(e))
 
 
 def _build_recipe_detail_response(recipe: Recipe, db: Session) -> RecipeDetailResponse:
@@ -877,7 +884,7 @@ def publish_recipe(
 
     recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
     if recipe is None:
-        raise HTTPException(status_code=404, detail="菜谱不存在")
+        raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
     if getattr(current_user, "is_admin", False):
         p = proposal_service.apply_as_admin(
             db, entity_type="recipe", entity_id=recipe_id,
@@ -885,7 +892,7 @@ def publish_recipe(
     else:
         # 发布前仅作者可发起发布提议
         if recipe.user_id != current_user.id:
-            raise HTTPException(status_code=403, detail="仅作者可发布自己的菜谱")
+            raise LocalizedHTTPException(status_code=403, message='仅作者可发布自己的菜谱')
         p = proposal_service.submit(
             db, entity_type="recipe", entity_id=recipe_id,
             action="publish", payload={}, proposer=current_user)
@@ -908,14 +915,12 @@ async def delete_recipe(
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         if recipe.user_id != current_user.id and not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="无权删除此菜谱")
+            raise LocalizedHTTPException(status_code=403, message='无权删除此菜谱')
         # 已发布的菜谱：作者不可撤回/删除，仅管理员可删
         if getattr(recipe, "is_public", False) and not current_user.is_admin:
-            raise HTTPException(
-                status_code=403,
-                detail="已发布的菜谱不可删除/撤回，请联系管理员")
+            raise LocalizedHTTPException(status_code=403, message='已发布的菜谱不可删除/撤回，请联系管理员')
 
         recipe.is_active = False
         # 软删菜谱：释放对配图的引用
@@ -928,7 +933,7 @@ async def delete_recipe(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"删除菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='删除菜谱失败: {error}', error=str(e))
 
 
 @router.post("/{recipe_id}/images")
@@ -946,13 +951,13 @@ async def upload_recipe_image(
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         is_public_recipe = getattr(recipe, "is_public", False)
         is_owner_or_admin = recipe.user_id == current_user.id or current_user.is_admin
 
         if not is_owner_or_admin and not is_public_recipe:
-            raise HTTPException(status_code=403, detail="无权修改此菜谱")
+            raise LocalizedHTTPException(status_code=403, message='无权修改此菜谱')
 
         # 管理员始终直写；非管理员编辑已发布/来源菜谱 → 不走直写，交由审核流程
         direct_write = current_user.is_admin or not is_public_recipe
@@ -960,7 +965,7 @@ async def upload_recipe_image(
         # 验证文件类型
         allowed_types = {"image/jpeg", "image/png", "image/gif", "image/webp"}
         if file.content_type and file.content_type not in allowed_types:
-            raise HTTPException(status_code=400, detail="仅支持 JPEG、PNG、GIF、WebP 格式的图片")
+            raise LocalizedHTTPException(status_code=400, message='仅支持 JPEG、PNG、GIF、WebP 格式的图片')
 
         # 生成唯一文件名
         import uuid
@@ -997,7 +1002,7 @@ async def upload_recipe_image(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"上传图片失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='上传图片失败: {error}', error=str(e))
 
 
 @router.delete("/{recipe_id}/images/{filename}")
@@ -1011,10 +1016,10 @@ async def delete_recipe_image(
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         # 仅管理员可直接删除图片（常规操作应由前端通过 PUT recipes/{id} 的 images 字段走菜谱编辑审核流程）
         if not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="仅管理员可删除菜谱图片")
+            raise LocalizedHTTPException(status_code=403, message='仅管理员可删除菜谱图片')
 
         # 从 images 列表中移除（兼容旧格式 /static/images/recipes/xxx 和新格式 recipes/xxx）
         current_images = recipe.images or []
@@ -1028,7 +1033,7 @@ async def delete_recipe_image(
             found = old_format
 
         if found is None:
-            raise HTTPException(status_code=404, detail="图片不存在")
+            raise LocalizedHTTPException(status_code=404, message='图片不存在')
 
         current_images.remove(found)
         recipe.images = current_images
@@ -1054,7 +1059,7 @@ async def delete_recipe_image(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"删除图片失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='删除图片失败: {error}', error=str(e))
 
 
 @router.get("/{recipe_id}/cost", response_model=RecipeCostResponse)
@@ -1072,7 +1077,7 @@ async def get_recipe_cost(
             or_(Recipe.user_id == current_user.id, Recipe.is_public == True)
         ).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="recipe not found")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         recipe_ingredients = db.query(RecipeIngredient).filter(
             RecipeIngredient.recipe_id == recipe_id
         ).all()
@@ -1090,10 +1095,10 @@ async def get_recipe_cost(
             servings_override=pending_cost[1] if pending_cost else None,
         )
         if not result:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         return RecipeCostResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"计算成本失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='计算成本失败: {error}', error=str(e))
 
 
 @router.get("/{recipe_id}/nutrition", response_model=RecipeNutritionResponse)
@@ -1109,13 +1114,13 @@ async def get_recipe_nutrition(
             or_(Recipe.user_id == current_user.id, Recipe.is_public == True)
         ).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="recipe not found")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         result = await calculate_recipe_nutrition(recipe_id, db=db)
         if not result:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         return RecipeNutritionResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"计算营养失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='计算营养失败: {error}', error=str(e))
 
 
 @router.get("/{recipe_id}/merchant-costs", response_model=RecipeMerchantCostResponse)
@@ -1133,7 +1138,7 @@ async def get_recipe_merchant_costs(
             or_(Recipe.user_id == current_user.id, Recipe.is_public == True)
         ).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         from datetime import datetime
         from typing import Optional
@@ -1529,7 +1534,7 @@ async def get_recipe_merchant_costs(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"计算商家成本失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='计算商家成本失败: {error}', error=str(e))
 
 
 @router.post("/import-from-url")
@@ -1540,14 +1545,14 @@ async def import_recipes_from_url(
 ):
     """从URL导入菜谱"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         import_service = RecipeImportService(db)
         result = import_service.import_recipes_from_cook_repo(repo_url=url)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入失败: {error}', error=str(e))
 
 
 @router.post("/import-from-upload")
@@ -1558,12 +1563,12 @@ async def import_recipes_from_upload(
 ):
     """从上传的文件导入菜谱"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         # 检查文件类型
         if not file.filename.endswith(('.zip', '.json', '.tar.gz')):
-            raise HTTPException(status_code=400, detail="仅支持 .zip, .json, .tar.gz 文件")
+            raise LocalizedHTTPException(status_code=400, message='仅支持 .zip, .json, .tar.gz 文件')
 
         # 创建临时文件
         temp_file_path = tempfile.mktemp(suffix='.' + file.filename.split('.')[-1])
@@ -1582,7 +1587,7 @@ async def import_recipes_from_upload(
                 os.remove(temp_file_path)
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入失败: {error}', error=str(e))
 
 
 @router.post("/import-initial")
@@ -1592,14 +1597,14 @@ async def import_initial_recipes(
 ):
     """导入初始菜谱（通常在首次启动时使用）"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         from app.services.recipe_import_service import check_and_import_initial_recipes
         result = check_and_import_initial_recipes(db)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入初始菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入初始菜谱失败: {error}', error=str(e))
 
 
 @router.post("/import-json-repo")
@@ -1609,14 +1614,14 @@ async def import_from_json_repo(
 ):
     """从 JSON 仓库导入菜谱和原料"""
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         from app.services.enhanced_recipe_import_service import check_and_import_initial_recipes
         result = check_and_import_initial_recipes(db, user_id=current_user.id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"从 JSON 仓库导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='从 JSON 仓库导入失败: {error}', error=str(e))
 
 
 @router.get("/{recipe_id}/images")
@@ -1629,7 +1634,7 @@ async def get_recipe_images(
     try:
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 可见性校验：本人 / 公开菜谱（is_public） / 管理员
         is_visible = (
@@ -1638,7 +1643,7 @@ async def get_recipe_images(
             or current_user.is_admin
         )
         if not is_visible:
-            raise HTTPException(status_code=403, detail="无权查看此菜谱图片")
+            raise LocalizedHTTPException(status_code=403, message='无权查看此菜谱图片')
 
         if not recipe.images:
             return {"images": []}
@@ -1657,7 +1662,7 @@ async def get_recipe_images(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取图片失败：{str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取图片失败：{error}', error=str(e))
 
 
 @router.get("/{recipe_id}/cost-history", response_model=List[RecipeCostHistoryResponse])
@@ -1681,7 +1686,7 @@ async def get_recipe_cost_history(
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 可见性校验：本人 / 公开菜谱（is_public） / 管理员
         is_visible = (
@@ -1690,7 +1695,7 @@ async def get_recipe_cost_history(
             or current_user.is_admin
         )
         if not is_visible:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 实时计算成本趋势
         cost_trend = calculate_recipe_cost_trend(recipe_id, current_user.id, db, days, tz=tz, region_id=region_id)
@@ -1710,7 +1715,7 @@ async def get_recipe_cost_history(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取成本历史失败：{str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取成本历史失败：{error}', error=str(e))
 
 
 @router.get("/{recipe_id}/cost-history-range", response_model=List[RecipeCostRangeResponse])
@@ -1744,7 +1749,7 @@ async def get_recipe_cost_history_range(
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
 
         if not recipe:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 可见性校验：本人 / 公开菜谱（is_public） / 管理员
         is_visible = (
@@ -1753,7 +1758,7 @@ async def get_recipe_cost_history_range(
             or current_user.is_admin
         )
         if not is_visible:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         # 计算成本区间趋势
         cost_range_trend = calculate_recipe_cost_range_trend(recipe_id, current_user.id, db, days, offset_days, tz=tz, region_id=region_id)
@@ -1783,4 +1788,4 @@ async def get_recipe_cost_history_range(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取成本区间历史失败：{str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取成本区间历史失败：{error}', error=str(e))

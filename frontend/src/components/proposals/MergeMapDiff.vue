@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const entityType = computed(() => props.proposal.entity_type)
 const isIngredient = computed(() => entityType.value === 'ingredient')
@@ -47,15 +52,15 @@ function pv(key: string): any {
 // 来源列表
 const sources = computed<string[]>(() => {
   const s = snap.value.sources as any[] | undefined
-  if (s?.length) return s.map((x: any) => x.name || `#${x.id}`)
+  if (s?.length) return s.map((x: any) => x.name || t('proposals.idFallback', { id: x.id }))
   const ps = pv('sources') as any[] | undefined
-  if (ps?.length) return ps.map((x: any) => x.name || `#${x.id}`)
+  if (ps?.length) return ps.map((x: any) => x.name || t('proposals.idFallback', { id: x.id }))
   return []
 })
 
 const sourceCount = computed(() => sources.value.length || pv('source_count') || 0)
 const targetName = computed(() =>
-  snap.value.target_name || pv('target_name') || `#${payload.value.target_id}`
+  snap.value.target_name || pv('target_name') || t('proposals.idFallback', { id: payload.value.target_id })
 )
 
 /** 预览 API 字段名与影响范围标签的映射。
@@ -73,12 +78,12 @@ const MERCHANT_PREVIEW_KEYS: Record<string, string> = {
 }
 
 /** 预制食材合并 5 个影响维度标签，按此顺序渲染。 */
-const INGREDIENT_CARD_LABELS = [
-  { key: 'recipe_ingredients', label: '菜谱引用' },
-  { key: 'product_links', label: '商品关联' },
-  { key: 'hierarchies', label: '层级关系' },
-  { key: 'nutrition_mappings', label: '营养映射' },
-  { key: 'price_records', label: '价格记录' },
+const INGREDIENT_CARD_KEYS: Array<{ key: string; labelKey: string }> = [
+  { key: 'recipe_ingredients', labelKey: 'proposals.recipeReferences' },
+  { key: 'product_links', labelKey: 'proposals.productLinks' },
+  { key: 'hierarchies', labelKey: 'proposals.hierarchyRelationships' },
+  { key: 'nutrition_mappings', labelKey: 'proposals.nutritionMappings' },
+  { key: 'price_records', labelKey: 'proposals.priceRecords' },
 ]
 
 function snapCount(key: string): number {
@@ -104,16 +109,16 @@ function ingredientPriceCount(): number {
 
 const impactCards = computed(() => {
   if (isIngredient.value) {
-    return INGREDIENT_CARD_LABELS.map(c => ({
-      label: c.label,
+    return INGREDIENT_CARD_KEYS.map(c => ({
+      label: t(c.labelKey),
       count: c.key === 'price_records'
         ? ingredientPriceCount()
         : snapCount(c.key),
     }))
   }
   return [
-    { label: '价格记录', count: snapCount('product_records') },
-    { label: '收藏', count: snapCount('favorites') },
+    { label: t('proposals.priceRecords'), count: snapCount('product_records') },
+    { label: t('proposals.favorites'), count: snapCount('favorites') },
   ]
 })
 
@@ -122,18 +127,30 @@ const details = computed<DetailRow[]>(() => {
   const out: DetailRow[] = []
   if (isIngredient.value) {
     for (const r of (snap.value.recipe_ingredients || [])) {
-      out.push({ category: '菜谱', name: r.recipe_name || `菜谱 #${r.recipe_id}` })
+      out.push({
+        category: t('proposalEntityTypes.recipe'),
+        name: r.recipe_name || t('proposals.namedFallback', { type: t('proposalEntityTypes.recipe'), id: r.recipe_id }),
+      })
     }
     for (const l of (snap.value.product_links || [])) {
-      out.push({ category: '商品', name: l.product_name || `商品 #${l.product_id}` })
+      out.push({
+        category: t('proposalEntityTypes.product'),
+        name: l.product_name || t('proposals.namedFallback', { type: t('proposalEntityTypes.product'), id: l.product_id }),
+      })
     }
   } else {
     for (const r of (snap.value.product_records || [])) {
-      out.push({ category: '价格记录', name: r.product_name || `记录 #${r.id}` })
+      out.push({
+        category: t('proposals.priceRecords'),
+        name: r.product_name || t('proposals.recordFallback', { id: r.id }),
+      })
     }
   }
   return out
 })
+
+const sourceList = computed(() =>
+  new Intl.ListFormat(localeStore.effectiveFormatLocale, { type: 'conjunction' }).format(sources.value))
 
 const DETAIL_PREVIEW = 5
 const showAllDetails = ref(false)
@@ -158,29 +175,33 @@ const visibleDetails = computed(() =>
     <!-- source handling note -->
     <v-alert type="info" variant="tonal" density="compact" class="mb-3">
       <template v-if="sources.length">
-        源 <strong>{{ sourceCount }}</strong> 个（{{ sources.join('、') }}）将软停用（保留名称追溯），所有引用迁至目标「<strong>{{ targetName }}</strong>」。
+        {{ t('proposals.mergeSourceIntro', {
+          count: formatNumber(sourceCount, localeStore.effectiveFormatLocale),
+          sources: sourceList,
+          target: targetName,
+        }) }}
       </template>
       <template v-else-if="loadingPreview">
-        正在加载预览数据…
+        {{ t('proposals.loadingPreview') }}
       </template>
       <template v-else>
-        无源食材信息（待审批执行后更新）。
+        {{ t('proposals.noSourceInformation') }}
       </template>
     </v-alert>
 
     <!-- impact counts -->
-    <div class="text-subtitle-2 mb-2">影响范围</div>
+    <div class="text-subtitle-2 mb-2">{{ t('proposals.impactScope') }}</div>
     <div class="d-flex mb-2" style="gap: 4px">
       <div v-for="card in impactCards" :key="card.label" style="flex: 1; min-width: 0">
         <v-card variant="outlined" density="compact" class="text-center pa-2">
-          <div class="text-h6">{{ card.count }}</div>
+          <div class="text-h6">{{ formatNumber(card.count, localeStore.effectiveFormatLocale) }}</div>
           <div class="text-caption text-medium-emphasis">{{ card.label }}</div>
         </v-card>
       </div>
     </div>
 
     <!-- migration details (default expanded) -->
-    <div v-if="details.length" class="text-subtitle-2 mb-1">迁移明细</div>
+    <div v-if="details.length" class="text-subtitle-2 mb-1">{{ t('proposals.migrationDetails') }}</div>
     <v-list v-if="details.length" density="compact" class="bg-transparent">
       <v-list-item v-for="(d, i) in visibleDetails" :key="i" class="px-0">
         <template #prepend>
@@ -190,7 +211,11 @@ const visibleDetails = computed(() =>
       </v-list-item>
       <v-list-item v-if="details.length > DETAIL_PREVIEW" class="px-0">
         <v-btn variant="text" size="small" @click="showAllDetails = !showAllDetails">
-          {{ showAllDetails ? '收起' : `展开剩余 ${details.length - DETAIL_PREVIEW} 项` }}
+          {{ showAllDetails
+            ? t('proposals.collapse')
+            : t('proposals.showRemaining', {
+              count: formatNumber(details.length - DETAIL_PREVIEW, localeStore.effectiveFormatLocale),
+            }) }}
         </v-btn>
       </v-list-item>
     </v-list>

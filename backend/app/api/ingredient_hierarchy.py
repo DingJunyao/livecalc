@@ -1,11 +1,12 @@
 """
 食材层级关系管理API
 """
-from fastapi import APIRouter, Depends, HTTPException, Body, Query
+from fastapi import APIRouter, Depends, HTTPException, Body, Query, Request
 from sqlalchemy.orm import Session
 from typing import List, Optional, Set
 from app.core.security import get_current_user, get_current_admin_user
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.models.user import User
 from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType
 from app.models.ingredient_merge_record import IngredientMergeRecord
@@ -15,6 +16,7 @@ from app.services.proposals import service as proposal_service
 from pydantic import BaseModel
 from datetime import datetime
 from sqlalchemy import or_
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -47,6 +49,8 @@ class IngredientMergeResponse(BaseModel):
     updated_products_count: int
     updated_mappings_count: int
     stats_change: dict
+    status: Optional[str] = None
+    proposal_id: Optional[int] = None
 
 class ExpandedIngredientRelations(BaseModel):
     """某个关联食材的下一级关系"""
@@ -96,16 +100,16 @@ def create_hierarchy_relation(
     try:
         relation_type = HierarchyRelationType(relation.relation_type)
     except ValueError:
-        raise HTTPException(status_code=400, detail=f"无效的关系类型: {relation.relation_type}")
+        raise LocalizedHTTPException(status_code=400, message='无效的关系类型: {relation_type}', relation_type=relation.relation_type)
 
     # 验证食材ID是否存在
     parent_ingredient = db.query(Ingredient).filter(Ingredient.id == relation.parent_id).first()
     if not parent_ingredient:
-        raise HTTPException(status_code=404, detail=f"父食材ID {relation.parent_id} 不存在")
+        raise LocalizedHTTPException(status_code=404, message='父食材ID {parent_id} 不存在', parent_id=relation.parent_id)
 
     child_ingredient = db.query(Ingredient).filter(Ingredient.id == relation.child_id).first()
     if not child_ingredient:
-        raise HTTPException(status_code=404, detail=f"子食材ID {relation.child_id} 不存在")
+        raise LocalizedHTTPException(status_code=404, message='子食材ID {child_id} 不存在', child_id=relation.child_id)
 
     # 对于 fallback（回退）关系，需要特殊处理
     # 回退关系的语义是：从抽象原料回退到具体原料
@@ -115,7 +119,7 @@ def create_hierarchy_relation(
         actual_parent_id = relation.child_id
         actual_child_id = relation.parent_id
         if actual_parent_id == actual_child_id:
-            raise HTTPException(status_code=400, detail="不能创建自引用的回退关系")
+            raise LocalizedHTTPException(status_code=400, message='不能创建自引用的回退关系')
     else:
         actual_parent_id = relation.parent_id
         actual_child_id = relation.child_id
@@ -127,10 +131,7 @@ def create_hierarchy_relation(
         IngredientHierarchy.relation_type == relation.relation_type
     ).first()
     if existing_relation:
-        raise HTTPException(
-            status_code=400,
-            detail=f"该层级关系已存在（{relation_type.value}）"
-        )
+        raise LocalizedHTTPException(status_code=400, message='该层级关系已存在（{value}）', value=relation_type.value)
 
     payload = {
         "parent_id": actual_parent_id,
@@ -293,7 +294,7 @@ def update_hierarchy_relation(
     """
     relation = db.query(IngredientHierarchy).filter(IngredientHierarchy.id == relation_id).first()
     if not relation:
-        raise HTTPException(status_code=404, detail="层级关系不存在")
+        raise LocalizedHTTPException(status_code=404, message='层级关系不存在')
 
     payload = {"strength": strength}
 
@@ -328,7 +329,7 @@ def update_hierarchy_relation(
     child_ingredient = db.query(Ingredient).filter(Ingredient.id == relation.child_id).first()
 
     if not parent_ingredient or not child_ingredient:
-        raise HTTPException(status_code=404, detail="相关食材不存在")
+        raise LocalizedHTTPException(status_code=404, message='相关食材不存在')
 
     return HierarchyRelationResponse(
         id=relation.id,
@@ -345,6 +346,7 @@ def update_hierarchy_relation(
 @router.delete("/ingredients/hierarchy/{relation_id}")
 def delete_hierarchy_relation(
     relation_id: int,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -356,7 +358,7 @@ def delete_hierarchy_relation(
     """
     relation = db.query(IngredientHierarchy).filter(IngredientHierarchy.id == relation_id).first()
     if not relation:
-        raise HTTPException(status_code=404, detail="层级关系不存在")
+        raise LocalizedHTTPException(status_code=404, message='层级关系不存在')
 
     if current_user.is_admin:
         proposal_service.apply_as_admin(
@@ -364,20 +366,30 @@ def delete_hierarchy_relation(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "层级关系删除成功（管理员直写）"}
+        return {"message": api_message(request, "层级关系删除成功（管理员直写）")}
 
     p = proposal_service.submit(
         db, entity_type="hierarchy", entity_id=relation_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 # 食材合并功能接口
 @router.post("/ingredients/merge", response_model=IngredientMergeResponse)
 def merge_ingredients(
     merge_request: IngredientMergeRequest,
+    request: Request,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -389,10 +401,10 @@ def merge_ingredients(
     - 普通用户：经框架 submit 提议（治理总表 ingredient.merge = manual → 待审），不限制所有权。
     """
     if not merge_request.source_ingredient_ids or not merge_request.target_ingredient_id:
-        raise HTTPException(status_code=400, detail="缺少必要的参数：源食材ID列表和目标食材ID")
+        raise LocalizedHTTPException(status_code=400, message='缺少必要的参数：源食材ID列表和目标食材ID')
 
     if merge_request.target_ingredient_id in merge_request.source_ingredient_ids:
-        raise HTTPException(status_code=400, detail="目标食材不能同时是源食材")
+        raise LocalizedHTTPException(status_code=400, message='目标食材不能同时是源食材')
 
     source_ids = merge_request.source_ingredient_ids
     target_id = merge_request.target_ingredient_id
@@ -444,7 +456,7 @@ def merge_ingredients(
         db.commit()
         return IngredientMergeResponse(
             success=True,
-            message="合并完成（管理员直写）",
+            message=api_message(request, "合并完成（管理员直写）"),
             merged_count=len(source_ids),
             updated_recipes_count=recipe_count,
             updated_products_count=product_link_count,
@@ -462,13 +474,20 @@ def merge_ingredients(
     db.commit()
     return IngredientMergeResponse(
         success=True,
-        message=f"合并提议已提交，待管理员审核（proposal_id={p.id}）",
+        message=api_message(
+            request,
+            "合并提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
         merged_count=len(source_ids),
         updated_recipes_count=recipe_count,
         updated_products_count=product_link_count,
         updated_mappings_count=nutrition_count,
         updated_hierarchies_count=hierarchy_count,
         stats_change={},
+        status=p.status,
+        proposal_id=p.id,
     )
 
 
@@ -514,7 +533,7 @@ def get_ingredient_merge_status(
     """
     ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
     if not ingredient:
-        raise HTTPException(status_code=404, detail="食材不存在")
+        raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
     is_merged = ingredient.is_merged
     merged_into_id = ingredient.merged_into_id

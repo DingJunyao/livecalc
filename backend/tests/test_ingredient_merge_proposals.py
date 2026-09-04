@@ -1,10 +1,13 @@
 """ingredient merge 执行器：snapshot 迁移明细含可读名 单元测试。"""
 from types import SimpleNamespace
 
+import pytest
+
 from app.models.recipe import Recipe, RecipeIngredient
 from app.models.nutrition import Ingredient, IngredientNutritionMapping
 from app.models.product_entity import Product
 from app.models.product_ingredient_link import ProductIngredientLink
+from app.core.exceptions import LocalizedHTTPException
 from app.services.proposals.executors.ingredient import IngredientExecutor
 
 
@@ -117,3 +120,31 @@ def test_merge_revert_restores_rows(db_session):
         IngredientNutritionMapping.nutrition_id == nid,
     ).all()
     assert len(nm_src) == 1
+
+
+def test_merge_failure_preserves_service_reason(db_session, monkeypatch):
+    from app.services.proposals.executors import ingredient as ingredient_module
+
+    class FakeMerger:
+        def __init__(self, db):
+            pass
+
+        def merge_ingredients(self, **kwargs):
+            return {"success": False, "message": "service merge reason"}
+
+    monkeypatch.setattr(ingredient_module, "IngredientMerger", FakeMerger)
+    proposal = SimpleNamespace(
+        id=770320,
+        action="merge",
+        entity_id=None,
+        payload={"source_ids": [770321], "target_id": 770322},
+        snapshot=None,
+        revert_payload=None,
+        proposer_id=1,
+    )
+
+    with pytest.raises(LocalizedHTTPException) as exc_info:
+        IngredientExecutor()._apply_merge(db_session, proposal)
+
+    assert exc_info.value.message == "合并失败: {detail}"
+    assert exc_info.value.params["detail"] == "service merge reason"

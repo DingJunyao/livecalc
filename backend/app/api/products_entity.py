@@ -1,7 +1,7 @@
 """商品实体 API 路由"""
 from dataclasses import asdict
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, and_, or_, func
@@ -9,6 +9,7 @@ from typing import List, Optional
 from datetime import datetime
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.api.deps import get_timezone
 from app.utils.date_range_utils import utc_datetime_to_local_date, local_date_range_to_utc_range
@@ -33,6 +34,7 @@ from app.services.proposals.pending import (
 )
 from app.services.calc_scope import resolve_region_param
 from app.services.barcode_lookup import resolve_barcode
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(tags=["products_entity"])
 
@@ -82,7 +84,7 @@ def create_product(
     if product.barcode:
         existing = db.query(Product).filter(Product.barcode == product.barcode).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Barcode already exists")
+            raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 将 Pydantic 对象转换为字典并序列化 tags
     product_data = product.model_dump()
@@ -326,7 +328,7 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
         joinedload(Product.ingredient)
     ).filter(Product.id == product_id, Product.is_active == True).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     # 反序列化 tags
     if product.tags:
@@ -445,7 +447,7 @@ def update_product(
     """
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if not db_product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     update_data = product_update.model_dump(exclude_unset=True)
 
@@ -456,7 +458,7 @@ def update_product(
             Product.id != product_id
         ).first()
         if existing:
-            raise HTTPException(status_code=400, detail="Barcode already exists")
+            raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 序列化 tags
     if 'tags' in update_data:
@@ -503,6 +505,7 @@ def update_product(
 @router.delete("/products/entity/{product_id}/")
 def delete_product(
     product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -513,7 +516,7 @@ def delete_product(
     """
     db_product = db.query(Product).filter(Product.id == product_id).first()
     if not db_product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     # 唯一商品检查（端点提交时；执行器 apply 时再查一次防审核期间变化）
     sibling_count = db.query(Product).filter(
@@ -522,10 +525,7 @@ def delete_product(
         Product.id != product_id
     ).count()
     if sibling_count == 0:
-        raise HTTPException(
-            status_code=400,
-            detail=f"「{db_product.name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。"
-        )
+        raise LocalizedHTTPException(status_code=400, message='「{name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。', name=db_product.name)
 
     # 分流：管理员直写（级联软删在执行器）/ 普通用户提议待审
     if current_user.is_admin:
@@ -534,14 +534,23 @@ def delete_product(
             action="delete", payload={}, admin=current_user,
         )
         db.commit()
-        return {"message": "商品已删除（管理员直写，级联软删价格记录）"}
+        return {"message": api_message(request, "商品已删除（管理员直写，级联软删价格记录）")}
 
     p = proposal_service.submit(
         db, entity_type="product", entity_id=product_id,
         action="delete", payload={}, proposer=current_user,
     )
     db.commit()
-    return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+    return {
+        "message": api_message(
+            request,
+            "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+            proposal_id=p.id,
+            status=p.status,
+        ),
+        "proposal_id": p.id,
+        "status": p.status,
+    }
 
 
 # ==================== 条码管理端点 ====================
@@ -557,14 +566,14 @@ def add_product_barcode(
     # 验证商品是否存在
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     # 检查条码是否已存在（全局唯一）
     existing_barcode = db.query(ProductBarcode).filter(
         ProductBarcode.barcode == barcode.barcode
     ).first()
     if existing_barcode:
-        raise HTTPException(status_code=400, detail="Barcode already exists")
+        raise LocalizedHTTPException(status_code=400, message='条码已存在')
 
     # 如果设置为主条码，需要先将该商品的其他主条码取消
     if barcode.is_primary:
@@ -600,7 +609,7 @@ def get_product_barcodes(
     # 验证商品是否存在
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     barcodes = db.query(ProductBarcode).filter(
         ProductBarcode.product_id == product_id,
@@ -620,7 +629,7 @@ def update_product_barcode(
     """更新条码信息"""
     barcode = db.query(ProductBarcode).filter(ProductBarcode.id == barcode_id).first()
     if not barcode:
-        raise HTTPException(status_code=404, detail="Barcode not found")
+        raise LocalizedHTTPException(status_code=404, message='条码不存在')
 
     # 如果设置为主条码，需要先将该商品的其他主条码取消
     if barcode_update.is_primary is True:
@@ -651,7 +660,7 @@ def delete_product_barcode(
     """删除条码（软删除）"""
     barcode = db.query(ProductBarcode).filter(ProductBarcode.id == barcode_id).first()
     if not barcode:
-        raise HTTPException(status_code=404, detail="Barcode not found")
+        raise LocalizedHTTPException(status_code=404, message='条码不存在')
 
     barcode.is_active = False
     barcode.updated_by = current_user.id
@@ -756,7 +765,7 @@ def get_product_latest_price(
             "unit": target_unit_abbr
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取最近价格失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取最近价格失败: {error}', error=str(e))
 
 
 @router.get("/products/entity/{product_id}/latest-price-by-merchant")
@@ -874,7 +883,7 @@ def get_product_latest_price_by_merchant(
         import traceback
         print(f"[ERROR] 获取商品商家价格失败: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取商品商家价格失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取商品商家价格失败: {error}', error=str(e))
 
 
 @router.get("/products/autocomplete")
@@ -970,7 +979,7 @@ def product_autocomplete(
 
         return results[:limit]
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"商品自动完成搜索失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='商品自动完成搜索失败: {error}', error=str(e))
 
 
 # ==================== 商品营养数据端点 ====================
@@ -996,10 +1005,10 @@ async def get_product_nutrition(
         ).filter(Product.id == product_id, Product.is_active == True).first()
 
         if not product:
-            raise HTTPException(status_code=404, detail="商品不存在")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
         if not product.ingredient:
-            raise HTTPException(status_code=400, detail="商品未关联原料")
+            raise LocalizedHTTPException(status_code=400, message='商品未关联原料')
 
         ingredient = product.ingredient
 
@@ -1027,12 +1036,13 @@ async def get_product_nutrition(
         import traceback
         print(f"[ERROR] 获取商品营养数据失败: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取商品营养数据失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取商品营养数据失败: {error}', error=str(e))
 
 
 @router.put("/products/entity/{product_id}/nutrition")
 async def update_product_nutrition(
     product_id: int,
+    request: Request,
     nutrition: Optional[dict] = Body(None, description="营养数据，传 null 清空自定义数据"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -1062,7 +1072,7 @@ async def update_product_nutrition(
         ).first()
 
         if not product:
-            raise HTTPException(status_code=404, detail="商品不存在")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
         payload = {
             "custom_nutrition_data": nutrition,
@@ -1081,7 +1091,7 @@ async def update_product_nutrition(
             )
             db.commit()
             return {
-                "message": "营养数据更新成功（管理员直写）",
+                "message": api_message(request, "营养数据更新成功（管理员直写）"),
                 "custom_nutrition_data": nutrition,
             }
 
@@ -1099,11 +1109,17 @@ async def update_product_nutrition(
         db.commit()
         if p.status == "applied":
             return {
-                "message": "营养数据更新成功（补空自动通过）",
+                "message": api_message(request, "营养数据更新成功（补空自动通过）"),
                 "custom_nutrition_data": nutrition,
             }
         return {
-            "message": f"营养数据更新提议已提交（status={p.status}，待管理员审核）",
+            "message": api_message(
+                request,
+                "营养数据更新提议已提交（status={status}，待管理员审核）",
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
             "custom_nutrition_data": product.custom_nutrition_data,  # 待审未变，返旧值
         }
     except HTTPException:
@@ -1113,7 +1129,7 @@ async def update_product_nutrition(
         import traceback
         print(f"[ERROR] 更新商品营养数据失败: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"更新商品营养数据失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='更新商品营养数据失败: {error}', error=str(e))
 
 
 def _get_ingredient_nutrition_with_fallback(db: Session, ingredient) -> dict:
@@ -1182,6 +1198,7 @@ def _merge_nutrition_data(product_nutrition: dict, ingredient_nutrition: dict) -
 @router.post("/products/entity/{product_id}/split-to-ingredient")
 async def split_product_to_ingredient(
     product_id: int,
+    request: Request,
     new_name: Optional[str] = Body(None, embed=True, description="新原料名称，同名冲突时指定"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1205,9 +1222,9 @@ async def split_product_to_ingredient(
     ).first()
 
     if not product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     if not product.ingredient_id:
-        raise HTTPException(status_code=400, detail="商品未关联原料")
+        raise LocalizedHTTPException(status_code=400, message='商品未关联原料')
 
     current_ingredient = product.ingredient
 
@@ -1217,29 +1234,20 @@ async def split_product_to_ingredient(
         Product.is_active == True
     ).count()
     if active_product_count <= 1:
-        raise HTTPException(
-            status_code=400,
-            detail="该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。"
-        )
+        raise LocalizedHTTPException(status_code=400, message='该商品是当前原料的唯一商品，无法拆分。请先为该原料添加其他商品。')
 
     # 同名冲突检查
     ingredient_name = (new_name or product.name).strip()
     if not ingredient_name:
-        raise HTTPException(status_code=400, detail="原料名称不能为空")
+        raise LocalizedHTTPException(status_code=400, message='原料名称不能为空')
     existing_ingredient = db.query(Ingredient).filter(
         Ingredient.name == ingredient_name,
         Ingredient.is_active == True
     ).first()
     if existing_ingredient:
         if existing_ingredient.id == current_ingredient.id:
-            raise HTTPException(
-                status_code=409,
-                detail=f"原料「{ingredient_name}」与当前关联原料同名，请指定不同的新原料名称。"
-            )
-        raise HTTPException(
-            status_code=409,
-            detail=f"原料「{ingredient_name}」已存在（ID: {existing_ingredient.id}），请指定不同的名称。"
-        )
+            raise LocalizedHTTPException(status_code=409, message='原料「{ingredient_name}」与当前关联原料同名，请指定不同的新原料名称。', ingredient_name=ingredient_name)
+        raise LocalizedHTTPException(status_code=409, message='原料「{ingredient_name}」已存在（ID: {id}），请指定不同的名称。', ingredient_name=ingredient_name, id=existing_ingredient.id)
 
     payload = {"new_name": new_name} if new_name else {}
 
@@ -1254,7 +1262,11 @@ async def split_product_to_ingredient(
         # 重新读取刷新后的商品
         db.refresh(product)
         return {
-            "message": f"商品已拆分为原料「{ingredient_name}」",
+            "message": api_message(
+                request,
+                "商品已拆分为原料「{ingredient_name}」",
+                ingredient_name=ingredient_name,
+            ),
             "ingredient_id": product.ingredient_id,
             "ingredient_name": ingredient_name,
         }
@@ -1265,8 +1277,13 @@ async def split_product_to_ingredient(
     )
     db.commit()
     return {
-        "message": f"拆分提议已提交，待管理员审核（proposal_id={p.id}）",
+        "message": api_message(
+            request,
+            "拆分提议已提交，待管理员审核（proposal_id={proposal_id}）",
+            proposal_id=p.id,
+        ),
         "proposal_id": p.id,
+        "status": p.status,
     }
 
 
@@ -1274,6 +1291,7 @@ async def split_product_to_ingredient(
 def merge_product_into(
     product_id: int,
     target_product_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -1292,23 +1310,20 @@ def merge_product_into(
         Product.is_active == True
     ).first()
     if not source_product:
-        raise HTTPException(status_code=404, detail="源商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='源商品不存在')
 
     target_product = db.query(Product).filter(
         Product.id == target_product_id,
         Product.is_active == True
     ).first()
     if not target_product:
-        raise HTTPException(status_code=404, detail="目标商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='目标商品不存在')
 
     # 校验同一原料
     if source_product.ingredient_id != target_product.ingredient_id:
-        raise HTTPException(
-            status_code=400,
-            detail="只能合并同一原料下的商品"
-        )
+        raise LocalizedHTTPException(status_code=400, message='只能合并同一原料下的商品')
     if source_product.id == target_product.id:
-        raise HTTPException(status_code=400, detail="不能将商品合并到自身")
+        raise LocalizedHTTPException(status_code=400, message='不能将商品合并到自身')
 
     payload = {"target_product_id": target_product_id}
 
@@ -1327,7 +1342,11 @@ def merge_product_into(
         ).count()
 
         return {
-            "message": f"已合并到「{target_product.name}」",
+            "message": api_message(
+                request,
+                "已合并到「{target_name}」",
+                target_name=target_product.name,
+            ),
             "target_id": target_product.id,
             "target_name": target_product.name,
             "price_record_count": price_record_count,
@@ -1339,8 +1358,13 @@ def merge_product_into(
     )
     db.commit()
     return {
-        "message": f"合并提议已提交，待管理员审核（proposal_id={p.id}）",
+        "message": api_message(
+            request,
+            "合并提议已提交，待管理员审核（proposal_id={proposal_id}）",
+            proposal_id=p.id,
+        ),
         "proposal_id": p.id,
+        "status": p.status,
     }
 
 
@@ -1360,17 +1384,17 @@ def add_import_alias(
     """
     alias_name = body.name.strip()
     if not alias_name:
-        raise HTTPException(status_code=400, detail="name is required")
+        raise LocalizedHTTPException(status_code=400, message='名称不能为空')
 
     product = db.query(Product).filter(
         Product.id == product_id, Product.is_active == True
     ).first()
     if not product:
-        raise HTTPException(status_code=404, detail="商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     ingredient = product.ingredient
     if not ingredient or not ingredient.is_active:
-        raise HTTPException(status_code=404, detail="关联原料不存在")
+        raise LocalizedHTTPException(status_code=404, message='关联原料不存在')
 
     # 判断别名加到商品还是原料
     same_name_as_ingredient = (product.name == ingredient.name)

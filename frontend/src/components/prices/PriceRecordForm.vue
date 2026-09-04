@@ -8,7 +8,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4">
         <v-btn icon="mdi-arrow-left" variant="text" @click="close" />
-        <span class="text-h6 ml-2">{{ isEdit ? '编辑价格' : '添加价格' }}</span>
+        <span class="text-h6 ms-2">{{ isEdit ? t('prices.editRecord') : t('prices.addRecord') }}</span>
         <v-spacer />
         <v-btn
           color="primary"
@@ -16,7 +16,7 @@
           :loading="saving"
           @click="save"
         >
-          保存
+          {{ t('prices.save') }}
         </v-btn>
       </v-card-title>
 
@@ -26,9 +26,9 @@
           <v-autocomplete
             v-model="form.merchant_id"
             :items="merchants"
-            item-title="name"
+            :item-title="(item: any) => item.display_name || item.name"
             item-value="id"
-            label="商家 *"
+            :label="t('prices.merchantRequired')"
             prepend-inner-icon="mdi-store"
             variant="outlined"
             required
@@ -40,7 +40,7 @@
           <!-- 商品选择 -->
           <v-text-field
             v-model="form.product_name"
-            label="商品名称 *"
+            :label="t('prices.productName')"
             prepend-inner-icon="mdi-magnify"
             variant="outlined"
             required
@@ -52,7 +52,7 @@
           <div class="d-flex align-center ga-2 mb-4">
             <v-text-field
               v-model="form.price"
-              label="价格 *"
+              :label="t('prices.price')"
               type="number"
               variant="outlined"
               required
@@ -61,13 +61,13 @@
             />
             <v-menu :close-on-content-click="true" location="bottom">
               <template #activator="{ props: menuProps }">
-                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" aria-label="选择币种">{{ recordCurrency }}</v-btn>
+                <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
               </template>
               <v-list density="compact">
                 <v-list-item
                   v-for="c in currencies"
                   :key="c.code"
-                  :title="`${c.name} ${c.code}`"
+                  :title="`${c.display_name || c.name} ${c.code}`"
                   :active="recordCurrency === c.code"
                   @click="recordCurrency = c.code"
                 />
@@ -80,7 +80,7 @@
             <v-col cols="6">
               <v-text-field
                 v-model="form.quantity"
-                label="数量 *"
+                :label="t('prices.quantity') + ' *'"
                 type="number"
                 variant="outlined"
                 required
@@ -90,8 +90,10 @@
             <v-col cols="6">
               <v-select
                 v-model="form.unit"
-                label="单位 *"
+                :label="t('prices.unit') + ' *'"
                 :items="units"
+                item-title="title"
+                item-value="value"
                 variant="outlined"
                 required
               />
@@ -101,7 +103,7 @@
           <!-- 计入支出 -->
           <v-checkbox
             v-model="form.is_purchase"
-            label="计入支出"
+            :label="t('prices.countExpense')"
             color="primary"
             density="comfortable"
             class="mb-4"
@@ -110,7 +112,7 @@
           <!-- 记录时间 -->
           <v-text-field
             v-model="form.record_date"
-            label="记录时间"
+            :label="t('prices.recordedAt')"
             prepend-inner-icon="mdi-calendar"
             type="date"
             variant="outlined"
@@ -121,14 +123,14 @@
       <!-- 桌面端底部操作按钮 -->
       <v-card-actions class="pa-4 pt-0 d-none d-md-flex">
         <v-spacer />
-        <v-btn variant="text" @click="close">取消</v-btn>
+        <v-btn variant="text" @click="close">{{ t('prices.cancel') }}</v-btn>
         <v-btn
           color="primary"
           variant="elevated"
           :loading="saving"
           @click="save"
         >
-          保存
+          {{ t('prices.save') }}
         </v-btn>
       </v-card-actions>
     </v-card>
@@ -136,6 +138,7 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useUserUnits } from '@/composables/useUserUnits'
 const { priceUnitName } = useUserUnits()
 import { ref, reactive, watch, computed, onMounted } from 'vue'
@@ -143,6 +146,9 @@ import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
+import { fallbackPriceUnitValues, localizedUnitLabel } from '@/utils/localDisplay'
+
+const { t } = useI18n()
 
 interface Props {
   modelValue: boolean
@@ -176,19 +182,22 @@ const recordCurrency = ref<string>('CNY')
 const formRef = ref()
 
 // 单位选项（从 API 动态加载）
-const units = ref<string[]>([])
-
-// 基本单位列表（API 加载失败时的回退）
-const FALLBACK_UNITS = ['斤', '个', 'kg', '克', '升', '毫升', '盒', '包', '袋', '瓶']
+const units = ref<Array<{ title: string; value: string }>>([])
 
 // 加载全局单位列表
 const loadUnits = async () => {
   try {
     const res = await api.get('/units/', { params: { limit: 100 } })
     const unitList = res.items || res || []
-    units.value = unitList.map((u: any) => u.abbreviation)
+    units.value = unitList.map((u: any) => ({
+      title: localizedUnitLabel(u.abbreviation),
+      value: u.abbreviation,
+    }))
   } catch (e) {
-    units.value = [...FALLBACK_UNITS]
+    units.value = fallbackPriceUnitValues().map((value) => ({
+      title: localizedUnitLabel(value),
+      value,
+    }))
   }
 }
 
@@ -220,7 +229,7 @@ onMounted(() => {
 const saving = ref(false)
 
 const rules = {
-  required: (value: any) => !!value || '此字段必填',
+  required: (value: any) => !!value || t('prices.fieldRequired'),
 }
 
 // 监听 record 变化，填充表单

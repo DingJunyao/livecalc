@@ -2,6 +2,7 @@
 // 基于 AsyncGenerator 逐步产生事件，支持 AbortSignal 取消。
 
 import { TOOLS, getToolByName, type ToolDefinition } from './tools'
+import { agentErrorMessage } from '@/utils/localAgentErrors'
 
 // ============================================================
 // 事件类型
@@ -107,7 +108,7 @@ export async function* runAgent(
 
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     if (signal?.aborted) {
-      yield { type: 'error', message: '任务已被用户取消' }
+      yield { type: 'error', message: agentErrorMessage('agentCancelled') }
       return
     }
 
@@ -116,7 +117,13 @@ export async function* runAgent(
     try {
       response = await callAI(config, SYSTEM_PROMPT, toolsPayload, messages, signal)
     } catch (err: any) {
-      yield { type: 'error', message: err.message || 'API 调用失败' }
+      const detail = err?.message?.trim()
+      yield {
+        type: 'error',
+        message: detail
+          ? agentErrorMessage('agentApiCallFailedWithDetail', { detail })
+          : agentErrorMessage('agentApiCallFailed'),
+      }
       return
     }
 
@@ -159,7 +166,7 @@ export async function* runAgent(
       ? response.stop_reason
       : response.choices?.[0]?.finish_reason
     if (finishReason === 'length' && toolCalls.length === 0) {
-      yield { type: 'error', message: 'AI 响应被 max_tokens 截断（finish_reason=length），请减少单次查询的数据量或检查模型配置。' }
+      yield { type: 'error', message: agentErrorMessage('agentResponseTruncated') }
       return
     }
 
@@ -200,7 +207,7 @@ export async function* runAgent(
     // ---- 逐个执行工具 ----
     for (const tc of toolCalls) {
       if (signal?.aborted) {
-        yield { type: 'error', message: '任务已被用户取消' }
+        yield { type: 'error', message: agentErrorMessage('agentCancelled') }
         return
       }
 
@@ -209,12 +216,17 @@ export async function* runAgent(
       const tool = getToolByName(tc.name)
       let result: any
       if (!tool) {
-        result = { error: `未知工具: ${tc.name}` }
+        result = { error: agentErrorMessage('agentUnknownTool', { name: tc.name }) }
       } else {
         try {
           result = await tool.execute(tc.input)
         } catch (err: any) {
-          result = { error: `工具执行错误: ${err.message}` }
+          const detail = err?.message?.trim()
+          result = {
+            error: detail
+              ? agentErrorMessage('agentToolExecutionFailedWithDetail', { detail })
+              : agentErrorMessage('agentToolExecutionFailed'),
+          }
         }
       }
 
@@ -242,7 +254,7 @@ export async function* runAgent(
   }
 
   // 达到最大迭代次数
-  yield { type: 'error', message: `已达到最大迭代次数 (${MAX_ITERATIONS})` }
+  yield { type: 'error', message: agentErrorMessage('agentMaxIterations', { max: MAX_ITERATIONS }) }
 }
 
 // ============================================================

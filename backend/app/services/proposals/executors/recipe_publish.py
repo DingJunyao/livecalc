@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException
 from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.models.recipe import Recipe
+from app.core.exceptions import LocalizedHTTPException
 
 
 class RecipePublishExecutor(ProposalExecutor):
@@ -19,9 +20,9 @@ class RecipePublishExecutor(ProposalExecutor):
     def validate(self, db, proposal):
         r = db.query(Recipe).filter(Recipe.id == proposal.entity_id).first()
         if r is None:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         if getattr(r, "is_public", False):
-            raise HTTPException(status_code=400, detail="菜谱已发布")
+            raise LocalizedHTTPException(status_code=400, message='菜谱已发布')
 
     def preview(self, db, proposal):
         r = db.query(Recipe).filter(Recipe.id == proposal.entity_id).first()
@@ -31,7 +32,7 @@ class RecipePublishExecutor(ProposalExecutor):
     def apply(self, db, proposal) -> ApplyResult:
         r = db.query(Recipe).filter(Recipe.id == proposal.entity_id).first()
         if r is None:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
         snapshot = {"is_public": bool(getattr(r, "is_public", False))}
         r.is_public = True
         return ApplyResult(snapshot=snapshot,

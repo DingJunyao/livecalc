@@ -14,6 +14,7 @@ from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.services.proposals.registry import ExecutorRegistry
 from app.models.nutrition_data import NutritionData
 from app.models.nutrition import Ingredient
+from app.core.exceptions import LocalizedHTTPException
 
 
 class NutritionExecutor(ProposalExecutor):
@@ -30,11 +31,11 @@ class NutritionExecutor(ProposalExecutor):
     def validate(self, db: Session, proposal) -> None:
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail="营养提议需 entity_id（食材 id）")
+            raise LocalizedHTTPException(status_code=400, message='营养提议需 entity_id（食材 id）')
         if db.query(Ingredient).get(eid) is None:
-            raise HTTPException(status_code=404, detail=f"食材 {eid} 不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材 {eid} 不存在', eid=eid)
         if "nutrients" not in (proposal.payload or {}):
-            raise HTTPException(status_code=400, detail="payload 缺少 nutrients")
+            raise LocalizedHTTPException(status_code=400, message='payload 缺少 nutrients')
 
     def build_snapshot(self, db: Session, proposal) -> dict:
         """提交时预填 snapshot，供 pending 审核看旧营养数据。"""

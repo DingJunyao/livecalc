@@ -6,13 +6,14 @@
     </v-card-title>
     <v-divider v-if="title" />
     <v-card-text class="pa-0">
-      <div ref="chartRef" class="hierarchy-chart" :style="{ height: height }"></div>
+      <div ref="chartRef" class="hierarchy-chart" dir="ltr" :style="{ height: height }"></div>
     </v-card-text>
   </v-card>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, watch, onUnmounted, PropType } from 'vue'
+import { useI18n } from 'vue-i18n'
 import * as echarts from 'echarts/core'
 import { GraphChart } from 'echarts/charts'
 import {
@@ -84,6 +85,7 @@ const props = defineProps({
     default: '400px'
   }
 })
+const { t } = useI18n()
 
 const chartRef = ref<HTMLElement | null>(null)
 let chart: ECharts | null = null
@@ -91,17 +93,17 @@ let chart: ECharts | null = null
 // 关系类型配置
 const relationTypes = {
   contains: {
-    label: '包含',
+    label: t('charts.hierarchy.contains'),
     color: '#2196F3',
     lineStyle: 'solid'
   },
   fallback: {
-    label: '可回退',
+    label: t('charts.hierarchy.canFallBack'),
     color: '#FF9800',
     lineStyle: 'dashed'
   },
   substitutable: {
-    label: '可替代',
+    label: t('charts.hierarchy.substitutable'),
     color: '#4CAF50',
     lineStyle: 'dotted'
   }
@@ -159,11 +161,11 @@ function addLink(
   // 根据关系类型决定标签
   let label: string
   if (rel.relation_type === 'contains') {
-    label = '包含'
+    label = t('charts.hierarchy.contains')
   } else if (rel.relation_type === 'fallback') {
-    label = '回退到'
+    label = t('charts.hierarchy.fallbackTo')
   } else if (rel.relation_type === 'substitutable') {
-    label = '可替代'
+    label = t('charts.hierarchy.substitutable')
   } else {
     label = rel.relation_type
   }
@@ -309,11 +311,15 @@ const updateChart = () => {
       formatter: (params: any) => {
         if (params.dataType === 'node') {
           const style = nodeStyles[params.data.category]
-          const levelLabel = params.data.category === 0 ? '当前原料' : params.data.category === 1 ? '一级关系' : '二级关系'
+          const levelLabel = params.data.category === 0
+            ? t('charts.hierarchy.currentIngredient')
+            : params.data.category === 1
+              ? t('charts.hierarchy.primaryRelation')
+              : t('charts.hierarchy.secondaryRelation')
           return `<strong>${params.data.name}</strong><br/>${levelLabel}`
         } else if (params.dataType === 'edge') {
-          const levelLabel = params.data.level === 2 ? '（二级）' : ''
-          return `<strong>${params.data.sourceName}</strong> ${params.data.name} <strong>${params.data.targetName}</strong>${levelLabel}<br/>类型: ${params.data.relationType}<br/>强度: ${Math.round(params.data.strength)}%`
+          const levelLabel = params.data.level === 2 ? t('charts.hierarchy.secondaryShort') : ''
+          return `<strong>${params.data.sourceName}</strong> ${params.data.name} <strong>${params.data.targetName}</strong>${levelLabel}<br/>${t('charts.hierarchy.type')}: ${params.data.relationType}<br/>${t('charts.hierarchy.strength')}: ${Math.round(params.data.strength)}%`
         }
         return ''
       }

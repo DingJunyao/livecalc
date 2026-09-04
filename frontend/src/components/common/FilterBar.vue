@@ -9,13 +9,13 @@
       @click="dialogOpen = true"
     >
       <v-icon size="20" :color="hasActiveFilters ? 'primary' : 'default'">mdi-filter-variant</v-icon>
-      <span v-if="hasActiveFilters" class="ml-1 text-caption font-weight-bold text-primary">{{ activeFilterCount }}</span>
+      <span v-if="hasActiveFilters" class="ms-1 text-caption font-weight-bold text-primary">{{ activeFilterCount }}</span>
     </v-btn>
 
     <v-dialog v-model="dialogOpen" max-width="480">
       <v-card>
         <v-card-title class="d-flex align-center">
-          <span>筛选条件</span>
+          <span>{{ t('filter.title') }}</span>
           <v-spacer />
           <v-btn
             v-if="hasActiveFilters"
@@ -25,7 +25,7 @@
             @click="clearAll"
           >
             <v-icon start size="small">mdi-close</v-icon>
-            清除
+            {{ t('filter.clear') }}
           </v-btn>
         </v-card-title>
         <v-divider />
@@ -51,7 +51,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -83,7 +83,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -101,7 +101,7 @@
                   <v-text-field
                     :model-value="getValue(f.key)?.start || ''"
                     type="date"
-                    label="开始"
+                    :label="t('filter.startDate')"
                     variant="outlined"
                     density="compact"
                     hide-details
@@ -115,7 +115,7 @@
                   <v-text-field
                     :model-value="getValue(f.key)?.end || ''"
                     type="date"
-                    label="结束"
+                    :label="t('filter.endDate')"
                     variant="outlined"
                     density="compact"
                     hide-details
@@ -158,7 +158,7 @@
                   </v-chip>
                   <v-tooltip v-if="index === 3" location="top" open-on-click>
                     <template #activator="{ props: tp }">
-                      <span v-bind="tp" class="text-caption text-medium-emphasis ml-1" style="cursor: pointer">
+                      <span v-bind="tp" class="text-caption text-medium-emphasis ms-1" style="cursor: pointer">
                         +{{ getValue(f.key).length - 3 }}
                       </span>
                     </template>
@@ -174,7 +174,7 @@
         <v-divider />
         <v-card-actions>
           <v-spacer />
-          <v-btn @click="dialogOpen = false">关闭</v-btn>
+          <v-btn @click="dialogOpen = false">{{ t('actions.close') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -205,7 +205,7 @@
             <v-tooltip v-if="getValue(f.key).length > 1" location="bottom" :open-on-click="mobile">
               <template #activator="{ props: tp }">
                 <span v-bind="tp" class="text-caption text-medium-emphasis text-no-wrap" style="cursor: default">
-                  等{{ getValue(f.key).length }}项
+                  {{ t('filter.moreItems', { count: getValue(f.key).length }) }}
                 </span>
               </template>
               <div class="d-flex flex-column ga-1" style="max-width: 260px; max-height: 240px; overflow-y: auto">
@@ -240,7 +240,7 @@
             <v-tooltip v-if="getValue(f.key).length > 1" location="bottom" :open-on-click="mobile">
               <template #activator="{ props: tp }">
                 <span v-bind="tp" class="text-caption text-medium-emphasis text-no-wrap" style="cursor: default">
-                  等{{ getValue(f.key).length }}项
+                  {{ t('filter.moreItems', { count: getValue(f.key).length }) }}
                 </span>
               </template>
               <div class="d-flex flex-column ga-1" style="max-width: 260px; max-height: 240px; overflow-y: auto">
@@ -253,11 +253,11 @@
 
       <!-- 日期范围 -->
       <div v-if="f.type === 'date-range'" class="d-flex align-center ga-1" :style="{ minWidth: f.minWidth || '340px' }">
-        <span class="text-caption text-medium-emphasis mr-1">{{ f.label }}</span>
+        <span class="text-caption text-medium-emphasis me-1">{{ f.label }}</span>
         <v-text-field
           :model-value="getValue(f.key)?.start || ''"
           type="date"
-          label="开始"
+          :label="t('filter.startDate')"
           variant="outlined"
           density="compact"
           hide-details
@@ -271,7 +271,7 @@
         <v-text-field
           :model-value="getValue(f.key)?.end || ''"
           type="date"
-          label="结束"
+          :label="t('filter.endDate')"
           variant="outlined"
           density="compact"
           hide-details
@@ -317,7 +317,7 @@
             <v-tooltip v-if="getValue(f.key).length > 1" location="bottom" :open-on-click="mobile">
               <template #activator="{ props: tp }">
                 <span v-bind="tp" class="text-caption text-medium-emphasis text-no-wrap" style="cursor: default">
-                  等{{ getValue(f.key).length }}项
+                  {{ t('filter.moreItems', { count: getValue(f.key).length }) }}
                 </span>
               </template>
               <div class="d-flex flex-column ga-1" style="max-width: 260px; max-height: 240px; overflow-y: auto">
@@ -340,13 +340,16 @@
       @click="clearAll"
     >
       <v-icon start size="small">mdi-close</v-icon>
-      清除筛选
+      {{ t('filter.clearFilters') }}
     </v-btn>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 export interface FilterConfig {
   key: string

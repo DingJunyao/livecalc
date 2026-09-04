@@ -23,7 +23,7 @@
     <v-card-text v-if="!recommendation.recipe" class="empty-state pa-6 text-center">
       <v-icon size="48" color="grey-lighten-1" class="mb-2">mdi-book-plus-outline</v-icon>
       <p class="text-body-2 text-medium-emphasis mb-3">
-        请完整维护菜谱，以获取推荐信息
+        {{ t('meals.maintainRecipes') }}
       </p>
       <v-btn
         size="small"
@@ -31,7 +31,7 @@
         color="primary"
         @click.stop="goToRecipes"
       >
-        去添加菜谱
+        {{ t('meals.goAddRecipe') }}
       </v-btn>
     </v-card-text>
 
@@ -58,7 +58,7 @@
       <v-card-item v-if="!recipeImage">
         <v-card-title class="text-body-1">{{ recommendation.recipe.name }}</v-card-title>
         <v-card-subtitle v-if="recommendation.recipe.category">
-          {{ recommendation.recipe.category }}
+          {{ recipeCategoryLabel(recommendation.recipe.category) }}
         </v-card-subtitle>
       </v-card-item>
 
@@ -81,7 +81,7 @@
           v-if="!recommendation.recipe.nutrition_per_serving"
           class="text-caption text-disabled mt-1"
         >
-          该菜谱暂无营养数据
+          {{ t('meals.noNutritionData') }}
         </div>
       </v-card-text>
 
@@ -95,7 +95,7 @@
           :disabled="isRefreshing"
         >
           <v-icon start size="18">mdi-refresh</v-icon>
-          换一个
+          {{ t('meals.changeOne') }}
         </v-btn>
       </v-card-actions>
     </template>
@@ -109,11 +109,22 @@ import type { MealRecommendation } from '@/api/meals'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatNumber } from '@/utils/format'
 import { resolveImageUrl, loadLocalImageBlob } from '@/utils/image'
+import { useI18n } from 'vue-i18n'
+import { useLocaleStore } from '@/stores/locale'
+import { RECIPE_CATEGORY_KEYS } from '@/data/recipeCategories'
 
 const router = useRouter()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 const { currency: userCurrency } = useUserCurrency()
+const localeStore = useLocaleStore()
+const { t } = useI18n()
+
+function recipeCategoryLabel(category?: string): string {
+  const key = category ? RECIPE_CATEGORY_KEYS[category] : null
+  return key && category ? t(key) : (category || '')
+}
 
 const props = defineProps<{
   recommendation: MealRecommendation
@@ -171,12 +182,16 @@ const costText = computed(() => {
 
 const calorieText = computed(() => {
   const cal = props.recommendation.recipe?.nutrition_per_serving?.calories
-  return cal != null ? `${toDisplayCalorie(cal)} ${energyUnit.value}` : '--'
+  return cal != null
+    ? `${formatNumber(toDisplayCalorie(cal), localeStore.effectiveFormatLocale)} ${energyUnit.value}`
+    : '--'
 })
 
 const proteinText = computed(() => {
   const pro = props.recommendation.recipe?.nutrition_per_serving?.protein_g
-  return pro != null ? `${pro}g` : '--'
+  return pro != null
+    ? `${formatNumber(pro, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}`
+    : '--'
 })
 
 function goToRecipe() {
@@ -200,7 +215,7 @@ function onRefresh() {
   transition: transform 0.2s, box-shadow 0.2s;
 }
 .meal-card--current {
-  border-left: 4px solid rgb(var(--v-theme-primary));
+  border-inline-start: 4px solid rgb(var(--v-theme-primary));
   animation: pulse-glow 2s ease-in-out infinite;
 }
 .meal-card--empty {

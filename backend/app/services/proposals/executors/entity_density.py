@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.services.proposals.executors._crud_base import CrudExecutorBase
 from app.models.entity_density import EntityDensity
+from app.core.exceptions import LocalizedHTTPException
 
 
 class EntityDensityExecutor(CrudExecutorBase):
@@ -23,10 +24,9 @@ class EntityDensityExecutor(CrudExecutorBase):
             biz_id = p.get("entity_id")
             condition = p.get("condition")
             if biz_type is None or biz_id is None:
-                raise HTTPException(
-                    status_code=400, detail="payload 缺少 entity_type/entity_id")
+                raise LocalizedHTTPException(status_code=400, message='payload 缺少 entity_type/entity_id')
             if "density" not in p:
-                raise HTTPException(status_code=400, detail="payload 缺少 density")
+                raise LocalizedHTTPException(status_code=400, message='payload 缺少 density')
             dup = (
                 db.query(EntityDensity)
                 .filter(
@@ -39,14 +39,11 @@ class EntityDensityExecutor(CrudExecutorBase):
                 .first()
             )
             if dup is not None:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{biz_type}/{biz_id} 已存在该 condition 的密度记录",
-                )
+                raise LocalizedHTTPException(status_code=400, message='{biz_type}/{biz_id} 已存在该 condition 的密度记录', biz_type=biz_type, biz_id=biz_id)
             return
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail="update/delete 需 entity_id")
+            raise LocalizedHTTPException(status_code=400, message='update/delete 需 entity_id')
         obj = (
             db.query(EntityDensity)
             .filter(
@@ -56,7 +53,7 @@ class EntityDensityExecutor(CrudExecutorBase):
             .first()
         )
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"实体密度 {eid} 不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='实体密度 {eid} 不存在或已删除', eid=eid)
 
     def entity_label(self, db: Session, proposal) -> Optional[str]:
         """业务实体名（payload.entity_type/entity_id）+ condition。"""

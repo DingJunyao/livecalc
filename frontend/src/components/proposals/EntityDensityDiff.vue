@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { unitDisplayName } from '@/utils/catalogLabels'
 
 const props = defineProps<{ proposal: Proposal }>()
 const snap = computed(() => props.proposal.snapshot || {})
 const p = computed(() => props.proposal.payload || {})
 const action = computed(() => props.proposal.action)
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 function fmtDensity(d: any, u: any): string {
   if (d == null) return '—'
-  return u ? `${d} ${u}` : String(d)
+  const value = formatNumber(d, localeStore.effectiveFormatLocale)
+  return u ? `${value} ${unitDisplayName({ name: u, abbreviation: u })}` : value
 }
 </script>
 
@@ -17,23 +24,23 @@ function fmtDensity(d: any, u: any): string {
   <v-table density="compact" class="diff-table">
     <tbody>
       <tr>
-        <td class="text-caption text-medium-emphasis" style="width:28%">密度</td>
+        <td class="text-caption text-medium-emphasis" style="width:28%">{{ t('proposals.density') }}</td>
         <td class="diff-cell before unchanged">
           {{ action === 'create' ? '—' : fmtDensity(snap.density, snap.unit) }}
         </td>
         <td class="text-center text-medium-emphasis" style="width:32px">→</td>
         <td class="diff-cell after added">
-          {{ action === 'delete' ? '（删除）' : fmtDensity(p.density, p.unit) }}
+          {{ action === 'delete' ? t('proposals.deletedValue') : fmtDensity(p.density, p.unit) }}
         </td>
       </tr>
       <tr v-if="p.confidence !== undefined || snap.confidence !== undefined">
-        <td class="text-caption text-medium-emphasis">置信度</td>
-        <td class="diff-cell before unchanged">{{ snap.confidence ?? '—' }}</td>
+        <td class="text-caption text-medium-emphasis">{{ t('proposals.confidence') }}</td>
+        <td class="diff-cell before unchanged">{{ snap.confidence == null ? '—' : formatNumber(snap.confidence, localeStore.effectiveFormatLocale) }}</td>
         <td class="text-center text-medium-emphasis">→</td>
-        <td class="diff-cell after added">{{ p.confidence ?? '—' }}</td>
+        <td class="diff-cell after added">{{ p.confidence == null ? '—' : formatNumber(p.confidence, localeStore.effectiveFormatLocale) }}</td>
       </tr>
       <tr v-if="p.condition !== undefined || snap.condition !== undefined">
-        <td class="text-caption text-medium-emphasis">条件</td>
+        <td class="text-caption text-medium-emphasis">{{ t('proposals.condition') }}</td>
         <td class="diff-cell before unchanged">{{ snap.condition ?? '—' }}</td>
         <td class="text-center text-medium-emphasis">→</td>
         <td class="diff-cell after added">{{ p.condition ?? '—' }}</td>

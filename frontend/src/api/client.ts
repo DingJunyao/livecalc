@@ -1,5 +1,7 @@
 // api/client.ts
 import axios from 'axios'
+import { t } from '@/plugins/i18n'
+import { readStoredLocale } from '@/utils/localeStorage'
 
 // 请求超时（毫秒），可从 .env 配置
 export const REQUEST_TIMEOUT = parseInt(import.meta.env.VITE_REQUEST_TIMEOUT || '10000', 10)
@@ -22,6 +24,7 @@ api.interceptors.request.use(
     }
     // 统一注入用户时区（IANA 名），后端用于按用户本地日聚合
     config.headers['X-Timezone'] = Intl.DateTimeFormat().resolvedOptions().timeZone
+    config.headers['Accept-Language'] = readStoredLocale()
     // 会话级临时覆盖（导航栏切换，仅当前会话有效）：币种 + 地区
     try {
       const raw = sessionStorage.getItem('calc-context')
@@ -108,9 +111,9 @@ api.interceptors.response.use(
     if (detail) {
       error.userMessage = detail
     } else if (error.message === 'Network Error') {
-      error.userMessage = '网络连接失败，请检查网络后重试'
+      error.userMessage = t('errors.network')
     } else if (error.code === 'ECONNABORTED') {
-      error.userMessage = '请求超时，请稍后重试'
+      error.userMessage = t('errors.timeout')
     }
 
     return Promise.reject(error)

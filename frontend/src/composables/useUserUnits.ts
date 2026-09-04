@@ -2,6 +2,8 @@
 // 用户级单位偏好读取 + 能量单位转换。NULL 字段由前端 fallback。
 import { computed } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { CHINESE_JIN_NAME, COMMON_SI_FACTORS_TO_KILOGRAMS } from '@/data/localValues'
+import { localizedUnitLabel } from '@/utils/localDisplay'
 
 export interface UnitPref {
   id: number
@@ -9,9 +11,7 @@ export interface UnitPref {
   abbreviation: string
 }
 
-const FALLBACK_MASS_NAME = '斤'
 const FALLBACK_VOLUME_NAME = 'mL'
-const FALLBACK_PRICE_NAME = '斤'
 
 export function useUserUnits() {
   const userStore = useUserStore()
@@ -22,21 +22,20 @@ export function useUserUnits() {
   const volumeUnit = computed<UnitPref | null>(() => up.value?.volume_unit ?? null)
   const priceUnit = computed<UnitPref | null>(() => up.value?.price_unit ?? null)
 
-  const massUnitName = computed(() => massUnit.value?.name ?? FALLBACK_MASS_NAME)
+  const massUnitName = computed(() => massUnit.value?.abbreviation ?? CHINESE_JIN_NAME)
   const volumeUnitName = computed(() => volumeUnit.value?.name ?? FALLBACK_VOLUME_NAME)
-  const priceUnitName = computed(() => priceUnit.value?.name ?? FALLBACK_PRICE_NAME)
+  const priceUnitName = computed(() => priceUnit.value?.abbreviation ?? CHINESE_JIN_NAME)
+  const massUnitLabel = computed(() => localizedUnitLabel(massUnitName.value))
+  const priceUnitLabel = computed(() => localizedUnitLabel(priceUnitName.value))
 
   // 从「元/斤」折算到用户质量偏好单位（用于价格趋势/单价显示）。
   // si_factor：1 单位 = ? kg。元/X = 元/斤 × (si_factor_X / si_factor_斤)。
   // 只覆盖常见质量单位；未知单位不转（保持斤），避免误算。
   const JIN_SI_FACTOR = 0.5 // 1 斤 = 0.5 kg
-  const COMMON_SI_FACTORS: Record<string, number> = {
-    kg: 1, g: 0.001, 斤: 0.5, 两: 0.05, 磅: 0.453592,
-  }
   const convertFromJin = (valuePerJin: number | null | undefined): number | null => {
     if (valuePerJin === null || valuePerJin === undefined) return null
     const abbr = massUnit.value?.abbreviation
-    const f = abbr ? COMMON_SI_FACTORS[abbr] : undefined
+    const f = abbr ? COMMON_SI_FACTORS_TO_KILOGRAMS[abbr] : undefined
     if (f === undefined) return valuePerJin // 未知单位不转
     return valuePerJin * (f / JIN_SI_FACTOR)
   }
@@ -57,8 +56,10 @@ export function useUserUnits() {
     volumeUnit,
     priceUnit,
     massUnitName,
+    massUnitLabel,
     volumeUnitName,
     priceUnitName,
+    priceUnitLabel,
     toDisplayCalorie,
     fromDisplayCalorie,
     convertFromJin,

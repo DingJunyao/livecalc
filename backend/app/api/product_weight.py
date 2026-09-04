@@ -1,7 +1,8 @@
 """商品价格权重的用户覆盖 API（个人偏好，不走审核）。"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.user import User
 from app.models.product_entity import Product
@@ -12,6 +13,7 @@ from app.schemas.product_weight import (
     EffectiveWeightResponse,
 )
 from app.services.ingredient_price_service import _DEFAULT_WEIGHT
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(tags=["product-weight"])
 
@@ -22,7 +24,7 @@ def get_my_weight(product_id: int, db: Session = Depends(get_db),
     """获取该商品对当前用户的生效权重（覆盖 > 全局）。"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(404, "商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     ov = db.query(UserProductWeightOverride).filter(
         UserProductWeightOverride.user_id == current_user.id,
         UserProductWeightOverride.product_id == product_id,
@@ -48,7 +50,7 @@ def set_my_weight(product_id: int, body: ProductWeightOverrideCreate,
     """设置/更新当前用户对该商品的权重覆盖。"""
     product = db.query(Product).filter(Product.id == product_id).first()
     if not product:
-        raise HTTPException(404, "商品不存在")
+        raise LocalizedHTTPException(status_code=404, message='商品不存在')
     existing = db.query(UserProductWeightOverride).filter(
         UserProductWeightOverride.user_id == current_user.id,
         UserProductWeightOverride.product_id == product_id,
@@ -72,7 +74,7 @@ def set_my_weight(product_id: int, body: ProductWeightOverrideCreate,
 
 @router.delete("/products/{product_id}/my-weight")
 @router.delete("/products/{product_id}/my-weight/")
-def delete_my_weight(product_id: int, db: Session = Depends(get_db),
+def delete_my_weight(product_id: int, request: Request, db: Session = Depends(get_db),
                      current_user: User = Depends(get_current_user)):
     """删除当前用户对该商品的权重覆盖（回退到全局）。"""
     existing = db.query(UserProductWeightOverride).filter(
@@ -80,8 +82,8 @@ def delete_my_weight(product_id: int, db: Session = Depends(get_db),
         UserProductWeightOverride.product_id == product_id,
     ).first()
     if not existing:
-        raise HTTPException(404, "覆盖不存在")
+        raise LocalizedHTTPException(status_code=404, message='覆盖不存在')
     existing.is_active = False
     existing.updated_by = current_user.id
     db.commit()
-    return {"message": "已删除覆盖，回退到全局权重"}
+    return {"message": api_message(request, "已删除覆盖，回退到全局权重")}

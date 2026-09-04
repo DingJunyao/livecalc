@@ -15,6 +15,7 @@ from app.models.change_proposal import ChangeProposal
 from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.services.proposals.executors._crud_base import _json_safe
 from sqlalchemy import Date, DateTime
+from app.core.exceptions import LocalizedHTTPException
 
 
 class RecipeEditExecutor(ProposalExecutor):
@@ -30,7 +31,7 @@ class RecipeEditExecutor(ProposalExecutor):
     def validate(self, db, proposal):
         r = db.query(Recipe).filter(Recipe.id == proposal.entity_id).first()
         if r is None:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
     def preview(self, db, proposal):
         r = db.query(Recipe).filter(Recipe.id == proposal.entity_id).first()
@@ -122,7 +123,7 @@ class RecipeEditExecutor(ProposalExecutor):
         recipe_id = proposal.entity_id
         recipe = db.query(Recipe).filter(Recipe.id == recipe_id).first()
         if recipe is None:
-            raise HTTPException(status_code=404, detail="菜谱不存在")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在')
 
         update_data = proposal.payload.get("update_data", {})
 

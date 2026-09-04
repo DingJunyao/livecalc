@@ -107,26 +107,26 @@ const updateDrawerClass = () => {
 header.v-app-bar {
   position: fixed !important;
   top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
+  inset-inline-start: 0 !important;
+  inset-inline-end: 0 !important;
   z-index: 900 !important;
-  transition: left 0.2s ease !important;
+  transition: inset-inline-start 0.2s ease !important;
 }
 
 /* 桌面端：侧边栏展开模式（宽度 256px），header 从 256px 开始 */
 body.is-desktop.is-expanded header.v-app-bar {
-  left: 256px !important;
+  inset-inline-start: 256px !important;
 }
 
 /* 桌面端：侧边栏 rail 模式（宽度 56px），header 从 56px 开始 */
 body.is-desktop.is-rail header.v-app-bar {
-  left: 56px !important;
+  inset-inline-start: 56px !important;
 }
 
-/* 移动端：header 保持从左边 0 开始 */
+/* 移动端：header 保持从行内起始侧 0 开始 */
 @media (max-width: 959px) {
   header.v-app-bar {
-    left: 0 !important;
+    inset-inline-start: 0 !important;
   }
 }
 
@@ -145,5 +145,13 @@ body.is-desktop.is-rail header.v-app-bar {
   header.v-app-bar :is(button, a, input, .v-btn, .v-field, [role='button']) {
     -webkit-app-region: no-drag;
   }
+}
+
+/* 数值、日期和时间输入保持 LTR，避免 RTL 页面翻转数字/日期控件方向。 */
+input[type='number'],
+input[type='date'],
+input[type='datetime-local'],
+input[type='time'] {
+  direction: ltr;
 }
 </style>

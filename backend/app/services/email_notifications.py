@@ -3,40 +3,75 @@
 从 proposals.py 提取，消除直接调用 proposal_service.submit() 绕过通知的问题。
 """
 import logging
-from string import Template
 from typing import Optional
+
+from app.core.i18n import DEFAULT_LOCALE, normalize_locale
 
 logger = logging.getLogger(__name__)
 
 
 # 与前端 entityTypeLabel / actionLabel 保持一致的翻译映射
-_ENTITY_TYPE_LABELS: dict[str, str] = {
-    "ingredient": "原料",
-    "ingredient_merge": "原料合并",
-    "ingredient_split": "原料拆分",
-    "nutrition": "营养数据",
-    "unit": "单位",
-    "hierarchy": "食材层级关系",
-    "merchant": "商家",
-    "merchant_merge": "商家合并",
-    "product_split": "商品拆分",
-    "product_merge": "商品合并",
-    "product": "商品",
-    "recipe": "菜谱",
-    "recipe_edit": "菜谱编辑",
-    "entity_unit_override": "实体单位覆盖",
-    "entity_density": "实体密度",
-    "usda_ingredient_match": "USDA 原料匹配",
-    "usda_product_match": "USDA 商品匹配",
-    "product_nutrition": "商品营养",
+_ENTITY_TYPE_LABELS: dict[str, dict[str, str]] = {
+    "ingredient": {"zh-CN": "原料", "en-US": "Ingredient", "ar": "مكون"},
+    "ingredient_merge": {
+        "zh-CN": "原料合并", "en-US": "Ingredient merge", "ar": "دمج المكونات",
+    },
+    "ingredient_split": {
+        "zh-CN": "原料拆分", "en-US": "Ingredient split", "ar": "تقسيم المكونات",
+    },
+    "nutrition": {
+        "zh-CN": "营养数据", "en-US": "Nutrition data", "ar": "بيانات التغذية",
+    },
+    "unit": {"zh-CN": "单位", "en-US": "Unit", "ar": "وحدة"},
+    "hierarchy": {
+        "zh-CN": "食材层级关系",
+        "en-US": "Ingredient hierarchy",
+        "ar": "تسلسل المكونات",
+    },
+    "merchant": {"zh-CN": "商家", "en-US": "Merchant", "ar": "تاجر"},
+    "merchant_merge": {
+        "zh-CN": "商家合并", "en-US": "Merchant merge", "ar": "دمج التجار",
+    },
+    "product_split": {
+        "zh-CN": "商品拆分", "en-US": "Product split", "ar": "تقسيم المنتجات",
+    },
+    "product_merge": {
+        "zh-CN": "商品合并", "en-US": "Product merge", "ar": "دمج المنتجات",
+    },
+    "product": {"zh-CN": "商品", "en-US": "Product", "ar": "منتج"},
+    "recipe": {"zh-CN": "菜谱", "en-US": "Recipe", "ar": "وصفة"},
+    "recipe_edit": {
+        "zh-CN": "菜谱编辑", "en-US": "Recipe edit", "ar": "تعديل الوصفة",
+    },
+    "entity_unit_override": {
+        "zh-CN": "实体单位覆盖",
+        "en-US": "Entity unit override",
+        "ar": "تجاوز وحدة الكيان",
+    },
+    "entity_density": {
+        "zh-CN": "实体密度", "en-US": "Entity density", "ar": "كثافة الكيان",
+    },
+    "usda_ingredient_match": {
+        "zh-CN": "USDA 原料匹配",
+        "en-US": "USDA ingredient match",
+        "ar": "مطابقة مكون USDA",
+    },
+    "usda_product_match": {
+        "zh-CN": "USDA 商品匹配",
+        "en-US": "USDA product match",
+        "ar": "مطابقة منتج USDA",
+    },
+    "product_nutrition": {
+        "zh-CN": "商品营养", "en-US": "Product nutrition", "ar": "تغذية المنتج",
+    },
 }
 
-_ACTION_LABELS: dict[str, str] = {
-    "create": "创建",
-    "update": "更新",
-    "delete": "删除",
-    "merge": "合并",
-    "publish": "发布",
+_ACTION_LABELS: dict[str, dict[str, str]] = {
+    "create": {"zh-CN": "创建", "en-US": "Create", "ar": "إنشاء"},
+    "update": {"zh-CN": "更新", "en-US": "Update", "ar": "تحديث"},
+    "delete": {"zh-CN": "删除", "en-US": "Delete", "ar": "حذف"},
+    "merge": {"zh-CN": "合并", "en-US": "Merge", "ar": "دمج"},
+    "publish": {"zh-CN": "发布", "en-US": "Publish", "ar": "نشر"},
 }
 
 
@@ -55,15 +90,25 @@ def _entity_label_for_email(db, proposal) -> str:
             if proposal.entity_id else proposal.entity_type)
 
 
-def _build_variables(db, proposal, extra_vars: Optional[dict] = None) -> dict:
+def _build_variables(
+    db,
+    proposal,
+    extra_vars: Optional[dict] = None,
+    locale: str = DEFAULT_LOCALE,
+) -> dict:
     """构造邮件模板变量。"""
     from app.models.user import User
+    selected_locale = normalize_locale(locale) or DEFAULT_LOCALE
     proposer = db.query(User).filter(User.id == proposal.proposer_id).first()
+    entity_type_labels = _ENTITY_TYPE_LABELS.get(proposal.entity_type, {})
+    action_labels = _ACTION_LABELS.get(proposal.action, {})
     variables = {
         "proposer_name": f"#{proposal.proposer_id}" if proposer is None else (proposer.username or f"#{proposal.proposer_id}"),
         "proposal_id": str(proposal.id),
-        "entity_type_label": _ENTITY_TYPE_LABELS.get(proposal.entity_type, proposal.entity_type),
-        "action_label": _ACTION_LABELS.get(proposal.action, proposal.action),
+        "entity_type_label": entity_type_labels.get(
+            selected_locale, proposal.entity_type
+        ),
+        "action_label": action_labels.get(selected_locale, proposal.action),
         "entity_label": _entity_label_for_email(db, proposal),
     }
     if extra_vars:
@@ -88,10 +133,18 @@ def notify_admins_on_submit(db, proposal) -> None:
     admins = db.query(User).filter(User.is_admin.is_(True)).all()
     if not admins:
         return
-    variables = _build_variables(db, proposal)
+    recipients_by_locale: dict[str, list[str]] = {}
     for admin in admins:
-        if admin.email:
-            service.send_template_async("proposal_submitted", admin.email, variables, db)
+        if not admin.email:
+            continue
+        locale = normalize_locale(admin.locale) or DEFAULT_LOCALE
+        recipients_by_locale.setdefault(locale, []).append(admin.email)
+
+    for locale, emails in recipients_by_locale.items():
+        variables = _build_variables(db, proposal, locale=locale)
+        service.send_template_async(
+            "proposal_submitted", emails, variables, db, locale=locale
+        )
 
 
 def notify_proposer(db, proposal, template_key: str, extra_vars: Optional[dict] = None) -> None:
@@ -103,5 +156,6 @@ def notify_proposer(db, proposal, template_key: str, extra_vars: Optional[dict] 
     proposer = db.query(User).filter(User.id == proposal.proposer_id).first()
     if not proposer or not proposer.email:
         return
-    variables = _build_variables(db, proposal, extra_vars)
-    service.send_template_async(template_key, proposer.email, variables, db)
+    locale = normalize_locale(proposer.locale) or DEFAULT_LOCALE
+    variables = _build_variables(db, proposal, extra_vars, locale=locale)
+    service.send_template_async(template_key, proposer.email, variables, db, locale=locale)

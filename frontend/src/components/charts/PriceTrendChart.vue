@@ -2,7 +2,7 @@
   <v-card elevation="0" class="price-trend-chart">
     <v-card-title class="d-flex align-center flex-wrap pb-2">
       <v-icon start :color="iconColor">{{ icon }}</v-icon>
-      {{ title }}
+      {{ chartTitle }}
       <v-spacer />
       <v-btn-toggle
         v-model="selectedFilter"
@@ -40,13 +40,13 @@
         class="text-center py-12"
       >
         <v-icon size="64" color="medium-emphasis">mdi-chart-line</v-icon>
-        <div class="text-body-1 text-medium-emphasis mt-4">{{ emptyText }}</div>
+        <div class="text-body-1 text-medium-emphasis mt-4">{{ emptyMessage }}</div>
       </div>
 
       <!-- 图表（一旦有数据就始终渲染，DOM 不被销毁） -->
       <template v-if="hasEverHadData || (chartData && chartData.length > 0)">
 
-        <div ref="chartRef" class="chart-container"></div>
+        <div ref="chartRef" class="chart-container" dir="ltr"></div>
       </template>
     </div>
   </v-card>
@@ -54,6 +54,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import * as echarts from 'echarts/core'
@@ -92,15 +93,13 @@ const props = withDefaults(defineProps<{
   color?: string
   avgLabel?: string
 }>(), {
-  title: '价格趋势',
   icon: 'mdi-chart-line',
   iconColor: 'primary',
   unit: '',
-  emptyText: '暂无数据',
   loading: false,
-  color: '#42b883',
-  avgLabel: '平均'
+  color: '#42b883'
 })
+const { t } = useI18n()
 
 const emit = defineEmits<{
   'filter-change': [filter: 'week' | 'month' | 'quarter' | 'year' | 'all']
@@ -116,13 +115,16 @@ const hasEverHadData = ref(false)
 
 const selectedFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month')
 
-const filters = [
-  { label: '周', value: 'week' as const },
-  { label: '月', value: 'month' as const },
-  { label: '季', value: 'quarter' as const },
-  { label: '年', value: 'year' as const },
-  { label: '全部', value: 'all' as const }
-]
+const chartTitle = computed(() => props.title ?? t('charts.priceTrend'))
+const emptyMessage = computed(() => props.emptyText ?? t('charts.noData'))
+const averageLabel = computed(() => props.avgLabel ?? t('charts.average'))
+const filters = computed(() => [
+  { label: t('recipes.week'), value: 'week' as const },
+  { label: t('recipes.month'), value: 'month' as const },
+  { label: t('recipes.quarter'), value: 'quarter' as const },
+  { label: t('recipes.year'), value: 'year' as const },
+  { label: t('recipes.all'), value: 'all' as const }
+])
 
 // 单位后缀
 const unitSuffix = computed(() => props.unit ? ` / ${props.unit}` : '')
@@ -221,13 +223,13 @@ function updateChart() {
             <div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color};"></span>
-              <span>${props.avgLabel}: ${formatMoney(item.avg, userCurrency.value)}${unitSuffix.value}</span>
+              <span>${averageLabel.value}: ${formatMoney(item.avg, userCurrency.value)}${unitSuffix.value}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
               <span style="display: inline-block; width: 12px; height: 12px; background-color: ${props.color}33; border-radius: 2px;"></span>
-              <span>范围: ${formatMoney(item.min, userCurrency.value)} - ${formatMoney(item.max, userCurrency.value)}${unitSuffix.value}</span>
+              <span>${t('charts.range')}: ${formatMoney(item.min, userCurrency.value)} - ${formatMoney(item.max, userCurrency.value)}${unitSuffix.value}</span>
             </div>
-            ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">记录数: ${item.count}</div>` : ''}
+            ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">${t('charts.recordCount')}: ${item.count}</div>` : ''}
           </div>
         `
       }

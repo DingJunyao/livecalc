@@ -2,6 +2,7 @@
 import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
+import { ar, en, zhHans } from 'vuetify/locale'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
@@ -92,6 +93,14 @@ const initialTheme =
 export default createVuetify({
   components,
   directives,
+  locale: {
+    locale: 'zh-CN',
+    fallback: 'zh-CN',
+    messages: { 'zh-CN': zhHans, 'en-US': en, ar },
+  },
+  rtl: {
+    default: false,
+  },
   theme: {
     defaultTheme: initialTheme,
     themes: {

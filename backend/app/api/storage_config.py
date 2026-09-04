@@ -10,6 +10,7 @@ from app.models.user import User
 from app.models.storage_configuration import StorageConfiguration
 from app.services.storage.effective import load_effective_storage_config
 from app.services.storage.factory import reset_storage
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(prefix="/admin/storage-config", tags=["图片存储配置"])
 
@@ -151,7 +152,7 @@ def put_config(
         )
         ok, err = _probe_s3(probe_cfg)
         if not ok:
-            raise HTTPException(status_code=400, detail=f"S3 配置校验失败：{err}")
+            raise LocalizedHTTPException(status_code=400, message='S3 配置校验失败：{err}', err=err)
     _upsert_db(db, data)
     reset_storage()
     # 存储后端变更后全量重建 image_tracking 表，确保引用计数与新后端一致

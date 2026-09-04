@@ -1,6 +1,7 @@
 // Local-mode barcode service configuration and browser-side provider lookup.
 
 import { getDb } from '../database'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 export interface BarcodeService {
   id: string
@@ -65,7 +66,7 @@ const DEFAULT_BARCODE_SERVICES: BarcodeService[] = [
     type: 'yunji',
     enabled: false,
     timeout_seconds: 5,
-    name: '云际（云 API 市场）',
+    name: 'Yunji (Alibaba Cloud API Marketplace)',
     doc_url: 'https://market.aliyun.com/detail/cmapi031448',
     headers: {},
     mappings: {},
@@ -287,9 +288,9 @@ function providerSource(service: BarcodeService): string {
 }
 
 function providerError(error: any): string {
-  if (error?.name === 'AbortError') return '请求超时'
-  if (error instanceof TypeError) return '浏览器无法连接（可能是 CORS、网络或证书问题）'
-  return error?.message || '查询失败'
+  if (error?.name === 'AbortError') return translate('localMessages.requestTimeout')
+  if (error instanceof TypeError) return translate('localMessages.browserConnectionFailure')
+  return error?.message || translate('localMessages.lookupFailed')
 }
 
 export async function resolveExternalBarcode(
@@ -312,15 +313,15 @@ export async function resolveExternalBarcode(
           has_enabled_providers: true,
         }
       }
-      errors.push(`${label}: 未找到商品`)
+      errors.push(`${label}: ${translate('localMessages.productNotFoundInService')}`)
     } catch (error: any) {
       errors.push(`${label}: ${providerError(error)}`)
     }
   }
 
   const summary = services.length > 1
-    ? `未在已配置的 ${services.length} 个条码服务中找到该商品`
-    : '未在条码服务中找到该商品'
+    ? translate('localMessages.barcodeProductNotFoundInServices', { count: services.length })
+    : translate('localMessages.barcodeProductNotFound')
 
   return {
     found: false,

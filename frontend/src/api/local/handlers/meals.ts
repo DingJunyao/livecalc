@@ -5,6 +5,7 @@ import { recommend, type MealRecipe, type MealRecommendation } from '../business
 import { resolveHierarchy } from '../business/hierarchyResolver'
 import { resolveImageUrl } from '@/utils/image'
 import * as recipes from './recipes'
+import { localError } from '../../../utils/localErrors'
 
 // ============================================================
 // 内部辅助
@@ -125,7 +126,7 @@ export async function generate(_params: Record<string, string>, _data?: any): Pr
 export async function refresh(_params: Record<string, string>, data?: any): Promise<any> {
   const mealType: string = data?.meal_type
   if (!mealType || !MEAL_TYPES.includes(mealType as any)) {
-    throw { status: 400, message: '无效的餐次类型，请指定 breakfast、lunch 或 dinner' }
+    throw localError('mealTypeInvalid')
   }
 
   const recipes = await loadRecipes()

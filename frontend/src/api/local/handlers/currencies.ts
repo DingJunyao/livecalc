@@ -1,44 +1,43 @@
 import type { Currency } from '@/types'
-import { fallbackCurrency } from '@/utils/currencyNames'
+import { CURRENCY_NAMES } from '../../../utils/currencyNames.ts'
+import i18n from '../../../plugins/i18n.ts'
 
-// 本地静态币种 — 与后端启动 seed（backend/app/services/currency_seed.py）对齐的 35 种。
 const CURRENCIES: Currency[] = [
-  { code: 'CNY', name: '人民币', symbol: '¥', decimals: 2 },
-  { code: 'USD', name: '美元', symbol: '$', decimals: 2 },
-  { code: 'EUR', name: '欧元', symbol: '€', decimals: 2 },
-  { code: 'GBP', name: '英镑', symbol: '£', decimals: 2 },
-  { code: 'JPY', name: '日元', symbol: '¥', decimals: 0 },
-  { code: 'HKD', name: '港币', symbol: 'HK$', decimals: 2 },
-  { code: 'KRW', name: '韩元', symbol: '₩', decimals: 0 },
-  { code: 'SGD', name: '新加坡元', symbol: 'S$', decimals: 2 },
-  { code: 'AUD', name: '澳大利亚元', symbol: 'A$', decimals: 2 },
-  { code: 'CAD', name: '加拿大元', symbol: 'C$', decimals: 2 },
-  { code: 'TWD', name: '新台币', symbol: 'NT$', decimals: 2 },
-  { code: 'THB', name: '泰铢', symbol: '฿', decimals: 2 },
-  { code: 'MYR', name: '马来西亚林吉特', symbol: 'RM', decimals: 2 },
-  { code: 'VND', name: '越南盾', symbol: '₫', decimals: 0 },
-  { code: 'RUB', name: '俄罗斯卢布', symbol: '₽', decimals: 2 },
-  { code: 'AED', name: '阿联酋迪拉姆', symbol: 'د.إ', decimals: 2 },
-  { code: 'BGN', name: '保加利亚列弗', symbol: 'лв', decimals: 2 },
-  { code: 'BRL', name: '巴西雷亚尔', symbol: 'R$', decimals: 2 },
-  { code: 'CHF', name: '瑞士法郎', symbol: 'CHF', decimals: 2 },
-  { code: 'CZK', name: '捷克克朗', symbol: 'Kč', decimals: 2 },
-  { code: 'DKK', name: '丹麦克朗', symbol: 'kr', decimals: 2 },
-  { code: 'HUF', name: '匈牙利福林', symbol: 'Ft', decimals: 0 },
-  { code: 'IDR', name: '印度尼西亚盾', symbol: 'Rp', decimals: 2 },
-  { code: 'ILS', name: '以色列新谢克尔', symbol: '₪', decimals: 2 },
-  { code: 'INR', name: '印度卢比', symbol: '₹', decimals: 2 },
-  { code: 'ISK', name: '冰岛克朗', symbol: 'kr', decimals: 0 },
-  { code: 'MXN', name: '墨西哥比索', symbol: 'Mex$', decimals: 2 },
-  { code: 'NOK', name: '挪威克朗', symbol: 'kr', decimals: 2 },
-  { code: 'NZD', name: '新西兰元', symbol: 'NZ$', decimals: 2 },
-  { code: 'PHP', name: '菲律宾比索', symbol: '₱', decimals: 2 },
-  { code: 'PLN', name: '波兰兹罗提', symbol: 'zł', decimals: 2 },
-  { code: 'RON', name: '罗马尼亚列伊', symbol: 'lei', decimals: 2 },
-  { code: 'SEK', name: '瑞典克朗', symbol: 'kr', decimals: 2 },
-  { code: 'TRY', name: '土耳其里拉', symbol: '₺', decimals: 2 },
-  { code: 'ZAR', name: '南非兰特', symbol: 'R', decimals: 2 },
-  // 其余 ISO 4217 币种兜底；导出前会补上中文名。
+  { code: 'CNY', name: 'CNY', symbol: '¥', decimals: 2 },
+  { code: 'USD', name: 'USD', symbol: '$', decimals: 2 },
+  { code: 'EUR', name: 'EUR', symbol: '€', decimals: 2 },
+  { code: 'GBP', name: 'GBP', symbol: '£', decimals: 2 },
+  { code: 'JPY', name: 'JPY', symbol: '¥', decimals: 0 },
+  { code: 'HKD', name: 'HKD', symbol: 'HK$', decimals: 2 },
+  { code: 'KRW', name: 'KRW', symbol: '₩', decimals: 0 },
+  { code: 'SGD', name: 'SGD', symbol: 'S$', decimals: 2 },
+  { code: 'AUD', name: 'AUD', symbol: 'A$', decimals: 2 },
+  { code: 'CAD', name: 'CAD', symbol: 'C$', decimals: 2 },
+  { code: 'TWD', name: 'TWD', symbol: 'NT$', decimals: 2 },
+  { code: 'THB', name: 'THB', symbol: '฿', decimals: 2 },
+  { code: 'MYR', name: 'MYR', symbol: 'RM', decimals: 2 },
+  { code: 'VND', name: 'VND', symbol: '₫', decimals: 0 },
+  { code: 'RUB', name: 'RUB', symbol: '₽', decimals: 2 },
+  { code: 'AED', name: 'AED', symbol: 'د.إ', decimals: 2 },
+  { code: 'BGN', name: 'BGN', symbol: 'лв', decimals: 2 },
+  { code: 'BRL', name: 'BRL', symbol: 'R$', decimals: 2 },
+  { code: 'CHF', name: 'CHF', symbol: 'CHF', decimals: 2 },
+  { code: 'CZK', name: 'CZK', symbol: 'Kč', decimals: 2 },
+  { code: 'DKK', name: 'DKK', symbol: 'kr', decimals: 2 },
+  { code: 'HUF', name: 'HUF', symbol: 'Ft', decimals: 0 },
+  { code: 'IDR', name: 'IDR', symbol: 'Rp', decimals: 2 },
+  { code: 'ILS', name: 'ILS', symbol: '₪', decimals: 2 },
+  { code: 'INR', name: 'INR', symbol: '₹', decimals: 2 },
+  { code: 'ISK', name: 'ISK', symbol: 'kr', decimals: 0 },
+  { code: 'MXN', name: 'MXN', symbol: 'Mex$', decimals: 2 },
+  { code: 'NOK', name: 'NOK', symbol: 'kr', decimals: 2 },
+  { code: 'NZD', name: 'NZD', symbol: 'NZ$', decimals: 2 },
+  { code: 'PHP', name: 'PHP', symbol: '₱', decimals: 2 },
+  { code: 'PLN', name: 'PLN', symbol: 'zł', decimals: 2 },
+  { code: 'RON', name: 'RON', symbol: 'lei', decimals: 2 },
+  { code: 'SEK', name: 'SEK', symbol: 'kr', decimals: 2 },
+  { code: 'TRY', name: 'TRY', symbol: '₺', decimals: 2 },
+  { code: 'ZAR', name: 'ZAR', symbol: 'R', decimals: 2 },
   { code: 'AFN', name: 'AFN', symbol: 'AFN', decimals: 2 },
   { code: 'ALL', name: 'ALL', symbol: 'ALL', decimals: 2 },
   { code: 'AMD', name: 'AMD', symbol: 'AMD', decimals: 2 },
@@ -159,12 +158,17 @@ const CURRENCIES: Currency[] = [
   { code: 'ZWG', name: 'ZWG', symbol: 'ZWG', decimals: 2 },
 ]
 
-const LOCAL_CURRENCIES = CURRENCIES.map((currency) => (
-  currency.name === currency.code ? fallbackCurrency(currency.code) : currency
-))
+const LOCAL_CURRENCIES = CURRENCIES.map((currency) => ({
+  ...currency,
+  name: CURRENCY_NAMES[currency.code] ?? currency.name,
+}))
 
-export function localGetCurrencies(): Currency[] {
-  return LOCAL_CURRENCIES
+export function localGetCurrencies(): Array<Currency & { display_name: string }> {
+  const displayNames = new Intl.DisplayNames([i18n.global.locale.value], { type: 'currency' })
+  return LOCAL_CURRENCIES.map((currency) => ({
+    ...currency,
+    display_name: displayNames.of(currency.code) ?? currency.name,
+  }))
 }
 
 export function localRatesStatus() {

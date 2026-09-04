@@ -2,6 +2,7 @@
 import { runAgent } from './runner'
 import type { AgentProgress } from './runner'
 import { api } from '@/api'
+import { agentErrorMessage } from '@/utils/localAgentErrors'
 
 export interface RenderMessage {
   key: string
@@ -40,12 +41,12 @@ export interface AgentRunConfig {
 
 export async function resolveAgentConfig(provider: AgentProviderLike): Promise<AgentRunConfig> {
   if (provider === 'claude_code' || provider === 'codex') {
-    throw new Error('本地模式不支持 CLI provider，请在 AI 配置中选择 OpenAI 或 Anthropic 兼容。')
+    throw new Error(agentErrorMessage('agentCliProviderUnsupported'))
   }
   const cfg: any = await api.get('/admin/translation-config')
   const p = cfg?.ai?.providers?.[provider]
   if (!p || !p.api_key) {
-    throw new Error(`未配置 ${provider} 的 API Key，请先在「AI 与机翻配置」中填写并保存。`)
+    throw new Error(agentErrorMessage('agentProviderMissingApiKey', { provider }))
   }
   return {
     provider,
@@ -116,6 +117,6 @@ export async function executeAgentRun(
     }
     return { status: 'success' }
   } catch (e: any) {
-    return { status: 'failed', error: e?.message || '运行失败' }
+    return { status: 'failed', error: e?.message || agentErrorMessage('agentRunFailed') }
   }
 }

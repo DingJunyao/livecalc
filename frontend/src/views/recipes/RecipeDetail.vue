@@ -5,10 +5,10 @@
     <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
     <v-app-bar-title class="text-h6">
       <div class="d-flex align-center ga-2">
-        <span class="text-truncate">{{ displayRecipe?.name || '菜谱详情' }}</span>
-        <v-chip size="x-small" variant="tonal" color="primary">菜谱</v-chip>
-        <v-chip v-if="proposalStatus === 'pending'" size="x-small" variant="tonal" color="warning">审核中</v-chip>
-        <v-chip v-else-if="recipe && !isPublished" size="x-small" variant="tonal" color="warning">未发布</v-chip>
+        <span class="text-truncate">{{ displayRecipe?.name || t('recipes.detailFallback') }}</span>
+        <v-chip size="x-small" variant="tonal" color="primary">{{ t('recipes.recipe') }}</v-chip>
+        <v-chip v-if="proposalStatus === 'pending'" size="x-small" variant="tonal" color="warning">{{ t('recipes.underReview') }}</v-chip>
+        <v-chip v-else-if="recipe && !isPublished" size="x-small" variant="tonal" color="warning">{{ t('recipes.unpublished') }}</v-chip>
       </div>
     </v-app-bar-title>
     <template #append>
@@ -22,7 +22,7 @@
           color="success"
           :loading="publishing"
           :disabled="!recipe"
-          title="发布菜谱"
+          :title="t('recipes.publish')"
           @click="handlePublish"
         />
         <v-btn
@@ -44,7 +44,7 @@
               />
             </span>
           </template>
-          已发布菜谱不可删除，请联系管理员
+          {{ t('recipes.publishedDeleteDisabled') }}
         </v-tooltip>
         <v-btn
           icon="mdi-chart-box-outline"
@@ -64,7 +64,7 @@
             v-if="canPublish"
             prepend-icon="mdi-cloud-upload-outline"
             base-color="success"
-            title="发布菜谱"
+            :title="t('recipes.publish')"
             :disabled="!recipe"
             @click="handlePublish"
           />
@@ -72,7 +72,7 @@
             v-if="canManage || !isPublished"
             prepend-icon="mdi-delete"
             base-color="error"
-            title="删除菜谱"
+            :title="t('recipes.delete')"
             :disabled="!recipe || deleting"
             @click="showDeleteDialog = true"
           />
@@ -80,18 +80,18 @@
             v-else
             prepend-icon="mdi-delete-off-outline"
             base-color="error"
-            title="删除菜谱"
-            subtitle="已发布菜谱不可删除，请联系管理员"
+            :title="t('recipes.delete')"
+            :subtitle="t('recipes.publishedDeleteDisabled')"
             disabled
           />
           <v-list-item
             prepend-icon="mdi-chart-box-outline"
-            title="菜谱分析"
+            :title="t('recipes.analysis')"
             @click="$router.push(`/recipes/${recipe?.id}/analysis`)"
           />
           <v-list-item
             prepend-icon="mdi-refresh"
-            title="刷新"
+            :title="t('recipes.refresh')"
             @click="loadData"
           />
         </v-list>
@@ -103,14 +103,14 @@
     <!-- 加载中 -->
     <div v-if="loading" class="text-center py-16">
       <v-progress-circular indeterminate color="primary" size="64" />
-      <div class="text-body-1 mt-4">加载中...</div>
+      <div class="text-body-1 mt-4">{{ t('recipes.loading') }}</div>
     </div>
 
     <!-- 错误提示 -->
     <v-alert v-else-if="error" type="error" class="ma-4">
       {{ error }}
       <template #append>
-        <v-btn variant="text" @click="loadData">重试</v-btn>
+        <v-btn variant="text" @click="loadData">{{ t('recipes.retry') }}</v-btn>
       </template>
     </v-alert>
 
@@ -201,13 +201,13 @@
               <v-card elevation="0" class="ma-4">
                 <v-card-title class="d-flex align-center pb-2">
                   <v-icon start color="tertiary">mdi-cash</v-icon>
-                  成本估算
+                  {{ t('recipes.costEstimate') }}
                 </v-card-title>
                 <v-divider />
                 <v-card-text class="text-center py-6">
                   <div v-if="loadingCostData" class="text-h6 text-medium-emphasis">
-                    <v-progress-circular indeterminate size="24" class="mr-2" />
-                    计算中...
+                    <v-progress-circular indeterminate size="24" class="me-2" />
+                    {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
                     {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
@@ -220,11 +220,11 @@
             <div class="grid-trend">
               <PriceTrendChart
                 v-if="recipe"
-                title="成本趋势"
+                :title="t('recipes.costTrend')"
                 icon="mdi-chart-timeline-variant"
                 icon-color="tertiary"
                 :unit="costTrendUnit"
-                empty-text="暂无成本历史数据"
+                :empty-text="t('recipes.noCostHistory')"
                 :data="chartData"
                 :loading="loadingCostHistory"
                 color="#ff9800"
@@ -244,13 +244,13 @@
               <v-card elevation="0" class="ma-4">
                 <v-card-title class="d-flex align-center pb-2">
                   <v-icon start color="tertiary">mdi-cash</v-icon>
-                  成本估算
+                  {{ t('recipes.costEstimate') }}
                 </v-card-title>
                 <v-divider />
                 <v-card-text class="text-center py-6">
                   <div v-if="loadingCostData" class="text-h6 text-medium-emphasis">
-                    <v-progress-circular indeterminate size="24" class="mr-2" />
-                    计算中...
+                    <v-progress-circular indeterminate size="24" class="me-2" />
+                    {{ t('recipes.calculating') }}
                   </div>
                   <div v-else class="text-h3 font-weight-bold text-tertiary">
                     {{ formatMoney(Number(costData?.total_cost ?? 0) * servingRatio, userCurrency) }}
@@ -274,11 +274,11 @@
             <div class="grid-trend">
               <PriceTrendChart
                 v-if="recipe"
-                title="成本趋势"
+                :title="t('recipes.costTrend')"
                 icon="mdi-chart-timeline-variant"
                 icon-color="tertiary"
                 :unit="costTrendUnit"
-                empty-text="暂无成本历史数据"
+                :empty-text="t('recipes.noCostHistory')"
                 :data="chartData"
                 :loading="loadingCostHistory"
                 color="#ff9800"
@@ -316,7 +316,7 @@
           <v-card elevation="0" class="ma-4" v-if="nutritionData || loadingNutritionData">
             <v-card-title class="d-flex align-center pb-2">
               <v-icon start color="success">mdi-food-apple-outline</v-icon>
-              营养成分（每份）
+              {{ t('recipes.nutritionPerServing') }}
               <v-spacer />
               <v-btn
                 v-if="otherNutrientsCount > 0"
@@ -326,7 +326,7 @@
                 class="text-caption"
                 @click="showAllNutrients = !showAllNutrients"
               >
-                {{ showAllNutrients ? '收起' : `展开 +${otherNutrientsCount} 项` }}
+                {{ showAllNutrients ? t('recipes.showLess') : t('recipes.showMoreNutrients', { count: otherNutrientsCount }) }}
                 <v-icon :icon="showAllNutrients ? 'mdi-chevron-up' : 'mdi-chevron-down'" end />
               </v-btn>
             </v-card-title>
@@ -335,13 +335,13 @@
             <v-card-text class="pa-0">
               <div v-if="loadingNutritionData" class="text-center py-6">
                 <v-progress-circular indeterminate size="28" class="mb-2" />
-                <div class="text-body-2 text-medium-emphasis">计算中...</div>
+                <div class="text-body-2 text-medium-emphasis">{{ t('recipes.calculating') }}</div>
               </div>
               <template v-else>
                 <div class="nutrition-header d-flex py-2 border-bottom">
-                <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">营养素</div>
-                <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 80px">数量</div>
-                <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 60px">NRV%</div>
+                <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">{{ t('recipes.nutrient') }}</div>
+                <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 80px">{{ t('recipes.amount') }}</div>
+                <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 60px">{{ t('recipes.nrvPercent') }}</div>
               </div>
               <div
                 v-for="item in displayNutritionItems"
@@ -359,7 +359,7 @@
               </div>
 
               <div class="mt-4 text-caption text-medium-emphasis ps-4">
-                NRV = 营养素参考值百分比
+                {{ t('recipes.nrvExplanation') }}
               </div>
               </template>
             </v-card-text>
@@ -382,7 +382,7 @@
           prepend-icon="mdi-arrow-left"
           @click="goBack"
         >
-          返回列表
+          {{ t('recipes.backToList') }}
         </v-btn>
       </div>
     </template>
@@ -469,22 +469,22 @@
       <v-card>
         <v-card-title class="d-flex align-center text-error">
           <v-icon start color="error">mdi-alert-circle-outline</v-icon>
-          删除菜谱
+          {{ t('recipes.deleteTitle') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-4">
-          <p>确定要删除「{{ recipe?.name }}」吗？</p>
-          <p class="text-caption text-medium-emphasis mt-1">此操作将软删除菜谱，可在后台恢复。</p>
+          <p>{{ t('recipes.deleteConfirm', { name: recipe?.name }) }}</p>
+          <p class="text-caption text-medium-emphasis mt-1">{{ t('recipes.deleteSoftWarning') }}</p>
         </v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="showDeleteDialog = false" :disabled="deleting">取消</v-btn>
+          <v-btn variant="text" @click="showDeleteDialog = false" :disabled="deleting">{{ t('recipes.cancel') }}</v-btn>
           <v-btn
             color="error"
             variant="tonal"
             :loading="deleting"
             @click="handleDelete"
-          >删除</v-btn>
+          >{{ t('recipes.delete') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -494,19 +494,19 @@
       <v-card>
         <v-card-title class="d-flex align-center">
           <v-icon start color="success">mdi-cloud-upload-outline</v-icon>
-          发布菜谱
+          {{ t('recipes.publishTitle') }}
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-4">
-          <p>确定要发布「{{ recipe?.name }}」吗？</p>
+          <p>{{ t('recipes.publishConfirm', { name: recipe?.name }) }}</p>
           <p class="text-caption text-medium-emphasis mt-1">
-            发布后菜谱将对其他用户公开，且你无法自行撤回（管理员审核通过后生效）。
+            {{ t('recipes.publishWarning') }}
           </p>
         </v-card-text>
         <v-card-actions class="pa-4">
           <v-spacer />
-          <v-btn variant="text" @click="showPublishConfirm = false" :disabled="publishing">取消</v-btn>
-          <v-btn color="success" variant="tonal" :loading="publishing" @click="confirmPublish">确认发布</v-btn>
+          <v-btn variant="text" @click="showPublishConfirm = false" :disabled="publishing">{{ t('recipes.cancel') }}</v-btn>
+          <v-btn color="success" variant="tonal" :loading="publishing" @click="confirmPublish">{{ t('recipes.confirmPublish') }}</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -515,6 +515,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
@@ -528,15 +529,20 @@ import { usePageTitle } from '@/composables/usePageTitle'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
-import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP } from '@/utils/nutritionLabels'
+import { formatNumber } from '@/utils/format'
+import { isDefaultNutrient, nutrientKey, nutrientLabel, nutrientUnitLabel } from '@/utils/nutritionLabels'
+import { useLocaleStore } from '@/stores/locale'
 import RecipeBasicCard from '@/components/recipes/RecipeBasicCard.vue'
 import RecipeIngredientCard from '@/components/recipes/RecipeIngredientCard.vue'
 import RecipeStepCard from '@/components/recipes/RecipeStepCard.vue'
 import RecipeTipCard from '@/components/recipes/RecipeTipCard.vue'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
+import { CORE_NUTRIENT_KEYS, NO_STANDARD_VALUES } from '@/data/localValues'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { setDetailTitle } = usePageTitle()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 interface CostHistoryRecord {
   date: string
@@ -660,7 +666,9 @@ const servingRatio = computed(() => {
 })
 
 // 成本趋势图的单位，跟随当前显示的份数
-const costTrendUnit = computed(() => `${displayServings.value}人份`)
+const costTrendUnit = computed(() => t('recipes.servingsUnit', {
+  count: formatNumber(displayServings.value, localeStore.effectiveFormatLocale),
+}))
 
 // 图片灯箱相关
 const selectedImageIndex = ref(0)
@@ -677,19 +685,19 @@ const maxDaysLoaded = ref(0)
 // 核心营养素配置（默认显示的营养素）——能量单位跟随用户偏好
 const { energyUnit, toDisplayCalorie } = useUserUnits()
 const coreNutritionItems = computed(() => [
-  { key: '能量', label: '能量', unit: energyUnit.value },
-  { key: '蛋白质', label: '蛋白质', unit: 'g' },
-  { key: '脂肪', label: '脂肪', unit: 'g' },
-  { key: '碳水化合物', label: '碳水化合物', unit: 'g' },
-  { key: '钠', label: '钠', unit: 'mg' }
+  { key: CORE_NUTRIENT_KEYS[0], label: nutrientLabel(CORE_NUTRIENT_KEYS[0]), unit: energyUnit.value },
+  { key: CORE_NUTRIENT_KEYS[1], label: nutrientLabel(CORE_NUTRIENT_KEYS[1]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[2], label: nutrientLabel(CORE_NUTRIENT_KEYS[2]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[3], label: nutrientLabel(CORE_NUTRIENT_KEYS[3]), unit: 'g' },
+  { key: CORE_NUTRIENT_KEYS[4], label: nutrientLabel(CORE_NUTRIENT_KEYS[4]), unit: 'mg' }
 ])
 
 // 营养素排序顺序（展开时这些营养素排在前面）
 const nutrientSortOrder = [
-  '能量', '蛋白质', '脂肪', '碳水化合物', '钠',
-  '膳食纤维', '钙', '铁', '钾',
-  '维生素A', '维生素B1', '维生素B2', '维生素B12', '维生素C',
-  '维生素D', '维生素E', '维生素K'
+  'nutrients.energy', 'nutrients.protein', 'nutrients.fat', 'nutrients.carbohydrate', 'nutrients.sodium',
+  'nutrients.fiber', 'nutrients.calcium', 'nutrients.iron', 'nutrients.potassium',
+  'nutrients.vitaminA', 'nutrients.vitaminB1', 'nutrients.vitaminB2', 'nutrients.vitaminB12', 'nutrients.vitaminC',
+  'nutrients.vitaminD', 'nutrients.vitaminE', 'nutrients.vitaminK'
 ]
 
 // 展开状态
@@ -698,8 +706,8 @@ const showAllNutrients = ref(false)
 // 营养素排序辅助函数
 const sortNutrients = (items: any[]) => {
   return items.sort((a, b) => {
-    const indexA = nutrientSortOrder.indexOf(a.key)
-    const indexB = nutrientSortOrder.indexOf(b.key)
+    const indexA = nutrientSortOrder.indexOf(nutrientKey(a.key) || '')
+    const indexB = nutrientSortOrder.indexOf(nutrientKey(b.key) || '')
 
     // 如果都在排序列表中，按排序顺序
     if (indexA !== -1 && indexB !== -1) {
@@ -739,22 +747,25 @@ const displayNutritionItems = computed(() => {
     return defaultItems
   }
 
-  // 获取默认显示的5个营养素的键集合
-  const defaultKeys = new Set(coreNutritionItems.value.map(ci => ci.key))
+  // 获取默认显示的5个营养素的稳定键集合
+  const defaultKeys = new Set(
+    coreNutritionItems.value
+      .map(ci => nutrientKey(ci.key))
+      .filter((key): key is string => key !== null)
+  )
 
   // 获取 core_nutrients 中的其他营养素（如膳食纤维、钙、铁等）
   const otherCoreNutrients = Object.keys(coreNutrients)
-    .filter(key => !defaultKeys.has(key))
+    .filter(key => !isDefaultNutrient(key, defaultKeys))
     .map(key => ({
       key: key,
-      label: NUTRITION_LABEL_MAP[key] || key,
+      label: nutrientLabel(key),
       unit: (coreNutrients[key] as any).unit || '',
       isCore: true
     }))
 
-  // 获取 all_nutrients 中的其他营养素
-  // 先按照中文名称分组，合并同一中文名称的多个英文键名的值
-  const chineseKeyGroups = new Map<string, { keys: string[], totalValue: number, unit: string }>()
+  // 获取 all_nutrients 中的其他营养素，按稳定营养键合并同义英文键名
+  const stableKeyGroups = new Map<string, { keys: string[], totalValue: number, unit: string }>()
 
   Object.keys(allNutrients)
     .filter(key => {
@@ -762,23 +773,21 @@ const displayNutritionItems = computed(() => {
       return data && typeof data === 'object' && 'value' in data
     })
     .filter(key => {
-      // 将英文键名转换为中文键名，然后检查是否是核心营养素
-      const chineseKey = ENGLISH_TO_CHINESE_MAP[key] || key
-      return !defaultKeys.has(chineseKey) // 排除默认显示的5个
+      return !isDefaultNutrient(key, defaultKeys)
     })
     .forEach(key => {
-      const chineseKey = ENGLISH_TO_CHINESE_MAP[key] || key
+      const stableKey = nutrientKey(key) || key
       const data = allNutrients[key] as any
 
-      if (!chineseKeyGroups.has(chineseKey)) {
-        chineseKeyGroups.set(chineseKey, {
+      if (!stableKeyGroups.has(stableKey)) {
+        stableKeyGroups.set(stableKey, {
           keys: [],
           totalValue: 0,
           unit: data.unit || ''
         })
       }
 
-      const group = chineseKeyGroups.get(chineseKey)!
+      const group = stableKeyGroups.get(stableKey)!
       group.keys.push(key)
       group.totalValue += (data.value || 0)
       // 使用第一个遇到的单位
@@ -788,13 +797,13 @@ const displayNutritionItems = computed(() => {
     })
 
   // 将分组后的数据转换为项目数组
-  const otherAllNutrients = Array.from(chineseKeyGroups.entries())
-    .map(([chineseKey, group]) => {
+  const otherAllNutrients = Array.from(stableKeyGroups.entries())
+    .map(([stableKey, group]) => {
       // 使用第一个出现的英文键名作为 key
       const firstKey = group.keys[0]
       return {
         key: firstKey,
-        label: NUTRITION_LABEL_MAP[chineseKey] || chineseKey,
+        label: t(stableKey),
         value: group.totalValue, // 使用合并后的值
         unit: group.unit,
         isCore: false
@@ -817,21 +826,26 @@ const otherNutrientsCount = computed(() => {
   const coreNutrients = nutritionData.value.per_serving_nutrition.core_nutrients || {}
   const allNutrients = nutritionData.value.per_serving_nutrition.all_nutrients || {}
 
-  // 获取默认显示的5个营养素的键集合
-  const defaultKeys = new Set(coreNutritionItems.value.map(ci => ci.key))
+  // 获取默认显示的5个营养素的稳定键集合
+  const defaultKeys = new Set(
+    coreNutritionItems.value
+      .map(ci => nutrientKey(ci.key))
+      .filter((key): key is string => key !== null)
+  )
 
   // 计算 core_nutrients 中的其他营养素数量（如膳食纤维、钙、铁等）
-  const otherCoreCount = Object.keys(coreNutrients).filter(key => !defaultKeys.has(key)).length
+  const otherCoreCount = Object.keys(coreNutrients)
+    .filter(key => !isDefaultNutrient(key, defaultKeys))
+    .length
 
   // 计算 all_nutrients 中的其他营养素数量
-  const seenChineseKeys = new Set<string>()
+  const seenStableKeys = new Set<string>()
   const otherAllCount = Object.keys(allNutrients).filter(key => {
     const data = allNutrients[key]
     if (!data || typeof data !== 'object' || !('value' in data)) return false
-    // 将英文键名转换为中文键名，然后检查是否是核心营养素
-    const chineseKey = ENGLISH_TO_CHINESE_MAP[key] || key
-    if (!defaultKeys.has(chineseKey) && !seenChineseKeys.has(chineseKey)) {
-      seenChineseKeys.add(chineseKey)
+    const stableKey = nutrientKey(key)
+    if (stableKey && !isDefaultNutrient(key, defaultKeys) && !seenStableKeys.has(stableKey)) {
+      seenStableKeys.add(stableKey)
       return true
     }
     return false
@@ -849,7 +863,7 @@ const getNutritionValue = (item: any) => {
     const nutrient = nutritionData.value.per_serving_nutrition.core_nutrients?.[item.key]
     const v = nutrient?.value
     // 能量按用户偏好单位换算显示（库存 kcal）
-    if (item.key === '能量') return toDisplayCalorie(v as number) ?? v
+    if (item.key === CORE_NUTRIENT_KEYS[0]) return toDisplayCalorie(v as number) ?? v
     return v
   }
 
@@ -859,7 +873,7 @@ const getNutritionValue = (item: any) => {
 
 const getNutritionUnit = (item: any) => {
   // 能量单位跟随用户偏好（库存 kcal，显示按 energyUnit；覆盖后端返回的 kcal）
-  if (item.key === '能量') return energyUnit.value
+  if (item.key === CORE_NUTRIENT_KEYS[0]) return energyUnit.value
   if (item.isCore) {
     // 核心营养素从 core_nutrients 获取完整数据
     if (!nutritionData.value?.per_serving_nutrition) return null
@@ -873,7 +887,7 @@ const getNutritionUnit = (item: any) => {
 
 const loadData = async () => {
   if (!recipeId.value) {
-    error.value = '无效的菜谱ID'
+    error.value = t('recipes.invalidId')
     loading.value = false
     return
   }
@@ -892,7 +906,7 @@ const loadData = async () => {
     pendingProposals.value = Array.isArray(response.pending_proposals)
       ? response.pending_proposals
       : (response.pending_proposal ? [response.pending_proposal] : [])
-    setDetailTitle(response.name, '菜谱', '菜谱详情')
+    setDetailTitle(response.name, t('detailTypes.recipe'), t('pageTitle.detailFallback'))
     displayServings.value = response.servings || 1
     // 基本数据到位，立即渲染页面
     loading.value = false
@@ -907,8 +921,8 @@ const loadData = async () => {
     loadNutritionData()
     loadCostHistoryInBatches()
   } catch (e: any) {
-    console.error('加载菜谱失败', e)
-    error.value = getErrorMessage(e, '加载失败')
+    console.error('Failed to load recipe', e)
+    error.value = getErrorMessage(e, t('recipes.loadFailed'))
     loading.value = false
   }
 }
@@ -921,7 +935,7 @@ const loadCostData = async () => {
     })
     costData.value = response
   } catch (e) {
-    console.error('加载成本失败', e)
+    console.error('Failed to load costs', e)
     costData.value = null
   } finally {
     loadingCostData.value = false
@@ -934,7 +948,7 @@ const loadNutritionData = async () => {
     const response = await api.get(`/recipes/${recipeId.value}/nutrition`)
     nutritionData.value = response
   } catch (e) {
-    console.error('加载营养失败', e)
+    console.error('Failed to load nutrition', e)
     nutritionData.value = null
   } finally {
     loadingNutritionData.value = false
@@ -1019,7 +1033,7 @@ const enqueueCostHistory = async (targetDays: number, showLoading: boolean) => {
       const { maxOffset } = await loadCostHistoryParallel(targetDays, maxDaysLoaded.value)
       maxDaysLoaded.value = Math.max(maxDaysLoaded.value, maxOffset)
     } catch (e) {
-      console.error('加载成本历史失败', e)
+      console.error('Failed to load cost history', e)
     } finally {
       if (showLoading) loadingCostHistory.value = false
     }
@@ -1073,7 +1087,7 @@ const loadAllCostHistory = async () => {
         if (hitEmpty) break
       }
     } catch (e) {
-      console.error('加载全部成本历史失败', e)
+      console.error('Failed to load full cost history', e)
     } finally {
       loadingCostHistory.value = false
     }
@@ -1131,8 +1145,10 @@ const nextImage = () => {
 
 const formatNutritionValue = (value: number | undefined, unit: string) => {
   if (value === undefined || value === null) return '-'
-  const num = parseFloat(String(value)) || 0
-  return `${num.toFixed(1)} ${unit}`
+  return `${formatNumber(value, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })} ${nutrientUnitLabel(unit)}`
 }
 
 // 获取营养素NRV百分比
@@ -1150,7 +1166,7 @@ const getNutritionNRV = (item: any) => {
   if (!nutrient) return '-'
 
   // 如果 standard 是"无标准"或类似的，表示没有推荐摄入量，显示 "-"
-  if (nutrient.standard === '无标准' || nutrient.standard === '无标准值') {
+  if (NO_STANDARD_VALUES.includes(nutrient.standard)) {
     return '-'
   }
 
@@ -1159,7 +1175,10 @@ const getNutritionNRV = (item: any) => {
     return '-'
   }
 
-  return nutrient.nrp_pct.toFixed(1)
+  return formatNumber(nutrient.nrp_pct, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
 }
 
 const getColorByIndex = (index: number) => {
@@ -1174,21 +1193,21 @@ const proposalStatus = ref<string | null>(null)
 // 服务端注入的 pending proposals（详情 API 返回），按提交顺序合并全部分区修改
 const pendingProposals = ref<{ id: number; action: string; payload: Record<string, any> }[]>([])
 
-const pendingFieldLabels: Record<string, string> = {
-  name: '菜谱名称',
-  source: '来源',
-  category: '分类',
-  tags: '标签',
-  cooking_steps: '做法步骤',
-  total_time_minutes: '总时间',
-  difficulty: '难度',
-  servings: '份数',
-  tips: '小贴士',
-  description: '简介',
-  images: '配图',
-  ingredients: '原料',
-  result_ingredient_id: '成品产出原料',
-}
+const pendingFieldLabels = computed<Record<string, string>>(() => ({
+  name: t('recipeFields.name'),
+  source: t('recipeFields.source'),
+  category: t('recipeFields.category'),
+  tags: t('recipeFields.tags'),
+  cooking_steps: t('recipeFields.cookingSteps'),
+  total_time_minutes: t('recipeFields.totalTime'),
+  difficulty: t('recipeFields.difficulty'),
+  servings: t('recipeFields.servings'),
+  tips: t('recipeFields.tips'),
+  description: t('recipeFields.description'),
+  images: t('recipeFields.images'),
+  ingredients: t('recipeFields.ingredients'),
+  result_ingredient_id: t('recipeFields.resultIngredient'),
+}))
 
 // 合并了待审覆盖的虚拟 recipe 对象，用于传给子组件展示
 const displayRecipe = computed(() => {
@@ -1231,7 +1250,7 @@ const onRecipeSaved = (updatedRecipe: any) => {
   if (updatedRecipe?.proposal_id) {
     // 编辑已提交为提议 → 显示审核中
     proposalStatus.value = updatedRecipe.status || 'pending'
-    notify('编辑已提交，待管理员审核', 'info')
+    notify(t('recipes.editSubmitted'), 'info')
     loadData()
     return
   }
@@ -1246,14 +1265,14 @@ const onRecipeSaved = (updatedRecipe: any) => {
 const onBasicInfoSaved = (updatedRecipe: any) => {
   if (updatedRecipe?.proposal_id) {
     proposalStatus.value = updatedRecipe.status || 'pending'
-    notify('编辑已提交，待管理员审核', 'info')
+    notify(t('recipes.editSubmitted'), 'info')
     loadData()
     return
   }
   if (recipe.value) {
     recipe.value = { ...recipe.value, ...updatedRecipe }
     if (updatedRecipe.name) {
-      setDetailTitle(updatedRecipe.name, '菜谱', '菜谱详情')
+      setDetailTitle(updatedRecipe.name, t('detailTypes.recipe'), t('pageTitle.detailFallback'))
     }
   }
   loadCostData()
@@ -1273,11 +1292,11 @@ const handleDelete = async () => {
   try {
     await api.delete(`/recipes/${recipeId.value}`)
     showDeleteDialog.value = false
-    notify('菜谱已删除', 'success')
+    notify(t('recipes.deleted'), 'success')
     router.push('/recipes')
   } catch (e: any) {
-    console.error('删除菜谱失败', e)
-    notify(getErrorMessage(e, '删除菜谱失败'), 'error')
+    console.error('Failed to delete recipe', e)
+    notify(getErrorMessage(e, t('recipes.deleteFailed')), 'error')
   } finally {
     deleting.value = false
   }
@@ -1304,18 +1323,18 @@ const confirmPublish = async () => {
     // 后端返回 {proposal_id, status, is_public}
     showPublishConfirm.value = false
     if (result?.is_public) {
-      notify('菜谱已发布', 'success')
+      notify(t('recipes.published'), 'success')
       // 管理员直写：刷新详情反映 is_public
       await loadData()
     } else if (result?.status === 'pending') {
-      notify('发布提议已提交，待管理员审核', 'info')
+      notify(t('recipes.publishProposalSubmitted'), 'info')
     } else {
-      notify('发布请求已提交', 'info')
+      notify(t('recipes.publishRequestSubmitted'), 'info')
       await loadData()
     }
   } catch (e: any) {
-    console.error('发布菜谱失败', e)
-    notify(getErrorMessage(e, '发布菜谱失败'), 'error')
+    console.error('Failed to publish recipe', e)
+    notify(getErrorMessage(e, t('recipes.publishFailed')), 'error')
   } finally {
     publishing.value = false
   }
@@ -1383,7 +1402,7 @@ onMounted(() => { loadData(); loadProposalStatus() })
 .lightbox-close {
   position: absolute;
   top: 12px;
-  right: 12px;
+  inset-inline-end: 12px;
   z-index: 10;
 }
 
@@ -1413,11 +1432,11 @@ onMounted(() => { loadData(); loadProposalStatus() })
 }
 
 .lightbox-prev {
-  left: 12px;
+  inset-inline-start: 12px;
 }
 
 .lightbox-next {
-  right: 12px;
+  inset-inline-end: 12px;
 }
 
 .lightbox-thumbnails {

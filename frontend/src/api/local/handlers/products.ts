@@ -13,6 +13,8 @@ import {
 } from './_filter'
 import { getBarcodeConfig, resolveExternalBarcode } from './barcodeServices'
 import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
+import { localError } from '../../../utils/localErrors'
+import { CHINESE_JIN_NAME } from '../../../data/localValues.ts'
 
 // ============================================================
 // 地区过滤辅助
@@ -113,7 +115,7 @@ export async function getEntity(params: Record<string, string>, query?: any): Pr
   const id = parseInt(params.id)
   const regionId = parseRegionId(query?.region_id)
   const product = await getById('products', id)
-  if (!product) throw { status: 404, message: `Product ${id} not found` }
+  if (!product) throw localError('productNotFound', 404, { id })
   // Attach barcodes
   const barcodes = await getByIndex('product_barcodes', 'by_product_id', id)
   // Attach ingredient name
@@ -220,7 +222,7 @@ export async function createEntity(_params: Record<string, string>, data?: any):
 export async function updateEntity(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('products', id)
-  if (!existing) throw { status: 404, message: `Product ${id} not found` }
+  if (!existing) throw localError('productNotFound', 404, { id })
   await putOne('products', { ...existing, ...data, id, updated_at: new Date().toISOString() })
   return await getById('products', id)
 }
@@ -228,7 +230,7 @@ export async function updateEntity(params: Record<string, string>, data?: any): 
 export async function deleteEntity(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('products', id)
-  if (!existing) throw { status: 404, message: `Product ${id} not found` }
+  if (!existing) throw localError('productNotFound', 404, { id })
   await putOne('products', { ...existing, id, is_active: false, updated_at: new Date().toISOString() })
   return { ok: true }
 }
@@ -372,7 +374,7 @@ export async function createRecord(_params: Record<string, string>, data?: any):
 export async function updateRecord(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('product_records', id)
-  if (!existing) throw { status: 404, message: `Price record ${id} not found` }
+  if (!existing) throw localError('priceRecordNotFound', 404, { id })
   const currency = data?.currency || existing?.currency || DEFAULT_CURRENCY
   await putOne('product_records', {
     ...existing,
@@ -389,7 +391,7 @@ export async function updateRecord(params: Record<string, string>, data?: any): 
 export async function deleteRecord(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('product_records', id)
-  if (!existing) throw { status: 404, message: `Price record ${id} not found` }
+  if (!existing) throw localError('priceRecordNotFound', 404, { id })
   await deleteOne('product_records', id)
   return { ok: true }
 }
@@ -510,7 +512,7 @@ export async function getLatestPriceByMerchant(params: Record<string, string>, q
       merchant_name: r.merchant_name || '',
       recorded_at: r.recorded_at,
     })),
-    unit: records[0]?.unit_name || '斤',
+    unit: records[0]?.unit_name || CHINESE_JIN_NAME,
   }
 }
 

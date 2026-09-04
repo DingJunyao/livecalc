@@ -1,5 +1,5 @@
 <template>
-  <div v-if="hasData" ref="containerRef" class="sparkline-background">
+  <div v-if="hasData" ref="containerRef" class="sparkline-background" dir="ltr">
     <v-sparkline
       :model-value="data"
       :gradient="gradientColors"

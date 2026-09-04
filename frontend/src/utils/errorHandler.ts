@@ -1,4 +1,6 @@
 // utils/errorHandler.ts
+import { t } from '@/plugins/i18n'
+
 // 统一的错误处理工具，确保前端始终展示后端传来的有用错误信息，
 // 而不是给用户看 HTTP 状态码。
 
@@ -16,7 +18,7 @@
  * @param fallback - 当所有提取方式都失败时的默认消息
  * @returns 用户可读的中文错误消息
  */
-export function getErrorMessage(error: unknown, fallback: string = '操作失败'): string {
+export function getErrorMessage(error: unknown, fallback: string = t('errors.operationFailed')): string {
   if (!error) return fallback
 
   const e = error as any
@@ -45,7 +47,7 @@ export function getErrorMessage(error: unknown, fallback: string = '操作失败
     ) {
       // 对于网络错误，返回更友好的消息
       if (e.message === 'Network Error') {
-        return '网络连接失败，请检查网络后重试'
+        return t('errors.network')
       }
       // 对于 HTTP 状态码消息，走 fallback
       return fallback
@@ -63,7 +65,6 @@ export function isNetworkError(error: unknown): boolean {
   const e = error as any
   return (
     e?.message === 'Network Error' ||
-    e?.userMessage === '网络连接失败' ||
     e?.code === 'ECONNABORTED' ||
     e?.code === 'ERR_NETWORK'
   )

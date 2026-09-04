@@ -29,6 +29,9 @@ class User(Base):
     default_mass_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
     default_volume_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
     default_price_unit_id = Column(Integer, ForeignKey("units.id"), nullable=True)
+    # 用户界面与格式化区域偏好（NULL 时由请求/客户端回退）
+    locale = Column(String(10), nullable=True)
+    format_locale = Column(String(10), nullable=True)
     # 默认币种（NULL = 跟随所在地区国家币种）
     default_currency = Column(String(3), nullable=True)
     # 默认计算范围：country/province/city/county

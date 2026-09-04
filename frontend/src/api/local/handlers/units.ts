@@ -1,6 +1,7 @@
 // Units handler — CRUD for units and unit conversions.
 
 import { getAll, getById, addOne, putOne, getByIndex } from '../database'
+import { localError } from '../../../utils/localErrors'
 
 export async function listUnits(_params: Record<string, string>, query?: any): Promise<any> {
   // 与云端 List[UnitResponse] 契约对齐：返回数组。
@@ -14,7 +15,7 @@ export async function listUnits(_params: Record<string, string>, query?: any): P
 export async function getUnit(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const unit = await getById('units', id)
-  if (!unit) throw { status: 404, message: `Unit ${id} not found` }
+  if (!unit) throw localError('unitNotFound', 404, { id })
   return unit
 }
 
@@ -31,7 +32,7 @@ export async function createUnit(_params: Record<string, string>, data?: any): P
 export async function updateUnit(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('units', id)
-  if (!existing) throw { status: 404, message: `Unit ${id} not found` }
+  if (!existing) throw localError('unitNotFound', 404, { id })
   await putOne('units', { ...existing, ...data, id, updated_at: new Date().toISOString() })
   return await getById('units', id)
 }
@@ -39,7 +40,7 @@ export async function updateUnit(params: Record<string, string>, data?: any): Pr
 export async function deleteUnit(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('units', id)
-  if (!existing) throw { status: 404, message: `Unit ${id} not found` }
+  if (!existing) throw localError('unitNotFound', 404, { id })
   await putOne('units', { ...existing, id, is_active: false, updated_at: new Date().toISOString() })
   return { ok: true }
 }
@@ -61,7 +62,7 @@ export async function convertUnits(_params: Record<string, string>, data?: any):
   if (reverse) {
     return { value: value / reverse.factor, unit_id: to_unit_id }
   }
-  throw { status: 400, message: `No conversion found between units ${from_unit_id} and ${to_unit_id}` }
+  throw localError('unitConversionNotFound', 400, { from_unit_id, to_unit_id })
 }
 
 export async function listUnitConversions(params: Record<string, string>): Promise<any> {

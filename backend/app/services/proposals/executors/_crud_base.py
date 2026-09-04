@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.services.proposals.base import ProposalExecutor, ApplyResult
+from app.core.exceptions import LocalizedHTTPException
 
 
 def _json_safe(v):
@@ -43,9 +44,9 @@ class CrudExecutorBase(ProposalExecutor):
             return
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail=f"{self.entity_type} update/delete 需 entity_id")
+            raise LocalizedHTTPException(status_code=400, message='{entity_type} update/delete 需 entity_id', entity_type=self.entity_type)
         if db.query(self.model_class).get(eid) is None:
-            raise HTTPException(status_code=404, detail=f"{self.entity_type} {eid} 不存在")
+            raise LocalizedHTTPException(status_code=404, message='{entity_type} {eid} 不存在', entity_type=self.entity_type, eid=eid)
 
     def preview(self, db: Session, proposal) -> dict:
         eid = proposal.entity_id
@@ -103,7 +104,7 @@ class CrudExecutorBase(ProposalExecutor):
             )
         obj = db.query(self.model_class).get(eid)
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"{self.entity_type} {eid} 不存在")
+            raise LocalizedHTTPException(status_code=404, message='{entity_type} {eid} 不存在', entity_type=self.entity_type, eid=eid)
         if action == "update":
             # 仅快照 payload 中提及的字段
             snapshot = {k: _json_safe(getattr(obj, k)) for k in proposal.payload}
@@ -122,7 +123,7 @@ class CrudExecutorBase(ProposalExecutor):
                 revert_payload={"restore_active": True},
                 summary=f"已软删 {self.entity_type} {eid}",
             )
-        raise HTTPException(status_code=400, detail=f"未知 action: {action}")
+        raise LocalizedHTTPException(status_code=400, message='未知 action: {action}', action=action)
 
     def revert(self, db: Session, proposal) -> None:
         rp = proposal.revert_payload or {}

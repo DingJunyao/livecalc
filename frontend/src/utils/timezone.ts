@@ -6,6 +6,13 @@
  * 这里只保留客户端显示/输入用的转换工具。
  */
 
+import { formatDate, formatDateTime } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+
+function effectiveFormatLocale(): string {
+  return useLocaleStore().effectiveFormatLocale
+}
+
 /**
  * 将UTC时间转换为本地日期字符串（YYYY-MM-DD格式）
  * @param utcString UTC时间字符串（ISO格式）
@@ -23,22 +30,22 @@ export function utcToLocalDate(utcString: string): string {
 }
 
 /**
- * 格式化日期时间为本地字符串
+ * 格式化日期时间为本地字符串（显示格式随有效格式地区变化）
  * @param utcString UTC时间字符串（ISO格式）
  * @returns 格式化的本地日期时间字符串
  *
  * @example
- * formatToLocalDateTime('2026-03-28T09:46:00.000Z') // '2026-03-28 17:46:00'
+ * formatToLocalDateTime('2026-03-28T09:46:00.000Z') // '2026/03/28 17:46:00'（zh-CN）
  */
 export function formatToLocalDateTime(utcString: string): string {
-  const date = new Date(utcString)
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  const seconds = String(date.getSeconds()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+  return formatDateTime(utcString, effectiveFormatLocale(), {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
 }
 
 /**
@@ -75,38 +82,27 @@ export function getLocalDateTimeString(): string {
 }
 
 /**
- * 格式化 UTC 时间为本地日期时间字符串（YYYY-MM-DD HH:mm，不含秒）
+ * 格式化 UTC 时间为本地日期时间字符串（不含秒）
  * @param utcString UTC时间字符串（ISO格式，需带时区信息）
  * @returns 格式化的本地日期时间字符串，空值返回 '-'
  *
  * @example
- * formatToLocalDateTimeShort('2026-03-28T09:46:00+00:00') // '2026-03-28 17:46'
+ * formatToLocalDateTimeShort('2026-03-28T09:46:00+00:00') // '2026/03/28 17:46'（zh-CN）
  */
 export function formatToLocalDateTimeShort(utcString: string | null | undefined): string {
-  if (!utcString) return '-'
-  const date = new Date(utcString)
-  if (isNaN(date.getTime())) return '-'
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day} ${hours}:${minutes}`
+  return formatDateTime(utcString, effectiveFormatLocale())
 }
 
 /**
- * 格式化 UTC 时间为本地日期字符串（YYYY-MM-DD）
+ * 格式化 UTC 时间为本地日期字符串（显示格式随有效格式地区变化）
  * @param utcString UTC时间字符串（ISO格式，需带时区信息）
  * @returns 本地日期字符串，空值返回 '-'
  *
  * @example
- * formatToLocalDate('2026-03-28T17:00:00+00:00') // '2026-03-29' (东八区)
+ * formatToLocalDate('2026-03-28T17:00:00+00:00') // '2026/03/29'（zh-CN，东八区）
  */
 export function formatToLocalDate(utcString: string | null | undefined): string {
-  if (!utcString) return '-'
-  const date = new Date(utcString)
-  if (isNaN(date.getTime())) return '-'
-  return utcToLocalDate(utcString)
+  return formatDate(utcString, effectiveFormatLocale())
 }
 
 /**

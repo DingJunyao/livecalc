@@ -14,6 +14,7 @@ from app.services.proposals.base import ApplyResult
 from app.services.proposals.executors._crud_base import CrudExecutorBase, _json_safe
 from app.models.product_entity import Product
 from app.models.product import ProductRecord
+from app.core.exceptions import LocalizedHTTPException
 
 
 class ProductExecutor(CrudExecutorBase):
@@ -26,14 +27,14 @@ class ProductExecutor(CrudExecutorBase):
             return  # 商品 create 不在本次范围
         eid = proposal.entity_id
         if eid is None:
-            raise HTTPException(status_code=400, detail="update/delete 需 entity_id")
+            raise LocalizedHTTPException(status_code=400, message='update/delete 需 entity_id')
         obj = (
             db.query(Product)
             .filter(Product.id == eid, Product.is_active.is_(True))
             .first()
         )
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"商品 {eid} 不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='商品 {eid} 不存在或已删除', eid=eid)
 
     def build_snapshot(self, db: Session, proposal) -> dict:
         """覆写：delete 动作额外附带级联价格记录数量（供审核台展示影响范围）。"""
@@ -62,7 +63,7 @@ class ProductExecutor(CrudExecutorBase):
             .first()
         )
         if obj is None:
-            raise HTTPException(status_code=404, detail=f"商品 {eid} 不存在或已删除")
+            raise LocalizedHTTPException(status_code=404, message='商品 {eid} 不存在或已删除', eid=eid)
 
         # 唯一商品检查：原料的唯一活跃商品不能删（双层检查之执行器侧）
         sibling_count = (
@@ -75,10 +76,7 @@ class ProductExecutor(CrudExecutorBase):
             .count()
         )
         if sibling_count == 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"「{obj.name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。",
-            )
+            raise LocalizedHTTPException(status_code=400, message='「{name}」是其所属原料的唯一商品，无法删除。请先为该原料添加其他商品后再删除。', name=obj.name)
 
         # snapshot 级联 ProductRecord id（供 revert 复活）
         record_ids = [

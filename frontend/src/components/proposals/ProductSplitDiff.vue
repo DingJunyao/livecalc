@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const snap = computed(() => props.proposal.snapshot || {})
 const payload = computed(() => props.proposal.payload || {})
@@ -20,9 +25,12 @@ function extractLabelName(label: string | null): string {
 const productName = computed(() =>
   snap.value.product_name || extractLabelName(props.proposal.entity_label) || '?',
 )
-const currentIngredient = computed(() => snap.value.current_ingredient_name || '原原料')
+const currentIngredient = computed(() => snap.value.current_ingredient_name || t('proposals.originalIngredient'))
 const newName = computed(() =>
-  snap.value.new_ingredient_name || payload.value.new_name || extractLabelName(props.proposal.entity_label) || '新原料',
+  snap.value.new_ingredient_name ||
+  payload.value.new_name ||
+  extractLabelName(props.proposal.entity_label) ||
+  t('proposals.newIngredient'),
 )
 const priceCount = computed(() => snap.value.affected_price_records_count ?? recordsCountFallback.value ?? 0)
 
@@ -44,22 +52,26 @@ onMounted(loadBackfill)
   <div class="pa-2">
     <v-alert type="info" variant="tonal" density="compact" class="mb-2">
       <div class="text-body-2">
-        将商品<strong>「{{ productName }}」</strong>
-        从原料<strong>「{{ currentIngredient }}」</strong>中拆出，
-        以「<strong>{{ newName }}</strong>」创建新原料。
+        {{ t('proposals.productSplitIntro', {
+          product: productName,
+          ingredient: currentIngredient,
+          newIngredient: newName,
+        }) }}
       </div>
     </v-alert>
     <div class="d-flex align-center ga-2 mt-1">
       <v-chip size="x-small" color="info" variant="tonal" label>
         <template v-if="loadingRecords">
           <v-progress-circular indeterminate size="12" width="2" class="me-1" />
-          查价格记录…
+          {{ t('proposals.loadingPriceRecords') }}
         </template>
         <template v-else>
-          影响 <strong>{{ priceCount }}</strong> 条价格记录
+          {{ t('proposals.affectedPriceRecords', {
+            count: formatNumber(priceCount, localeStore.effectiveFormatLocale),
+          }) }}
         </template>
       </v-chip>
-      <span class="text-caption text-medium-emphasis">（营养数据将合并到新原料）</span>
+      <span class="text-caption text-medium-emphasis">{{ t('proposals.productSplitNutrition') }}</span>
     </div>
   </div>
 </template>

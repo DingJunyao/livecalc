@@ -9,6 +9,7 @@ class RegionResponse(BaseModel):
     id: int
     code: str
     name: str
+    display_name: str
     name_en: Optional[str] = None
     level: int
     iso_country: Optional[str] = None
@@ -23,6 +24,7 @@ class RegionAncestor(BaseModel):
     id: int
     code: str
     name: str
+    display_name: str
     level: int
 
 
