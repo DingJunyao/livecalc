@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/i18n/app_formatters.dart';
 import '../models/entity_unit.dart';
 import '../screens/entity_units_screen.dart';
 
@@ -65,8 +66,8 @@ class EntityUnitsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final secondaryStyle = theme.textTheme.bodySmall
-        ?.copyWith(color: theme.colorScheme.outline);
+    final secondaryStyle =
+        theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -147,8 +148,9 @@ class EntityUnitsCard extends StatelessWidget {
                                   Flexible(
                                     child: Text(
                                       unit.unitName,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.w600),
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                              fontWeight: FontWeight.w600),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -158,7 +160,8 @@ class EntityUnitsCard extends StatelessWidget {
                                       padding: const EdgeInsets.symmetric(
                                           horizontal: 6, vertical: 1),
                                       decoration: BoxDecoration(
-                                        color: theme.colorScheme.primaryContainer,
+                                        color:
+                                            theme.colorScheme.primaryContainer,
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -184,8 +187,8 @@ class EntityUnitsCard extends StatelessWidget {
                                         '待审',
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
-                                          color:
-                                              theme.colorScheme.onErrorContainer,
+                                          color: theme
+                                              .colorScheme.onErrorContainer,
                                         ),
                                       ),
                                     ),
@@ -243,8 +246,8 @@ class EntityUnitsCard extends StatelessWidget {
                             children: [
                               Text(
                                 '${_format(density.density)} kg/m³',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600),
+                                style: theme.textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
                               ),
                               if (density.condition != null &&
                                   density.condition!.isNotEmpty) ...[
@@ -282,7 +285,4 @@ class EntityUnitsCard extends StatelessWidget {
   }
 }
 
-String _format(double value) {
-  if (value == value.roundToDouble()) return value.toInt().toString();
-  return value.toStringAsFixed(2).replaceFirst(RegExp(r'0+$'), '');
-}
+String _format(double value) => formatQuantity(value);

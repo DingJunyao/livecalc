@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/i18n/app_formatters.dart';
 import '../../features/nutrition/models/usda_models.dart';
 import '../../features/nutrition/repositories/usda_repository.dart';
 import '../models/nutrition.dart';
@@ -371,7 +372,8 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
               child: Row(
                 children: [
                   Expanded(child: Text(nutrient.displayName)),
-                  Text('${_formatAmount(nutrient.amount)} ${nutrient.unit}'),
+                  Text(
+                      '${_formatDisplayAmount(nutrient.amount)} ${nutrient.unit}'),
                 ],
               ),
             ),
@@ -491,6 +493,8 @@ String _formatAmount(double value) {
   if (value == value.roundToDouble()) return value.toInt().toString();
   return value.toStringAsFixed(2);
 }
+
+String _formatDisplayAmount(double value) => formatQuantity(value);
 
 class _NutritionEditorRow extends StatefulWidget {
   final _NutritionEditRow row;

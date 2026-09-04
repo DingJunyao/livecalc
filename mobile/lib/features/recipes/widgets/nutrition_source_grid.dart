@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
 
@@ -150,8 +151,8 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
     final total = contributors.fold<double>(0, (s, c) => s + c.value);
     final top2 = contributors
         .take(2)
-        .map((c) =>
-            '${c.name} ${total > 0 ? (c.value / total * 100).round() : 0}%')
+        .map((c) => '${c.name} '
+            '${formatPercentValue(total > 0 ? c.value / total * 100 : 0, maximumFractionDigits: 0)}')
         .join(' · ');
 
     result.add(NutrientDisplay(
@@ -174,8 +175,7 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
   return result;
 }
 
-String _fmt(double v) =>
-    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(2);
+String _fmt(double v) => formatQuantity(v);
 
 /// 食材贡献总和（items 恒非空：buildNutrientDisplays 过滤了空贡献）
 double _contribTotal(List<NutrientContributor> items) =>
@@ -314,7 +314,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
                           ?.copyWith(fontWeight: FontWeight.w600)),
                 ),
                 if (d.nrpPct != null) ...[
-                  Text('NRV ${d.nrpPct}%',
+                  Text('NRV ${formatPercentValue(d.nrpPct!)}',
                       style: theme.textTheme.labelSmall
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(width: 8),
@@ -406,6 +406,9 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
   String _pct(double value, double total) {
     if (total <= 0) return '';
     final pct = value / total * 100;
-    return '${pct.toStringAsFixed(pct >= 100 ? 0 : 1)}%';
+    return formatPercentValue(
+      pct,
+      maximumFractionDigits: pct >= 100 ? 0 : 1,
+    );
   }
 }

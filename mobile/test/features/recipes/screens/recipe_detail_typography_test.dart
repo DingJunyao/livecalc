@@ -320,19 +320,19 @@ void main() {
     when(() => mockDio.get('/recipes/1/cost',
             queryParameters: any(named: 'queryParameters')))
         .thenAnswer((_) async => Response(
-          requestOptions: RequestOptions(path: ''),
-          statusCode: 200,
-          data: {
-            'total_cost': 2.5,
-            'cost_breakdown': [
-              {
-                'recipe_ingredient_id': 1,
-                'cost': 2.5,
-                'fallback_chain': '鸡蛋 -> 鸭蛋',
+              requestOptions: RequestOptions(path: ''),
+              statusCode: 200,
+              data: {
+                'total_cost': 2.5,
+                'cost_breakdown': [
+                  {
+                    'recipe_ingredient_id': 1,
+                    'cost': 2.5,
+                    'fallback_chain': '鸡蛋 -> 鸭蛋',
+                  },
+                ],
               },
-            ],
-          },
-        ));
+            ));
 
     await tester.pumpWidget(ProviderScope(
       overrides: [
@@ -349,7 +349,7 @@ void main() {
     final infoButton = find.widgetWithIcon(IconButton, Icons.info_outline);
     final tableCost = find.descendant(
       of: find.byType(Table),
-      matching: find.textContaining('¥'),
+      matching: find.textContaining('CNY'),
     );
     await tester.ensureVisible(infoButton);
     await tester.pumpAndSettle();

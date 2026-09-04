@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../models/recipe_detail.dart';
@@ -102,9 +103,7 @@ String _qtyText(RecipeIngredient ing) {
   return '';
 }
 
-String _fmt(double v) => v == v.roundToDouble()
-    ? v.toInt().toString()
-    : v.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
+String _fmt(double v) => formatNumber(v, maximumFractionDigits: 1);
 
 /// 商家比价推荐矩阵：横向滚动表（行=食材，列=商家），最低价橙色加粗、缺失「—」。
 /// 桌面端支持鼠标滚轮水平滚动（见 MouseWheelHorizontalScroll）。

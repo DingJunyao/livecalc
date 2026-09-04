@@ -37,11 +37,11 @@ void main() {
       expect(rows.length, 2);
       final row0 = rows.first;
       expect(row0.name, '鸡蛋');
-      // 盒马显示 total_cost 3.50 且最低价（带币种符号前缀，对齐 9337a66 币种显示）
-      expect(row0.cells['盒马']!.display, '¥3.50');
+      // 盒马显示 total_cost 3.50 且最低价（ISO 币种后缀）
+      expect(row0.cells['盒马']!.display, '3.5 CNY');
       expect(row0.cells['盒马']!.isLowest, true);
       // 永辉回退 price 3.20
-      expect(row0.cells['永辉']!.display, '¥3.20');
+      expect(row0.cells['永辉']!.display, '3.2 CNY');
       expect(row0.cells['永辉']!.isLowest, false);
       // 番茄两商家都缺失
       expect(rows.last.cells['盒马']!.display, '—');
@@ -83,12 +83,12 @@ void main() {
         ],
       );
       expect(rows.single.cells.containsKey('商家9'), isTrue);
-      expect(rows.single.cells['商家9']!.display, '¥1.00');
+      expect(rows.single.cells['商家9']!.display, '1 CNY');
     });
   });
 
   group('MerchantPriceMatrix', () {
-    testWidgets('渲染矩阵：¥ 前缀显示 total_cost', (tester) async {
+    testWidgets('渲染矩阵：ISO 币种显示 total_cost', (tester) async {
       await tester.pumpWidget(const MaterialApp(
         home: Scaffold(
           body: MerchantPriceMatrix(
@@ -118,8 +118,8 @@ void main() {
           ),
         ),
       ));
-      // ¥ 是前缀而非后缀（web .vue:46 与 Task 8 一致）
-      expect(find.text('¥3.50'), findsOneWidget);
+      // ISO 币种代码作为后缀显示。
+      expect(find.text('3.5 CNY'), findsOneWidget);
       expect(find.text('盒马'), findsOneWidget);
       expect(find.text('鸡蛋'), findsOneWidget);
       // 用量显示在食材列（web .vue:31 qty-badge「100 g」灰色小字，数字与单位间空格）
@@ -169,7 +169,7 @@ void main() {
       position.jumpTo(position.maxScrollExtent);
       await tester.pump();
       expect(tester.getTopLeft(find.text('鸡蛋')), posBefore);
-      expect(find.text('¥11.00'), findsOneWidget); // 最右商家（商家8）已滚入
+      expect(find.text('11 CNY'), findsOneWidget); // 最右商家（商家8）已滚入
     });
 
     testWidgets('fallback 链点击信息图标弹出弹窗', (tester) async {
@@ -253,7 +253,7 @@ void main() {
       // 表头若顶对齐（当前实现），视觉中心比居中时上移 ~14px：
       // 与数据行视觉中心的间距 ~58 vs 居中时的 44（一行行高）
       final headerTop = paintCenter(find.text('商家1'));
-      final dataTop = paintCenter(find.text('¥3.10'));
+      final dataTop = paintCenter(find.text('3.1 CNY'));
       expect(dataTop - headerTop, closeTo(44, 2));
     });
 

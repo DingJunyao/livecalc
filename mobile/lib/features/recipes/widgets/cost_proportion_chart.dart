@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -219,6 +220,9 @@ class _CostProportionChartState extends State<CostProportionChart> {
   String _pct(CostProportionItem item, double total) {
     if (total <= 0) return '';
     final pct = item.value / total * 100;
-    return '${pct.toStringAsFixed(pct >= 100 ? 0 : 1)}%';
+    return formatPercentValue(
+      pct,
+      maximumFractionDigits: pct >= 100 ? 0 : 1,
+    );
   }
 }

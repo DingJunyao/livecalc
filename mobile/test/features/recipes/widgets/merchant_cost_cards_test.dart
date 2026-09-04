@@ -28,7 +28,7 @@ void main() {
         ),
       ));
       expect(find.text('盒马'), findsOneWidget);
-      expect(find.text('¥11.70'), findsOneWidget);
+      expect(find.text('11.7 CNY'), findsOneWidget);
       expect(find.textContaining('覆盖 4/6 种食材'), findsOneWidget);
       expect(find.textContaining('需外购'), findsOneWidget);
       expect(find.text('最实惠 ✓'), findsOneWidget);

@@ -87,9 +87,9 @@ void main() {
         home: Scaffold(
             body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
-      expect(find.text('¥6.00'), findsOneWidget); // 标题行总价
+      expect(find.text('6 CNY'), findsOneWidget); // 标题行总价
       expect(find.text('鸡蛋'), findsOneWidget);
-      expect(find.text('¥4.00'), findsOneWidget);
+      expect(find.text('4 CNY'), findsOneWidget);
       expect(find.text('66.7%'), findsOneWidget); // 4/6
       expect(find.text('33.3%'), findsOneWidget); // 2/6
     });

@@ -4,6 +4,7 @@ import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../models/price_record.dart';
 import '../providers/price_provider.dart';
 import '../../merchants/models/merchant.dart';
@@ -170,7 +171,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       appBar: AppBar(
         title: const Text('价格记录'),
         actions: [
-  const CalcContextMenuButton(),
+          const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.bolt),
             tooltip: '快速填写',
@@ -460,20 +461,13 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   /// 整数不带小数，否则最多两位并去掉尾随 0。
-  String _fmtQty(double q) {
-    if (q == q.truncateToDouble()) return q.toInt().toString();
-    var s = q.toStringAsFixed(2);
-    s = s.replaceFirst(RegExp(r'0+$'), '');
-    s = s.replaceFirst(RegExp(r'\.$'), '');
-    return s;
-  }
+  String _fmtQty(double q) => formatQuantity(q);
 
-  /// ISO 时间字符串 → "MM/dd HH:mm"。
+  /// ISO 时间字符串 → 本地化日期时间。
   String _formatTime(String iso) {
     final dt = DateTime.tryParse(iso);
     if (dt == null) return iso;
-    final local = dt.toLocal();
-    return DateFormat('MM/dd HH:mm').format(local);
+    return formatDateTime(dt.toLocal());
   }
 }
 

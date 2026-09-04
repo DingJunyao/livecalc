@@ -92,8 +92,8 @@ void main() {
       );
       await tester.tapAt(tester.getCenter(chartPaint));
       await tester.pump();
-      expect(find.textContaining('均价 ¥'), findsOneWidget);
-      expect(find.textContaining('区间 ¥'), findsOneWidget);
+      expect(find.textContaining('均价 '), findsOneWidget);
+      expect(find.textContaining('区间 '), findsOneWidget);
     });
   });
 }

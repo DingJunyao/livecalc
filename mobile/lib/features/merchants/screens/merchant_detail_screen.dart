@@ -4,7 +4,7 @@ import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
@@ -464,5 +464,5 @@ class _ProductPricesCard extends StatelessWidget {
 String _fmtDateTime(String iso) {
   final dt = DateTime.tryParse(iso);
   if (dt == null) return iso;
-  return DateFormat('yyyy-MM-dd HH:mm').format(dt.toLocal());
+  return formatDateTime(dt.toLocal());
 }

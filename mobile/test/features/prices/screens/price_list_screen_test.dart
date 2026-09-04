@@ -248,7 +248,7 @@ void main() {
 
     // 确认对话框出现（带记录信息）
     expect(find.text('删除记录'), findsOneWidget);
-    expect(find.text('确定删除「番茄」¥6.88 的记录吗？'), findsOneWidget);
+    expect(find.text('确定删除「番茄」6.88 CNY 的记录吗？'), findsOneWidget);
     expect(
       find.descendant(of: find.byType(AlertDialog), matching: find.text('取消')),
       findsOneWidget,

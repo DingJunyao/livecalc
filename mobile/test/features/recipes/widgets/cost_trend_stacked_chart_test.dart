@@ -182,11 +182,11 @@ void main() {
       expect(items.length, 2);
       // 第一条：日期行（粗体）+ 底部序列（鸡蛋）明细
       expect(items[0].text, '07-01\n');
-      expect(items[0].children!.single.text, '鸡蛋: ¥2.00');
+      expect(items[0].children!.single.text, '鸡蛋: 2 CNY');
       // 第二条：顶部序列番茄，成本 = 累加值差值 5 - 2 = 3
-      expect(items[1].text, '番茄: ¥3.00');
+      expect(items[1].text, '番茄: 3 CNY');
       // 合计并入最后一条 children（粗体）
-      expect(items[1].children!.single.text, '\n合计: ¥5.00');
+      expect(items[1].children!.single.text, '\n合计: 5 CNY');
     });
 
     test('单序列：日期与合计都并入同一条', () {
@@ -198,8 +198,8 @@ void main() {
       expect(items.length, 1);
       expect(items[0].text, '07-02\n');
       expect(items[0].children!.length, 2);
-      expect(items[0].children![0].text, '鸡蛋: ¥2.00');
-      expect(items[0].children![1].text, '\n合计: ¥2.00');
+      expect(items[0].children![0].text, '鸡蛋: 2 CNY');
+      expect(items[0].children![1].text, '\n合计: 2 CNY');
     });
 
     test('无命中 spots → 空列表', () {
@@ -226,10 +226,10 @@ void main() {
           const [eggSeries, tomatoSeries], [eggSpot, tomatoSpot], '07-01');
       expect(items.length, 2);
       // 统一到触点天（第0天）逆推：鸡蛋 2，番茄 5-2=3（若混日会算出 15-10=5）
-      expect(items[0].children!.single.text, '鸡蛋: ¥2.00');
-      expect(items[1].text, '番茄: ¥3.00');
+      expect(items[0].children!.single.text, '鸡蛋: 2 CNY');
+      expect(items[1].text, '番茄: 3 CNY');
       // 合计 = 触点天堆叠总值 5（混日会错算成 15）
-      expect(items[1].children!.single.text, '\n合计: ¥5.00');
+      expect(items[1].children!.single.text, '\n合计: 5 CNY');
     });
 
     test('锚点必须是距触点最近的线（touchedSpots.first），非重排后底部线', () {
@@ -251,9 +251,9 @@ void main() {
       final items = buildStackedTooltipItems(
           const [eggSeries, tomatoSeries], [tomatoSpot, eggSpot], '07-01');
       // 触点天 day0：鸡蛋 2、番茄 5-2=3、合计 5
-      expect(items[0].children!.single.text, '鸡蛋: ¥2.00');
-      expect(items[1].text, '番茄: ¥3.00');
-      expect(items[1].children!.single.text, '\n合计: ¥5.00');
+      expect(items[0].children!.single.text, '鸡蛋: 2 CNY');
+      expect(items[1].text, '番茄: 3 CNY');
+      expect(items[1].children!.single.text, '\n合计: 5 CNY');
     });
   });
 

@@ -1,4 +1,5 @@
 import '../../features/recipes/models/recipe_detail.dart';
+import '../../core/i18n/app_formatters.dart';
 
 double? _toDouble(dynamic v) {
   if (v == null) return null;
@@ -7,12 +8,7 @@ double? _toDouble(dynamic v) {
 }
 
 /// 数字格式化：整数不带小数点，小数去掉多余 0
-String _fmtNum(double v) => v == v.truncateToDouble()
-    ? v.toInt().toString()
-    : v
-        .toStringAsFixed(2)
-        .replaceFirst(RegExp(r'0+$'), '')
-        .replaceFirst(RegExp(r'\.$'), '');
+String _fmtNum(double v) => formatQuantity(v);
 
 class RecipeUsage {
   final double quantity;

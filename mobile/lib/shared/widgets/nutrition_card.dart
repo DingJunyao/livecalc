@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/i18n/app_formatters.dart';
 import '../models/nutrition.dart';
 import '../screens/nutrition_edit_screen.dart';
 
@@ -216,7 +217,7 @@ class _NutritionTableState extends State<_NutritionTable> {
                 child: Text(
                   items[i].nrvPct == null
                       ? ''
-                      : '${items[i].nrvPct!.toStringAsFixed(1)}%',
+                      : formatPercentValue(items[i].nrvPct!),
                   textAlign: TextAlign.right,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline),
@@ -229,10 +230,4 @@ class _NutritionTableState extends State<_NutritionTable> {
   }
 }
 
-String _fmtValue(double v) {
-  if (v == v.roundToDouble()) return v.toInt().toString();
-  return v
-      .toStringAsFixed(2)
-      .replaceFirst(RegExp(r'0+$'), '')
-      .replaceFirst(RegExp(r'\.$'), '');
-}
+String _fmtValue(double v) => formatQuantity(v);

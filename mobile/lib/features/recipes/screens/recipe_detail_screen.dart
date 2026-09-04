@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../models/recipe_detail.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
@@ -457,7 +458,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline))
                       : Text(
-                          formatMoney(state.cost!.totalCost * ratio, userCurrency),
+                          formatMoney(
+                              state.cost!.totalCost * ratio, userCurrency),
                           style: theme.textTheme.headlineMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: theme.colorScheme.tertiary),
@@ -748,8 +750,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   String _fmt(double n) {
-    if (n == n.roundToDouble()) return n.toInt().toString();
-    return n.toStringAsFixed(1).replaceFirst(RegExp(r'\.0$'), '');
+    return formatNumber(n, maximumFractionDigits: 1);
   }
 
   // ---- 做法步骤 ----
@@ -817,7 +818,15 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                       color: theme.colorScheme.outline),
                                   const SizedBox(width: 4),
                                   Text(
-                                      '${step.durationMinutes!.toStringAsFixed(step.durationMinutes! == step.durationMinutes!.roundToDouble() ? 0 : 1)} 分钟',
+                                      '${formatNumber(
+                                        step.durationMinutes!,
+                                        maximumFractionDigits:
+                                            step.durationMinutes! ==
+                                                    step.durationMinutes!
+                                                        .roundToDouble()
+                                                ? 0
+                                                : 1,
+                                      )} 分钟',
                                       style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                               color:
@@ -979,7 +988,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           final isLast = entry.key == rows.length - 1;
           final displayKey = nutrientDisplayLabel(key);
           final valueStr =
-              '${(item.value * ratio).toStringAsFixed(1)} ${item.unit}';
+              '${formatNumber(item.value * ratio, maximumFractionDigits: 1)}'
+              ' ${item.unit}';
           final nrv = _formatNrv(item);
           return Container(
             decoration: BoxDecoration(
@@ -1013,7 +1023,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   String _formatNrv(NutritionItem item) {
     if (item.standard == '无标准' || item.standard == '无标准值') return '-';
     if (item.nrpPct == 0) return '-';
-    return '${item.nrpPct.toStringAsFixed(1)}%';
+    return formatPercentValue(item.nrpPct);
   }
 
   // ---- 小贴士 ----
