@@ -13,6 +13,9 @@ import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/auth/screens/login_screen.dart';
 import 'package:com_a4ding_livecalc/features/auth/screens/register_screen.dart';
+import 'package:com_a4ding_livecalc/features/auth/screens/server_config_screen.dart';
+import 'package:com_a4ding_livecalc/features/auth/screens/splash_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/startup_page_provider.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
@@ -28,6 +31,9 @@ GoRouter _router(String initial) {
           builder: (_, __) => const Scaffold(body: Text('价格记录页'))),
       GoRoute(
           path: '/home', builder: (_, __) => const Scaffold(body: Text('推荐页'))),
+      GoRoute(
+          path: '/server-config',
+          builder: (_, __) => const ServerConfigScreen()),
     ],
   );
 }
@@ -59,6 +65,7 @@ void main() {
     required String initial,
     required AuthNotifier notifier,
     AuthConfig? authConfig,
+    Locale locale = const Locale('zh', 'CN'),
   }) async {
     final startup = StartupPageNotifier();
     await startup.load(); // 读 mock prefs（startup_page: prices）
@@ -71,10 +78,103 @@ void main() {
             (ref) => Future.value(authConfig),
           ),
       ],
-      child: MaterialApp.router(routerConfig: _router(initial)),
+      child: MaterialApp.router(
+        routerConfig: _router(initial),
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('English login shows localized copy and connection error',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'startup_page': 'prices'});
+    final notifier = AuthNotifier(repo, checkConnection: () async => false);
+    await pumpAuthScreen(
+      tester,
+      initial: '/login',
+      notifier: notifier,
+      locale: const Locale('en', 'US'),
+    );
+
+    expect(find.text('Sign in'), findsWidgets);
+    await tester.enterText(find.byType(TextFormField).at(0), 'alice');
+    await tester.enterText(find.byType(TextFormField).at(1), 'password');
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'Unable to connect to the server. Check that it is running, the '
+        'address is correct, and your network is available, then try again.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Arabic registration shows localized labels and validation copy',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({'startup_page': 'prices'});
+    final notifier = AuthNotifier(repo);
+    await pumpAuthScreen(
+      tester,
+      initial: '/register',
+      notifier: notifier,
+      authConfig: const AuthConfig(
+        requireInviteCode: false,
+        allowRegistration: true,
+      ),
+      locale: const Locale('ar'),
+    );
+
+    expect(find.text('إنشاء حساب'), findsWidgets);
+    expect(find.text('اسم المستخدم'), findsOneWidget);
+    expect(find.text('البريد الإلكتروني'), findsOneWidget);
+    expect(find.text('كلمة المرور'), findsOneWidget);
+
+    await tester.tap(find.byType(FilledButton));
+    await tester.pumpAndSettle();
+
+    expect(find.text('يرجى إدخال اسم المستخدم'), findsOneWidget);
+    expect(find.text('يرجى إدخال البريد الإلكتروني'), findsOneWidget);
+    expect(find.text('يرجى إدخال كلمة المرور'), findsOneWidget);
+  });
+
+  testWidgets('English server configuration shows localized labels and copy',
+      (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final notifier = AuthNotifier(repo);
+    await pumpAuthScreen(
+      tester,
+      initial: '/server-config',
+      notifier: notifier,
+      locale: const Locale('en', 'US'),
+    );
+
+    expect(find.text('LiveCalc'), findsOneWidget);
+    expect(find.text('Living Cost Calculator'), findsOneWidget);
+    expect(find.text('Server address'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Enter a server address'), findsOneWidget);
+  });
+
+  testWidgets('Arabic splash shows localized startup message', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: SplashScreen(),
+      locale: Locale('ar'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ));
+
+    expect(find.text('لايف كالك'), findsOneWidget);
+    expect(find.text('جارٍ تسجيل الدخول…'), findsOneWidget);
+  });
 
   testWidgets('配置计价为起始页时，登录成功跳转计价页', (tester) async {
     SharedPreferences.setMockInitialValues({'startup_page': 'prices'});
@@ -154,7 +254,12 @@ void main() {
           ),
         ),
       ],
-      child: MaterialApp.router(routerConfig: _router('/register')),
+      child: MaterialApp.router(
+        routerConfig: _router('/register'),
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -179,7 +284,12 @@ void main() {
           );
         }),
       ],
-      child: MaterialApp.router(routerConfig: _router('/register')),
+      child: MaterialApp.router(
+        routerConfig: _router('/register'),
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextFormField, '邀请码'), findsNothing);
@@ -239,7 +349,12 @@ void main() {
           );
         }),
       ],
-      child: MaterialApp.router(routerConfig: _router('/register')),
+      child: MaterialApp.router(
+        routerConfig: _router('/register'),
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -272,7 +387,12 @@ void main() {
           )),
         ),
       ],
-      child: MaterialApp.router(routerConfig: _router('/register')),
+      child: MaterialApp.router(
+        routerConfig: _router('/register'),
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
     expect(find.widgetWithText(TextFormField, '邀请码'), findsNothing);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// Shown while the app restores its session (saved token / auto-login) so the
 /// user never bounces through the server-config or login screens during start.
@@ -10,6 +11,7 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       body: Center(
         child: Column(
@@ -24,11 +26,11 @@ class SplashScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Text('生计',
+            Text(l10n.appBrandShort,
                 style: theme.textTheme.headlineMedium
                     ?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 32),
-            const LoadingIndicator(message: '登录中…'),
+            LoadingIndicator(message: l10n.appSigningIn),
           ],
         ),
       ),

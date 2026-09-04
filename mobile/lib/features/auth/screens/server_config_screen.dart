@@ -6,6 +6,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/services/server_connection_checker.dart';
 import '../providers/auth_provider.dart';
 import '../providers/server_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ServerConfigScreen extends ConsumerStatefulWidget {
   const ServerConfigScreen({super.key});
@@ -39,6 +40,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
 
   Future<void> _connect() async {
     if (!_formKey.currentState!.validate()) return;
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _loading = true;
       _error = null;
@@ -49,7 +51,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
       ApiClient.instance.updateBaseUrl(url);
       final connected = await ServerConnectionChecker.verify();
       if (!connected) {
-        setState(() => _error = '无法连接服务器，请检查地址或网络后重试');
+        setState(() => _error = l10n.authCannotConnectServer);
         return;
       }
       await ref.read(serverConfigProvider.notifier).setUrl(url);
@@ -63,9 +65,12 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
-    final effectiveError =
-        _error ?? (authState.serverUnreachable ? authState.errorMessage : null);
+    final effectiveError = _error ??
+        (authState.serverUnreachable
+            ? authState.message?.localized(l10n)
+            : null);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -86,28 +91,30 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text('生计',
+                  Text(l10n.appBrandShort,
                       style: theme.textTheme.headlineMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  Text('生活成本计算器',
+                  Text(l10n.authServerConfigSubtitle,
                       style: theme.textTheme.bodyLarge
                           ?.copyWith(color: theme.colorScheme.outline)),
                   const SizedBox(height: 48),
                   TextFormField(
                     controller: _urlController,
-                    decoration: const InputDecoration(
-                      labelText: '服务器地址',
-                      hintText: 'https://example.com',
-                      prefixIcon: Icon(Icons.dns_outlined),
+                    decoration: InputDecoration(
+                      labelText: l10n.authServerAddress,
+                      hintText: l10n.authServerAddressHint,
+                      prefixIcon: const Icon(Icons.dns_outlined),
                     ),
                     keyboardType: TextInputType.url,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => _loading ? null : _connect(),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return '请输入服务器地址';
+                      if (v == null || v.trim().isEmpty) {
+                        return l10n.authServerAddressRequired;
+                      }
                       if (!v.trim().startsWith('http')) {
-                        return '必须以 http:// 或 https:// 开头';
+                        return l10n.authServerAddressHttpRequired;
                       }
                       return null;
                     },
@@ -116,7 +123,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                   if (effectiveError != null)
                     Column(
                       children: [
-                        Text('连接失败：',
+                        Text(l10n.authConnectionFailed,
                             style: TextStyle(
                                 color: theme.colorScheme.error,
                                 fontWeight: FontWeight.bold)),
@@ -133,7 +140,7 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('连接'),
+                        : Text(l10n.authConnect),
                   ),
                 ],
               ),

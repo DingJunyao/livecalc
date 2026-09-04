@@ -12,6 +12,7 @@ import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/auth/screens/edit_account_screen.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -27,8 +28,8 @@ void main() {
     regionRepo = MockRegionRepo();
     // 地区级联数据：国家/地区 → 省份两级
     when(() => regionRepo.listRegions(
-        parentId: any(named: 'parentId'), level: any(named: 'level')))
-        .thenAnswer((invocation) async {
+        parentId: any(named: 'parentId'),
+        level: any(named: 'level'))).thenAnswer((invocation) async {
       final parentId = invocation.namedArguments[#parentId] as int?;
       final level = invocation.namedArguments[#level] as int?;
       if (parentId == null && level == 0) {
@@ -53,7 +54,10 @@ void main() {
 
   /// 通过按钮 push 编辑页，保证保存后 pop 有去处。
   /// 视口调高，避免表单（含地区级联与密码区）超出屏幕导致按钮不可见。
-  Future<void> pumpScreen(WidgetTester tester) async {
+  Future<void> pumpScreen(
+    WidgetTester tester, {
+    Locale locale = const Locale('zh', 'CN'),
+  }) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -61,6 +65,9 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
       child: MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => Scaffold(
             body: Center(
@@ -99,6 +106,33 @@ void main() {
     expect(find.text('修改密码（可选）'), findsOneWidget);
   });
 
+  testWidgets(
+      'English account edit shows localized labels and empty-state copy',
+      (tester) async {
+    await pumpScreen(tester, locale: const Locale('en', 'US'));
+
+    expect(find.text('Edit account'), findsOneWidget);
+    expect(find.text('Tap to change avatar'), findsOneWidget);
+    expect(find.text('Username *'), findsOneWidget);
+    expect(find.text('Region'), findsOneWidget);
+    expect(find.text('Change password (optional)'), findsOneWidget);
+
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No changes to save'), findsOneWidget);
+  });
+
+  testWidgets('Arabic account edit shows localized labels', (tester) async {
+    await pumpScreen(tester, locale: const Locale('ar'));
+
+    expect(find.text('تعديل الحساب'), findsOneWidget);
+    expect(find.text('اسم المستخدم *'), findsOneWidget);
+    expect(find.text('البريد الإلكتروني'), findsOneWidget);
+    expect(find.text('المنطقة'), findsOneWidget);
+    expect(find.text('تغيير كلمة المرور (اختياري)'), findsOneWidget);
+  });
+
   testWidgets('改昵称保存，只传变化字段', (tester) async {
     when(() => mockRepo.updateAccount(any()))
         .thenAnswer((_) async => const UserAccountResponse(
@@ -129,10 +163,7 @@ void main() {
     when(() => mockRepo.updateAccount(any()))
         .thenAnswer((_) async => const UserAccountResponse(
               user: User(
-                  id: 1,
-                  username: 'alice',
-                  email: 'a@test.com',
-                  regionId: 1),
+                  id: 1, username: 'alice', email: 'a@test.com', regionId: 1),
             ));
 
     await pumpScreen(tester);
@@ -163,8 +194,7 @@ void main() {
     await tester.enterText(
         find.widgetWithText(TextFormField, '当前密码'), 'oldpass');
     await tester.enterText(
-        find.widgetWithText(TextFormField, '新密码（至少 6 个字符）'),
-        'newpass123');
+        find.widgetWithText(TextFormField, '新密码（至少 6 个字符）'), 'newpass123');
     await tester.enterText(
         find.widgetWithText(TextFormField, '确认新密码'), 'newpass123');
     await tester.tap(find.text('保存'));
@@ -173,11 +203,9 @@ void main() {
     final captured =
         verify(() => mockRepo.updateAccount(captureAny())).captured;
     final body = captured.first as Map<String, dynamic>;
-    expect(
-        body['current_password'],
+    expect(body['current_password'],
         sha256.convert(utf8.encode('oldpass')).toString());
-    expect(
-        body['new_password'],
+    expect(body['new_password'],
         sha256.convert(utf8.encode('newpass123')).toString());
   });
 
@@ -187,8 +215,7 @@ void main() {
     // 只填新密码（6 位以下）+ 确认不一致 → 三条校验同时触发
     await tester.enterText(
         find.widgetWithText(TextFormField, '新密码（至少 6 个字符）'), '123');
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '确认新密码'), '456');
+    await tester.enterText(find.widgetWithText(TextFormField, '确认新密码'), '456');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 
@@ -234,8 +261,7 @@ void main() {
 
     await pumpScreen(tester);
 
-    await tester.enterText(
-        find.widgetWithText(TextFormField, '用户名 *'), 'bob2');
+    await tester.enterText(find.widgetWithText(TextFormField, '用户名 *'), 'bob2');
     await tester.tap(find.text('保存'));
     await tester.pumpAndSettle();
 

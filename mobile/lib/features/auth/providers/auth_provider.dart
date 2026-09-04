@@ -9,13 +9,68 @@ import '../models/login_request.dart';
 import '../models/auth_config.dart';
 import '../models/user.dart';
 import '../repositories/auth_repository.dart';
+import '../../../l10n/app_localizations.dart';
+import '../../../l10n/app_localizations_zh.dart';
 
 enum AuthStatus { initial, authenticated, unauthenticated, loading, error }
+
+enum AuthMessageCode {
+  serverUnavailable,
+  loginInvalidCredentials,
+  loginEndpointMissing,
+  serverError,
+  loginNetworkError,
+  loginGenericError,
+  registerFailedDetail,
+  registerInvalid,
+  registerEndpointMissing,
+  registerServerError,
+  registerNetworkError,
+  registerGenericError,
+}
+
+class AuthMessage {
+  final AuthMessageCode code;
+
+  /// Server-provided text. It is displayed verbatim and never translated.
+  final String? detail;
+
+  const AuthMessage(this.code, {this.detail});
+
+  String localized(AppLocalizations l10n) {
+    switch (code) {
+      case AuthMessageCode.serverUnavailable:
+        return l10n.authServerUnavailable;
+      case AuthMessageCode.loginInvalidCredentials:
+        return l10n.authLoginInvalidCredentials;
+      case AuthMessageCode.loginEndpointMissing:
+        return l10n.authLoginEndpointMissing;
+      case AuthMessageCode.serverError:
+        return l10n.authServerError;
+      case AuthMessageCode.loginNetworkError:
+        return l10n.authLoginNetworkError;
+      case AuthMessageCode.loginGenericError:
+        return l10n.authLoginGenericError;
+      case AuthMessageCode.registerFailedDetail:
+        return l10n.authRegisterFailedDetail(detail ?? '');
+      case AuthMessageCode.registerInvalid:
+        return l10n.authRegisterInvalid;
+      case AuthMessageCode.registerEndpointMissing:
+        return l10n.authRegisterEndpointMissing;
+      case AuthMessageCode.registerServerError:
+        return l10n.authRegisterServerError;
+      case AuthMessageCode.registerNetworkError:
+        return l10n.authRegisterNetworkError;
+      case AuthMessageCode.registerGenericError:
+        return l10n.authRegisterGenericError;
+    }
+  }
+}
 
 class AuthState {
   final AuthStatus status;
   final User? user;
-  final String? errorMessage;
+  final AuthMessage? message;
   // Set when the server could not be reached, so routing sends the user back
   // to server setup to start over (without wiping the saved address).
   final bool serverUnreachable;
@@ -23,26 +78,29 @@ class AuthState {
   const AuthState({
     this.status = AuthStatus.initial,
     this.user,
-    this.errorMessage,
+    this.message,
     this.serverUnreachable = false,
   });
 
   AuthState copyWith({
     AuthStatus? status,
     User? user,
-    String? errorMessage,
+    AuthMessage? message,
     bool? serverUnreachable,
   }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
-      errorMessage: errorMessage ?? this.errorMessage,
+      message: message ?? this.message,
       serverUnreachable: serverUnreachable ?? this.serverUnreachable,
     );
   }
 }
 
-const _serverDownMessage = '无法连接到服务器。请确认服务器已启动、地址正确，且当前网络可用，然后重试。';
+extension AuthStateMessageText on AuthState {
+  /// Compatibility accessor for callers outside the localized widgets.
+  String? get errorMessage => message?.localized(AppLocalizationsZh());
+}
 
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthRepository _repository;
@@ -64,7 +122,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         serverUnreachable: true,
-        errorMessage: _serverDownMessage,
+        message: AuthMessage(AuthMessageCode.serverUnavailable),
       );
       return;
     }
@@ -106,7 +164,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         serverUnreachable: true,
-        errorMessage: _serverDownMessage,
+        message: AuthMessage(AuthMessageCode.serverUnavailable),
       );
       return false;
     }
@@ -117,7 +175,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on Exception catch (e) {
       state = AuthState(
         status: AuthStatus.error,
-        errorMessage: _friendlyLoginError(e),
+        message: _friendlyLoginError(e),
       );
       return false;
     }
@@ -145,7 +203,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } on Exception catch (e) {
       state = AuthState(
         status: AuthStatus.error,
-        errorMessage: _friendlyRegisterError(e),
+        message: _friendlyRegisterError(e),
       );
       return false;
     }
@@ -216,30 +274,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Maps raw login exceptions to short, user-facing messages.
-  String _friendlyLoginError(Exception e) {
+  AuthMessage _friendlyLoginError(Exception e) {
     if (e is DioException) {
       final code = e.response?.statusCode;
-      if (code == 400 || code == 401 || code == 403) return '用户名或密码错误';
-      if (code == 404) return '登录接口不存在，请确认服务器版本';
-      if (code != null && code >= 500) return '服务器内部错误，请稍后重试';
-      return '登录失败，请检查网络后重试';
+      if (code == 400 || code == 401 || code == 403) {
+        return const AuthMessage(AuthMessageCode.loginInvalidCredentials);
+      }
+      if (code == 404) {
+        return const AuthMessage(AuthMessageCode.loginEndpointMissing);
+      }
+      if (code != null && code >= 500) {
+        return const AuthMessage(AuthMessageCode.serverError);
+      }
+      return const AuthMessage(AuthMessageCode.loginNetworkError);
     }
-    return '登录失败，请稍后重试';
+    return const AuthMessage(AuthMessageCode.loginGenericError);
   }
 
-  String _friendlyRegisterError(Exception e) {
+  AuthMessage _friendlyRegisterError(Exception e) {
     if (e is DioException) {
       final code = e.response?.statusCode;
       final detail = _serverDetail(e);
       final invalidRequest =
           code == 400 || code == 401 || code == 403 || code == 409;
-      if (invalidRequest && detail != null) return '注册失败：$detail';
-      if (invalidRequest) return '注册失败，请检查注册信息';
-      if (code == 404) return '注册接口不存在，请确认服务器版本';
-      if (code != null && code >= 500) return '注册失败，请稍后重试';
-      return '注册失败，请检查网络后重试';
+      if (invalidRequest && detail != null) {
+        return AuthMessage(AuthMessageCode.registerFailedDetail,
+            detail: detail);
+      }
+      if (invalidRequest) {
+        return const AuthMessage(AuthMessageCode.registerInvalid);
+      }
+      if (code == 404) {
+        return const AuthMessage(AuthMessageCode.registerEndpointMissing);
+      }
+      if (code != null && code >= 500) {
+        return const AuthMessage(AuthMessageCode.registerServerError);
+      }
+      return const AuthMessage(AuthMessageCode.registerNetworkError);
     }
-    return '注册失败，请稍后重试';
+    return const AuthMessage(AuthMessageCode.registerGenericError);
   }
 
   String? _serverDetail(DioException e) {

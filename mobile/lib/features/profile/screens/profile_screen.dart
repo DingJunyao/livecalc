@@ -5,7 +5,9 @@ import 'package:dio/dio.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../../core/api/api_client.dart';
+import '../../../core/i18n/locale_settings.dart';
 import '../providers/startup_page_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -13,11 +15,12 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
     final user = authState.user;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('个人中心')),
+      appBar: AppBar(title: Text(l10n.profileTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -39,7 +42,7 @@ class ProfileScreen extends ConsumerWidget {
                     child: Text(
                         user?.displayName.isNotEmpty == true
                             ? user!.displayName[0]
-                            : '?',
+                            : l10n.commonUserInitial,
                         style: theme.textTheme.titleLarge),
                   ),
                   const SizedBox(width: 16),
@@ -47,7 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Text(user?.displayName ?? '用户',
+                        Text(user?.displayName ?? l10n.profileAnonymousUser,
                             style: theme.textTheme.titleLarge),
                         Text(user?.email ?? '',
                             style: theme.textTheme.bodyMedium
@@ -61,7 +64,7 @@ class ProfileScreen extends ConsumerWidget {
           const SizedBox(height: 24),
 
           // Settings section
-          Text('设置',
+          Text(l10n.profileSettings,
               style: theme.textTheme.titleSmall
                   ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(height: 8),
@@ -69,9 +72,10 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(children: [
             ListTile(
               leading: const Icon(Icons.home_outlined),
-              title: const Text('启动时起始页'),
+              title: Text(l10n.profileStartupPage),
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(startupPageDisplayName(ref.watch(startupPageProvider))),
+                Text(_startupPageDisplayName(
+                    ref.watch(startupPageProvider), l10n)),
                 const Icon(Icons.chevron_right, color: Colors.grey),
               ]),
               onTap: () => _showStartupPageDialog(context, ref),
@@ -79,34 +83,49 @@ class ProfileScreen extends ConsumerWidget {
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.currency_exchange),
-              title: const Text('默认币种'),
-              subtitle: Text(user?.defaultCurrency ?? '跟随所在地区'),
+              title: Text(l10n.profileDefaultCurrency),
+              subtitle: Text(user?.defaultCurrency ?? l10n.profileFollowRegion),
               onTap: () => _showDefaultCurrencyDialog(context, ref),
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.public),
-              title: const Text('默认计算范围'),
-              subtitle: Text(_calcScopeDisplayName(user?.defaultCalcScope)),
+              title: Text(l10n.profileDefaultCalcScope),
+              subtitle:
+                  Text(_calcScopeDisplayName(user?.defaultCalcScope, l10n)),
               onTap: () => _showDefaultCalcScopeDialog(context, ref),
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.language),
+              title: Text(l10n.profileLanguage),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              onTap: () => _showLanguageDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.numbers),
+              title: Text(l10n.profileRegionalFormat),
+              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              onTap: () => _showRegionalFormatDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.scale),
-              title: const Text('单位偏好'),
+              title: Text(l10n.profileUnitPreferences),
               onTap: () => context.push('/profile/settings/unit-preferences'),
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.restaurant),
-              title: const Text('营养目标'),
+              title: Text(l10n.profileNutritionGoals),
               onTap: () => context.push('/profile/settings/nutrition-goals'),
             ),
           ])),
           const SizedBox(height: 24),
 
           // My data section
-          Text('我的数据',
+          Text(l10n.profileMyData,
               style: theme.textTheme.titleSmall
                   ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(height: 8),
@@ -114,12 +133,12 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(children: [
             ListTile(
                 leading: const Icon(Icons.rate_review_outlined),
-                title: const Text('我的提议'),
+                title: Text(l10n.profileMyProposals),
                 onTap: () => context.push('/profile/proposals')),
             const Divider(height: 1),
             ListTile(
                 leading: const Icon(Icons.place_outlined),
-                title: const Text('我的地点'),
+                title: Text(l10n.profileMyPlaces),
                 onTap: () => context.push('/profile/places')),
           ])),
           const SizedBox(height: 32),
@@ -132,7 +151,7 @@ class ProfileScreen extends ConsumerWidget {
                 if (context.mounted) context.go('/login');
               },
               icon: const Icon(Icons.logout),
-              label: const Text('退出登录'),
+              label: Text(l10n.profileLogout),
               style: OutlinedButton.styleFrom(
                   foregroundColor: theme.colorScheme.error),
             ),
@@ -146,10 +165,11 @@ class ProfileScreen extends ConsumerWidget {
 /// 启动时起始页单选对话框：点选即生效并关闭。
 Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
   final current = ref.read(startupPageProvider);
+  final l10n = AppLocalizations.of(context);
   final selected = await showDialog<String>(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: const Text('启动时起始页'),
+      title: Text(l10n.profileStartupPage),
       children: [
         RadioGroup<String>(
           groupValue: current,
@@ -160,7 +180,7 @@ Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
               for (final page in kStartupPages)
                 RadioListTile<String>(
                   value: page,
-                  title: Text(startupPageDisplayName(page)),
+                  title: Text(_startupPageDisplayName(page, l10n)),
                 ),
             ],
           ),
@@ -173,60 +193,144 @@ Future<void> _showStartupPageDialog(BuildContext context, WidgetRef ref) async {
   }
 }
 
-String _calcScopeDisplayName(String? scope) {
-  switch (scope) {
-    case 'country':
-      return '国家/地区';
-    case 'province':
-      return '省份';
-    case 'city':
-      return '城市';
-    case 'county':
-      return '区县';
-    case '':
-      return '全部地区';
+String _startupPageDisplayName(String page, AppLocalizations l10n) {
+  switch (page) {
+    case 'prices':
+      return l10n.profileStartupPagePrices;
+    case 'recipes':
+      return l10n.profileStartupPageRecipes;
     default:
-      return '国家/地区';
+      return l10n.profileStartupPageHome;
+  }
+}
+
+String _calcScopeDisplayName(String? scope, AppLocalizations l10n) {
+  switch (scope) {
+    case '':
+      return l10n.profileCalcScopeAll;
+    case 'province':
+      return l10n.profileCalcScopeProvince;
+    case 'city':
+      return l10n.profileCalcScopeCity;
+    case 'county':
+      return l10n.profileCalcScopeCounty;
+    default:
+      return l10n.profileCalcScopeCountry;
   }
 }
 
 const List<Map<String, String>> _fallbackCurrencies = [
-  {'code': 'CNY', 'symbol': '¥', 'name': '人民币'},
-  {'code': 'USD', 'symbol': r'$', 'name': '美元'},
-  {'code': 'EUR', 'symbol': '€', 'name': '欧元'},
-  {'code': 'GBP', 'symbol': '£', 'name': '英镑'},
-  {'code': 'JPY', 'symbol': '¥', 'name': '日元'},
-  {'code': 'HKD', 'symbol': 'HK\$', 'name': '港币'},
-  {'code': 'KRW', 'symbol': '₩', 'name': '韩元'},
-  {'code': 'SGD', 'symbol': 'S\$', 'name': '新加坡元'},
-  {'code': 'AUD', 'symbol': 'A\$', 'name': '澳大利亚元'},
-  {'code': 'CAD', 'symbol': 'C\$', 'name': '加拿大元'},
-  {'code': 'TWD', 'symbol': 'NT\$', 'name': '新台币'},
-  {'code': 'THB', 'symbol': '฿', 'name': '泰铢'},
-  {'code': 'MYR', 'symbol': 'RM', 'name': '马来西亚林吉特'},
-  {'code': 'VND', 'symbol': '₫', 'name': '越南盾'},
-  {'code': 'RUB', 'symbol': '₽', 'name': '俄罗斯卢布'},
-  {'code': 'AED', 'symbol': 'د.إ', 'name': '阿联酋迪拉姆'},
-  {'code': 'BGN', 'symbol': 'лв', 'name': '保加利亚列弗'},
-  {'code': 'BRL', 'symbol': 'R\$', 'name': '巴西雷亚尔'},
-  {'code': 'CHF', 'symbol': 'CHF', 'name': '瑞士法郎'},
-  {'code': 'CZK', 'symbol': 'Kč', 'name': '捷克克朗'},
-  {'code': 'DKK', 'symbol': 'kr', 'name': '丹麦克朗'},
-  {'code': 'HUF', 'symbol': 'Ft', 'name': '匈牙利福林'},
-  {'code': 'IDR', 'symbol': 'Rp', 'name': '印度尼西亚盾'},
-  {'code': 'ILS', 'symbol': '₪', 'name': '以色列新谢克尔'},
-  {'code': 'INR', 'symbol': '₹', 'name': '印度卢比'},
-  {'code': 'ISK', 'symbol': 'kr', 'name': '冰岛克朗'},
-  {'code': 'MXN', 'symbol': 'Mex\$', 'name': '墨西哥比索'},
-  {'code': 'NOK', 'symbol': 'kr', 'name': '挪威克朗'},
-  {'code': 'NZD', 'symbol': 'NZ\$', 'name': '新西兰元'},
-  {'code': 'PHP', 'symbol': '₱', 'name': '菲律宾比索'},
-  {'code': 'PLN', 'symbol': 'zł', 'name': '波兰兹罗提'},
-  {'code': 'RON', 'symbol': 'lei', 'name': '罗马尼亚列伊'},
-  {'code': 'SEK', 'symbol': 'kr', 'name': '瑞典克朗'},
-  {'code': 'TRY', 'symbol': '₺', 'name': '土耳其里拉'},
-  {'code': 'ZAR', 'symbol': 'R', 'name': '南非兰特'},
+  {'code': 'CNY', 'symbol': '¥'},
+  {'code': 'USD', 'symbol': r'$'},
+  {'code': 'EUR', 'symbol': '€'},
+  {'code': 'GBP', 'symbol': '£'},
+  {'code': 'JPY', 'symbol': '¥'},
+  {'code': 'HKD', 'symbol': 'HK\$'},
+  {'code': 'KRW', 'symbol': '₩'},
+  {'code': 'SGD', 'symbol': 'S\$'},
+  {'code': 'AUD', 'symbol': 'A\$'},
+  {'code': 'CAD', 'symbol': 'C\$'},
+  {'code': 'TWD', 'symbol': 'NT\$'},
+  {'code': 'THB', 'symbol': '฿'},
+  {'code': 'MYR', 'symbol': 'RM'},
+  {'code': 'VND', 'symbol': '₫'},
+  {'code': 'RUB', 'symbol': '₽'},
+  {'code': 'AED', 'symbol': 'د.إ'},
+  {'code': 'BGN', 'symbol': 'лв'},
+  {'code': 'BRL', 'symbol': 'R\$'},
+  {'code': 'CHF', 'symbol': 'CHF'},
+  {'code': 'CZK', 'symbol': 'Kč'},
+  {'code': 'DKK', 'symbol': 'kr'},
+  {'code': 'HUF', 'symbol': 'Ft'},
+  {'code': 'IDR', 'symbol': 'Rp'},
+  {'code': 'ILS', 'symbol': '₪'},
+  {'code': 'INR', 'symbol': '₹'},
+  {'code': 'ISK', 'symbol': 'kr'},
+  {'code': 'MXN', 'symbol': 'Mex\$'},
+  {'code': 'NOK', 'symbol': 'kr'},
+  {'code': 'NZD', 'symbol': 'NZ\$'},
+  {'code': 'PHP', 'symbol': '₱'},
+  {'code': 'PLN', 'symbol': 'zł'},
+  {'code': 'RON', 'symbol': 'lei'},
+  {'code': 'SEK', 'symbol': 'kr'},
+  {'code': 'TRY', 'symbol': '₺'},
+  {'code': 'ZAR', 'symbol': 'R'},
 ];
+
+String _fallbackCurrencyName(String code, AppLocalizations l10n) {
+  switch (code) {
+    case 'USD':
+      return l10n.profileCurrencyNameUSD;
+    case 'EUR':
+      return l10n.profileCurrencyNameEUR;
+    case 'GBP':
+      return l10n.profileCurrencyNameGBP;
+    case 'JPY':
+      return l10n.profileCurrencyNameJPY;
+    case 'HKD':
+      return l10n.profileCurrencyNameHKD;
+    case 'KRW':
+      return l10n.profileCurrencyNameKRW;
+    case 'SGD':
+      return l10n.profileCurrencyNameSGD;
+    case 'AUD':
+      return l10n.profileCurrencyNameAUD;
+    case 'CAD':
+      return l10n.profileCurrencyNameCAD;
+    case 'TWD':
+      return l10n.profileCurrencyNameTWD;
+    case 'THB':
+      return l10n.profileCurrencyNameTHB;
+    case 'MYR':
+      return l10n.profileCurrencyNameMYR;
+    case 'VND':
+      return l10n.profileCurrencyNameVND;
+    case 'RUB':
+      return l10n.profileCurrencyNameRUB;
+    case 'AED':
+      return l10n.profileCurrencyNameAED;
+    case 'BGN':
+      return l10n.profileCurrencyNameBGN;
+    case 'BRL':
+      return l10n.profileCurrencyNameBRL;
+    case 'CHF':
+      return l10n.profileCurrencyNameCHF;
+    case 'CZK':
+      return l10n.profileCurrencyNameCZK;
+    case 'DKK':
+      return l10n.profileCurrencyNameDKK;
+    case 'HUF':
+      return l10n.profileCurrencyNameHUF;
+    case 'IDR':
+      return l10n.profileCurrencyNameIDR;
+    case 'ILS':
+      return l10n.profileCurrencyNameILS;
+    case 'INR':
+      return l10n.profileCurrencyNameINR;
+    case 'ISK':
+      return l10n.profileCurrencyNameISK;
+    case 'MXN':
+      return l10n.profileCurrencyNameMXN;
+    case 'NOK':
+      return l10n.profileCurrencyNameNOK;
+    case 'NZD':
+      return l10n.profileCurrencyNameNZD;
+    case 'PHP':
+      return l10n.profileCurrencyNamePHP;
+    case 'PLN':
+      return l10n.profileCurrencyNamePLN;
+    case 'RON':
+      return l10n.profileCurrencyNameRON;
+    case 'SEK':
+      return l10n.profileCurrencyNameSEK;
+    case 'TRY':
+      return l10n.profileCurrencyNameTRY;
+    case 'ZAR':
+      return l10n.profileCurrencyNameZAR;
+    default:
+      return l10n.profileCurrencyNameCNY;
+  }
+}
 
 Future<List<Map<String, dynamic>>> _fetchCurrencies() async {
   try {
@@ -249,6 +353,7 @@ Future<void> _showDefaultCurrencyDialog(
   final current = ref.read(authProvider).user?.defaultCurrency;
   final fetched = await _fetchCurrencies();
   if (!context.mounted) return;
+  final l10n = AppLocalizations.of(context);
   final currencies = fetched.isNotEmpty
       ? fetched
       : <Map<String, dynamic>>[
@@ -257,7 +362,7 @@ Future<void> _showDefaultCurrencyDialog(
   final selected = await showDialog<String>(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: const Text('默认币种'),
+      title: Text(l10n.profileDefaultCurrency),
       children: [
         RadioGroup<String>(
           groupValue: current,
@@ -268,7 +373,9 @@ Future<void> _showDefaultCurrencyDialog(
               for (final c in currencies)
                 RadioListTile<String>(
                   value: c['code'] as String? ?? '',
-                  title: Text('${c['name']} ${c['code']}'),
+                  title: Text(
+                    '${c['name'] ?? _fallbackCurrencyName(c['code'] as String? ?? '', l10n)} ${c['code']}',
+                  ),
                 ),
             ],
           ),
@@ -288,22 +395,29 @@ Future<void> _showDefaultCurrencyDialog(
 Future<void> _showDefaultCalcScopeDialog(
     BuildContext context, WidgetRef ref) async {
   final current = ref.read(authProvider).user?.defaultCalcScope ?? 'country';
+  final l10n = AppLocalizations.of(context);
   final selected = await showDialog<String>(
     context: context,
     builder: (ctx) => SimpleDialog(
-      title: const Text('默认计算范围'),
+      title: Text(l10n.profileDefaultCalcScope),
       children: [
         RadioGroup<String>(
           groupValue: current,
           onChanged: (v) => Navigator.of(ctx).pop(v),
-          child: const Column(
+          child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              RadioListTile<String>(value: '', title: Text('全部地区')),
-              RadioListTile<String>(value: 'country', title: Text('国家/地区')),
-              RadioListTile<String>(value: 'province', title: Text('省份')),
-              RadioListTile<String>(value: 'city', title: Text('城市')),
-              RadioListTile<String>(value: 'county', title: Text('区县')),
+              RadioListTile<String>(
+                  value: '', title: Text(l10n.profileCalcScopeAll)),
+              RadioListTile<String>(
+                  value: 'country', title: Text(l10n.profileCalcScopeCountry)),
+              RadioListTile<String>(
+                  value: 'province',
+                  title: Text(l10n.profileCalcScopeProvince)),
+              RadioListTile<String>(
+                  value: 'city', title: Text(l10n.profileCalcScopeCity)),
+              RadioListTile<String>(
+                  value: 'county', title: Text(l10n.profileCalcScopeCounty)),
             ],
           ),
         ),
@@ -315,12 +429,102 @@ Future<void> _showDefaultCalcScopeDialog(
   await _saveLocaleSettings(context, ref, defaultCalcScope: selected);
 }
 
+Future<void> _showLanguageDialog(BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final options = {
+    'zh-CN': l10n.localeOptionZhCN,
+    'en-US': l10n.localeOptionEnUS,
+    'ar': l10n.localeOptionAr,
+  };
+  final current = ref.read(localeSettingsProvider).uiLocale;
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: Text(l10n.profileLanguage),
+      children: [
+        RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final entry in options.entries)
+                RadioListTile<String>(
+                  value: entry.key,
+                  title: Text(entry.value),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected == null || selected == current) return;
+  if (!context.mounted) return;
+  await _saveLocalePreferences(
+    context,
+    ref,
+    uiLocale: selected,
+    formatLocale: ref.read(localeSettingsProvider).formatLocale,
+    localizedFallback: l10n,
+  );
+}
+
+Future<void> _showRegionalFormatDialog(
+    BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final options = {
+    '': l10n.formatOptionFollowLanguage,
+    'zh-CN': l10n.formatOptionZhCN,
+    'zh-TW': l10n.formatOptionZhTW,
+    'en-US': l10n.formatOptionEnUS,
+    'en-GB': l10n.formatOptionEnGB,
+    'ja-JP': l10n.formatOptionJaJP,
+    'de-DE': l10n.formatOptionDeDE,
+    'id-ID': l10n.formatOptionIdID,
+    'ar-EG': l10n.formatOptionArEG,
+  };
+  final current = ref.read(localeSettingsProvider).formatLocale ?? '';
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: Text(l10n.profileRegionalFormat),
+      children: [
+        RadioGroup<String>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final entry in options.entries)
+                RadioListTile<String>(
+                  value: entry.key,
+                  title: Text(entry.value),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected == null || selected == current) return;
+  if (!context.mounted) return;
+  await _saveLocalePreferences(
+    context,
+    ref,
+    uiLocale: ref.read(localeSettingsProvider).uiLocale,
+    formatLocale: selected.isEmpty ? null : selected,
+    localizedFallback: l10n,
+  );
+}
+
 Future<void> _saveLocaleSettings(
   BuildContext context,
   WidgetRef ref, {
   String? defaultCurrency,
   String? defaultCalcScope,
 }) async {
+  final l10n = AppLocalizations.of(context);
   try {
     final user = await AuthRepository().updateSettings(
       defaultCurrency: defaultCurrency,
@@ -329,29 +533,67 @@ Future<void> _saveLocaleSettings(
     ref.read(authProvider.notifier).applyUser(user);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('已保存')),
+        SnackBar(content: Text(l10n.authSaved)),
       );
     }
   } on DioException catch (e) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_extractDetail(e))),
+        SnackBar(content: Text(_extractDetail(e, l10n))),
       );
     }
   } catch (_) {
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('保存失败，请重试')),
+        SnackBar(content: Text(l10n.authSaveFailedRetry)),
       );
     }
   }
 }
 
-String _extractDetail(DioException e) {
+Future<void> _saveLocalePreferences(
+  BuildContext context,
+  WidgetRef ref, {
+  required String uiLocale,
+  required String? formatLocale,
+  required AppLocalizations localizedFallback,
+}) async {
+  try {
+    final user = await AuthRepository().updateLocalePreferences(
+      locale: uiLocale,
+      formatLocale: formatLocale,
+    );
+    ref.read(authProvider.notifier).applyUser(user);
+    ref.read(localeSettingsProvider.notifier).update(
+          LocaleSettings(
+            uiLocale: user.locale ?? uiLocale,
+            formatLocale: formatLocale,
+          ),
+        );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(localizedFallback.authSaved)),
+      );
+    }
+  } on DioException catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_extractDetail(e, localizedFallback))),
+      );
+    }
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(localizedFallback.authSaveFailedRetry)),
+      );
+    }
+  }
+}
+
+String _extractDetail(DioException e, AppLocalizations l10n) {
   final data = e.response?.data;
   if (data is Map && data['detail'] is String) {
     return data['detail'] as String;
   }
-  return '保存失败，请检查后重试';
+  return l10n.authSaveFailedCheckInput;
 }
-

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../models/auth_config.dart';
 import '../providers/auth_provider.dart';
 import '../../profile/providers/startup_page_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -75,7 +76,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       return config;
     } on Exception {
       if (mounted) {
-        setState(() => _configError = '注册配置加载失败，请检查网络后重试');
+        final l10n = AppLocalizations.of(context);
+        setState(() => _configError = l10n.authConfigLoadFailed);
       }
       return null;
     }
@@ -103,7 +105,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       setState(() {
         _submitting = false;
         if (!previouslyRequired) {
-          _configError = '注册失败：服务器已开启邀请码注册，请填写邀请码';
+          _configError = AppLocalizations.of(context).authInviteCodeNowRequired;
         }
       });
       _inviteCodeFocus.requestFocus();
@@ -136,6 +138,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
     final authConfig = ref.watch(authConfigProvider);
     final inviteRequired = _inviteRequired;
@@ -144,7 +147,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         !(authConfig.isLoading && authConfig.value == null);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('注册')),
+      appBar: AppBar(title: Text(l10n.authRegisterTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -155,11 +158,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
               children: [
                 TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
-                      labelText: '用户名', prefixIcon: Icon(Icons.person_outline)),
+                  decoration: InputDecoration(
+                      labelText: l10n.authUsername,
+                      prefixIcon: const Icon(Icons.person_outline)),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return '请输入用户名';
-                    if (v.trim().length < 3) return '用户名至少 3 个字符';
+                    if (v == null || v.trim().isEmpty) {
+                      return l10n.authUsernameRequired;
+                    }
+                    if (v.trim().length < 3) return l10n.authUsernameMinLength;
                     return null;
                   },
                   textInputAction: TextInputAction.done,
@@ -168,12 +174,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _emailController,
-                  decoration: const InputDecoration(
-                      labelText: '邮箱', prefixIcon: Icon(Icons.email_outlined)),
+                  decoration: InputDecoration(
+                      labelText: l10n.authEmail,
+                      prefixIcon: const Icon(Icons.email_outlined)),
                   keyboardType: TextInputType.emailAddress,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return '请输入邮箱';
-                    if (!v.contains('@')) return '邮箱格式不正确';
+                    if (v == null || v.trim().isEmpty) {
+                      return l10n.authEmailRequired;
+                    }
+                    if (!v.contains('@')) return l10n.authEmailInvalid;
                     return null;
                   },
                   textInputAction: TextInputAction.done,
@@ -183,18 +192,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 TextFormField(
                   controller: _passwordController,
                   obscureText: true,
-                  decoration: const InputDecoration(
-                      labelText: '密码', prefixIcon: Icon(Icons.lock_outline)),
-                  validator: (v) => v == null || v.isEmpty ? '请输入密码' : null,
+                  decoration: InputDecoration(
+                      labelText: l10n.authPassword,
+                      prefixIcon: const Icon(Icons.lock_outline)),
+                  validator: (v) =>
+                      v == null || v.isEmpty ? l10n.authPasswordRequired : null,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => canSubmit ? _register() : null,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _phoneController,
-                  decoration: const InputDecoration(
-                      labelText: '手机号（可选）',
-                      prefixIcon: Icon(Icons.phone_outlined)),
+                  decoration: InputDecoration(
+                      labelText: l10n.authPhoneOptional,
+                      prefixIcon: const Icon(Icons.phone_outlined)),
                   keyboardType: TextInputType.phone,
                   textInputAction: TextInputAction.done,
                   onFieldSubmitted: (_) => canSubmit ? _register() : null,
@@ -204,11 +215,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                   TextFormField(
                     controller: _inviteCodeController,
                     focusNode: _inviteCodeFocus,
-                    decoration: const InputDecoration(
-                        labelText: '邀请码',
-                        prefixIcon: Icon(Icons.card_giftcard_outlined)),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? '请输入邀请码' : null,
+                    decoration: InputDecoration(
+                        labelText: l10n.authInviteCode,
+                        prefixIcon: const Icon(Icons.card_giftcard_outlined)),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? l10n.authInviteCodeRequired
+                        : null,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) => canSubmit ? _register() : null,
                   ),
@@ -219,8 +231,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                       style: TextStyle(color: theme.colorScheme.error)),
                 ],
                 const SizedBox(height: 8),
-                if (authState.errorMessage != null)
-                  Text(authState.errorMessage!,
+                if (authState.message != null)
+                  Text(authState.message!.localized(l10n),
                       style: TextStyle(color: theme.colorScheme.error)),
                 const SizedBox(height: 24),
                 FilledButton(
@@ -230,12 +242,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('注册'),
+                      : Text(l10n.authRegisterButton),
                 ),
                 const SizedBox(height: 16),
                 TextButton(
                     onPressed: () => context.go('/login'),
-                    child: const Text('已有账号？去登录')),
+                    child: Text(l10n.authHaveAccountLogin)),
               ],
             ),
           ),

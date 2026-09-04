@@ -13,6 +13,7 @@ import '../../merchants/repositories/merchant_repository.dart';
 import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../repositories/auth_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 编辑账号信息：头像（选图 + 方形裁剪 + 上传）+ 用户名/昵称/邮箱/手机 +
 /// 所在地区（四级级联）+ 修改密码（可选，与 web 用户信息编辑对齐）。
@@ -72,6 +73,7 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
   }
 
   Future<void> _pickAvatar() async {
+    final l10n = AppLocalizations.of(context);
     final picked = await ImagePicker().pickImage(
       source: ImageSource.gallery,
       maxWidth: 1024,
@@ -87,7 +89,8 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
         aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         compressQuality: 90,
         uiSettings: [
-          AndroidUiSettings(toolbarTitle: '裁剪头像', lockAspectRatio: true),
+          AndroidUiSettings(
+              toolbarTitle: l10n.authCropAvatar, lockAspectRatio: true),
           IOSUiSettings(),
         ],
       );
@@ -99,15 +102,16 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     try {
       await _repo.uploadAvatar(toUpload);
       await ref.read(authProvider.notifier).refreshUser();
-      if (mounted) _toast('头像已更新');
+      if (mounted) _toast(l10n.authAvatarUpdated);
     } catch (_) {
-      if (mounted) _toast('头像上传失败，请重试');
+      if (mounted) _toast(l10n.authAvatarUploadFailed);
     } finally {
       if (mounted) setState(() => _uploading = false);
     }
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final user = _user;
     final body = <String, dynamic>{};
@@ -125,11 +129,10 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
     if (newPwd.isNotEmpty) {
       body['current_password'] =
           sha256.convert(utf8.encode(_currentPassword.text)).toString();
-      body['new_password'] =
-          sha256.convert(utf8.encode(newPwd)).toString();
+      body['new_password'] = sha256.convert(utf8.encode(newPwd)).toString();
     }
     if (body.isEmpty) {
-      _toast('没有需要保存的修改');
+      _toast(l10n.authNoChangesToSave);
       return;
     }
 
@@ -141,25 +144,25 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
       }
       ref.read(authProvider.notifier).applyUser(resp.user);
       if (mounted) {
-        _toast('已保存');
+        _toast(l10n.authSaved);
         context.pop();
       }
     } on DioException catch (e) {
-      if (mounted) _toast(_extractDetail(e));
+      if (mounted) _toast(_extractDetail(e, l10n));
     } catch (_) {
-      if (mounted) _toast('保存失败，请重试');
+      if (mounted) _toast(l10n.authSaveFailedRetry);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   /// 提取后端 400 detail（可能是字符串或验证错误列表）。
-  String _extractDetail(DioException e) {
+  String _extractDetail(DioException e, AppLocalizations l10n) {
     final data = e.response?.data;
     if (data is Map && data['detail'] is String) {
       return data['detail'] as String;
     }
-    return '保存失败，请检查输入后重试';
+    return l10n.authSaveFailedCheckInput;
   }
 
   void _toast(String msg) {
@@ -170,12 +173,14 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final user = ref.watch(authProvider).user;
-    final initial =
-        user?.displayName.isNotEmpty == true ? user!.displayName[0] : '?';
+    final initial = user?.displayName.isNotEmpty == true
+        ? user!.displayName[0]
+        : l10n.commonUserInitial;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('编辑个人信息')),
+      appBar: AppBar(title: Text(l10n.authEditAccountTitle)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -214,7 +219,7 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
                   TextButton.icon(
                     onPressed: _uploading ? null : _pickAvatar,
                     icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                    label: const Text('点击更换头像'),
+                    label: Text(l10n.authTapChangeAvatar),
                   ),
                 ],
               ),
@@ -222,14 +227,14 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             const SizedBox(height: 16),
             TextFormField(
               controller: _username,
-              decoration: const InputDecoration(
-                labelText: '用户名 *',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authUsernameLabel,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final t = v?.trim() ?? '';
                 if (t.length < 3 || t.length > 50) {
-                  return '用户名长度需为 3-50 个字符';
+                  return l10n.authUsernameLength;
                 }
                 return null;
               },
@@ -237,12 +242,14 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _nickname,
-              decoration: const InputDecoration(
-                labelText: '昵称',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authNickname,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
-                if ((v?.trim().length ?? 0) > 50) return '昵称不能超过 50 个字符';
+                if ((v?.trim().length ?? 0) > 50) {
+                  return l10n.authNicknameMaxLength;
+                }
                 return null;
               },
             ),
@@ -250,15 +257,15 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             TextFormField(
               controller: _email,
               keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: '邮箱',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authEmail,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final t = v?.trim() ?? '';
                 if (t.isEmpty ||
                     !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t)) {
-                  return '请输入有效的邮箱地址';
+                  return l10n.authEditEmailInvalid;
                 }
                 return null;
               },
@@ -267,20 +274,20 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             TextFormField(
               controller: _phone,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(
-                labelText: '手机号（可选）',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authPhoneOptional,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final t = v?.trim() ?? '';
                 if (t.isNotEmpty && !RegExp(r'^1[3-9]\d{9}$').hasMatch(t)) {
-                  return '请输入有效的手机号';
+                  return l10n.authPhoneInvalid;
                 }
                 return null;
               },
             ),
             const SizedBox(height: 24),
-            Text('所在地区',
+            Text(l10n.authRegion,
                 style: theme.textTheme.titleSmall
                     ?.copyWith(color: theme.colorScheme.outline)),
             const SizedBox(height: 8),
@@ -290,22 +297,22 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
               onChanged: (v) => setState(() => _regionId = v),
             ),
             const SizedBox(height: 24),
-            Text('修改密码（可选）',
+            Text(l10n.authChangePasswordOptional,
                 style: theme.textTheme.titleSmall
                     ?.copyWith(color: theme.colorScheme.outline)),
             const SizedBox(height: 8),
             TextFormField(
               controller: _currentPassword,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '当前密码',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authCurrentPassword,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 if ((_newPassword.text.isNotEmpty ||
                         _confirmPassword.text.isNotEmpty) &&
                     (v?.isEmpty ?? true)) {
-                  return '修改密码需提供当前密码';
+                  return l10n.authCurrentPasswordRequired;
                 }
                 return null;
               },
@@ -314,13 +321,15 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             TextFormField(
               controller: _newPassword,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '新密码（至少 6 个字符）',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authNewPassword,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
                 final t = v ?? '';
-                if (t.isNotEmpty && t.length < 6) return '新密码至少 6 个字符';
+                if (t.isNotEmpty && t.length < 6) {
+                  return l10n.authNewPasswordMinLength;
+                }
                 return null;
               },
             ),
@@ -328,19 +337,21 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
             TextFormField(
               controller: _confirmPassword,
               obscureText: true,
-              decoration: const InputDecoration(
-                labelText: '确认新密码',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.authConfirmNewPassword,
+                border: const OutlineInputBorder(),
               ),
               validator: (v) {
-                if (v != _newPassword.text) return '两次输入的新密码不一致';
+                if (v != _newPassword.text) {
+                  return l10n.authPasswordsDoNotMatch;
+                }
                 return null;
               },
             ),
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : _save,
-              child: Text(_saving ? '保存中...' : '保存'),
+              child: Text(_saving ? l10n.authSaving : l10n.commonSave),
             ),
           ],
         ),

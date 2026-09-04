@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/server_provider.dart';
 import '../../profile/providers/startup_page_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -36,6 +37,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final authState = ref.watch(authProvider);
     final serverUrl = ref.watch(serverConfigProvider);
 
@@ -53,19 +55,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Icon(Icons.lock_outline,
                       size: 48, color: theme.colorScheme.primary),
                   const SizedBox(height: 24),
-                  Text('登录', style: theme.textTheme.headlineSmall),
+                  Text(l10n.authLoginTitle,
+                      style: theme.textTheme.headlineSmall),
                   const SizedBox(height: 8),
-                  Text('请输入账号密码',
+                  Text(l10n.authLoginSubtitle,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.outline)),
                   const SizedBox(height: 32),
                   TextFormField(
                     controller: _usernameController,
-                    decoration: const InputDecoration(
-                        labelText: '用户名',
-                        prefixIcon: Icon(Icons.person_outline)),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? '请输入用户名' : null,
+                    decoration: InputDecoration(
+                        labelText: l10n.authUsername,
+                        prefixIcon: const Icon(Icons.person_outline)),
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? l10n.authUsernameRequired
+                        : null,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) =>
                         authState.status == AuthStatus.loading
@@ -76,9 +80,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: true,
-                    decoration: const InputDecoration(
-                        labelText: '密码', prefixIcon: Icon(Icons.lock_outline)),
-                    validator: (v) => v == null || v.isEmpty ? '请输入密码' : null,
+                    decoration: InputDecoration(
+                        labelText: l10n.authPassword,
+                        prefixIcon: const Icon(Icons.lock_outline)),
+                    validator: (v) => v == null || v.isEmpty
+                        ? l10n.authPasswordRequired
+                        : null,
                     textInputAction: TextInputAction.done,
                     onFieldSubmitted: (_) =>
                         authState.status == AuthStatus.loading
@@ -86,8 +93,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             : _login(),
                   ),
                   const SizedBox(height: 8),
-                  if (authState.errorMessage != null)
-                    Text(authState.errorMessage!,
+                  if (authState.message != null)
+                    Text(authState.message!.localized(l10n),
                         style: TextStyle(color: theme.colorScheme.error)),
                   const SizedBox(height: 24),
                   FilledButton(
@@ -98,12 +105,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Text('登录'),
+                        : Text(l10n.authLoginButton),
                   ),
                   const SizedBox(height: 16),
                   TextButton(
                       onPressed: () => context.go('/register'),
-                      child: const Text('没有账号？去注册')),
+                      child: Text(l10n.authNoAccountRegister)),
                   const SizedBox(height: 4),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -113,7 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          serverUrl ?? '未配置服务器',
+                          serverUrl ?? l10n.authServerNotConfigured,
                           style: theme.textTheme.bodySmall
                               ?.copyWith(color: theme.colorScheme.outline),
                           overflow: TextOverflow.ellipsis,
@@ -124,7 +131,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   TextButton(
                       onPressed: () => context.go('/server-config'),
-                      child: const Text('更换服务器')),
+                      child: Text(l10n.authChangeServer)),
                 ],
               ),
             ),

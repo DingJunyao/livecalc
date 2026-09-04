@@ -11,6 +11,7 @@ import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/profile_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -42,11 +43,20 @@ void main() {
     notifier = AuthNotifier(MockAuthRepository());
   });
 
-  Future<void> pumpScreen(WidgetTester tester, User user) async {
+  Future<void> pumpScreen(
+    WidgetTester tester,
+    User user, {
+    Locale locale = const Locale('zh', 'CN'),
+  }) async {
     notifier.state = AuthState(status: AuthStatus.authenticated, user: user);
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: const MaterialApp(home: ProfileScreen()),
+      child: MaterialApp(
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const ProfileScreen(),
+      ),
     ));
   }
 
@@ -64,6 +74,20 @@ void main() {
     expect(find.text('小艾'), findsOneWidget);
     expect(find.text('a@test.com'), findsOneWidget);
     expect(find.text('alice'), findsNothing);
+  });
+
+  testWidgets('English profile shows localized settings labels',
+      (tester) async {
+    await pumpScreen(
+      tester,
+      const User(id: 1, username: 'alice', email: 'a@test.com'),
+      locale: const Locale('en', 'US'),
+    );
+
+    expect(find.text('Profile'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
+    expect(find.text('Language'), findsOneWidget);
+    expect(find.text('Regional format'), findsOneWidget);
   });
 
   testWidgets('无昵称时显示用户名', (tester) async {
@@ -132,7 +156,12 @@ void main() {
     );
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -153,7 +182,12 @@ void main() {
     );
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: const MaterialApp(home: ProfileScreen()),
+      child: const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProfileScreen(),
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -185,7 +219,12 @@ void main() {
     );
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: const MaterialApp(home: ProfileScreen()),
+      child: const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProfileScreen(),
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -222,7 +261,12 @@ void main() {
     addTearDown(() => dio.httpClientAdapter = originalAdapter);
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: const MaterialApp(home: ProfileScreen()),
+      child: const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProfileScreen(),
+      ),
     ));
     await tester.pumpAndSettle();
 
@@ -233,5 +277,143 @@ void main() {
     expect(find.text('人民币 CNY'), findsOneWidget);
     expect(find.text('美元 USD'), findsOneWidget);
     expect(find.textContaining('¥ 人民币'), findsNothing);
+  });
+
+  testWidgets('English fallback currency names are localized', (tester) async {
+    const expectedNames = {
+      'CNY': 'Chinese yuan',
+      'USD': 'US dollar',
+      'EUR': 'Euro',
+      'GBP': 'British pound',
+      'JPY': 'Japanese yen',
+      'HKD': 'Hong Kong dollar',
+      'KRW': 'South Korean won',
+      'SGD': 'Singapore dollar',
+      'AUD': 'Australian dollar',
+      'CAD': 'Canadian dollar',
+      'TWD': 'New Taiwan dollar',
+      'THB': 'Thai baht',
+      'MYR': 'Malaysian ringgit',
+      'VND': 'Vietnamese dong',
+      'RUB': 'Russian ruble',
+      'AED': 'UAE dirham',
+      'BGN': 'Bulgarian lev',
+      'BRL': 'Brazilian real',
+      'CHF': 'Swiss franc',
+      'CZK': 'Czech koruna',
+      'DKK': 'Danish krone',
+      'HUF': 'Hungarian forint',
+      'IDR': 'Indonesian rupiah',
+      'ILS': 'Israeli new shekel',
+      'INR': 'Indian rupee',
+      'ISK': 'Icelandic króna',
+      'MXN': 'Mexican peso',
+      'NOK': 'Norwegian krone',
+      'NZD': 'New Zealand dollar',
+      'PHP': 'Philippine peso',
+      'PLN': 'Polish złoty',
+      'RON': 'Romanian leu',
+      'SEK': 'Swedish krona',
+      'TRY': 'Turkish lira',
+      'ZAR': 'South African rand',
+    };
+
+    notifier.state = const AuthState(
+      status: AuthStatus.authenticated,
+      user: User(id: 1, username: 'alice', email: 'a@test.com'),
+    );
+    const storageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (call) async => null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null));
+    final dio = ApiClient.instance.dio;
+    final originalAdapter = dio.httpClientAdapter;
+    dio.httpClientAdapter = _OfflineAdapter();
+    addTearDown(() => dio.httpClientAdapter = originalAdapter);
+
+    await pumpScreen(
+      tester,
+      const User(id: 1, username: 'alice', email: 'a@test.com'),
+      locale: const Locale('en', 'US'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Default currency'));
+    await tester.pumpAndSettle();
+
+    expectedNames.forEach((code, name) {
+      expect(find.text('$name $code'), findsOneWidget);
+    });
+  });
+
+  testWidgets('Arabic fallback currency names are localized', (tester) async {
+    const expectedNames = {
+      'CNY': 'اليوان الصيني',
+      'USD': 'الدولار الأمريكي',
+      'EUR': 'اليورو',
+      'GBP': 'الجنيه الإسترليني',
+      'JPY': 'الين الياباني',
+      'HKD': 'الدولار الهونغ كونغي',
+      'KRW': 'الوون الكوري الجنوبي',
+      'SGD': 'الدولار السنغافوري',
+      'AUD': 'الدولار الأسترالي',
+      'CAD': 'الدولار الكندي',
+      'TWD': 'الدولار التايواني الجديد',
+      'THB': 'البات التايلاندي',
+      'MYR': 'الرينغيت الماليزي',
+      'VND': 'الدونغ الفيتنامي',
+      'RUB': 'الروبل الروسي',
+      'AED': 'الدرهم الإماراتي',
+      'BGN': 'الليف البلغاري',
+      'BRL': 'الريال البرازيلي',
+      'CHF': 'الفرنك السويسري',
+      'CZK': 'الكورونا التشيكية',
+      'DKK': 'الكرون الدنماركي',
+      'HUF': 'الفورنت المجري',
+      'IDR': 'الروبية الإندونيسية',
+      'ILS': 'الشيكل الإسرائيلي الجديد',
+      'INR': 'الروبية الهندية',
+      'ISK': 'الكرونة الآيسلندية',
+      'MXN': 'البيزو المكسيكي',
+      'NOK': 'الكرونة النرويجية',
+      'NZD': 'الدولار النيوزيلندي',
+      'PHP': 'البيزو الفلبيني',
+      'PLN': 'الزلوتي البولندي',
+      'RON': 'الليو الروماني',
+      'SEK': 'الكرونا السويدية',
+      'TRY': 'الليرة التركية',
+      'ZAR': 'الراند الجنوب أفريقي',
+    };
+
+    notifier.state = const AuthState(
+      status: AuthStatus.authenticated,
+      user: User(id: 1, username: 'alice', email: 'a@test.com'),
+    );
+    const storageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (call) async => null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null));
+    final dio = ApiClient.instance.dio;
+    final originalAdapter = dio.httpClientAdapter;
+    dio.httpClientAdapter = _OfflineAdapter();
+    addTearDown(() => dio.httpClientAdapter = originalAdapter);
+
+    await pumpScreen(
+      tester,
+      const User(id: 1, username: 'alice', email: 'a@test.com'),
+      locale: const Locale('ar'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('العملة الافتراضية'));
+    await tester.pumpAndSettle();
+
+    expectedNames.forEach((code, name) {
+      expect(find.text('$name $code'), findsOneWidget);
+    });
   });
 }
