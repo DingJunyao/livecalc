@@ -1,4 +1,8 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -30,6 +34,42 @@ class _OfflinePriceRepository extends PriceRepository {
   ApiClient get client => throw StateError('Offline localized widget test');
 }
 
+class _CurrencyCatalogAdapter implements HttpClientAdapter {
+  final List<Map<String, dynamic>> currencies;
+  final List<Map<String, dynamic>> regions;
+
+  const _CurrencyCatalogAdapter({
+    required this.currencies,
+    required this.regions,
+  });
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path.endsWith('/currencies')) {
+      return _jsonResponse(currencies);
+    }
+    if (options.path.endsWith('/regions')) {
+      return _jsonResponse(regions);
+    }
+    throw StateError('Unexpected catalog path: ${options.path}');
+  }
+
+  ResponseBody _jsonResponse(Object data) => ResponseBody.fromString(
+        jsonEncode(data),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      );
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   Future<void> pumpLocalized(
     WidgetTester tester,
@@ -51,6 +91,27 @@ void main() {
       ),
     );
     await tester.pump();
+  }
+
+  void installCurrencyCatalog({
+    List<Map<String, dynamic>> currencies = const [],
+    List<Map<String, dynamic>> regions = const [],
+  }) {
+    ApiClient.instance.updateBaseUrl('https://example.test');
+    const storageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (_) async => null);
+    final dio = ApiClient.instance.dio;
+    final originalAdapter = dio.httpClientAdapter;
+    dio.httpClientAdapter = _CurrencyCatalogAdapter(
+      currencies: currencies,
+      regions: regions,
+    );
+    addTearDown(() => dio.httpClientAdapter = originalAdapter);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null));
   }
 
   testWidgets('common shared states localize English interface labels',
@@ -260,6 +321,63 @@ void main() {
     );
     final arabicContext = tester.widget<Tooltip>(find.byType(Tooltip).first);
     expect(arabicContext.message, 'المنطقة / نطاق الحساب / العملة');
+
+    await pumpLocalized(
+      tester,
+      const Locale('zh', 'CN'),
+      RegionSelectField(
+        key: const ValueKey('zh-region'),
+        value: null,
+        onChanged: (_) {},
+        repository: repository,
+      ),
+    );
+    expect(find.text('国家/地区'), findsOneWidget);
+    expect(find.text('请选择'), findsNWidgets(4));
+    await tester.tap(find.text('请选择').first);
+    await tester.pumpAndSettle();
+    expect(find.text('Server Region'), findsOneWidget);
+    await tester.tap(find.text('Server Region'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('calc context preserves server currency catalog values',
+      (tester) async {
+    installCurrencyCatalog(
+      currencies: const [
+        {
+          'code': 'USD',
+          'name': 'Server USD name',
+          'display_name': 'Server USD display',
+        },
+        {'code': 'GBP', 'name': 'Server GBP name'},
+        {'code': 'AUD'},
+        {'code': 'CUSTOM'},
+      ],
+      regions: const [
+        {'id': 10, 'name': 'Server Region'},
+      ],
+    );
+
+    await pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      const CalcContextMenuButton(),
+      size: const Size(900, 1600),
+    );
+    await tester.tap(find.byIcon(Icons.public));
+    await tester.pumpAndSettle();
+    final currencyDropdown = find.byType(DropdownButtonFormField<String>).last;
+    await tester.ensureVisible(currencyDropdown);
+    await tester.tap(currencyDropdown);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Server USD display USD'), findsOneWidget);
+    expect(find.text('Server GBP name GBP'), findsOneWidget);
+    expect(find.text('AUD'), findsOneWidget);
+    expect(find.text('CUSTOM'), findsOneWidget);
+    expect(find.text('Chinese yuan AUD'), findsNothing);
+    expect(find.text('Chinese yuan CUSTOM'), findsNothing);
   });
 
   testWidgets('nutrition and merchant widgets localize static display labels',
@@ -456,6 +574,99 @@ void main() {
     expect(find.text('السعر'), findsOneWidget);
     expect(find.text('الوحدة'), findsOneWidget);
     expect(find.text('حفظ'), findsOneWidget);
+
+    await pumpLocalized(
+      tester,
+      const Locale('zh', 'CN'),
+      EntityUnitsScreen(
+        entityType: 'ingredient',
+        entityId: 1,
+        units: const [
+          EntityUnit(id: 1, unitName: 'Server unit', isDefault: true),
+        ],
+        unmappedUnits: const [],
+        densities: const [],
+        onAddUnit: (_) async => null,
+        onEditUnit: (_, __) async => null,
+        onDeleteUnit: (_) async => null,
+        onQuickAddUnmapped: (_) async => null,
+        onAddDensity: (_) async => null,
+        onDeleteDensity: (_) async => null,
+      ),
+    );
+    expect(find.text('单位与密度'), findsOneWidget);
+    expect(find.text('保存单位'), findsOneWidget);
+    expect(find.text('Server unit'), findsOneWidget);
+    expect(find.byTooltip('删除'), findsOneWidget);
+
+    await pumpLocalized(
+      tester,
+      const Locale('zh', 'CN'),
+      NutritionEditScreen(
+        initialNutrients: const [],
+        onSave: (_) async => null,
+      ),
+      size: const Size(900, 1200),
+    );
+    expect(find.text('编辑营养成分'), findsOneWidget);
+    expect(find.text('营养素'), findsWidgets);
+    expect(find.text('保存'), findsOneWidget);
+
+    await pumpLocalized(
+      tester,
+      const Locale('zh', 'CN'),
+      PriceRecordEditScreen(
+        arguments: const PriceRecordFormArguments(
+          merchants: [],
+          initialPrice: 6.88,
+        ),
+        priceRepository: _OfflinePriceRepository(),
+      ),
+      size: const Size(900, 1600),
+    );
+    expect(find.text('编辑价格记录'), findsOneWidget);
+    expect(find.text('价格'), findsOneWidget);
+    expect(find.text('单位'), findsOneWidget);
+    expect(find.text('保存'), findsOneWidget);
+  });
+
+  testWidgets('price editor preserves server currency catalog values',
+      (tester) async {
+    installCurrencyCatalog(
+      currencies: const [
+        {
+          'code': 'USD',
+          'name': 'Server USD name',
+          'display_name': 'Server USD display',
+        },
+        {'code': 'GBP', 'name': 'Server GBP name'},
+        {'code': 'AUD'},
+        {'code': 'CUSTOM'},
+      ],
+    );
+
+    await pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      const PriceRecordEditScreen(
+        arguments: PriceRecordFormArguments(
+          merchants: [],
+          initialPrice: 6.88,
+          initialCurrency: 'AUD',
+        ),
+      ),
+      size: const Size(900, 1600),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.arrow_drop_down).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Server USD display USD'), findsOneWidget);
+    expect(find.text('Server GBP name GBP'), findsOneWidget);
+    expect(find.text('AUD'), findsWidgets);
+    expect(find.text('CUSTOM'), findsOneWidget);
+    expect(find.text('null AUD'), findsNothing);
+    expect(find.text('null CUSTOM'), findsNothing);
   });
 }
 

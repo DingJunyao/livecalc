@@ -213,7 +213,7 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                     DropdownMenuItem(
                       value: c['code'] as String? ?? '',
                       child: Text(
-                        '${_currencyName(c, l10n)} ${c['code']}',
+                        _currencyLabel(c),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -268,18 +268,19 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
     };
   }
 
-  String _currencyName(Map<String, dynamic> currency, AppLocalizations l10n) {
+  String _currencyName(Map<String, dynamic> currency) {
+    final displayName = currency['display_name']?.toString();
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      return displayName;
+    }
     final name = currency['name']?.toString();
-    if (name != null && name.isNotEmpty) return name;
-    return switch (currency['code']) {
-      'USD' => l10n.profileCurrencyNameUSD,
-      'EUR' => l10n.profileCurrencyNameEUR,
-      'JPY' => l10n.profileCurrencyNameJPY,
-      'GBP' => l10n.profileCurrencyNameGBP,
-      'HKD' => l10n.profileCurrencyNameHKD,
-      'KRW' => l10n.profileCurrencyNameKRW,
-      'SGD' => l10n.profileCurrencyNameSGD,
-      _ => l10n.profileCurrencyNameCNY,
-    };
+    if (name != null && name.trim().isNotEmpty) return name;
+    return currency['code']?.toString() ?? '';
+  }
+
+  String _currencyLabel(Map<String, dynamic> currency) {
+    final code = currency['code']?.toString() ?? '';
+    final name = _currencyName(currency);
+    return name == code ? code : '$name $code';
   }
 }

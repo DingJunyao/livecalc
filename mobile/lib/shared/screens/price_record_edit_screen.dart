@@ -112,7 +112,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   late DateTime _recordedAt;
   String _currency = 'CNY';
   String _currencySymbol = '¥';
-  List<dynamic> _currencies = const [];
+  List<Map<String, dynamic>> _currencies = const [];
 
   @override
   void initState() {
@@ -168,7 +168,10 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
           ? data
           : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
       if (!mounted) return;
-      setState(() => _currencies = list);
+      setState(() => _currencies = [
+            for (final item in list)
+              if (item is Map) Map<String, dynamic>.from(item),
+          ]);
     } catch (_) {
       // 币种加载失败保持默认 CNY
     }
@@ -239,6 +242,22 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   void _toast(String message) {
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  String _currencyName(Map<String, dynamic> currency) {
+    final displayName = currency['display_name']?.toString();
+    if (displayName != null && displayName.trim().isNotEmpty) {
+      return displayName;
+    }
+    final name = currency['name']?.toString();
+    if (name != null && name.trim().isNotEmpty) return name;
+    return currency['code']?.toString() ?? '';
+  }
+
+  String _currencyLabel(Map<String, dynamic> currency) {
+    final code = currency['code']?.toString() ?? '';
+    final name = _currencyName(currency);
+    return name == code ? code : '$name $code';
   }
 
   @override
@@ -386,9 +405,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                               for (final c in _currencies)
                                 DropdownMenuItem(
                                   value: c['code'] as String,
-                                  child: Text(
-                                    '${c['name']} ${c['code']}',
-                                  ),
+                                  child: Text(_currencyLabel(c)),
                                 ),
                             ],
                       // 收起时只显示三字母代码，展开列表显示全称+代码
