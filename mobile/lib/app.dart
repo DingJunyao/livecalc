@@ -74,7 +74,7 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     });
     ref.listen(serverConfigProvider, (_, __) => _refreshNotifier.refresh());
     return MaterialApp.router(
-      title: '生计 - 生活成本计算器',
+      onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       routerConfig: _router,

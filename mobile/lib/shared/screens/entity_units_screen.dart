@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../features/entities/repositories/entity_repository.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
 
 class UnitWriteInput {
@@ -161,7 +162,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   Future<void> _saveUnit() async {
     final name = _unitName.text.trim();
     if (name.isEmpty) {
-      _toast('请输入单位名称');
+      _toast(AppLocalizations.of(context).unitsNameRequired);
       return;
     }
     final input = UnitWriteInput(
@@ -181,7 +182,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   Future<void> _saveDensity() async {
     final value = double.tryParse(_density.text.trim());
     if (value == null || value <= 0) {
-      _toast('请输入有效密度');
+      _toast(AppLocalizations.of(context).unitsDensityRequired);
       return;
     }
     final input = DensityWriteInput(
@@ -207,11 +208,11 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(AppLocalizations.of(ctx).commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(AppLocalizations.of(ctx).commonDelete),
           ),
         ],
       ),
@@ -229,13 +230,19 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
       final result = await action();
       if (!mounted) return;
       if (result is EntityWriteResult && result.pending) {
-        _toast(result.message.isEmpty ? '已提交，待管理员审核' : result.message);
+        _toast(
+          result.message.isEmpty
+              ? AppLocalizations.of(context).commonSubmittedPendingReview
+              : result.message,
+        );
         return;
       }
       setState(() => _changed = true);
       onApplied?.call();
     } on Exception {
-      if (mounted) _toast('保存失败，请重试');
+      if (mounted) {
+        _toast(AppLocalizations.of(context).commonSaveFailedRetry);
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -249,23 +256,24 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.entityName == null
-            ? '单位与密度'
-            : '${widget.entityName} · 单位密度'),
+            ? l10n.unitsScreenTitle
+            : l10n.unitsScreenTitleWithName(widget.entityName!)),
         actions: [
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(EntityUnitsResult(changed: _changed)),
-            child: const Text('完成'),
+            child: Text(l10n.commonDone),
           ),
         ],
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: '自定义单位'),
-            Tab(text: '密度'),
+          tabs: [
+            Tab(text: l10n.unitsCustomTab),
+            Tab(text: l10n.unitsDensityTab),
           ],
         ),
       ),
@@ -280,6 +288,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   }
 
   Widget _buildUnitsPane(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -290,16 +299,18 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _editingUnit == null ? '添加单位' : '编辑单位',
+                  _editingUnit == null
+                      ? l10n.unitsAddTitle
+                      : l10n.unitsEditTitle,
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _unitName,
-                  decoration: const InputDecoration(
-                    labelText: '单位名称 *',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.unitsNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -310,9 +321,9 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                         controller: _conversion,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: '换算系数（1单位 = ? 个）',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.unitsConversionLabel,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
@@ -322,9 +333,9 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                         controller: _weight,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
-                        decoration: const InputDecoration(
-                          labelText: '单重（g/个）',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: l10n.unitsWeightLabel,
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
@@ -332,13 +343,13 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('设为默认单位'),
+                  title: Text(l10n.unitsSetDefault),
                   value: _unitDefault,
                   onChanged: (value) => setState(() => _unitDefault = value),
                 ),
                 FilledButton(
                   onPressed: _saving ? null : _saveUnit,
-                  child: const Text('保存单位'),
+                  child: Text(l10n.unitsSave),
                 ),
               ],
             ),
@@ -347,7 +358,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
         const SizedBox(height: 16),
         if (widget.unmappedUnits.isNotEmpty) ...[
           Text(
-            '待配置单位（默认 100 g）',
+            l10n.unitsUnmappedTitle,
             style: theme.textTheme.labelLarge,
           ),
           const SizedBox(height: 6),
@@ -358,7 +369,9 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
               for (final unit in widget.unmappedUnits)
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 14),
-                  label: Text('${unit.unitName}（${unit.usageCount}次）'),
+                  label: Text(
+                    l10n.unitsUnmappedUsage(unit.unitName, unit.usageCount),
+                  ),
                   onPressed: _saving
                       ? null
                       : () => _run(() => widget.onQuickAddUnmapped(unit)),
@@ -373,28 +386,31 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
             title: Text(unit.unitName),
             subtitle: Text([
               if (unit.conversionFactor != null)
-                '1 ${unit.unitName} = ${_format(unit.conversionFactor!)} 个',
+                l10n.unitsConversionDetail(
+                  unit.unitName,
+                  _format(unit.conversionFactor!),
+                ),
               if (unit.weightPerUnit != null)
-                '${_format(unit.weightPerUnit!)} g / 个',
-              if (unit.isDefault) '默认',
+                l10n.unitsWeightDetail(_format(unit.weightPerUnit!)),
+              if (unit.isDefault) l10n.unitsDefault,
             ].join(' · ')),
             trailing: unit.isPending
-                ? const Chip(label: Text('待审'))
+                ? Chip(label: Text(l10n.unitsPendingReview))
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: '编辑',
+                        tooltip: l10n.commonEdit,
                         onPressed: () => _startEditUnit(unit),
                         icon: const Icon(Icons.edit_outlined),
                       ),
                       IconButton(
-                        tooltip: '删除',
+                        tooltip: l10n.commonDelete,
                         onPressed: _saving
                             ? null
                             : () => _delete(
-                                  '删除单位',
-                                  '确定删除「${unit.unitName}」吗？',
+                                  l10n.unitsDeleteTitle,
+                                  l10n.unitsDeleteMessage(unit.unitName),
                                   () => widget.onDeleteUnit(unit.id),
                                 ),
                         icon: const Icon(Icons.delete_outline),
@@ -407,6 +423,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   }
 
   Widget _buildDensityPane(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -417,7 +434,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '添加密度',
+                  l10n.densityAddTitle,
                   style: theme.textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.bold),
                 ),
@@ -426,23 +443,23 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                   controller: _density,
                   keyboardType:
                       const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: '密度（kg/m³）*',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.densityLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: _condition,
-                  decoration: const InputDecoration(
-                    labelText: '状态描述（如：切块 / 压碎，可选）',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.densityConditionLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: _saving ? null : _saveDensity,
-                  child: const Text('保存密度'),
+                  child: Text(l10n.densitySave),
                 ),
               ],
             ),
@@ -457,14 +474,14 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                 ? null
                 : Text(density.condition!),
             trailing: density.isPending
-                ? const Chip(label: Text('待审'))
+                ? Chip(label: Text(l10n.unitsPendingReview))
                 : IconButton(
-                    tooltip: '删除',
+                    tooltip: l10n.commonDelete,
                     onPressed: _saving
                         ? null
                         : () => _delete(
-                              '删除密度',
-                              '确定删除该密度记录吗？',
+                              l10n.densityDeleteTitle,
+                              l10n.densityDeleteMessage,
                               () => widget.onDeleteDensity(density.id),
                             ),
                     icon: const Icon(Icons.delete_outline),

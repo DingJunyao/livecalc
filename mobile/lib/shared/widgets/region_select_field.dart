@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../features/merchants/repositories/merchant_repository.dart';
+import '../../l10n/app_localizations.dart';
 
 /// Four-level cascading region selector (country/region -> province -> city -> district).
 class RegionSelectField extends ConsumerStatefulWidget {
@@ -21,10 +22,10 @@ class RegionSelectField extends ConsumerStatefulWidget {
 
 class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
   static const _levels = [
-    ('国家/地区', 0),
-    ('省份', 1),
-    ('城市', 2),
-    ('区县', 3),
+    0,
+    1,
+    2,
+    3,
   ];
 
   late final List<List<Map<String, dynamic>>> _options;
@@ -35,7 +36,8 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
   void initState() {
     super.initState();
     _repo = widget.repository ?? MerchantRepository();
-    _options = List.generate(_levels.length, (_) => const <Map<String, dynamic>>[]);
+    _options =
+        List.generate(_levels.length, (_) => const <Map<String, dynamic>>[]);
     _sel = List<int?>.filled(_levels.length, null);
     _init();
   }
@@ -154,15 +156,19 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       children: [
         for (var i = 0; i < _levels.length; i++) ...[
           if (i > 0) const SizedBox(height: 12),
           DropdownButtonFormField<int?>(
-            key: ValueKey('region_${_levels[i].$2}_$_sel[i]'),
+            key: ValueKey('region_${i}_${_sel[i]}'),
             initialValue: _sel[i],
             items: [
-              const DropdownMenuItem<int?>(value: null, child: Text('请选择')),
+              DropdownMenuItem<int?>(
+                value: null,
+                child: Text(l10n.regionSelect),
+              ),
               for (final option in _options[i])
                 DropdownMenuItem<int?>(
                   value: option['id'] as int,
@@ -170,7 +176,7 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
                 ),
             ],
             decoration: InputDecoration(
-              labelText: _levels[i].$1,
+              labelText: _regionLabel(i, l10n),
               border: const OutlineInputBorder(),
             ),
             onChanged: (value) => _select(i, value),
@@ -178,5 +184,14 @@ class _RegionSelectFieldState extends ConsumerState<RegionSelectField> {
         ],
       ],
     );
+  }
+
+  String _regionLabel(int level, AppLocalizations l10n) {
+    return switch (level) {
+      0 => l10n.regionCountry,
+      1 => l10n.regionProvince,
+      2 => l10n.regionCity,
+      _ => l10n.regionCounty,
+    };
   }
 }

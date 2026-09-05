@@ -449,4 +449,425 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get profileCurrencyNameZAR => 'South African rand';
+
+  @override
+  String get commonDelete => 'Delete';
+
+  @override
+  String get commonEdit => 'Edit';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get commonLoading => 'Loading...';
+
+  @override
+  String get commonEmptyTitle => 'Nothing here yet';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
+  String get commonAdd => 'Add';
+
+  @override
+  String get commonApply => 'Apply';
+
+  @override
+  String get commonApplying => 'Applying...';
+
+  @override
+  String get commonReset => 'Reset';
+
+  @override
+  String get commonDone => 'Done';
+
+  @override
+  String get commonSaveFailedRetry => 'Save failed. Try again.';
+
+  @override
+  String get commonSubmittedPendingReview =>
+      'Submitted. Pending administrator review.';
+
+  @override
+  String get commonListSeparator => ', ';
+
+  @override
+  String get navHome => 'Home';
+
+  @override
+  String get navPrices => 'Prices';
+
+  @override
+  String get navRecipes => 'Recipes';
+
+  @override
+  String get navIngredients => 'Ingredients';
+
+  @override
+  String get navProducts => 'Products';
+
+  @override
+  String get navMerchants => 'Merchants';
+
+  @override
+  String get navProfile => 'Profile';
+
+  @override
+  String get navMore => 'More';
+
+  @override
+  String get aliasAddHelper => 'Press + to add';
+
+  @override
+  String get aliasAdd => 'Add';
+
+  @override
+  String get regionSelect => 'Select';
+
+  @override
+  String get regionCountry => 'Country/region';
+
+  @override
+  String get regionProvince => 'Province';
+
+  @override
+  String get regionCity => 'City';
+
+  @override
+  String get regionCounty => 'County';
+
+  @override
+  String get calcContextTooltip => 'Region / calculation scope / currency';
+
+  @override
+  String get calcContextTitle => 'Region / calculation scope / currency';
+
+  @override
+  String get calcAppliedForSession => 'Applied for this session';
+
+  @override
+  String get calcApplyFailed => 'Could not apply. Try again.';
+
+  @override
+  String get calcResetToPersonal => 'Reset to personal settings';
+
+  @override
+  String pendingModificationReview(Object modifications) {
+    return 'Pending administrator review: edit $modifications';
+  }
+
+  @override
+  String pendingDeletionReview(Object deletions) {
+    return 'Pending administrator review: delete $deletions';
+  }
+
+  @override
+  String pendingCombinedReview(Object modifications, Object deletions) {
+    return 'Pending review: edit $modifications, delete $deletions';
+  }
+
+  @override
+  String get merchantPricesTitle => 'Merchant prices';
+
+  @override
+  String get merchantLowest => 'Lowest';
+
+  @override
+  String get nutritionTitle => 'Nutrition';
+
+  @override
+  String nutritionPerBase(Object base) {
+    return '(per $base)';
+  }
+
+  @override
+  String get nutritionNoData => 'No nutrition data';
+
+  @override
+  String get nutritionNoDataHint =>
+      'Use Edit in the top-right corner to add it';
+
+  @override
+  String get nutritionNutrient => 'Nutrient';
+
+  @override
+  String get nutritionQuantity => 'Quantity';
+
+  @override
+  String get nutritionUnit => 'Unit';
+
+  @override
+  String get nutritionCollapse => 'Collapse';
+
+  @override
+  String nutritionExpand(int count) {
+    return 'Show $count more';
+  }
+
+  @override
+  String get nutritionNrvExplanation =>
+      'NRV = percent of nutrient reference values';
+
+  @override
+  String get nutritionEditTitle => 'Edit nutrition';
+
+  @override
+  String nutritionEditTitleWithName(Object name) {
+    return '$name - Nutrition';
+  }
+
+  @override
+  String get nutritionClearCustom => 'Clear custom nutrition';
+
+  @override
+  String get nutritionManualEdit => 'Manual edit';
+
+  @override
+  String get nutritionConfirmMatch => 'Confirm match';
+
+  @override
+  String get nutritionConfirmMatchDescription =>
+      'This will replace the current nutrition data with the selected USDA food. This cannot be undone. Continue?';
+
+  @override
+  String get nutritionConfirmWrite => 'Confirm write';
+
+  @override
+  String get nutritionUsdaLoadFailed => 'Could not load USDA data';
+
+  @override
+  String get nutritionAtLeastOne => 'Enter at least one nutrient';
+
+  @override
+  String get nutritionBackToList => 'Back to list';
+
+  @override
+  String get nutritionSearchLabel => 'Search (original or translated text)';
+
+  @override
+  String get nutritionUsdaSearchPrompt => 'Enter keywords to search USDA foods';
+
+  @override
+  String nutritionUsdaResultDetail(
+      Object description, Object dataType, int nutrientCount) {
+    return '$description - $dataType - $nutrientCount nutrients';
+  }
+
+  @override
+  String get nutritionAddNutrient => 'Add nutrient';
+
+  @override
+  String get nutritionNutrientEnergy => 'Energy';
+
+  @override
+  String get nutritionNutrientProtein => 'Protein';
+
+  @override
+  String get nutritionNutrientFat => 'Fat';
+
+  @override
+  String get nutritionNutrientCarbohydrate => 'Carbohydrates';
+
+  @override
+  String get nutritionNutrientDietaryFiber => 'Dietary fiber';
+
+  @override
+  String get nutritionNutrientSodium => 'Sodium';
+
+  @override
+  String get nutritionNutrientPotassium => 'Potassium';
+
+  @override
+  String get nutritionNutrientCalcium => 'Calcium';
+
+  @override
+  String get nutritionNutrientIron => 'Iron';
+
+  @override
+  String get nutritionNutrientZinc => 'Zinc';
+
+  @override
+  String get nutritionNutrientPhosphorus => 'Phosphorus';
+
+  @override
+  String get nutritionNutrientMagnesium => 'Magnesium';
+
+  @override
+  String get nutritionNutrientVitaminA => 'Vitamin A';
+
+  @override
+  String get nutritionNutrientVitaminC => 'Vitamin C';
+
+  @override
+  String get nutritionNutrientVitaminB1 => 'Vitamin B1';
+
+  @override
+  String get nutritionNutrientVitaminB2 => 'Vitamin B2';
+
+  @override
+  String get nutritionNutrientVitaminB6 => 'Vitamin B6';
+
+  @override
+  String get nutritionNutrientVitaminB12 => 'Vitamin B12';
+
+  @override
+  String get nutritionNutrientVitaminD => 'Vitamin D';
+
+  @override
+  String get nutritionNutrientVitaminE => 'Vitamin E';
+
+  @override
+  String get nutritionNutrientVitaminK => 'Vitamin K';
+
+  @override
+  String get nutritionNutrientFolate => 'Folate';
+
+  @override
+  String get nutritionNutrientNiacin => 'Niacin';
+
+  @override
+  String get nutritionNutrientCholesterol => 'Cholesterol';
+
+  @override
+  String get nutritionNutrientSaturatedFat => 'Saturated fat';
+
+  @override
+  String get unitsScreenTitle => 'Units & densities';
+
+  @override
+  String unitsScreenTitleWithName(Object name) {
+    return '$name - Units & densities';
+  }
+
+  @override
+  String get unitsCustomTab => 'Custom units';
+
+  @override
+  String get unitsDensityTab => 'Densities';
+
+  @override
+  String get unitsAddTitle => 'Add unit';
+
+  @override
+  String get unitsEditTitle => 'Edit unit';
+
+  @override
+  String get unitsNameRequired => 'Enter a unit name';
+
+  @override
+  String get unitsNameLabel => 'Unit name *';
+
+  @override
+  String get unitsConversionLabel => 'Conversion (1 unit = ? each)';
+
+  @override
+  String get unitsWeightLabel => 'Weight (g/each)';
+
+  @override
+  String get unitsSetDefault => 'Set as default unit';
+
+  @override
+  String get unitsSave => 'Save unit';
+
+  @override
+  String get unitsUnmappedTitle => 'Units to configure (default 100 g)';
+
+  @override
+  String unitsUnmappedUsage(Object unit, int count) {
+    return '$unit ($count uses)';
+  }
+
+  @override
+  String unitsConversionDetail(Object unit, Object factor) {
+    return '1 $unit = $factor each';
+  }
+
+  @override
+  String unitsWeightDetail(Object weight) {
+    return '$weight g / each';
+  }
+
+  @override
+  String get unitsDefault => 'Default';
+
+  @override
+  String get unitsPendingReview => 'Pending';
+
+  @override
+  String get unitsDeleteTitle => 'Delete unit';
+
+  @override
+  String unitsDeleteMessage(Object unit) {
+    return 'Delete \"$unit\"?';
+  }
+
+  @override
+  String get unitsDensityRequired => 'Enter a valid density';
+
+  @override
+  String get densityAddTitle => 'Add density';
+
+  @override
+  String get densityLabel => 'Density (kg/m³) *';
+
+  @override
+  String get densityConditionLabel =>
+      'Condition (for example: diced / crushed, optional)';
+
+  @override
+  String get densitySave => 'Save density';
+
+  @override
+  String get densityDeleteTitle => 'Delete density';
+
+  @override
+  String get densityDeleteMessage => 'Delete this density record?';
+
+  @override
+  String get priceEditTitle => 'Edit price record';
+
+  @override
+  String get priceRecordTitle => 'Record price';
+
+  @override
+  String get priceMerchantLabel => 'Merchant';
+
+  @override
+  String get priceProductLabel => 'Product';
+
+  @override
+  String get priceLabel => 'Price';
+
+  @override
+  String get priceCurrencyLabel => 'Currency';
+
+  @override
+  String get priceQuantityLabel => 'Quantity';
+
+  @override
+  String get priceUnitLabel => 'Unit';
+
+  @override
+  String get priceIncludeInSpending => 'Include in spending';
+
+  @override
+  String get priceIncludeInSpendingDescription =>
+      'This price record came from an actual purchase and will be used in spending calculations';
+
+  @override
+  String get priceRecordedAt => 'Recorded at';
+
+  @override
+  String get priceNotesLabel => 'Notes';
+
+  @override
+  String get priceNotesHint => 'Notes (optional)';
+
+  @override
+  String get priceValidRequired => 'Enter a valid price';
+
+  @override
+  String get priceQuantityRequired => 'Enter a valid quantity';
 }

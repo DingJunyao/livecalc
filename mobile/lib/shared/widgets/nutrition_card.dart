@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/i18n/app_formatters.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
 import '../screens/nutrition_edit_screen.dart';
 
@@ -34,6 +35,7 @@ class NutritionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final info = nutrition;
     return Card(
       child: Padding(
@@ -46,11 +48,11 @@ class NutritionCard extends StatelessWidget {
                 Icon(Icons.food_bank_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('营养成分',
+                Text(l10n.nutritionTitle,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(width: 6),
-                Text('（每${_baseLabel(info)}）',
+                Text(l10n.nutritionPerBase(_baseLabel(info)),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: theme.colorScheme.outline)),
                 const Spacer(),
@@ -58,7 +60,7 @@ class NutritionCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: saving ? null : () => _openEditor(context),
                     icon: const Icon(Icons.edit_outlined, size: 16),
-                    label: const Text('编辑'),
+                    label: Text(l10n.commonEdit),
                   ),
               ],
             ),
@@ -83,11 +85,11 @@ class NutritionCard extends StatelessWidget {
                       Icon(Icons.no_food_outlined,
                           size: 40, color: theme.colorScheme.outlineVariant),
                       const SizedBox(height: 8),
-                      Text('暂无营养数据',
+                      Text(l10n.nutritionNoData,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline)),
                       const SizedBox(height: 4),
-                      Text('点击右上角「编辑」添加',
+                      Text(l10n.nutritionNoDataHint,
                           style: theme.textTheme.bodySmall
                               ?.copyWith(color: theme.colorScheme.outline)),
                     ],
@@ -141,6 +143,7 @@ class _NutritionTableState extends State<_NutritionTable> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final nutrients = widget.info.nutrients;
     final core = nutrients.length <= 5 ? nutrients : nutrients.take(5).toList();
     final others =
@@ -154,13 +157,17 @@ class _NutritionTableState extends State<_NutritionTable> {
         Container(
           color: theme.colorScheme.surfaceContainerHighest,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: const Row(
+          child: Row(
             children: [
-              Expanded(child: Text('营养素')),
+              Expanded(child: Text(l10n.nutritionNutrient)),
               SizedBox(
-                  width: valueW, child: Text('数量', textAlign: TextAlign.right)),
-              SizedBox(
-                  width: nrvW, child: Text('NRV%', textAlign: TextAlign.right)),
+                width: valueW,
+                child: Text(l10n.nutritionQuantity, textAlign: TextAlign.right),
+              ),
+              const SizedBox(
+                width: nrvW,
+                child: Text('NRV%', textAlign: TextAlign.right),
+              ),
             ],
           ),
         ),
@@ -172,7 +179,11 @@ class _NutritionTableState extends State<_NutritionTable> {
               onPressed: () => setState(() => _showAll = !_showAll),
               icon: Icon(_showAll ? Icons.expand_less : Icons.expand_more,
                   size: 18),
-              label: Text(_showAll ? '收起' : '展开 +${others.length} 项'),
+              label: Text(
+                _showAll
+                    ? l10n.nutritionCollapse
+                    : l10n.nutritionExpand(others.length),
+              ),
               style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -182,7 +193,7 @@ class _NutritionTableState extends State<_NutritionTable> {
           ),
         if (_showAll) ..._rows(theme, others, valueW, nrvW),
         const SizedBox(height: 8),
-        Text('NRV = 营养素参考值百分比',
+        Text(l10n.nutritionNrvExplanation,
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: theme.colorScheme.outline)),
       ],

@@ -435,4 +435,420 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get profileCurrencyNameZAR => '南非兰特';
+
+  @override
+  String get commonDelete => '删除';
+
+  @override
+  String get commonEdit => '编辑';
+
+  @override
+  String get commonRetry => '重试';
+
+  @override
+  String get commonLoading => '加载中...';
+
+  @override
+  String get commonEmptyTitle => '暂无数据';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
+  String get commonAdd => '添加';
+
+  @override
+  String get commonApply => '应用';
+
+  @override
+  String get commonApplying => '应用中...';
+
+  @override
+  String get commonReset => '重置';
+
+  @override
+  String get commonDone => '完成';
+
+  @override
+  String get commonSaveFailedRetry => '保存失败，请重试';
+
+  @override
+  String get commonSubmittedPendingReview => '已提交，待管理员审核';
+
+  @override
+  String get commonListSeparator => '、';
+
+  @override
+  String get navHome => '推荐';
+
+  @override
+  String get navPrices => '计价';
+
+  @override
+  String get navRecipes => '菜谱';
+
+  @override
+  String get navIngredients => '原料';
+
+  @override
+  String get navProducts => '商品';
+
+  @override
+  String get navMerchants => '商家';
+
+  @override
+  String get navProfile => '我的';
+
+  @override
+  String get navMore => '更多';
+
+  @override
+  String get aliasAddHelper => '输入后点击 + 添加';
+
+  @override
+  String get aliasAdd => '添加';
+
+  @override
+  String get regionSelect => '请选择';
+
+  @override
+  String get regionCountry => '国家/地区';
+
+  @override
+  String get regionProvince => '省份';
+
+  @override
+  String get regionCity => '城市';
+
+  @override
+  String get regionCounty => '区县';
+
+  @override
+  String get calcContextTooltip => '地区/计算范围/币种';
+
+  @override
+  String get calcContextTitle => '地区 / 计算范围 / 币种';
+
+  @override
+  String get calcAppliedForSession => '已应用（当前会话生效）';
+
+  @override
+  String get calcApplyFailed => '应用失败，请重试';
+
+  @override
+  String get calcResetToPersonal => '重置为个人配置';
+
+  @override
+  String pendingModificationReview(Object modifications) {
+    return '修改待管理员审核：$modifications';
+  }
+
+  @override
+  String pendingDeletionReview(Object deletions) {
+    return '删除待管理员审核：$deletions';
+  }
+
+  @override
+  String pendingCombinedReview(Object modifications, Object deletions) {
+    return '待管理员审核：修改$modifications、删除$deletions';
+  }
+
+  @override
+  String get merchantPricesTitle => '各商家价格';
+
+  @override
+  String get merchantLowest => '最低';
+
+  @override
+  String get nutritionTitle => '营养成分';
+
+  @override
+  String nutritionPerBase(Object base) {
+    return '（每$base）';
+  }
+
+  @override
+  String get nutritionNoData => '暂无营养数据';
+
+  @override
+  String get nutritionNoDataHint => '点击右上角「编辑」添加';
+
+  @override
+  String get nutritionNutrient => '营养素';
+
+  @override
+  String get nutritionQuantity => '数量';
+
+  @override
+  String get nutritionUnit => '单位';
+
+  @override
+  String get nutritionCollapse => '收起';
+
+  @override
+  String nutritionExpand(int count) {
+    return '展开 +$count 项';
+  }
+
+  @override
+  String get nutritionNrvExplanation => 'NRV = 营养素参考值百分比';
+
+  @override
+  String get nutritionEditTitle => '编辑营养成分';
+
+  @override
+  String nutritionEditTitleWithName(Object name) {
+    return '$name · 营养';
+  }
+
+  @override
+  String get nutritionClearCustom => '清空自定义';
+
+  @override
+  String get nutritionManualEdit => '手动编辑';
+
+  @override
+  String get nutritionConfirmMatch => '确认匹配';
+
+  @override
+  String get nutritionConfirmMatchDescription =>
+      '将清空当前营养数据并写入所选 USDA 食材的营养数据，此操作不可撤销。是否继续？';
+
+  @override
+  String get nutritionConfirmWrite => '确认写入';
+
+  @override
+  String get nutritionUsdaLoadFailed => 'USDA 数据加载失败';
+
+  @override
+  String get nutritionAtLeastOne => '请至少填写一项营养素';
+
+  @override
+  String get nutritionBackToList => '返回列表';
+
+  @override
+  String get nutritionSearchLabel => '搜索（原文/译文任意命中）';
+
+  @override
+  String get nutritionUsdaSearchPrompt => '输入关键词搜索 USDA 食材';
+
+  @override
+  String nutritionUsdaResultDetail(
+      Object description, Object dataType, int nutrientCount) {
+    return '$description · $dataType · $nutrientCount 项营养素';
+  }
+
+  @override
+  String get nutritionAddNutrient => '添加营养素';
+
+  @override
+  String get nutritionNutrientEnergy => '能量';
+
+  @override
+  String get nutritionNutrientProtein => '蛋白质';
+
+  @override
+  String get nutritionNutrientFat => '脂肪';
+
+  @override
+  String get nutritionNutrientCarbohydrate => '碳水化合物';
+
+  @override
+  String get nutritionNutrientDietaryFiber => '膳食纤维';
+
+  @override
+  String get nutritionNutrientSodium => '钠';
+
+  @override
+  String get nutritionNutrientPotassium => '钾';
+
+  @override
+  String get nutritionNutrientCalcium => '钙';
+
+  @override
+  String get nutritionNutrientIron => '铁';
+
+  @override
+  String get nutritionNutrientZinc => '锌';
+
+  @override
+  String get nutritionNutrientPhosphorus => '磷';
+
+  @override
+  String get nutritionNutrientMagnesium => '镁';
+
+  @override
+  String get nutritionNutrientVitaminA => '维生素A';
+
+  @override
+  String get nutritionNutrientVitaminC => '维生素C';
+
+  @override
+  String get nutritionNutrientVitaminB1 => '维生素B1';
+
+  @override
+  String get nutritionNutrientVitaminB2 => '维生素B2';
+
+  @override
+  String get nutritionNutrientVitaminB6 => '维生素B6';
+
+  @override
+  String get nutritionNutrientVitaminB12 => '维生素B12';
+
+  @override
+  String get nutritionNutrientVitaminD => '维生素D';
+
+  @override
+  String get nutritionNutrientVitaminE => '维生素E';
+
+  @override
+  String get nutritionNutrientVitaminK => '维生素K';
+
+  @override
+  String get nutritionNutrientFolate => '叶酸';
+
+  @override
+  String get nutritionNutrientNiacin => '烟酸';
+
+  @override
+  String get nutritionNutrientCholesterol => '胆固醇';
+
+  @override
+  String get nutritionNutrientSaturatedFat => '饱和脂肪';
+
+  @override
+  String get unitsScreenTitle => '单位与密度';
+
+  @override
+  String unitsScreenTitleWithName(Object name) {
+    return '$name · 单位密度';
+  }
+
+  @override
+  String get unitsCustomTab => '自定义单位';
+
+  @override
+  String get unitsDensityTab => '密度';
+
+  @override
+  String get unitsAddTitle => '添加单位';
+
+  @override
+  String get unitsEditTitle => '编辑单位';
+
+  @override
+  String get unitsNameRequired => '请输入单位名称';
+
+  @override
+  String get unitsNameLabel => '单位名称 *';
+
+  @override
+  String get unitsConversionLabel => '换算系数（1单位 = ? 个）';
+
+  @override
+  String get unitsWeightLabel => '单重（g/个）';
+
+  @override
+  String get unitsSetDefault => '设为默认单位';
+
+  @override
+  String get unitsSave => '保存单位';
+
+  @override
+  String get unitsUnmappedTitle => '待配置单位（默认 100 g）';
+
+  @override
+  String unitsUnmappedUsage(Object unit, int count) {
+    return '$unit（$count次）';
+  }
+
+  @override
+  String unitsConversionDetail(Object unit, Object factor) {
+    return '1 $unit = $factor 个';
+  }
+
+  @override
+  String unitsWeightDetail(Object weight) {
+    return '$weight g / 个';
+  }
+
+  @override
+  String get unitsDefault => '默认';
+
+  @override
+  String get unitsPendingReview => '待审';
+
+  @override
+  String get unitsDeleteTitle => '删除单位';
+
+  @override
+  String unitsDeleteMessage(Object unit) {
+    return '确定删除「$unit」吗？';
+  }
+
+  @override
+  String get unitsDensityRequired => '请输入有效密度';
+
+  @override
+  String get densityAddTitle => '添加密度';
+
+  @override
+  String get densityLabel => '密度（kg/m³）*';
+
+  @override
+  String get densityConditionLabel => '状态描述（如：切块 / 压碎，可选）';
+
+  @override
+  String get densitySave => '保存密度';
+
+  @override
+  String get densityDeleteTitle => '删除密度';
+
+  @override
+  String get densityDeleteMessage => '确定删除该密度记录吗？';
+
+  @override
+  String get priceEditTitle => '编辑价格记录';
+
+  @override
+  String get priceRecordTitle => '记录价格';
+
+  @override
+  String get priceMerchantLabel => '商家';
+
+  @override
+  String get priceProductLabel => '商品';
+
+  @override
+  String get priceLabel => '价格';
+
+  @override
+  String get priceCurrencyLabel => '币种';
+
+  @override
+  String get priceQuantityLabel => '数量';
+
+  @override
+  String get priceUnitLabel => '单位';
+
+  @override
+  String get priceIncludeInSpending => '计入支出';
+
+  @override
+  String get priceIncludeInSpendingDescription => '表示此价格记录来自实际购买，将用于支出计算';
+
+  @override
+  String get priceRecordedAt => '记录时间';
+
+  @override
+  String get priceNotesLabel => '备注';
+
+  @override
+  String get priceNotesHint => '备注（可选）';
+
+  @override
+  String get priceValidRequired => '请输入有效的价格';
+
+  @override
+  String get priceQuantityRequired => '请输入有效的数量';
 }

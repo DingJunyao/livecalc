@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/i18n/app_formatters.dart';
 import '../../features/merchants/models/merchant.dart';
 import '../../features/prices/repositories/price_repository.dart';
+import '../../l10n/app_localizations.dart';
 import '../utils/currency_fmt.dart';
 
 class PriceRecordFormResult {
@@ -140,8 +142,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     // 币种优先级：记录原币种 > 商家默认币种 > CNY
     var initialCurrency = args.initialCurrency ?? '';
     if (initialCurrency.isEmpty) {
-      final m =
-          args.merchants.where((m) => m.id == _merchantId).firstOrNull;
+      final m = args.merchants.where((m) => m.id == _merchantId).firstOrNull;
       final code = m?.defaultCurrency ?? m?.effectiveCurrency ?? '';
       initialCurrency = code.isNotEmpty ? code : 'CNY';
     }
@@ -210,12 +211,13 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   void _submit() {
     final price = double.tryParse(_priceController.text.trim());
     final quantity = double.tryParse(_quantityController.text.trim());
+    final l10n = AppLocalizations.of(context);
     if (price == null || price <= 0) {
-      _toast('请输入有效的价格');
+      _toast(l10n.priceValidRequired);
       return;
     }
     if (quantity == null || quantity <= 0) {
-      _toast('请输入有效的数量');
+      _toast(l10n.priceQuantityRequired);
       return;
     }
     final notes = _notesController.text.trim();
@@ -244,8 +246,11 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     final theme = Theme.of(context);
     final args = widget.arguments;
     final isEdit = args.initialPrice != null;
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(isEdit ? '编辑价格记录' : '记录价格')),
+      appBar: AppBar(
+        title: Text(isEdit ? l10n.priceEditTitle : l10n.priceRecordTitle),
+      ),
       body: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -291,7 +296,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      labelText: '商家',
+                      labelText: l10n.priceMerchantLabel,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -321,7 +326,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                   initialValue: _productId,
                   isExpanded: true,
                   decoration: InputDecoration(
-                    labelText: '商品',
+                    labelText: l10n.priceProductLabel,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -349,7 +354,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       ),
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: '价格',
+                        labelText: l10n.priceLabel,
                         prefixText: _currencySymbol,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -365,7 +370,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       initialValue: _currency,
                       isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: '币种',
+                        labelText: l10n.priceCurrencyLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -424,7 +429,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       ),
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
-                        labelText: '数量',
+                        labelText: l10n.priceQuantityLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -437,7 +442,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       initialValue: _unit,
                       isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: '单位',
+                        labelText: l10n.priceUnitLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -455,18 +460,17 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
               const SizedBox(height: 16),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('计入支出'),
-                subtitle: const Text('表示此价格记录来自实际购买，将用于支出计算'),
+                title: Text(l10n.priceIncludeInSpending),
+                subtitle: Text(l10n.priceIncludeInSpendingDescription),
                 value: _isPurchase,
                 onChanged: (v) => setState(() => _isPurchase = v),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule),
-                title: const Text('记录时间'),
+                title: Text(l10n.priceRecordedAt),
                 trailing: Text(
-                  '${_recordedAt.year}-${_recordedAt.month.toString().padLeft(2, '0')}-${_recordedAt.day.toString().padLeft(2, '0')} '
-                  '${_recordedAt.hour.toString().padLeft(2, '0')}:${_recordedAt.minute.toString().padLeft(2, '0')}',
+                  formatDateTime(_recordedAt),
                   style: theme.textTheme.bodyMedium,
                 ),
                 onTap: _pickRecordedAt,
@@ -475,8 +479,8 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                 controller: _notesController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: '备注',
-                  hintText: '备注（可选）',
+                  labelText: l10n.priceNotesLabel,
+                  hintText: l10n.priceNotesHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -485,7 +489,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _submit,
-                child: Text(isEdit ? '保存' : '添加'),
+                child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
               ),
             ],
           ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class AliasTagsField extends StatefulWidget {
   final String label;
@@ -53,6 +54,7 @@ class _AliasTagsFieldState extends State<AliasTagsField> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -62,10 +64,10 @@ class _AliasTagsFieldState extends State<AliasTagsField> {
           onSubmitted: (_) => _addTag(),
           decoration: InputDecoration(
             labelText: widget.label,
-            helperText: '输入后点击 + 添加',
+            helperText: l10n.aliasAddHelper,
             border: const OutlineInputBorder(),
             suffixIcon: IconButton(
-              tooltip: '添加',
+              tooltip: l10n.aliasAdd,
               icon: const Icon(Icons.add),
               onPressed: _addTag,
             ),

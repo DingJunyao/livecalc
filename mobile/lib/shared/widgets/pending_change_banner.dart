@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 /// A single, consolidated pending-review notice for a detail page.
 class PendingChangeBanner extends StatelessWidget {
@@ -26,14 +27,21 @@ class PendingChangeBanner extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
+    final l10n = AppLocalizations.of(context);
     final String message;
     if (deletionLabels.isEmpty) {
-      message = '修改待管理员审核：${modificationLabels.join('、')}';
+      message = l10n.pendingModificationReview(
+        modificationLabels.join(l10n.commonListSeparator),
+      );
     } else if (modificationLabels.isEmpty) {
-      message = '删除待管理员审核：${deletionLabels.join('、')}';
+      message = l10n.pendingDeletionReview(
+        deletionLabels.join(l10n.commonListSeparator),
+      );
     } else {
-      message =
-          '待管理员审核：修改${modificationLabels.join('、')}、删除${deletionLabels.join('、')}';
+      message = l10n.pendingCombinedReview(
+        modificationLabels.join(l10n.commonListSeparator),
+        deletionLabels.join(l10n.commonListSeparator),
+      );
     }
 
     return Container(

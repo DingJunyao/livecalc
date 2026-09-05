@@ -951,6 +951,787 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'南非兰特'**
   String get profileCurrencyNameZAR;
+
+  /// No description provided for @commonDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get commonDelete;
+
+  /// No description provided for @commonEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get commonEdit;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get commonRetry;
+
+  /// No description provided for @commonLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载中...'**
+  String get commonLoading;
+
+  /// No description provided for @commonEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无数据'**
+  String get commonEmptyTitle;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get commonClose;
+
+  /// No description provided for @commonAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get commonAdd;
+
+  /// No description provided for @commonApply.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get commonApply;
+
+  /// No description provided for @commonApplying.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用中...'**
+  String get commonApplying;
+
+  /// No description provided for @commonReset.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置'**
+  String get commonReset;
+
+  /// No description provided for @commonDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'完成'**
+  String get commonDone;
+
+  /// No description provided for @commonSaveFailedRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败，请重试'**
+  String get commonSaveFailedRetry;
+
+  /// No description provided for @commonSubmittedPendingReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'已提交，待管理员审核'**
+  String get commonSubmittedPendingReview;
+
+  /// No description provided for @commonListSeparator.
+  ///
+  /// In zh, this message translates to:
+  /// **'、'**
+  String get commonListSeparator;
+
+  /// No description provided for @navHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐'**
+  String get navHome;
+
+  /// No description provided for @navPrices.
+  ///
+  /// In zh, this message translates to:
+  /// **'计价'**
+  String get navPrices;
+
+  /// No description provided for @navRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get navRecipes;
+
+  /// No description provided for @navIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get navIngredients;
+
+  /// No description provided for @navProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get navProducts;
+
+  /// No description provided for @navMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get navMerchants;
+
+  /// No description provided for @navProfile.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的'**
+  String get navProfile;
+
+  /// No description provided for @navMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多'**
+  String get navMore;
+
+  /// No description provided for @aliasAddHelper.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入后点击 + 添加'**
+  String get aliasAddHelper;
+
+  /// No description provided for @aliasAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get aliasAdd;
+
+  /// No description provided for @regionSelect.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择'**
+  String get regionSelect;
+
+  /// No description provided for @regionCountry.
+  ///
+  /// In zh, this message translates to:
+  /// **'国家/地区'**
+  String get regionCountry;
+
+  /// No description provided for @regionProvince.
+  ///
+  /// In zh, this message translates to:
+  /// **'省份'**
+  String get regionProvince;
+
+  /// No description provided for @regionCity.
+  ///
+  /// In zh, this message translates to:
+  /// **'城市'**
+  String get regionCity;
+
+  /// No description provided for @regionCounty.
+  ///
+  /// In zh, this message translates to:
+  /// **'区县'**
+  String get regionCounty;
+
+  /// No description provided for @calcContextTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'地区/计算范围/币种'**
+  String get calcContextTooltip;
+
+  /// No description provided for @calcContextTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'地区 / 计算范围 / 币种'**
+  String get calcContextTitle;
+
+  /// No description provided for @calcAppliedForSession.
+  ///
+  /// In zh, this message translates to:
+  /// **'已应用（当前会话生效）'**
+  String get calcAppliedForSession;
+
+  /// No description provided for @calcApplyFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用失败，请重试'**
+  String get calcApplyFailed;
+
+  /// No description provided for @calcResetToPersonal.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置为个人配置'**
+  String get calcResetToPersonal;
+
+  /// No description provided for @pendingModificationReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改待管理员审核：{modifications}'**
+  String pendingModificationReview(Object modifications);
+
+  /// No description provided for @pendingDeletionReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除待管理员审核：{deletions}'**
+  String pendingDeletionReview(Object deletions);
+
+  /// No description provided for @pendingCombinedReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'待管理员审核：修改{modifications}、删除{deletions}'**
+  String pendingCombinedReview(Object modifications, Object deletions);
+
+  /// No description provided for @merchantPricesTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'各商家价格'**
+  String get merchantPricesTitle;
+
+  /// No description provided for @merchantLowest.
+  ///
+  /// In zh, this message translates to:
+  /// **'最低'**
+  String get merchantLowest;
+
+  /// No description provided for @nutritionTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养成分'**
+  String get nutritionTitle;
+
+  /// No description provided for @nutritionPerBase.
+  ///
+  /// In zh, this message translates to:
+  /// **'（每{base}）'**
+  String nutritionPerBase(Object base);
+
+  /// No description provided for @nutritionNoData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无营养数据'**
+  String get nutritionNoData;
+
+  /// No description provided for @nutritionNoDataHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右上角「编辑」添加'**
+  String get nutritionNoDataHint;
+
+  /// No description provided for @nutritionNutrient.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养素'**
+  String get nutritionNutrient;
+
+  /// No description provided for @nutritionQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量'**
+  String get nutritionQuantity;
+
+  /// No description provided for @nutritionUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位'**
+  String get nutritionUnit;
+
+  /// No description provided for @nutritionCollapse.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起'**
+  String get nutritionCollapse;
+
+  /// No description provided for @nutritionExpand.
+  ///
+  /// In zh, this message translates to:
+  /// **'展开 +{count} 项'**
+  String nutritionExpand(int count);
+
+  /// No description provided for @nutritionNrvExplanation.
+  ///
+  /// In zh, this message translates to:
+  /// **'NRV = 营养素参考值百分比'**
+  String get nutritionNrvExplanation;
+
+  /// No description provided for @nutritionEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑营养成分'**
+  String get nutritionEditTitle;
+
+  /// No description provided for @nutritionEditTitleWithName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · 营养'**
+  String nutritionEditTitleWithName(Object name);
+
+  /// No description provided for @nutritionClearCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空自定义'**
+  String get nutritionClearCustom;
+
+  /// No description provided for @nutritionManualEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动编辑'**
+  String get nutritionManualEdit;
+
+  /// No description provided for @nutritionConfirmMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认匹配'**
+  String get nutritionConfirmMatch;
+
+  /// No description provided for @nutritionConfirmMatchDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清空当前营养数据并写入所选 USDA 食材的营养数据，此操作不可撤销。是否继续？'**
+  String get nutritionConfirmMatchDescription;
+
+  /// No description provided for @nutritionConfirmWrite.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认写入'**
+  String get nutritionConfirmWrite;
+
+  /// No description provided for @nutritionUsdaLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'USDA 数据加载失败'**
+  String get nutritionUsdaLoadFailed;
+
+  /// No description provided for @nutritionAtLeastOne.
+  ///
+  /// In zh, this message translates to:
+  /// **'请至少填写一项营养素'**
+  String get nutritionAtLeastOne;
+
+  /// No description provided for @nutritionBackToList.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回列表'**
+  String get nutritionBackToList;
+
+  /// No description provided for @nutritionSearchLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索（原文/译文任意命中）'**
+  String get nutritionSearchLabel;
+
+  /// No description provided for @nutritionUsdaSearchPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入关键词搜索 USDA 食材'**
+  String get nutritionUsdaSearchPrompt;
+
+  /// No description provided for @nutritionUsdaResultDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'{description} · {dataType} · {nutrientCount} 项营养素'**
+  String nutritionUsdaResultDetail(
+      Object description, Object dataType, int nutrientCount);
+
+  /// No description provided for @nutritionAddNutrient.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加营养素'**
+  String get nutritionAddNutrient;
+
+  /// No description provided for @nutritionNutrientEnergy.
+  ///
+  /// In zh, this message translates to:
+  /// **'能量'**
+  String get nutritionNutrientEnergy;
+
+  /// No description provided for @nutritionNutrientProtein.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白质'**
+  String get nutritionNutrientProtein;
+
+  /// No description provided for @nutritionNutrientFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪'**
+  String get nutritionNutrientFat;
+
+  /// No description provided for @nutritionNutrientCarbohydrate.
+  ///
+  /// In zh, this message translates to:
+  /// **'碳水化合物'**
+  String get nutritionNutrientCarbohydrate;
+
+  /// No description provided for @nutritionNutrientDietaryFiber.
+  ///
+  /// In zh, this message translates to:
+  /// **'膳食纤维'**
+  String get nutritionNutrientDietaryFiber;
+
+  /// No description provided for @nutritionNutrientSodium.
+  ///
+  /// In zh, this message translates to:
+  /// **'钠'**
+  String get nutritionNutrientSodium;
+
+  /// No description provided for @nutritionNutrientPotassium.
+  ///
+  /// In zh, this message translates to:
+  /// **'钾'**
+  String get nutritionNutrientPotassium;
+
+  /// No description provided for @nutritionNutrientCalcium.
+  ///
+  /// In zh, this message translates to:
+  /// **'钙'**
+  String get nutritionNutrientCalcium;
+
+  /// No description provided for @nutritionNutrientIron.
+  ///
+  /// In zh, this message translates to:
+  /// **'铁'**
+  String get nutritionNutrientIron;
+
+  /// No description provided for @nutritionNutrientZinc.
+  ///
+  /// In zh, this message translates to:
+  /// **'锌'**
+  String get nutritionNutrientZinc;
+
+  /// No description provided for @nutritionNutrientPhosphorus.
+  ///
+  /// In zh, this message translates to:
+  /// **'磷'**
+  String get nutritionNutrientPhosphorus;
+
+  /// No description provided for @nutritionNutrientMagnesium.
+  ///
+  /// In zh, this message translates to:
+  /// **'镁'**
+  String get nutritionNutrientMagnesium;
+
+  /// No description provided for @nutritionNutrientVitaminA.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素A'**
+  String get nutritionNutrientVitaminA;
+
+  /// No description provided for @nutritionNutrientVitaminC.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素C'**
+  String get nutritionNutrientVitaminC;
+
+  /// No description provided for @nutritionNutrientVitaminB1.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素B1'**
+  String get nutritionNutrientVitaminB1;
+
+  /// No description provided for @nutritionNutrientVitaminB2.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素B2'**
+  String get nutritionNutrientVitaminB2;
+
+  /// No description provided for @nutritionNutrientVitaminB6.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素B6'**
+  String get nutritionNutrientVitaminB6;
+
+  /// No description provided for @nutritionNutrientVitaminB12.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素B12'**
+  String get nutritionNutrientVitaminB12;
+
+  /// No description provided for @nutritionNutrientVitaminD.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素D'**
+  String get nutritionNutrientVitaminD;
+
+  /// No description provided for @nutritionNutrientVitaminE.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素E'**
+  String get nutritionNutrientVitaminE;
+
+  /// No description provided for @nutritionNutrientVitaminK.
+  ///
+  /// In zh, this message translates to:
+  /// **'维生素K'**
+  String get nutritionNutrientVitaminK;
+
+  /// No description provided for @nutritionNutrientFolate.
+  ///
+  /// In zh, this message translates to:
+  /// **'叶酸'**
+  String get nutritionNutrientFolate;
+
+  /// No description provided for @nutritionNutrientNiacin.
+  ///
+  /// In zh, this message translates to:
+  /// **'烟酸'**
+  String get nutritionNutrientNiacin;
+
+  /// No description provided for @nutritionNutrientCholesterol.
+  ///
+  /// In zh, this message translates to:
+  /// **'胆固醇'**
+  String get nutritionNutrientCholesterol;
+
+  /// No description provided for @nutritionNutrientSaturatedFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'饱和脂肪'**
+  String get nutritionNutrientSaturatedFat;
+
+  /// No description provided for @unitsScreenTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位与密度'**
+  String get unitsScreenTitle;
+
+  /// No description provided for @unitsScreenTitleWithName.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · 单位密度'**
+  String unitsScreenTitleWithName(Object name);
+
+  /// No description provided for @unitsCustomTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位'**
+  String get unitsCustomTab;
+
+  /// No description provided for @unitsDensityTab.
+  ///
+  /// In zh, this message translates to:
+  /// **'密度'**
+  String get unitsDensityTab;
+
+  /// No description provided for @unitsAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加单位'**
+  String get unitsAddTitle;
+
+  /// No description provided for @unitsEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑单位'**
+  String get unitsEditTitle;
+
+  /// No description provided for @unitsNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入单位名称'**
+  String get unitsNameRequired;
+
+  /// No description provided for @unitsNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位名称 *'**
+  String get unitsNameLabel;
+
+  /// No description provided for @unitsConversionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'换算系数（1单位 = ? 个）'**
+  String get unitsConversionLabel;
+
+  /// No description provided for @unitsWeightLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单重（g/个）'**
+  String get unitsWeightLabel;
+
+  /// No description provided for @unitsSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认单位'**
+  String get unitsSetDefault;
+
+  /// No description provided for @unitsSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存单位'**
+  String get unitsSave;
+
+  /// No description provided for @unitsUnmappedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'待配置单位（默认 100 g）'**
+  String get unitsUnmappedTitle;
+
+  /// No description provided for @unitsUnmappedUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'{unit}（{count}次）'**
+  String unitsUnmappedUsage(Object unit, int count);
+
+  /// No description provided for @unitsConversionDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'1 {unit} = {factor} 个'**
+  String unitsConversionDetail(Object unit, Object factor);
+
+  /// No description provided for @unitsWeightDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'{weight} g / 个'**
+  String unitsWeightDetail(Object weight);
+
+  /// No description provided for @unitsDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get unitsDefault;
+
+  /// No description provided for @unitsPendingReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'待审'**
+  String get unitsPendingReview;
+
+  /// No description provided for @unitsDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除单位'**
+  String get unitsDeleteTitle;
+
+  /// No description provided for @unitsDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{unit}」吗？'**
+  String unitsDeleteMessage(Object unit);
+
+  /// No description provided for @unitsDensityRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效密度'**
+  String get unitsDensityRequired;
+
+  /// No description provided for @densityAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加密度'**
+  String get densityAddTitle;
+
+  /// No description provided for @densityLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'密度（kg/m³）*'**
+  String get densityLabel;
+
+  /// No description provided for @densityConditionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态描述（如：切块 / 压碎，可选）'**
+  String get densityConditionLabel;
+
+  /// No description provided for @densitySave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存密度'**
+  String get densitySave;
+
+  /// No description provided for @densityDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除密度'**
+  String get densityDeleteTitle;
+
+  /// No description provided for @densityDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除该密度记录吗？'**
+  String get densityDeleteMessage;
+
+  /// No description provided for @priceEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑价格记录'**
+  String get priceEditTitle;
+
+  /// No description provided for @priceRecordTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录价格'**
+  String get priceRecordTitle;
+
+  /// No description provided for @priceMerchantLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get priceMerchantLabel;
+
+  /// No description provided for @priceProductLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get priceProductLabel;
+
+  /// No description provided for @priceLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格'**
+  String get priceLabel;
+
+  /// No description provided for @priceCurrencyLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'币种'**
+  String get priceCurrencyLabel;
+
+  /// No description provided for @priceQuantityLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量'**
+  String get priceQuantityLabel;
+
+  /// No description provided for @priceUnitLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位'**
+  String get priceUnitLabel;
+
+  /// No description provided for @priceIncludeInSpending.
+  ///
+  /// In zh, this message translates to:
+  /// **'计入支出'**
+  String get priceIncludeInSpending;
+
+  /// No description provided for @priceIncludeInSpendingDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'表示此价格记录来自实际购买，将用于支出计算'**
+  String get priceIncludeInSpendingDescription;
+
+  /// No description provided for @priceRecordedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录时间'**
+  String get priceRecordedAt;
+
+  /// No description provided for @priceNotesLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get priceNotesLabel;
+
+  /// No description provided for @priceNotesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注（可选）'**
+  String get priceNotesHint;
+
+  /// No description provided for @priceValidRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效的价格'**
+  String get priceValidRequired;
+
+  /// No description provided for @priceQuantityRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入有效的数量'**
+  String get priceQuantityRequired;
 }
 
 class _AppLocalizationsDelegate

@@ -38,6 +38,7 @@ import '../../features/auth/screens/register_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/edit_account_screen.dart';
 import '../../features/prices/providers/price_provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../../shared/screens/entity_units_screen.dart';
 import '../../shared/screens/nutrition_edit_screen.dart';
 import '../../shared/screens/price_record_edit_screen.dart';
@@ -509,6 +510,17 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
 }
 
 /// 底栏/侧栏 tab 定义：prefixes 决定选中态归属（含子路由前缀匹配）。
+enum _TabLabel {
+  home,
+  prices,
+  recipes,
+  ingredients,
+  products,
+  merchants,
+  profile,
+  more
+}
+
 class _Tab {
   const _Tab({
     required this.label,
@@ -518,7 +530,7 @@ class _Tab {
     this.route,
   });
 
-  final String label;
+  final _TabLabel label;
   final IconData icon;
   final IconData selectedIcon;
   final List<String> prefixes;
@@ -526,49 +538,49 @@ class _Tab {
 }
 
 const _homeTab = _Tab(
-    label: '推荐',
+    label: _TabLabel.home,
     icon: Icons.home_outlined,
     selectedIcon: Icons.home,
     prefixes: ['/home'],
     route: '/home');
 const _pricesTab = _Tab(
-    label: '计价',
+    label: _TabLabel.prices,
     icon: Icons.receipt_long_outlined,
     selectedIcon: Icons.receipt_long,
     prefixes: ['/prices'],
     route: '/prices');
 const _recipesTab = _Tab(
-    label: '菜谱',
+    label: _TabLabel.recipes,
     icon: Icons.restaurant_outlined,
     selectedIcon: Icons.restaurant,
     prefixes: ['/recipes'],
     route: '/recipes');
 const _ingredientsTab = _Tab(
-    label: '原料',
+    label: _TabLabel.ingredients,
     icon: Icons.spa_outlined,
     selectedIcon: Icons.spa,
     prefixes: ['/ingredients'],
     route: '/ingredients');
 const _productsTab = _Tab(
-    label: '商品',
+    label: _TabLabel.products,
     icon: Icons.shopping_bag_outlined,
     selectedIcon: Icons.shopping_bag,
     prefixes: ['/products'],
     route: '/products');
 const _merchantsTab = _Tab(
-    label: '商家',
+    label: _TabLabel.merchants,
     icon: Icons.store_outlined,
     selectedIcon: Icons.store,
     prefixes: ['/merchants'],
     route: '/merchants');
 const _profileTab = _Tab(
-    label: '我的',
+    label: _TabLabel.profile,
     icon: Icons.person_outline,
     selectedIcon: Icons.person,
     prefixes: ['/profile'],
     route: '/profile');
 const _moreTab = _Tab(
-    label: '更多',
+    label: _TabLabel.more,
     icon: Icons.menu,
     selectedIcon: Icons.menu,
     prefixes: ['/ingredients', '/products', '/merchants', '/profile']);
@@ -589,6 +601,19 @@ const _moreMenuTabs = [
   _merchantsTab,
   _profileTab,
 ];
+
+String _tabLabel(_TabLabel label, AppLocalizations l10n) {
+  return switch (label) {
+    _TabLabel.home => l10n.navHome,
+    _TabLabel.prices => l10n.navPrices,
+    _TabLabel.recipes => l10n.navRecipes,
+    _TabLabel.ingredients => l10n.navIngredients,
+    _TabLabel.products => l10n.navProducts,
+    _TabLabel.merchants => l10n.navMerchants,
+    _TabLabel.profile => l10n.navProfile,
+    _TabLabel.more => l10n.navMore,
+  };
+}
 
 /// 当前路由在哪个 tab 下：前缀精确相等或「前缀/」开头。
 int _tabIndexFor(List<_Tab> tabs, String location) {
@@ -661,6 +686,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     final wide = MediaQuery.of(context).size.width >= 600;
     final tabs = wide ? _desktopTabs : _mobileTabs;
     final selectedIndex = _tabIndexFor(tabs, location);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       body: Row(
@@ -676,7 +702,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   NavigationRailDestination(
                     icon: Icon(t.icon),
                     selectedIcon: Icon(t.selectedIcon),
-                    label: Text(t.label),
+                    label: Text(_tabLabel(t.label, l10n)),
                   ),
               ],
             ),
@@ -690,6 +716,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
 
   Widget _buildBottomNav(BuildContext context, int selectedIndex) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Material(
       color: theme.colorScheme.surface,
       child: SafeArea(
@@ -706,8 +733,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                 Expanded(
                   child: _NavItem(
                     // key 用 label（如 tab-计价），避免 route 带 '/' 前缀与测试长按断言不一致
-                    itemKey: ValueKey('tab-${_mobileTabs[i].label}'),
-                    label: _mobileTabs[i].label,
+                    itemKey: ValueKey(
+                      'tab-${_tabLabel(_mobileTabs[i].label, l10n)}',
+                    ),
+                    label: _tabLabel(_mobileTabs[i].label, l10n),
                     icon: _mobileTabs[i].icon,
                     selectedIcon: _mobileTabs[i].selectedIcon,
                     selected: i == selectedIndex,
@@ -736,6 +765,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     // 在 builder 外取当前路由（builder 内 ctx 在 Overlay 下，拿不到 GoRouterState）
     final location = GoRouterState.of(context).matchedLocation;
     final selectedIdx = _tabIndexFor(_moreMenuTabs, location);
+    final l10n = AppLocalizations.of(context);
     showModalBottomSheet<void>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -753,12 +783,12 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
               child: Row(
                 children: [
                   Text(
-                    '更多',
+                    l10n.navMore,
                     style: Theme.of(ctx).textTheme.titleMedium,
                   ),
                   const Spacer(),
                   IconButton(
-                    tooltip: '关闭',
+                    tooltip: l10n.commonClose,
                     icon: const Icon(Icons.close),
                     onPressed: () => Navigator.of(ctx).pop(),
                   ),
@@ -773,8 +803,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                   for (var i = 0; i < _moreMenuTabs.length; i++)
                     Expanded(
                       child: _NavItem(
-                        itemKey: ValueKey('more-${_moreMenuTabs[i].label}'),
-                        label: _moreMenuTabs[i].label,
+                        itemKey: ValueKey(
+                          'more-${_tabLabel(_moreMenuTabs[i].label, l10n)}',
+                        ),
+                        label: _tabLabel(_moreMenuTabs[i].label, l10n),
                         icon: _moreMenuTabs[i].icon,
                         selectedIcon: _moreMenuTabs[i].selectedIcon,
                         selected: i == selectedIdx,

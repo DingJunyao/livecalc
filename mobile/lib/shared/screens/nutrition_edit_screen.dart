@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../core/i18n/app_formatters.dart';
 import '../../features/nutrition/models/usda_models.dart';
 import '../../features/nutrition/repositories/usda_repository.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
 
 class NutritionEditResult {
@@ -151,7 +152,9 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
     } on Exception {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('USDA 数据加载失败')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).nutritionUsdaLoadFailed),
+          ),
         );
       }
     } finally {
@@ -165,16 +168,18 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('确认匹配'),
-        content: const Text('将清空当前营养数据并写入所选 USDA 食材的营养数据，此操作不可撤销。是否继续？'),
+        title: Text(AppLocalizations.of(context).nutritionConfirmMatch),
+        content: Text(
+          AppLocalizations.of(context).nutritionConfirmMatchDescription,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(AppLocalizations.of(ctx).commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('确认写入'),
+            child: Text(AppLocalizations.of(ctx).nutritionConfirmWrite),
           ),
         ],
       ),
@@ -204,7 +209,9 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
     }
     if (entries.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少填写一项营养素')),
+        SnackBar(
+          content: Text(AppLocalizations.of(context).nutritionAtLeastOne),
+        ),
       );
       return;
     }
@@ -237,7 +244,13 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
       if (!mounted) return;
       if (pending) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message.isEmpty ? '已提交，待管理员审核' : message)),
+          SnackBar(
+            content: Text(
+              message.isEmpty
+                  ? AppLocalizations.of(context).commonSubmittedPendingReview
+                  : message,
+            ),
+          ),
         );
         Navigator.of(context)
             .pop(const NutritionEditResult(saved: true, pending: true));
@@ -248,7 +261,11 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
     } on Exception {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).commonSaveFailedRetry,
+            ),
+          ),
         );
       }
     } finally {
@@ -259,24 +276,27 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-            widget.entityName == null ? '编辑营养成分' : '${widget.entityName} · 营养'),
+        title: Text(widget.entityName == null
+            ? l10n.nutritionEditTitle
+            : l10n.nutritionEditTitleWithName(widget.entityName!)),
         actions: [
           if (widget.allowClear && !_usdaMode)
             TextButton(
               onPressed: _saving ? null : _clearCustom,
-              child: const Text('清空自定义'),
+              child: Text(l10n.nutritionClearCustom),
             ),
         ],
       ),
       body: Column(
         children: [
           SegmentedButton<bool>(
-            segments: const [
-              ButtonSegment(value: false, label: Text('手动编辑')),
-              ButtonSegment(value: true, label: Text('USDA')),
+            segments: [
+              ButtonSegment(
+                  value: false, label: Text(l10n.nutritionManualEdit)),
+              const ButtonSegment(value: true, label: Text('USDA')),
             ],
             selected: {_usdaMode},
             onSelectionChanged: (values) =>
@@ -299,7 +319,9 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(_usdaMode ? '确认匹配' : '保存'),
+                : Text(
+                    _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave,
+                  ),
           ),
         ),
       ),
@@ -307,15 +329,16 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   }
 
   Widget _buildManualPane(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const Row(
+        Row(
           children: [
-            Expanded(child: Text('营养素')),
-            SizedBox(width: 96, child: Text('数量')),
-            SizedBox(width: 88, child: Text('单位')),
-            SizedBox(width: 40),
+            Expanded(child: Text(l10n.nutritionNutrient)),
+            SizedBox(width: 96, child: Text(l10n.nutritionQuantity)),
+            SizedBox(width: 88, child: Text(l10n.nutritionUnit)),
+            const SizedBox(width: 40),
           ],
         ),
         const SizedBox(height: 8),
@@ -333,7 +356,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
           child: TextButton.icon(
             onPressed: () => setState(() => _addRow()),
             icon: const Icon(Icons.add),
-            label: const Text('添加营养素'),
+            label: Text(l10n.nutritionAddNutrient),
           ),
         ),
       ],
@@ -341,6 +364,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   }
 
   Widget _buildUsdaPane(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     final selected = _selected;
     if (selected != null) {
       return ListView(
@@ -351,7 +375,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
             child: TextButton.icon(
               onPressed: () => setState(() => _selected = null),
               icon: const Icon(Icons.arrow_back),
-              label: const Text('返回列表'),
+              label: Text(l10n.nutritionBackToList),
             ),
           ),
           Text(
@@ -388,10 +412,10 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
             controller: _searchController,
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _searchUsda(),
-            decoration: const InputDecoration(
-              labelText: '搜索（原文/译文任意命中）',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.nutritionSearchLabel,
+              prefixIcon: const Icon(Icons.search),
+              border: const OutlineInputBorder(),
             ),
           ),
         ),
@@ -400,7 +424,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
           child: _results.isEmpty
               ? Center(
                   child: Text(
-                    '输入关键词搜索 USDA 食材',
+                    l10n.nutritionUsdaSearchPrompt,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
@@ -412,7 +436,11 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
                     return ListTile(
                       title: Text(food.displayName),
                       subtitle: Text(
-                        '${food.description} · ${food.dataType} · ${food.nutrientCount} 项营养素',
+                        l10n.nutritionUsdaResultDetail(
+                          food.description,
+                          food.dataType,
+                          food.nutrientCount,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -482,6 +510,37 @@ const _nutrientOptions = <({String label, List<String> units})>[
   (label: '饱和脂肪', units: ['g']),
 ];
 
+String _nutrientDisplayLabel(String label, AppLocalizations l10n) {
+  return switch (label) {
+    '能量' => l10n.nutritionNutrientEnergy,
+    '蛋白质' => l10n.nutritionNutrientProtein,
+    '脂肪' => l10n.nutritionNutrientFat,
+    '碳水化合物' => l10n.nutritionNutrientCarbohydrate,
+    '膳食纤维' => l10n.nutritionNutrientDietaryFiber,
+    '钠' => l10n.nutritionNutrientSodium,
+    '钾' => l10n.nutritionNutrientPotassium,
+    '钙' => l10n.nutritionNutrientCalcium,
+    '铁' => l10n.nutritionNutrientIron,
+    '锌' => l10n.nutritionNutrientZinc,
+    '磷' => l10n.nutritionNutrientPhosphorus,
+    '镁' => l10n.nutritionNutrientMagnesium,
+    '维生素A' => l10n.nutritionNutrientVitaminA,
+    '维生素C' => l10n.nutritionNutrientVitaminC,
+    '维生素B1' => l10n.nutritionNutrientVitaminB1,
+    '维生素B2' => l10n.nutritionNutrientVitaminB2,
+    '维生素B6' => l10n.nutritionNutrientVitaminB6,
+    '维生素B12' => l10n.nutritionNutrientVitaminB12,
+    '维生素D' => l10n.nutritionNutrientVitaminD,
+    '维生素E' => l10n.nutritionNutrientVitaminE,
+    '维生素K' => l10n.nutritionNutrientVitaminK,
+    '叶酸' => l10n.nutritionNutrientFolate,
+    '烟酸' => l10n.nutritionNutrientNiacin,
+    '胆固醇' => l10n.nutritionNutrientCholesterol,
+    '饱和脂肪' => l10n.nutritionNutrientSaturatedFat,
+    _ => label,
+  };
+}
+
 List<String> _unitsFor(String label, String currentUnit) {
   for (final option in _nutrientOptions) {
     if (option.label == label) return option.units;
@@ -510,6 +569,7 @@ class _NutritionEditorRowState extends State<_NutritionEditorRow> {
   @override
   Widget build(BuildContext context) {
     final row = widget.row;
+    final l10n = AppLocalizations.of(context);
     final options = [
       ..._nutrientOptions,
       if (row.label.isNotEmpty &&
@@ -522,14 +582,21 @@ class _NutritionEditorRowState extends State<_NutritionEditorRow> {
         DropdownButtonFormField<String>(
           isExpanded: true,
           initialValue: row.label.isEmpty ? null : row.label,
-          decoration: const InputDecoration(
-            labelText: '营养素',
+          decoration: InputDecoration(
+            labelText: l10n.nutritionNutrient,
             isDense: true,
-            border: OutlineInputBorder(),
+            border: const OutlineInputBorder(),
           ),
+          selectedItemBuilder: (context) => [
+            for (final option in options)
+              Text(_nutrientDisplayLabel(option.label, l10n)),
+          ],
           items: [
             for (final option in options)
-              DropdownMenuItem(value: option.label, child: Text(option.label)),
+              DropdownMenuItem(
+                value: option.label,
+                child: Text(_nutrientDisplayLabel(option.label, l10n)),
+              ),
           ],
           onChanged: (value) {
             if (value == null) return;

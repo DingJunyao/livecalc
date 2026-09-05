@@ -1,21 +1,25 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 
 class EmptyState extends StatelessWidget {
   final IconData icon;
-  final String title;
+  final String? title;
   final String? subtitle;
   final Widget? action;
 
   const EmptyState({
     super.key,
     required this.icon,
-    required this.title,
+    this.title,
     this.subtitle,
     this.action,
   });
 
   @override
   Widget build(BuildContext context) {
+    final title = (this.title == null || this.title!.isEmpty)
+        ? AppLocalizations.of(context).commonEmptyTitle
+        : this.title!;
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),

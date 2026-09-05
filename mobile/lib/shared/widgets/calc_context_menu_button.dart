@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_client.dart';
 import '../../features/auth/providers/auth_provider.dart';
+import '../../l10n/app_localizations.dart';
 import '../providers/calc_context_provider.dart';
 import 'region_select_field.dart';
 
@@ -11,9 +12,10 @@ class CalcContextMenuButton extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
     return IconButton(
       icon: const Icon(Icons.public),
-      tooltip: '地区/计算范围/币种',
+      tooltip: l10n.calcContextTooltip,
       onPressed: () => _showSheet(context, ref),
     );
   }
@@ -44,23 +46,17 @@ class CalcContextMenuButton extends ConsumerWidget {
   }
 }
 
-const _scopeOptions = [
-  ('', '全部地区'),
-  ('country', '国家/地区'),
-  ('province', '省份'),
-  ('city', '城市'),
-  ('county', '区县'),
-];
+const _scopeOptions = ['', 'country', 'province', 'city', 'county'];
 
 const _fallbackCurrencies = [
-  {'code': 'CNY', 'name': '人民币'},
-  {'code': 'USD', 'name': '美元'},
-  {'code': 'EUR', 'name': '欧元'},
-  {'code': 'JPY', 'name': '日元'},
-  {'code': 'GBP', 'name': '英镑'},
-  {'code': 'HKD', 'name': '港币'},
-  {'code': 'KRW', 'name': '韩元'},
-  {'code': 'SGD', 'name': '新加坡元'},
+  {'code': 'CNY'},
+  {'code': 'USD'},
+  {'code': 'EUR'},
+  {'code': 'JPY'},
+  {'code': 'GBP'},
+  {'code': 'HKD'},
+  {'code': 'KRW'},
+  {'code': 'SGD'},
 ];
 
 class CalcContextSheet extends ConsumerStatefulWidget {
@@ -110,8 +106,7 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
     } catch (_) {
       if (mounted) {
         setState(() => _currencies = [
-              for (final c in _fallbackCurrencies)
-                Map<String, dynamic>.from(c),
+              for (final c in _fallbackCurrencies) Map<String, dynamic>.from(c),
             ]);
       }
     }
@@ -129,13 +124,17 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已应用（当前会话生效）')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).calcAppliedForSession),
+          ),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('应用失败，请重试')),
+          SnackBar(
+            content: Text(AppLocalizations.of(context).calcApplyFailed),
+          ),
         );
       }
     } finally {
@@ -151,6 +150,7 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final selectedCurrency = _currency ?? '';
     return SafeArea(
       child: Padding(
@@ -162,7 +162,7 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
             children: [
               Row(
                 children: [
-                  Text('地区 / 计算范围 / 币种',
+                  Text(l10n.calcContextTitle,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const Spacer(),
@@ -173,20 +173,24 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                 ],
               ),
               const SizedBox(height: 8),
-              Text('所在地区', style: theme.textTheme.titleSmall),
+              Text(l10n.authRegion, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
               RegionSelectField(
                 value: _regionId,
                 onChanged: (v) => setState(() => _regionId = v),
               ),
               const SizedBox(height: 16),
-              Text('计算范围', style: theme.textTheme.titleSmall),
+              Text(l10n.profileDefaultCalcScope,
+                  style: theme.textTheme.titleSmall),
               const SizedBox(height: 4),
               DropdownButtonFormField<String>(
                 initialValue: _scope,
                 items: [
-                  for (final (value, label) in _scopeOptions)
-                    DropdownMenuItem(value: value, child: Text(label)),
+                  for (final value in _scopeOptions)
+                    DropdownMenuItem(
+                      value: value,
+                      child: Text(_scopeLabel(value, l10n)),
+                    ),
                 ],
                 decoration: _inputDecoration,
                 menuMaxHeight: 320,
@@ -194,18 +198,22 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                     setState(() => _scope = value ?? 'country'),
               ),
               const SizedBox(height: 16),
-              Text('币种', style: theme.textTheme.titleSmall),
+              Text(l10n.profileDefaultCurrency,
+                  style: theme.textTheme.titleSmall),
               const SizedBox(height: 4),
               DropdownButtonFormField<String>(
                 initialValue: selectedCurrency,
                 isExpanded: true,
                 items: [
-                  const DropdownMenuItem(value: '', child: Text('跟随所在地区')),
+                  DropdownMenuItem(
+                    value: '',
+                    child: Text(l10n.profileFollowRegion),
+                  ),
                   for (final c in _currencies)
                     DropdownMenuItem(
                       value: c['code'] as String? ?? '',
                       child: Text(
-                        '${c['name']} ${c['code']}',
+                        '${_currencyName(c, l10n)} ${c['code']}',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -222,14 +230,15 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                 children: [
                   TextButton(
                     onPressed: _saving ? null : _reset,
-                    child: const Text('重置为个人配置'),
+                    child: Text(l10n.calcResetToPersonal),
                   ),
                   const Spacer(),
                   SizedBox(
                     width: 160,
                     child: FilledButton(
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? '应用中...' : '应用'),
+                      child: Text(
+                          _saving ? l10n.commonApplying : l10n.commonApply),
                     ),
                   ),
                 ],
@@ -248,4 +257,29 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       );
+
+  String _scopeLabel(String scope, AppLocalizations l10n) {
+    return switch (scope) {
+      '' => l10n.profileCalcScopeAll,
+      'country' => l10n.profileCalcScopeCountry,
+      'province' => l10n.profileCalcScopeProvince,
+      'city' => l10n.profileCalcScopeCity,
+      _ => l10n.profileCalcScopeCounty,
+    };
+  }
+
+  String _currencyName(Map<String, dynamic> currency, AppLocalizations l10n) {
+    final name = currency['name']?.toString();
+    if (name != null && name.isNotEmpty) return name;
+    return switch (currency['code']) {
+      'USD' => l10n.profileCurrencyNameUSD,
+      'EUR' => l10n.profileCurrencyNameEUR,
+      'JPY' => l10n.profileCurrencyNameJPY,
+      'GBP' => l10n.profileCurrencyNameGBP,
+      'HKD' => l10n.profileCurrencyNameHKD,
+      'KRW' => l10n.profileCurrencyNameKRW,
+      'SGD' => l10n.profileCurrencyNameSGD,
+      _ => l10n.profileCurrencyNameCNY,
+    };
+  }
 }

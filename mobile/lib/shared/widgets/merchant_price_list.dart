@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/merchant_price.dart';
 import '../utils/currency_fmt.dart';
 import 'sparkline.dart';
@@ -21,6 +22,7 @@ class MerchantPriceList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     if (loading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 16),
@@ -37,7 +39,7 @@ class MerchantPriceList extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('各商家价格',
+        Text(l10n.merchantPricesTitle,
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.outline)),
         const SizedBox(height: 8),
@@ -52,6 +54,7 @@ class MerchantPriceList extends StatelessWidget {
               unit: unit,
               theme: theme,
               userCurrency: userCurrency,
+              l10n: l10n,
             ),
           ),
         ),
@@ -65,11 +68,13 @@ class _MerchantPriceCard extends StatelessWidget {
   final String unit;
   final ThemeData theme;
   final String userCurrency;
+  final AppLocalizations l10n;
   const _MerchantPriceCard({
     required this.price,
     required this.unit,
     required this.theme,
     required this.userCurrency,
+    required this.l10n,
   });
 
   @override
@@ -144,7 +149,7 @@ class _MerchantPriceCard extends StatelessWidget {
                     color: theme.colorScheme.primary,
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text('最低',
+                  child: Text(l10n.merchantLowest,
                       style: theme.textTheme.labelSmall
                           ?.copyWith(color: theme.colorScheme.onPrimary)),
                 ),

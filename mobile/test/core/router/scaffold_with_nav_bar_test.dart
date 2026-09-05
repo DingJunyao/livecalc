@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:com_a4ding_livecalc/core/router/app_router.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 GoRouter _router({String initial = '/home'}) {
   return GoRouter(
@@ -21,8 +22,9 @@ GoRouter _router({String initial = '/home'}) {
               builder: (_, __) => const Scaffold(body: Text('计价页'))),
           GoRoute(
               path: '/prices/record',
-              builder: (_, __) =>
-                  Scaffold(appBar: AppBar(), body: const Text('新增价格记录页'))),
+              builder: (_, __) => Scaffold(
+                  appBar: AppBar(leading: const BackButton()),
+                  body: const Text('新增价格记录页'))),
           GoRoute(
               path: '/recipes',
               builder: (_, __) => const Scaffold(body: Text('菜谱页'))),
@@ -48,12 +50,22 @@ GoRouter _router({String initial = '/home'}) {
 }
 
 void main() {
-  Future<void> pump(WidgetTester tester, {String initial = '/home'}) async {
-    tester.view.physicalSize = const Size(400, 800);
+  Future<void> pump(
+    WidgetTester tester, {
+    String initial = '/home',
+    Locale locale = const Locale('zh', 'CN'),
+    Size size = const Size(400, 800),
+  }) async {
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp.router(routerConfig: _router(initial: initial)),
+      child: MaterialApp.router(
+        routerConfig: _router(initial: initial),
+        locale: locale,
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -116,20 +128,14 @@ void main() {
         find.byIcon(Icons.receipt_long, skipOffstage: false), findsOneWidget);
 
     // 返回后落在计价页
-    await tester.pageBack();
+    await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.text('计价页'), findsOneWidget);
     expect(find.byIcon(Icons.receipt_long), findsOneWidget);
   });
 
   testWidgets('桌面 rail 显示全部 7 项，无更多', (tester) async {
-    tester.view.physicalSize = const Size(900, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(ProviderScope(
-      child: MaterialApp.router(routerConfig: _router()),
-    ));
-    await tester.pumpAndSettle();
+    await pump(tester, size: const Size(900, 1200));
 
     expect(find.byType(NavigationRail), findsOneWidget);
     for (final label in ['推荐', '计价', '菜谱', '原料', '商品', '商家', '我的']) {
@@ -139,13 +145,7 @@ void main() {
   });
 
   testWidgets('桌面 rail 点击商家切换页面', (tester) async {
-    tester.view.physicalSize = const Size(900, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    await tester.pumpWidget(ProviderScope(
-      child: MaterialApp.router(routerConfig: _router()),
-    ));
-    await tester.pumpAndSettle();
+    await pump(tester, size: const Size(900, 1200));
 
     await tester.tap(find.text('商家'));
     await tester.pumpAndSettle();
@@ -166,5 +166,44 @@ void main() {
     final unselectedNode = tester.getSemantics(find.text('计价'));
     expect(unselectedNode.flagsCollection.isSelected, Tristate.isFalse);
     expect(unselectedNode.flagsCollection.isButton, isTrue);
+  });
+
+  testWidgets('desktop navigation rail localizes shell tabs in English',
+      (tester) async {
+    await pump(
+      tester,
+      locale: const Locale('en', 'US'),
+      size: const Size(900, 1200),
+    );
+
+    for (final label in ['Home', 'Prices', 'Recipes', 'Profile']) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
+  testWidgets('desktop navigation rail localizes shell tabs in Arabic',
+      (tester) async {
+    await pump(
+      tester,
+      locale: const Locale('ar'),
+      size: const Size(900, 1200),
+    );
+
+    for (final label in ['الرئيسية', 'الأسعار', 'الوصفات', 'الملف الشخصي']) {
+      expect(find.text(label), findsOneWidget);
+    }
+  });
+
+  testWidgets('desktop navigation rail keeps Chinese shell labels unchanged',
+      (tester) async {
+    await pump(
+      tester,
+      locale: const Locale('zh', 'CN'),
+      size: const Size(900, 1200),
+    );
+
+    for (final label in ['推荐', '计价', '菜谱', '我的']) {
+      expect(find.text(label), findsOneWidget);
+    }
   });
 }
