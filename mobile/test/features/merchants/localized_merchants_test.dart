@@ -14,6 +14,7 @@ import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_rep
 import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_detail_screen.dart';
 import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_list_screen.dart';
+import 'package:com_a4ding_livecalc/features/merchants/widgets/apple_map_picker.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/map_point_picker.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/merchant_map_view.dart';
 import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
@@ -549,6 +550,199 @@ void main() {
     );
     expect(locatedText.data, contains('خط العرض: 31.250000'));
     expect(locatedText.data, contains('خط الطول: 121.500000'));
+  });
+
+  testWidgets('English map picker prompt then tapped point is LTR', (
+    tester,
+  ) async {
+    await _pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 700,
+            height: 340,
+            child: MapPointPicker(
+              mapController: MapController(),
+              tileProvider: _MemoryTileProvider(),
+            ),
+          ),
+        ),
+      ),
+      mapReady: true,
+    );
+
+    expect(find.text('Tap the map to choose a location'), findsOneWidget);
+    expect(find.byKey(const ValueKey('picker-coordinate-ltr')), findsNothing);
+
+    await tester.tapAt(tester.getCenter(find.byType(FlutterMap)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final directionality = tester.widget<Directionality>(
+      find.byKey(const ValueKey('picker-coordinate-ltr')),
+    );
+    expect(directionality.textDirection, TextDirection.ltr);
+    final coordinateText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('picker-coordinate-ltr')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(coordinateText.data, contains('Latitude: 39.904200'));
+    expect(coordinateText.data, contains('Longitude: 116.407400'));
+    expect(
+      coordinateText.data!.indexOf('Latitude: 39.904200'),
+      lessThan(coordinateText.data!.indexOf('Longitude: 116.407400')),
+    );
+  });
+
+  testWidgets('Arabic map picker prompt then tapped point is LTR', (
+    tester,
+  ) async {
+    await _pumpLocalized(
+      tester,
+      const Locale('ar'),
+      Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 700,
+            height: 340,
+            child: MapPointPicker(
+              mapController: MapController(),
+              tileProvider: _MemoryTileProvider(),
+            ),
+          ),
+        ),
+      ),
+      mapReady: true,
+    );
+
+    expect(find.text('انقر على الخريطة لتحديد الموقع'), findsOneWidget);
+    expect(find.byKey(const ValueKey('picker-coordinate-ltr')), findsNothing);
+
+    await tester.tapAt(tester.getCenter(find.byType(FlutterMap)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    final directionality = tester.widget<Directionality>(
+      find.byKey(const ValueKey('picker-coordinate-ltr')),
+    );
+    expect(directionality.textDirection, TextDirection.ltr);
+    final coordinateText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('picker-coordinate-ltr')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(coordinateText.data, contains('خط العرض: 39.904200'));
+    expect(coordinateText.data, contains('خط الطول: 116.407400'));
+    expect(
+      coordinateText.data!.indexOf('خط العرض: 39.904200'),
+      lessThan(coordinateText.data!.indexOf('خط الطول: 116.407400')),
+    );
+  });
+
+  testWidgets('English Apple picker localization and locate LTR path', (
+    tester,
+  ) async {
+    await _pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 500,
+            height: 340,
+            child: AppleMapPicker(),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Tap the map to choose a location'), findsOneWidget);
+    expect(find.byTooltip('Switch map style'), findsOneWidget);
+    expect(
+        find.byTooltip('Locate and choose current location'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('apple-picker-layer-switch')));
+    await tester.pumpAndSettle();
+    expect(find.text('Standard'), findsOneWidget);
+    expect(find.text('Satellite'), findsOneWidget);
+    await tester.tap(find.text('Standard').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('map-locate-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final directionality = tester.widget<Directionality>(
+      find.byKey(const ValueKey('apple-picker-coordinate-ltr')),
+    );
+    expect(directionality.textDirection, TextDirection.ltr);
+    final coordinateText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('apple-picker-coordinate-ltr')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(coordinateText.data, contains('Latitude: 31.250000'));
+    expect(coordinateText.data, contains('Longitude: 121.500000'));
+    expect(
+      coordinateText.data!.indexOf('Latitude: 31.250000'),
+      lessThan(coordinateText.data!.indexOf('Longitude: 121.500000')),
+    );
+  });
+
+  testWidgets('Arabic Apple picker localization and locate LTR path', (
+    tester,
+  ) async {
+    await _pumpLocalized(
+      tester,
+      const Locale('ar'),
+      const Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 500,
+            height: 340,
+            child: AppleMapPicker(),
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('انقر على الخريطة لتحديد الموقع'), findsOneWidget);
+    expect(find.byTooltip('تبديل نمط الخريطة'), findsOneWidget);
+    expect(find.byTooltip('حدد الموقع الحالي واختره'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('apple-picker-layer-switch')));
+    await tester.pumpAndSettle();
+    expect(find.text('قياسي'), findsOneWidget);
+    expect(find.text('قمر صناعي'), findsOneWidget);
+    await tester.tap(find.text('قياسي').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('map-locate-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final directionality = tester.widget<Directionality>(
+      find.byKey(const ValueKey('apple-picker-coordinate-ltr')),
+    );
+    expect(directionality.textDirection, TextDirection.ltr);
+    final coordinateText = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const ValueKey('apple-picker-coordinate-ltr')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(coordinateText.data, contains('خط العرض: 31.250000'));
+    expect(coordinateText.data, contains('خط الطول: 121.500000'));
+    expect(
+      coordinateText.data!.indexOf('خط العرض: 31.250000'),
+      lessThan(coordinateText.data!.indexOf('خط الطول: 121.500000')),
+    );
   });
 
   testWidgets('English map disabled state localizes', (tester) async {
