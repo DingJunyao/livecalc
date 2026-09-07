@@ -487,6 +487,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonSaveFailedRetry => 'Save failed. Try again.';
 
   @override
+  String get commonSaving => 'Saving...';
+
+  @override
   String get commonSubmittedPendingReview =>
       'Submitted. Pending administrator review.';
 
@@ -870,4 +873,439 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get priceQuantityRequired => 'Enter a valid quantity';
+
+  @override
+  String get ingredientCategoryGrains => 'Grains';
+
+  @override
+  String get ingredientCategoryVegetables => 'Vegetables';
+
+  @override
+  String get ingredientCategoryFruits => 'Fruits';
+
+  @override
+  String get ingredientCategoryMeat => 'Meat';
+
+  @override
+  String get ingredientCategorySeafood => 'Seafood';
+
+  @override
+  String get ingredientCategoryEggs => 'Eggs';
+
+  @override
+  String get ingredientCategoryDairy => 'Dairy';
+
+  @override
+  String get ingredientCategorySoy => 'Soy';
+
+  @override
+  String get ingredientCategorySeasoning => 'Seasoning';
+
+  @override
+  String get ingredientCategoryOil => 'Oil';
+
+  @override
+  String get ingredientCategoryNuts => 'Nuts';
+
+  @override
+  String get ingredientCategoryBeverages => 'Beverages';
+
+  @override
+  String get ingredientCategoryOthers => 'Others';
+
+  @override
+  String get journeyFilters => 'Filters';
+
+  @override
+  String get journeyConfirm => 'Confirm';
+
+  @override
+  String get journeyClear => 'Clear';
+
+  @override
+  String get journeyRefresh => 'Refresh';
+
+  @override
+  String get journeyRecordPrice => 'Record price';
+
+  @override
+  String get journeyLoadMore => 'Load more';
+
+  @override
+  String get journeyUnknownMerchant => 'Unknown merchant';
+
+  @override
+  String get journeyBasicInformation => 'Basic information';
+
+  @override
+  String get journeyLatestPrice => 'Latest price';
+
+  @override
+  String get journeyNoPriceData => 'No price data';
+
+  @override
+  String get journeyPriceRecords => 'Price records';
+
+  @override
+  String get journeyAddRecord => 'Add record';
+
+  @override
+  String get journeyNoPriceRecords => 'No price records';
+
+  @override
+  String get journeyCreatedAt => 'Created at';
+
+  @override
+  String get journeyUpdated => 'Updated';
+
+  @override
+  String get journeyUpdateFailed => 'Update failed. Try again.';
+
+  @override
+  String get journeyDeleted => 'Deleted';
+
+  @override
+  String get journeyDeleteFailed => 'Delete failed. Try again.';
+
+  @override
+  String get journeyDeleteRecordTitle => 'Delete record';
+
+  @override
+  String journeyDeleteRecordMessage(Object name) {
+    return 'Delete the price record for \"$name\"?';
+  }
+
+  @override
+  String get journeyDeleteThisRecordMessage => 'Delete this price record?';
+
+  @override
+  String get journeyDeleteProductTitle => 'Delete product';
+
+  @override
+  String journeyDeleteProductMessage(Object name) {
+    return 'Delete product \"$name\"?';
+  }
+
+  @override
+  String get journeyDeleteProposalSubmitted =>
+      'Delete proposal submitted and awaiting administrator review';
+
+  @override
+  String get journeyProductDeleted => 'Product deleted';
+
+  @override
+  String get journeyPendingNutrition => 'Nutrition';
+
+  @override
+  String get journeyPendingCustomUnits => 'Custom units';
+
+  @override
+  String get journeyPendingDensity => 'Density';
+
+  @override
+  String get journeyPendingHierarchy => 'Hierarchy';
+
+  @override
+  String get journeyBasicInfoSaved => 'Basic information saved';
+
+  @override
+  String get journeyEditSubmitted =>
+      'Edit submitted and awaiting administrator review';
+
+  @override
+  String get journeyRelatedProducts => 'Related products';
+
+  @override
+  String get journeyNoRelatedProducts => 'No related products';
+
+  @override
+  String get journeyRelatedRecipes => 'Related recipes';
+
+  @override
+  String get journeyNoRelatedRecipes => 'No related recipes';
+
+  @override
+  String journeyUsage(Object usage) {
+    return 'Usage $usage';
+  }
+
+  @override
+  String journeyServings(int count) {
+    return '$count servings';
+  }
+
+  @override
+  String get journeyNoHierarchy => 'No hierarchy';
+
+  @override
+  String journeyRelationStrength(int value) {
+    return 'Strength: $value';
+  }
+
+  @override
+  String get journeyAdjustStrength => 'Adjust strength';
+
+  @override
+  String get ingredientDetailTitle => 'Ingredient details';
+
+  @override
+  String get ingredientPendingName => 'Name';
+
+  @override
+  String get ingredientPendingCategory => 'Category';
+
+  @override
+  String get ingredientPendingAliases => 'Aliases';
+
+  @override
+  String get ingredientTitle => 'Ingredients';
+
+  @override
+  String get ingredientSearch => 'Search ingredients...';
+
+  @override
+  String get ingredientEmptyTitle => 'No ingredients';
+
+  @override
+  String get ingredientEmptySubtitle =>
+      'Tap the button in the lower-right corner to add the first ingredient';
+
+  @override
+  String get ingredientNoLinkedProducts =>
+      'This ingredient has no linked product. Add a product first.';
+
+  @override
+  String get ingredientPriceRecorded => 'Price recorded';
+
+  @override
+  String get ingredientRecordPriceFailed =>
+      'Could not record the price. Try again.';
+
+  @override
+  String get ingredientCategory => 'Category';
+
+  @override
+  String get ingredientNoCategories => 'No categories';
+
+  @override
+  String get ingredientSpecialConditions => 'Special conditions';
+
+  @override
+  String get ingredientConditionNoPrice => 'No maintained price';
+
+  @override
+  String get ingredientConditionNoNutrition => 'No nutrition data configured';
+
+  @override
+  String get ingredientConditionSinglePrice => 'Only one price record';
+
+  @override
+  String get ingredientConditionSingleMerchant =>
+      'Only one merchant has prices';
+
+  @override
+  String get ingredientConditionNoRecipe => 'No related recipe';
+
+  @override
+  String get ingredientConditionNoProduct => 'No child product';
+
+  @override
+  String get ingredientChip => 'Ingredient';
+
+  @override
+  String get ingredientMakingSource => 'Made from';
+
+  @override
+  String ingredientMadeFrom(Object name) {
+    return 'Made from \"$name\"';
+  }
+
+  @override
+  String get ingredientAddTitle => 'Add ingredient';
+
+  @override
+  String get ingredientEditTitle => 'Edit ingredient';
+
+  @override
+  String get ingredientName => 'Ingredient name';
+
+  @override
+  String get ingredientAliases => 'Aliases';
+
+  @override
+  String get ingredientUncategorized => 'Uncategorized';
+
+  @override
+  String get ingredientCategoriesLoading => 'Loading categories...';
+
+  @override
+  String get ingredientCategoriesLoadFailed => 'Could not load categories';
+
+  @override
+  String get ingredientLoadFailed =>
+      'Could not load the ingredient. Try again.';
+
+  @override
+  String get ingredientNameRequired => 'Ingredient name is required';
+
+  @override
+  String get ingredientCreated => 'Ingredient created';
+
+  @override
+  String get ingredientManageRelations => 'Manage ingredient relations';
+
+  @override
+  String get ingredientRelationGraph => 'Relation graph';
+
+  @override
+  String get ingredientRelationList => 'Relation list';
+
+  @override
+  String get ingredientDeleteRelation => 'Delete relation';
+
+  @override
+  String get ingredientDeleteRelationMessage =>
+      'Delete this hierarchy relation?';
+
+  @override
+  String get ingredientSelectRelation => 'Select an ingredient';
+
+  @override
+  String get ingredientAddRelation => 'Add hierarchy relation';
+
+  @override
+  String get ingredientAdjustRelationStrength => 'Adjust relation strength';
+
+  @override
+  String get ingredientChangeToAddRelation => 'Change to add relation';
+
+  @override
+  String get ingredientSearchRelation => 'Search ingredient *';
+
+  @override
+  String get ingredientRelationType => 'Relation type';
+
+  @override
+  String get ingredientSaveRelation => 'Save relation';
+
+  @override
+  String get ingredientRelationContains => 'Contains';
+
+  @override
+  String get ingredientRelationSubstitutable => 'Substitute';
+
+  @override
+  String get ingredientRelationFallback => 'Fallback';
+
+  @override
+  String get productTitle => 'Products';
+
+  @override
+  String get productSearch => 'Search products...';
+
+  @override
+  String get productEmptyTitle => 'No products';
+
+  @override
+  String get productEmptySubtitle =>
+      'Tap the button in the lower-right corner to add the first product';
+
+  @override
+  String get productNoBrand => 'No brand';
+
+  @override
+  String get productPriceRecorded => 'Price recorded';
+
+  @override
+  String get productLinkedIngredient => 'Linked ingredient';
+
+  @override
+  String get productIngredientCategory => 'Ingredient category';
+
+  @override
+  String get productBrand => 'Brand';
+
+  @override
+  String get productSpecialConditions => 'Special conditions';
+
+  @override
+  String get productAllIngredients => 'All ingredients';
+
+  @override
+  String get productAllBrands => 'All brands';
+
+  @override
+  String get productChip => 'Product';
+
+  @override
+  String get productEditBasicInfo => 'Edit basic information';
+
+  @override
+  String get productAddTitle => 'Add product';
+
+  @override
+  String get productEditTitle => 'Edit product';
+
+  @override
+  String get productName => 'Product name *';
+
+  @override
+  String get productSearchIngredient =>
+      'Search and select a linked ingredient *';
+
+  @override
+  String get productCreateSameName => 'Create ingredient with the same name';
+
+  @override
+  String get productCreateSameNameHint =>
+      'Automatically creates an ingredient with the same name as this product';
+
+  @override
+  String get productBarcode => 'Barcode';
+
+  @override
+  String get productScanBarcode => 'Scan barcode';
+
+  @override
+  String get productTags => 'Tags';
+
+  @override
+  String get productLookupLoading => 'Looking up product information...';
+
+  @override
+  String get productLoadFailed => 'Could not load the product. Try again.';
+
+  @override
+  String get productNameRequired => 'Product name is required';
+
+  @override
+  String get productSelectIngredientOrCreate =>
+      'Select a linked ingredient or enable \"Create ingredient with the same name\".';
+
+  @override
+  String get productCreateIngredientFailed => 'Failed to create ingredient';
+
+  @override
+  String get productCreated => 'Product created';
+
+  @override
+  String get productDetailTitle => 'Product details';
+
+  @override
+  String get productPendingName => 'Name';
+
+  @override
+  String get productPendingBrand => 'Brand';
+
+  @override
+  String get productPendingBarcode => 'Barcode';
+
+  @override
+  String get productPendingLinkedIngredient => 'Linked ingredient';
+
+  @override
+  String get productPendingAliases => 'Aliases';
+
+  @override
+  String get productPendingTags => 'Tags';
 }

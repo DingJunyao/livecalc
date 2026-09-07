@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../models/ingredient.dart';
+import '../../../l10n/app_localizations.dart';
 import '../providers/ingredient_provider.dart';
 import '../repositories/ingredient_repository.dart';
 
@@ -69,6 +70,7 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   }
 
   Future<void> _loadIngredient() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final ingredient =
           (await _repository.getIngredient(_editId!)).mergedWithPending();
@@ -83,16 +85,17 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = '原料加载失败，请重试';
+          _error = l10n.ingredientLoadFailed;
         });
       }
     }
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = '请输入原料名称');
+      setState(() => _error = l10n.ingredientNameRequired);
       return;
     }
     setState(() {
@@ -119,10 +122,10 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
       if (!mounted) return;
       if (!_isEdit) {
         Navigator.of(context).pop(
-          const IngredientFormResult(
+          IngredientFormResult(
             saved: true,
             pending: false,
-            message: '已创建原料',
+            message: l10n.ingredientCreated,
           ),
         );
         return;
@@ -138,49 +141,58 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = '保存失败，请重试';
+          _error = l10n.commonSaveFailedRetry;
         });
       }
     }
   }
 
   Widget _buildCategoryField() {
+    final l10n = AppLocalizations.of(context);
     final categoriesAsync = ref.watch(ingredientCategoriesProvider);
     return categoriesAsync.when(
       data: (categories) => DropdownButtonFormField<int?>(
         initialValue: _categoryId,
         isExpanded: true,
-        decoration: const InputDecoration(
-          labelText: '分类',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: l10n.ingredientCategory,
+          border: const OutlineInputBorder(),
         ),
         items: [
-          const DropdownMenuItem<int?>(value: null, child: Text('未分类')),
+          DropdownMenuItem<int?>(
+            value: null,
+            child: Text(l10n.ingredientUncategorized),
+          ),
           for (final category in categories)
             DropdownMenuItem<int?>(
               value: category.id,
-              child: Text(category.displayName),
+              child: Text(category.localizedDisplayName(l10n)),
             ),
         ],
         onChanged: (value) => setState(() => _categoryId = value),
       ),
       loading: () => DropdownButtonFormField<int?>(
         items: null,
-        disabledHint: const Text('分类加载中...'),
+        disabledHint: Text(l10n.ingredientCategoriesLoading),
         onChanged: null,
-        decoration: const InputDecoration(
-          labelText: '分类',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: l10n.ingredientCategory,
+          border: const OutlineInputBorder(),
         ),
       ),
-      error: (_, __) => const Text('分类加载失败'),
+      error: (_, __) => Text(l10n.ingredientCategoriesLoadFailed),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(_isEdit ? '编辑原料' : '添加原料')),
+      appBar: AppBar(
+        title: Text(
+          _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
+        ),
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -189,16 +201,16 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
                 TextFormField(
                   controller: _nameController,
                   initialValue: null,
-                  decoration: const InputDecoration(
-                    labelText: '原料名称',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.ingredientName,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
                 _buildCategoryField(),
                 const SizedBox(height: 16),
                 AliasTagsField(
-                  label: '别名',
+                  label: l10n.ingredientAliases,
                   initialTags: _aliases,
                   onTagsChanged: (aliases) => _aliases = aliases,
                 ),
@@ -219,7 +231,7 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? '保存中...' : '保存'),
+            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
           ),
         ),
       ),

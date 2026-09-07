@@ -18,11 +18,12 @@ import '../repositories/product_repository.dart';
 import '../models/product.dart';
 import '../screens/product_form_screen.dart' show ProductFormResult;
 import '../providers/product_provider.dart';
+import '../../../l10n/app_localizations.dart';
 
-const _productConditions = <(String, String)>[
-  ('no_price', '没有维护过价格'),
-  ('single_price', '仅有一条价格记录'),
-  ('single_merchant', '仅有一家商家有其价格'),
+const _productConditions = <String>[
+  'no_price',
+  'single_price',
+  'single_merchant',
 ];
 
 class ProductListScreen extends ConsumerStatefulWidget {
@@ -90,6 +91,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
     ref.listen(calcContextProvider, (_, __) {
       ref.read(productListProvider.notifier).load();
@@ -98,13 +100,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final state = ref.watch(productListProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('商品'),
+        title: Text(l10n.productTitle),
         leading: const AppBackButton(),
         actions: [
-  const CalcContextMenuButton(),
+          const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
             onPressed: state.loading
                 ? null
                 : () => ref.read(productListProvider.notifier).load(),
@@ -125,6 +127,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 
   Widget _buildSearchBar(ThemeData theme, ProductListState state) {
+    final l10n = AppLocalizations.of(context);
     final notifier = ref.read(productListProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -134,7 +137,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜索商品...',
+                hintText: l10n.productSearch,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -165,7 +168,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               label: Text('${notifier.activeFilterCount}'),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
-                tooltip: '筛选',
+                tooltip: l10n.journeyFilters,
                 onPressed: () => _showFilterSheet(theme),
                 style: notifier.activeFilterCount > 0
                     ? IconButton.styleFrom(
@@ -182,8 +185,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 
   Widget _buildBody(ThemeData theme, ProductListState state) {
+    final l10n = AppLocalizations.of(context);
     if (state.loading && state.items.isEmpty) {
-      return const LoadingIndicator(message: '加载中...');
+      return LoadingIndicator(message: l10n.commonLoading);
     }
     if (state.error != null && state.items.isEmpty) {
       return ErrorDisplay(
@@ -192,10 +196,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       );
     }
     if (state.items.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.inventory_2,
-        title: '暂无商品',
-        subtitle: '点击右下角按钮添加第一个商品',
+        title: l10n.productEmptyTitle,
+        subtitle: l10n.productEmptySubtitle,
       );
     }
     return RefreshIndicator(
@@ -219,7 +223,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         onPressed: () => ref
                             .read(productListProvider.notifier)
                             .load(loadMore: true),
-                        child: const Text('加载更多'),
+                        child: Text(l10n.journeyLoadMore),
                       ),
               ),
             );
@@ -248,7 +252,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
     if (saved == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('价格已记录')),
+        SnackBar(
+            content: Text(AppLocalizations.of(context).productPriceRecorded)),
       );
       ref.read(productListProvider.notifier).load();
     }
@@ -288,7 +293,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 }
 
-class _ProductCard extends StatelessWidget {
+class _ProductCard extends ConsumerWidget {
   final Product item;
   final LatestPriceInfo? latest;
   final List<double>? sparkline;
@@ -306,8 +311,9 @@ class _ProductCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final price = latest?.price ?? item.latestPrice;
     final unit = latest?.unit ?? item.unit;
     return Card(
@@ -345,7 +351,7 @@ class _ProductCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            item.brand ?? '无品牌',
+                            item.brand ?? l10n.productNoBrand,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
@@ -393,7 +399,7 @@ class _ProductCard extends StatelessWidget {
               ],
               IconButton(
                 icon: const Icon(Icons.add_chart),
-                tooltip: '记录价格',
+                tooltip: l10n.journeyRecordPrice,
                 visualDensity: VisualDensity.compact,
                 onPressed: onQuickPrice,
               ),
@@ -454,6 +460,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final ingredients =
         ref.watch(ingredientOptionsProvider).value ?? const <Ingredient>[];
     final categories =
@@ -467,7 +474,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
             child: Row(
               children: [
-                Text('筛选条件',
+                Text(l10n.journeyFilters,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
@@ -480,7 +487,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                       _conditions.clear();
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
-                    label: const Text('清除'),
+                    label: Text(l10n.journeyClear),
                   ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -496,16 +503,19 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('关联原料', style: theme.textTheme.labelLarge),
+                  Text(l10n.productLinkedIngredient,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
                     initialValue: _ingredientId,
                     isExpanded: true,
                     decoration: _fieldDecoration(),
-                    hint: const Text('全部原料'),
+                    hint: Text(l10n.productAllIngredients),
                     items: [
-                      const DropdownMenuItem<int?>(
-                          value: null, child: Text('全部原料')),
+                      DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text(l10n.productAllIngredients),
+                      ),
                       for (final i in ingredients)
                         DropdownMenuItem<int?>(
                             value: i.id, child: Text(i.name)),
@@ -513,10 +523,12 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                     onChanged: (v) => setState(() => _ingredientId = v),
                   ),
                   const SizedBox(height: 20),
-                  Text('原料分类', style: theme.textTheme.labelLarge),
+                  Text(l10n.productIngredientCategory,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   if (categories.isEmpty)
-                    Text('暂无分类', style: theme.textTheme.bodySmall)
+                    Text(l10n.ingredientNoCategories,
+                        style: theme.textTheme.bodySmall)
                   else
                     Wrap(
                       spacing: 8,
@@ -524,7 +536,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                       children: [
                         for (final c in categories)
                           FilterChip(
-                            label: Text(c.displayName),
+                            label: Text(c.localizedDisplayName(l10n)),
                             selected: _categoryIds.contains(c.id),
                             onSelected: (_) => setState(() {
                               if (!_categoryIds.add(c.id)) {
@@ -535,31 +547,34 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                       ],
                     ),
                   const SizedBox(height: 20),
-                  Text('品牌', style: theme.textTheme.labelLarge),
+                  Text(l10n.productBrand, style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String?>(
                     initialValue: _brand,
                     isExpanded: true,
                     decoration: _fieldDecoration(),
-                    hint: const Text('全部品牌'),
+                    hint: Text(l10n.productAllBrands),
                     items: [
-                      const DropdownMenuItem<String?>(
-                          value: null, child: Text('全部品牌')),
+                      DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text(l10n.productAllBrands),
+                      ),
                       for (final b in widget.brandOptions)
                         DropdownMenuItem<String?>(value: b, child: Text(b)),
                     ],
                     onChanged: (v) => setState(() => _brand = v),
                   ),
                   const SizedBox(height: 20),
-                  Text('特殊条件', style: theme.textTheme.labelLarge),
+                  Text(l10n.productSpecialConditions,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final (value, label) in _productConditions)
+                      for (final value in _productConditions)
                         FilterChip(
-                          label: Text(label),
+                          label: Text(_conditionLabel(value, l10n)),
                           selected: _conditions.contains(value),
                           onSelected: (_) => setState(() {
                             if (!_conditions.add(value)) {
@@ -588,7 +603,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                   );
                   Navigator.of(context).pop();
                 },
-                child: const Text('确定'),
+                child: Text(l10n.journeyConfirm),
               ),
             ),
           ),
@@ -601,4 +616,12 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
         isDense: true,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       );
+
+  String _conditionLabel(String value, AppLocalizations l10n) =>
+      switch (value) {
+        'no_price' => l10n.ingredientConditionNoPrice,
+        'single_price' => l10n.ingredientConditionSinglePrice,
+        'single_merchant' => l10n.ingredientConditionSingleMerchant,
+        _ => value,
+      };
 }

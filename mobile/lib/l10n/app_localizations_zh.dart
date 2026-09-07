@@ -473,6 +473,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonSaveFailedRetry => '保存失败，请重试';
 
   @override
+  String get commonSaving => '保存中...';
+
+  @override
   String get commonSubmittedPendingReview => '已提交，待管理员审核';
 
   @override
@@ -851,4 +854,427 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get priceQuantityRequired => '请输入有效的数量';
+
+  @override
+  String get ingredientCategoryGrains => '谷物';
+
+  @override
+  String get ingredientCategoryVegetables => '蔬菜';
+
+  @override
+  String get ingredientCategoryFruits => '水果';
+
+  @override
+  String get ingredientCategoryMeat => '肉类';
+
+  @override
+  String get ingredientCategorySeafood => '海鲜';
+
+  @override
+  String get ingredientCategoryEggs => '蛋类';
+
+  @override
+  String get ingredientCategoryDairy => '乳制品';
+
+  @override
+  String get ingredientCategorySoy => '豆制品';
+
+  @override
+  String get ingredientCategorySeasoning => '调味品';
+
+  @override
+  String get ingredientCategoryOil => '油脂';
+
+  @override
+  String get ingredientCategoryNuts => '坚果';
+
+  @override
+  String get ingredientCategoryBeverages => '饮品';
+
+  @override
+  String get ingredientCategoryOthers => '其他';
+
+  @override
+  String get journeyFilters => '筛选';
+
+  @override
+  String get journeyConfirm => '确定';
+
+  @override
+  String get journeyClear => '清除';
+
+  @override
+  String get journeyRefresh => '刷新';
+
+  @override
+  String get journeyRecordPrice => '记录价格';
+
+  @override
+  String get journeyLoadMore => '加载更多';
+
+  @override
+  String get journeyUnknownMerchant => '未知商家';
+
+  @override
+  String get journeyBasicInformation => '基本信息';
+
+  @override
+  String get journeyLatestPrice => '最新价格';
+
+  @override
+  String get journeyNoPriceData => '暂无价格数据';
+
+  @override
+  String get journeyPriceRecords => '价格记录';
+
+  @override
+  String get journeyAddRecord => '添加记录';
+
+  @override
+  String get journeyNoPriceRecords => '暂无价格记录';
+
+  @override
+  String get journeyCreatedAt => '创建时间';
+
+  @override
+  String get journeyUpdated => '已更新';
+
+  @override
+  String get journeyUpdateFailed => '更新失败，请重试';
+
+  @override
+  String get journeyDeleted => '已删除';
+
+  @override
+  String get journeyDeleteFailed => '删除失败，请重试';
+
+  @override
+  String get journeyDeleteRecordTitle => '删除记录';
+
+  @override
+  String journeyDeleteRecordMessage(Object name) {
+    return '确定删除「$name」这条价格记录吗？';
+  }
+
+  @override
+  String get journeyDeleteThisRecordMessage => '确定删除这条价格记录吗？';
+
+  @override
+  String get journeyDeleteProductTitle => '删除商品';
+
+  @override
+  String journeyDeleteProductMessage(Object name) {
+    return '确定删除商品「$name」吗？';
+  }
+
+  @override
+  String get journeyDeleteProposalSubmitted => '删除提议已提交，待管理员审核';
+
+  @override
+  String get journeyProductDeleted => '商品已删除';
+
+  @override
+  String get journeyPendingNutrition => '营养成分';
+
+  @override
+  String get journeyPendingCustomUnits => '自定义单位';
+
+  @override
+  String get journeyPendingDensity => '密度';
+
+  @override
+  String get journeyPendingHierarchy => '层级关系';
+
+  @override
+  String get journeyBasicInfoSaved => '基本信息已保存';
+
+  @override
+  String get journeyEditSubmitted => '修改已提交，待管理员审核';
+
+  @override
+  String get journeyRelatedProducts => '关联商品';
+
+  @override
+  String get journeyNoRelatedProducts => '暂无关联商品';
+
+  @override
+  String get journeyRelatedRecipes => '相关菜谱';
+
+  @override
+  String get journeyNoRelatedRecipes => '暂无相关菜谱';
+
+  @override
+  String journeyUsage(Object usage) {
+    return '用量 $usage';
+  }
+
+  @override
+  String journeyServings(int count) {
+    return '$count 份';
+  }
+
+  @override
+  String get journeyNoHierarchy => '暂无层级关系';
+
+  @override
+  String journeyRelationStrength(int value) {
+    return '强度：$value';
+  }
+
+  @override
+  String get journeyAdjustStrength => '调整强度';
+
+  @override
+  String get ingredientDetailTitle => '原料详情';
+
+  @override
+  String get ingredientPendingName => '名称';
+
+  @override
+  String get ingredientPendingCategory => '分类';
+
+  @override
+  String get ingredientPendingAliases => '别名';
+
+  @override
+  String get ingredientTitle => '原料';
+
+  @override
+  String get ingredientSearch => '搜索原料...';
+
+  @override
+  String get ingredientEmptyTitle => '暂无原料';
+
+  @override
+  String get ingredientEmptySubtitle => '点击右下角按钮添加第一个原料';
+
+  @override
+  String get ingredientNoLinkedProducts => '该原料暂无关联商品，请先添加商品';
+
+  @override
+  String get ingredientPriceRecorded => '价格已记录';
+
+  @override
+  String get ingredientRecordPriceFailed => '记录失败，请重试';
+
+  @override
+  String get ingredientCategory => '分类';
+
+  @override
+  String get ingredientNoCategories => '暂无分类';
+
+  @override
+  String get ingredientSpecialConditions => '特殊条件';
+
+  @override
+  String get ingredientConditionNoPrice => '没有维护过价格';
+
+  @override
+  String get ingredientConditionNoNutrition => '未配置营养成分';
+
+  @override
+  String get ingredientConditionSinglePrice => '仅有一条价格记录';
+
+  @override
+  String get ingredientConditionSingleMerchant => '仅有一家商家有其价格';
+
+  @override
+  String get ingredientConditionNoRecipe => '无相关菜谱';
+
+  @override
+  String get ingredientConditionNoProduct => '无下属商品';
+
+  @override
+  String get ingredientChip => '原料';
+
+  @override
+  String get ingredientMakingSource => '制作来源';
+
+  @override
+  String ingredientMadeFrom(Object name) {
+    return '由「$name」制作';
+  }
+
+  @override
+  String get ingredientAddTitle => '添加原料';
+
+  @override
+  String get ingredientEditTitle => '编辑原料';
+
+  @override
+  String get ingredientName => '原料名称';
+
+  @override
+  String get ingredientAliases => '别名';
+
+  @override
+  String get ingredientUncategorized => '未分类';
+
+  @override
+  String get ingredientCategoriesLoading => '分类加载中...';
+
+  @override
+  String get ingredientCategoriesLoadFailed => '分类加载失败';
+
+  @override
+  String get ingredientLoadFailed => '原料加载失败，请重试';
+
+  @override
+  String get ingredientNameRequired => '请输入原料名称';
+
+  @override
+  String get ingredientCreated => '已创建原料';
+
+  @override
+  String get ingredientManageRelations => '关联原料关系';
+
+  @override
+  String get ingredientRelationGraph => '关系图';
+
+  @override
+  String get ingredientRelationList => '关系列表';
+
+  @override
+  String get ingredientDeleteRelation => '删除关系';
+
+  @override
+  String get ingredientDeleteRelationMessage => '确定删除这个层级关系吗？';
+
+  @override
+  String get ingredientSelectRelation => '请选择关联原料';
+
+  @override
+  String get ingredientAddRelation => '添加层级关系';
+
+  @override
+  String get ingredientAdjustRelationStrength => '调整关系强度';
+
+  @override
+  String get ingredientChangeToAddRelation => '改为添加关系';
+
+  @override
+  String get ingredientSearchRelation => '搜索关联原料 *';
+
+  @override
+  String get ingredientRelationType => '关系类型';
+
+  @override
+  String get ingredientSaveRelation => '保存关系';
+
+  @override
+  String get ingredientRelationContains => '包含';
+
+  @override
+  String get ingredientRelationSubstitutable => '可替代';
+
+  @override
+  String get ingredientRelationFallback => '回退';
+
+  @override
+  String get productTitle => '商品';
+
+  @override
+  String get productSearch => '搜索商品...';
+
+  @override
+  String get productEmptyTitle => '暂无商品';
+
+  @override
+  String get productEmptySubtitle => '点击右下角按钮添加第一个商品';
+
+  @override
+  String get productNoBrand => '无品牌';
+
+  @override
+  String get productPriceRecorded => '价格已记录';
+
+  @override
+  String get productLinkedIngredient => '关联原料';
+
+  @override
+  String get productIngredientCategory => '原料分类';
+
+  @override
+  String get productBrand => '品牌';
+
+  @override
+  String get productSpecialConditions => '特殊条件';
+
+  @override
+  String get productAllIngredients => '全部原料';
+
+  @override
+  String get productAllBrands => '全部品牌';
+
+  @override
+  String get productChip => '商品';
+
+  @override
+  String get productEditBasicInfo => '编辑基本信息';
+
+  @override
+  String get productAddTitle => '添加商品';
+
+  @override
+  String get productEditTitle => '编辑商品';
+
+  @override
+  String get productName => '商品名称 *';
+
+  @override
+  String get productSearchIngredient => '搜索并选择关联原料 *';
+
+  @override
+  String get productCreateSameName => '新建同名原料';
+
+  @override
+  String get productCreateSameNameHint => '开启后将自动创建与商品同名的原料';
+
+  @override
+  String get productBarcode => '条码';
+
+  @override
+  String get productScanBarcode => '扫码输入条码';
+
+  @override
+  String get productTags => '标签';
+
+  @override
+  String get productLookupLoading => '正在查询商品信息…';
+
+  @override
+  String get productLoadFailed => '商品加载失败，请重试';
+
+  @override
+  String get productNameRequired => '请输入商品名称';
+
+  @override
+  String get productSelectIngredientOrCreate => '请选择关联的原料，或开启“新建同名原料”';
+
+  @override
+  String get productCreateIngredientFailed => '创建原料失败';
+
+  @override
+  String get productCreated => '已创建商品';
+
+  @override
+  String get productDetailTitle => '商品详情';
+
+  @override
+  String get productPendingName => '名称';
+
+  @override
+  String get productPendingBrand => '品牌';
+
+  @override
+  String get productPendingBarcode => '条码';
+
+  @override
+  String get productPendingLinkedIngredient => '关联原料';
+
+  @override
+  String get productPendingAliases => '别名';
+
+  @override
+  String get productPendingTags => '标签';
 }

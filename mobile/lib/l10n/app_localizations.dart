@@ -1024,6 +1024,12 @@ abstract class AppLocalizations {
   /// **'保存失败，请重试'**
   String get commonSaveFailedRetry;
 
+  /// No description provided for @commonSaving.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存中...'**
+  String get commonSaving;
+
   /// No description provided for @commonSubmittedPendingReview.
   ///
   /// In zh, this message translates to:
@@ -1732,6 +1738,828 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'请输入有效的数量'**
   String get priceQuantityRequired;
+
+  /// No description provided for @ingredientCategoryGrains.
+  ///
+  /// In zh, this message translates to:
+  /// **'谷物'**
+  String get ingredientCategoryGrains;
+
+  /// No description provided for @ingredientCategoryVegetables.
+  ///
+  /// In zh, this message translates to:
+  /// **'蔬菜'**
+  String get ingredientCategoryVegetables;
+
+  /// No description provided for @ingredientCategoryFruits.
+  ///
+  /// In zh, this message translates to:
+  /// **'水果'**
+  String get ingredientCategoryFruits;
+
+  /// No description provided for @ingredientCategoryMeat.
+  ///
+  /// In zh, this message translates to:
+  /// **'肉类'**
+  String get ingredientCategoryMeat;
+
+  /// No description provided for @ingredientCategorySeafood.
+  ///
+  /// In zh, this message translates to:
+  /// **'海鲜'**
+  String get ingredientCategorySeafood;
+
+  /// No description provided for @ingredientCategoryEggs.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋类'**
+  String get ingredientCategoryEggs;
+
+  /// No description provided for @ingredientCategoryDairy.
+  ///
+  /// In zh, this message translates to:
+  /// **'乳制品'**
+  String get ingredientCategoryDairy;
+
+  /// No description provided for @ingredientCategorySoy.
+  ///
+  /// In zh, this message translates to:
+  /// **'豆制品'**
+  String get ingredientCategorySoy;
+
+  /// No description provided for @ingredientCategorySeasoning.
+  ///
+  /// In zh, this message translates to:
+  /// **'调味品'**
+  String get ingredientCategorySeasoning;
+
+  /// No description provided for @ingredientCategoryOil.
+  ///
+  /// In zh, this message translates to:
+  /// **'油脂'**
+  String get ingredientCategoryOil;
+
+  /// No description provided for @ingredientCategoryNuts.
+  ///
+  /// In zh, this message translates to:
+  /// **'坚果'**
+  String get ingredientCategoryNuts;
+
+  /// No description provided for @ingredientCategoryBeverages.
+  ///
+  /// In zh, this message translates to:
+  /// **'饮品'**
+  String get ingredientCategoryBeverages;
+
+  /// No description provided for @ingredientCategoryOthers.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get ingredientCategoryOthers;
+
+  /// No description provided for @journeyFilters.
+  ///
+  /// In zh, this message translates to:
+  /// **'筛选'**
+  String get journeyFilters;
+
+  /// No description provided for @journeyConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定'**
+  String get journeyConfirm;
+
+  /// No description provided for @journeyClear.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除'**
+  String get journeyClear;
+
+  /// No description provided for @journeyRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get journeyRefresh;
+
+  /// No description provided for @journeyRecordPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录价格'**
+  String get journeyRecordPrice;
+
+  /// No description provided for @journeyLoadMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多'**
+  String get journeyLoadMore;
+
+  /// No description provided for @journeyUnknownMerchant.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知商家'**
+  String get journeyUnknownMerchant;
+
+  /// No description provided for @journeyBasicInformation.
+  ///
+  /// In zh, this message translates to:
+  /// **'基本信息'**
+  String get journeyBasicInformation;
+
+  /// No description provided for @journeyLatestPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'最新价格'**
+  String get journeyLatestPrice;
+
+  /// No description provided for @journeyNoPriceData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无价格数据'**
+  String get journeyNoPriceData;
+
+  /// No description provided for @journeyPriceRecords.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格记录'**
+  String get journeyPriceRecords;
+
+  /// No description provided for @journeyAddRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加记录'**
+  String get journeyAddRecord;
+
+  /// No description provided for @journeyNoPriceRecords.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无价格记录'**
+  String get journeyNoPriceRecords;
+
+  /// No description provided for @journeyCreatedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建时间'**
+  String get journeyCreatedAt;
+
+  /// No description provided for @journeyUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已更新'**
+  String get journeyUpdated;
+
+  /// No description provided for @journeyUpdateFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新失败，请重试'**
+  String get journeyUpdateFailed;
+
+  /// No description provided for @journeyDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除'**
+  String get journeyDeleted;
+
+  /// No description provided for @journeyDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除失败，请重试'**
+  String get journeyDeleteFailed;
+
+  /// No description provided for @journeyDeleteRecordTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除记录'**
+  String get journeyDeleteRecordTitle;
+
+  /// No description provided for @journeyDeleteRecordMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」这条价格记录吗？'**
+  String journeyDeleteRecordMessage(Object name);
+
+  /// No description provided for @journeyDeleteThisRecordMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这条价格记录吗？'**
+  String get journeyDeleteThisRecordMessage;
+
+  /// No description provided for @journeyDeleteProductTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除商品'**
+  String get journeyDeleteProductTitle;
+
+  /// No description provided for @journeyDeleteProductMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除商品「{name}」吗？'**
+  String journeyDeleteProductMessage(Object name);
+
+  /// No description provided for @journeyDeleteProposalSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除提议已提交，待管理员审核'**
+  String get journeyDeleteProposalSubmitted;
+
+  /// No description provided for @journeyProductDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品已删除'**
+  String get journeyProductDeleted;
+
+  /// No description provided for @journeyPendingNutrition.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养成分'**
+  String get journeyPendingNutrition;
+
+  /// No description provided for @journeyPendingCustomUnits.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位'**
+  String get journeyPendingCustomUnits;
+
+  /// No description provided for @journeyPendingDensity.
+  ///
+  /// In zh, this message translates to:
+  /// **'密度'**
+  String get journeyPendingDensity;
+
+  /// No description provided for @journeyPendingHierarchy.
+  ///
+  /// In zh, this message translates to:
+  /// **'层级关系'**
+  String get journeyPendingHierarchy;
+
+  /// No description provided for @journeyBasicInfoSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'基本信息已保存'**
+  String get journeyBasicInfoSaved;
+
+  /// No description provided for @journeyEditSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改已提交，待管理员审核'**
+  String get journeyEditSubmitted;
+
+  /// No description provided for @journeyRelatedProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联商品'**
+  String get journeyRelatedProducts;
+
+  /// No description provided for @journeyNoRelatedProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无关联商品'**
+  String get journeyNoRelatedProducts;
+
+  /// No description provided for @journeyRelatedRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'相关菜谱'**
+  String get journeyRelatedRecipes;
+
+  /// No description provided for @journeyNoRelatedRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无相关菜谱'**
+  String get journeyNoRelatedRecipes;
+
+  /// No description provided for @journeyUsage.
+  ///
+  /// In zh, this message translates to:
+  /// **'用量 {usage}'**
+  String journeyUsage(Object usage);
+
+  /// No description provided for @journeyServings.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 份'**
+  String journeyServings(int count);
+
+  /// No description provided for @journeyNoHierarchy.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无层级关系'**
+  String get journeyNoHierarchy;
+
+  /// No description provided for @journeyRelationStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'强度：{value}'**
+  String journeyRelationStrength(int value);
+
+  /// No description provided for @journeyAdjustStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整强度'**
+  String get journeyAdjustStrength;
+
+  /// No description provided for @ingredientDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料详情'**
+  String get ingredientDetailTitle;
+
+  /// No description provided for @ingredientPendingName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get ingredientPendingName;
+
+  /// No description provided for @ingredientPendingCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'分类'**
+  String get ingredientPendingCategory;
+
+  /// No description provided for @ingredientPendingAliases.
+  ///
+  /// In zh, this message translates to:
+  /// **'别名'**
+  String get ingredientPendingAliases;
+
+  /// No description provided for @ingredientTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get ingredientTitle;
+
+  /// No description provided for @ingredientSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索原料...'**
+  String get ingredientSearch;
+
+  /// No description provided for @ingredientEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无原料'**
+  String get ingredientEmptyTitle;
+
+  /// No description provided for @ingredientEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角按钮添加第一个原料'**
+  String get ingredientEmptySubtitle;
+
+  /// No description provided for @ingredientNoLinkedProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'该原料暂无关联商品，请先添加商品'**
+  String get ingredientNoLinkedProducts;
+
+  /// No description provided for @ingredientPriceRecorded.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格已记录'**
+  String get ingredientPriceRecorded;
+
+  /// No description provided for @ingredientRecordPriceFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录失败，请重试'**
+  String get ingredientRecordPriceFailed;
+
+  /// No description provided for @ingredientCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'分类'**
+  String get ingredientCategory;
+
+  /// No description provided for @ingredientNoCategories.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无分类'**
+  String get ingredientNoCategories;
+
+  /// No description provided for @ingredientSpecialConditions.
+  ///
+  /// In zh, this message translates to:
+  /// **'特殊条件'**
+  String get ingredientSpecialConditions;
+
+  /// No description provided for @ingredientConditionNoPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有维护过价格'**
+  String get ingredientConditionNoPrice;
+
+  /// No description provided for @ingredientConditionNoNutrition.
+  ///
+  /// In zh, this message translates to:
+  /// **'未配置营养成分'**
+  String get ingredientConditionNoNutrition;
+
+  /// No description provided for @ingredientConditionSinglePrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅有一条价格记录'**
+  String get ingredientConditionSinglePrice;
+
+  /// No description provided for @ingredientConditionSingleMerchant.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅有一家商家有其价格'**
+  String get ingredientConditionSingleMerchant;
+
+  /// No description provided for @ingredientConditionNoRecipe.
+  ///
+  /// In zh, this message translates to:
+  /// **'无相关菜谱'**
+  String get ingredientConditionNoRecipe;
+
+  /// No description provided for @ingredientConditionNoProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'无下属商品'**
+  String get ingredientConditionNoProduct;
+
+  /// No description provided for @ingredientChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get ingredientChip;
+
+  /// No description provided for @ingredientMakingSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'制作来源'**
+  String get ingredientMakingSource;
+
+  /// No description provided for @ingredientMadeFrom.
+  ///
+  /// In zh, this message translates to:
+  /// **'由「{name}」制作'**
+  String ingredientMadeFrom(Object name);
+
+  /// No description provided for @ingredientAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加原料'**
+  String get ingredientAddTitle;
+
+  /// No description provided for @ingredientEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑原料'**
+  String get ingredientEditTitle;
+
+  /// No description provided for @ingredientName.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料名称'**
+  String get ingredientName;
+
+  /// No description provided for @ingredientAliases.
+  ///
+  /// In zh, this message translates to:
+  /// **'别名'**
+  String get ingredientAliases;
+
+  /// No description provided for @ingredientUncategorized.
+  ///
+  /// In zh, this message translates to:
+  /// **'未分类'**
+  String get ingredientUncategorized;
+
+  /// No description provided for @ingredientCategoriesLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'分类加载中...'**
+  String get ingredientCategoriesLoading;
+
+  /// No description provided for @ingredientCategoriesLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'分类加载失败'**
+  String get ingredientCategoriesLoadFailed;
+
+  /// No description provided for @ingredientLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料加载失败，请重试'**
+  String get ingredientLoadFailed;
+
+  /// No description provided for @ingredientNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入原料名称'**
+  String get ingredientNameRequired;
+
+  /// No description provided for @ingredientCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已创建原料'**
+  String get ingredientCreated;
+
+  /// No description provided for @ingredientManageRelations.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联原料关系'**
+  String get ingredientManageRelations;
+
+  /// No description provided for @ingredientRelationGraph.
+  ///
+  /// In zh, this message translates to:
+  /// **'关系图'**
+  String get ingredientRelationGraph;
+
+  /// No description provided for @ingredientRelationList.
+  ///
+  /// In zh, this message translates to:
+  /// **'关系列表'**
+  String get ingredientRelationList;
+
+  /// No description provided for @ingredientDeleteRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除关系'**
+  String get ingredientDeleteRelation;
+
+  /// No description provided for @ingredientDeleteRelationMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这个层级关系吗？'**
+  String get ingredientDeleteRelationMessage;
+
+  /// No description provided for @ingredientSelectRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择关联原料'**
+  String get ingredientSelectRelation;
+
+  /// No description provided for @ingredientAddRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加层级关系'**
+  String get ingredientAddRelation;
+
+  /// No description provided for @ingredientAdjustRelationStrength.
+  ///
+  /// In zh, this message translates to:
+  /// **'调整关系强度'**
+  String get ingredientAdjustRelationStrength;
+
+  /// No description provided for @ingredientChangeToAddRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'改为添加关系'**
+  String get ingredientChangeToAddRelation;
+
+  /// No description provided for @ingredientSearchRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索关联原料 *'**
+  String get ingredientSearchRelation;
+
+  /// No description provided for @ingredientRelationType.
+  ///
+  /// In zh, this message translates to:
+  /// **'关系类型'**
+  String get ingredientRelationType;
+
+  /// No description provided for @ingredientSaveRelation.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存关系'**
+  String get ingredientSaveRelation;
+
+  /// No description provided for @ingredientRelationContains.
+  ///
+  /// In zh, this message translates to:
+  /// **'包含'**
+  String get ingredientRelationContains;
+
+  /// No description provided for @ingredientRelationSubstitutable.
+  ///
+  /// In zh, this message translates to:
+  /// **'可替代'**
+  String get ingredientRelationSubstitutable;
+
+  /// No description provided for @ingredientRelationFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'回退'**
+  String get ingredientRelationFallback;
+
+  /// No description provided for @productTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get productTitle;
+
+  /// No description provided for @productSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索商品...'**
+  String get productSearch;
+
+  /// No description provided for @productEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无商品'**
+  String get productEmptyTitle;
+
+  /// No description provided for @productEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角按钮添加第一个商品'**
+  String get productEmptySubtitle;
+
+  /// No description provided for @productNoBrand.
+  ///
+  /// In zh, this message translates to:
+  /// **'无品牌'**
+  String get productNoBrand;
+
+  /// No description provided for @productPriceRecorded.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格已记录'**
+  String get productPriceRecorded;
+
+  /// No description provided for @productLinkedIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联原料'**
+  String get productLinkedIngredient;
+
+  /// No description provided for @productIngredientCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料分类'**
+  String get productIngredientCategory;
+
+  /// No description provided for @productBrand.
+  ///
+  /// In zh, this message translates to:
+  /// **'品牌'**
+  String get productBrand;
+
+  /// No description provided for @productSpecialConditions.
+  ///
+  /// In zh, this message translates to:
+  /// **'特殊条件'**
+  String get productSpecialConditions;
+
+  /// No description provided for @productAllIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部原料'**
+  String get productAllIngredients;
+
+  /// No description provided for @productAllBrands.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部品牌'**
+  String get productAllBrands;
+
+  /// No description provided for @productChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get productChip;
+
+  /// No description provided for @productEditBasicInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑基本信息'**
+  String get productEditBasicInfo;
+
+  /// No description provided for @productAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加商品'**
+  String get productAddTitle;
+
+  /// No description provided for @productEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑商品'**
+  String get productEditTitle;
+
+  /// No description provided for @productName.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品名称 *'**
+  String get productName;
+
+  /// No description provided for @productSearchIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索并选择关联原料 *'**
+  String get productSearchIngredient;
+
+  /// No description provided for @productCreateSameName.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建同名原料'**
+  String get productCreateSameName;
+
+  /// No description provided for @productCreateSameNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后将自动创建与商品同名的原料'**
+  String get productCreateSameNameHint;
+
+  /// No description provided for @productBarcode.
+  ///
+  /// In zh, this message translates to:
+  /// **'条码'**
+  String get productBarcode;
+
+  /// No description provided for @productScanBarcode.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码输入条码'**
+  String get productScanBarcode;
+
+  /// No description provided for @productTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get productTags;
+
+  /// No description provided for @productLookupLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在查询商品信息…'**
+  String get productLookupLoading;
+
+  /// No description provided for @productLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品加载失败，请重试'**
+  String get productLoadFailed;
+
+  /// No description provided for @productNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入商品名称'**
+  String get productNameRequired;
+
+  /// No description provided for @productSelectIngredientOrCreate.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择关联的原料，或开启“新建同名原料”'**
+  String get productSelectIngredientOrCreate;
+
+  /// No description provided for @productCreateIngredientFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建原料失败'**
+  String get productCreateIngredientFailed;
+
+  /// No description provided for @productCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已创建商品'**
+  String get productCreated;
+
+  /// No description provided for @productDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品详情'**
+  String get productDetailTitle;
+
+  /// No description provided for @productPendingName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get productPendingName;
+
+  /// No description provided for @productPendingBrand.
+  ///
+  /// In zh, this message translates to:
+  /// **'品牌'**
+  String get productPendingBrand;
+
+  /// No description provided for @productPendingBarcode.
+  ///
+  /// In zh, this message translates to:
+  /// **'条码'**
+  String get productPendingBarcode;
+
+  /// No description provided for @productPendingLinkedIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联原料'**
+  String get productPendingLinkedIngredient;
+
+  /// No description provided for @productPendingAliases.
+  ///
+  /// In zh, this message translates to:
+  /// **'别名'**
+  String get productPendingAliases;
+
+  /// No description provided for @productPendingTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get productPendingTags;
 }
 
 class _AppLocalizationsDelegate

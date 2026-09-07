@@ -13,17 +13,18 @@ import '../../../shared/utils/currency_fmt.dart';
 import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/repositories/product_repository.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/ingredient.dart';
 import 'ingredient_form_screen.dart' show IngredientFormResult;
 import '../providers/ingredient_provider.dart';
 
-const _specialConditions = <(String, String)>[
-  ('no_price', '没有维护过价格'),
-  ('no_nutrition', '未配置营养成分'),
-  ('single_price', '仅有一条价格记录'),
-  ('single_merchant', '仅有一家商家有其价格'),
-  ('no_recipe', '无相关菜谱'),
-  ('no_product', '无下属商品'),
+const _specialConditions = <String>[
+  'no_price',
+  'no_nutrition',
+  'single_price',
+  'single_merchant',
+  'no_recipe',
+  'no_product',
 ];
 
 class IngredientListScreen extends ConsumerStatefulWidget {
@@ -71,6 +72,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     // 会话级临时覆盖（地区/范围/币种）变化后刷新当前页数据
     ref.listen(calcContextProvider, (_, __) {
       ref.read(ingredientListProvider.notifier).load();
@@ -79,13 +81,13 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
     final state = ref.watch(ingredientListProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('原料'),
+        title: Text(l10n.ingredientTitle),
         leading: const AppBackButton(),
         actions: [
-  const CalcContextMenuButton(),
+          const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
             onPressed: state.loading
                 ? null
                 : () => ref.read(ingredientListProvider.notifier).load(),
@@ -106,6 +108,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
   }
 
   Widget _buildSearchBar(ThemeData theme, IngredientListState state) {
+    final l10n = AppLocalizations.of(context);
     final notifier = ref.read(ingredientListProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -115,7 +118,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜索原料...',
+                hintText: l10n.ingredientSearch,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -146,7 +149,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
               label: Text('${notifier.activeFilterCount}'),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
-                tooltip: '筛选',
+                tooltip: l10n.journeyFilters,
                 onPressed: () => _showFilterSheet(theme),
                 style: notifier.activeFilterCount > 0
                     ? IconButton.styleFrom(
@@ -163,8 +166,9 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
   }
 
   Widget _buildBody(ThemeData theme, IngredientListState state) {
+    final l10n = AppLocalizations.of(context);
     if (state.loading && state.items.isEmpty) {
-      return const LoadingIndicator(message: '加载中...');
+      return LoadingIndicator(message: l10n.commonLoading);
     }
     if (state.error != null && state.items.isEmpty) {
       return ErrorDisplay(
@@ -173,10 +177,10 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       );
     }
     if (state.items.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.science,
-        title: '暂无原料',
-        subtitle: '点击右下角按钮添加第一个原料',
+        title: l10n.ingredientEmptyTitle,
+        subtitle: l10n.ingredientEmptySubtitle,
       );
     }
     return RefreshIndicator(
@@ -200,7 +204,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
                         onPressed: () => ref
                             .read(ingredientListProvider.notifier)
                             .load(loadMore: true),
-                        child: const Text('加载更多'),
+                        child: Text(l10n.journeyLoadMore),
                       ),
               ),
             );
@@ -220,6 +224,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
 
   // ---- 快捷记价 ----
   Future<void> _quickPrice(Ingredient item) async {
+    final l10n = AppLocalizations.of(context);
     try {
       final result = await ProductRepository().search(
         ingredientId: item.id,
@@ -228,7 +233,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       if (result.items.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('该原料暂无关联商品，请先添加商品')),
+            SnackBar(content: Text(l10n.ingredientNoLinkedProducts)),
           );
         }
         return;
@@ -248,14 +253,14 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       );
       if (saved == true && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('价格已记录')),
+          SnackBar(content: Text(l10n.ingredientPriceRecorded)),
         );
         ref.read(ingredientListProvider.notifier).load();
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('记录失败，请重试')),
+          SnackBar(content: Text(l10n.ingredientRecordPriceFailed)),
         );
       }
     }
@@ -291,7 +296,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
   }
 }
 
-class _IngredientCard extends StatelessWidget {
+class _IngredientCard extends ConsumerWidget {
   final Ingredient item;
   final LatestPriceInfo? latest;
   final List<double>? sparkline;
@@ -309,8 +314,15 @@ class _IngredientCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final categories = ref.watch(ingredientCategoriesProvider).valueOrNull;
+    final matchedCategory = categories?.where(
+      (category) => category.id == item.categoryId,
+    );
+    final category = matchedCategory?.firstOrNull?.localizedDisplayName(l10n) ??
+        item.category;
     final price = latest?.price ?? item.latestPrice;
     final unit = latest?.unit ?? item.unit;
     return Card(
@@ -357,7 +369,7 @@ class _IngredientCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              item.category!,
+                              category!,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.outline,
                               ),
@@ -389,7 +401,7 @@ class _IngredientCard extends StatelessWidget {
               ],
               IconButton(
                 icon: const Icon(Icons.add_chart),
-                tooltip: '记录价格',
+                tooltip: l10n.journeyRecordPrice,
                 visualDensity: VisualDensity.compact,
                 onPressed: onQuickPrice,
               ),
@@ -435,6 +447,7 @@ class _IngredientFilterSheetState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final categories =
         ref.watch(ingredientCategoriesProvider).value ?? const [];
     return SafeArea(
@@ -446,7 +459,7 @@ class _IngredientFilterSheetState
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
             child: Row(
               children: [
-                Text('筛选条件',
+                Text(l10n.journeyFilters,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
@@ -457,7 +470,7 @@ class _IngredientFilterSheetState
                       _conditions.clear();
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
-                    label: const Text('清除'),
+                    label: Text(l10n.journeyClear),
                   ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -473,10 +486,12 @@ class _IngredientFilterSheetState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('分类', style: theme.textTheme.labelLarge),
+                  Text(l10n.ingredientCategory,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   if (categories.isEmpty)
-                    Text('暂无分类', style: theme.textTheme.bodySmall)
+                    Text(l10n.ingredientNoCategories,
+                        style: theme.textTheme.bodySmall)
                   else
                     Wrap(
                       spacing: 8,
@@ -484,7 +499,7 @@ class _IngredientFilterSheetState
                       children: [
                         for (final c in categories)
                           FilterChip(
-                            label: Text(c.displayName),
+                            label: Text(c.localizedDisplayName(l10n)),
                             selected: _categoryIds.contains(c.id),
                             onSelected: (_) => setState(() {
                               if (!_categoryIds.add(c.id)) {
@@ -495,15 +510,18 @@ class _IngredientFilterSheetState
                       ],
                     ),
                   const SizedBox(height: 20),
-                  Text('特殊条件', style: theme.textTheme.labelLarge),
+                  Text(l10n.ingredientSpecialConditions,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final (value, label) in _specialConditions)
+                      for (final value in _specialConditions)
                         FilterChip(
-                          label: Text(label),
+                          label: Text(
+                            _conditionLabel(value, l10n),
+                          ),
                           selected: _conditions.contains(value),
                           onSelected: (_) => setState(() {
                             if (!_conditions.add(value)) {
@@ -530,7 +548,7 @@ class _IngredientFilterSheetState
                   );
                   Navigator.of(context).pop();
                 },
-                child: const Text('确定'),
+                child: Text(l10n.journeyConfirm),
               ),
             ),
           ),
@@ -538,4 +556,15 @@ class _IngredientFilterSheetState
       ),
     );
   }
+
+  String _conditionLabel(String value, AppLocalizations l10n) =>
+      switch (value) {
+        'no_price' => l10n.ingredientConditionNoPrice,
+        'no_nutrition' => l10n.ingredientConditionNoNutrition,
+        'single_price' => l10n.ingredientConditionSinglePrice,
+        'single_merchant' => l10n.ingredientConditionSingleMerchant,
+        'no_recipe' => l10n.ingredientConditionNoRecipe,
+        'no_product' => l10n.ingredientConditionNoProduct,
+        _ => value,
+      };
 }

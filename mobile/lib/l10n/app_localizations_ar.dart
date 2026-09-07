@@ -486,6 +486,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonSaveFailedRetry => 'فشل الحفظ. أعد المحاولة.';
 
   @override
+  String get commonSaving => 'جارٍ الحفظ...';
+
+  @override
   String get commonSubmittedPendingReview =>
       'تم الإرسال. في انتظار مراجعة المسؤول.';
 
@@ -868,4 +871,433 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get priceQuantityRequired => 'يرجى إدخال كمية صالحة';
+
+  @override
+  String get ingredientCategoryGrains => 'الحبوب';
+
+  @override
+  String get ingredientCategoryVegetables => 'الخضروات';
+
+  @override
+  String get ingredientCategoryFruits => 'الفواكه';
+
+  @override
+  String get ingredientCategoryMeat => 'اللحوم';
+
+  @override
+  String get ingredientCategorySeafood => 'المأكولات البحرية';
+
+  @override
+  String get ingredientCategoryEggs => 'البيض';
+
+  @override
+  String get ingredientCategoryDairy => 'الألبان';
+
+  @override
+  String get ingredientCategorySoy => 'الصويا';
+
+  @override
+  String get ingredientCategorySeasoning => 'التوابل';
+
+  @override
+  String get ingredientCategoryOil => 'الزيوت';
+
+  @override
+  String get ingredientCategoryNuts => 'المكسرات';
+
+  @override
+  String get ingredientCategoryBeverages => 'المشروبات';
+
+  @override
+  String get ingredientCategoryOthers => 'أخرى';
+
+  @override
+  String get journeyFilters => 'الفلاتر';
+
+  @override
+  String get journeyConfirm => 'موافق';
+
+  @override
+  String get journeyClear => 'مسح';
+
+  @override
+  String get journeyRefresh => 'تحديث';
+
+  @override
+  String get journeyRecordPrice => 'تسجيل سعر';
+
+  @override
+  String get journeyLoadMore => 'تحميل المزيد';
+
+  @override
+  String get journeyUnknownMerchant => 'متجر غير معروف';
+
+  @override
+  String get journeyBasicInformation => 'المعلومات الأساسية';
+
+  @override
+  String get journeyLatestPrice => 'أحدث سعر';
+
+  @override
+  String get journeyNoPriceData => 'لا توجد بيانات أسعار';
+
+  @override
+  String get journeyPriceRecords => 'سجلات الأسعار';
+
+  @override
+  String get journeyAddRecord => 'إضافة سجل';
+
+  @override
+  String get journeyNoPriceRecords => 'لا توجد سجلات أسعار';
+
+  @override
+  String get journeyCreatedAt => 'وقت الإنشاء';
+
+  @override
+  String get journeyUpdated => 'تم التحديث';
+
+  @override
+  String get journeyUpdateFailed => 'فشل التحديث. حاول مجددًا.';
+
+  @override
+  String get journeyDeleted => 'تم الحذف';
+
+  @override
+  String get journeyDeleteFailed => 'فشل الحذف. حاول مجددًا.';
+
+  @override
+  String get journeyDeleteRecordTitle => 'حذف السجل';
+
+  @override
+  String journeyDeleteRecordMessage(Object name) {
+    return 'حذف سجل السعر لـ \"$name\"؟';
+  }
+
+  @override
+  String get journeyDeleteThisRecordMessage => 'حذف سجل السعر هذا؟';
+
+  @override
+  String get journeyDeleteProductTitle => 'حذف المنتج';
+
+  @override
+  String journeyDeleteProductMessage(Object name) {
+    return 'حذف المنتج \"$name\"؟';
+  }
+
+  @override
+  String get journeyDeleteProposalSubmitted =>
+      'تم إرسال اقتراح الحذف بانتظار مراجعة المسؤول';
+
+  @override
+  String get journeyProductDeleted => 'تم حذف المنتج';
+
+  @override
+  String get journeyPendingNutrition => 'التغذية';
+
+  @override
+  String get journeyPendingCustomUnits => 'وحدات مخصصة';
+
+  @override
+  String get journeyPendingDensity => 'الكثافة';
+
+  @override
+  String get journeyPendingHierarchy => 'التسلسل الهرمي';
+
+  @override
+  String get journeyBasicInfoSaved => 'تم حفظ المعلومات الأساسية';
+
+  @override
+  String get journeyEditSubmitted => 'تم إرسال التعديل بانتظار مراجعة المسؤول';
+
+  @override
+  String get journeyRelatedProducts => 'المنتجات المرتبطة';
+
+  @override
+  String get journeyNoRelatedProducts => 'لا توجد منتجات مرتبطة';
+
+  @override
+  String get journeyRelatedRecipes => 'الوصفات المرتبطة';
+
+  @override
+  String get journeyNoRelatedRecipes => 'لا توجد وصفات مرتبطة';
+
+  @override
+  String journeyUsage(Object usage) {
+    return 'الاستخدام $usage';
+  }
+
+  @override
+  String journeyServings(int count) {
+    return '$count حصة';
+  }
+
+  @override
+  String get journeyNoHierarchy => 'لا يوجد تسلسل هرمي';
+
+  @override
+  String journeyRelationStrength(int value) {
+    return 'القوة: $value';
+  }
+
+  @override
+  String get journeyAdjustStrength => 'تعديل القوة';
+
+  @override
+  String get ingredientDetailTitle => 'تفاصيل المكوّن';
+
+  @override
+  String get ingredientPendingName => 'الاسم';
+
+  @override
+  String get ingredientPendingCategory => 'الفئة';
+
+  @override
+  String get ingredientPendingAliases => 'الأسماء البديلة';
+
+  @override
+  String get ingredientTitle => 'المكوّنات';
+
+  @override
+  String get ingredientSearch => 'ابحث عن المكوّنات...';
+
+  @override
+  String get ingredientEmptyTitle => 'لا توجد مكوّنات';
+
+  @override
+  String get ingredientEmptySubtitle =>
+      'انقر على الزر في الركن السفلي الأيمن لإضافة أول مكوّن';
+
+  @override
+  String get ingredientNoLinkedProducts =>
+      'لا يوجد منتج مرتبط بهذا المكوّن. أضف منتجًا أولاً.';
+
+  @override
+  String get ingredientPriceRecorded => 'تم تسجيل السعر';
+
+  @override
+  String get ingredientRecordPriceFailed => 'تعذر تسجيل السعر. حاول مجددًا.';
+
+  @override
+  String get ingredientCategory => 'الفئة';
+
+  @override
+  String get ingredientNoCategories => 'لا توجد فئات';
+
+  @override
+  String get ingredientSpecialConditions => 'شروط خاصة';
+
+  @override
+  String get ingredientConditionNoPrice => 'لا يوجد سعر مُصان';
+
+  @override
+  String get ingredientConditionNoNutrition => 'لا توجد بيانات تغذية مُعدة';
+
+  @override
+  String get ingredientConditionSinglePrice => 'سجل سعر واحد فقط';
+
+  @override
+  String get ingredientConditionSingleMerchant => 'متجر واحد فقط لديه أسعار';
+
+  @override
+  String get ingredientConditionNoRecipe => 'لا توجد وصفة مرتبطة';
+
+  @override
+  String get ingredientConditionNoProduct => 'لا يوجد منتج فرعي';
+
+  @override
+  String get ingredientChip => 'مكوّن';
+
+  @override
+  String get ingredientMakingSource => 'مصدر التحضير';
+
+  @override
+  String ingredientMadeFrom(Object name) {
+    return 'مُحضّر من \"$name\"';
+  }
+
+  @override
+  String get ingredientAddTitle => 'إضافة مكوّن';
+
+  @override
+  String get ingredientEditTitle => 'تعديل المكوّن';
+
+  @override
+  String get ingredientName => 'اسم المكوّن';
+
+  @override
+  String get ingredientAliases => 'الأسماء البديلة';
+
+  @override
+  String get ingredientUncategorized => 'غير مصنف';
+
+  @override
+  String get ingredientCategoriesLoading => 'جارٍ تحميل الفئات...';
+
+  @override
+  String get ingredientCategoriesLoadFailed => 'تعذر تحميل الفئات';
+
+  @override
+  String get ingredientLoadFailed => 'تعذر تحميل المكوّن. حاول مجددًا.';
+
+  @override
+  String get ingredientNameRequired => 'اسم المكوّن مطلوب';
+
+  @override
+  String get ingredientCreated => 'تم إنشاء المكوّن';
+
+  @override
+  String get ingredientManageRelations => 'إدارة علاقات المكوّنات';
+
+  @override
+  String get ingredientRelationGraph => 'مخطط العلاقات';
+
+  @override
+  String get ingredientRelationList => 'قائمة العلاقات';
+
+  @override
+  String get ingredientDeleteRelation => 'حذف العلاقة';
+
+  @override
+  String get ingredientDeleteRelationMessage => 'حذف علاقة التسلسل الهرمي هذه؟';
+
+  @override
+  String get ingredientSelectRelation => 'اختر مكوّنًا';
+
+  @override
+  String get ingredientAddRelation => 'إضافة علاقة تسلسل هرمي';
+
+  @override
+  String get ingredientAdjustRelationStrength => 'تعديل قوة العلاقة';
+
+  @override
+  String get ingredientChangeToAddRelation => 'التبديل إلى إضافة علاقة';
+
+  @override
+  String get ingredientSearchRelation => 'ابحث عن مكوّن *';
+
+  @override
+  String get ingredientRelationType => 'نوع العلاقة';
+
+  @override
+  String get ingredientSaveRelation => 'حفظ العلاقة';
+
+  @override
+  String get ingredientRelationContains => 'يحتوي';
+
+  @override
+  String get ingredientRelationSubstitutable => 'قابل للتبديل';
+
+  @override
+  String get ingredientRelationFallback => 'بديل عند الغياب';
+
+  @override
+  String get productTitle => 'المنتجات';
+
+  @override
+  String get productSearch => 'ابحث عن المنتجات...';
+
+  @override
+  String get productEmptyTitle => 'لا توجد منتجات';
+
+  @override
+  String get productEmptySubtitle =>
+      'انقر على الزر في الركن السفلي الأيمن لإضافة أول منتج';
+
+  @override
+  String get productNoBrand => 'بدون علامة تجارية';
+
+  @override
+  String get productPriceRecorded => 'تم تسجيل السعر';
+
+  @override
+  String get productLinkedIngredient => 'المكوّن المرتبط';
+
+  @override
+  String get productIngredientCategory => 'فئة المكوّن';
+
+  @override
+  String get productBrand => 'العلامة التجارية';
+
+  @override
+  String get productSpecialConditions => 'شروط خاصة';
+
+  @override
+  String get productAllIngredients => 'كل المكوّنات';
+
+  @override
+  String get productAllBrands => 'كل العلامات التجارية';
+
+  @override
+  String get productChip => 'منتج';
+
+  @override
+  String get productEditBasicInfo => 'تعديل المعلومات الأساسية';
+
+  @override
+  String get productAddTitle => 'إضافة منتج';
+
+  @override
+  String get productEditTitle => 'تعديل المنتج';
+
+  @override
+  String get productName => 'اسم المنتج *';
+
+  @override
+  String get productSearchIngredient => 'ابحث واختر مكوّنًا مرتبطًا *';
+
+  @override
+  String get productCreateSameName => 'إنشاء مكوّن بنفس الاسم';
+
+  @override
+  String get productCreateSameNameHint =>
+      'سيتم إنشاء مكوّن بنفس اسم هذا المنتج تلقائيًا';
+
+  @override
+  String get productBarcode => 'الرمز الشريطي';
+
+  @override
+  String get productScanBarcode => 'مسح الرمز الشريطي';
+
+  @override
+  String get productTags => 'الوسوم';
+
+  @override
+  String get productLookupLoading => 'جارٍ البحث عن معلومات المنتج...';
+
+  @override
+  String get productLoadFailed => 'تعذر تحميل المنتج. حاول مجددًا.';
+
+  @override
+  String get productNameRequired => 'اسم المنتج مطلوب';
+
+  @override
+  String get productSelectIngredientOrCreate =>
+      'اختر مكوّنًا مرتبطًا أو فعّل \"إنشاء مكوّن بنفس الاسم\".';
+
+  @override
+  String get productCreateIngredientFailed => 'فشل إنشاء المكوّن';
+
+  @override
+  String get productCreated => 'تم إنشاء المنتج';
+
+  @override
+  String get productDetailTitle => 'تفاصيل المنتج';
+
+  @override
+  String get productPendingName => 'الاسم';
+
+  @override
+  String get productPendingBrand => 'العلامة التجارية';
+
+  @override
+  String get productPendingBarcode => 'الرمز الشريطي';
+
+  @override
+  String get productPendingLinkedIngredient => 'المكوّن المرتبط';
+
+  @override
+  String get productPendingAliases => 'الأسماء البديلة';
+
+  @override
+  String get productPendingTags => 'الوسوم';
 }

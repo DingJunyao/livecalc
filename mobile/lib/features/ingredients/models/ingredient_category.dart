@@ -1,3 +1,5 @@
+import '../../../l10n/app_localizations.dart';
+
 class IngredientCategory {
   final int id;
   final String name;
@@ -20,4 +22,21 @@ class IngredientCategory {
       description: json['description'] as String?,
     );
   }
+
+  String localizedDisplayName(AppLocalizations l10n) => switch (name) {
+        'grains' => l10n.ingredientCategoryGrains,
+        'vegetables' => l10n.ingredientCategoryVegetables,
+        'fruits' => l10n.ingredientCategoryFruits,
+        'meat' => l10n.ingredientCategoryMeat,
+        'seafood' => l10n.ingredientCategorySeafood,
+        'eggs' => l10n.ingredientCategoryEggs,
+        'dairy' => l10n.ingredientCategoryDairy,
+        'soy' => l10n.ingredientCategorySoy,
+        'seasoning' => l10n.ingredientCategorySeasoning,
+        'oil' => l10n.ingredientCategoryOil,
+        'nuts' => l10n.ingredientCategoryNuts,
+        'beverages' => l10n.ingredientCategoryBeverages,
+        'others' => l10n.ingredientCategoryOthers,
+        _ => displayName,
+      };
 }

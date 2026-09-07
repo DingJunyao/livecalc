@@ -6,6 +6,7 @@ import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient_categ
 import 'package:com_a4ding_livecalc/features/ingredients/providers/ingredient_provider.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient_repository.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/screens/ingredient_form_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class _FakeIngredientRepository extends IngredientRepository {
   String? lastName;
@@ -38,12 +39,14 @@ void main() {
       overrides: [
         ingredientCategoriesProvider.overrideWith(
           (ref) async => const [
-            IngredientCategory(id: 3, name: 'vegetable', displayName: '蔬菜'),
-            IngredientCategory(id: 4, name: 'fruit', displayName: '水果'),
+            IngredientCategory(id: 3, name: 'vegetables', displayName: '蔬菜'),
+            IngredientCategory(id: 4, name: 'fruits', displayName: '水果'),
           ],
         ),
       ],
       child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Builder(
           builder: (context) => TextButton(
             onPressed: () async {
@@ -54,35 +57,35 @@ void main() {
                 ),
               );
             },
-            child: const Text('打开'),
+            child: const Text('Open'),
           ),
         ),
       ),
     ));
 
-    await tester.tap(find.text('打开'));
+    await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.widgetWithText(AppBar, '添加原料'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Add ingredient'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, '原料名称'),
+      find.widgetWithText(TextFormField, 'Ingredient name'),
       '西红柿',
     );
     await tester.tap(find.byType(DropdownButtonFormField<int?>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('蔬菜').last);
+    await tester.tap(find.text('Vegetables').last);
     await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.widgetWithText(TextField, '别名'),
+      find.widgetWithText(TextField, 'Aliases'),
       '番茄, 洋柿子',
     );
     await tester.tap(find.byIcon(Icons.add));
     await tester.pump();
-    await tester.ensureVisible(find.text('保存'));
-    await tester.tap(find.text('保存'));
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(pushedResult?.saved, isTrue);

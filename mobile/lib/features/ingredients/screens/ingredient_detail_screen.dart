@@ -3,6 +3,7 @@ import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../../shared/models/ingredient_recipe.dart';
 import '../../../shared/models/merchant_price.dart';
@@ -58,12 +59,13 @@ class _IngredientDetailScreenState
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(ingredientDetailPageProvider(widget.id));
     final ingredient = state.ingredient?.mergedWithPending();
 
     if (state.error != null && ingredient == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('原料详情')),
+        appBar: AppBar(title: Text(l10n.ingredientDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -73,8 +75,8 @@ class _IngredientDetailScreenState
     }
     if (ingredient == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('原料详情')),
-        body: const LoadingIndicator(message: '加载中...'),
+        appBar: AppBar(title: Text(l10n.ingredientDetailTitle)),
+        body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
 
@@ -83,17 +85,28 @@ class _IngredientDetailScreenState
     final isAdmin = user?.isAdmin ?? false;
     final userCurrency = ref.read(displayCurrencyProvider);
     final modifications = <String>{
-      ...ingredient.pendingModificationLabels,
-      if (state.nutrition?.pendingProposal != null) '营养成分',
-      if (state.units.any((unit) => unit.isPending)) '自定义单位',
-      if (state.densities.any((density) => density.isPending)) '密度',
-      if (_hasPendingHierarchy(state)) '层级关系',
+      for (final field
+          in ingredient.pendingProposal?.updateData.keys ?? const <String>[])
+        switch (field) {
+          'name' => l10n.ingredientPendingName,
+          'category_id' => l10n.ingredientPendingCategory,
+          'aliases' => l10n.ingredientPendingAliases,
+          _ => field,
+        },
+      if (state.nutrition?.pendingProposal != null)
+        l10n.journeyPendingNutrition,
+      if (state.units.any((unit) => unit.isPending))
+        l10n.journeyPendingCustomUnits,
+      if (state.densities.any((density) => density.isPending))
+        l10n.journeyPendingDensity,
+      if (_hasPendingHierarchy(state)) l10n.journeyPendingHierarchy,
     };
     final deletions = <String>{
-      if (ingredient.pendingProposal?.action == 'delete') '基本信息',
-      if (state.deletedUnitIds.isNotEmpty) '自定义单位',
-      if (state.deletedDensityIds.isNotEmpty) '密度',
-      if (state.deletedHierarchyIds.isNotEmpty) '层级关系',
+      if (ingredient.pendingProposal?.action == 'delete')
+        l10n.journeyBasicInformation,
+      if (state.deletedUnitIds.isNotEmpty) l10n.journeyPendingCustomUnits,
+      if (state.deletedDensityIds.isNotEmpty) l10n.journeyPendingDensity,
+      if (state.deletedHierarchyIds.isNotEmpty) l10n.journeyPendingHierarchy,
     };
     return Scaffold(
       appBar: AppBar(
@@ -111,7 +124,7 @@ class _IngredientDetailScreenState
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('原料',
+              child: Text(l10n.ingredientChip,
                   style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.w600)),
@@ -121,12 +134,12 @@ class _IngredientDetailScreenState
         actions: [
           IconButton(
             icon: const Icon(Icons.payments_outlined),
-            tooltip: '记录价格',
+            tooltip: l10n.journeyRecordPrice,
             onPressed: () => _openRecordPrice(notifier, state, ingredient),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
             onPressed:
                 state.loading ? null : () => notifier.load(initialDays: 30),
           ),
@@ -277,10 +290,11 @@ class _IngredientDetailScreenState
     IngredientDetailPageState state,
     Ingredient ingredient,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (state.products.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('该原料暂无关联商品，请先添加商品')),
+          SnackBar(content: Text(l10n.ingredientNoLinkedProducts)),
         );
       }
       return;
@@ -293,6 +307,7 @@ class _IngredientDetailScreenState
     IngredientDetailPageState state,
     Ingredient ingredient,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (!mounted) return;
     final matched = state.products.firstWhere(
       (product) => product.name == ingredient.name,
@@ -309,7 +324,7 @@ class _IngredientDetailScreenState
       await notifier.load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('价格已记录')),
+          SnackBar(content: Text(l10n.ingredientPriceRecorded)),
         );
       }
     }
@@ -320,6 +335,7 @@ class _IngredientDetailScreenState
     IngredientDetailPageState state,
     PriceRecord record,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (!mounted) return;
     final merchants = ref.read(merchantListProvider).items;
     final result = await context.push<PriceRecordFormResult>(
@@ -355,13 +371,13 @@ class _IngredientDetailScreenState
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已更新')),
+          SnackBar(content: Text(l10n.journeyUpdated)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('更新失败，请重试')),
+          SnackBar(content: Text(l10n.journeyUpdateFailed)),
         );
       }
     }
@@ -371,22 +387,23 @@ class _IngredientDetailScreenState
     IngredientDetailPageNotifier notifier,
     PriceRecord record,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除记录'),
-        content: Text('确定删除「${record.productName}」这条价格记录吗？'),
+        title: Text(l10n.journeyDeleteRecordTitle),
+        content: Text(l10n.journeyDeleteRecordMessage(record.productName)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -396,13 +413,13 @@ class _IngredientDetailScreenState
       await notifier.deleteRecord(record.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已删除')),
+          SnackBar(content: Text(l10n.journeyDeleted)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('删除失败，请重试')),
+          SnackBar(content: Text(l10n.journeyDeleteFailed)),
         );
       }
     }
@@ -413,6 +430,7 @@ class _IngredientDetailScreenState
     IngredientDetailPageNotifier notifier,
     Ingredient ingredient,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final result = await context.push<IngredientFormResult>(
       '/ingredients/${ingredient.id}/edit',
       extra: ingredient,
@@ -424,8 +442,10 @@ class _IngredientDetailScreenState
           SnackBar(
             content: Text(
               result!.pending
-                  ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
-                  : '基本信息已保存',
+                  ? (result.message.isEmpty
+                      ? l10n.journeyEditSubmitted
+                      : result.message)
+                  : l10n.journeyBasicInfoSaved,
             ),
           ),
         );
@@ -465,22 +485,23 @@ class _IngredientDetailScreenState
     IngredientDetailPageNotifier notifier,
     Product product,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除商品'),
-        content: Text('确定删除商品「${product.name}」吗？'),
+        title: Text(l10n.journeyDeleteProductTitle),
+        content: Text(l10n.journeyDeleteProductMessage(product.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -493,15 +514,17 @@ class _IngredientDetailScreenState
         SnackBar(
           content: Text(
             review.pending
-                ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
-                : '商品已删除',
+                ? (review.message.isEmpty
+                    ? l10n.journeyDeleteProposalSubmitted
+                    : review.message)
+                : l10n.journeyProductDeleted,
           ),
         ),
       );
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('删除失败，请重试')),
+          SnackBar(content: Text(l10n.journeyDeleteFailed)),
         );
       }
     }
@@ -559,12 +582,13 @@ class _BasicInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final categories = categoriesAsync.valueOrNull;
     final matchedCategory = categories?.where(
       (item) => item.id == ingredient.categoryId,
     );
-    final category =
-        matchedCategory?.firstOrNull?.displayName ?? ingredient.category;
+    final category = matchedCategory?.firstOrNull?.localizedDisplayName(l10n) ??
+        ingredient.category;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -576,13 +600,13 @@ class _BasicInfoCard extends StatelessWidget {
                 Icon(Icons.info_outline,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('基本信息',
+                Text(l10n.journeyBasicInformation,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: '编辑',
+                  tooltip: l10n.commonEdit,
                   visualDensity: VisualDensity.compact,
                   onPressed: onEdit,
                 ),
@@ -592,14 +616,16 @@ class _BasicInfoCard extends StatelessWidget {
             if (category != null)
               _InfoRow(
                 icon: Icons.folder_outlined,
-                label: '分类',
+                label: l10n.ingredientCategory,
                 value: category,
               ),
             if (ingredient.makingRecipeName != null)
               _InfoRow(
                 icon: Icons.soup_kitchen_outlined,
-                label: '制作来源',
-                value: '由「${ingredient.makingRecipeName}」制作',
+                label: l10n.ingredientMakingSource,
+                value: l10n.ingredientMadeFrom(
+                  ingredient.makingRecipeName!,
+                ),
               ),
             if (ingredient.aliases.isNotEmpty)
               Padding(
@@ -632,7 +658,7 @@ class _BasicInfoCard extends StatelessWidget {
             if (ingredient.createdAt != null)
               _InfoRow(
                 icon: Icons.calendar_today_outlined,
-                label: '创建时间',
+                label: l10n.journeyCreatedAt,
                 value: _fmtDateTime(ingredient.createdAt!),
               ),
           ],
@@ -662,7 +688,11 @@ class _InfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: theme.colorScheme.outline),
           const SizedBox(width: 12),
-          Text('$label：',
+          Text(label,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.outline)),
+          const SizedBox(width: 4),
+          Text(':',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(width: 4),
@@ -695,6 +725,7 @@ class _LatestPriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -706,7 +737,7 @@ class _LatestPriceCard extends StatelessWidget {
                 Icon(Icons.payments_outlined,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
-                Text('最新价格',
+                Text(l10n.journeyLatestPrice,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
               ],
@@ -720,7 +751,7 @@ class _LatestPriceCard extends StatelessWidget {
             else if (latest?.price == null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text('暂无价格数据',
+                child: Text(l10n.journeyNoPriceData,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.outline)),
               )
@@ -779,6 +810,7 @@ class _RelatedProductsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -790,7 +822,7 @@ class _RelatedProductsCard extends StatelessWidget {
                 Icon(Icons.inventory_2_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('关联商品',
+                Text(l10n.journeyRelatedProducts,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 if (products.isNotEmpty) ...[
@@ -805,7 +837,7 @@ class _RelatedProductsCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('添加'),
+                  label: Text(l10n.commonAdd),
                 ),
               ],
             ),
@@ -824,7 +856,7 @@ class _RelatedProductsCard extends StatelessWidget {
                       Icon(Icons.inventory_2_outlined,
                           size: 40, color: theme.colorScheme.outlineVariant),
                       const SizedBox(height: 8),
-                      Text('暂无关联商品',
+                      Text(l10n.journeyNoRelatedProducts,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline)),
                     ],
@@ -884,6 +916,7 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final p = widget.product;
     final latest = widget.latest;
     return InkWell(
@@ -933,13 +966,13 @@ class _RelatedProductRowState extends State<_RelatedProductRow> {
               ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 18),
-              tooltip: '编辑',
+              tooltip: l10n.commonEdit,
               visualDensity: VisualDensity.compact,
               onPressed: widget.onEdit,
             ),
             IconButton(
               icon: const Icon(Icons.delete_outline, size: 18),
-              tooltip: '删除',
+              tooltip: l10n.commonDelete,
               visualDensity: VisualDensity.compact,
               color: theme.colorScheme.error,
               onPressed: widget.onDelete,
@@ -980,6 +1013,7 @@ class _PriceRecordsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -990,7 +1024,7 @@ class _PriceRecordsCard extends StatelessWidget {
               children: [
                 Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('价格记录',
+                Text(l10n.journeyPriceRecords,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
@@ -998,7 +1032,7 @@ class _PriceRecordsCard extends StatelessWidget {
                   TextButton.icon(
                     onPressed: onAdd,
                     icon: const Icon(Icons.add, size: 18),
-                    label: const Text('添加记录'),
+                    label: Text(l10n.journeyAddRecord),
                   ),
               ],
             ),
@@ -1012,7 +1046,7 @@ class _PriceRecordsCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                  child: Text('暂无价格记录',
+                  child: Text(l10n.journeyNoPriceRecords,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
@@ -1029,7 +1063,9 @@ class _PriceRecordsCard extends StatelessWidget {
                 Center(
                   child: TextButton(
                     onPressed: loading ? null : onLoadMore,
-                    child: Text(loading ? '加载中...' : '加载更多'),
+                    child: Text(
+                      loading ? l10n.commonLoading : l10n.journeyLoadMore,
+                    ),
                   ),
                 ),
             ],
@@ -1056,6 +1092,7 @@ class _RecordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final r = record;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1089,7 +1126,8 @@ class _RecordRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${r.merchantName ?? '未知商家'} · ${_fmtDateTime(r.recordedAt)}',
+                  '${r.merchantName ?? l10n.journeyUnknownMerchant}'
+                  ' · ${_fmtDateTime(r.recordedAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall
@@ -1101,9 +1139,9 @@ class _RecordRow extends StatelessWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, size: 18),
             onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('编辑')),
-              PopupMenuItem(value: 'delete', child: Text('删除')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'edit', child: Text(l10n.commonEdit)),
+              PopupMenuItem(value: 'delete', child: Text(l10n.commonDelete)),
             ],
           ),
         ],
@@ -1129,18 +1167,19 @@ class _RelatedRecipesCard extends StatelessWidget {
 
   /// 一个菜谱里该食材的全部用量文本，对齐 Web formatUsages：
   /// 数值类（精确值或区间）加「/ N 份」，模糊量不加；多条用分号合并
-  String _usageText(IngredientRecipeRef r) {
+  String _usageText(IngredientRecipeRef r, AppLocalizations l10n) {
     final servings = r.servings > 0 ? r.servings : 1;
     return r.usages.map((u) {
       final text = u.display;
       final isNumeric = u.quantity > 0 || u.quantityRange != null;
-      return isNumeric ? '$text / $servings 份' : text;
-    }).join('；');
+      return isNumeric ? '$text / ${l10n.journeyServings(servings)}' : text;
+    }).join(l10n.commonListSeparator);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1152,7 +1191,7 @@ class _RelatedRecipesCard extends StatelessWidget {
                 Icon(Icons.menu_book_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('相关菜谱',
+                Text(l10n.journeyRelatedRecipes,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 if (recipes.isNotEmpty) ...[
@@ -1181,7 +1220,7 @@ class _RelatedRecipesCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                  child: Text('暂无相关菜谱',
+                  child: Text(l10n.journeyNoRelatedRecipes,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
@@ -1219,7 +1258,7 @@ class _RelatedRecipesCard extends StatelessWidget {
                                 Text(
                                   [
                                     if (r.usages.isNotEmpty)
-                                      '用量 ${_usageText(r)}',
+                                      l10n.journeyUsage(_usageText(r, l10n)),
                                     r.category ?? '',
                                   ].where((s) => s.isNotEmpty).join(' · '),
                                   maxLines: 1,
@@ -1242,7 +1281,9 @@ class _RelatedRecipesCard extends StatelessWidget {
                 Center(
                   child: TextButton(
                     onPressed: loading ? null : onLoadMore,
-                    child: Text(loading ? '加载中...' : '加载更多'),
+                    child: Text(
+                      loading ? l10n.commonLoading : l10n.journeyLoadMore,
+                    ),
                   ),
                 ),
             ],
@@ -1277,6 +1318,7 @@ class _HierarchyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final hierarchy = data;
     final relations = [
       ...?hierarchy?.childRelations,
@@ -1293,14 +1335,14 @@ class _HierarchyCard extends StatelessWidget {
                 Icon(Icons.account_tree_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('层级关系',
+                Text(l10n.journeyPendingHierarchy,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('添加'),
+                  label: Text(l10n.commonAdd),
                 ),
               ],
             ),
@@ -1320,7 +1362,7 @@ class _HierarchyCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                  child: Text('暂无层级关系',
+                  child: Text(l10n.journeyNoHierarchy,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
@@ -1350,7 +1392,13 @@ class _HierarchyCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              '${r.typeLabel} · 强度 ${r.strength}',
+                              _relationLabel(r.relationType, l10n),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.outline,
+                              ),
+                            ),
+                            Text(
+                              l10n.journeyRelationStrength(r.strength),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.outline,
                               ),
@@ -1360,13 +1408,13 @@ class _HierarchyCard extends StatelessWidget {
                       ),
                       IconButton(
                         icon: const Icon(Icons.tune, size: 18),
-                        tooltip: '调整强度',
+                        tooltip: l10n.journeyAdjustStrength,
                         visualDensity: VisualDensity.compact,
                         onPressed: () => onEditStrength(r),
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline, size: 18),
-                        tooltip: '删除',
+                        tooltip: l10n.commonDelete,
                         visualDensity: VisualDensity.compact,
                         color: theme.colorScheme.error,
                         onPressed: () => onDelete(r),
@@ -1382,6 +1430,13 @@ class _HierarchyCard extends StatelessWidget {
       ),
     );
   }
+
+  String _relationLabel(String type, AppLocalizations l10n) => switch (type) {
+        'contains' => l10n.ingredientRelationContains,
+        'substitutable' => l10n.ingredientRelationSubstitutable,
+        'fallback' => l10n.ingredientRelationFallback,
+        _ => type,
+      };
 }
 
 // ---- 工具函数 ----

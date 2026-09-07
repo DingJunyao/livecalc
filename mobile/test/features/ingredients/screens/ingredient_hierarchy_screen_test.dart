@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient_repository.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/screens/ingredient_hierarchy_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('hierarchy maintenance is a full page with graph and form',
       (tester) async {
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: IngredientHierarchyScreen(
         ingredientId: 8,
         ingredientName: '猪肉',
@@ -19,10 +22,11 @@ void main() {
     ));
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.widgetWithText(AppBar, '关联原料关系'), findsOneWidget);
-    expect(find.text('关系图'), findsOneWidget);
-    expect(find.text('关系列表'), findsOneWidget);
-    expect(find.text('搜索关联原料 *'), findsOneWidget);
-    expect(find.text('关系类型'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Manage ingredient relations'),
+        findsOneWidget);
+    expect(find.text('Relation graph'), findsOneWidget);
+    expect(find.text('Relation list'), findsOneWidget);
+    expect(find.text('Search ingredient *'), findsOneWidget);
+    expect(find.text('Relation type'), findsOneWidget);
   });
 }

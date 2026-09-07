@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/repositories/ingredient_repository.dart';
@@ -118,6 +119,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Future<void> _loadProduct() async {
+    final l10n = AppLocalizations.of(context);
     try {
       final product = (await _productRepository.getProduct(widget.product!.id))
           .mergedWithPending();
@@ -141,7 +143,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (mounted) {
         setState(() {
           _loading = false;
-          _error = '商品加载失败，请重试';
+          _error = l10n.productLoadFailed;
         });
       }
     }
@@ -209,13 +211,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = '请输入商品名称');
+      setState(() => _error = l10n.productNameRequired);
       return;
     }
     if (_selectedIngredient == null && !_createNewIngredient) {
-      setState(() => _error = '请选择关联的原料，或开启“新建同名原料”');
+      setState(() => _error = l10n.productSelectIngredientOrCreate);
       return;
     }
     if (_selectedIngredient == null && _createNewIngredient) {
@@ -227,7 +230,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       } catch (e) {
         if (mounted) {
           setState(() {
-            _error = '创建原料失败';
+            _error = l10n.productCreateIngredientFailed;
             _saving = false;
           });
         }
@@ -268,7 +271,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           ProductFormResult(
             saved: true,
             pending: false,
-            message: '已创建商品',
+            message: l10n.productCreated,
             product: createdProduct,
           ),
         );
@@ -285,18 +288,19 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = '保存失败，请重试';
+          _error = l10n.commonSaveFailedRetry;
         });
       }
     }
   }
 
   Widget _buildIngredientField() {
+    final l10n = AppLocalizations.of(context);
     if (widget.fixedIngredient != null && !_isEdit) {
       return InputDecorator(
-        decoration: const InputDecoration(
-          labelText: '关联原料',
-          border: OutlineInputBorder(),
+        decoration: InputDecoration(
+          labelText: l10n.productLinkedIngredient,
+          border: const OutlineInputBorder(),
         ),
         child: Row(
           children: [
@@ -348,9 +352,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                   return ListTile(
                     dense: true,
                     title: Text(ingredient.name),
-                    subtitle: ingredient.category == null
-                        ? null
-                        : Text(ingredient.category!),
                     onTap: () => onSelected(ingredient),
                   );
                 },
@@ -364,7 +365,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
           controller: controller,
           focusNode: focusNode,
           decoration: InputDecoration(
-            labelText: '搜索并选择关联原料 *',
+            labelText: _isEdit
+                ? l10n.productLinkedIngredient
+                : l10n.productSearchIngredient,
             prefixIcon: const Icon(Icons.search),
             suffixIcon: _searching
                 ? const SizedBox(
@@ -390,10 +393,15 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: Text(_isEdit ? '编辑商品' : '添加商品')),
+          appBar: AppBar(
+            title: Text(
+              _isEdit ? l10n.productEditTitle : l10n.productAddTitle,
+            ),
+          ),
           body: _loading
               ? const Center(child: CircularProgressIndicator())
               : ListView(
@@ -402,17 +410,17 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     TextFormField(
                       controller: _nameController,
                       initialValue: null,
-                      decoration: const InputDecoration(
-                        labelText: '商品名称 *',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.productName,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
                     if (!_createNewIngredient) _buildIngredientField(),
                     const SizedBox(height: 16),
                     SwitchListTile(
-                      title: const Text('新建同名原料'),
-                      subtitle: const Text('开启后将自动创建与商品同名的原料'),
+                      title: Text(l10n.productCreateSameName),
+                      subtitle: Text(l10n.productCreateSameNameHint),
                       value: _createNewIngredient,
                       onChanged: (v) =>
                           setState(() => _createNewIngredient = v),
@@ -422,9 +430,9 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     TextFormField(
                       controller: _brandController,
                       initialValue: null,
-                      decoration: const InputDecoration(
-                        labelText: '品牌',
-                        border: OutlineInputBorder(),
+                      decoration: InputDecoration(
+                        labelText: l10n.productBrand,
+                        border: const OutlineInputBorder(),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -432,7 +440,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       controller: _barcodeController,
                       initialValue: null,
                       decoration: InputDecoration(
-                        labelText: '条码',
+                        labelText: l10n.productBarcode,
                         border: const OutlineInputBorder(),
                         suffixIcon: _barcodeLoading
                             ? const SizedBox(
@@ -442,7 +450,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                                     CircularProgressIndicator(strokeWidth: 2),
                               )
                             : IconButton(
-                                tooltip: '扫码输入条码',
+                                tooltip: l10n.productScanBarcode,
                                 icon: const Icon(Icons.barcode_reader),
                                 onPressed: _scanBarcode,
                               ),
@@ -450,14 +458,14 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     AliasTagsField(
-                      label: '别名',
+                      label: l10n.ingredientAliases,
                       initialTags: _aliases,
                       onTagsChanged: (aliases) => _aliases = aliases,
                     ),
                     if (_isEdit) ...[
                       const SizedBox(height: 16),
                       AliasTagsField(
-                        label: '标签',
+                        label: l10n.productTags,
                         initialTags: _tags,
                         onTagsChanged: (tags) => _tags = tags,
                       ),
@@ -479,12 +487,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: FilledButton(
                 onPressed: _saving ? null : _save,
-                child: Text(_saving ? '保存中...' : '保存'),
+                child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
               ),
             ),
           ),
         ),
-        if (_barcodeLoading) const LoadingOverlay(message: '正在查询商品信息…'),
+        if (_barcodeLoading) LoadingOverlay(message: l10n.productLookupLoading),
       ],
     );
   }

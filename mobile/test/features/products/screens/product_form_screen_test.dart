@@ -9,6 +9,7 @@ import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
 
@@ -115,6 +116,8 @@ void main() {
     const ingredient = Ingredient(id: 8, name: '面粉');
     final repo = _FakeProductRepository(const Product(id: 0, name: ''));
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
         builder: (context) => TextButton(
           onPressed: () => Navigator.of(context).push(
@@ -125,26 +128,26 @@ void main() {
               ),
             ),
           ),
-          child: const Text('打开'),
+          child: const Text('Open'),
         ),
       ),
     ));
 
-    await tester.tap(find.text('打开'));
+    await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.widgetWithText(AppBar, '添加商品'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Add product'), findsOneWidget);
     expect(find.text('面粉'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextFormField, '商品名称 *'),
+      find.widgetWithText(TextFormField, 'Product name *'),
       '高筋粉',
     );
     await tester.drag(find.byType(ListView), const Offset(0, -320));
     await tester.pump();
     await tester.enterText(
-      find.widgetWithText(TextField, '别名'),
+      find.widgetWithText(TextField, 'Aliases'),
       '面包粉, 高粉',
     );
     await tester.tap(
@@ -154,8 +157,8 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.ensureVisible(find.text('保存'));
-    await tester.tap(find.text('保存'));
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(repo.lastCreatedName, '高筋粉');
@@ -173,6 +176,8 @@ void main() {
       tags: ['烘焙'],
     ));
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         product: const Product(id: 12, name: '低筋粉'),
         repository: repo,
@@ -180,12 +185,12 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.widgetWithText(AppBar, '编辑商品'), findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Edit product'), findsOneWidget);
     expect(find.text('蛋糕粉'), findsOneWidget);
     expect(find.text('烘焙'), findsOneWidget);
 
     await tester.enterText(
-      find.widgetWithText(TextField, '别名'),
+      find.widgetWithText(TextField, 'Aliases'),
       '低 粉',
     );
     await tester.tap(
@@ -197,8 +202,8 @@ void main() {
           .first,
     );
     await tester.pump();
-    await tester.ensureVisible(find.text('保存'));
-    await tester.tap(find.text('保存'));
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(repo.lastName, '低筋粉');
@@ -211,6 +216,8 @@ void main() {
     final lookupCompleter = Completer<BarcodeLookupResult>();
     final repo = _ScanLookupRepository(lookupCompleter);
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         fixedIngredient: const Ingredient(id: 8, name: '面粉'),
         repository: repo,
@@ -225,7 +232,7 @@ void main() {
 
     // 查询进行中：显示加载覆盖层
     expect(find.byType(LoadingOverlay), findsOneWidget);
-    expect(find.text('正在查询商品信息…'), findsOneWidget);
+    expect(find.text('Looking up product information...'), findsOneWidget);
 
     // 查询完成：覆盖层消失
     lookupCompleter.complete(
@@ -243,6 +250,8 @@ void main() {
       Ingredient(id: 2, name: '砂糖', category: '调味'),
     ]);
     await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         repository: repo,
         ingredientRepository: ingredientRepo,
@@ -251,7 +260,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 下拉带输入：非 tag/Chip 形式
-    final ingredientField = find.widgetWithText(TextField, '搜索并选择关联原料 *');
+    final ingredientField = find.widgetWithText(
+        TextField, 'Search and select a linked ingredient *');
     expect(ingredientField, findsOneWidget);
     expect(find.byType(Chip), findsNothing);
 
@@ -273,11 +283,11 @@ void main() {
 
     // 保存携带选中的 ingredientId
     await tester.enterText(
-      find.widgetWithText(TextFormField, '商品名称 *'),
+      find.widgetWithText(TextFormField, 'Product name *'),
       '高筋粉',
     );
-    await tester.ensureVisible(find.text('保存'));
-    await tester.tap(find.text('保存'));
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(repo.lastCreatedName, '高筋粉');

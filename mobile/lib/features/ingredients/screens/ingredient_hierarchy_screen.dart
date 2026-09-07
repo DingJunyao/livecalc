@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../shared/models/hierarchy_relation.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../models/ingredient.dart';
 import '../repositories/ingredient_repository.dart';
@@ -124,6 +125,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final editing = _editing;
     if (editing != null) {
       await _run(() => widget.onUpdateStrength(editing.id, _strength));
@@ -131,7 +133,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
     }
     final selected = _selected;
     if (selected == null) {
-      _toast('请选择关联原料');
+      _toast(l10n.ingredientSelectRelation);
       return;
     }
     await _run(
@@ -153,19 +155,22 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   }
 
   Future<void> _delete(HierarchyRelation relation) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除关系'),
-        content: Text('确定删除「${relation.parentName} → ${relation.childName}」吗？'),
+        title: Text(l10n.ingredientDeleteRelation),
+        content: Text(
+          l10n.ingredientDeleteRelationMessage,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -178,12 +183,17 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
     Future<Object?> Function() action, {
     VoidCallback? onApplied,
   }) async {
+    final l10n = AppLocalizations.of(context);
     setState(() => _saving = true);
     try {
       final result = await action();
       if (!mounted) return;
       if (result is EntityWriteResult && result.pending) {
-        _toast(result.message.isEmpty ? '已提交，待管理员审核' : result.message);
+        _toast(
+          result.message.isEmpty
+              ? l10n.commonSubmittedPendingReview
+              : result.message,
+        );
         return;
       }
       setState(() {
@@ -192,7 +202,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
       });
       onApplied?.call();
     } on Exception {
-      if (mounted) _toast('保存失败，请重试');
+      if (mounted) _toast(l10n.commonSaveFailedRetry);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -205,21 +215,22 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return DefaultTabController(
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('关联原料关系'),
+          title: Text(l10n.ingredientManageRelations),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(_changed),
-              child: const Text('完成'),
+              child: Text(l10n.commonDone),
             ),
           ],
-          bottom: const TabBar(
+          bottom: TabBar(
             tabs: [
-              Tab(text: '关系图'),
-              Tab(text: '关系列表'),
+              Tab(text: l10n.ingredientRelationGraph),
+              Tab(text: l10n.ingredientRelationList),
             ],
           ),
         ),
@@ -248,15 +259,17 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                     title: Text(
                       '${relation.parentName} → ${relation.childName}',
                     ),
-                    subtitle:
-                        Text('${relation.typeLabel} · 强度 ${relation.strength}'),
+                    subtitle: Text(
+                      '${_relationLabel(relation.relationType, l10n)}'
+                      ' · ${l10n.journeyRelationStrength(relation.strength)}',
+                    ),
                     trailing: relation.isPending
-                        ? const Chip(label: Text('待审'))
+                        ? Chip(label: Text(l10n.unitsPendingReview))
                         : Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
-                                tooltip: '调整强度',
+                                tooltip: l10n.journeyAdjustStrength,
                                 onPressed: () => setState(() {
                                   _editing = relation;
                                   _strength = relation.strength;
@@ -264,7 +277,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                                 icon: const Icon(Icons.tune),
                               ),
                               IconButton(
-                                tooltip: '删除',
+                                tooltip: l10n.commonDelete,
                                 onPressed:
                                     _saving ? null : () => _delete(relation),
                                 icon: const Icon(Icons.delete_outline),
@@ -282,6 +295,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   }
 
   Widget _buildForm() {
+    final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
     return Card(
       child: Padding(
@@ -290,7 +304,9 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              _editing == null ? '添加层级关系' : '调整关系强度',
+              _editing == null
+                  ? l10n.ingredientAddRelation
+                  : l10n.ingredientAdjustRelationStrength,
               style: theme.textTheme.titleMedium
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
@@ -298,14 +314,14 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
               Text('${_editing!.parentName} → ${_editing!.childName}'),
               TextButton(
                 onPressed: () => setState(() => _editing = null),
-                child: const Text('改为添加关系'),
+                child: Text(l10n.ingredientChangeToAddRelation),
               ),
             ] else ...[
               const SizedBox(height: 12),
               TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  labelText: '搜索关联原料 *',
+                  labelText: l10n.ingredientSearchRelation,
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _searching
                       ? const SizedBox(
@@ -348,17 +364,23 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: _relationType,
-                decoration: const InputDecoration(
-                  labelText: '关系类型',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.ingredientRelationType,
+                  border: const OutlineInputBorder(),
                 ),
-                items: const [
-                  DropdownMenuItem(value: 'contains', child: Text('包含')),
+                items: [
+                  DropdownMenuItem(
+                    value: 'contains',
+                    child: Text(l10n.ingredientRelationContains),
+                  ),
                   DropdownMenuItem(
                     value: 'substitutable',
-                    child: Text('可替代'),
+                    child: Text(l10n.ingredientRelationSubstitutable),
                   ),
-                  DropdownMenuItem(value: 'fallback', child: Text('回退')),
+                  DropdownMenuItem(
+                    value: 'fallback',
+                    child: Text(l10n.ingredientRelationFallback),
+                  ),
                 ],
                 onChanged: (value) =>
                     setState(() => _relationType = value ?? 'contains'),
@@ -367,7 +389,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text('强度：$_strength'),
+                Text(l10n.journeyRelationStrength(_strength)),
                 Expanded(
                   child: Slider(
                     value: _strength.toDouble(),
@@ -383,7 +405,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
             ),
             FilledButton(
               onPressed: _saving ? null : _save,
-              child: const Text('保存关系'),
+              child: Text(l10n.ingredientSaveRelation),
             ),
           ],
         ),
@@ -402,4 +424,11 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
         ...expanded.parentRelations,
     ];
   }
+
+  String _relationLabel(String type, AppLocalizations l10n) => switch (type) {
+        'contains' => l10n.ingredientRelationContains,
+        'substitutable' => l10n.ingredientRelationSubstitutable,
+        'fallback' => l10n.ingredientRelationFallback,
+        _ => type,
+      };
 }

@@ -8,6 +8,7 @@ import 'package:com_a4ding_livecalc/features/ingredients/screens/ingredient_deta
 import 'package:com_a4ding_livecalc/features/ingredients/widgets/hierarchy_graph.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/merchant_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/models/hierarchy_relation.dart';
 
 class _FakeIngredientDetailNotifier extends IngredientDetailPageNotifier {
@@ -63,13 +64,17 @@ void main() {
             (ref) => MerchantListNotifier(_FakeMerchantRepository()),
           ),
         ],
-        child: const MaterialApp(home: IngredientDetailScreen(id: 8)),
+        child: const MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: IngredientDetailScreen(id: 8),
+        ),
       ),
     );
     await tester.pumpAndSettle();
 
     expect(find.byType(HierarchyGraph), findsOneWidget);
-    expect(find.text('层级关系'), findsOneWidget);
+    expect(find.text('Hierarchy'), findsOneWidget);
     expect(find.text('番茄'), findsAtLeastNWidgets(1));
   });
 }

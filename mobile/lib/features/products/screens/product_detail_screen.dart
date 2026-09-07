@@ -3,6 +3,7 @@ import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -50,12 +51,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(productDetailPageProvider(widget.id));
     final product = state.product?.mergedWithPending();
 
     if (state.error != null && product == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('商品详情')),
+        appBar: AppBar(title: Text(l10n.productDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -65,8 +67,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     }
     if (product == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('商品详情')),
-        body: const LoadingIndicator(message: '加载中...'),
+        appBar: AppBar(title: Text(l10n.productDetailTitle)),
+        body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
 
@@ -75,15 +77,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final isAdmin = user?.isAdmin ?? false;
     final userCurrency = ref.read(displayCurrencyProvider);
     final modifications = <String>{
-      ...product.pendingModificationLabels,
-      if (state.nutrition?.pendingProposal != null) '营养成分',
-      if (state.units.any((unit) => unit.isPending)) '自定义单位',
-      if (state.densities.any((density) => density.isPending)) '密度',
+      for (final field
+          in product.pendingProposal?.updateData.keys ?? const <String>[])
+        switch (field) {
+          'name' => l10n.productPendingName,
+          'brand' => l10n.productPendingBrand,
+          'barcode' => l10n.productPendingBarcode,
+          'ingredient_id' => l10n.productPendingLinkedIngredient,
+          'aliases' => l10n.productPendingAliases,
+          'tags' => l10n.productPendingTags,
+          _ => field,
+        },
+      if (state.nutrition?.pendingProposal != null)
+        l10n.journeyPendingNutrition,
+      if (state.units.any((unit) => unit.isPending))
+        l10n.journeyPendingCustomUnits,
+      if (state.densities.any((density) => density.isPending))
+        l10n.journeyPendingDensity,
     };
     final deletions = <String>{
-      if (product.pendingProposal?.action == 'delete') '基本信息',
-      if (state.deletedUnitIds.isNotEmpty) '自定义单位',
-      if (state.deletedDensityIds.isNotEmpty) '密度',
+      if (product.pendingProposal?.action == 'delete')
+        l10n.journeyBasicInformation,
+      if (state.deletedUnitIds.isNotEmpty) l10n.journeyPendingCustomUnits,
+      if (state.deletedDensityIds.isNotEmpty) l10n.journeyPendingDensity,
     };
     return Scaffold(
       appBar: AppBar(
@@ -101,7 +117,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('商品',
+              child: Text(l10n.productChip,
                   style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.w600)),
@@ -111,7 +127,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.payments_outlined),
-            tooltip: '记录价格',
+            tooltip: l10n.journeyRecordPrice,
             onPressed: () => _openAddRecord(notifier),
           ),
           PopupMenuButton<String>(
@@ -122,14 +138,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 _confirmDelete(notifier, product);
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('编辑基本信息')),
-              PopupMenuItem(value: 'delete', child: Text('删除商品')),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Text(l10n.productEditBasicInfo),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(l10n.journeyDeleteProductTitle),
+              ),
             ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
             onPressed:
                 state.loading ? null : () => notifier.load(initialDays: 30),
           ),
@@ -241,6 +263,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   // ---- 记录价格 ----
   Future<void> _openAddRecord(ProductDetailPageNotifier notifier) async {
+    final l10n = AppLocalizations.of(context);
     if (!mounted) return;
     final product = ref.read(productDetailPageProvider(widget.id)).product;
     if (product == null) return;
@@ -255,7 +278,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       await notifier.load();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('价格已记录')),
+          SnackBar(content: Text(l10n.productPriceRecorded)),
         );
       }
     }
@@ -265,6 +288,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     ProductDetailPageNotifier notifier,
     PriceRecord record,
   ) async {
+    final l10n = AppLocalizations.of(context);
     if (!mounted) return;
     final merchants = ref.read(merchantListProvider).items;
     final result = await context.push<PriceRecordFormResult>(
@@ -299,13 +323,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已更新')),
+          SnackBar(content: Text(l10n.journeyUpdated)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('更新失败，请重试')),
+          SnackBar(content: Text(l10n.journeyUpdateFailed)),
         );
       }
     }
@@ -315,22 +339,23 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     ProductDetailPageNotifier notifier,
     PriceRecord record,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除记录'),
-        content: const Text('确定删除这条价格记录吗？'),
+        title: Text(l10n.journeyDeleteRecordTitle),
+        content: Text(l10n.journeyDeleteThisRecordMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -340,13 +365,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       await notifier.deleteRecord(record.id);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('已删除')),
+          SnackBar(content: Text(l10n.journeyDeleted)),
         );
       }
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('删除失败，请重试')),
+          SnackBar(content: Text(l10n.journeyDeleteFailed)),
         );
       }
     }
@@ -357,6 +382,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     ProductDetailPageNotifier notifier,
     Product product,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final result = await context.push<ProductFormResult>(
       '/products/${product.id}/edit',
       extra: product,
@@ -368,8 +394,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           SnackBar(
             content: Text(
               result!.pending
-                  ? (result.message.isEmpty ? '修改已提交，待管理员审核' : result.message)
-                  : '基本信息已保存',
+                  ? (result.message.isEmpty
+                      ? l10n.journeyEditSubmitted
+                      : result.message)
+                  : l10n.journeyBasicInfoSaved,
             ),
           ),
         );
@@ -381,22 +409,23 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     ProductDetailPageNotifier notifier,
     Product product,
   ) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除商品'),
-        content: Text('确定删除商品「${product.name}」吗？'),
+        title: Text(l10n.journeyDeleteProductTitle),
+        content: Text(l10n.journeyDeleteProductMessage(product.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -409,8 +438,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         SnackBar(
           content: Text(
             review.pending
-                ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
-                : '商品已删除',
+                ? (review.message.isEmpty
+                    ? l10n.journeyDeleteProposalSubmitted
+                    : review.message)
+                : l10n.journeyProductDeleted,
           ),
         ),
       );
@@ -418,7 +449,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('删除失败，请重试')),
+          SnackBar(content: Text(l10n.journeyDeleteFailed)),
         );
       }
     }
@@ -441,6 +472,7 @@ class _ProductBasicInfoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -452,13 +484,13 @@ class _ProductBasicInfoCard extends StatelessWidget {
                 Icon(Icons.info_outline,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('基本信息',
+                Text(l10n.journeyBasicInformation,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: '编辑',
+                  tooltip: l10n.commonEdit,
                   visualDensity: VisualDensity.compact,
                   onPressed: onEdit,
                 ),
@@ -468,13 +500,13 @@ class _ProductBasicInfoCard extends StatelessWidget {
             if (product.brand != null && product.brand!.isNotEmpty)
               _ProductInfoRow(
                 icon: Icons.tag_outlined,
-                label: '品牌',
+                label: l10n.productBrand,
                 value: product.brand!,
               ),
             if (product.barcode != null && product.barcode!.isNotEmpty)
               _ProductInfoRow(
                 icon: Icons.barcode_reader,
-                label: '条码',
+                label: l10n.productBarcode,
                 value: product.barcode!,
               ),
             if (product.ingredientName != null)
@@ -488,7 +520,11 @@ class _ProductBasicInfoCard extends StatelessWidget {
                       Icon(Icons.science_outlined,
                           size: 16, color: theme.colorScheme.outline),
                       const SizedBox(width: 12),
-                      Text('关联原料：',
+                      Text(l10n.productLinkedIngredient,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.colorScheme.outline)),
+                      const SizedBox(width: 4),
+                      Text(':',
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline)),
                       const SizedBox(width: 4),
@@ -538,13 +574,13 @@ class _ProductBasicInfoCard extends StatelessWidget {
             if (product.tags.isNotEmpty)
               _ProductInfoRow(
                 icon: Icons.sell_outlined,
-                label: '标签',
-                value: product.tags.join('、'),
+                label: l10n.productTags,
+                value: product.tags.join(l10n.commonListSeparator),
               ),
             if (product.createdAt != null)
               _ProductInfoRow(
                 icon: Icons.calendar_today_outlined,
-                label: '创建时间',
+                label: l10n.journeyCreatedAt,
                 value: _fmtDateTime(product.createdAt!),
               ),
           ],
@@ -574,7 +610,11 @@ class _ProductInfoRow extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: theme.colorScheme.outline),
           const SizedBox(width: 12),
-          Text('$label：',
+          Text(label,
+              style: theme.textTheme.bodyMedium
+                  ?.copyWith(color: theme.colorScheme.outline)),
+          const SizedBox(width: 4),
+          Text(':',
               style: theme.textTheme.bodyMedium
                   ?.copyWith(color: theme.colorScheme.outline)),
           const SizedBox(width: 4),
@@ -607,6 +647,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -618,7 +659,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
                 Icon(Icons.payments_outlined,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
-                Text('最新价格',
+                Text(l10n.journeyLatestPrice,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
               ],
@@ -632,7 +673,7 @@ class _ProductLatestPriceCard extends StatelessWidget {
             else if (latest?.price == null)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text('暂无价格数据',
+                child: Text(l10n.journeyNoPriceData,
                     style: theme.textTheme.bodyMedium
                         ?.copyWith(color: theme.colorScheme.outline)),
               )
@@ -691,6 +732,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -701,14 +743,14 @@ class _ProductPriceRecordsCard extends StatelessWidget {
               children: [
                 Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('价格记录',
+                Text(l10n.journeyPriceRecords,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('添加记录'),
+                  label: Text(l10n.journeyAddRecord),
                 ),
               ],
             ),
@@ -722,7 +764,7 @@ class _ProductPriceRecordsCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
-                  child: Text('暂无价格记录',
+                  child: Text(l10n.journeyNoPriceRecords,
                       style: theme.textTheme.bodyMedium
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
@@ -739,7 +781,9 @@ class _ProductPriceRecordsCard extends StatelessWidget {
                 Center(
                   child: TextButton(
                     onPressed: loading ? null : onLoadMore,
-                    child: Text(loading ? '加载中...' : '加载更多'),
+                    child: Text(
+                      loading ? l10n.commonLoading : l10n.journeyLoadMore,
+                    ),
                   ),
                 ),
             ],
@@ -766,6 +810,7 @@ class _ProductRecordRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final r = record;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
@@ -792,7 +837,8 @@ class _ProductRecordRow extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${r.merchantName ?? '未知商家'} · ${_fmtDateTime(r.recordedAt)}',
+                  '${r.merchantName ?? l10n.journeyUnknownMerchant}'
+                  ' · ${_fmtDateTime(r.recordedAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall
@@ -804,9 +850,9 @@ class _ProductRecordRow extends StatelessWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, size: 18),
             onSelected: (v) => v == 'edit' ? onEdit() : onDelete(),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'edit', child: Text('编辑')),
-              PopupMenuItem(value: 'delete', child: Text('删除')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'edit', child: Text(l10n.commonEdit)),
+              PopupMenuItem(value: 'delete', child: Text(l10n.commonDelete)),
             ],
           ),
         ],
