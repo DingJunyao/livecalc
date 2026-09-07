@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
+import '../../../l10n/app_localizations.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -152,6 +153,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       ref.read(merchantListProvider.notifier).load();
     });
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(merchantListProvider);
     final mapConfig = ref.watch(mapConfigProvider);
     final mapReady = Platform.isIOS || mapConfig.loaded;
@@ -169,18 +171,18 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('商家'),
+        title: Text(l10n.merchantTitle),
         leading: const AppBackButton(),
         actions: [
-  const CalcContextMenuButton(),
+          const CalcContextMenuButton(),
           IconButton(
             icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
-            tooltip: _showMap ? '收起地图' : '显示地图',
+            tooltip: _showMap ? l10n.merchantHideMap : l10n.merchantShowMap,
             onPressed: () => setState(() => _showMap = !_showMap),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
             onPressed: state.loading
                 ? null
                 : () => ref.read(merchantListProvider.notifier).load(),
@@ -234,6 +236,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   }
 
   Widget _buildSearchBar(ThemeData theme, MerchantListState state) {
+    final l10n = AppLocalizations.of(context);
     final notifier = ref.read(merchantListProvider.notifier);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
@@ -243,7 +246,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜索商家...',
+                hintText: l10n.merchantSearch,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -274,7 +277,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
               label: Text('${notifier.activeFilterCount}'),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
-                tooltip: '筛选',
+                tooltip: l10n.journeyFilters,
                 onPressed: () => _showFilterSheet(theme),
                 style: notifier.activeFilterCount > 0
                     ? IconButton.styleFrom(
@@ -291,8 +294,9 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   }
 
   Widget _buildBody(ThemeData theme, MerchantListState state) {
+    final l10n = AppLocalizations.of(context);
     if (state.loading && state.items.isEmpty) {
-      return const LoadingIndicator(message: '加载中...');
+      return const LoadingIndicator();
     }
     if (state.error != null && state.items.isEmpty) {
       return ErrorDisplay(
@@ -303,8 +307,12 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     if (state.items.isEmpty) {
       return EmptyState(
         icon: Icons.store,
-        title: state.favoritesOnly ? '暂无收藏商家' : '暂无商家',
-        subtitle: state.favoritesOnly ? '收藏的商家会显示在这里' : '点击右下角按钮添加第一个商家',
+        title: state.favoritesOnly
+            ? l10n.merchantNoFavoriteMerchants
+            : l10n.merchantNoMerchants,
+        subtitle: state.favoritesOnly
+            ? l10n.merchantNoFavoriteMerchantsHint
+            : l10n.merchantNoMerchantsHint,
       );
     }
     return RefreshIndicator(
@@ -328,7 +336,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                         onPressed: () => ref
                             .read(merchantListProvider.notifier)
                             .load(loadMore: true),
-                        child: const Text('加载更多'),
+                        child: Text(l10n.journeyLoadMore),
                       ),
               ),
             );
@@ -352,6 +360,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   // ---- 筛选 ----
 
   void _showFilterSheet(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     final state = ref.read(merchantListProvider);
     var includeClosed = state.includeClosed;
     var favoritesOnly = state.favoritesOnly;
@@ -377,103 +386,103 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
-                  child: Row(
-                    children: [
-                      Text('筛选条件',
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      if (includeClosed ||
-                          favoritesOnly ||
-                          noPrice ||
-                          includeOtherRegions)
-                        TextButton.icon(
-                          onPressed: () {
-                            includeClosed = false;
-                            favoritesOnly = false;
-                            noPrice = false;
-                            includeOtherRegions = false;
-                            update();
-                          },
-                          icon: const Icon(Icons.clear_all, size: 18),
-                          label: const Text('清除'),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                    child: Row(
+                      children: [
+                        Text(l10n.merchantFilterTitle,
+                            style: theme.textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.bold)),
+                        const Spacer(),
+                        if (includeClosed ||
+                            favoritesOnly ||
+                            noPrice ||
+                            includeOtherRegions)
+                          TextButton.icon(
+                            onPressed: () {
+                              includeClosed = false;
+                              favoritesOnly = false;
+                              noPrice = false;
+                              includeOtherRegions = false;
+                              update();
+                            },
+                            icon: const Icon(Icons.clear_all, size: 18),
+                            label: Text(l10n.journeyClear),
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.of(ctx).pop(),
                         ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(ctx).pop(),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Column(
-                    children: [
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('显示已关闭商家'),
-                        value: includeClosed,
-                        onChanged: (v) {
-                          includeClosed = v;
-                          update();
-                        },
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('显示其他地区的商家'),
-                        subtitle: const Text('含全部地区，不受计算范围限制'),
-                        value: includeOtherRegions,
-                        onChanged: (v) {
-                          includeOtherRegions = v;
-                          update();
-                        },
-                      ),
-                      SwitchListTile(
-                        contentPadding: EdgeInsets.zero,
-                        title: const Text('仅看我的收藏'),
-                        value: favoritesOnly,
-                        onChanged: (v) {
-                          favoritesOnly = v;
-                          update();
-                        },
-                      ),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: FilterChip(
-                          label: const Text('未维护过价格'),
-                          selected: noPrice,
-                          onSelected: (v) {
-                            noPrice = v;
-                            update();
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: FilledButton(
-                      onPressed: () {
-                        ref.read(merchantListProvider.notifier).applyFilters(
-                              includeClosed: includeClosed,
-                              favoritesOnly: favoritesOnly,
-                              noPrice: noPrice,
-                              includeOtherRegions: includeOtherRegions,
-                            );
-                        Navigator.of(ctx).pop();
-                      },
-                      child: const Text('确定'),
+                      ],
                     ),
                   ),
-                ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.merchantShowClosed),
+                          value: includeClosed,
+                          onChanged: (v) {
+                            includeClosed = v;
+                            update();
+                          },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.merchantShowOtherRegions),
+                          subtitle: Text(l10n.merchantShowOtherRegionsHint),
+                          value: includeOtherRegions,
+                          onChanged: (v) {
+                            includeOtherRegions = v;
+                            update();
+                          },
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l10n.merchantFavoritesOnly),
+                          value: favoritesOnly,
+                          onChanged: (v) {
+                            favoritesOnly = v;
+                            update();
+                          },
+                        ),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: FilterChip(
+                            label: Text(l10n.merchantNoMaintainedPrice),
+                            selected: noPrice,
+                            onSelected: (v) {
+                              noPrice = v;
+                              update();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () {
+                          ref.read(merchantListProvider.notifier).applyFilters(
+                                includeClosed: includeClosed,
+                                favoritesOnly: favoritesOnly,
+                                noPrice: noPrice,
+                                includeOtherRegions: includeOtherRegions,
+                              );
+                          Navigator.of(ctx).pop();
+                        },
+                        child: Text(l10n.journeyConfirm),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -486,6 +495,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
   // ---- 添加/编辑商家 ----
 
   Future<void> _openMerchantForm({Merchant? item}) async {
+    final l10n = AppLocalizations.of(context);
     final result = await context.push<MerchantFormResult>(
       item == null ? '/merchants/new' : '/merchants/${item.id}/edit',
       extra: MerchantFormArguments(
@@ -499,29 +509,32 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       await ref.read(merchantListProvider.notifier).load();
       _toast(
         result!.pending
-            ? (result.message.isEmpty ? '已提交，待管理员审核' : result.message)
-            : (result.message.isEmpty ? '已保存' : result.message),
+            ? (result.message.isEmpty
+                ? l10n.commonSubmittedPendingReview
+                : result.message)
+            : (result.message.isEmpty ? l10n.merchantSaved : result.message),
       );
     }
   }
 
   Future<void> _confirmDelete(Merchant item) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除商家'),
-        content: Text('确定删除商家「${_displayName(item)}」吗？'),
+        title: Text(l10n.merchantDeleteTitle),
+        content: Text(l10n.merchantDeleteMessage(_displayName(item, l10n))),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -532,11 +545,13 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
           await ref.read(merchantListProvider.notifier).deleteMerchant(item.id);
       _toast(
         review.pending
-            ? (review.message.isEmpty ? '删除提议已提交，待管理员审核' : review.message)
-            : '已删除',
+            ? (review.message.isEmpty
+                ? l10n.journeyDeleteProposalSubmitted
+                : review.message)
+            : l10n.merchantDeleted,
       );
     } catch (_) {
-      _toast('删除失败，请重试');
+      _toast(l10n.journeyDeleteFailed);
     }
   }
 
@@ -547,7 +562,8 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
 }
 
 /// 商家名可能为空（只填国家/地区创建的商家），显示回退文案。
-String _displayName(Merchant m) => m.name.trim().isEmpty ? '未命名商家' : m.name;
+String _displayName(Merchant m, AppLocalizations l10n) =>
+    m.name.trim().isEmpty ? l10n.merchantUnnamed : m.name;
 
 class _MerchantCard extends StatelessWidget {
   final Merchant item;
@@ -571,6 +587,7 @@ class _MerchantCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final hasLocation = item.latitude != null && item.longitude != null;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
@@ -596,7 +613,7 @@ class _MerchantCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            _displayName(item),
+                            _displayName(item, l10n),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.titleSmall
@@ -612,7 +629,7 @@ class _MerchantCard extends StatelessWidget {
                               color: Colors.orange.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: Text('已关闭',
+                            child: Text(l10n.merchantClosed,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                     color: Colors.orange.shade800,
                                     fontWeight: FontWeight.w600)),
@@ -622,7 +639,7 @@ class _MerchantCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      item.address ?? '暂无地址',
+                      item.address ?? l10n.merchantNoAddress,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall
@@ -636,13 +653,17 @@ class _MerchantCard extends StatelessWidget {
                   isFavorite ? Icons.favorite : Icons.favorite_border,
                   color: isFavorite ? theme.colorScheme.error : null,
                 ),
-                tooltip: isFavorite ? '取消收藏' : '收藏',
+                tooltip: isFavorite
+                    ? l10n.merchantRemoveFavorite
+                    : l10n.merchantFavorite,
                 visualDensity: VisualDensity.compact,
                 onPressed: onFavorite,
               ),
               IconButton(
                 icon: const Icon(Icons.near_me_outlined),
-                tooltip: hasLocation ? '在地图上定位' : '未设置位置',
+                tooltip: hasLocation
+                    ? l10n.merchantLocateOnMap
+                    : l10n.merchantNoLocationSet,
                 visualDensity: VisualDensity.compact,
                 color: hasLocation
                     ? theme.colorScheme.secondary
@@ -658,9 +679,10 @@ class _MerchantCard extends StatelessWidget {
                     onDelete();
                   }
                 },
-                itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('编辑')),
-                  PopupMenuItem(value: 'delete', child: Text('删除')),
+                itemBuilder: (_) => [
+                  PopupMenuItem(value: 'edit', child: Text(l10n.commonEdit)),
+                  PopupMenuItem(
+                      value: 'delete', child: Text(l10n.commonDelete)),
                 ],
               ),
               const Icon(Icons.chevron_right, color: Colors.grey),

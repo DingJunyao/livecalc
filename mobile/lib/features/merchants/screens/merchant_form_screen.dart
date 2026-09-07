@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/api/api_client.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/region_select_field.dart';
 import '../models/merchant.dart';
 import '../repositories/merchant_repository.dart';
@@ -120,6 +121,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     setState(() => _saving = true);
     final repository = widget.repository ?? MerchantRepository();
@@ -158,16 +160,16 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       }
       if (!mounted) return;
       context.pop(
-        const MerchantFormResult(
+        MerchantFormResult(
           saved: true,
           pending: false,
-          message: '已创建商家',
+          message: l10n.merchantCreated,
         ),
       );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('保存失败：$error')),
+        SnackBar(content: Text(l10n.merchantSaveFailed('$error'))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -177,10 +179,11 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final editing = widget.merchant != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(editing ? '编辑商家' : '添加商家'),
+        title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
       ),
       body: SafeArea(
         top: false,
@@ -193,24 +196,24 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                 controller: _nameController,
                 autofocus: !editing,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: '商家名称（可留空）',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.merchantNameOptional,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _addressController,
                 textInputAction: TextInputAction.done,
-                decoration: const InputDecoration(
-                  labelText: '地址',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.merchantAddress,
+                  border: const OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('营业中'),
+                title: Text(l10n.merchantIsOpen),
                 value: _isOpen,
                 onChanged:
                     _saving ? null : (value) => setState(() => _isOpen = value),
@@ -224,9 +227,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
               DropdownButtonFormField<String?>(
                 initialValue: _defaultCurrency,
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('跟随地区'),
+                    child: Text(l10n.merchantCurrencyFollowRegion),
                   ),
                   for (final c in _currencies)
                     DropdownMenuItem<String?>(
@@ -236,9 +239,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                 ],
                 // 收起时只显示三字母代码（未选时显示「跟随地区」）
                 selectedItemBuilder: (context) => [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
-                    child: Text('跟随地区'),
+                    child: Text(l10n.merchantCurrencyFollowRegion),
                   ),
                   for (final c in _currencies)
                     DropdownMenuItem<String?>(
@@ -246,14 +249,14 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                       child: Text(c['code'] as String),
                     ),
                 ],
-                decoration: const InputDecoration(
-                  labelText: '默认币种',
-                  border: OutlineInputBorder(),
+                decoration: InputDecoration(
+                  labelText: l10n.merchantDefaultCurrency,
+                  border: const OutlineInputBorder(),
                 ),
                 onChanged: (v) => setState(() => _defaultCurrency = v),
               ),
               Text(
-                '位置（点击地图选择，可选）',
+                l10n.merchantLocationPickerTitle,
                 style: theme.textTheme.titleSmall
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),
@@ -272,7 +275,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Text(editing ? '保存' : '创建'),
+                    : Text(
+                        editing ? l10n.commonSave : l10n.merchantCreateButton,
+                      ),
               ),
             ],
           ),

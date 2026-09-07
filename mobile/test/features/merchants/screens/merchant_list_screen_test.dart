@@ -17,6 +17,7 @@ import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_form_scr
 import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
 import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockRepo extends Mock implements MerchantRepository {}
 
@@ -163,7 +164,12 @@ void main() {
         merchantListProvider.overrideWith((ref) => MerchantListNotifier(repo)),
         mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -178,6 +184,9 @@ void main() {
         mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: MerchantListScreen(
           initialShowMap: true,
           profileRepository: profileRepo,
@@ -256,7 +265,8 @@ void main() {
     expect(state.items.map((m) => m.id), [1, 2]);
   });
 
-  testWidgets('打开「显示其他地区的商家」：search 带 include_other_regions=true', (tester) async {
+  testWidgets('打开「显示其他地区的商家」：search 带 include_other_regions=true',
+      (tester) async {
     await pumpList(tester);
 
     await tester.tap(find.byIcon(Icons.tune));
@@ -315,7 +325,8 @@ void main() {
       expect(find.byType(MerchantFormScreen), findsOneWidget);
       expect(find.byType(AlertDialog), findsNothing);
 
-      await tester.enterText(find.widgetWithText(TextField, '商家名称（可留空）'), '社区超市');
+      await tester.enterText(
+          find.widgetWithText(TextField, '商家名称（可留空）'), '社区超市');
       await tester.tap(find.descendant(
           of: find.byType(MerchantFormScreen),
           matching: find.byType(FlutterMap)));

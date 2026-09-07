@@ -2566,6 +2566,402 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'标签'**
   String get productPendingTags;
+
+  /// No description provided for @merchantTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get merchantTitle;
+
+  /// No description provided for @merchantDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家详情'**
+  String get merchantDetailTitle;
+
+  /// No description provided for @merchantAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加商家'**
+  String get merchantAddTitle;
+
+  /// No description provided for @merchantEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑商家'**
+  String get merchantEditTitle;
+
+  /// No description provided for @merchantCreateButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建'**
+  String get merchantCreateButton;
+
+  /// No description provided for @merchantSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存'**
+  String get merchantSaved;
+
+  /// No description provided for @merchantCreated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已创建商家'**
+  String get merchantCreated;
+
+  /// No description provided for @merchantSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败：{error}'**
+  String merchantSaveFailed(Object error);
+
+  /// No description provided for @merchantSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索商家...'**
+  String get merchantSearch;
+
+  /// No description provided for @merchantNoAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无地址'**
+  String get merchantNoAddress;
+
+  /// No description provided for @merchantUnnamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未命名商家'**
+  String get merchantUnnamed;
+
+  /// No description provided for @merchantChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get merchantChip;
+
+  /// No description provided for @merchantShowMap.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示地图'**
+  String get merchantShowMap;
+
+  /// No description provided for @merchantHideMap.
+  ///
+  /// In zh, this message translates to:
+  /// **'收起地图'**
+  String get merchantHideMap;
+
+  /// No description provided for @merchantShowClosed.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示已关闭商家'**
+  String get merchantShowClosed;
+
+  /// No description provided for @merchantShowOtherRegions.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示其他地区的商家'**
+  String get merchantShowOtherRegions;
+
+  /// No description provided for @merchantShowOtherRegionsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'含全部地区，不受计算范围限制'**
+  String get merchantShowOtherRegionsHint;
+
+  /// No description provided for @merchantFavoritesOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅看我的收藏'**
+  String get merchantFavoritesOnly;
+
+  /// No description provided for @merchantNoMaintainedPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'未维护过价格'**
+  String get merchantNoMaintainedPrice;
+
+  /// No description provided for @merchantFilterTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'筛选条件'**
+  String get merchantFilterTitle;
+
+  /// No description provided for @merchantDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除商家'**
+  String get merchantDeleteTitle;
+
+  /// No description provided for @merchantDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除商家「{name}」吗？'**
+  String merchantDeleteMessage(Object name);
+
+  /// No description provided for @merchantDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除'**
+  String get merchantDeleted;
+
+  /// No description provided for @merchantFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏'**
+  String get merchantFavorite;
+
+  /// No description provided for @merchantRemoveFavorite.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏'**
+  String get merchantRemoveFavorite;
+
+  /// No description provided for @merchantLocateOnMap.
+  ///
+  /// In zh, this message translates to:
+  /// **'在地图上定位'**
+  String get merchantLocateOnMap;
+
+  /// No description provided for @merchantNoLocationSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置位置'**
+  String get merchantNoLocationSet;
+
+  /// No description provided for @merchantLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'位置'**
+  String get merchantLocation;
+
+  /// No description provided for @merchantLocationPickerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'位置（点击地图选择，可选）'**
+  String get merchantLocationPickerTitle;
+
+  /// No description provided for @merchantIsOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'营业中'**
+  String get merchantIsOpen;
+
+  /// No description provided for @merchantOpen.
+  ///
+  /// In zh, this message translates to:
+  /// **'营业中'**
+  String get merchantOpen;
+
+  /// No description provided for @merchantClosed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已关闭'**
+  String get merchantClosed;
+
+  /// No description provided for @merchantStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'营业状态'**
+  String get merchantStatus;
+
+  /// No description provided for @merchantNoFavoriteMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无收藏商家'**
+  String get merchantNoFavoriteMerchants;
+
+  /// No description provided for @merchantNoFavoriteMerchantsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏的商家会显示在这里'**
+  String get merchantNoFavoriteMerchantsHint;
+
+  /// No description provided for @merchantNoMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无商家'**
+  String get merchantNoMerchants;
+
+  /// No description provided for @merchantNoMerchantsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角按钮添加第一个商家'**
+  String get merchantNoMerchantsHint;
+
+  /// No description provided for @merchantName.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get merchantName;
+
+  /// No description provided for @merchantNameOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家名称（可留空）'**
+  String get merchantNameOptional;
+
+  /// No description provided for @merchantAddress.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址'**
+  String get merchantAddress;
+
+  /// No description provided for @merchantDefaultCurrency.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认币种'**
+  String get merchantDefaultCurrency;
+
+  /// No description provided for @merchantCurrencyFollowRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随地区'**
+  String get merchantCurrencyFollowRegion;
+
+  /// No description provided for @merchantProductPrices.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品价格'**
+  String get merchantProductPrices;
+
+  /// No description provided for @merchantNoProductPrices.
+  ///
+  /// In zh, this message translates to:
+  /// **'该商家暂无价格记录'**
+  String get merchantNoProductPrices;
+
+  /// No description provided for @mapLayerSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换底图'**
+  String get mapLayerSwitch;
+
+  /// No description provided for @mapLayerStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get mapLayerStandard;
+
+  /// No description provided for @mapLayerSatellite.
+  ///
+  /// In zh, this message translates to:
+  /// **'卫星'**
+  String get mapLayerSatellite;
+
+  /// No description provided for @mapLayerAmap.
+  ///
+  /// In zh, this message translates to:
+  /// **'高德'**
+  String get mapLayerAmap;
+
+  /// No description provided for @mapLayerTencent.
+  ///
+  /// In zh, this message translates to:
+  /// **'腾讯'**
+  String get mapLayerTencent;
+
+  /// No description provided for @mapLayerOsm.
+  ///
+  /// In zh, this message translates to:
+  /// **'OSM'**
+  String get mapLayerOsm;
+
+  /// No description provided for @mapAllMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部商家'**
+  String get mapAllMerchants;
+
+  /// No description provided for @mapChooseSavedPlace.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择常用地点'**
+  String get mapChooseSavedPlace;
+
+  /// No description provided for @mapClearLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除定位'**
+  String get mapClearLocation;
+
+  /// No description provided for @mapLocateCurrentLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'定位当前位置'**
+  String get mapLocateCurrentLocation;
+
+  /// No description provided for @mapLocateAndChoose.
+  ///
+  /// In zh, this message translates to:
+  /// **'定位并选择当前位置'**
+  String get mapLocateAndChoose;
+
+  /// No description provided for @mapNoMerchantLocations.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无商家位置'**
+  String get mapNoMerchantLocations;
+
+  /// No description provided for @mapNoMerchantLocationsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家缺少坐标信息时无法在地图显示'**
+  String get mapNoMerchantLocationsHint;
+
+  /// No description provided for @mapLatitude.
+  ///
+  /// In zh, this message translates to:
+  /// **'纬度'**
+  String get mapLatitude;
+
+  /// No description provided for @mapLongitude.
+  ///
+  /// In zh, this message translates to:
+  /// **'经度'**
+  String get mapLongitude;
+
+  /// No description provided for @mapTapToPickLocation.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击地图选择位置'**
+  String get mapTapToPickLocation;
+
+  /// No description provided for @mapLocationServiceDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'定位服务未开启，请在系统设置中打开'**
+  String get mapLocationServiceDisabled;
+
+  /// No description provided for @mapLocationPermissionDenied.
+  ///
+  /// In zh, this message translates to:
+  /// **'位置权限被拒绝'**
+  String get mapLocationPermissionDenied;
+
+  /// No description provided for @mapLocationPermissionDeniedForever.
+  ///
+  /// In zh, this message translates to:
+  /// **'位置权限已被永久拒绝，请到系统设置中开启'**
+  String get mapLocationPermissionDeniedForever;
+
+  /// No description provided for @mapLocationTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'定位超时，请重试'**
+  String get mapLocationTimeout;
+
+  /// No description provided for @mapLocationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'定位失败，请重试'**
+  String get mapLocationFailed;
+
+  /// No description provided for @mapMerchantClosedSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'（已关闭）'**
+  String get mapMerchantClosedSuffix;
 }
 
 class _AppLocalizationsDelegate

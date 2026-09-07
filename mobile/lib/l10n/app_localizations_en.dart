@@ -1313,4 +1313,214 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productPendingTags => 'Tags';
+
+  @override
+  String get merchantTitle => 'Merchants';
+
+  @override
+  String get merchantDetailTitle => 'Merchant details';
+
+  @override
+  String get merchantAddTitle => 'Add merchant';
+
+  @override
+  String get merchantEditTitle => 'Edit merchant';
+
+  @override
+  String get merchantCreateButton => 'Create';
+
+  @override
+  String get merchantSaved => 'Merchant saved';
+
+  @override
+  String get merchantCreated => 'Merchant created';
+
+  @override
+  String merchantSaveFailed(Object error) {
+    return 'Save failed: $error';
+  }
+
+  @override
+  String get merchantSearch => 'Search merchants...';
+
+  @override
+  String get merchantNoAddress => 'No address';
+
+  @override
+  String get merchantUnnamed => 'Unnamed merchant';
+
+  @override
+  String get merchantChip => 'Merchant';
+
+  @override
+  String get merchantShowMap => 'Show map';
+
+  @override
+  String get merchantHideMap => 'Hide map';
+
+  @override
+  String get merchantShowClosed => 'Show closed merchants';
+
+  @override
+  String get merchantShowOtherRegions => 'Show merchants from other regions';
+
+  @override
+  String get merchantShowOtherRegionsHint =>
+      'Includes all regions, unaffected by calculation scope';
+
+  @override
+  String get merchantFavoritesOnly => 'Favorites only';
+
+  @override
+  String get merchantNoMaintainedPrice => 'No maintained price';
+
+  @override
+  String get merchantFilterTitle => 'Filter options';
+
+  @override
+  String get merchantDeleteTitle => 'Delete merchant';
+
+  @override
+  String merchantDeleteMessage(Object name) {
+    return 'Delete merchant \"$name\"?';
+  }
+
+  @override
+  String get merchantDeleted => 'Merchant deleted';
+
+  @override
+  String get merchantFavorite => 'Add to favorites';
+
+  @override
+  String get merchantRemoveFavorite => 'Remove from favorites';
+
+  @override
+  String get merchantLocateOnMap => 'Locate on map';
+
+  @override
+  String get merchantNoLocationSet => 'No location set';
+
+  @override
+  String get merchantLocation => 'Location';
+
+  @override
+  String get merchantLocationPickerTitle =>
+      'Location (tap the map to choose, optional)';
+
+  @override
+  String get merchantIsOpen => 'Open';
+
+  @override
+  String get merchantOpen => 'Open';
+
+  @override
+  String get merchantClosed => 'Closed';
+
+  @override
+  String get merchantStatus => 'Business status';
+
+  @override
+  String get merchantNoFavoriteMerchants => 'No favorite merchants';
+
+  @override
+  String get merchantNoFavoriteMerchantsHint =>
+      'Favorite merchants will appear here';
+
+  @override
+  String get merchantNoMerchants => 'No merchants';
+
+  @override
+  String get merchantNoMerchantsHint =>
+      'Tap the button in the lower-right corner to add the first merchant';
+
+  @override
+  String get merchantName => 'Name';
+
+  @override
+  String get merchantNameOptional => 'Merchant name (optional)';
+
+  @override
+  String get merchantAddress => 'Address';
+
+  @override
+  String get merchantDefaultCurrency => 'Default currency';
+
+  @override
+  String get merchantCurrencyFollowRegion => 'Follow region';
+
+  @override
+  String get merchantProductPrices => 'Product prices';
+
+  @override
+  String get merchantNoProductPrices =>
+      'This merchant has no product prices yet';
+
+  @override
+  String get mapLayerSwitch => 'Switch map style';
+
+  @override
+  String get mapLayerStandard => 'Standard';
+
+  @override
+  String get mapLayerSatellite => 'Satellite';
+
+  @override
+  String get mapLayerAmap => 'AMap';
+
+  @override
+  String get mapLayerTencent => 'Tencent';
+
+  @override
+  String get mapLayerOsm => 'OSM';
+
+  @override
+  String get mapAllMerchants => 'All merchants';
+
+  @override
+  String get mapChooseSavedPlace => 'Choose a saved place';
+
+  @override
+  String get mapClearLocation => 'Clear location';
+
+  @override
+  String get mapLocateCurrentLocation => 'Locate current location';
+
+  @override
+  String get mapLocateAndChoose => 'Locate and choose current location';
+
+  @override
+  String get mapNoMerchantLocations => 'No merchant locations';
+
+  @override
+  String get mapNoMerchantLocationsHint =>
+      'Merchants without coordinates cannot be shown on the map';
+
+  @override
+  String get mapLatitude => 'Latitude';
+
+  @override
+  String get mapLongitude => 'Longitude';
+
+  @override
+  String get mapTapToPickLocation => 'Tap the map to choose a location';
+
+  @override
+  String get mapLocationServiceDisabled =>
+      'Location services are off. Turn them on in system settings.';
+
+  @override
+  String get mapLocationPermissionDenied => 'Location permission denied';
+
+  @override
+  String get mapLocationPermissionDeniedForever =>
+      'Location permission is permanently denied. Enable it in system settings.';
+
+  @override
+  String get mapLocationTimeout => 'Location timed out. Try again.';
+
+  @override
+  String get mapLocationFailed => 'Could not locate. Try again.';
+
+  @override
+  String get mapMerchantClosedSuffix => ' (closed)';
 }

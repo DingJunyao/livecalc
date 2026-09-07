@@ -8,6 +8,7 @@ import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/map_config_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/merchant_map_view.dart';
 import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 /// 上海坐标：WGS84 (31.2304, 121.4737) → GCJ02 (31.228454, 121.478223)
 const _shanghai = LatLng(31.2304, 121.4737);
@@ -77,6 +78,9 @@ Future<void> pumpMap(
   bool showControls = true,
 }) async {
   await tester.pumpWidget(MaterialApp(
+    locale: const Locale('zh', 'CN'),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
       body: Center(
         child: SizedBox(
@@ -178,6 +182,9 @@ void main() {
     final controller = MapController();
     int? selected = 1;
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(
           child: SizedBox(
@@ -248,6 +255,9 @@ void main() {
     final controller = MapController();
     int? selected = 1;
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(
           child: SizedBox(

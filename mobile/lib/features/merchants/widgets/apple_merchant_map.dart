@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
 import '../../../core/geo/map_zoom.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
@@ -185,11 +186,12 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     if (_validMerchants.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.map_outlined,
-        title: '暂无商家位置',
-        subtitle: '商家缺少坐标信息时无法在地图显示',
+        title: l10n.mapNoMerchantLocations,
+        subtitle: l10n.mapNoMerchantLocationsHint,
       );
     }
     return Stack(children: [
@@ -220,6 +222,7 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
   /// 右上控件列：图层切换 + 常用地点 + 定位（对齐 Android merchant_map_view）。
   Widget _buildControls() {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Material(
       color: theme.colorScheme.surface,
       elevation: 2,
@@ -228,21 +231,23 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
         // 图层切换
         PopupMenuButton<apple.MapType>(
           key: const ValueKey('apple-layer-switch'),
-          tooltip: '切换底图样式',
+          tooltip: l10n.mapLayerSwitch,
           icon: const Icon(Icons.layers_outlined),
           onSelected: (v) => setState(() => _mapType = v),
           itemBuilder: (_) => [
-            const PopupMenuItem(
-                value: apple.MapType.standard, child: Text('标准')),
-            const PopupMenuItem(
-                value: apple.MapType.satellite, child: Text('卫星')),
+            PopupMenuItem(
+                value: apple.MapType.standard,
+                child: Text(l10n.mapLayerStandard)),
+            PopupMenuItem(
+                value: apple.MapType.satellite,
+                child: Text(l10n.mapLayerSatellite)),
           ],
         ),
         // 常用地点菜单
         if (widget.places.isNotEmpty) ...[
           PopupMenuButton<int?>(
             key: const ValueKey('apple-place-menu'),
-            tooltip: _selectedPlaceName ?? '选择常用地点',
+            tooltip: _selectedPlaceName ?? l10n.mapChooseSavedPlace,
             icon: Icon(
               widget.currentPlaceId != null ? Icons.star : Icons.star_border,
               color: widget.currentPlaceId != null
@@ -264,7 +269,7 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
                   if (widget.currentPlaceId == null)
                     const Icon(Icons.check, size: 16),
                   const SizedBox(width: 8),
-                  const Text('全部商家'),
+                  Text(l10n.mapAllMerchants),
                 ]),
               ),
               for (final p in widget.places)
@@ -283,7 +288,9 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
         // 定位
         IconButton(
           key: const ValueKey('apple-locate-button'),
-          tooltip: _currentLocation != null ? '清除定位' : '定位当前位置',
+          tooltip: _currentLocation != null
+              ? l10n.mapClearLocation
+              : l10n.mapLocateCurrentLocation,
           icon: _locating
               ? const SizedBox(
                   width: 18,
@@ -305,6 +312,7 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
   }
 
   Future<void> _locate() async {
+    final l10n = AppLocalizations.of(context);
     // 已定位 → 清除定位、回到原视角（toggle 语义，对齐 Android）。
     if (_currentLocation != null) {
       setState(() => _currentLocation = null);
@@ -314,7 +322,7 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
     setState(() => _locating = true);
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        _toast('定位服务未开启，请在系统设置中打开');
+        _toast(l10n.mapLocationServiceDisabled);
         return;
       }
       var perm = await Geolocator.checkPermission();
@@ -322,11 +330,11 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
         perm = await Geolocator.requestPermission();
       }
       if (perm == LocationPermission.denied) {
-        _toast('位置权限被拒绝');
+        _toast(l10n.mapLocationPermissionDenied);
         return;
       }
       if (perm == LocationPermission.deniedForever) {
-        _toast('位置权限已被永久拒绝，请到系统设置中开启');
+        _toast(l10n.mapLocationPermissionDeniedForever);
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -347,9 +355,9 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
             target: _toApple(_toDisplay(loc)), zoom: kPointZoom),
       ));
     } on TimeoutException {
-      _toast('定位超时，请重试');
+      _toast(l10n.mapLocationTimeout);
     } catch (_) {
-      _toast('定位失败，请重试');
+      _toast(l10n.mapLocationFailed);
     } finally {
       if (mounted) setState(() => _locating = false);
     }

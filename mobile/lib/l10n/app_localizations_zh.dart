@@ -1282,4 +1282,206 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get productPendingTags => '标签';
+
+  @override
+  String get merchantTitle => '商家';
+
+  @override
+  String get merchantDetailTitle => '商家详情';
+
+  @override
+  String get merchantAddTitle => '添加商家';
+
+  @override
+  String get merchantEditTitle => '编辑商家';
+
+  @override
+  String get merchantCreateButton => '创建';
+
+  @override
+  String get merchantSaved => '已保存';
+
+  @override
+  String get merchantCreated => '已创建商家';
+
+  @override
+  String merchantSaveFailed(Object error) {
+    return '保存失败：$error';
+  }
+
+  @override
+  String get merchantSearch => '搜索商家...';
+
+  @override
+  String get merchantNoAddress => '暂无地址';
+
+  @override
+  String get merchantUnnamed => '未命名商家';
+
+  @override
+  String get merchantChip => '商家';
+
+  @override
+  String get merchantShowMap => '显示地图';
+
+  @override
+  String get merchantHideMap => '收起地图';
+
+  @override
+  String get merchantShowClosed => '显示已关闭商家';
+
+  @override
+  String get merchantShowOtherRegions => '显示其他地区的商家';
+
+  @override
+  String get merchantShowOtherRegionsHint => '含全部地区，不受计算范围限制';
+
+  @override
+  String get merchantFavoritesOnly => '仅看我的收藏';
+
+  @override
+  String get merchantNoMaintainedPrice => '未维护过价格';
+
+  @override
+  String get merchantFilterTitle => '筛选条件';
+
+  @override
+  String get merchantDeleteTitle => '删除商家';
+
+  @override
+  String merchantDeleteMessage(Object name) {
+    return '确定删除商家「$name」吗？';
+  }
+
+  @override
+  String get merchantDeleted => '已删除';
+
+  @override
+  String get merchantFavorite => '收藏';
+
+  @override
+  String get merchantRemoveFavorite => '取消收藏';
+
+  @override
+  String get merchantLocateOnMap => '在地图上定位';
+
+  @override
+  String get merchantNoLocationSet => '未设置位置';
+
+  @override
+  String get merchantLocation => '位置';
+
+  @override
+  String get merchantLocationPickerTitle => '位置（点击地图选择，可选）';
+
+  @override
+  String get merchantIsOpen => '营业中';
+
+  @override
+  String get merchantOpen => '营业中';
+
+  @override
+  String get merchantClosed => '已关闭';
+
+  @override
+  String get merchantStatus => '营业状态';
+
+  @override
+  String get merchantNoFavoriteMerchants => '暂无收藏商家';
+
+  @override
+  String get merchantNoFavoriteMerchantsHint => '收藏的商家会显示在这里';
+
+  @override
+  String get merchantNoMerchants => '暂无商家';
+
+  @override
+  String get merchantNoMerchantsHint => '点击右下角按钮添加第一个商家';
+
+  @override
+  String get merchantName => '名称';
+
+  @override
+  String get merchantNameOptional => '商家名称（可留空）';
+
+  @override
+  String get merchantAddress => '地址';
+
+  @override
+  String get merchantDefaultCurrency => '默认币种';
+
+  @override
+  String get merchantCurrencyFollowRegion => '跟随地区';
+
+  @override
+  String get merchantProductPrices => '商品价格';
+
+  @override
+  String get merchantNoProductPrices => '该商家暂无价格记录';
+
+  @override
+  String get mapLayerSwitch => '切换底图';
+
+  @override
+  String get mapLayerStandard => '标准';
+
+  @override
+  String get mapLayerSatellite => '卫星';
+
+  @override
+  String get mapLayerAmap => '高德';
+
+  @override
+  String get mapLayerTencent => '腾讯';
+
+  @override
+  String get mapLayerOsm => 'OSM';
+
+  @override
+  String get mapAllMerchants => '全部商家';
+
+  @override
+  String get mapChooseSavedPlace => '选择常用地点';
+
+  @override
+  String get mapClearLocation => '清除定位';
+
+  @override
+  String get mapLocateCurrentLocation => '定位当前位置';
+
+  @override
+  String get mapLocateAndChoose => '定位并选择当前位置';
+
+  @override
+  String get mapNoMerchantLocations => '暂无商家位置';
+
+  @override
+  String get mapNoMerchantLocationsHint => '商家缺少坐标信息时无法在地图显示';
+
+  @override
+  String get mapLatitude => '纬度';
+
+  @override
+  String get mapLongitude => '经度';
+
+  @override
+  String get mapTapToPickLocation => '点击地图选择位置';
+
+  @override
+  String get mapLocationServiceDisabled => '定位服务未开启，请在系统设置中打开';
+
+  @override
+  String get mapLocationPermissionDenied => '位置权限被拒绝';
+
+  @override
+  String get mapLocationPermissionDeniedForever => '位置权限已被永久拒绝，请到系统设置中开启';
+
+  @override
+  String get mapLocationTimeout => '定位超时，请重试';
+
+  @override
+  String get mapLocationFailed => '定位失败，请重试';
+
+  @override
+  String get mapMerchantClosedSuffix => '（已关闭）';
 }

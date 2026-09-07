@@ -1305,4 +1305,212 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get productPendingTags => 'الوسوم';
+
+  @override
+  String get merchantTitle => 'المتاجر';
+
+  @override
+  String get merchantDetailTitle => 'تفاصيل المتجر';
+
+  @override
+  String get merchantAddTitle => 'إضافة متجر';
+
+  @override
+  String get merchantEditTitle => 'تعديل المتجر';
+
+  @override
+  String get merchantCreateButton => 'إنشاء';
+
+  @override
+  String get merchantSaved => 'تم حفظ المتجر';
+
+  @override
+  String get merchantCreated => 'تم إنشاء المتجر';
+
+  @override
+  String merchantSaveFailed(Object error) {
+    return 'فشل الحفظ: $error';
+  }
+
+  @override
+  String get merchantSearch => 'ابحث عن المتاجر...';
+
+  @override
+  String get merchantNoAddress => 'لا يوجد عنوان';
+
+  @override
+  String get merchantUnnamed => 'متجر بدون اسم';
+
+  @override
+  String get merchantChip => 'متجر';
+
+  @override
+  String get merchantShowMap => 'عرض الخريطة';
+
+  @override
+  String get merchantHideMap => 'إخفاء الخريطة';
+
+  @override
+  String get merchantShowClosed => 'عرض المتاجر المغلقة';
+
+  @override
+  String get merchantShowOtherRegions => 'عرض متاجر المناطق الأخرى';
+
+  @override
+  String get merchantShowOtherRegionsHint =>
+      'يشمل جميع المناطق ولا يتأثر بنطاق الحساب';
+
+  @override
+  String get merchantFavoritesOnly => 'المفضلة فقط';
+
+  @override
+  String get merchantNoMaintainedPrice => 'لا يوجد سعر مُصان';
+
+  @override
+  String get merchantFilterTitle => 'خيارات التصفية';
+
+  @override
+  String get merchantDeleteTitle => 'حذف المتجر';
+
+  @override
+  String merchantDeleteMessage(Object name) {
+    return 'هل تريد حذف المتجر \"$name\"؟';
+  }
+
+  @override
+  String get merchantDeleted => 'تم حذف المتجر';
+
+  @override
+  String get merchantFavorite => 'إضافة إلى المفضلة';
+
+  @override
+  String get merchantRemoveFavorite => 'إزالة من المفضلة';
+
+  @override
+  String get merchantLocateOnMap => 'تحديد الموقع على الخريطة';
+
+  @override
+  String get merchantNoLocationSet => 'لا يوجد موقع محدد';
+
+  @override
+  String get merchantLocation => 'الموقع';
+
+  @override
+  String get merchantLocationPickerTitle =>
+      'الموقع (انقر على الخريطة للاختيار، اختياري)';
+
+  @override
+  String get merchantIsOpen => 'مفتوح';
+
+  @override
+  String get merchantOpen => 'مفتوح';
+
+  @override
+  String get merchantClosed => 'مغلق';
+
+  @override
+  String get merchantStatus => 'حالة العمل';
+
+  @override
+  String get merchantNoFavoriteMerchants => 'لا توجد متاجر مفضلة';
+
+  @override
+  String get merchantNoFavoriteMerchantsHint => 'ستظهر المتاجر المفضلة هنا';
+
+  @override
+  String get merchantNoMerchants => 'لا توجد متاجر';
+
+  @override
+  String get merchantNoMerchantsHint =>
+      'انقر على الزر في الركن السفلي الأيمن لإضافة أول متجر';
+
+  @override
+  String get merchantName => 'الاسم';
+
+  @override
+  String get merchantNameOptional => 'اسم المتجر (اختياري)';
+
+  @override
+  String get merchantAddress => 'العنوان';
+
+  @override
+  String get merchantDefaultCurrency => 'العملة الافتراضية';
+
+  @override
+  String get merchantCurrencyFollowRegion => 'متابعة المنطقة';
+
+  @override
+  String get merchantProductPrices => 'أسعار المنتجات';
+
+  @override
+  String get merchantNoProductPrices => 'لا توجد أسعار منتجات لهذا المتجر بعد';
+
+  @override
+  String get mapLayerSwitch => 'تبديل نمط الخريطة';
+
+  @override
+  String get mapLayerStandard => 'قياسي';
+
+  @override
+  String get mapLayerSatellite => 'قمر صناعي';
+
+  @override
+  String get mapLayerAmap => 'أماب';
+
+  @override
+  String get mapLayerTencent => 'تنسنت';
+
+  @override
+  String get mapLayerOsm => 'OSM';
+
+  @override
+  String get mapAllMerchants => 'كل المتاجر';
+
+  @override
+  String get mapChooseSavedPlace => 'اختر مكانًا محفوظًا';
+
+  @override
+  String get mapClearLocation => 'مسح الموقع';
+
+  @override
+  String get mapLocateCurrentLocation => 'تحديد الموقع الحالي';
+
+  @override
+  String get mapLocateAndChoose => 'حدد الموقع الحالي واختره';
+
+  @override
+  String get mapNoMerchantLocations => 'لا توجد مواقع متاجر';
+
+  @override
+  String get mapNoMerchantLocationsHint =>
+      'لا يمكن عرض المتاجر بدون إحداثيات على الخريطة';
+
+  @override
+  String get mapLatitude => 'خط العرض';
+
+  @override
+  String get mapLongitude => 'خط الطول';
+
+  @override
+  String get mapTapToPickLocation => 'انقر على الخريطة لتحديد الموقع';
+
+  @override
+  String get mapLocationServiceDisabled =>
+      'خدمة الموقع معطلة. فعّلها في إعدادات النظام.';
+
+  @override
+  String get mapLocationPermissionDenied => 'تم رفض إذن الموقع';
+
+  @override
+  String get mapLocationPermissionDeniedForever =>
+      'إذن الموقع محظور بشكل دائم. فعّله في إعدادات النظام.';
+
+  @override
+  String get mapLocationTimeout => 'انتهت مهلة تحديد الموقع. حاول مجددًا.';
+
+  @override
+  String get mapLocationFailed => 'تعذر تحديد الموقع. حاول مجددًا.';
+
+  @override
+  String get mapMerchantClosedSuffix => ' (مغلق)';
 }

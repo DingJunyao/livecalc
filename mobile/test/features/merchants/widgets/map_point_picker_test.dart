@@ -10,6 +10,7 @@ import 'package:com_a4ding_livecalc/core/geo/coordinate_transform.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/map_config_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/map_point_picker.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockRepo extends Mock implements MerchantRepository {}
 
@@ -63,6 +64,9 @@ Future<void> pumpPicker(
   await tester.pumpWidget(UncontrolledProviderScope(
     container: container,
     child: MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(
           child: SizedBox(
@@ -123,6 +127,9 @@ void main() {
     await tester.pumpWidget(UncontrolledProviderScope(
       container: container,
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: Center(
             child: MapPointPicker(tileProvider: _MemoryTileProvider()),

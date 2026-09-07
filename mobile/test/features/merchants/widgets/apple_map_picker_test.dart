@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:com_a4ding_livecalc/core/geo/coordinate_transform.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/apple_map_picker.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class _FakeGeolocator extends GeolocatorPlatform {
   @override
@@ -46,6 +47,9 @@ void main() {
   testWidgets('定位按钮：选当前为 WGS84 并更新标注', (tester) async {
     LatLng? picked;
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: Center(
           child: SizedBox(

@@ -2,6 +2,7 @@ import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
+import '../../../l10n/app_localizations.dart';
 import 'map_locate_button.dart';
 import 'merchant_map_logic.dart';
 
@@ -88,6 +89,7 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final wgs = _wgs;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -129,15 +131,16 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
                     children: [
                       PopupMenuButton<apple.MapType>(
                         key: const ValueKey('apple-picker-layer-switch'),
-                        tooltip: '切换底图样式',
+                        tooltip: l10n.mapLayerSwitch,
                         icon: const Icon(Icons.layers_outlined, size: 20),
                         onSelected: (v) => setState(() => _mapType = v),
-                        itemBuilder: (_) => const [
+                        itemBuilder: (_) => [
                           PopupMenuItem(
-                              value: apple.MapType.standard, child: Text('标准')),
+                              value: apple.MapType.standard,
+                              child: Text(l10n.mapLayerStandard)),
                           PopupMenuItem(
                               value: apple.MapType.satellite,
-                              child: Text('卫星')),
+                              child: Text(l10n.mapLayerSatellite)),
                         ],
                       ),
                       MapLocateButton(onLocated: _selectLocated),
@@ -150,15 +153,19 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
         ),
         const SizedBox(height: 8),
         if (wgs == null)
-          Text('点击地图选择位置',
+          Text(l10n.mapTapToPickLocation,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline))
         else
-          Text(
-            '纬度: ${wgs.latitude.toStringAsFixed(6)} · '
-            '经度: ${wgs.longitude.toStringAsFixed(6)}',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+          Directionality(
+            key: const ValueKey('apple-picker-coordinate-ltr'),
+            textDirection: TextDirection.ltr,
+            child: Text(
+              '${l10n.mapLatitude}: ${wgs.latitude.toStringAsFixed(6)} · '
+              '${l10n.mapLongitude}: ${wgs.longitude.toStringAsFixed(6)}',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
           ),
       ],
     );

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/map_locate_button.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class _SuccessfulGeolocator extends GeolocatorPlatform {
   @override
@@ -54,6 +55,9 @@ void main() {
     LatLng? located;
 
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: MapLocateButton(onLocated: (point) => located = point),
       ),
@@ -74,6 +78,9 @@ void main() {
     LatLng? located;
 
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: MapLocateButton(onLocated: (point) => located = point),
       ),

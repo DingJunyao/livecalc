@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../l10n/app_localizations.dart';
 import '../repositories/merchant_repository.dart';
 
 /// 可用的底图层（仅用户要求的三种位图瓦片）。
@@ -20,6 +21,13 @@ class MapLayerOption {
     required this.gcj02,
     this.tms = false,
   });
+
+  String localizedLabel(AppLocalizations l10n) => switch (id) {
+        'amap' => l10n.mapLayerAmap,
+        'tencent' => l10n.mapLayerTencent,
+        'osm' => l10n.mapLayerOsm,
+        _ => label,
+      };
 }
 
 const amapLayer = MapLayerOption(

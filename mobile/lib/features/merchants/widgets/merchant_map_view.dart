@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
 import '../../../core/geo/map_zoom.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
@@ -237,6 +238,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
   // ---- 定位 ----
 
   Future<void> _locate() async {
+    final l10n = AppLocalizations.of(context);
     // 已定位：再次点击清除蓝点并回到原视角（web toggle 语义）。
     if (_currentLocation != null) {
       setState(() => _currentLocation = null);
@@ -246,7 +248,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     setState(() => _locating = true);
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
-        _toast('定位服务未开启，请在系统设置中打开');
+        _toast(l10n.mapLocationServiceDisabled);
         return;
       }
       var perm = await Geolocator.checkPermission();
@@ -254,11 +256,11 @@ class _MerchantMapViewState extends State<MerchantMapView> {
         perm = await Geolocator.requestPermission();
       }
       if (perm == LocationPermission.denied) {
-        _toast('位置权限被拒绝');
+        _toast(l10n.mapLocationPermissionDenied);
         return;
       }
       if (perm == LocationPermission.deniedForever) {
-        _toast('位置权限已被永久拒绝，请到系统设置中开启');
+        _toast(l10n.mapLocationPermissionDeniedForever);
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
@@ -276,9 +278,9 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       }
       _controller.move(_toDisplay(loc), kPointZoom);
     } on TimeoutException {
-      _toast('定位超时，请重试');
+      _toast(l10n.mapLocationTimeout);
     } catch (_) {
-      _toast('定位失败，请重试');
+      _toast(l10n.mapLocationFailed);
     } finally {
       if (mounted) setState(() => _locating = false);
     }
@@ -303,6 +305,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
 
   Widget _buildControls() {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final layer = _layer;
     return Material(
       color: theme.colorScheme.surface,
@@ -312,7 +315,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
         // 底图切换
         PopupMenuButton<MapLayerOption>(
           key: const ValueKey('layer-switch'),
-          tooltip: '切换底图',
+          tooltip: l10n.mapLayerSwitch,
           icon: const Icon(Icons.layers_outlined),
           onSelected: (v) => setState(() => _layer = v),
           itemBuilder: (ctx) => [
@@ -322,7 +325,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
                 child: Row(children: [
                   if (layer?.id == o.id) const Icon(Icons.check, size: 16),
                   const SizedBox(width: 8),
-                  Text(o.label),
+                  Text(o.localizedLabel(l10n)),
                 ]),
               ),
           ],
@@ -331,7 +334,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
           // 常用地点：单个图标按钮，弹出菜单选择；选中时高亮
           PopupMenuButton<int?>(
             key: const ValueKey('place-menu'),
-            tooltip: _selectedPlaceName ?? '选择常用地点',
+            tooltip: _selectedPlaceName ?? l10n.mapChooseSavedPlace,
             icon: Icon(
               widget.currentPlaceId != null ? Icons.star : Icons.star_border,
               color: widget.currentPlaceId != null
@@ -355,7 +358,7 @@ class _MerchantMapViewState extends State<MerchantMapView> {
                   if (widget.currentPlaceId == null)
                     const Icon(Icons.check, size: 16),
                   const SizedBox(width: 8),
-                  const Text('全部商家'),
+                  Text(l10n.mapAllMerchants),
                 ]),
               ),
               for (final p in widget.places)
@@ -374,7 +377,9 @@ class _MerchantMapViewState extends State<MerchantMapView> {
         // 定位
         IconButton(
           key: const ValueKey('locate-button'),
-          tooltip: _currentLocation != null ? '清除定位' : '定位当前位置',
+          tooltip: _currentLocation != null
+              ? l10n.mapClearLocation
+              : l10n.mapLocateCurrentLocation,
           icon: _locating
               ? const SizedBox(
                   width: 18,
@@ -411,10 +416,11 @@ class _MerchantMapViewState extends State<MerchantMapView> {
     }
     final markers = _validMerchants;
     if (markers.isEmpty) {
-      return const EmptyState(
+      final l10n = AppLocalizations.of(context);
+      return EmptyState(
         icon: Icons.map_outlined,
-        title: '暂无商家位置',
-        subtitle: '商家缺少坐标信息时无法在地图显示',
+        title: l10n.mapNoMerchantLocations,
+        subtitle: l10n.mapNoMerchantLocationsHint,
       );
     }
     final layer = _layer;
@@ -504,6 +510,7 @@ class _MerchantMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final bg = !isOpen
         ? const Color(0xFF757575)
         : selected
@@ -514,7 +521,7 @@ class _MerchantMarker extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '$name${isOpen ? '' : '（已关闭）'}'
+              '$name${isOpen ? '' : l10n.mapMerchantClosedSuffix}'
               '${address == null || address!.isEmpty ? '' : '\n$address'}',
             ),
           ),

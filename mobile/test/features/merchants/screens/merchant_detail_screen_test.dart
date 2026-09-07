@@ -10,6 +10,7 @@ import 'package:com_a4ding_livecalc/features/merchants/providers/map_config_prov
 import 'package:com_a4ding_livecalc/features/merchants/providers/merchant_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
 import 'package:com_a4ding_livecalc/features/merchants/screens/merchant_detail_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockMerchantRepository extends Mock implements MerchantRepository {}
 
@@ -43,7 +44,12 @@ void main() {
             .overrideWith((ref) => _FakeDetailNotifier()),
         mapConfigProvider.overrideWith((ref) => MapConfigNotifier(repo)),
       ],
-      child: const MaterialApp(home: MerchantDetailScreen(id: 1)),
+      child: const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MerchantDetailScreen(id: 1),
+      ),
     ));
     await tester.pump();
 

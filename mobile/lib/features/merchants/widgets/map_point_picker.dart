@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
+import '../../../l10n/app_localizations.dart';
 import '../providers/map_config_provider.dart';
 import 'apple_map_picker.dart';
 import 'map_locate_button.dart';
@@ -173,6 +174,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
         ],
       );
     }
+    final l10n = AppLocalizations.of(context);
     if (_layer == null || !mapConfig.layers.contains(_layer)) {
       _layer = _pickLayer(mapConfig);
     }
@@ -234,7 +236,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
                     children: [
                       PopupMenuButton<MapLayerOption>(
                         key: const ValueKey('picker-layer-switch'),
-                        tooltip: '切换底图',
+                        tooltip: l10n.mapLayerSwitch,
                         icon: const Icon(Icons.layers_outlined, size: 20),
                         onSelected: (v) => setState(() => _layer = v),
                         itemBuilder: (ctx) => [
@@ -245,7 +247,7 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
                                 if (layer?.id == o.id)
                                   const Icon(Icons.check, size: 16),
                                 const SizedBox(width: 8),
-                                Text(o.label),
+                                Text(o.localizedLabel(l10n)),
                               ]),
                             ),
                         ],
@@ -260,15 +262,19 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
         ),
         const SizedBox(height: 8),
         if (wgs == null)
-          Text('点击地图选择位置',
+          Text(l10n.mapTapToPickLocation,
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline))
         else
-          Text(
-            '纬度: ${wgs.latitude.toStringAsFixed(6)} · '
-            '经度: ${wgs.longitude.toStringAsFixed(6)}',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: theme.colorScheme.outline),
+          Directionality(
+            key: const ValueKey('picker-coordinate-ltr'),
+            textDirection: TextDirection.ltr,
+            child: Text(
+              '${l10n.mapLatitude}: ${wgs.latitude.toStringAsFixed(6)} · '
+              '${l10n.mapLongitude}: ${wgs.longitude.toStringAsFixed(6)}',
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
           ),
       ],
     );
