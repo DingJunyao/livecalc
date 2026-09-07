@@ -1191,6 +1191,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientRelationFallback => 'بديل عند الغياب';
 
   @override
+  String ingredientRelationFallbackName(int id) {
+    return 'مكوّن #$id';
+  }
+
+  @override
   String get productTitle => 'المنتجات';
 
   @override

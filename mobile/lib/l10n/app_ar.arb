@@ -839,6 +839,14 @@
   "@ingredientRelationSubstitutable": {},
   "ingredientRelationFallback": "بديل عند الغياب",
   "@ingredientRelationFallback": {},
+  "ingredientRelationFallbackName": "مكوّن #{id}",
+  "@ingredientRelationFallbackName": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "productTitle": "المنتجات",
   "@productTitle": {},
   "productSearch": "ابحث عن المنتجات...",

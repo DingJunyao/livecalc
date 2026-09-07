@@ -1372,6 +1372,7 @@ class _HierarchyCard extends StatelessWidget {
                 ingredientId: currentId,
                 ingredientName: currentName,
                 hierarchyData: hierarchy,
+                relationFallbackName: l10n.ingredientRelationFallbackName,
               ),
               const SizedBox(height: 8),
               for (final r in relations) ...[
@@ -1384,7 +1385,7 @@ class _HierarchyCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '${r.parentName} → ${r.childName}',
+                              _relationPairLabel(r, l10n),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium
@@ -1437,6 +1438,21 @@ class _HierarchyCard extends StatelessWidget {
         'fallback' => l10n.ingredientRelationFallback,
         _ => type,
       };
+
+  String _relationPairLabel(
+    HierarchyRelation relation,
+    AppLocalizations l10n,
+  ) {
+    return '${ingredientRelationEndpointDisplay(
+      storedName: relation.parentName,
+      ingredientId: relation.parentId,
+      fallbackName: l10n.ingredientRelationFallbackName,
+    )} → ${ingredientRelationEndpointDisplay(
+      storedName: relation.childName,
+      ingredientId: relation.childId,
+      fallbackName: l10n.ingredientRelationFallbackName,
+    )}';
+  }
 }
 
 // ---- 工具函数 ----

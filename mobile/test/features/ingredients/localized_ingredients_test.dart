@@ -97,6 +97,15 @@ class _StaticIngredientDetailNotifier extends IngredientDetailPageNotifier {
             relationType: 'contains',
             strength: 50,
           ),
+          HierarchyRelation(
+            id: 2,
+            parentId: 8,
+            parentName: 'Stored Ingredient Name',
+            childId: 10,
+            childName: '',
+            relationType: 'substitutable',
+            strength: 50,
+          ),
         ],
       ),
       products: [
@@ -252,6 +261,7 @@ void main() {
     expect(find.text('Contains'), findsOneWidget);
     expect(find.text('Stored Ingredient Name'), findsWidgets);
     expect(find.text('Stored Child'), findsOneWidget);
+    expect(find.text('Ingredient #10'), findsOneWidget);
   });
 
   testWidgets('Arabic ingredient detail localizes data and deletion copy', (
@@ -288,6 +298,7 @@ void main() {
     await tester.drag(find.byType(ListView).first, const Offset(0, -10000));
     await tester.pump();
     expect(find.text('يحتوي'), findsOneWidget);
+    expect(find.text('مكوّن #10'), findsOneWidget);
   });
 
   testWidgets(
@@ -441,5 +452,52 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('حذف العلاقة'), findsOneWidget);
     expect(find.text('حذف علاقة التسلسل الهرمي هذه؟'), findsOneWidget);
+  });
+
+  testWidgets(
+      'English hierarchy fallback relation names localize across graph, list, and editor',
+      (tester) async {
+    await _pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      IngredientHierarchyScreen(
+        ingredientId: 8,
+        ingredientName: 'Stored Ingredient Name',
+        hierarchyData: const IngredientHierarchyData(
+          childRelations: [
+            HierarchyRelation(
+              id: 1,
+              parentId: 8,
+              parentName: 'Stored Ingredient Name',
+              childId: 9,
+              childName: '',
+              relationType: 'contains',
+              strength: 50,
+            ),
+          ],
+        ),
+        isAdmin: true,
+        onAdd: (_) async => null,
+        onUpdateStrength: (_, __) async => null,
+        onDelete: (_) async => null,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ingredient #9'), findsOneWidget);
+
+    await tester.tap(find.text('Relation list'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Stored Ingredient Name → Ingredient #9'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byIcon(Icons.tune));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Stored Ingredient Name → Ingredient #9'),
+      findsNWidgets(2),
+    );
   });
 }

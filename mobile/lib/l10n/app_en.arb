@@ -839,6 +839,14 @@
   "@ingredientRelationSubstitutable": {},
   "ingredientRelationFallback": "Fallback",
   "@ingredientRelationFallback": {},
+  "ingredientRelationFallbackName": "Ingredient #{id}",
+  "@ingredientRelationFallbackName": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "productTitle": "Products",
   "@productTitle": {},
   "productSearch": "Search products...",

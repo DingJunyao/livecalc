@@ -839,6 +839,14 @@
   "@ingredientRelationSubstitutable": {},
   "ingredientRelationFallback": "回退",
   "@ingredientRelationFallback": {},
+  "ingredientRelationFallbackName": "原料 #{id}",
+  "@ingredientRelationFallbackName": {
+    "placeholders": {
+      "id": {
+        "type": "int"
+      }
+    }
+  },
   "productTitle": "商品",
   "@productTitle": {},
   "productSearch": "搜索商品...",

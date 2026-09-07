@@ -245,6 +245,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   ingredientId: widget.ingredientId,
                   ingredientName: widget.ingredientName,
                   hierarchyData: widget.hierarchyData,
+                  relationFallbackName: l10n.ingredientRelationFallbackName,
                 ),
               ],
             ),
@@ -257,7 +258,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   (relation) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      '${relation.parentName} → ${relation.childName}',
+                      _relationPairLabel(relation, l10n),
                     ),
                     subtitle: Text(
                       '${_relationLabel(relation.relationType, l10n)}'
@@ -311,7 +312,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (_editing != null) ...[
-              Text('${_editing!.parentName} → ${_editing!.childName}'),
+              Text(_relationPairLabel(_editing!, l10n)),
               TextButton(
                 onPressed: () => setState(() => _editing = null),
                 child: Text(l10n.ingredientChangeToAddRelation),
@@ -431,4 +432,19 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
         'fallback' => l10n.ingredientRelationFallback,
         _ => type,
       };
+
+  String _relationPairLabel(
+    HierarchyRelation relation,
+    AppLocalizations l10n,
+  ) {
+    return '${ingredientRelationEndpointDisplay(
+      storedName: relation.parentName,
+      ingredientId: relation.parentId,
+      fallbackName: l10n.ingredientRelationFallbackName,
+    )} → ${ingredientRelationEndpointDisplay(
+      storedName: relation.childName,
+      ingredientId: relation.childId,
+      fallbackName: l10n.ingredientRelationFallbackName,
+    )}';
+  }
 }

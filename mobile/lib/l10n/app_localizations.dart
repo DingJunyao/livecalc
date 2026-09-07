@@ -2345,6 +2345,12 @@ abstract class AppLocalizations {
   /// **'回退'**
   String get ingredientRelationFallback;
 
+  /// No description provided for @ingredientRelationFallbackName.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料 #{id}'**
+  String ingredientRelationFallbackName(int id);
+
   /// No description provided for @productTitle.
   ///
   /// In zh, this message translates to:

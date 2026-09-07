@@ -1198,6 +1198,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ingredientRelationFallback => 'Fallback';
 
   @override
+  String ingredientRelationFallbackName(int id) {
+    return 'Ingredient #$id';
+  }
+
+  @override
   String get productTitle => 'Products';
 
   @override

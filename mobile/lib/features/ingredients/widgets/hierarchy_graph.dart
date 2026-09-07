@@ -9,12 +9,14 @@ class HierarchyGraph extends StatelessWidget {
   final int ingredientId;
   final String ingredientName;
   final IngredientHierarchyData? hierarchyData;
+  final String Function(int ingredientId)? relationFallbackName;
 
   const HierarchyGraph({
     super.key,
     required this.ingredientId,
     required this.ingredientName,
     this.hierarchyData,
+    this.relationFallbackName,
   });
 
   @override
@@ -47,6 +49,7 @@ class HierarchyGraph extends StatelessWidget {
             ingredientName: ingredientName,
             hierarchyData: hierarchyData,
             size: Size(canvasWidth, canvasHeight),
+            relationFallbackName: relationFallbackName,
           );
           return InteractiveViewer(
             constrained: false,
@@ -127,6 +130,7 @@ HierarchyGraphLayout buildHierarchyGraphLayout({
   required String ingredientName,
   required IngredientHierarchyData? hierarchyData,
   required Size size,
+  String Function(int ingredientId)? relationFallbackName,
 }) {
   final nodes = <int, HierarchyGraphNode>{};
   final edges = <HierarchyGraphEdge>[];
@@ -150,6 +154,12 @@ HierarchyGraphLayout buildHierarchyGraphLayout({
     );
   }
 
+  String endpointLabel(String rawName, int id) {
+    final fallbackName = relationFallbackName;
+    if (rawName.trim().isNotEmpty || fallbackName == null) return rawName;
+    return fallbackName(id);
+  }
+
   if (hierarchyData != null) {
     for (final relation in [
       ...hierarchyData.parentRelations,
@@ -158,7 +168,9 @@ HierarchyGraphLayout buildHierarchyGraphLayout({
       final isParent = relation.parentId == ingredientId;
       addNode(
         isParent ? relation.childId : relation.parentId,
-        isParent ? relation.childName : relation.parentName,
+        isParent
+            ? endpointLabel(relation.childName, relation.childId)
+            : endpointLabel(relation.parentName, relation.parentId),
         1,
       );
       edges.add(_edge(relation, anchorId: ingredientId));
@@ -170,8 +182,16 @@ HierarchyGraphLayout buildHierarchyGraphLayout({
         ...expanded.parentRelations,
         ...expanded.childRelations,
       ]) {
-        addNode(relation.parentId, relation.parentName, 2);
-        addNode(relation.childId, relation.childName, 2);
+        addNode(
+          relation.parentId,
+          endpointLabel(relation.parentName, relation.parentId),
+          2,
+        );
+        addNode(
+          relation.childId,
+          endpointLabel(relation.childName, relation.childId),
+          2,
+        );
         edges.add(_edge(relation, anchorId: expanded.ingredientId));
       }
     }
@@ -440,4 +460,12 @@ class _HierarchyPainter extends CustomPainter {
   bool shouldRepaint(covariant _HierarchyPainter oldDelegate) {
     return oldDelegate.nodes != nodes || oldDelegate.edges != edges;
   }
+}
+
+String ingredientRelationEndpointDisplay({
+  required String storedName,
+  required int ingredientId,
+  required String Function(int) fallbackName,
+}) {
+  return storedName.trim().isEmpty ? fallbackName(ingredientId) : storedName;
 }

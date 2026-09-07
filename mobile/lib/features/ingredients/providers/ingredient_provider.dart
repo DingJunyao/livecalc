@@ -480,7 +480,8 @@ class IngredientDetailPageNotifier
   /// 加载单个关联商品的最新价（详情页关联商品行展示用）。
   Future<void> loadProductPrice(int productId) async {
     try {
-      final info = await _productRepo.getLatestPrice(productId, regionId: _regionId);
+      final info =
+          await _productRepo.getLatestPrice(productId, regionId: _regionId);
       state = state.copyWith(productPrices: {
         ...state.productPrices,
         productId: info,
@@ -1055,9 +1056,9 @@ class IngredientDetailPageNotifier
     return HierarchyRelation(
       id: -proposal.id,
       parentId: parentId,
-      parentName: snapshot['_parent_id_name']?.toString() ?? '原料 #$parentId',
+      parentName: snapshot['_parent_id_name']?.toString() ?? '',
       childId: childId,
-      childName: snapshot['_child_id_name']?.toString() ?? '原料 #$childId',
+      childName: snapshot['_child_id_name']?.toString() ?? '',
       relationType: payload['relation_type']?.toString() ?? 'substitutable',
       strength: _toInt(payload['strength']) ?? 50,
       isPending: true,

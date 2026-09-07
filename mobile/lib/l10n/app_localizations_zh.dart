@@ -1171,6 +1171,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ingredientRelationFallback => '回退';
 
   @override
+  String ingredientRelationFallbackName(int id) {
+    return '原料 #$id';
+  }
+
+  @override
   String get productTitle => '商品';
 
   @override
