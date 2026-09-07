@@ -77,45 +77,45 @@ void main() {
     test('空行', () {
       final r = parsePasteLine('');
       expect(r.ok, false);
-      expect(r.error, '空行');
+      expect(r.error, PastePriceParseError.emptyLine);
       expect(r.name, '');
     });
 
     test('仅空白', () {
       final r = parsePasteLine('   ');
       expect(r.ok, false);
-      expect(r.error, '空行');
+      expect(r.error, PastePriceParseError.emptyLine);
     });
 
     test('注释行（# 开头）', () {
       final r = parsePasteLine('# 这是注释');
       expect(r.ok, false);
-      expect(r.error, '注释行');
+      expect(r.error, PastePriceParseError.commentLine);
     });
 
     test('注释行（# 前导空白）仍识别为注释', () {
       // trim 后 # 开头
       final r = parsePasteLine('  # 注释');
       expect(r.ok, false);
-      expect(r.error, '注释行');
+      expect(r.error, PastePriceParseError.commentLine);
     });
 
     test('格式无法识别（无价格）', () {
       final r = parsePasteLine('只有名字');
       expect(r.ok, false);
-      expect(r.error, '格式无法识别');
+      expect(r.error, PastePriceParseError.unrecognizedFormat);
     });
 
     test('格式无法识别（价格非数字）', () {
       final r = parsePasteLine('番茄 abc');
       expect(r.ok, false);
-      expect(r.error, '格式无法识别');
+      expect(r.error, PastePriceParseError.unrecognizedFormat);
     });
 
     test('价格为 0 → 价格无效', () {
       final r = parsePasteLine('番茄 0');
       expect(r.ok, false);
-      expect(r.error, '价格无效');
+      expect(r.error, PastePriceParseError.invalidPrice);
       expect(r.name, '番茄');
     });
 
@@ -123,7 +123,7 @@ void main() {
       // 负号不在数字字符集内，正则不匹配
       final r = parsePasteLine('番茄 -3');
       expect(r.ok, false);
-      expect(r.error, '格式无法识别');
+      expect(r.error, PastePriceParseError.unrecognizedFormat);
     });
   });
 
@@ -150,13 +150,13 @@ void main() {
       expect(lines[0].ok, true);
       expect(lines[0].name, '芹菜');
       expect(lines[1].ok, false);
-      expect(lines[1].error, '空行');
+      expect(lines[1].error, PastePriceParseError.emptyLine);
       expect(lines[2].ok, false);
-      expect(lines[2].error, '注释行');
+      expect(lines[2].error, PastePriceParseError.commentLine);
       expect(lines[3].ok, true);
       expect(lines[3].unit, '袋');
       expect(lines[4].ok, false);
-      expect(lines[4].error, '格式无法识别');
+      expect(lines[4].error, PastePriceParseError.unrecognizedFormat);
     });
 
     test('CRLF 换行也能拆', () {
@@ -170,7 +170,7 @@ void main() {
       final lines = parsePasteText('');
       expect(lines.length, 1);
       expect(lines.first.ok, false);
-      expect(lines.first.error, '空行');
+      expect(lines.first.error, PastePriceParseError.emptyLine);
     });
   });
 }

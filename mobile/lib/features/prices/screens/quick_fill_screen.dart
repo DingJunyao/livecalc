@@ -5,6 +5,7 @@ import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/widgets/numeric_keypad.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../l10n/app_localizations.dart';
 
 class QuickFillScreen extends ConsumerStatefulWidget {
   const QuickFillScreen({super.key});
@@ -164,8 +165,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     }
 
     if (mounted) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存 $saved 条记录')),
+        SnackBar(content: Text(l10n.quickFillSavedCount(saved))),
       );
       context.pop();
     }
@@ -174,14 +176,15 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('快速填写'),
+        title: Text(l10n.quickFillTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.paste),
-            tooltip: '粘贴导入',
+            tooltip: l10n.pricePasteImportTooltip,
             key: const Key('quick-fill-paste-button'),
             // 历史商品加载中也必须禁用：模板依赖加载完成的商品名列表。
             onPressed: _selectedMerchantId == null || _loading
@@ -214,7 +217,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('选择商家',
+                Text(l10n.quickFillSelectMerchant,
                     style: theme.textTheme.titleSmall
                         ?.copyWith(color: theme.colorScheme.outline)),
                 const SizedBox(height: 8),
@@ -233,9 +236,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                     return TextField(
                       controller: controller,
                       focusNode: focusNode,
-                      decoration: const InputDecoration(
-                        hintText: '搜索或选择商家',
-                        prefixIcon: Icon(Icons.search),
+                      decoration: InputDecoration(
+                        hintText: l10n.quickFillMerchantSearchHint,
+                        prefixIcon: const Icon(Icons.search),
                       ),
                       onSubmitted: (_) => onSubmitted(),
                     );
@@ -244,7 +247,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Text('币种',
+                    Text(l10n.priceCurrencyLabel,
                         style: theme.textTheme.titleSmall
                             ?.copyWith(color: theme.colorScheme.outline)),
                     const SizedBox(width: 12),
@@ -258,7 +261,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                       itemBuilder: (context) {
                         if (_currencies.isEmpty) {
                           return [
-                            PopupMenuItem(value: _currency, child: Text(_currency)),
+                            PopupMenuItem(
+                                value: _currency, child: Text(_currency)),
                           ];
                         }
                         return [
@@ -302,11 +306,12 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Text('暂无历史商品'),
+                              Text(l10n.quickFillNoHistoryProducts),
                               const SizedBox(height: 8),
                               FilledButton.tonal(
-                                onPressed: () => _addRow(name: '新商品'),
-                                child: const Text('添加商品'),
+                                onPressed: () =>
+                                    _addRow(name: l10n.quickFillNewProduct),
+                                child: Text(l10n.productAddTitle),
                               ),
                             ],
                           ),
@@ -314,19 +319,19 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                       : Column(
                           children: [
                             // Price rows header
-                            const Padding(
-                              padding: EdgeInsets.symmetric(
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
                                   horizontal: 16, vertical: 8),
                               child: Row(
                                 children: [
-                                  Text('商品',
-                                      style: TextStyle(
+                                  Text(l10n.quickFillProductHeader,
+                                      style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
-                                  Spacer(),
-                                  Text('单价',
-                                      style: TextStyle(
+                                  const Spacer(),
+                                  Text(l10n.quickFillUnitPriceHeader,
+                                      style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
-                                  SizedBox(width: 80),
+                                  const SizedBox(width: 80),
                                 ],
                               ),
                             ),
@@ -343,7 +348,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                       child: OutlinedButton.icon(
                                         onPressed: () => _addRow(),
                                         icon: const Icon(Icons.add),
-                                        label: const Text('添加商品'),
+                                        label: Text(l10n.productAddTitle),
                                       ),
                                     );
                                   }
@@ -361,7 +366,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                 padding: const EdgeInsets.all(16),
                                 child: FilledButton(
                                   onPressed: _saveAll,
-                                  child: const Text('保存所有价格'),
+                                  child: Text(l10n.quickFillSaveAll),
                                 ),
                               ),
                             ),
@@ -407,6 +412,7 @@ class _PriceRowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: Card(
@@ -425,8 +431,8 @@ class _PriceRowWidget extends StatelessWidget {
                       )
                     : TextField(
                         controller: row.nameController,
-                        decoration: const InputDecoration(
-                          labelText: '商品名',
+                        decoration: InputDecoration(
+                          labelText: l10n.priceProductNameLabel,
                           border: InputBorder.none,
                           isDense: true,
                         ),
@@ -441,7 +447,7 @@ class _PriceRowWidget extends StatelessWidget {
                     child: TextField(
                       controller: row.priceController,
                       decoration: InputDecoration(
-                        labelText: '价格',
+                        labelText: l10n.priceLabel,
                         border: InputBorder.none,
                         isDense: true,
                         prefixText: currencySymbol,

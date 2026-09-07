@@ -12,6 +12,7 @@ import 'package:com_a4ding_livecalc/features/prices/repositories/price_repositor
 import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
 
 class _FakePriceRepository extends PriceRepository {
@@ -161,6 +162,9 @@ void main() {
       // 裸 Scaffold 在测试环境缺 Directionality，需 MaterialApp 包裹
       // （与本仓库其他页面测试一致）。
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: _FormHost(
           form: PriceRecordFormScreen(
             priceRepository: priceRepo ?? _FakePriceRepository(),
@@ -429,7 +433,6 @@ void main() {
     expect(repo.createCount, 1);
   });
 
-
   testWidgets('新增保存后记住商家与计入支出，再次打开表单复用', (tester) async {
     final repo = _FakePriceRepository();
     await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
@@ -469,8 +472,8 @@ void main() {
     final textField = tester.widget<TextField>(merchantField2);
     expect(textField.controller?.text, '超市');
 
-    final sw =
-        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    final sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isFalse);
   });
 
@@ -496,8 +499,8 @@ void main() {
     final textField = tester.widget<TextField>(merchantField);
     expect(textField.controller?.text, isEmpty);
 
-    final sw =
-        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    final sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isTrue);
   });
 

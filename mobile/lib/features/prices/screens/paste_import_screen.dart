@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../repositories/price_repository.dart';
 import '../utils/paste_price_parser.dart';
 import '../../products/repositories/product_repository.dart';
+import '../../../core/i18n/app_formatters.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 粘贴导入行的匹配模式。
 enum _MatchMode { existing, newSame, newAttach }
@@ -131,8 +133,9 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
   Future<void> _copyTemplate() async {
     await Clipboard.setData(ClipboardData(text: _templateText));
     if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('已复制模板')),
+      SnackBar(content: Text(l10n.priceTemplateCopied)),
     );
   }
 
@@ -492,18 +495,39 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
   // -------- 渲染辅助 --------
 
-  String _fmtQty(double q) {
-    if (q == q.truncateToDouble()) return q.toInt().toString();
-    return q.toString();
+  String _fmtQty(double q) => formatQuantity(q);
+
+  String _parserError(AppLocalizations l10n, String? code) {
+    switch (code) {
+      case PastePriceParseError.emptyLine:
+        return l10n.pricePasteErrorEmptyLine;
+      case PastePriceParseError.commentLine:
+        return l10n.pricePasteErrorCommentLine;
+      case PastePriceParseError.emptyName:
+        return l10n.pricePasteErrorEmptyName;
+      case PastePriceParseError.invalidPrice:
+        return l10n.pricePasteErrorInvalidPrice;
+      default:
+        return l10n.pricePasteErrorUnrecognized;
+    }
+  }
+
+  String _invalidRowText(_ImportRow row, AppLocalizations l10n) {
+    final error = _parserError(l10n, row.parsed.error);
+    if (row.parsed.name.isEmpty) {
+      return l10n.pricePasteInvalidLine(error);
+    }
+    return l10n.pricePasteInvalidNamedLine(row.parsed.name, error);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final hasImportable = _importable.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('粘贴导入价格')),
+      appBar: AppBar(title: Text(l10n.pricePasteImportTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -516,10 +540,9 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 key: const Key('paste-recorded-at-field'),
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule),
-                title: const Text('记录时间'),
+                title: Text(l10n.priceRecordedAt),
                 trailing: Text(
-                  '${_recordedAt.year}-${_recordedAt.month.toString().padLeft(2, '0')}-${_recordedAt.day.toString().padLeft(2, '0')} '
-                  '${_recordedAt.hour.toString().padLeft(2, '0')}:${_recordedAt.minute.toString().padLeft(2, '0')}',
+                  formatDateTime(_recordedAt),
                   style: theme.textTheme.bodyMedium,
                 ),
                 onTap: _pickRecordedAt,
@@ -532,7 +555,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                   onPressed:
                       widget.historyProductNames.isEmpty ? null : _copyTemplate,
                   icon: const Icon(Icons.content_copy),
-                  label: const Text('复制模板'),
+                  label: Text(l10n.priceCopyTemplate),
                 ),
               ),
               // 粘贴文本输入
@@ -541,10 +564,10 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 controller: _rawTextController,
                 maxLines: 4,
                 minLines: 4,
-                decoration: const InputDecoration(
-                  hintText: '芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g',
-                  border: OutlineInputBorder(),
-                  labelText: '粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）',
+                decoration: InputDecoration(
+                  hintText: l10n.pricePasteHint,
+                  border: const OutlineInputBorder(),
+                  labelText: l10n.pricePasteTextLabel,
                 ),
               ),
               const SizedBox(height: 8),
@@ -560,13 +583,17 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.search),
-                    label: const Text('解析并匹配'),
+                    label: Text(l10n.priceParseAndMatch),
                   ),
                   const SizedBox(width: 12),
                   if (_rows.isNotEmpty)
                     Expanded(
                       child: Text(
-                        '已匹配 $_matchedCount · 待处理 $_unmatchedCount · 无法识别 $_invalidCount',
+                        l10n.pricePasteSummary(
+                          _matchedCount,
+                          _unmatchedCount,
+                          _invalidCount,
+                        ),
                         style: theme.textTheme.bodySmall,
                       ),
                     ),
@@ -586,7 +613,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '正在导入 $_progressCurrent/$_progressTotal…',
+                  l10n.pricePasteImporting(_progressCurrent, _progressTotal),
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
@@ -597,7 +624,9 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                   key: const Key('paste-import-button'),
                   onPressed: _importing ? null : _doImport,
                   icon: const Icon(Icons.download_for_offline_outlined),
-                  label: Text('全部导入（${_importable.length} 条）'),
+                  label: Text(
+                    l10n.pricePasteImportAll(_importable.length),
+                  ),
                 ),
               // 结果
               if (_result != null) ...[
@@ -614,14 +643,21 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '导入完成：成功 ${_result!.success} 条，失败 ${_result!.fail} 条',
+                        l10n.pricePasteImportComplete(
+                          _result!.success,
+                          _result!.fail,
+                        ),
                         style: theme.textTheme.bodyMedium,
                       ),
                       if (_result!.failures.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(top: 4),
                           child: Text(
-                            '失败：${_result!.failures.join('、')}',
+                            l10n.pricePasteFailures(
+                              _result!.failures.join(
+                                l10n.commonListSeparator,
+                              ),
+                            ),
                             style: theme.textTheme.bodySmall,
                           ),
                         ),
@@ -638,6 +674,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
   Widget _buildRow(_ImportRow row, ThemeData theme) {
     if (row.editing) return _buildExpanded(row, theme);
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Padding(
@@ -661,9 +698,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
             Expanded(
               child: row.status == _RowStatus.invalid
                   ? Text(
-                      row.parsed.name.isEmpty
-                          ? '（${row.parsed.error}）'
-                          : '${row.parsed.name}（${row.parsed.error}）',
+                      _invalidRowText(row, l10n),
                       style: theme.textTheme.bodyMedium,
                     )
                   : InkWell(
@@ -695,7 +730,13 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
             ),
             if (row.status != _RowStatus.invalid) ...[
               Text(
-                row.parsed.price?.toStringAsFixed(2) ?? '—',
+                row.parsed.price == null
+                    ? '—'
+                    : formatNumber(
+                        row.parsed.price!,
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      ),
                 style: theme.textTheme.bodyMedium,
               ),
               const SizedBox(width: 8),
@@ -712,6 +753,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
   /// 展开态：内联手势面板，关联已有商品 / 创建同名商品。
   Widget _buildExpanded(_ImportRow row, ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Padding(
@@ -727,7 +769,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  '${row.parsed.price?.toStringAsFixed(2) ?? '—'} · '
+                  '${row.parsed.price == null ? '—' : formatNumber(row.parsed.price!, minimumFractionDigits: 2, maximumFractionDigits: 2)} · '
                   '${_fmtQty(row.parsed.quantity)} ${row.parsed.unit}',
                   style: theme.textTheme.bodySmall,
                 ),
@@ -737,12 +779,12 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
             // 关联已有商品（使用 row.searchController 持久实例）
             TextField(
               key: const Key('paste-existing-search'),
-              decoration: const InputDecoration(
-                labelText: '关联已有商品',
-                hintText: '搜索商品…',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.pricePasteLinkExisting,
+                hintText: l10n.priceSearchHint,
+                border: const OutlineInputBorder(),
                 isDense: true,
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: const Icon(Icons.search),
               ),
               onChanged: (v) => _onExistingSearch(row, v),
               controller: row.searchController,
@@ -768,12 +810,12 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
             // 搜索原料：新建商品并关联到该原料（new_attach 模式）
             TextField(
               key: const Key('paste-ingredient-search'),
-              decoration: const InputDecoration(
-                labelText: '关联到原料',
-                hintText: '搜索原料…',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.pricePasteLinkIngredient,
+                hintText: l10n.pricePasteSearchIngredients,
+                border: const OutlineInputBorder(),
                 isDense: true,
-                prefixIcon: Icon(Icons.eco_outlined),
+                prefixIcon: const Icon(Icons.eco_outlined),
               ),
               onChanged: (v) => _onIngredientSearch(row, v),
               controller: row.ingredientSearchController,
@@ -801,14 +843,14 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
               key: const Key('paste-new-same-button'),
               onPressed: () => _chooseNewSame(row),
               icon: const Icon(Icons.add),
-              label: const Text('创建同名原料 + 商品'),
+              label: Text(l10n.pricePasteCreateSameIngredientProduct),
             ),
             const SizedBox(height: 4),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
                 onPressed: () => _cancelEdit(row),
-                child: const Text('取消'),
+                child: Text(l10n.commonCancel),
               ),
             ),
           ],

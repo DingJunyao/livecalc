@@ -609,6 +609,152 @@
   "@priceValidRequired": {},
   "priceQuantityRequired": "请输入有效的数量",
   "@priceQuantityRequired": {},
+  "priceSearchHint": "搜索商品…",
+  "@priceSearchHint": {},
+  "priceMoreActions": "更多操作",
+  "@priceMoreActions": {},
+  "priceDeleteRecordMessage": "确定删除「{name}」{price} 的记录吗？",
+  "@priceDeleteRecordMessage": {
+    "placeholders": {
+      "name": {},
+      "price": {}
+    }
+  },
+  "priceListEmptySubtitle": "点击右下角按钮记下第一笔价格",
+  "@priceListEmptySubtitle": {},
+  "priceFilterTitle": "筛选条件",
+  "@priceFilterTitle": {},
+  "priceFilterAllMerchants": "全部商家",
+  "@priceFilterAllMerchants": {},
+  "priceFilterRecordType": "记录类型",
+  "@priceFilterRecordType": {},
+  "priceRecordTypePurchase": "购买",
+  "@priceRecordTypePurchase": {},
+  "priceRecordTypePrice": "比价",
+  "@priceRecordTypePrice": {},
+  "priceFilterDateRange": "日期范围",
+  "@priceFilterDateRange": {},
+  "priceFilterStart": "开始",
+  "@priceFilterStart": {},
+  "priceFilterEnd": "结束",
+  "@priceFilterEnd": {},
+  "priceAddRecordTitle": "新增价格记录",
+  "@priceAddRecordTitle": {},
+  "priceProductNameLabel": "商品名称",
+  "@priceProductNameLabel": {},
+  "priceProductNameHint": "搜索或输入新商品名",
+  "@priceProductNameHint": {},
+  "priceScanProductTooltip": "扫码识别商品",
+  "@priceScanProductTooltip": {},
+  "priceBarcodeNotFoundTitle": "未找到本地商品",
+  "@priceBarcodeNotFoundTitle": {},
+  "priceNameLabel": "名称",
+  "@priceNameLabel": {},
+  "priceBarcodeLookupFailed": "条码查询失败，请重试",
+  "@priceBarcodeLookupFailed": {},
+  "priceBarcodeSearching": "正在查询商品信息…",
+  "@priceBarcodeSearching": {},
+  "quickFillTitle": "快速填写",
+  "@quickFillTitle": {},
+  "quickFillSelectMerchant": "选择商家",
+  "@quickFillSelectMerchant": {},
+  "quickFillMerchantSearchHint": "搜索或选择商家",
+  "@quickFillMerchantSearchHint": {},
+  "quickFillNoHistoryProducts": "暂无历史商品",
+  "@quickFillNoHistoryProducts": {},
+  "quickFillNewProduct": "新商品",
+  "@quickFillNewProduct": {},
+  "quickFillProductHeader": "商品",
+  "@quickFillProductHeader": {},
+  "quickFillUnitPriceHeader": "单价",
+  "@quickFillUnitPriceHeader": {},
+  "quickFillSaveAll": "保存所有价格",
+  "@quickFillSaveAll": {},
+  "quickFillSavedCount": "已保存 {count} 条记录",
+  "@quickFillSavedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportTooltip": "粘贴导入",
+  "@pricePasteImportTooltip": {},
+  "pricePasteImportTitle": "粘贴导入价格",
+  "@pricePasteImportTitle": {},
+  "priceCopyTemplate": "复制模板",
+  "@priceCopyTemplate": {},
+  "priceTemplateCopied": "已复制模板",
+  "@priceTemplateCopied": {},
+  "pricePasteTextLabel": "粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）",
+  "@pricePasteTextLabel": {},
+  "pricePasteHint": "芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g",
+  "@pricePasteHint": {},
+  "priceParseAndMatch": "解析并匹配",
+  "@priceParseAndMatch": {},
+  "pricePasteSummary": "已匹配 {matched} · 待处理 {unmatched} · 无法识别 {invalid}",
+  "@pricePasteSummary": {
+    "placeholders": {
+      "matched": {},
+      "unmatched": {},
+      "invalid": {}
+    }
+  },
+  "pricePasteImporting": "正在导入 {current}/{total}…",
+  "@pricePasteImporting": {
+    "placeholders": {
+      "current": {},
+      "total": {}
+    }
+  },
+  "pricePasteImportAll": "全部导入（{count} 条）",
+  "@pricePasteImportAll": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportComplete": "导入完成：成功 {success} 条，失败 {fail} 条",
+  "@pricePasteImportComplete": {
+    "placeholders": {
+      "success": {},
+      "fail": {}
+    }
+  },
+  "pricePasteFailures": "失败：{items}",
+  "@pricePasteFailures": {
+    "placeholders": {
+      "items": {}
+    }
+  },
+  "pricePasteErrorEmptyLine": "空行",
+  "@pricePasteErrorEmptyLine": {},
+  "pricePasteErrorCommentLine": "注释行",
+  "@pricePasteErrorCommentLine": {},
+  "pricePasteErrorUnrecognized": "格式无法识别",
+  "@pricePasteErrorUnrecognized": {},
+  "pricePasteErrorEmptyName": "商品名为空",
+  "@pricePasteErrorEmptyName": {},
+  "pricePasteErrorInvalidPrice": "价格无效",
+  "@pricePasteErrorInvalidPrice": {},
+  "pricePasteInvalidLine": "（{error}）",
+  "@pricePasteInvalidLine": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "pricePasteInvalidNamedLine": "{name}（{error}）",
+  "@pricePasteInvalidNamedLine": {
+    "placeholders": {
+      "name": {},
+      "error": {}
+    }
+  },
+  "pricePasteLinkExisting": "关联已有商品",
+  "@pricePasteLinkExisting": {},
+  "pricePasteLinkIngredient": "关联到原料",
+  "@pricePasteLinkIngredient": {},
+  "pricePasteSearchIngredients": "搜索原料…",
+  "@pricePasteSearchIngredients": {},
+  "pricePasteCreateSameIngredientProduct": "创建同名原料 + 商品",
+  "@pricePasteCreateSameIngredientProduct": {},
   "ingredientCategoryGrains": "谷物",
   "@ingredientCategoryGrains": {},
   "ingredientCategoryVegetables": "蔬菜",

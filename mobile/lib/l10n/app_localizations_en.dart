@@ -875,6 +875,184 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priceQuantityRequired => 'Enter a valid quantity';
 
   @override
+  String get priceSearchHint => 'Search products...';
+
+  @override
+  String get priceMoreActions => 'More actions';
+
+  @override
+  String priceDeleteRecordMessage(Object name, Object price) {
+    return 'Delete the price record for \"$name\" ($price)?';
+  }
+
+  @override
+  String get priceListEmptySubtitle =>
+      'Tap the button in the lower-right corner to record the first price';
+
+  @override
+  String get priceFilterTitle => 'Filter options';
+
+  @override
+  String get priceFilterAllMerchants => 'All merchants';
+
+  @override
+  String get priceFilterRecordType => 'Record type';
+
+  @override
+  String get priceRecordTypePurchase => 'Purchase';
+
+  @override
+  String get priceRecordTypePrice => 'Comparison';
+
+  @override
+  String get priceFilterDateRange => 'Date range';
+
+  @override
+  String get priceFilterStart => 'Start';
+
+  @override
+  String get priceFilterEnd => 'End';
+
+  @override
+  String get priceAddRecordTitle => 'Add price record';
+
+  @override
+  String get priceProductNameLabel => 'Product name';
+
+  @override
+  String get priceProductNameHint => 'Search or enter a new product name';
+
+  @override
+  String get priceScanProductTooltip => 'Scan product';
+
+  @override
+  String get priceBarcodeNotFoundTitle => 'Local product not found';
+
+  @override
+  String get priceNameLabel => 'Name';
+
+  @override
+  String get priceBarcodeLookupFailed => 'Barcode lookup failed. Try again.';
+
+  @override
+  String get priceBarcodeSearching => 'Looking up product info...';
+
+  @override
+  String get quickFillTitle => 'Quick fill';
+
+  @override
+  String get quickFillSelectMerchant => 'Select merchant';
+
+  @override
+  String get quickFillMerchantSearchHint => 'Search or select a merchant';
+
+  @override
+  String get quickFillNoHistoryProducts => 'No historical products yet';
+
+  @override
+  String get quickFillNewProduct => 'New product';
+
+  @override
+  String get quickFillProductHeader => 'Product';
+
+  @override
+  String get quickFillUnitPriceHeader => 'Unit price';
+
+  @override
+  String get quickFillSaveAll => 'Save all prices';
+
+  @override
+  String quickFillSavedCount(Object count) {
+    return 'Saved $count records';
+  }
+
+  @override
+  String get pricePasteImportTooltip => 'Paste import';
+
+  @override
+  String get pricePasteImportTitle => 'Paste price import';
+
+  @override
+  String get priceCopyTemplate => 'Copy template';
+
+  @override
+  String get priceTemplateCopied => 'Template copied';
+
+  @override
+  String get pricePasteTextLabel =>
+      'Paste price text\n(one per line, format: name price[/unit])';
+
+  @override
+  String get pricePasteHint =>
+      'Celery 1.88\nMushrooms 4/bag\nTofu 5.18/kg\nPotato starch 2.5/200g';
+
+  @override
+  String get priceParseAndMatch => 'Parse and match';
+
+  @override
+  String pricePasteSummary(Object matched, Object unmatched, Object invalid) {
+    return 'Matched $matched · Pending $unmatched · Unrecognized $invalid';
+  }
+
+  @override
+  String pricePasteImporting(Object current, Object total) {
+    return 'Importing $current/$total...';
+  }
+
+  @override
+  String pricePasteImportAll(Object count) {
+    return 'Import all ($count records)';
+  }
+
+  @override
+  String pricePasteImportComplete(Object success, Object fail) {
+    return 'Import complete: $success succeeded, $fail failed';
+  }
+
+  @override
+  String pricePasteFailures(Object items) {
+    return 'Failed: $items';
+  }
+
+  @override
+  String get pricePasteErrorEmptyLine => 'Empty line';
+
+  @override
+  String get pricePasteErrorCommentLine => 'Comment line';
+
+  @override
+  String get pricePasteErrorUnrecognized => 'Unrecognized format';
+
+  @override
+  String get pricePasteErrorEmptyName => 'Product name is empty';
+
+  @override
+  String get pricePasteErrorInvalidPrice => 'Invalid price';
+
+  @override
+  String pricePasteInvalidLine(Object error) {
+    return '($error)';
+  }
+
+  @override
+  String pricePasteInvalidNamedLine(Object name, Object error) {
+    return '$name ($error)';
+  }
+
+  @override
+  String get pricePasteLinkExisting => 'Link an existing product';
+
+  @override
+  String get pricePasteLinkIngredient => 'Link to ingredient';
+
+  @override
+  String get pricePasteSearchIngredients => 'Search ingredients...';
+
+  @override
+  String get pricePasteCreateSameIngredientProduct =>
+      'Create same-named ingredient + product';
+
+  @override
   String get ingredientCategoryGrains => 'Grains';
 
   @override

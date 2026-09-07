@@ -14,6 +14,7 @@ import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/screens/price_record_edit_screen.dart';
+import '../../../l10n/app_localizations.dart';
 
 class PriceListScreen extends ConsumerStatefulWidget {
   const PriceListScreen({super.key});
@@ -110,8 +111,11 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             currency: result.currency,
           );
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(ok ? '已更新' : '更新失败，请重试')),
+          SnackBar(
+            content: Text(ok ? l10n.journeyUpdated : l10n.journeyUpdateFailed),
+          ),
         );
       }
     }
@@ -123,26 +127,32 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     final userCurrency = ref.read(displayCurrencyProvider);
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('删除记录'),
-        content: Text(
-          '确定删除「${r.productName}」${formatMoney(r.price, userCurrency)} 的记录吗？',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.error,
-              foregroundColor: theme.colorScheme.onError,
+      builder: (ctx) {
+        final l10n = AppLocalizations.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.journeyDeleteRecordTitle),
+          content: Text(
+            l10n.priceDeleteRecordMessage(
+              r.productName,
+              formatMoney(r.price, userCurrency),
             ),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
+              ),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.commonDelete),
+            ),
+          ],
+        );
+      },
     );
     if (ok == true) {
       await _deleteRecord(r);
@@ -152,8 +162,10 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   Future<void> _deleteRecord(PriceRecord r) async {
     final ok = await ref.read(priceListProvider.notifier).deleteRecord(r.id);
     if (mounted) {
+      final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(ok ? '已删除' : '删除失败，请重试')),
+        SnackBar(
+            content: Text(ok ? l10n.journeyDeleted : l10n.journeyDeleteFailed)),
       );
     }
   }
@@ -166,15 +178,16 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     });
     final theme = Theme.of(context);
     final state = ref.watch(priceListProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('价格记录'),
+        title: Text(l10n.journeyPriceRecords),
         actions: [
           const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.bolt),
-            tooltip: '快速填写',
+            tooltip: l10n.quickFillTitle,
             onPressed: () => context.push('/prices/quick-fill'),
           ),
           IconButton(
@@ -182,14 +195,14 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             onPressed: state.loading
                 ? null
                 : () => ref.read(priceListProvider.notifier).loadRecords(),
-            tooltip: '刷新',
+            tooltip: l10n.journeyRefresh,
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildSearchBar(theme, state),
-          Expanded(child: _buildBody(theme, state)),
+          _buildSearchBar(theme, state, l10n),
+          Expanded(child: _buildBody(theme, state, l10n)),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -201,7 +214,11 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
 
   // ---- Search + filter button ----
 
-  Widget _buildSearchBar(ThemeData theme, PriceListState state) {
+  Widget _buildSearchBar(
+    ThemeData theme,
+    PriceListState state,
+    AppLocalizations l10n,
+  ) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Row(
@@ -210,7 +227,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜索商品…',
+                hintText: l10n.priceSearchHint,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -240,6 +257,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   Widget _buildFilterButton(ThemeData theme, PriceListState state) {
+    final l10n = AppLocalizations.of(context);
     final activeCount = ref.read(priceListProvider.notifier).activeFilterCount;
     final hasActive = activeCount > 0;
     return SizedBox(
@@ -250,7 +268,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
         child: IconButton.filledTonal(
           icon: const Icon(Icons.tune),
           onPressed: () => _showFilterDialog(theme, state),
-          tooltip: '筛选',
+          tooltip: l10n.journeyFilters,
           style: hasActive
               ? IconButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
@@ -292,9 +310,13 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
 
   // ---- List body ----
 
-  Widget _buildBody(ThemeData theme, PriceListState state) {
+  Widget _buildBody(
+    ThemeData theme,
+    PriceListState state,
+    AppLocalizations l10n,
+  ) {
     if (state.loading && state.records.isEmpty) {
-      return const LoadingIndicator(message: '加载中…');
+      return const LoadingIndicator();
     }
     if (state.error != null && state.records.isEmpty) {
       return ErrorDisplay(
@@ -303,10 +325,10 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       );
     }
     if (state.records.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.receipt_long,
-        title: '暂无价格记录',
-        subtitle: '点击右下角按钮记下第一笔价格',
+        title: l10n.journeyNoPriceRecords,
+        subtitle: l10n.priceListEmptySubtitle,
       );
     }
 
@@ -327,6 +349,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
   }
 
   Widget _buildLoadMoreIndicator(PriceListState state) {
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Center(
@@ -340,7 +363,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                 onPressed: () => ref
                     .read(priceListProvider.notifier)
                     .loadRecords(loadMore: true),
-                child: const Text('加载更多'),
+                child: Text(l10n.journeyLoadMore),
               ),
       ),
     );
@@ -348,6 +371,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
 
   Widget _buildRecordCard(ThemeData theme, PriceRecord r) {
     final userCurrency = ref.read(displayCurrencyProvider);
+    final l10n = AppLocalizations.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       clipBehavior: Clip.antiAlias,
@@ -408,7 +432,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
                         const SizedBox(width: 3),
                         Flexible(
                           child: Text(
-                            r.merchantName ?? '未知商家',
+                            r.merchantName ?? l10n.journeyUnknownMerchant,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.outline,
                             ),
@@ -440,10 +464,16 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
               ),
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert),
-                tooltip: '更多操作',
-                itemBuilder: (_) => const [
-                  PopupMenuItem<String>(value: 'edit', child: Text('编辑')),
-                  PopupMenuItem<String>(value: 'delete', child: Text('删除')),
+                tooltip: l10n.priceMoreActions,
+                itemBuilder: (_) => [
+                  PopupMenuItem<String>(
+                    value: 'edit',
+                    child: Text(l10n.commonEdit),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Text(l10n.commonDelete),
+                  ),
                 ],
                 onSelected: (v) {
                   if (v == 'edit') {
@@ -550,6 +580,7 @@ class _FilterSheetState extends State<_FilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = widget.theme;
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.only(
@@ -563,7 +594,7 @@ class _FilterSheetState extends State<_FilterSheet> {
               padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
               child: Row(
                 children: [
-                  Text('筛选条件',
+                  Text(l10n.priceFilterTitle,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                   const Spacer(),
@@ -578,7 +609,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                         });
                       },
                       icon: const Icon(Icons.clear_all, size: 18),
-                      label: const Text('清除'),
+                      label: Text(l10n.journeyClear),
                     ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -594,7 +625,8 @@ class _FilterSheetState extends State<_FilterSheet> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Merchant dropdown
-                  Text('商家', style: theme.textTheme.labelLarge),
+                  Text(l10n.priceMerchantLabel,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -607,11 +639,11 @@ class _FilterSheetState extends State<_FilterSheet> {
                       child: DropdownButton<int?>(
                         value: _merchantId,
                         isExpanded: true,
-                        hint: const Text('全部商家'),
+                        hint: Text(l10n.priceFilterAllMerchants),
                         items: [
-                          const DropdownMenuItem<int?>(
+                          DropdownMenuItem<int?>(
                             value: null,
-                            child: Text('全部商家'),
+                            child: Text(l10n.priceFilterAllMerchants),
                           ),
                           ...widget.merchants.map(
                             (m) => DropdownMenuItem<int?>(
@@ -629,19 +661,20 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ),
                   const SizedBox(height: 20),
                   // Record type chips
-                  Text('记录类型', style: theme.textTheme.labelLarge),
+                  Text(l10n.priceFilterRecordType,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     children: [
                       FilterChip(
-                        label: const Text('购买'),
+                        label: Text(l10n.priceRecordTypePurchase),
                         selected: _recordType == 'purchase',
                         onSelected: (_) => setState(() => _recordType =
                             _recordType == 'purchase' ? null : 'purchase'),
                       ),
                       FilterChip(
-                        label: const Text('比价'),
+                        label: Text(l10n.priceRecordTypePrice),
                         selected: _recordType == 'price',
                         onSelected: (_) => setState(() => _recordType =
                             _recordType == 'price' ? null : 'price'),
@@ -650,14 +683,15 @@ class _FilterSheetState extends State<_FilterSheet> {
                   ),
                   const SizedBox(height: 20),
                   // Date range
-                  Text('日期范围', style: theme.textTheme.labelLarge),
+                  Text(l10n.priceFilterDateRange,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Row(
                     children: [
                       Expanded(
                         child: _buildDateField(
                           theme,
-                          label: '开始',
+                          label: l10n.priceFilterStart,
                           value: _startDate,
                           onTap: () => _pickDate(true),
                           onClear: () => setState(() => _startDate = null),
@@ -670,7 +704,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       Expanded(
                         child: _buildDateField(
                           theme,
-                          label: '结束',
+                          label: l10n.priceFilterEnd,
                           value: _endDate,
                           onTap: () => _pickDate(false),
                           onClear: () => setState(() => _endDate = null),
@@ -692,7 +726,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                     _apply();
                     Navigator.of(context).pop();
                   },
-                  child: const Text('确定'),
+                  child: Text(l10n.journeyConfirm),
                 ),
               ),
             ),

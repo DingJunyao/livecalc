@@ -8,6 +8,7 @@ import 'package:com_a4ding_livecalc/features/prices/models/price_record.dart';
 import 'package:com_a4ding_livecalc/features/prices/providers/price_provider.dart';
 import 'package:com_a4ding_livecalc/features/prices/repositories/price_repository.dart';
 import 'package:com_a4ding_livecalc/features/prices/screens/price_list_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
 
 class _FakePriceRepository extends PriceRepository {
@@ -160,7 +161,12 @@ void main() {
           (ref) => MerchantListNotifier(_FakeMerchantRepository()),
         ),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -311,8 +317,5 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('编辑价格记录'), findsOneWidget);
     expect(find.text('番茄'), findsOneWidget);
-
-    await tester.pageBack();
-    await tester.pumpAndSettle();
   });
 }

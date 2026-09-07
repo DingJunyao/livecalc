@@ -14,6 +14,8 @@ import '../../../shared/widgets/loading_overlay.dart';
 import '../repositories/price_repository.dart';
 import '../providers/price_record_session_memory.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../core/i18n/app_formatters.dart';
+import '../../../l10n/app_localizations.dart';
 
 class PriceRecordFormPrefill {
   final Product? product;
@@ -206,30 +208,33 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
 
       final create = await showDialog<bool>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: const Text('未找到本地商品'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('条码：$code'),
-              if (result.product.name?.isNotEmpty == true)
-                Text('名称：${result.product.name}'),
-              if (result.product.brand?.isNotEmpty == true)
-                Text('品牌：${result.product.brand}'),
+        builder: (dialogContext) {
+          final l10n = AppLocalizations.of(dialogContext);
+          return AlertDialog(
+            title: Text(l10n.priceBarcodeNotFoundTitle),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('${l10n.productBarcode}: $code'),
+                if (result.product.name?.isNotEmpty == true)
+                  Text('${l10n.priceNameLabel}: ${result.product.name}'),
+                if (result.product.brand?.isNotEmpty == true)
+                  Text('${l10n.productBrand}: ${result.product.brand}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.commonCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.productAddTitle),
+              ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('取消'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: const Text('新增商品'),
-            ),
-          ],
-        ),
+          );
+        },
       );
       if (create != true || !mounted) return;
 
@@ -247,7 +252,10 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('条码查询失败，请重试')),
+          SnackBar(
+            content:
+                Text(AppLocalizations.of(context).priceBarcodeLookupFailed),
+          ),
         );
       }
     } finally {
@@ -277,19 +285,20 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   Future<void> _save() async {
     if (_saving) return;
     setState(() => _saving = true);
+    final l10n = AppLocalizations.of(context);
     final price = double.tryParse(_priceController.text.trim());
     final quantity = double.tryParse(_quantityController.text.trim());
     if (price == null || price <= 0) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效的价格')),
+        SnackBar(content: Text(l10n.priceValidRequired)),
       );
       return;
     }
     if (quantity == null || quantity <= 0) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入有效的数量')),
+        SnackBar(content: Text(l10n.priceQuantityRequired)),
       );
       return;
     }
@@ -297,7 +306,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     if (_selectedProduct == null && name.isEmpty) {
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入商品名称')),
+        SnackBar(content: Text(l10n.productNameRequired)),
       );
       return;
     }
@@ -326,7 +335,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
       if (mounted) setState(() => _saving = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('保存失败，请重试')),
+          SnackBar(content: Text(l10n.commonSaveFailedRetry)),
         );
       }
     }
@@ -335,12 +344,13 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final merchants = ref.watch(merchantListProvider).items;
 
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: const Text('新增价格记录')),
+          appBar: AppBar(title: Text(l10n.priceAddRecordTitle)),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -358,8 +368,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                   _merchantController.text = m.name;
                   setState(() {
                     _merchantId = m.id;
-                    final code =
-                        m.defaultCurrency ?? m.effectiveCurrency;
+                    final code = m.defaultCurrency ?? m.effectiveCurrency;
                     if (code != null && code.isNotEmpty) {
                       _currency = code;
                       _currencySymbol = currencySymbol(code);
@@ -379,7 +388,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                     controller: controller,
                     focusNode: focusNode,
                     decoration: InputDecoration(
-                      labelText: '商家',
+                      labelText: l10n.priceMerchantLabel,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -399,8 +408,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(
-                  labelText: '商品名称',
-                  hintText: '搜索或输入新商品名',
+                  labelText: l10n.priceProductNameLabel,
+                  hintText: l10n.priceProductNameHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -408,7 +417,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
-                        tooltip: '扫码识别商品',
+                        tooltip: l10n.priceScanProductTooltip,
                         icon: const Icon(Icons.barcode_reader),
                         onPressed: (_barcodeLoading || _lockProduct)
                             ? null
@@ -450,7 +459,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: '价格',
+                        labelText: l10n.priceLabel,
                         prefixText: _currencySymbol,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -466,7 +475,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       initialValue: _currency,
                       isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: '币种',
+                        labelText: l10n.priceCurrencyLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -523,7 +532,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       keyboardType:
                           const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: '数量',
+                        labelText: l10n.priceQuantityLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -536,7 +545,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       initialValue: _unit,
                       isExpanded: true,
                       decoration: InputDecoration(
-                        labelText: '单位',
+                        labelText: l10n.priceUnitLabel,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -553,18 +562,17 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
               const SizedBox(height: 16),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('计入支出'),
-                subtitle: const Text('表示此价格记录来自实际购买，将用于支出计算'),
+                title: Text(l10n.priceIncludeInSpending),
+                subtitle: Text(l10n.priceIncludeInSpendingDescription),
                 value: _isPurchase,
                 onChanged: (v) => setState(() => _isPurchase = v),
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: const Icon(Icons.schedule),
-                title: const Text('记录时间'),
+                title: Text(l10n.priceRecordedAt),
                 trailing: Text(
-                  '${_recordedAt.year}-${_recordedAt.month.toString().padLeft(2, '0')}-${_recordedAt.day.toString().padLeft(2, '0')} '
-                  '${_recordedAt.hour.toString().padLeft(2, '0')}:${_recordedAt.minute.toString().padLeft(2, '0')}',
+                  formatDateTime(_recordedAt),
                   style: theme.textTheme.bodyMedium,
                 ),
                 onTap: _pickRecordedAt,
@@ -573,8 +581,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                 controller: _notesController,
                 maxLines: 3,
                 decoration: InputDecoration(
-                  labelText: '备注',
-                  hintText: '备注（可选）',
+                  labelText: l10n.priceNotesLabel,
+                  hintText: l10n.priceNotesHint,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -583,12 +591,13 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
               const SizedBox(height: 24),
               FilledButton(
                 onPressed: _saving ? null : _save,
-                child: const Text('保存'),
+                child: Text(l10n.commonSave),
               ),
             ],
           ),
         ),
-        if (_barcodeLoading) const LoadingOverlay(message: '正在查询商品信息…'),
+        if (_barcodeLoading)
+          LoadingOverlay(message: l10n.priceBarcodeSearching),
       ],
     );
   }

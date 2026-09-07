@@ -609,6 +609,152 @@
   "@priceValidRequired": {},
   "priceQuantityRequired": "Enter a valid quantity",
   "@priceQuantityRequired": {},
+  "priceSearchHint": "Search products...",
+  "@priceSearchHint": {},
+  "priceMoreActions": "More actions",
+  "@priceMoreActions": {},
+  "priceDeleteRecordMessage": "Delete the price record for \"{name}\" ({price})?",
+  "@priceDeleteRecordMessage": {
+    "placeholders": {
+      "name": {},
+      "price": {}
+    }
+  },
+  "priceListEmptySubtitle": "Tap the button in the lower-right corner to record the first price",
+  "@priceListEmptySubtitle": {},
+  "priceFilterTitle": "Filter options",
+  "@priceFilterTitle": {},
+  "priceFilterAllMerchants": "All merchants",
+  "@priceFilterAllMerchants": {},
+  "priceFilterRecordType": "Record type",
+  "@priceFilterRecordType": {},
+  "priceRecordTypePurchase": "Purchase",
+  "@priceRecordTypePurchase": {},
+  "priceRecordTypePrice": "Comparison",
+  "@priceRecordTypePrice": {},
+  "priceFilterDateRange": "Date range",
+  "@priceFilterDateRange": {},
+  "priceFilterStart": "Start",
+  "@priceFilterStart": {},
+  "priceFilterEnd": "End",
+  "@priceFilterEnd": {},
+  "priceAddRecordTitle": "Add price record",
+  "@priceAddRecordTitle": {},
+  "priceProductNameLabel": "Product name",
+  "@priceProductNameLabel": {},
+  "priceProductNameHint": "Search or enter a new product name",
+  "@priceProductNameHint": {},
+  "priceScanProductTooltip": "Scan product",
+  "@priceScanProductTooltip": {},
+  "priceBarcodeNotFoundTitle": "Local product not found",
+  "@priceBarcodeNotFoundTitle": {},
+  "priceNameLabel": "Name",
+  "@priceNameLabel": {},
+  "priceBarcodeLookupFailed": "Barcode lookup failed. Try again.",
+  "@priceBarcodeLookupFailed": {},
+  "priceBarcodeSearching": "Looking up product info...",
+  "@priceBarcodeSearching": {},
+  "quickFillTitle": "Quick fill",
+  "@quickFillTitle": {},
+  "quickFillSelectMerchant": "Select merchant",
+  "@quickFillSelectMerchant": {},
+  "quickFillMerchantSearchHint": "Search or select a merchant",
+  "@quickFillMerchantSearchHint": {},
+  "quickFillNoHistoryProducts": "No historical products yet",
+  "@quickFillNoHistoryProducts": {},
+  "quickFillNewProduct": "New product",
+  "@quickFillNewProduct": {},
+  "quickFillProductHeader": "Product",
+  "@quickFillProductHeader": {},
+  "quickFillUnitPriceHeader": "Unit price",
+  "@quickFillUnitPriceHeader": {},
+  "quickFillSaveAll": "Save all prices",
+  "@quickFillSaveAll": {},
+  "quickFillSavedCount": "Saved {count} records",
+  "@quickFillSavedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportTooltip": "Paste import",
+  "@pricePasteImportTooltip": {},
+  "pricePasteImportTitle": "Paste price import",
+  "@pricePasteImportTitle": {},
+  "priceCopyTemplate": "Copy template",
+  "@priceCopyTemplate": {},
+  "priceTemplateCopied": "Template copied",
+  "@priceTemplateCopied": {},
+  "pricePasteTextLabel": "Paste price text\n(one per line, format: name price[/unit])",
+  "@pricePasteTextLabel": {},
+  "pricePasteHint": "Celery 1.88\nMushrooms 4/bag\nTofu 5.18/kg\nPotato starch 2.5/200g",
+  "@pricePasteHint": {},
+  "priceParseAndMatch": "Parse and match",
+  "@priceParseAndMatch": {},
+  "pricePasteSummary": "Matched {matched} · Pending {unmatched} · Unrecognized {invalid}",
+  "@pricePasteSummary": {
+    "placeholders": {
+      "matched": {},
+      "unmatched": {},
+      "invalid": {}
+    }
+  },
+  "pricePasteImporting": "Importing {current}/{total}...",
+  "@pricePasteImporting": {
+    "placeholders": {
+      "current": {},
+      "total": {}
+    }
+  },
+  "pricePasteImportAll": "Import all ({count} records)",
+  "@pricePasteImportAll": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportComplete": "Import complete: {success} succeeded, {fail} failed",
+  "@pricePasteImportComplete": {
+    "placeholders": {
+      "success": {},
+      "fail": {}
+    }
+  },
+  "pricePasteFailures": "Failed: {items}",
+  "@pricePasteFailures": {
+    "placeholders": {
+      "items": {}
+    }
+  },
+  "pricePasteErrorEmptyLine": "Empty line",
+  "@pricePasteErrorEmptyLine": {},
+  "pricePasteErrorCommentLine": "Comment line",
+  "@pricePasteErrorCommentLine": {},
+  "pricePasteErrorUnrecognized": "Unrecognized format",
+  "@pricePasteErrorUnrecognized": {},
+  "pricePasteErrorEmptyName": "Product name is empty",
+  "@pricePasteErrorEmptyName": {},
+  "pricePasteErrorInvalidPrice": "Invalid price",
+  "@pricePasteErrorInvalidPrice": {},
+  "pricePasteInvalidLine": "({error})",
+  "@pricePasteInvalidLine": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "pricePasteInvalidNamedLine": "{name} ({error})",
+  "@pricePasteInvalidNamedLine": {
+    "placeholders": {
+      "name": {},
+      "error": {}
+    }
+  },
+  "pricePasteLinkExisting": "Link an existing product",
+  "@pricePasteLinkExisting": {},
+  "pricePasteLinkIngredient": "Link to ingredient",
+  "@pricePasteLinkIngredient": {},
+  "pricePasteSearchIngredients": "Search ingredients...",
+  "@pricePasteSearchIngredients": {},
+  "pricePasteCreateSameIngredientProduct": "Create same-named ingredient + product",
+  "@pricePasteCreateSameIngredientProduct": {},
   "ingredientCategoryGrains": "Grains",
   "@ingredientCategoryGrains": {},
   "ingredientCategoryVegetables": "Vegetables",

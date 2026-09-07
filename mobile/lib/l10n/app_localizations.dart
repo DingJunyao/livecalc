@@ -1739,6 +1739,318 @@ abstract class AppLocalizations {
   /// **'请输入有效的数量'**
   String get priceQuantityRequired;
 
+  /// No description provided for @priceSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索商品…'**
+  String get priceSearchHint;
+
+  /// No description provided for @priceMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get priceMoreActions;
+
+  /// No description provided for @priceDeleteRecordMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」{price} 的记录吗？'**
+  String priceDeleteRecordMessage(Object name, Object price);
+
+  /// No description provided for @priceListEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角按钮记下第一笔价格'**
+  String get priceListEmptySubtitle;
+
+  /// No description provided for @priceFilterTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'筛选条件'**
+  String get priceFilterTitle;
+
+  /// No description provided for @priceFilterAllMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部商家'**
+  String get priceFilterAllMerchants;
+
+  /// No description provided for @priceFilterRecordType.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录类型'**
+  String get priceFilterRecordType;
+
+  /// No description provided for @priceRecordTypePurchase.
+  ///
+  /// In zh, this message translates to:
+  /// **'购买'**
+  String get priceRecordTypePurchase;
+
+  /// No description provided for @priceRecordTypePrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'比价'**
+  String get priceRecordTypePrice;
+
+  /// No description provided for @priceFilterDateRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'日期范围'**
+  String get priceFilterDateRange;
+
+  /// No description provided for @priceFilterStart.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始'**
+  String get priceFilterStart;
+
+  /// No description provided for @priceFilterEnd.
+  ///
+  /// In zh, this message translates to:
+  /// **'结束'**
+  String get priceFilterEnd;
+
+  /// No description provided for @priceAddRecordTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增价格记录'**
+  String get priceAddRecordTitle;
+
+  /// No description provided for @priceProductNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品名称'**
+  String get priceProductNameLabel;
+
+  /// No description provided for @priceProductNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索或输入新商品名'**
+  String get priceProductNameHint;
+
+  /// No description provided for @priceScanProductTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫码识别商品'**
+  String get priceScanProductTooltip;
+
+  /// No description provided for @priceBarcodeNotFoundTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到本地商品'**
+  String get priceBarcodeNotFoundTitle;
+
+  /// No description provided for @priceNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称'**
+  String get priceNameLabel;
+
+  /// No description provided for @priceBarcodeLookupFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'条码查询失败，请重试'**
+  String get priceBarcodeLookupFailed;
+
+  /// No description provided for @priceBarcodeSearching.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在查询商品信息…'**
+  String get priceBarcodeSearching;
+
+  /// No description provided for @quickFillTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'快速填写'**
+  String get quickFillTitle;
+
+  /// No description provided for @quickFillSelectMerchant.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择商家'**
+  String get quickFillSelectMerchant;
+
+  /// No description provided for @quickFillMerchantSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索或选择商家'**
+  String get quickFillMerchantSearchHint;
+
+  /// No description provided for @quickFillNoHistoryProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无历史商品'**
+  String get quickFillNoHistoryProducts;
+
+  /// No description provided for @quickFillNewProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'新商品'**
+  String get quickFillNewProduct;
+
+  /// No description provided for @quickFillProductHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get quickFillProductHeader;
+
+  /// No description provided for @quickFillUnitPriceHeader.
+  ///
+  /// In zh, this message translates to:
+  /// **'单价'**
+  String get quickFillUnitPriceHeader;
+
+  /// No description provided for @quickFillSaveAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存所有价格'**
+  String get quickFillSaveAll;
+
+  /// No description provided for @quickFillSavedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存 {count} 条记录'**
+  String quickFillSavedCount(Object count);
+
+  /// No description provided for @pricePasteImportTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'粘贴导入'**
+  String get pricePasteImportTooltip;
+
+  /// No description provided for @pricePasteImportTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'粘贴导入价格'**
+  String get pricePasteImportTitle;
+
+  /// No description provided for @priceCopyTemplate.
+  ///
+  /// In zh, this message translates to:
+  /// **'复制模板'**
+  String get priceCopyTemplate;
+
+  /// No description provided for @priceTemplateCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已复制模板'**
+  String get priceTemplateCopied;
+
+  /// No description provided for @pricePasteTextLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）'**
+  String get pricePasteTextLabel;
+
+  /// No description provided for @pricePasteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g'**
+  String get pricePasteHint;
+
+  /// No description provided for @priceParseAndMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'解析并匹配'**
+  String get priceParseAndMatch;
+
+  /// No description provided for @pricePasteSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配 {matched} · 待处理 {unmatched} · 无法识别 {invalid}'**
+  String pricePasteSummary(Object matched, Object unmatched, Object invalid);
+
+  /// No description provided for @pricePasteImporting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在导入 {current}/{total}…'**
+  String pricePasteImporting(Object current, Object total);
+
+  /// No description provided for @pricePasteImportAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部导入（{count} 条）'**
+  String pricePasteImportAll(Object count);
+
+  /// No description provided for @pricePasteImportComplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'导入完成：成功 {success} 条，失败 {fail} 条'**
+  String pricePasteImportComplete(Object success, Object fail);
+
+  /// No description provided for @pricePasteFailures.
+  ///
+  /// In zh, this message translates to:
+  /// **'失败：{items}'**
+  String pricePasteFailures(Object items);
+
+  /// No description provided for @pricePasteErrorEmptyLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'空行'**
+  String get pricePasteErrorEmptyLine;
+
+  /// No description provided for @pricePasteErrorCommentLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'注释行'**
+  String get pricePasteErrorCommentLine;
+
+  /// No description provided for @pricePasteErrorUnrecognized.
+  ///
+  /// In zh, this message translates to:
+  /// **'格式无法识别'**
+  String get pricePasteErrorUnrecognized;
+
+  /// No description provided for @pricePasteErrorEmptyName.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品名为空'**
+  String get pricePasteErrorEmptyName;
+
+  /// No description provided for @pricePasteErrorInvalidPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格无效'**
+  String get pricePasteErrorInvalidPrice;
+
+  /// No description provided for @pricePasteInvalidLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'（{error}）'**
+  String pricePasteInvalidLine(Object error);
+
+  /// No description provided for @pricePasteInvalidNamedLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（{error}）'**
+  String pricePasteInvalidNamedLine(Object name, Object error);
+
+  /// No description provided for @pricePasteLinkExisting.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联已有商品'**
+  String get pricePasteLinkExisting;
+
+  /// No description provided for @pricePasteLinkIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联到原料'**
+  String get pricePasteLinkIngredient;
+
+  /// No description provided for @pricePasteSearchIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索原料…'**
+  String get pricePasteSearchIngredients;
+
+  /// No description provided for @pricePasteCreateSameIngredientProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建同名原料 + 商品'**
+  String get pricePasteCreateSameIngredientProduct;
+
   /// No description provided for @ingredientCategoryGrains.
   ///
   /// In zh, this message translates to:

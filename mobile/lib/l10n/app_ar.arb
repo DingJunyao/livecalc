@@ -609,6 +609,152 @@
   "@priceValidRequired": {},
   "priceQuantityRequired": "يرجى إدخال كمية صالحة",
   "@priceQuantityRequired": {},
+  "priceSearchHint": "ابحث عن المنتجات...",
+  "@priceSearchHint": {},
+  "priceMoreActions": "مزيد من الإجراءات",
+  "@priceMoreActions": {},
+  "priceDeleteRecordMessage": "حذف سجل السعر لـ \"{name}\" ({price})؟",
+  "@priceDeleteRecordMessage": {
+    "placeholders": {
+      "name": {},
+      "price": {}
+    }
+  },
+  "priceListEmptySubtitle": "انقر على الزر في الركن السفلي الأيمن لتسجيل أول سعر",
+  "@priceListEmptySubtitle": {},
+  "priceFilterTitle": "خيارات التصفية",
+  "@priceFilterTitle": {},
+  "priceFilterAllMerchants": "كل المتاجر",
+  "@priceFilterAllMerchants": {},
+  "priceFilterRecordType": "نوع السجل",
+  "@priceFilterRecordType": {},
+  "priceRecordTypePurchase": "شراء",
+  "@priceRecordTypePurchase": {},
+  "priceRecordTypePrice": "مقارنة",
+  "@priceRecordTypePrice": {},
+  "priceFilterDateRange": "نطاق التاريخ",
+  "@priceFilterDateRange": {},
+  "priceFilterStart": "البداية",
+  "@priceFilterStart": {},
+  "priceFilterEnd": "النهاية",
+  "@priceFilterEnd": {},
+  "priceAddRecordTitle": "إضافة سجل سعر",
+  "@priceAddRecordTitle": {},
+  "priceProductNameLabel": "اسم المنتج",
+  "@priceProductNameLabel": {},
+  "priceProductNameHint": "ابحث أو أدخل اسم منتج جديد",
+  "@priceProductNameHint": {},
+  "priceScanProductTooltip": "مسح المنتج",
+  "@priceScanProductTooltip": {},
+  "priceBarcodeNotFoundTitle": "لم يتم العثور على منتج محلي",
+  "@priceBarcodeNotFoundTitle": {},
+  "priceNameLabel": "الاسم",
+  "@priceNameLabel": {},
+  "priceBarcodeLookupFailed": "فشل البحث عن الرمز الشريطي. حاول مجددًا.",
+  "@priceBarcodeLookupFailed": {},
+  "priceBarcodeSearching": "جارٍ البحث عن معلومات المنتج...",
+  "@priceBarcodeSearching": {},
+  "quickFillTitle": "تعبئة سريعة",
+  "@quickFillTitle": {},
+  "quickFillSelectMerchant": "اختيار المتجر",
+  "@quickFillSelectMerchant": {},
+  "quickFillMerchantSearchHint": "ابحث عن متجر أو اختره",
+  "@quickFillMerchantSearchHint": {},
+  "quickFillNoHistoryProducts": "لا توجد منتجات تاريخية بعد",
+  "@quickFillNoHistoryProducts": {},
+  "quickFillNewProduct": "منتج جديد",
+  "@quickFillNewProduct": {},
+  "quickFillProductHeader": "المنتج",
+  "@quickFillProductHeader": {},
+  "quickFillUnitPriceHeader": "سعر الوحدة",
+  "@quickFillUnitPriceHeader": {},
+  "quickFillSaveAll": "حفظ جميع الأسعار",
+  "@quickFillSaveAll": {},
+  "quickFillSavedCount": "تم حفظ {count} سجلات",
+  "@quickFillSavedCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportTooltip": "لصق واستيراد",
+  "@pricePasteImportTooltip": {},
+  "pricePasteImportTitle": "لصق واستيراد الأسعار",
+  "@pricePasteImportTitle": {},
+  "priceCopyTemplate": "نسخ القالب",
+  "@priceCopyTemplate": {},
+  "priceTemplateCopied": "تم نسخ القالب",
+  "@priceTemplateCopied": {},
+  "pricePasteTextLabel": "الصق نص الأسعار\n(سطر لكل عنصر، الصيغة: الاسم السعر[/الوحدة])",
+  "@pricePasteTextLabel": {},
+  "pricePasteHint": "كرفس 1.88\nفطر 4/كيس\nتوفو 5.18/كجم\nنشا بطاطس 2.5/200غ",
+  "@pricePasteHint": {},
+  "priceParseAndMatch": "تحليل ومطابقة",
+  "@priceParseAndMatch": {},
+  "pricePasteSummary": "تمت المطابقة {matched} · قيد المعالجة {unmatched} · غير معروف {invalid}",
+  "@pricePasteSummary": {
+    "placeholders": {
+      "matched": {},
+      "unmatched": {},
+      "invalid": {}
+    }
+  },
+  "pricePasteImporting": "جارٍ الاستيراد {current}/{total}...",
+  "@pricePasteImporting": {
+    "placeholders": {
+      "current": {},
+      "total": {}
+    }
+  },
+  "pricePasteImportAll": "استيراد الكل ({count} سجلات)",
+  "@pricePasteImportAll": {
+    "placeholders": {
+      "count": {}
+    }
+  },
+  "pricePasteImportComplete": "اكتمل الاستيراد: نجح {success} وفشل {fail}",
+  "@pricePasteImportComplete": {
+    "placeholders": {
+      "success": {},
+      "fail": {}
+    }
+  },
+  "pricePasteFailures": "فشل: {items}",
+  "@pricePasteFailures": {
+    "placeholders": {
+      "items": {}
+    }
+  },
+  "pricePasteErrorEmptyLine": "سطر فارغ",
+  "@pricePasteErrorEmptyLine": {},
+  "pricePasteErrorCommentLine": "سطر تعليق",
+  "@pricePasteErrorCommentLine": {},
+  "pricePasteErrorUnrecognized": "تنسيق غير معروف",
+  "@pricePasteErrorUnrecognized": {},
+  "pricePasteErrorEmptyName": "اسم المنتج فارغ",
+  "@pricePasteErrorEmptyName": {},
+  "pricePasteErrorInvalidPrice": "سعر غير صالح",
+  "@pricePasteErrorInvalidPrice": {},
+  "pricePasteInvalidLine": "({error})",
+  "@pricePasteInvalidLine": {
+    "placeholders": {
+      "error": {}
+    }
+  },
+  "pricePasteInvalidNamedLine": "{name} ({error})",
+  "@pricePasteInvalidNamedLine": {
+    "placeholders": {
+      "name": {},
+      "error": {}
+    }
+  },
+  "pricePasteLinkExisting": "ربط منتج موجود",
+  "@pricePasteLinkExisting": {},
+  "pricePasteLinkIngredient": "ربط إلى مكوّن",
+  "@pricePasteLinkIngredient": {},
+  "pricePasteSearchIngredients": "ابحث عن المكوّنات...",
+  "@pricePasteSearchIngredients": {},
+  "pricePasteCreateSameIngredientProduct": "إنشاء مكوّن ومنتج بنفس الاسم",
+  "@pricePasteCreateSameIngredientProduct": {},
   "ingredientCategoryGrains": "الحبوب",
   "@ingredientCategoryGrains": {},
   "ingredientCategoryVegetables": "الخضروات",

@@ -38,6 +38,15 @@ class ParsedPriceLine {
   });
 }
 
+/// Stable machine-readable parse-error keys. Screens map them to localized copy.
+abstract final class PastePriceParseError {
+  static const emptyLine = 'empty_line';
+  static const commentLine = 'comment_line';
+  static const unrecognizedFormat = 'unrecognized_format';
+  static const emptyName = 'empty_name';
+  static const invalidPrice = 'invalid_price';
+}
+
 /// 中文单位别名 → 系统缩写（克=g、千克=kg、公斤=kg；「斤」保持原样不转）
 const Map<String, String> _kUnitAliases = {
   '克': 'g',
@@ -71,7 +80,7 @@ ParsedPriceLine parsePasteLine(String line, {String defaultUnit = '斤'}) {
       quantity: 0,
       unit: '',
       ok: false,
-      error: '空行',
+      error: PastePriceParseError.emptyLine,
     );
   }
   if (trimmed.startsWith('#')) {
@@ -82,7 +91,7 @@ ParsedPriceLine parsePasteLine(String line, {String defaultUnit = '斤'}) {
       quantity: 0,
       unit: '',
       ok: false,
-      error: '注释行',
+      error: PastePriceParseError.commentLine,
     );
   }
 
@@ -95,7 +104,7 @@ ParsedPriceLine parsePasteLine(String line, {String defaultUnit = '斤'}) {
       quantity: 0,
       unit: '',
       ok: false,
-      error: '格式无法识别',
+      error: PastePriceParseError.unrecognizedFormat,
     );
   }
 
@@ -117,7 +126,7 @@ ParsedPriceLine parsePasteLine(String line, {String defaultUnit = '斤'}) {
       quantity: quantity,
       unit: unit,
       ok: false,
-      error: '商品名为空',
+      error: PastePriceParseError.emptyName,
     );
   }
   if (price == null || price.isNaN || !price.isFinite || price <= 0) {
@@ -128,7 +137,7 @@ ParsedPriceLine parsePasteLine(String line, {String defaultUnit = '斤'}) {
       quantity: quantity,
       unit: unit,
       ok: false,
-      error: '价格无效',
+      error: PastePriceParseError.invalidPrice,
     );
   }
 

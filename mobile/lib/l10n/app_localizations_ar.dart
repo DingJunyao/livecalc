@@ -873,6 +873,185 @@ class AppLocalizationsAr extends AppLocalizations {
   String get priceQuantityRequired => 'يرجى إدخال كمية صالحة';
 
   @override
+  String get priceSearchHint => 'ابحث عن المنتجات...';
+
+  @override
+  String get priceMoreActions => 'مزيد من الإجراءات';
+
+  @override
+  String priceDeleteRecordMessage(Object name, Object price) {
+    return 'حذف سجل السعر لـ \"$name\" ($price)؟';
+  }
+
+  @override
+  String get priceListEmptySubtitle =>
+      'انقر على الزر في الركن السفلي الأيمن لتسجيل أول سعر';
+
+  @override
+  String get priceFilterTitle => 'خيارات التصفية';
+
+  @override
+  String get priceFilterAllMerchants => 'كل المتاجر';
+
+  @override
+  String get priceFilterRecordType => 'نوع السجل';
+
+  @override
+  String get priceRecordTypePurchase => 'شراء';
+
+  @override
+  String get priceRecordTypePrice => 'مقارنة';
+
+  @override
+  String get priceFilterDateRange => 'نطاق التاريخ';
+
+  @override
+  String get priceFilterStart => 'البداية';
+
+  @override
+  String get priceFilterEnd => 'النهاية';
+
+  @override
+  String get priceAddRecordTitle => 'إضافة سجل سعر';
+
+  @override
+  String get priceProductNameLabel => 'اسم المنتج';
+
+  @override
+  String get priceProductNameHint => 'ابحث أو أدخل اسم منتج جديد';
+
+  @override
+  String get priceScanProductTooltip => 'مسح المنتج';
+
+  @override
+  String get priceBarcodeNotFoundTitle => 'لم يتم العثور على منتج محلي';
+
+  @override
+  String get priceNameLabel => 'الاسم';
+
+  @override
+  String get priceBarcodeLookupFailed =>
+      'فشل البحث عن الرمز الشريطي. حاول مجددًا.';
+
+  @override
+  String get priceBarcodeSearching => 'جارٍ البحث عن معلومات المنتج...';
+
+  @override
+  String get quickFillTitle => 'تعبئة سريعة';
+
+  @override
+  String get quickFillSelectMerchant => 'اختيار المتجر';
+
+  @override
+  String get quickFillMerchantSearchHint => 'ابحث عن متجر أو اختره';
+
+  @override
+  String get quickFillNoHistoryProducts => 'لا توجد منتجات تاريخية بعد';
+
+  @override
+  String get quickFillNewProduct => 'منتج جديد';
+
+  @override
+  String get quickFillProductHeader => 'المنتج';
+
+  @override
+  String get quickFillUnitPriceHeader => 'سعر الوحدة';
+
+  @override
+  String get quickFillSaveAll => 'حفظ جميع الأسعار';
+
+  @override
+  String quickFillSavedCount(Object count) {
+    return 'تم حفظ $count سجلات';
+  }
+
+  @override
+  String get pricePasteImportTooltip => 'لصق واستيراد';
+
+  @override
+  String get pricePasteImportTitle => 'لصق واستيراد الأسعار';
+
+  @override
+  String get priceCopyTemplate => 'نسخ القالب';
+
+  @override
+  String get priceTemplateCopied => 'تم نسخ القالب';
+
+  @override
+  String get pricePasteTextLabel =>
+      'الصق نص الأسعار\n(سطر لكل عنصر، الصيغة: الاسم السعر[/الوحدة])';
+
+  @override
+  String get pricePasteHint =>
+      'كرفس 1.88\nفطر 4/كيس\nتوفو 5.18/كجم\nنشا بطاطس 2.5/200غ';
+
+  @override
+  String get priceParseAndMatch => 'تحليل ومطابقة';
+
+  @override
+  String pricePasteSummary(Object matched, Object unmatched, Object invalid) {
+    return 'تمت المطابقة $matched · قيد المعالجة $unmatched · غير معروف $invalid';
+  }
+
+  @override
+  String pricePasteImporting(Object current, Object total) {
+    return 'جارٍ الاستيراد $current/$total...';
+  }
+
+  @override
+  String pricePasteImportAll(Object count) {
+    return 'استيراد الكل ($count سجلات)';
+  }
+
+  @override
+  String pricePasteImportComplete(Object success, Object fail) {
+    return 'اكتمل الاستيراد: نجح $success وفشل $fail';
+  }
+
+  @override
+  String pricePasteFailures(Object items) {
+    return 'فشل: $items';
+  }
+
+  @override
+  String get pricePasteErrorEmptyLine => 'سطر فارغ';
+
+  @override
+  String get pricePasteErrorCommentLine => 'سطر تعليق';
+
+  @override
+  String get pricePasteErrorUnrecognized => 'تنسيق غير معروف';
+
+  @override
+  String get pricePasteErrorEmptyName => 'اسم المنتج فارغ';
+
+  @override
+  String get pricePasteErrorInvalidPrice => 'سعر غير صالح';
+
+  @override
+  String pricePasteInvalidLine(Object error) {
+    return '($error)';
+  }
+
+  @override
+  String pricePasteInvalidNamedLine(Object name, Object error) {
+    return '$name ($error)';
+  }
+
+  @override
+  String get pricePasteLinkExisting => 'ربط منتج موجود';
+
+  @override
+  String get pricePasteLinkIngredient => 'ربط إلى مكوّن';
+
+  @override
+  String get pricePasteSearchIngredients => 'ابحث عن المكوّنات...';
+
+  @override
+  String get pricePasteCreateSameIngredientProduct =>
+      'إنشاء مكوّن ومنتج بنفس الاسم';
+
+  @override
   String get ingredientCategoryGrains => 'الحبوب';
 
   @override

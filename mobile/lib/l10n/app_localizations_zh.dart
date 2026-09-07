@@ -856,6 +856,180 @@ class AppLocalizationsZh extends AppLocalizations {
   String get priceQuantityRequired => '请输入有效的数量';
 
   @override
+  String get priceSearchHint => '搜索商品…';
+
+  @override
+  String get priceMoreActions => '更多操作';
+
+  @override
+  String priceDeleteRecordMessage(Object name, Object price) {
+    return '确定删除「$name」$price 的记录吗？';
+  }
+
+  @override
+  String get priceListEmptySubtitle => '点击右下角按钮记下第一笔价格';
+
+  @override
+  String get priceFilterTitle => '筛选条件';
+
+  @override
+  String get priceFilterAllMerchants => '全部商家';
+
+  @override
+  String get priceFilterRecordType => '记录类型';
+
+  @override
+  String get priceRecordTypePurchase => '购买';
+
+  @override
+  String get priceRecordTypePrice => '比价';
+
+  @override
+  String get priceFilterDateRange => '日期范围';
+
+  @override
+  String get priceFilterStart => '开始';
+
+  @override
+  String get priceFilterEnd => '结束';
+
+  @override
+  String get priceAddRecordTitle => '新增价格记录';
+
+  @override
+  String get priceProductNameLabel => '商品名称';
+
+  @override
+  String get priceProductNameHint => '搜索或输入新商品名';
+
+  @override
+  String get priceScanProductTooltip => '扫码识别商品';
+
+  @override
+  String get priceBarcodeNotFoundTitle => '未找到本地商品';
+
+  @override
+  String get priceNameLabel => '名称';
+
+  @override
+  String get priceBarcodeLookupFailed => '条码查询失败，请重试';
+
+  @override
+  String get priceBarcodeSearching => '正在查询商品信息…';
+
+  @override
+  String get quickFillTitle => '快速填写';
+
+  @override
+  String get quickFillSelectMerchant => '选择商家';
+
+  @override
+  String get quickFillMerchantSearchHint => '搜索或选择商家';
+
+  @override
+  String get quickFillNoHistoryProducts => '暂无历史商品';
+
+  @override
+  String get quickFillNewProduct => '新商品';
+
+  @override
+  String get quickFillProductHeader => '商品';
+
+  @override
+  String get quickFillUnitPriceHeader => '单价';
+
+  @override
+  String get quickFillSaveAll => '保存所有价格';
+
+  @override
+  String quickFillSavedCount(Object count) {
+    return '已保存 $count 条记录';
+  }
+
+  @override
+  String get pricePasteImportTooltip => '粘贴导入';
+
+  @override
+  String get pricePasteImportTitle => '粘贴导入价格';
+
+  @override
+  String get priceCopyTemplate => '复制模板';
+
+  @override
+  String get priceTemplateCopied => '已复制模板';
+
+  @override
+  String get pricePasteTextLabel => '粘贴价格文本\n（每行一条，格式：名称 价格[/单位]）';
+
+  @override
+  String get pricePasteHint => '芹菜 1.88\n芽菇 4/袋\n嫩豆腐 5.18/kg\n土豆粉 2.5/200g';
+
+  @override
+  String get priceParseAndMatch => '解析并匹配';
+
+  @override
+  String pricePasteSummary(Object matched, Object unmatched, Object invalid) {
+    return '已匹配 $matched · 待处理 $unmatched · 无法识别 $invalid';
+  }
+
+  @override
+  String pricePasteImporting(Object current, Object total) {
+    return '正在导入 $current/$total…';
+  }
+
+  @override
+  String pricePasteImportAll(Object count) {
+    return '全部导入（$count 条）';
+  }
+
+  @override
+  String pricePasteImportComplete(Object success, Object fail) {
+    return '导入完成：成功 $success 条，失败 $fail 条';
+  }
+
+  @override
+  String pricePasteFailures(Object items) {
+    return '失败：$items';
+  }
+
+  @override
+  String get pricePasteErrorEmptyLine => '空行';
+
+  @override
+  String get pricePasteErrorCommentLine => '注释行';
+
+  @override
+  String get pricePasteErrorUnrecognized => '格式无法识别';
+
+  @override
+  String get pricePasteErrorEmptyName => '商品名为空';
+
+  @override
+  String get pricePasteErrorInvalidPrice => '价格无效';
+
+  @override
+  String pricePasteInvalidLine(Object error) {
+    return '（$error）';
+  }
+
+  @override
+  String pricePasteInvalidNamedLine(Object name, Object error) {
+    return '$name（$error）';
+  }
+
+  @override
+  String get pricePasteLinkExisting => '关联已有商品';
+
+  @override
+  String get pricePasteLinkIngredient => '关联到原料';
+
+  @override
+  String get pricePasteSearchIngredients => '搜索原料…';
+
+  @override
+  String get pricePasteCreateSameIngredientProduct => '创建同名原料 + 商品';
+
+  @override
   String get ingredientCategoryGrains => '谷物';
 
   @override

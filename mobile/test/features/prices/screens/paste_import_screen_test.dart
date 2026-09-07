@@ -5,6 +5,7 @@ import 'package:com_a4ding_livecalc/features/prices/models/price_record.dart';
 import 'package:com_a4ding_livecalc/features/prices/repositories/price_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/prices/screens/paste_import_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 /// 可控的 PriceRepository：按 productId 决定 createRecord 抛异常或成功。
 class _FakePriceRepository extends PriceRepository {
@@ -126,7 +127,12 @@ void main() {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(home: _Host(screen: screen)));
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: _Host(screen: screen),
+    ));
     await tester.tap(find.text('打开'));
     await tester.pumpAndSettle();
   }
