@@ -116,8 +116,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       Image.network(imageUrls[_selectedImageIndex],
                           fit: BoxFit.cover),
                       if (imageUrls.length > 1)
-                        Positioned(
-                          right: 12,
+                        PositionedDirectional(
+                          end: 12,
                           bottom: 12,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -292,7 +292,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             children: [
               for (var i = 0; i < urls.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
+                  padding: const EdgeInsetsDirectional.only(end: 8),
                   child: GestureDetector(
                     onTap: () => setState(() => _selectedImageIndex = i),
                     child: ClipRRect(
@@ -627,7 +627,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     ),
                     if (canNavigate)
                       Padding(
-                        padding: const EdgeInsets.only(left: 2),
+                        padding: const EdgeInsetsDirectional.only(start: 2),
                         child: Icon(Icons.chevron_right,
                             size: 16, color: theme.colorScheme.outline),
                       ),
@@ -667,7 +667,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               Text(qtyText,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline)),
               if (recommendedText != null)
@@ -676,7 +676,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   child: Text(recommendedText,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.right,
+                      textAlign: TextAlign.end,
                       style: theme.textTheme.labelSmall
                           ?.copyWith(color: theme.colorScheme.outline)),
                 ),
@@ -721,7 +721,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
+                    alignment: AlignmentDirectional.centerEnd,
                     child: Text(
                       formatMoney(cb.cost * ratio, userCurrency),
                       style: theme.textTheme.bodyMedium?.copyWith(
@@ -1052,9 +1052,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               SizedBox(
                   width: valueW,
                   child:
-                      Text(l10n.nutritionQuantity, textAlign: TextAlign.right)),
+                      Text(l10n.nutritionQuantity, textAlign: TextAlign.end)),
               const SizedBox(
-                  width: nrvW, child: Text('NRV%', textAlign: TextAlign.right)),
+                  width: nrvW, child: Text('NRV%', textAlign: TextAlign.end)),
             ],
           ),
         ),
@@ -1083,9 +1083,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Expanded(child: Text(displayKey)),
                 SizedBox(
                     width: valueW,
-                    child: Text(valueStr, textAlign: TextAlign.right)),
+                    child: Text(valueStr, textAlign: TextAlign.end)),
                 SizedBox(
-                    width: nrvW, child: Text(nrv, textAlign: TextAlign.right)),
+                    width: nrvW, child: Text(nrv, textAlign: TextAlign.end)),
               ],
             ),
           );
@@ -1189,7 +1189,7 @@ class _ServingsStepper extends StatelessWidget {
           GestureDetector(
             onTap: onReset,
             child: Padding(
-              padding: const EdgeInsets.only(left: 4),
+              padding: const EdgeInsetsDirectional.only(start: 4),
               child: Icon(Icons.restart_alt,
                   size: 16, color: theme.colorScheme.outline),
             ),
@@ -1299,9 +1299,9 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
             ),
           ),
           // 关闭按钮
-          Positioned(
+          PositionedDirectional(
             top: MediaQuery.of(context).padding.top + 8,
-            right: 12,
+            end: 12,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
               tooltip: l10n.commonClose,
@@ -1332,8 +1332,8 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
             ),
           // 左右切换
           if (widget.urls.length > 1) ...[
-            Positioned(
-              left: 8,
+            PositionedDirectional(
+              start: 8,
               top: 0,
               bottom: 0,
               child: Center(
@@ -1345,8 +1345,8 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                 ),
               ),
             ),
-            Positioned(
-              right: 8,
+            PositionedDirectional(
+              end: 8,
               top: 0,
               bottom: 0,
               child: Center(

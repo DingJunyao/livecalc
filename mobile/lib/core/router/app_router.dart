@@ -779,7 +779,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
             // right: 4 用于抵消 IconButton 默认水平内边距，使 close 图标视觉右缘
             // 距屏 16，与左侧「更多」Text 的 16 对称；调 IconButton 内边距时注意保持。
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 4, 0),
               child: Row(
                 children: [
                   Text(

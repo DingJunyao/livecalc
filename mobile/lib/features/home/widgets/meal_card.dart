@@ -125,7 +125,7 @@ class MealCard extends StatelessWidget {
               ),
             if (onRefresh != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 4, 4),
+                padding: const EdgeInsetsDirectional.fromSTEB(8, 0, 4, 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [

@@ -914,7 +914,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                         const SizedBox(height: 12),
                       ],
                       Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: AlignmentDirectional.centerStart,
                         child: TextButton.icon(
                           onPressed: _addIngredient,
                           icon: const Icon(Icons.add),
@@ -940,7 +940,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                         const SizedBox(height: 12),
                       ],
                       Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: AlignmentDirectional.centerStart,
                         child: TextButton.icon(
                           onPressed: _addStep,
                           icon: const Icon(Icons.add),
@@ -966,7 +966,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                         const SizedBox(height: 8),
                       ],
                       Align(
-                        alignment: Alignment.centerLeft,
+                        alignment: AlignmentDirectional.centerStart,
                         child: TextButton.icon(
                           onPressed: _addTip,
                           icon: const Icon(Icons.add),
@@ -1103,7 +1103,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                     onReorderItem: _reorderImages,
                     itemBuilder: (context, index) => Padding(
                       key: ValueKey('recipe-image-item-${_images[index]}'),
-                      padding: const EdgeInsets.only(right: 10),
+                      padding: const EdgeInsetsDirectional.only(end: 10),
                       child: _imageTile(theme, index),
                     ),
                   ),
@@ -1196,9 +1196,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
             ),
           ),
           if (index == 0)
-            Positioned(
+            PositionedDirectional(
               top: 4,
-              left: 4,
+              start: 4,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 5,
@@ -1216,9 +1216,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                 ),
               ),
             ),
-          Positioned(
+          PositionedDirectional(
             top: 2,
-            right: 2,
+            end: 2,
             child: IconButton(
               key: ValueKey('recipe-image-delete-$imageKey'),
               tooltip: l10n.recipeDeleteImage,
@@ -1235,9 +1235,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
               icon: const Icon(Icons.close),
             ),
           ),
-          Positioned(
+          PositionedDirectional(
             bottom: 2,
-            right: 2,
+            end: 2,
             child: Tooltip(
               message: l10n.recipeDragToReorder,
               child: ReorderableDragStartListener(

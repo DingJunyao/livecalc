@@ -352,7 +352,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
             ),
           ),
         Align(
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           child: TextButton.icon(
             onPressed: () => setState(() => _addRow()),
             icon: const Icon(Icons.add),
@@ -371,7 +371,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
               onPressed: () => setState(() => _selected = null),
               icon: const Icon(Icons.arrow_back),

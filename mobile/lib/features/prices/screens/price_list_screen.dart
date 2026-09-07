@@ -591,7 +591,7 @@ class _FilterSheetState extends State<_FilterSheet> {
           children: [
             // Header
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+              padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 8, 8),
               child: Row(
                 children: [
                   Text(l10n.priceFilterTitle,

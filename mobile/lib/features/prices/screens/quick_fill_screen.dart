@@ -530,13 +530,16 @@ class _PriceInputSheetState extends State<_PriceInputSheet> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            alignment: Alignment.centerRight,
-            child: Text(
-              '${widget.currencySymbol}$_display',
-              style: Theme.of(context)
-                  .textTheme
-                  .headlineMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+            alignment: AlignmentDirectional.centerEnd,
+            child: Directionality(
+              textDirection: TextDirection.ltr,
+              child: Text(
+                '${widget.currencySymbol}$_display',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
             ),
           ),
           NumericKeypad(

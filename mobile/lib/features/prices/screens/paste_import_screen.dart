@@ -550,7 +550,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
               const SizedBox(height: 8),
               // 复制模板
               Align(
-                alignment: Alignment.centerRight,
+                alignment: AlignmentDirectional.centerEnd,
                 child: TextButton.icon(
                   onPressed:
                       widget.historyProductNames.isEmpty ? null : _copyTemplate,
@@ -847,7 +847,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
             ),
             const SizedBox(height: 4),
             Align(
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               child: TextButton(
                 onPressed: () => _cancelEdit(row),
                 child: Text(l10n.commonCancel),

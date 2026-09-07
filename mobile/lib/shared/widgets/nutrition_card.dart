@@ -162,11 +162,11 @@ class _NutritionTableState extends State<_NutritionTable> {
               Expanded(child: Text(l10n.nutritionNutrient)),
               SizedBox(
                 width: valueW,
-                child: Text(l10n.nutritionQuantity, textAlign: TextAlign.right),
+                child: Text(l10n.nutritionQuantity, textAlign: TextAlign.end),
               ),
               const SizedBox(
                 width: nrvW,
-                child: Text('NRV%', textAlign: TextAlign.right),
+                child: Text('NRV%', textAlign: TextAlign.end),
               ),
             ],
           ),
@@ -174,7 +174,7 @@ class _NutritionTableState extends State<_NutritionTable> {
         ..._rows(theme, core, valueW, nrvW),
         if (others.isNotEmpty)
           Align(
-            alignment: Alignment.centerLeft,
+            alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
               onPressed: () => setState(() => _showAll = !_showAll),
               icon: Icon(_showAll ? Icons.expand_less : Icons.expand_more,
@@ -220,7 +220,7 @@ class _NutritionTableState extends State<_NutritionTable> {
                 width: valueW,
                 child: Text(
                   '${_fmtValue(items[i].value)} ${items[i].unit}',
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                 ),
               ),
               SizedBox(
@@ -229,7 +229,7 @@ class _NutritionTableState extends State<_NutritionTable> {
                   items[i].nrvPct == null
                       ? ''
                       : formatPercentValue(items[i].nrvPct!),
-                  textAlign: TextAlign.right,
+                  textAlign: TextAlign.end,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline),
                 ),

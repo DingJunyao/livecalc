@@ -10,7 +10,7 @@ class AppBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.arrow_back),
-      tooltip: '返回',
+      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       onPressed: () {
         if (context.canPop()) {
           context.pop();

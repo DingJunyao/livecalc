@@ -471,7 +471,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+            padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 8, 8),
             child: Row(
               children: [
                 Text(l10n.journeyFilters,

@@ -387,7 +387,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+                    padding: const EdgeInsetsDirectional.fromSTEB(20, 16, 8, 8),
                     child: Row(
                       children: [
                         Text(l10n.merchantFilterTitle,
@@ -451,7 +451,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
                           },
                         ),
                         Align(
-                          alignment: Alignment.centerLeft,
+                          alignment: AlignmentDirectional.centerStart,
                           child: FilterChip(
                             label: Text(l10n.merchantNoMaintainedPrice),
                             selected: noPrice,

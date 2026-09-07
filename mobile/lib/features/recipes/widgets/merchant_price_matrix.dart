@@ -230,8 +230,8 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
     return Container(
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        border: Border(
-          right: BorderSide(color: theme.colorScheme.outlineVariant),
+        border: BorderDirectional(
+          end: BorderSide(color: theme.colorScheme.outlineVariant),
         ),
       ),
       child: Table(
@@ -269,7 +269,7 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                     // 用量 badge（web .vue:31 qty-badge 灰色小字）
                     if (row.quantityDisplay.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsetsDirectional.only(start: 6),
                         child: Text(row.quantityDisplay,
                             style: theme.textTheme.bodySmall
                                 ?.copyWith(color: theme.colorScheme.outline)),
@@ -334,8 +334,7 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
           children: [
             for (final n in names)
               SizedBox(
-                  height: _rowHeight,
-                  child: _headerCell(theme, n, right: true)),
+                  height: _rowHeight, child: _headerCell(theme, n, end: true)),
           ],
         ),
         for (final row in rows)
@@ -352,7 +351,7 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                         child: Text(
                           // 金额已由 buildMatrixRows 按用户币种格式化（对齐 web .vue:46）
                           row.cells[n]!.display,
-                          textAlign: TextAlign.right,
+                          textAlign: TextAlign.end,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: theme.textTheme.labelLarge?.copyWith(
@@ -375,11 +374,13 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
     );
   }
 
-  Widget _headerCell(ThemeData theme, String text, {bool right = false}) {
+  Widget _headerCell(ThemeData theme, String text, {bool end = false}) {
     // Align 撑满外层 SizedBox(height: _rowHeight) 保证垂直居中：直接 Padding
     // 会在 tight 高度约束下把 Text 顶对齐（表头贴行顶的根因）
     return Align(
-      alignment: right ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: end
+          ? AlignmentDirectional.centerEnd
+          : AlignmentDirectional.centerStart,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Text(text,
