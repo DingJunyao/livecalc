@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -63,7 +64,11 @@ void main() {
         recipeDetailPageProvider(1).overrideWith((ref) =>
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
-      child: const MaterialApp(home: RecipeAnalysisScreen(id: 1)),
+      child: const MaterialApp(
+          locale: Locale('zh', 'CN'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: RecipeAnalysisScreen(id: 1)),
     );
   }
 

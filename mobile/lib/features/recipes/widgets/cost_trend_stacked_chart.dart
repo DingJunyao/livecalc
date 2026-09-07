@@ -7,6 +7,7 @@ import 'package:fl_chart/fl_chart.dart';
 // 时编译报错而非运行期崩溃）；fl_chart 升级时需复核此依赖。
 // ignore: implementation_imports
 import 'package:fl_chart/src/chart/line_chart/line_chart_renderer.dart';
+import '../../../l10n/app_localizations.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -141,10 +142,8 @@ String _formatYAxisLabel(double v, _YAxisRange range, String userCurrency) {
 }
 
 List<LineTooltipItem> buildStackedTooltipItems(
-    List<StackedSeries> series,
-    List<LineBarSpot> touchedSpots,
-    String date,
-    {String userCurrency = 'CNY'}) {
+    List<StackedSeries> series, List<LineBarSpot> touchedSpots, String date,
+    {String userCurrency = 'CNY', String totalLabel = '合计: '}) {
   if (touchedSpots.isEmpty) return [];
   // 锚点须先取（touchedSpots 未重排时 first 即距触点最近线 = 触点天）
   final dayIndex = touchedSpots.first.x.toInt();
@@ -171,7 +170,8 @@ List<LineTooltipItem> buildStackedTooltipItems(
       LineTooltipItem(items.last.text, items.last.textStyle, children: [
     ...(items.last.children ?? const []),
     TextSpan(
-        text: '\n合计: ${formatMoney(sorted.last.bar.spots[dayIndex].y, userCurrency)}',
+        text:
+            '\n$totalLabel${formatMoney(sorted.last.bar.spots[dayIndex].y, userCurrency)}',
         style: bold),
   ]);
   return items;
@@ -249,6 +249,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -259,10 +260,16 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               Icon(Icons.show_chart,
                   color: theme.colorScheme.tertiary, size: 20),
               const SizedBox(width: 8),
-              Text('成本趋势',
+              Expanded(
+                child: Text(
+                  l10n.recipeCostTrend,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const Spacer(),
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 8),
               // DropdownButton 宽度自适应，窄屏 + 系统字体缩放下不会像 5 段切换器撑爆标题行
               _buildFilterToggle(theme),
             ]),
@@ -297,22 +304,36 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
     );
   }
 
-  Widget _buildFilterToggle(ThemeData theme) {
-    const labels = {
-      'week': '周',
-      'month': '月',
-      'quarter': '季',
-      'year': '年',
-      'all': '全部'
+  static const _filters = <String, String>{
+    'week': 'week',
+    'month': 'month',
+    'quarter': 'quarter',
+    'year': 'year',
+    'all': 'all',
+  };
+
+  String _filterLabel(String filter, AppLocalizations l10n) {
+    return switch (filter) {
+      'week' => l10n.recipeWeek,
+      'month' => l10n.recipeMonth,
+      'quarter' => l10n.recipeQuarter,
+      'year' => l10n.recipeYear,
+      'all' => l10n.recipeAll,
+      _ => filter,
     };
+  }
+
+  Widget _buildFilterToggle(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     return DropdownButton<String>(
       key: const Key('filter_dropdown'),
       value: _filter,
       isDense: true,
       underline: const SizedBox.shrink(),
       style: theme.textTheme.bodyMedium,
-      items: labels.keys
-          .map((k) => DropdownMenuItem(value: k, child: Text(labels[k]!)))
+      items: _filters.keys
+          .map((k) =>
+              DropdownMenuItem(value: k, child: Text(_filterLabel(k, l10n))))
           .toList(),
       onChanged: (v) {
         if (v == null) return;
@@ -323,6 +344,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
   }
 
   Widget _buildBody(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     if (widget.loading && widget.points.isEmpty) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
@@ -333,7 +355,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           children: [
             Icon(Icons.show_chart, size: 40, color: theme.colorScheme.outline),
             const SizedBox(height: 8),
-            Text('暂无成本趋势数据',
+            Text(l10n.recipeNoStackedCostTrend,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.outline)),
           ],
@@ -346,6 +368,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
   }
 
   Widget _buildStackedChart(ThemeData theme, List<StackedSeries> series) {
+    final l10n = AppLocalizations.of(context);
     final isHighlighted = _highlightIndex != null;
     var dataMin = double.infinity;
     var dataMax = double.negativeInfinity;
@@ -411,9 +434,14 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange, widget.userCurrency),
+              getTitlesWidget: (v, meta) => Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  _formatYAxisLabel(v, yRange, widget.userCurrency),
                   style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.outline)),
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -435,9 +463,12 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                 final label = date.length >= 5 ? date.substring(5) : date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(label,
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: theme.colorScheme.outline)),
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(label,
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
+                  ),
                 );
               },
             ),
@@ -459,7 +490,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) => buildStackedTooltipItems(series,
                 touchedSpots, widget.points[touchedSpots.first.x.toInt()].date,
-                userCurrency: widget.userCurrency),
+                userCurrency: widget.userCurrency,
+                totalLabel: '${l10n.recipeTotalLabel}: '),
           ),
         ),
         lineBarsData: lineBars,
@@ -469,6 +501,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
 
   // 回退：avg/min/max 折线+区间（对齐 web 无 breakdown 时的回退图）
   Widget _buildFallbackLineChart(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     final points = widget.points;
     var dataMin = double.infinity;
     var dataMax = double.negativeInfinity;
@@ -525,9 +558,14 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               showTitles: true,
               reservedSize: 44,
               interval: yRange.interval,
-              getTitlesWidget: (v, meta) => Text(_formatYAxisLabel(v, yRange, widget.userCurrency),
+              getTitlesWidget: (v, meta) => Directionality(
+                textDirection: TextDirection.ltr,
+                child: Text(
+                  _formatYAxisLabel(v, yRange, widget.userCurrency),
                   style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.outline)),
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              ),
             ),
           ),
           bottomTitles: AxisTitles(
@@ -544,9 +582,12 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                 final label = date.length >= 5 ? date.substring(5) : date;
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(label,
-                      style: theme.textTheme.labelSmall
-                          ?.copyWith(color: theme.colorScheme.outline)),
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(label,
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
+                  ),
                 );
               },
             ),
@@ -575,10 +616,12 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
               return [
                 LineTooltipItem('$date\n', bold, children: [
                   TextSpan(
-                      text: '均价: ${formatMoney(points[idx].avgCost, widget.userCurrency)}\n',
+                      text:
+                          '${l10n.recipeAverageLabel}: ${formatMoney(points[idx].avgCost, widget.userCurrency)}\n',
                       style: plain),
                   TextSpan(
-                      text: '区间: ${formatMoney(points[idx].minCost, widget.userCurrency)} ~ '
+                      text:
+                          '${l10n.recipeRangeLabel}: ${formatMoney(points[idx].minCost, widget.userCurrency)} ~ '
                           '${formatMoney(points[idx].maxCost, widget.userCurrency)}',
                       style: plain),
                 ]),

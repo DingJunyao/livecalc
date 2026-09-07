@@ -1692,4 +1692,547 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get mapMerchantClosedSuffix => ' (مغلق)';
+
+  @override
+  String get commonGotIt => 'فهمت';
+
+  @override
+  String get homeTodayTitle => 'توصيات اليوم';
+
+  @override
+  String get homeGenerating =>
+      'جارٍ إنشاء توصيات اليوم؛ الذكاء الاصطناعي يجهّز وجباتك…';
+
+  @override
+  String get homeEmpty =>
+      'لا توجد توصيات بعد. انقر زر التحديث لإنشاء توصيات اليوم.';
+
+  @override
+  String get homeSwapAll => 'تبديل الكل';
+
+  @override
+  String get homeNotSet => 'غير محدد';
+
+  @override
+  String get homeBreakfast => 'الفطور';
+
+  @override
+  String get homeLunch => 'الغداء';
+
+  @override
+  String get homeDinner => 'العشاء';
+
+  @override
+  String get homeProtein => 'البروتين';
+
+  @override
+  String get homeCarbs => 'الكربوهيدرات';
+
+  @override
+  String get homeFat => 'الدهون';
+
+  @override
+  String get homeSwap => 'تبديل';
+
+  @override
+  String get homeConnectionTimeout =>
+      'انتهت مهلة الاتصال. تحقق من الشبكة وحاول مجددًا.';
+
+  @override
+  String get homeConnectionFailed =>
+      'فشل الاتصال بالشبكة. تحقق من الشبكة وحاول مجددًا.';
+
+  @override
+  String get homeServerBusy => 'الخادم مشغول. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get homeResourceNotFound => 'المورد المطلوب غير موجود.';
+
+  @override
+  String get homeLoadFailed => 'تعذّر تحميل التوصيات. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get homeGeneratingTimeout =>
+      'لا تزال التوصيات قيد الإنشاء. حدّث الصفحة لاحقًا لعرضها.';
+
+  @override
+  String get homeSwapLimit => 'بدّلت هذه الوجبة مرات كثيرة اليوم. حاول غدًا.';
+
+  @override
+  String get homeSwapFailed => 'تعذّر تبديل الوجبة. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get homeSwapTimeout =>
+      'انتهت مهلة تبديل الوجبة. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get homeSwapAllLimit => 'بدّلت كثيرًا اليوم. حاول غدًا.';
+
+  @override
+  String get homeRefreshFailed => 'تعذّر تحديث التوصيات. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get homeRefreshTimeout =>
+      'انتهت مهلة تحديث التوصيات. حاول مرة أخرى لاحقًا.';
+
+  @override
+  String get recipeTitle => 'الوصفات';
+
+  @override
+  String get recipeDetailTitle => 'تفاصيل الوصفة';
+
+  @override
+  String get recipeAnalysisTitle => 'تحليل الوصفة';
+
+  @override
+  String get recipeAnalysisChip => 'تحليل';
+
+  @override
+  String get recipeSearch => 'ابحث عن الوصفات...';
+
+  @override
+  String get recipeCreateTooltip => 'إنشاء وصفة';
+
+  @override
+  String get recipeLoading => 'جارٍ تحميل الوصفات...';
+
+  @override
+  String get recipeEmptyTitle => 'لا توجد وصفات بعد';
+
+  @override
+  String get recipeEmptySubtitle =>
+      'انقر على الزر في الركن السفلي الأيمن لإنشاء أول وصفة.';
+
+  @override
+  String get recipeCategory => 'التصنيف';
+
+  @override
+  String get recipeDifficulty => 'الصعوبة';
+
+  @override
+  String get recipeUsedIngredients => 'المكوّنات المستخدمة';
+
+  @override
+  String get recipeSearchIngredientsHint =>
+      'ابحث عن المكوّنات (يمكن اختيار أكثر من واحد)';
+
+  @override
+  String get recipeSpecialConditions => 'شروط خاصة';
+
+  @override
+  String get recipeConditionUnpriced => 'يحتوي مكوّنات بلا أسعار مُصانة';
+
+  @override
+  String get recipeConditionUnnourished => 'يحتوي مكوّنات بلا بيانات تغذية';
+
+  @override
+  String recipeServingsCount(Object count) {
+    return '$count حصة';
+  }
+
+  @override
+  String recipeCostPerServings(Object amount, Object count) {
+    return '$amount / $count حصة';
+  }
+
+  @override
+  String recipeCaloriesPerServing(Object amount) {
+    return '$amount سعرة / حصة';
+  }
+
+  @override
+  String get recipeCategoryMeatDish => 'طبق باللحم';
+
+  @override
+  String get recipeCategoryVegetableDish => 'طبق نباتي';
+
+  @override
+  String get recipeCategorySeafood => 'مأكولات بحرية';
+
+  @override
+  String get recipeCategoryStaple => 'طبق أساسي';
+
+  @override
+  String get recipeCategorySoupPorridge => 'شوربة أو عصيدة';
+
+  @override
+  String get recipeCategoryBreakfast => 'فطور';
+
+  @override
+  String get recipeCategoryDessert => 'حلويات';
+
+  @override
+  String get recipeCategorySeasoning => 'توابل';
+
+  @override
+  String get recipeCategorySemiFinished => 'نصف مصنّع';
+
+  @override
+  String get recipeCategorySnack => 'وجبة خفيفة';
+
+  @override
+  String get recipeDifficultySimple => 'سهلة جدًا';
+
+  @override
+  String get recipeDifficultyEasy => 'سهلة';
+
+  @override
+  String get recipeDifficultyMedium => 'متوسطة';
+
+  @override
+  String get recipeDifficultyHard => 'صعبة';
+
+  @override
+  String get recipeDifficultyExpert => 'خبيرة';
+
+  @override
+  String get recipePublish => 'نشر الوصفة';
+
+  @override
+  String get recipeDelete => 'حذف الوصفة';
+
+  @override
+  String get recipePublishTitle => 'نشر الوصفة';
+
+  @override
+  String get recipePublishDescription =>
+      'بعد النشر ستكون الوصفة متاحة للمستخدمين الآخرين. يحتاج المستخدمون العاديون إلى مراجعة المسؤول.';
+
+  @override
+  String get recipeConfirmPublish => 'تأكيد النشر';
+
+  @override
+  String get recipePublishPending =>
+      'أُرسل طلب النشر وهو بانتظار مراجعة المسؤول.';
+
+  @override
+  String get recipePublished => 'تم نشر الوصفة';
+
+  @override
+  String get recipeDeleteConfirm => 'هل تريد حذف هذه الوصفة؟';
+
+  @override
+  String get recipeDeleted => 'تم حذف الوصفة';
+
+  @override
+  String get recipeUnpublished => 'غير منشورة';
+
+  @override
+  String get recipeBasicInfoTitle => 'المعلومات الأساسية';
+
+  @override
+  String get recipeEditBasicInfo => 'تعديل المعلومات الأساسية';
+
+  @override
+  String get recipeCostEstimate => 'تقدير التكلفة';
+
+  @override
+  String get recipeNoCostData => 'لا توجد بيانات تكلفة';
+
+  @override
+  String get recipeIngredients => 'المكوّنات';
+
+  @override
+  String get recipeEditIngredients => 'تعديل المكوّنات';
+
+  @override
+  String get recipeNoIngredients => 'لا توجد مكوّنات';
+
+  @override
+  String get recipeOptional => 'اختياري';
+
+  @override
+  String get recipeCalculatedFromIngredientsCost =>
+      'محسوب من تكاليف المكوّنات:';
+
+  @override
+  String get recipeGotIt => 'فهمت';
+
+  @override
+  String recipeRecommendedQuantity(Object quantity, Object unit) {
+    return 'الموصى به $quantity $unit';
+  }
+
+  @override
+  String get recipeSteps => 'الخطوات';
+
+  @override
+  String get recipeEditSteps => 'تعديل الخطوات';
+
+  @override
+  String get recipeNoSteps => 'لا توجد خطوات';
+
+  @override
+  String recipeStepMinutes(Object count) {
+    return '$count دقيقة';
+  }
+
+  @override
+  String get recipeNutritionPerServing => 'التغذية لكل حصة';
+
+  @override
+  String get recipeTips => 'نصائح';
+
+  @override
+  String get recipeEditTips => 'تعديل النصائح';
+
+  @override
+  String get recipeNoTips => 'لا توجد نصائح';
+
+  @override
+  String get recipePreviousImage => 'الصورة السابقة';
+
+  @override
+  String get recipeNextImage => 'الصورة التالية';
+
+  @override
+  String get recipeCreateTitle => 'إنشاء وصفة';
+
+  @override
+  String get recipeEditTitle => 'تعديل الوصفة';
+
+  @override
+  String get recipeName => 'اسم الوصفة';
+
+  @override
+  String get recipeIntroduction => 'مقدمة';
+
+  @override
+  String get recipeServingsField => 'الحصص';
+
+  @override
+  String get recipeTotalTimeMinutes => 'الوقت الإجمالي (دقائق)';
+
+  @override
+  String get recipeResultIngredient => 'المكوّن الناتج';
+
+  @override
+  String get recipeImageManager => 'إدارة الصور';
+
+  @override
+  String get recipeUpload => 'رفع';
+
+  @override
+  String get recipeCoverHint => 'تُستخدم الصورة الأولى كغلاف.';
+
+  @override
+  String get recipeCover => 'الغلاف';
+
+  @override
+  String get recipeDeleteImage => 'حذف الصورة';
+
+  @override
+  String get recipeDragToReorder => 'اسحب لإعادة الترتيب';
+
+  @override
+  String get recipeUnitUnspecified => 'غير محدد';
+
+  @override
+  String get recipeIngredientField => 'المكوّن';
+
+  @override
+  String get recipeAddIngredient => 'إضافة مكوّن';
+
+  @override
+  String get recipeMoveUp => 'تحريك لأعلى';
+
+  @override
+  String get recipeMoveDown => 'تحريك لأسفل';
+
+  @override
+  String get recipeQuantityNumeric => 'كمية';
+
+  @override
+  String get recipeQuantityToTaste => 'حسب الرغبة';
+
+  @override
+  String get recipeQuantitySmall => 'كمية قليلة';
+
+  @override
+  String get recipeRecommendedAmount => 'الكمية الموصى بها';
+
+  @override
+  String get recipeMinimum => 'الأقل';
+
+  @override
+  String get recipeMaximum => 'الأقصى';
+
+  @override
+  String get recipeNote => 'ملاحظة';
+
+  @override
+  String recipeStepNumberLabel(Object index) {
+    return 'الخطوة $index';
+  }
+
+  @override
+  String get recipeStepContent => 'المحتوى';
+
+  @override
+  String get recipeStepDuration => 'المدة (دقائق)';
+
+  @override
+  String get recipeStepTips => 'نصيحة الخطوة';
+
+  @override
+  String get recipeAddStep => 'إضافة خطوة';
+
+  @override
+  String get recipeAddTip => 'إضافة نصيحة';
+
+  @override
+  String get recipeSaveChanges => 'حفظ التعديلات';
+
+  @override
+  String get recipeNoSectionChanges => 'لا توجد تغييرات في هذا القسم';
+
+  @override
+  String get recipeNameRequired => 'أدخل اسم الوصفة';
+
+  @override
+  String get recipeLoadFailedError => 'تعذّر تحميل الوصفة. حاول مجددًا.';
+
+  @override
+  String get recipeImagePickFailed => 'تعذّر اختيار الصورة. حاول مجددًا.';
+
+  @override
+  String get recipeImageUploaded => 'تم رفع الصورة وستُحفظ عند الحفظ.';
+
+  @override
+  String get recipeImageUploadFailed => 'تعذّر رفع الصورة. حاول مجددًا.';
+
+  @override
+  String recipeIngredientQuantityIncomplete(Object row) {
+    return 'كمية المكوّن في الصف $row غير مكتملة: أدخل كمية موصى بها، أو كمية موصى بها مع نطاق، أو نطاقًا فقط.';
+  }
+
+  @override
+  String recipeIngredientFallbackName(Object id) {
+    return 'مكوّن #$id';
+  }
+
+  @override
+  String get recipeSaveSuccess => 'تم الحفظ';
+
+  @override
+  String get recipeCostShare => 'توزيع تكلفة المكوّنات';
+
+  @override
+  String get recipeUnknownIngredient => 'مكوّن غير معروف';
+
+  @override
+  String get recipeOther => 'أخرى';
+
+  @override
+  String get recipeCostTrend => 'اتجاه التكلفة';
+
+  @override
+  String get recipeNoCostTrend => 'لا توجد بيانات اتجاه التكلفة';
+
+  @override
+  String get recipeNoStackedCostTrend => 'لا توجد بيانات اتجاه التكلفة';
+
+  @override
+  String get recipeWeek => 'أسبوع';
+
+  @override
+  String get recipeMonth => 'شهر';
+
+  @override
+  String get recipeQuarter => 'ربع سنة';
+
+  @override
+  String get recipeYear => 'سنة';
+
+  @override
+  String get recipeAll => 'الكل';
+
+  @override
+  String get recipeAverageLabel => 'المتوسط';
+
+  @override
+  String get recipeRangeLabel => 'النطاق';
+
+  @override
+  String get recipeTotalLabel => 'الإجمالي';
+
+  @override
+  String get recipeMerchantCostEstimate => 'تقديرات تكلفة التاجر';
+
+  @override
+  String get recipeNoMerchantPriceData => 'لا توجد بيانات أسعار التاجر';
+
+  @override
+  String get recipeBestValue => 'أفضل قيمة';
+
+  @override
+  String recipeCoveredCount(Object covered, Object total) {
+    return 'تم تغطية $covered/$total من المكوّنات';
+  }
+
+  @override
+  String recipeInStore(Object amount) {
+    return 'في المتجر $amount';
+  }
+
+  @override
+  String recipeExternal(Object amount) {
+    return 'خارجي $amount';
+  }
+
+  @override
+  String recipeMissingIngredients(Object ingredients) {
+    return 'مكوّنات ناقصة: $ingredients';
+  }
+
+  @override
+  String recipeMerchantFallbackName(Object id) {
+    return 'تاجر #$id';
+  }
+
+  @override
+  String get recipeMerchantPriceRecommendation => 'توصيات أسعار التاجر';
+
+  @override
+  String get recipeNoMerchantComparisonData => 'لا توجد بيانات مقارنة التاجر';
+
+  @override
+  String get recipeIngredientAndAmount => 'المكوّن / الكمية';
+
+  @override
+  String get recipeNutritionSources => 'مصادر التغذية';
+
+  @override
+  String get recipeNrvMetrics => 'عناصر أساسية / NRV';
+
+  @override
+  String get recipeAllNutrients => 'الكل';
+
+  @override
+  String get recipeDisplayRange => 'نطاق العرض';
+
+  @override
+  String get recipeSource => 'المصدر';
+
+  @override
+  String get recipeTags => 'الوسوم';
+
+  @override
+  String get recipeTotalTime => 'الوقت الإجمالي';
+
+  @override
+  String get recipeImages => 'الصور';
+
+  @override
+  String get recipeCalculatedFromIngredientsPrice =>
+      'محسوب من أسعار المكوّنات:';
+
+  @override
+  String get nutritionNutrientCopper => 'النحاس';
+
+  @override
+  String get nutritionNutrientManganese => 'المنغنيز';
+
+  @override
+  String get nutritionNutrientSelenium => 'السيلينيوم';
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
 import '../models/meal_recommendation.dart';
 import '../../../shared/utils/currency_fmt.dart';
 
@@ -31,14 +33,14 @@ class MealCard extends StatelessWidget {
     }
   }
 
-  String _mealLabel(String type) {
+  String _mealLabel(String type, AppLocalizations l10n) {
     switch (type) {
       case 'breakfast':
-        return '早餐';
+        return l10n.homeBreakfast;
       case 'lunch':
-        return '午餐';
+        return l10n.homeLunch;
       case 'dinner':
-        return '晚餐';
+        return l10n.homeDinner;
       default:
         return type;
     }
@@ -62,6 +64,7 @@ class MealCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final hasImage = meal.imageUrl != null && meal.imageUrl!.isNotEmpty;
     final hasNutrition = meal.calories != null ||
         meal.proteinG != null ||
@@ -77,9 +80,9 @@ class MealCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (hasImage)
-              _buildImageHeader(theme)
+              _buildImageHeader(theme, l10n)
             else
-              _buildTitleHeader(theme),
+              _buildTitleHeader(theme, l10n),
             if (hasBody)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
@@ -102,19 +105,19 @@ class MealCard extends StatelessWidget {
                     if (meal.proteinG != null)
                       _nutrientChip(
                         Icons.egg_outlined,
-                        '${meal.proteinG!.toStringAsFixed(1)}g 蛋白',
+                        '${formatNumber(meal.proteinG!, maximumFractionDigits: 1)} g ${l10n.homeProtein}',
                         theme,
                       ),
                     if (meal.carbsG != null)
                       _nutrientChip(
                         Icons.grain,
-                        '${meal.carbsG!.toStringAsFixed(1)}g 碳水',
+                        '${formatNumber(meal.carbsG!, maximumFractionDigits: 1)} g ${l10n.homeCarbs}',
                         theme,
                       ),
                     if (meal.fatG != null)
                       _nutrientChip(
                         Icons.water_drop_outlined,
-                        '${meal.fatG!.toStringAsFixed(1)}g 脂肪',
+                        '${formatNumber(meal.fatG!, maximumFractionDigits: 1)} g ${l10n.homeFat}',
                         theme,
                       ),
                   ],
@@ -140,7 +143,7 @@ class MealCard extends StatelessWidget {
                               ),
                             )
                           : const Icon(Icons.refresh, size: 18),
-                      label: const Text('换一个'),
+                      label: Text(l10n.homeSwap),
                     ),
                   ],
                 ),
@@ -151,7 +154,7 @@ class MealCard extends StatelessWidget {
     );
   }
 
-  Widget _buildImageHeader(ThemeData theme) {
+  Widget _buildImageHeader(ThemeData theme, AppLocalizations l10n) {
     return SizedBox(
       height: 140,
       width: double.infinity,
@@ -203,13 +206,13 @@ class MealCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    _mealLabel(meal.mealType),
+                    _mealLabel(meal.mealType, l10n),
                     style: theme.textTheme.bodySmall
                         ?.copyWith(color: Colors.white70),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    meal.recipeName ?? '未设置',
+                    meal.recipeName ?? l10n.homeNotSet,
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.w600,
@@ -224,7 +227,7 @@ class MealCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTitleHeader(ThemeData theme) {
+  Widget _buildTitleHeader(ThemeData theme, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Row(
@@ -240,13 +243,13 @@ class MealCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _mealLabel(meal.mealType),
+                  _mealLabel(meal.mealType, l10n),
                   style: theme.textTheme.labelMedium
                       ?.copyWith(color: theme.colorScheme.outline),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  meal.recipeName ?? '未设置',
+                  meal.recipeName ?? l10n.homeNotSet,
                   style: theme.textTheme.titleMedium,
                 ),
               ],

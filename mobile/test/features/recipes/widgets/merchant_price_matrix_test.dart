@@ -1,4 +1,6 @@
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 import 'package:flutter/gestures.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,7 +91,10 @@ void main() {
 
   group('MerchantPriceMatrix', () {
     testWidgets('渲染矩阵：ISO 币种显示 total_cost', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantPriceMatrix(
             ingredients: [
@@ -128,6 +133,9 @@ void main() {
 
     testWidgets('食材/用量列冻结：横向滚动时首列不动', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantPriceMatrix(
             ingredients: const [
@@ -173,7 +181,10 @@ void main() {
     });
 
     testWidgets('fallback 链点击信息图标弹出弹窗', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantPriceMatrix(
             ingredients: [
@@ -210,7 +221,10 @@ void main() {
     });
 
     testWidgets('表头垂直居中（与数据行间隔一行行高）', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantPriceMatrix(
             ingredients: [
@@ -258,7 +272,10 @@ void main() {
     });
 
     testWidgets('空数据显示空态', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body:
               MerchantPriceMatrix(ingredients: [], prices: [], loading: false),
@@ -269,6 +286,9 @@ void main() {
 
     testWidgets('鼠标滚轮可水平滚动比价矩阵', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantPriceMatrix(
             ingredients: const [

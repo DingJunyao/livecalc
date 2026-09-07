@@ -4,6 +4,7 @@ import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../providers/recipe_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -93,16 +94,17 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       ref.read(recipeListProvider.notifier).loadRecipes();
     });
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(recipeListProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('菜谱'),
+        title: Text(l10n.recipeTitle),
         actions: const [CalcContextMenuButton()],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _openCreate,
-        tooltip: '创建菜谱',
+        tooltip: l10n.recipeCreateTooltip,
         child: const Icon(Icons.add),
       ),
       body: Column(
@@ -116,6 +118,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
 
   Widget _buildSearchBar(ThemeData theme, RecipeListState state) {
     final notifier = ref.read(recipeListProvider.notifier);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Row(
@@ -124,7 +127,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: '搜索菜谱...',
+                hintText: l10n.recipeSearch,
                 prefixIcon: const Icon(Icons.search),
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
@@ -155,7 +158,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
               label: Text('${notifier.activeFilterCount}'),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
-                tooltip: '筛选',
+                tooltip: l10n.journeyFilters,
                 onPressed: () => _showFilterSheet(theme),
                 style: notifier.activeFilterCount > 0
                     ? IconButton.styleFrom(
@@ -172,8 +175,9 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   }
 
   Widget _buildContent(ThemeData theme, RecipeListState state) {
+    final l10n = AppLocalizations.of(context);
     if (state.loading && state.recipes.isEmpty) {
-      return const LoadingIndicator(message: '加载菜谱...');
+      return LoadingIndicator(message: l10n.recipeLoading);
     }
     if (state.error != null && state.recipes.isEmpty) {
       return ErrorDisplay(
@@ -182,10 +186,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       );
     }
     if (state.recipes.isEmpty) {
-      return const EmptyState(
+      return EmptyState(
         icon: Icons.restaurant,
-        title: '暂无菜谱',
-        subtitle: '点击右下角创建第一个菜谱',
+        title: l10n.recipeEmptyTitle,
+        subtitle: l10n.recipeEmptySubtitle,
       );
     }
 
@@ -284,7 +288,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                               onPressed: () => ref
                                   .read(recipeListProvider.notifier)
                                   .loadRecipes(loadMore: true),
-                              child: const Text('加载更多'),
+                              child: Text(l10n.journeyLoadMore),
                             ),
                     ),
                   ],
@@ -307,6 +311,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   }
 
   Widget _buildPriceCalories(ThemeData theme, RecipeSummary r, bool loading) {
+    final l10n = AppLocalizations.of(context);
     final servings = r.servings > 0 ? r.servings : 1;
     final hasCost = r.estimatedCost != null;
     final hasCal = r.calories != null;
@@ -314,7 +319,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(
-        loading ? '--' : '${r.servings} 人份',
+        loading ? '--' : l10n.recipeServingsCount(r.servings),
         style: theme.textTheme.labelSmall
             ?.copyWith(color: theme.colorScheme.outline),
       );
@@ -323,7 +328,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     if (hasCost) {
       children.add(
         Text(
-          '${formatMoney(r.estimatedCost!, userCurrency)} / $servings 人份',
+          l10n.recipeCostPerServings(
+            formatMoney(r.estimatedCost!, userCurrency),
+            servings,
+          ),
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.primary,
             fontWeight: FontWeight.bold,
@@ -343,7 +351,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       final perServing = (r.calories! / servings).round();
       children.add(
         Text(
-          '$perServing kcal/份',
+          l10n.recipeCaloriesPerServing('$perServing'),
           style: theme.textTheme.labelSmall
               ?.copyWith(color: theme.colorScheme.outline),
         ),
@@ -446,6 +454,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final options =
         ref.watch(recipeIngredientOptionsProvider(_ingredientQuery)).value ??
             const <IngredientOption>[];
@@ -453,7 +462,8 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
       for (final id in _ingredientIds)
         id: options
             .firstWhere((o) => o.id == id,
-                orElse: () => IngredientOption(id: id, name: '食材 $id'))
+                orElse: () => IngredientOption(
+                    id: id, name: l10n.recipeIngredientFallbackName(id)))
             .name,
     };
 
@@ -466,7 +476,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
             padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
             child: Row(
               children: [
-                Text('筛选条件',
+                Text(l10n.journeyFilters,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const Spacer(),
@@ -479,7 +489,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                       _conditions.clear();
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
-                    label: const Text('清除'),
+                    label: Text(l10n.journeyClear),
                   ),
                 IconButton(
                   icon: const Icon(Icons.close),
@@ -495,7 +505,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('分类', style: theme.textTheme.labelLarge),
+                  Text(l10n.recipeCategory, style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
@@ -503,7 +513,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                     children: [
                       for (final c in _recipeCategories)
                         FilterChip(
-                          label: Text(c),
+                          label: Text(_recipeCategoryLabel(c, l10n)),
                           selected: _categories.contains(c),
                           onSelected: (_) => setState(() {
                             if (!_categories.add(c)) {
@@ -514,15 +524,16 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text('难度', style: theme.textTheme.labelLarge),
+                  Text(l10n.recipeDifficulty,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final (value, label) in _recipeDifficulties)
+                      for (final (value, _) in _recipeDifficulties)
                         FilterChip(
-                          label: Text(label),
+                          label: Text(_recipeDifficultyLabel(value, l10n)),
                           selected: _difficulties.contains(value),
                           onSelected: (_) => setState(() {
                             if (!_difficulties.add(value)) {
@@ -533,12 +544,13 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  Text('所用食材', style: theme.textTheme.labelLarge),
+                  Text(l10n.recipeUsedIngredients,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _ingredientController,
                     decoration: InputDecoration(
-                      hintText: '搜索食材（可多选）',
+                      hintText: l10n.recipeSearchIngredientsHint,
                       prefixIcon: const Icon(Icons.search),
                       isDense: true,
                       border: OutlineInputBorder(
@@ -598,15 +610,16 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  Text('特殊条件', style: theme.textTheme.labelLarge),
+                  Text(l10n.recipeSpecialConditions,
+                      style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      for (final (value, label) in _recipeSpecialConditions)
+                      for (final (value, _) in _recipeSpecialConditions)
                         FilterChip(
-                          label: Text(label),
+                          label: Text(_recipeConditionLabel(value, l10n)),
                           selected: _conditions.contains(value),
                           onSelected: (_) => setState(() {
                             if (!_conditions.add(value)) {
@@ -635,7 +648,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                   );
                   Navigator.of(context).pop();
                 },
-                child: const Text('确定'),
+                child: Text(l10n.journeyConfirm),
               ),
             ),
           ),
@@ -643,4 +656,39 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
       ),
     );
   }
+}
+
+String _recipeCategoryLabel(String category, AppLocalizations l10n) {
+  return switch (category) {
+    '荤菜' => l10n.recipeCategoryMeatDish,
+    '素菜' => l10n.recipeCategoryVegetableDish,
+    '水产' => l10n.recipeCategorySeafood,
+    '主食' => l10n.recipeCategoryStaple,
+    '汤与羹' || '汤与粥' => l10n.recipeCategorySoupPorridge,
+    '早餐' => l10n.recipeCategoryBreakfast,
+    '甜品' => l10n.recipeCategoryDessert,
+    '调料' => l10n.recipeCategorySeasoning,
+    '半成品' => l10n.recipeCategorySemiFinished,
+    '小食' => l10n.recipeCategorySnack,
+    _ => category,
+  };
+}
+
+String _recipeDifficultyLabel(String difficulty, AppLocalizations l10n) {
+  return switch (difficulty) {
+    'simple' => l10n.recipeDifficultySimple,
+    'easy' => l10n.recipeDifficultyEasy,
+    'medium' => l10n.recipeDifficultyMedium,
+    'hard' => l10n.recipeDifficultyHard,
+    'expert' => l10n.recipeDifficultyExpert,
+    _ => difficulty,
+  };
+}
+
+String _recipeConditionLabel(String condition, AppLocalizations l10n) {
+  return switch (condition) {
+    'has_unpriced_ingredient' => l10n.recipeConditionUnpriced,
+    'has_unnourished_ingredient' => l10n.recipeConditionUnnourished,
+    _ => condition,
+  };
 }

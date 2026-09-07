@@ -1701,4 +1701,555 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapMerchantClosedSuffix => ' (closed)';
+
+  @override
+  String get commonGotIt => 'Got it';
+
+  @override
+  String get homeTodayTitle => 'Today\'s recommendations';
+
+  @override
+  String get homeGenerating =>
+      'Generating today\'s recommendations. AI is planning your meals…';
+
+  @override
+  String get homeEmpty =>
+      'No recommendations yet. Tap refresh to generate today\'s recommendations.';
+
+  @override
+  String get homeSwapAll => 'Swap all';
+
+  @override
+  String get homeNotSet => 'Not set';
+
+  @override
+  String get homeBreakfast => 'Breakfast';
+
+  @override
+  String get homeLunch => 'Lunch';
+
+  @override
+  String get homeDinner => 'Dinner';
+
+  @override
+  String get homeProtein => 'Protein';
+
+  @override
+  String get homeCarbs => 'Carbs';
+
+  @override
+  String get homeFat => 'Fat';
+
+  @override
+  String get homeSwap => 'Swap';
+
+  @override
+  String get homeConnectionTimeout =>
+      'Network timed out. Check your connection and try again.';
+
+  @override
+  String get homeConnectionFailed =>
+      'Network connection failed. Check your connection and try again.';
+
+  @override
+  String get homeServerBusy => 'Server is busy. Try again later.';
+
+  @override
+  String get homeResourceNotFound => 'The requested resource was not found.';
+
+  @override
+  String get homeLoadFailed =>
+      'Could not load recommendations. Try again later.';
+
+  @override
+  String get homeGeneratingTimeout =>
+      'Recommendations are still generating. Refresh later to view them.';
+
+  @override
+  String get homeSwapLimit =>
+      'You have swapped this meal too many times today. Try again tomorrow.';
+
+  @override
+  String get homeSwapFailed => 'Could not swap the meal. Try again later.';
+
+  @override
+  String get homeSwapTimeout => 'Swapping the meal timed out. Try again later.';
+
+  @override
+  String get homeSwapAllLimit =>
+      'You have swapped too many times today. Try again tomorrow.';
+
+  @override
+  String get homeRefreshFailed =>
+      'Could not refresh recommendations. Try again later.';
+
+  @override
+  String get homeRefreshTimeout =>
+      'Refreshing recommendations timed out. Try again later.';
+
+  @override
+  String get recipeTitle => 'Recipes';
+
+  @override
+  String get recipeDetailTitle => 'Recipe details';
+
+  @override
+  String get recipeAnalysisTitle => 'Recipe analysis';
+
+  @override
+  String get recipeAnalysisChip => 'Analysis';
+
+  @override
+  String get recipeSearch => 'Search recipes...';
+
+  @override
+  String get recipeCreateTooltip => 'Create recipe';
+
+  @override
+  String get recipeLoading => 'Loading recipes...';
+
+  @override
+  String get recipeEmptyTitle => 'No recipes yet';
+
+  @override
+  String get recipeEmptySubtitle =>
+      'Tap the button in the lower-right corner to create the first recipe.';
+
+  @override
+  String get recipeCategory => 'Category';
+
+  @override
+  String get recipeDifficulty => 'Difficulty';
+
+  @override
+  String get recipeUsedIngredients => 'Ingredients used';
+
+  @override
+  String get recipeSearchIngredientsHint =>
+      'Search ingredients (select multiple)';
+
+  @override
+  String get recipeSpecialConditions => 'Special conditions';
+
+  @override
+  String get recipeConditionUnpriced =>
+      'Has ingredients without maintained prices';
+
+  @override
+  String get recipeConditionUnnourished =>
+      'Has ingredients without nutrition data';
+
+  @override
+  String recipeServingsCount(Object count) {
+    return '$count servings';
+  }
+
+  @override
+  String recipeCostPerServings(Object amount, Object count) {
+    return '$amount / $count servings';
+  }
+
+  @override
+  String recipeCaloriesPerServing(Object amount) {
+    return '$amount kcal / serving';
+  }
+
+  @override
+  String get recipeCategoryMeatDish => 'Meat dish';
+
+  @override
+  String get recipeCategoryVegetableDish => 'Vegetable dish';
+
+  @override
+  String get recipeCategorySeafood => 'Seafood';
+
+  @override
+  String get recipeCategoryStaple => 'Staple food';
+
+  @override
+  String get recipeCategorySoupPorridge => 'Soup or porridge';
+
+  @override
+  String get recipeCategoryBreakfast => 'Breakfast';
+
+  @override
+  String get recipeCategoryDessert => 'Dessert';
+
+  @override
+  String get recipeCategorySeasoning => 'Seasoning';
+
+  @override
+  String get recipeCategorySemiFinished => 'Semi-finished';
+
+  @override
+  String get recipeCategorySnack => 'Snack';
+
+  @override
+  String get recipeDifficultySimple => 'Very easy';
+
+  @override
+  String get recipeDifficultyEasy => 'Easy';
+
+  @override
+  String get recipeDifficultyMedium => 'Medium';
+
+  @override
+  String get recipeDifficultyHard => 'Hard';
+
+  @override
+  String get recipeDifficultyExpert => 'Expert';
+
+  @override
+  String get recipePublish => 'Publish recipe';
+
+  @override
+  String get recipeDelete => 'Delete recipe';
+
+  @override
+  String get recipePublishTitle => 'Publish recipe';
+
+  @override
+  String get recipePublishDescription =>
+      'After publishing, this recipe will be visible to other users. Standard users must wait for administrator review.';
+
+  @override
+  String get recipeConfirmPublish => 'Confirm publish';
+
+  @override
+  String get recipePublishPending =>
+      'Publish submitted. Pending administrator review.';
+
+  @override
+  String get recipePublished => 'Recipe published';
+
+  @override
+  String get recipeDeleteConfirm => 'Delete this recipe?';
+
+  @override
+  String get recipeDeleted => 'Recipe deleted';
+
+  @override
+  String get recipeUnpublished => 'Unpublished';
+
+  @override
+  String get recipeBasicInfoTitle => 'Basic information';
+
+  @override
+  String get recipeEditBasicInfo => 'Edit basic information';
+
+  @override
+  String get recipeCostEstimate => 'Cost estimate';
+
+  @override
+  String get recipeNoCostData => 'No cost data';
+
+  @override
+  String get recipeIngredients => 'Ingredients';
+
+  @override
+  String get recipeEditIngredients => 'Edit ingredients';
+
+  @override
+  String get recipeNoIngredients => 'No ingredients';
+
+  @override
+  String get recipeOptional => 'Optional';
+
+  @override
+  String get recipeCalculatedFromIngredientsCost =>
+      'Calculated from ingredient costs:';
+
+  @override
+  String get recipeGotIt => 'Got it';
+
+  @override
+  String recipeRecommendedQuantity(Object quantity, Object unit) {
+    return 'Recommended $quantity $unit';
+  }
+
+  @override
+  String get recipeSteps => 'Steps';
+
+  @override
+  String get recipeEditSteps => 'Edit steps';
+
+  @override
+  String get recipeNoSteps => 'No steps';
+
+  @override
+  String recipeStepMinutes(Object count) {
+    return '$count min';
+  }
+
+  @override
+  String get recipeNutritionPerServing => 'Nutrition (per serving)';
+
+  @override
+  String get recipeTips => 'Tips';
+
+  @override
+  String get recipeEditTips => 'Edit tips';
+
+  @override
+  String get recipeNoTips => 'No tips';
+
+  @override
+  String get recipePreviousImage => 'Previous image';
+
+  @override
+  String get recipeNextImage => 'Next image';
+
+  @override
+  String get recipeCreateTitle => 'Create recipe';
+
+  @override
+  String get recipeEditTitle => 'Edit recipe';
+
+  @override
+  String get recipeName => 'Recipe name';
+
+  @override
+  String get recipeIntroduction => 'Introduction';
+
+  @override
+  String get recipeServingsField => 'Servings';
+
+  @override
+  String get recipeTotalTimeMinutes => 'Total time (minutes)';
+
+  @override
+  String get recipeResultIngredient => 'Result ingredient';
+
+  @override
+  String get recipeImageManager => 'Image management';
+
+  @override
+  String get recipeUpload => 'Upload';
+
+  @override
+  String get recipeCoverHint => 'The first image is the cover.';
+
+  @override
+  String get recipeCover => 'Cover';
+
+  @override
+  String get recipeDeleteImage => 'Delete image';
+
+  @override
+  String get recipeDragToReorder => 'Drag to reorder';
+
+  @override
+  String get recipeUnitUnspecified => 'Not specified';
+
+  @override
+  String get recipeIngredientField => 'Ingredient';
+
+  @override
+  String get recipeAddIngredient => 'Add ingredient';
+
+  @override
+  String get recipeMoveUp => 'Move up';
+
+  @override
+  String get recipeMoveDown => 'Move down';
+
+  @override
+  String get recipeQuantityNumeric => 'Amount';
+
+  @override
+  String get recipeQuantityToTaste => 'To taste';
+
+  @override
+  String get recipeQuantitySmall => 'A little';
+
+  @override
+  String get recipeRecommendedAmount => 'Recommended amount';
+
+  @override
+  String get recipeMinimum => 'Minimum';
+
+  @override
+  String get recipeMaximum => 'Maximum';
+
+  @override
+  String get recipeNote => 'Note';
+
+  @override
+  String recipeStepNumberLabel(Object index) {
+    return 'Step $index';
+  }
+
+  @override
+  String get recipeStepContent => 'Content';
+
+  @override
+  String get recipeStepDuration => 'Duration (minutes)';
+
+  @override
+  String get recipeStepTips => 'Step tips';
+
+  @override
+  String get recipeAddStep => 'Add step';
+
+  @override
+  String get recipeAddTip => 'Add tip';
+
+  @override
+  String get recipeSaveChanges => 'Save changes';
+
+  @override
+  String get recipeNoSectionChanges => 'This section has no changes';
+
+  @override
+  String get recipeNameRequired => 'Enter a recipe name';
+
+  @override
+  String get recipeLoadFailedError => 'Could not load the recipe. Try again.';
+
+  @override
+  String get recipeImagePickFailed => 'Could not select an image. Try again.';
+
+  @override
+  String get recipeImageUploaded =>
+      'Image uploaded. It will take effect after saving.';
+
+  @override
+  String get recipeImageUploadFailed =>
+      'Could not upload the image. Try again.';
+
+  @override
+  String recipeIngredientQuantityIncomplete(Object row) {
+    return 'Ingredient row $row has an incomplete quantity: enter a recommended amount, a recommended amount plus a range, or a range only.';
+  }
+
+  @override
+  String recipeIngredientFallbackName(Object id) {
+    return 'Ingredient #$id';
+  }
+
+  @override
+  String get recipeSaveSuccess => 'Saved';
+
+  @override
+  String get recipeCostShare => 'Ingredient cost share';
+
+  @override
+  String get recipeUnknownIngredient => 'Unknown ingredient';
+
+  @override
+  String get recipeOther => 'Other';
+
+  @override
+  String get recipeCostTrend => 'Cost trend';
+
+  @override
+  String get recipeNoCostTrend => 'No cost trend data';
+
+  @override
+  String get recipeNoStackedCostTrend => 'No cost trend data';
+
+  @override
+  String get recipeWeek => 'Week';
+
+  @override
+  String get recipeMonth => 'Month';
+
+  @override
+  String get recipeQuarter => 'Quarter';
+
+  @override
+  String get recipeYear => 'Year';
+
+  @override
+  String get recipeAll => 'All';
+
+  @override
+  String get recipeAverageLabel => 'Average';
+
+  @override
+  String get recipeRangeLabel => 'Range';
+
+  @override
+  String get recipeTotalLabel => 'Total';
+
+  @override
+  String get recipeMerchantCostEstimate => 'Merchant cost estimates';
+
+  @override
+  String get recipeNoMerchantPriceData => 'No merchant price data';
+
+  @override
+  String get recipeBestValue => 'Best value';
+
+  @override
+  String recipeCoveredCount(Object covered, Object total) {
+    return '$covered/$total ingredients covered';
+  }
+
+  @override
+  String recipeInStore(Object amount) {
+    return 'In store $amount';
+  }
+
+  @override
+  String recipeExternal(Object amount) {
+    return 'External $amount';
+  }
+
+  @override
+  String recipeMissingIngredients(Object ingredients) {
+    return 'Missing ingredients: $ingredients';
+  }
+
+  @override
+  String recipeMerchantFallbackName(Object id) {
+    return 'Merchant #$id';
+  }
+
+  @override
+  String get recipeMerchantPriceRecommendation =>
+      'Merchant price recommendations';
+
+  @override
+  String get recipeNoMerchantComparisonData => 'No merchant comparison data';
+
+  @override
+  String get recipeIngredientAndAmount => 'Ingredient / amount';
+
+  @override
+  String get recipeNutritionSources => 'Nutrition sources';
+
+  @override
+  String get recipeNrvMetrics => 'NRV metrics';
+
+  @override
+  String get recipeAllNutrients => 'All';
+
+  @override
+  String get recipeDisplayRange => 'Show scope';
+
+  @override
+  String get recipeSource => 'Source';
+
+  @override
+  String get recipeTags => 'Tags';
+
+  @override
+  String get recipeTotalTime => 'Total time';
+
+  @override
+  String get recipeImages => 'Images';
+
+  @override
+  String get recipeCalculatedFromIngredientsPrice =>
+      'Calculated from ingredient prices:';
+
+  @override
+  String get nutritionNutrientCopper => 'Copper';
+
+  @override
+  String get nutritionNutrientManganese => 'Manganese';
+
+  @override
+  String get nutritionNutrientSelenium => 'Selenium';
 }

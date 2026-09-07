@@ -3,13 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/meal_recommendation.dart';
 import '../repositories/home_repository.dart';
 
+enum HomeErrorCode {
+  connectionTimeout,
+  connectionFailed,
+  serverBusy,
+  resourceNotFound,
+  loadFailed,
+  generatingTimeout,
+  mealSwapTooMany,
+  mealSwapFailed,
+  mealSwapTimeout,
+  swapAllTooMany,
+  refreshFailed,
+  refreshTimeout,
+}
+
 class HomeState {
   final DailyRecommendation? recommendation;
   final bool loading;
   final bool generating;
-  final String? error;
+  final HomeErrorCode? error;
   final Map<String, bool> refreshLoading;
-  final String? lastError;
+  final HomeErrorCode? lastError;
 
   const HomeState({
     this.recommendation,
@@ -24,9 +39,9 @@ class HomeState {
     DailyRecommendation? recommendation,
     bool? loading,
     bool? generating,
-    String? error,
+    HomeErrorCode? error,
     Map<String, bool>? refreshLoading,
-    String? lastError,
+    HomeErrorCode? lastError,
     bool clearLastError = false,
   }) {
     return HomeState(
@@ -40,21 +55,21 @@ class HomeState {
   }
 }
 
-String _friendlyError(DioException e) {
+HomeErrorCode _friendlyError(DioException e) {
   if (e.type == DioExceptionType.connectionTimeout ||
       e.type == DioExceptionType.receiveTimeout) {
-    return '网络连接超时，请检查网络后重试';
+    return HomeErrorCode.connectionTimeout;
   }
   if (e.type == DioExceptionType.connectionError) {
-    return '网络连接失败，请检查网络后重试';
+    return HomeErrorCode.connectionFailed;
   }
   if (e.response?.statusCode == 500) {
-    return '服务器繁忙，请稍后重试';
+    return HomeErrorCode.serverBusy;
   }
   if (e.response?.statusCode == 404) {
-    return '请求的资源不存在';
+    return HomeErrorCode.resourceNotFound;
   }
-  return '加载失败，请稍后重试';
+  return HomeErrorCode.loadFailed;
 }
 
 class HomeNotifier extends StateNotifier<HomeState> {
@@ -78,7 +93,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     }
     state = state.copyWith(
       generating: false,
-      error: '推荐正在生成中，请稍后刷新查看',
+      error: HomeErrorCode.generatingTimeout,
     );
   }
 
@@ -98,7 +113,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     } on DioException catch (e) {
       state = state.copyWith(loading: false, error: _friendlyError(e));
     } on Exception catch (_) {
-      state = state.copyWith(loading: false, error: '加载失败，请稍后重试');
+      state = state.copyWith(loading: false, error: HomeErrorCode.loadFailed);
     }
   }
 
@@ -115,13 +130,13 @@ class HomeNotifier extends StateNotifier<HomeState> {
       state = state.copyWith(
         refreshLoading: {...state.refreshLoading}..remove(mealType),
         lastError: e.response?.statusCode == 429
-            ? '今天这餐换得太多次了，明天再来吧'
+            ? HomeErrorCode.mealSwapTooMany
             : _friendlyError(e),
       );
     } on Exception catch (_) {
       state = state.copyWith(
         refreshLoading: {...state.refreshLoading}..remove(mealType),
-        lastError: '换菜失败，请稍后重试',
+        lastError: HomeErrorCode.mealSwapFailed,
       );
     }
   }
@@ -141,7 +156,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     }
     state = state.copyWith(
       refreshLoading: {...state.refreshLoading}..remove(mealType),
-      lastError: '换菜超时，请稍后重试',
+      lastError: HomeErrorCode.mealSwapTimeout,
     );
   }
 
@@ -163,7 +178,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
           await _repository.refreshMeal(mt);
         } on DioException catch (e) {
           if (e.response?.statusCode == 429) {
-            state = state.copyWith(lastError: '今天换得太多次了，明天再来吧');
+            state = state.copyWith(lastError: HomeErrorCode.swapAllTooMany);
             break;
           }
           // Other trigger errors are non-fatal; polling sorts it out.
@@ -178,7 +193,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     } on Exception catch (_) {
       state = state.copyWith(
         refreshLoading: const {},
-        lastError: '刷新失败，请稍后重试',
+        lastError: HomeErrorCode.refreshFailed,
       );
     }
   }
@@ -196,7 +211,7 @@ class HomeNotifier extends StateNotifier<HomeState> {
     }
     state = state.copyWith(
       refreshLoading: const {},
-      lastError: '刷新超时，请稍后重试',
+      lastError: HomeErrorCode.refreshTimeout,
     );
   }
 }

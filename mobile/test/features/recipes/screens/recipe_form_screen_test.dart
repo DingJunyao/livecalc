@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -33,6 +34,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
+          locale: const Locale('zh', 'CN'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           home: Builder(
             builder: (context) => Scaffold(
               body: Center(
@@ -171,7 +175,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    await tester.pageBack();
+    await _pageBack(tester);
     await tester.pump();
     final result = await resultFuture;
     expect(result?.saved, isTrue);
@@ -269,7 +273,7 @@ void main() {
     expect(payloads[2].keys, ['cooking_steps']);
     expect(payloads[3].keys, ['tips']);
 
-    await tester.pageBack();
+    await _pageBack(tester);
     await tester.pump();
     final result = await resultFuture;
     expect(result?.saved, isTrue);
@@ -321,7 +325,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.pageBack();
+    await _pageBack(tester);
     await tester.pumpAndSettle();
     final result = await resultFuture;
     expect(result?.saved, isFalse);
@@ -442,7 +446,7 @@ void main() {
     saveButton.onPressed!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.pageBack();
+    await _pageBack(tester);
     await tester.pump();
 
     expect(payloads.single, {
@@ -510,7 +514,7 @@ void main() {
     saveButton.onPressed!();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.pageBack();
+    await _pageBack(tester);
     await tester.pump();
 
     expect(payloads.single, {
@@ -519,4 +523,9 @@ void main() {
     final result = await resultFuture;
     expect(result?.saved, isTrue);
   });
+}
+
+Future<void> _pageBack(WidgetTester tester) async {
+  await tester.tap(find.byTooltip('返回'));
+  await tester.pump();
 }

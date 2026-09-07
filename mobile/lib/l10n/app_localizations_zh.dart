@@ -1658,4 +1658,534 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mapMerchantClosedSuffix => '（已关闭）';
+
+  @override
+  String get commonGotIt => '知道了';
+
+  @override
+  String get homeTodayTitle => '今日推荐';
+
+  @override
+  String get homeGenerating => '正在生成今日推荐，AI 正在为你搭配食谱…';
+
+  @override
+  String get homeEmpty => '暂无推荐，点击刷新按钮生成今日推荐';
+
+  @override
+  String get homeSwapAll => '换一换';
+
+  @override
+  String get homeNotSet => '未设置';
+
+  @override
+  String get homeBreakfast => '早餐';
+
+  @override
+  String get homeLunch => '午餐';
+
+  @override
+  String get homeDinner => '晚餐';
+
+  @override
+  String get homeProtein => '蛋白';
+
+  @override
+  String get homeCarbs => '碳水';
+
+  @override
+  String get homeFat => '脂肪';
+
+  @override
+  String get homeSwap => '换一个';
+
+  @override
+  String get homeConnectionTimeout => '网络连接超时，请检查网络后重试';
+
+  @override
+  String get homeConnectionFailed => '网络连接失败，请检查网络后重试';
+
+  @override
+  String get homeServerBusy => '服务器繁忙，请稍后重试';
+
+  @override
+  String get homeResourceNotFound => '请求的资源不存在';
+
+  @override
+  String get homeLoadFailed => '加载失败，请稍后重试';
+
+  @override
+  String get homeGeneratingTimeout => '推荐正在生成中，请稍后刷新查看';
+
+  @override
+  String get homeSwapLimit => '今天这餐换得太多次了，明天再来吧';
+
+  @override
+  String get homeSwapFailed => '换菜失败，请稍后重试';
+
+  @override
+  String get homeSwapTimeout => '换菜超时，请稍后重试';
+
+  @override
+  String get homeSwapAllLimit => '今天换得太多次了，明天再来吧';
+
+  @override
+  String get homeRefreshFailed => '刷新失败，请稍后重试';
+
+  @override
+  String get homeRefreshTimeout => '刷新超时，请稍后重试';
+
+  @override
+  String get recipeTitle => '菜谱';
+
+  @override
+  String get recipeDetailTitle => '菜谱详情';
+
+  @override
+  String get recipeAnalysisTitle => '菜谱分析';
+
+  @override
+  String get recipeAnalysisChip => '分析';
+
+  @override
+  String get recipeSearch => '搜索菜谱...';
+
+  @override
+  String get recipeCreateTooltip => '创建菜谱';
+
+  @override
+  String get recipeLoading => '加载菜谱...';
+
+  @override
+  String get recipeEmptyTitle => '暂无菜谱';
+
+  @override
+  String get recipeEmptySubtitle => '点击右下角创建第一个菜谱';
+
+  @override
+  String get recipeCategory => '分类';
+
+  @override
+  String get recipeDifficulty => '难度';
+
+  @override
+  String get recipeUsedIngredients => '所用食材';
+
+  @override
+  String get recipeSearchIngredientsHint => '搜索食材（可多选）';
+
+  @override
+  String get recipeSpecialConditions => '特殊条件';
+
+  @override
+  String get recipeConditionUnpriced => '存在原料没有维护价格';
+
+  @override
+  String get recipeConditionUnnourished => '存在原料没有维护营养成分';
+
+  @override
+  String recipeServingsCount(Object count) {
+    return '$count 人份';
+  }
+
+  @override
+  String recipeCostPerServings(Object amount, Object count) {
+    return '$amount / $count 人份';
+  }
+
+  @override
+  String recipeCaloriesPerServing(Object amount) {
+    return '$amount kcal/份';
+  }
+
+  @override
+  String get recipeCategoryMeatDish => '荤菜';
+
+  @override
+  String get recipeCategoryVegetableDish => '素菜';
+
+  @override
+  String get recipeCategorySeafood => '水产';
+
+  @override
+  String get recipeCategoryStaple => '主食';
+
+  @override
+  String get recipeCategorySoupPorridge => '汤与粥';
+
+  @override
+  String get recipeCategoryBreakfast => '早餐';
+
+  @override
+  String get recipeCategoryDessert => '甜品';
+
+  @override
+  String get recipeCategorySeasoning => '调料';
+
+  @override
+  String get recipeCategorySemiFinished => '半成品';
+
+  @override
+  String get recipeCategorySnack => '小食';
+
+  @override
+  String get recipeDifficultySimple => '简单';
+
+  @override
+  String get recipeDifficultyEasy => '容易';
+
+  @override
+  String get recipeDifficultyMedium => '中等';
+
+  @override
+  String get recipeDifficultyHard => '困难';
+
+  @override
+  String get recipeDifficultyExpert => '专家';
+
+  @override
+  String get recipePublish => '发布菜谱';
+
+  @override
+  String get recipeDelete => '删除菜谱';
+
+  @override
+  String get recipePublishTitle => '发布菜谱';
+
+  @override
+  String get recipePublishDescription => '发布后菜谱将对其他用户公开。普通用户提交后需管理员审核。';
+
+  @override
+  String get recipeConfirmPublish => '提交发布';
+
+  @override
+  String get recipePublishPending => '发布已提交，待管理员审核';
+
+  @override
+  String get recipePublished => '菜谱已发布';
+
+  @override
+  String get recipeDeleteConfirm => '确定要删除这个菜谱吗？';
+
+  @override
+  String get recipeDeleted => '菜谱已删除';
+
+  @override
+  String get recipeUnpublished => '未发布';
+
+  @override
+  String get recipeBasicInfoTitle => '基本信息';
+
+  @override
+  String get recipeEditBasicInfo => '编辑基本信息';
+
+  @override
+  String get recipeCostEstimate => '成本估算';
+
+  @override
+  String get recipeNoCostData => '暂无成本数据';
+
+  @override
+  String get recipeIngredients => '原料';
+
+  @override
+  String get recipeEditIngredients => '编辑原料';
+
+  @override
+  String get recipeNoIngredients => '暂无原料';
+
+  @override
+  String get recipeOptional => '可选';
+
+  @override
+  String get recipeCalculatedFromIngredientsCost => '根据以下食材计算成本：';
+
+  @override
+  String get recipeGotIt => '知道了';
+
+  @override
+  String recipeRecommendedQuantity(Object quantity, Object unit) {
+    return '推荐 $quantity $unit';
+  }
+
+  @override
+  String get recipeSteps => '做法步骤';
+
+  @override
+  String get recipeEditSteps => '编辑做法';
+
+  @override
+  String get recipeNoSteps => '暂无步骤';
+
+  @override
+  String recipeStepMinutes(Object count) {
+    return '$count 分钟';
+  }
+
+  @override
+  String get recipeNutritionPerServing => '营养成分（每份）';
+
+  @override
+  String get recipeTips => '小贴士';
+
+  @override
+  String get recipeEditTips => '编辑小贴士';
+
+  @override
+  String get recipeNoTips => '暂无小贴士';
+
+  @override
+  String get recipePreviousImage => '上一张';
+
+  @override
+  String get recipeNextImage => '下一张';
+
+  @override
+  String get recipeCreateTitle => '创建菜谱';
+
+  @override
+  String get recipeEditTitle => '编辑菜谱';
+
+  @override
+  String get recipeName => '菜谱名称';
+
+  @override
+  String get recipeIntroduction => '简介';
+
+  @override
+  String get recipeServingsField => '份数';
+
+  @override
+  String get recipeTotalTimeMinutes => '总时间（分钟）';
+
+  @override
+  String get recipeResultIngredient => '成品产出原料';
+
+  @override
+  String get recipeImageManager => '配图管理';
+
+  @override
+  String get recipeUpload => '上传';
+
+  @override
+  String get recipeCoverHint => '第一张图片为封面。';
+
+  @override
+  String get recipeCover => '封面';
+
+  @override
+  String get recipeDeleteImage => '删除图片';
+
+  @override
+  String get recipeDragToReorder => '拖动排序';
+
+  @override
+  String get recipeUnitUnspecified => '不指定';
+
+  @override
+  String get recipeIngredientField => '原料';
+
+  @override
+  String get recipeAddIngredient => '添加原料';
+
+  @override
+  String get recipeMoveUp => '上移';
+
+  @override
+  String get recipeMoveDown => '下移';
+
+  @override
+  String get recipeQuantityNumeric => '数值';
+
+  @override
+  String get recipeQuantityToTaste => '适量';
+
+  @override
+  String get recipeQuantitySmall => '少许';
+
+  @override
+  String get recipeRecommendedAmount => '推荐量';
+
+  @override
+  String get recipeMinimum => '最小';
+
+  @override
+  String get recipeMaximum => '最大';
+
+  @override
+  String get recipeNote => '备注';
+
+  @override
+  String recipeStepNumberLabel(Object index) {
+    return '步骤 $index';
+  }
+
+  @override
+  String get recipeStepContent => '内容';
+
+  @override
+  String get recipeStepDuration => '耗时（分钟）';
+
+  @override
+  String get recipeStepTips => '步骤提示';
+
+  @override
+  String get recipeAddStep => '添加步骤';
+
+  @override
+  String get recipeAddTip => '添加小贴士';
+
+  @override
+  String get recipeSaveChanges => '保存修改';
+
+  @override
+  String get recipeNoSectionChanges => '当前部分没有修改';
+
+  @override
+  String get recipeNameRequired => '请输入菜谱名称';
+
+  @override
+  String get recipeLoadFailedError => '菜谱加载失败，请重试';
+
+  @override
+  String get recipeImagePickFailed => '选择图片失败，请重试';
+
+  @override
+  String get recipeImageUploaded => '图片已上传，保存后生效';
+
+  @override
+  String get recipeImageUploadFailed => '图片上传失败，请重试';
+
+  @override
+  String recipeIngredientQuantityIncomplete(Object row) {
+    return '第 $row 行原料的用量组合不完整：仅支持推荐值、推荐值+区间或仅区间';
+  }
+
+  @override
+  String recipeIngredientFallbackName(Object id) {
+    return '原料 #$id';
+  }
+
+  @override
+  String get recipeSaveSuccess => '保存成功';
+
+  @override
+  String get recipeCostShare => '食材成本占比';
+
+  @override
+  String get recipeUnknownIngredient => '未知食材';
+
+  @override
+  String get recipeOther => '其他';
+
+  @override
+  String get recipeCostTrend => '成本趋势';
+
+  @override
+  String get recipeNoCostTrend => '暂无成本历史数据';
+
+  @override
+  String get recipeNoStackedCostTrend => '暂无成本趋势数据';
+
+  @override
+  String get recipeWeek => '周';
+
+  @override
+  String get recipeMonth => '月';
+
+  @override
+  String get recipeQuarter => '季';
+
+  @override
+  String get recipeYear => '年';
+
+  @override
+  String get recipeAll => '全部';
+
+  @override
+  String get recipeAverageLabel => '均价';
+
+  @override
+  String get recipeRangeLabel => '区间';
+
+  @override
+  String get recipeTotalLabel => '合计';
+
+  @override
+  String get recipeMerchantCostEstimate => '按商家预估成本';
+
+  @override
+  String get recipeNoMerchantPriceData => '暂无商家价格数据';
+
+  @override
+  String get recipeBestValue => '最实惠 ✓';
+
+  @override
+  String recipeCoveredCount(Object covered, Object total) {
+    return '覆盖 $covered/$total 种食材';
+  }
+
+  @override
+  String recipeInStore(Object amount) {
+    return '本店 $amount';
+  }
+
+  @override
+  String recipeExternal(Object amount) {
+    return '外部 $amount';
+  }
+
+  @override
+  String recipeMissingIngredients(Object ingredients) {
+    return '⚠ 需外购 $ingredients';
+  }
+
+  @override
+  String recipeMerchantFallbackName(Object id) {
+    return '商家 #$id';
+  }
+
+  @override
+  String get recipeMerchantPriceRecommendation => '商家比价推荐';
+
+  @override
+  String get recipeNoMerchantComparisonData => '暂无比价数据';
+
+  @override
+  String get recipeIngredientAndAmount => '食材 / 用量';
+
+  @override
+  String get recipeNutritionSources => '营养贡献溯源';
+
+  @override
+  String get recipeNrvMetrics => 'NRV 指标';
+
+  @override
+  String get recipeAllNutrients => '全部';
+
+  @override
+  String get recipeDisplayRange => '显示范围';
+
+  @override
+  String get recipeSource => '来源';
+
+  @override
+  String get recipeTags => '标签';
+
+  @override
+  String get recipeTotalTime => '总时间';
+
+  @override
+  String get recipeImages => '配图';
+
+  @override
+  String get recipeCalculatedFromIngredientsPrice => '根据以下食材计算价格：';
+
+  @override
+  String get nutritionNutrientCopper => '铜';
+
+  @override
+  String get nutritionNutrientManganese => '锰';
+
+  @override
+  String get nutritionNutrientSelenium => '硒';
 }

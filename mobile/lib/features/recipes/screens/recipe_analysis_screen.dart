@@ -7,6 +7,7 @@ import '../widgets/cost_trend_stacked_chart.dart';
 import '../widgets/nutrition_source_grid.dart';
 import '../widgets/merchant_cost_cards.dart';
 import '../widgets/merchant_price_matrix.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 
@@ -39,12 +40,13 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(recipeDetailPageProvider(widget.id));
     final detail = state.detail;
 
     if (state.error != null && detail == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('菜谱分析')),
+        appBar: AppBar(title: Text(l10n.recipeAnalysisTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -54,8 +56,8 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
     }
     if (detail == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('菜谱分析')),
-        body: const LoadingIndicator(message: '加载中...'),
+        appBar: AppBar(title: Text(l10n.recipeAnalysisTitle)),
+        body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
 
@@ -79,7 +81,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
                 color: theme.colorScheme.primaryContainer,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text('分析',
+              child: Text(l10n.recipeAnalysisChip,
                   style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.w600)),

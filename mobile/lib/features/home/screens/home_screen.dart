@@ -3,6 +3,7 @@ import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../l10n/app_localizations.dart';
 import '../providers/home_provider.dart';
 import '../widgets/meal_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -29,12 +30,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(homeProvider.notifier).loadToday();
     });
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(homeProvider);
 
     ref.listen(homeProvider, (previous, next) {
       if (next.lastError != null && next.lastError != previous?.lastError) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.lastError!)),
+          SnackBar(content: Text(_homeErrorText(l10n, next.lastError!))),
         );
         ref.read(homeProvider.notifier).clearLastError();
       }
@@ -42,22 +44,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     Widget recArea;
     if (state.loading) {
-      recArea = const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
-        child: LoadingIndicator(message: '\u52a0\u8f7d\u4e2d...'),
+      recArea = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: LoadingIndicator(message: l10n.commonLoading),
       );
     } else if (state.generating) {
-      recArea = const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
-        child: LoadingIndicator(
-            message:
-                '\u6b63\u5728\u751f\u6210\u4eca\u65e5\u63a8\u8350\uff0cAI \u6b63\u5728\u4e3a\u4f60\u642d\u914d\u98df\u8c31\u2026'),
+      recArea = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: LoadingIndicator(message: l10n.homeGenerating),
       );
     } else if (state.error != null) {
       recArea = Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: ErrorDisplay(
-          message: state.error!,
+          message: _homeErrorText(l10n, state.error!),
           onRetry: () => ref.read(homeProvider.notifier).loadToday(),
         ),
       );
@@ -84,27 +84,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       );
     } else {
-      recArea = const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
-        child: Center(
-          child: Text(
-              '\u6682\u65e0\u63a8\u8350\uff0c\u70b9\u51fb\u5237\u65b0\u6309\u94ae\u751f\u6210\u4eca\u65e5\u63a8\u8350'),
-        ),
+      recArea = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: Text(l10n.homeEmpty)),
       );
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('\u751f\u8ba1'),
+        title: Text(l10n.appBrandShort),
         actions: [
-  const CalcContextMenuButton(),
+          const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed:
                 (state.generating || state.refreshLoading.values.any((v) => v))
                     ? null
                     : () => ref.read(homeProvider.notifier).refresh(),
-            tooltip: '\u6362\u4e00\u6362',
+            tooltip: l10n.homeSwapAll,
           ),
         ],
       ),
@@ -122,8 +119,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     Icon(Icons.today, color: theme.colorScheme.primary),
                     const SizedBox(width: 8),
-                    Text('\u4eca\u65e5\u63a8\u8350',
-                        style: theme.textTheme.titleLarge),
+                    Expanded(
+                      child: Text(l10n.homeTodayTitle,
+                          style: theme.textTheme.titleLarge),
+                    ),
                   ],
                 ),
               ),
@@ -134,4 +133,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
+
+String _homeErrorText(AppLocalizations l10n, HomeErrorCode code) {
+  return switch (code) {
+    HomeErrorCode.connectionTimeout => l10n.homeConnectionTimeout,
+    HomeErrorCode.connectionFailed => l10n.homeConnectionFailed,
+    HomeErrorCode.serverBusy => l10n.homeServerBusy,
+    HomeErrorCode.resourceNotFound => l10n.homeResourceNotFound,
+    HomeErrorCode.loadFailed => l10n.homeLoadFailed,
+    HomeErrorCode.generatingTimeout => l10n.homeGeneratingTimeout,
+    HomeErrorCode.mealSwapTooMany => l10n.homeSwapLimit,
+    HomeErrorCode.mealSwapFailed => l10n.homeSwapFailed,
+    HomeErrorCode.mealSwapTimeout => l10n.homeSwapTimeout,
+    HomeErrorCode.swapAllTooMany => l10n.homeSwapAllLimit,
+    HomeErrorCode.refreshFailed => l10n.homeRefreshFailed,
+    HomeErrorCode.refreshTimeout => l10n.homeRefreshTimeout,
+  };
 }

@@ -1,3 +1,5 @@
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+
 /// 营养成分默认展示项（与 Web 端 coreNutritionItems 一致）
 const defaultNutrientKeys = ['能量', '蛋白质', '脂肪', '碳水化合物', '钠'];
 
@@ -69,7 +71,7 @@ const englishToChineseNutrient = <String, String>{
   'saturated_fat': '饱和脂肪',
 };
 
-/// 中文键 → 展示标签
+/// 中文键 → 展示标签（用于未挂载本地化上下文的兼容路径）
 String nutrientDisplayLabel(String key) {
   switch (key) {
     case '热量':
@@ -77,6 +79,41 @@ String nutrientDisplayLabel(String key) {
     default:
       return key;
   }
+}
+
+/// 中文营养素键/标签 → 当前 UI 语言展示名。
+/// 传入的键值仍是稳定存储键，仅展示边界本地化。
+String localizedNutrientLabel(String label, AppLocalizations l10n) {
+  return switch (label) {
+    '能量' || '热量' => l10n.nutritionNutrientEnergy,
+    '蛋白质' => l10n.nutritionNutrientProtein,
+    '脂肪' => l10n.nutritionNutrientFat,
+    '碳水化合物' => l10n.nutritionNutrientCarbohydrate,
+    '膳食纤维' => l10n.nutritionNutrientDietaryFiber,
+    '钠' => l10n.nutritionNutrientSodium,
+    '磷' => l10n.nutritionNutrientPhosphorus,
+    '钾' => l10n.nutritionNutrientPotassium,
+    '镁' => l10n.nutritionNutrientMagnesium,
+    '铁' => l10n.nutritionNutrientIron,
+    '锌' => l10n.nutritionNutrientZinc,
+    '硒' => l10n.nutritionNutrientSelenium,
+    '铜' => l10n.nutritionNutrientCopper,
+    '锰' => l10n.nutritionNutrientManganese,
+    '维生素A' => l10n.nutritionNutrientVitaminA,
+    '维生素B1' => l10n.nutritionNutrientVitaminB1,
+    '维生素B2' => l10n.nutritionNutrientVitaminB2,
+    '维生素B6' => l10n.nutritionNutrientVitaminB6,
+    '维生素B12' => l10n.nutritionNutrientVitaminB12,
+    '维生素C' => l10n.nutritionNutrientVitaminC,
+    '维生素D' => l10n.nutritionNutrientVitaminD,
+    '维生素E' => l10n.nutritionNutrientVitaminE,
+    '维生素K' => l10n.nutritionNutrientVitaminK,
+    '叶酸' => l10n.nutritionNutrientFolate,
+    '烟酸' => l10n.nutritionNutrientNiacin,
+    '胆固醇' => l10n.nutritionNutrientCholesterol,
+    '饱和脂肪' => l10n.nutritionNutrientSaturatedFat,
+    _ => label,
+  };
 }
 
 /// 营养素排序：按 nutrientSortOrder 中的位置排序，未列出的排在最后

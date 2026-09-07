@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/recipes/widgets/nutrition_source_grid.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -100,6 +101,9 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
       ));
       // 蛋白质 NRV 10%（移到标题行，带 NRV 前缀）
@@ -119,6 +123,9 @@ void main() {
 
     testWidgets('进度条多段 = 各食材贡献比例（鸡蛋+番茄两段色）', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
       ));
       final bar = find.byKey(const Key('nrv_bar')).first;
@@ -141,6 +148,9 @@ void main() {
 
     testWidgets('点击项目展开食材明细，再点收起', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
       ));
       // 默认折叠：明细不可见
@@ -160,6 +170,9 @@ void main() {
 
     testWidgets('顶部切换改折叠按钮：选「全部」出现水分项', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
       ));
       // 折叠按钮显示当前「NRV 指标」

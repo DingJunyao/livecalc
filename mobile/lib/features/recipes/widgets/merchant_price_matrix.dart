@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../models/recipe_detail.dart';
@@ -34,12 +35,13 @@ List<MatrixRow> buildMatrixRows({
   required List<RecipeIngredient> ingredients,
   required List<MerchantPriceItem> prices,
   String userCurrency = 'CNY',
+  String Function(int merchantId)? merchantFallbackLabel,
 }) {
   if (ingredients.isEmpty) return const [];
   final names = <String>[];
   for (final p in prices) {
     for (final pr in p.prices) {
-      final n = _merchantLabel(pr);
+      final n = _merchantLabel(pr, merchantFallbackLabel);
       if (!names.contains(n)) names.add(n);
     }
   }
@@ -57,7 +59,7 @@ List<MatrixRow> buildMatrixRows({
     for (final name in names) {
       MerchantPriceRecord? match;
       for (final pr in item?.prices ?? const <MerchantPriceRecord>[]) {
-        final n = _merchantLabel(pr);
+        final n = _merchantLabel(pr, merchantFallbackLabel);
         if (n == name) {
           match = pr;
           break;
@@ -84,8 +86,11 @@ List<MatrixRow> buildMatrixRows({
 }
 
 /// 商家列标签：merchantName 为空时回退「商家{id}」
-String _merchantLabel(MerchantPriceRecord pr) =>
-    pr.merchantName.isEmpty ? '商家${pr.merchantId}' : pr.merchantName;
+String _merchantLabel(
+        MerchantPriceRecord pr, String Function(int merchantId)? fallback) =>
+    pr.merchantName.isEmpty
+        ? (fallback?.call(pr.merchantId) ?? '商家${pr.merchantId}')
+        : pr.merchantName;
 
 String _qtyText(RecipeIngredient ing) {
   if (ing.quantityRange != null && ing.quantityRange!.min > 0) {
@@ -138,10 +143,12 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final rows = buildMatrixRows(
         ingredients: widget.ingredients,
         prices: widget.prices,
-        userCurrency: widget.userCurrency);
+        userCurrency: widget.userCurrency,
+        merchantFallbackLabel: (id) => l10n.recipeMerchantFallbackName(id));
     final names = <String>[];
     for (final r in rows) {
       for (final name in r.cells.keys) {
@@ -156,9 +163,15 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
           Icon(Icons.table_chart_outlined,
               color: theme.colorScheme.tertiary, size: 20),
           const SizedBox(width: 8),
-          Text('商家比价推荐',
+          Expanded(
+            child: Text(
+              l10n.recipeMerchantPriceRecommendation,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
         ]),
         const SizedBox(height: 12),
         if (widget.loading && rows.isEmpty)
@@ -176,7 +189,7 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                   Icon(Icons.table_chart_outlined,
                       size: 40, color: theme.colorScheme.outline),
                   const SizedBox(height: 8),
-                  Text('暂无比价数据',
+                  Text(l10n.recipeNoMerchantComparisonData,
                       style: TextStyle(color: theme.colorScheme.outline)),
                 ],
               ),
@@ -234,7 +247,9 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                 BoxDecoration(color: theme.colorScheme.surfaceContainerHighest),
             children: [
               SizedBox(
-                  height: _rowHeight, child: _headerCell(theme, '食材 / 用量')),
+                  height: _rowHeight,
+                  child: _headerCell(theme,
+                      AppLocalizations.of(context).recipeIngredientAndAmount)),
             ],
           ),
           for (final row in rows)
@@ -272,7 +287,8 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                         onPressed: () => showDialog<void>(
                           context: context,
                           builder: (context) => AlertDialog(
-                            title: const Text('根据以下食材计算价格：'),
+                            title: Text(AppLocalizations.of(context)
+                                .recipeCalculatedFromIngredientsPrice),
                             scrollable: true,
                             content: Text(row.fallbackChain!,
                                 style: const TextStyle(
@@ -280,7 +296,8 @@ class _MerchantPriceMatrixState extends State<MerchantPriceMatrix> {
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('知道了'),
+                                child: Text(
+                                    AppLocalizations.of(context).recipeGotIt),
                               ),
                             ],
                           ),

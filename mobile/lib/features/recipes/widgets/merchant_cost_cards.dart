@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../repositories/recipe_repository.dart';
@@ -31,6 +32,7 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -38,9 +40,15 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
           Icon(Icons.store_outlined,
               color: theme.colorScheme.tertiary, size: 20),
           const SizedBox(width: 8),
-          Text('按商家预估成本',
+          Expanded(
+            child: Text(
+              l10n.recipeMerchantCostEstimate,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold)),
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+          ),
         ]),
         const SizedBox(height: 12),
         if (widget.loading && widget.merchants.isEmpty)
@@ -58,7 +66,7 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
                   Icon(Icons.store_outlined,
                       size: 40, color: theme.colorScheme.outline),
                   const SizedBox(height: 8),
-                  Text('暂无商家价格数据',
+                  Text(l10n.recipeNoMerchantPriceData,
                       style: TextStyle(color: theme.colorScheme.outline)),
                 ],
               ),
@@ -87,6 +95,7 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
   }
 
   Widget _buildCard(BuildContext context, ThemeData theme, MerchantCostItem m) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       width: 220,
       padding: const EdgeInsets.all(12),
@@ -122,16 +131,22 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
                   color: const Color(0xFFFF9800),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('最实惠 ✓',
+                child: Text(l10n.recipeBestValue,
                     style: theme.textTheme.labelSmall?.copyWith(
                         color: Colors.white, fontWeight: FontWeight.bold)),
               ),
           ]),
           const SizedBox(height: 4),
           Row(children: [
-            Text('覆盖 ${m.coveredCount}/${m.totalIngredients} 种食材',
+            Expanded(
+              child: Text(
+                l10n.recipeCoveredCount(m.coveredCount, m.totalIngredients),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.outline)),
+                    ?.copyWith(color: theme.colorScheme.outline),
+              ),
+            ),
             if (m.fallbackChains.isNotEmpty) ...[
               const SizedBox(width: 4),
               SizedBox(
@@ -157,20 +172,22 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
           const SizedBox(height: 2),
           Text.rich(TextSpan(children: [
             TextSpan(
-                text: '本店 ${formatMoney(m.coveredCost, widget.userCurrency)}',
+                text: l10n.recipeInStore(
+                    formatMoney(m.coveredCost, widget.userCurrency)),
                 style: theme.textTheme.bodySmall?.copyWith(
                     color: const Color(0xFF2E7D32),
                     fontWeight: FontWeight.w600)),
             if (m.externalCost > 0)
               TextSpan(
-                text: '  外部 ${formatMoney(m.externalCost, widget.userCurrency)}',
+                text:
+                    '  ${l10n.recipeExternal(formatMoney(m.externalCost, widget.userCurrency))}',
                 style: theme.textTheme.bodySmall
                     ?.copyWith(color: const Color(0xFFEF6C00)),
               ),
           ])),
           if (m.missingIngredients.isNotEmpty) ...[
             const SizedBox(height: 2),
-            Text('⚠ 需外购 ${m.missingIngredients.join('、')}',
+            Text(l10n.recipeMissingIngredients(m.missingIngredients.join(', ')),
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: const Color(0xFFF9A825)),
                 maxLines: 1,
@@ -182,10 +199,11 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
   }
 
   void _showFallbackDialog(BuildContext context, MerchantCostItem m) {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('根据以下食材计算价格：'),
+        title: Text(l10n.recipeCalculatedFromIngredientsPrice),
         scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -202,7 +220,7 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('知道了'),
+            child: Text(l10n.recipeGotIt),
           ),
         ],
       ),

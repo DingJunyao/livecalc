@@ -3,6 +3,7 @@ import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
 import '../models/recipe_detail.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
@@ -37,12 +38,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final state = ref.watch(recipeDetailPageProvider(widget.id));
     final detail = state.detail?.mergedWithPending();
 
     if (state.error != null && detail == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('菜谱详情')),
+        appBar: AppBar(title: Text(l10n.recipeDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -52,8 +54,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
     if (detail == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('菜谱详情')),
-        body: const LoadingIndicator(message: '加载中...'),
+        appBar: AppBar(title: Text(l10n.recipeDetailTitle)),
+        body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
 
@@ -64,7 +66,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final appBarActions = [
       IconButton(
         icon: const Icon(Icons.analytics_outlined),
-        tooltip: '菜谱分析',
+        tooltip: l10n.recipeAnalysisTitle,
         onPressed: () => context.push('/recipes/${widget.id}/analysis'),
       ),
       PopupMenuButton<String>(
@@ -74,20 +76,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         },
         itemBuilder: (context) => [
           if (!detail.isPublic)
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'publish',
               child: ListTile(
-                leading: Icon(Icons.cloud_upload_outlined),
-                title: Text('发布菜谱'),
+                leading: const Icon(Icons.cloud_upload_outlined),
+                title: Text(l10n.recipePublish),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
           if (isAdmin || !detail.isPublic)
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: ListTile(
-                leading: Icon(Icons.delete_outline),
-                title: Text('删除菜谱'),
+                leading: const Icon(Icons.delete_outline),
+                title: Text(l10n.recipeDelete),
                 contentPadding: EdgeInsets.zero,
               ),
             ),
@@ -162,7 +164,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                   ],
                   if (detail.pendingProposals.isNotEmpty) ...[
                     PendingChangeBanner(
-                      modifications: detail.pendingModificationLabels,
+                      modifications: _pendingModificationLabels(detail, l10n),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -203,19 +205,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   Future<void> _confirmPublish() async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('发布菜谱'),
-        content: const Text('发布后菜谱将对其他用户公开。普通用户提交后需管理员审核。'),
+        title: Text(l10n.recipePublishTitle),
+        content: Text(l10n.recipePublishDescription),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('提交发布'),
+            child: Text(l10n.recipeConfirmPublish),
           ),
         ],
       ),
@@ -227,8 +230,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.pending
-              ? (result.message.isEmpty ? '发布已提交，待管理员审核' : result.message)
-              : '菜谱已发布'),
+              ? (result.message.isEmpty
+                  ? l10n.recipePublishPending
+                  : result.message)
+              : l10n.recipePublished),
         ),
       );
       await ref.read(recipeDetailPageProvider(widget.id).notifier).load();
@@ -241,19 +246,20 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   Future<void> _confirmDelete() async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('删除菜谱'),
-        content: const Text('确定要删除这个菜谱吗？'),
+        title: Text(l10n.recipeDelete),
+        content: Text(l10n.recipeDeleteConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -263,7 +269,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       await _repository.deleteRecipe(widget.id);
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('菜谱已删除')));
+          .showSnackBar(SnackBar(content: Text(l10n.recipeDeleted)));
       context.pop();
     } catch (e) {
       if (mounted) {
@@ -320,10 +326,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   Future<void> _openLightbox(
       BuildContext context, List<String> urls, int initialIndex) async {
+    final l10n = AppLocalizations.of(context);
     await showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
-      barrierLabel: '关闭',
+      barrierLabel: l10n.commonClose,
       barrierColor: Colors.black.withValues(alpha: 0.92),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, _, __) =>
@@ -342,26 +349,30 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   Widget _buildHeader(ThemeData theme, RecipeDetail detail) {
+    final l10n = AppLocalizations.of(context);
     final chips = <Widget>[];
     if (detail.category != null && detail.category!.isNotEmpty) {
       chips.add(_chip(
           theme,
-          detail.category!,
+          _categoryLabel(detail.category!, l10n),
           theme.colorScheme.primaryContainer,
           theme.colorScheme.onPrimaryContainer));
     }
-    final diffLabel = _difficultyLabel(detail.difficulty);
+    final diffLabel = _difficultyLabel(detail.difficulty, l10n);
     if (diffLabel != null) {
       chips.add(_chip(theme, diffLabel, theme.colorScheme.tertiaryContainer,
           theme.colorScheme.onTertiaryContainer));
     }
     chips.add(_chip(
         theme,
-        '${detail.servings} 人份',
+        l10n.recipeServingsCount(detail.servings),
         theme.colorScheme.secondaryContainer,
         theme.colorScheme.onSecondaryContainer));
     if (!detail.isPublic) {
-      chips.add(_chip(theme, '未发布', theme.colorScheme.errorContainer,
+      chips.add(_chip(
+          theme,
+          l10n.recipeUnpublished,
+          theme.colorScheme.errorContainer,
           theme.colorScheme.onErrorContainer));
     }
     return Card(
@@ -376,11 +387,12 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('基本信息',
+                  child: Text(l10n.recipeBasicInfoTitle,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                 ),
-                _sectionEditButton(RecipeFormSection.basic, '编辑基本信息'),
+                _sectionEditButton(
+                    RecipeFormSection.basic, l10n.recipeEditBasicInfo),
               ],
             ),
             const SizedBox(height: 12),
@@ -409,26 +421,61 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  String? _difficultyLabel(String? d) {
-    switch (d) {
-      case 'simple':
-        return '简单';
-      case 'easy':
-        return '容易';
-      case 'medium':
-        return '中等';
-      case 'hard':
-        return '困难';
-      case 'expert':
-        return '专家';
-      default:
-        return null;
-    }
+  String? _difficultyLabel(String? d, AppLocalizations l10n) {
+    return switch (d) {
+      'simple' => l10n.recipeDifficultySimple,
+      'easy' => l10n.recipeDifficultyEasy,
+      'medium' => l10n.recipeDifficultyMedium,
+      'hard' => l10n.recipeDifficultyHard,
+      'expert' => l10n.recipeDifficultyExpert,
+      _ => null,
+    };
+  }
+
+  Set<String> _pendingModificationLabels(
+      RecipeDetail detail, AppLocalizations l10n) {
+    return {
+      for (final proposal in detail.pendingProposals)
+        for (final field in proposal.updateData.keys)
+          switch (field) {
+            'name' => l10n.recipeName,
+            'source' => l10n.recipeSource,
+            'category' => l10n.recipeCategory,
+            'tags' => l10n.recipeTags,
+            'cooking_steps' => l10n.recipeSteps,
+            'total_time_minutes' => l10n.recipeTotalTime,
+            'difficulty' => l10n.recipeDifficulty,
+            'servings' => l10n.recipeServingsField,
+            'tips' => l10n.recipeTips,
+            'description' => l10n.recipeIntroduction,
+            'images' => l10n.recipeImages,
+            'ingredients' => l10n.recipeIngredients,
+            'result_ingredient_id' => l10n.recipeResultIngredient,
+            _ => field,
+          },
+    };
+  }
+
+  String _categoryLabel(String category, AppLocalizations l10n) {
+    return switch (category) {
+      '荤菜' => l10n.recipeCategoryMeatDish,
+      '素菜' => l10n.recipeCategoryVegetableDish,
+      '水产' => l10n.recipeCategorySeafood,
+      '主食' => l10n.recipeCategoryStaple,
+      '汤与羹' || '汤与粥' => l10n.recipeCategorySoupPorridge,
+      '早餐' => l10n.recipeCategoryBreakfast,
+      '甜品' => l10n.recipeCategoryDessert,
+      '调料' => l10n.recipeCategorySeasoning,
+      '半成品' => l10n.recipeCategorySemiFinished,
+      '小食' => l10n.recipeCategorySnack,
+      _ => category,
+    };
   }
 
   // ---- 成本估算 + 成本趋势 ----
   Widget _buildCostCard(
       ThemeData theme, RecipeDetailPageState state, double ratio) {
+    final l10n = AppLocalizations.of(context);
     final userCurrency = ref.read(displayCurrencyProvider);
     return Card(
       child: Padding(
@@ -441,7 +488,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Icon(Icons.payments_outlined,
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
-                Text('成本估算',
+                Text(l10n.recipeCostEstimate,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
               ],
@@ -454,7 +501,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       height: 24,
                       child: CircularProgressIndicator(strokeWidth: 2))
                   : state.cost == null
-                      ? Text('暂无成本数据',
+                      ? Text(l10n.recipeNoCostData,
                           style: theme.textTheme.bodyMedium
                               ?.copyWith(color: theme.colorScheme.outline))
                       : Text(
@@ -483,6 +530,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   // ---- 原料列表 ----
   Widget _buildIngredientsCard(ThemeData theme, RecipeDetail detail,
       RecipeDetailPageState state, double ratio) {
+    final l10n = AppLocalizations.of(context);
     final costMap = <int, CostBreakdownItem>{};
     if (state.cost != null) {
       for (final c in state.cost!.breakdown) {
@@ -503,7 +551,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('原料',
+                  child: Text(l10n.recipeIngredients,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                 ),
@@ -517,12 +565,13 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                       .read(recipeDetailPageProvider(widget.id).notifier)
                       .setServings(detail.servings),
                 ),
-                _sectionEditButton(RecipeFormSection.ingredients, '编辑原料'),
+                _sectionEditButton(
+                    RecipeFormSection.ingredients, l10n.recipeEditIngredients),
               ],
             ),
             const SizedBox(height: 12),
             if (detail.ingredients.isEmpty)
-              Text('暂无原料',
+              Text(l10n.recipeNoIngredients,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.outline))
             else
@@ -546,9 +595,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   TableRow _buildIngredientRow(ThemeData theme, RecipeIngredient ing,
       CostBreakdownItem? cb, double ratio) {
+    final l10n = AppLocalizations.of(context);
     final userCurrency = ref.read(displayCurrencyProvider);
-    final qtyText = _scaledQuantity(ing, ratio);
-    final recommendedText = _scaledRecommendedQuantity(ing, ratio);
+    final qtyText = _scaledQuantity(ing, ratio, l10n);
+    final recommendedText = _scaledRecommendedQuantity(ing, ratio, l10n);
     final hasFallback =
         cb != null && cb.fallbackChain != null && cb.fallbackChain!.isNotEmpty;
     final canNavigate = ing.ingredientId != null;
@@ -589,7 +639,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         decoration: BoxDecoration(
                             color: theme.colorScheme.secondaryContainer,
                             borderRadius: BorderRadius.circular(4)),
-                        child: Text('可选',
+                        child: Text(l10n.recipeOptional,
                             style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onSecondaryContainer)),
                       ),
@@ -641,7 +691,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             children: [
               if (hasFallback)
                 Tooltip(
-                  message: '根据以下食材计算成本：\n${cb.fallbackChain}',
+                  message:
+                      '${l10n.recipeCalculatedFromIngredientsCost}\n${cb.fallbackChain}',
                   child: IconButton(
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(
@@ -693,10 +744,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     String ingredientName,
     String fallbackChain,
   ) {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('根据以下食材计算成本：'),
+        title: Text(l10n.recipeCalculatedFromIngredientsCost),
         scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -713,7 +765,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('知道了'),
+            child: Text(l10n.recipeGotIt),
           ),
         ],
       ),
@@ -721,7 +773,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   }
 
   /// 按份数比例缩放用量，与 Web 端 scaleQuantity 逻辑一致
-  String _scaledQuantity(RecipeIngredient ing, double ratio) {
+  String _scaledQuantity(
+      RecipeIngredient ing, double ratio, AppLocalizations l10n) {
     if (ing.quantityRange != null && ing.quantityRange!.min > 0) {
       final min = (ing.quantityRange!.min * ratio);
       final max = (ing.quantityRange!.max * ratio);
@@ -732,21 +785,29 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       return '${_fmt(num * ratio)}${ing.unit != null ? ' ${ing.unit}' : ''}';
     }
     if (ing.quantity != null && ing.quantity!.isNotEmpty) return ing.quantity!;
-    if (ing.originalQuantity != null && ing.originalQuantity!.isNotEmpty) {
-      return ing.originalQuantity!;
+    final original = ing.originalQuantity;
+    if (original != null && original.isNotEmpty) {
+      return switch (original) {
+        '适量' => l10n.recipeQuantityToTaste,
+        '少许' => l10n.recipeQuantitySmall,
+        _ => original,
+      };
     }
-    return '适量';
+    return l10n.recipeQuantityToTaste;
   }
 
-  String? _scaledRecommendedQuantity(RecipeIngredient ing, double ratio) {
+  String? _scaledRecommendedQuantity(
+      RecipeIngredient ing, double ratio, AppLocalizations l10n) {
     final range = ing.quantityRange;
     if (range == null || range.min <= 0) return null;
 
     final quantity = double.tryParse(ing.quantity ?? '');
     if (quantity == null || quantity <= 0) return null;
 
-    return '推荐 ${_fmt(quantity * ratio)}'
-        '${ing.unit != null ? ' ${ing.unit}' : ''}';
+    return l10n.recipeRecommendedQuantity(
+      _fmt(quantity * ratio),
+      ing.unit ?? '',
+    );
   }
 
   String _fmt(double n) {
@@ -755,6 +816,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   // ---- 做法步骤 ----
   Widget _buildStepsCard(ThemeData theme, RecipeDetail detail) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -767,16 +829,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('做法步骤',
+                  child: Text(l10n.recipeSteps,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                 ),
-                _sectionEditButton(RecipeFormSection.steps, '编辑做法'),
+                _sectionEditButton(
+                    RecipeFormSection.steps, l10n.recipeEditSteps),
               ],
             ),
             const SizedBox(height: 12),
             if (detail.steps.isEmpty)
-              Text('暂无步骤',
+              Text(l10n.recipeNoSteps,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.outline))
             else
@@ -818,15 +881,17 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                                       color: theme.colorScheme.outline),
                                   const SizedBox(width: 4),
                                   Text(
-                                      '${formatNumber(
-                                        step.durationMinutes!,
-                                        maximumFractionDigits:
-                                            step.durationMinutes! ==
-                                                    step.durationMinutes!
-                                                        .roundToDouble()
-                                                ? 0
-                                                : 1,
-                                      )} 分钟',
+                                      l10n.recipeStepMinutes(
+                                        formatNumber(
+                                          step.durationMinutes!,
+                                          maximumFractionDigits:
+                                              step.durationMinutes! ==
+                                                      step.durationMinutes!
+                                                          .roundToDouble()
+                                                  ? 0
+                                                  : 1,
+                                        ),
+                                      ),
                                       style: theme.textTheme.labelSmall
                                           ?.copyWith(
                                               color:
@@ -884,6 +949,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   // ---- 营养成分（表格 + 展开折叠 + NRV）----
   Widget _buildNutritionCard(
       ThemeData theme, RecipeDetailPageState state, double ratio) {
+    final l10n = AppLocalizations.of(context);
     final nutrition = state.nutrition;
     final core =
         nutrition?.perServingNutrients ?? const <String, NutritionItem>{};
@@ -900,10 +966,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                 Icon(Icons.local_fire_department,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text('营养成分（每份）',
+                Expanded(
+                  child: Text(
+                    l10n.recipeNutritionPerServing,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 if (!state.loadingNutrition && otherCount > 0)
                   TextButton.icon(
                     onPressed: () =>
@@ -913,7 +985,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                             ? Icons.expand_less
                             : Icons.expand_more,
                         size: 18),
-                    label: Text(_showAllNutrients ? '收起' : '展开 +$otherCount 项'),
+                    label: Text(_showAllNutrients
+                        ? l10n.nutritionCollapse
+                        : l10n.nutritionExpand(otherCount)),
                     style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -931,7 +1005,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                           height: 24,
                           child: CircularProgressIndicator(strokeWidth: 2))))
             else if (nutrition == null || core.isEmpty)
-              Text('暂无营养数据',
+              Text(l10n.nutritionNoData,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.outline))
             else
@@ -944,6 +1018,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   Widget _buildNutritionTable(
       ThemeData theme, Map<String, NutritionItem> core, double ratio) {
+    final l10n = AppLocalizations.of(context);
     // 构造行：默认 5 项优先，其余按排序顺序
     final rows = <String>[];
     // 能量键兼容（能量 / 热量）
@@ -971,12 +1046,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
         Container(
           color: theme.colorScheme.surfaceContainerHighest,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: const Row(
+          child: Row(
             children: [
-              Expanded(child: Text('营养素')),
+              Expanded(child: Text(l10n.nutritionNutrient)),
               SizedBox(
-                  width: valueW, child: Text('数量', textAlign: TextAlign.right)),
-              SizedBox(
+                  width: valueW,
+                  child:
+                      Text(l10n.nutritionQuantity, textAlign: TextAlign.right)),
+              const SizedBox(
                   width: nrvW, child: Text('NRV%', textAlign: TextAlign.right)),
             ],
           ),
@@ -986,7 +1063,8 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           final key = entry.value;
           final item = core[key]!;
           final isLast = entry.key == rows.length - 1;
-          final displayKey = nutrientDisplayLabel(key);
+          final displayKey =
+              localizedNutrientLabel(nutrientDisplayLabel(key), l10n);
           final valueStr =
               '${formatNumber(item.value * ratio, maximumFractionDigits: 1)}'
               ' ${item.unit}';
@@ -1013,7 +1091,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           );
         }),
         const SizedBox(height: 8),
-        Text('NRV = 营养素参考值百分比',
+        Text(l10n.nutritionNrvExplanation,
             style: theme.textTheme.labelSmall
                 ?.copyWith(color: theme.colorScheme.outline)),
       ],
@@ -1028,6 +1106,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
   // ---- 小贴士 ----
   Widget _buildTipsCard(ThemeData theme, List<String> tips) {
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -1040,16 +1119,16 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     color: theme.colorScheme.tertiary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('小贴士',
+                  child: Text(l10n.recipeTips,
                       style: theme.textTheme.titleMedium
                           ?.copyWith(fontWeight: FontWeight.bold)),
                 ),
-                _sectionEditButton(RecipeFormSection.tips, '编辑小贴士'),
+                _sectionEditButton(RecipeFormSection.tips, l10n.recipeEditTips),
               ],
             ),
             const SizedBox(height: 12),
             if (tips.isEmpty)
-              Text('暂无小贴士',
+              Text(l10n.recipeNoTips,
                   style: theme.textTheme.bodyMedium
                       ?.copyWith(color: theme.colorScheme.outline))
             else
@@ -1093,13 +1172,14 @@ class _ServingsStepper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _stepBtn(theme, Icons.remove, () => onChanged(value - 1), value <= 1),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text('$value 人份',
+          child: Text(l10n.recipeServingsCount(value),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
         ),
@@ -1187,6 +1267,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -1223,7 +1304,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
             right: 12,
             child: IconButton(
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
-              tooltip: '关闭',
+              tooltip: l10n.commonClose,
               onPressed: () => Navigator.of(context).pop(),
             ),
           ),
@@ -1259,7 +1340,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                 child: IconButton(
                   icon: const Icon(Icons.chevron_left,
                       color: Colors.white, size: 36),
-                  tooltip: '上一张',
+                  tooltip: l10n.recipePreviousImage,
                   onPressed: _prev,
                 ),
               ),
@@ -1272,7 +1353,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                 child: IconButton(
                   icon: const Icon(Icons.chevron_right,
                       color: Colors.white, size: 36),
-                  tooltip: '下一张',
+                  tooltip: l10n.recipeNextImage,
                   onPressed: _next,
                 ),
               ),

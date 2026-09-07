@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_formatters.dart';
+import '../../../l10n/app_localizations.dart';
 import '../repositories/recipe_repository.dart';
+import '../utils/nutrition_labels.dart';
 import '../utils/ingredient_colors.dart';
 
 /// NRV 指标白名单（对齐 web NRV_KEYS）
@@ -105,7 +107,7 @@ class NutrientContributor {
 
 /// 构建营养溯源展示数据（对齐 web displayNutrients 逻辑：NRV 过滤、同名去重、Top2 贡献）
 List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
-    {required bool showAll}) {
+    {required bool showAll, String unknownIngredientLabel = '未知食材'}) {
   final perServing = nutrition.perServingNutrients;
   if (perServing.isEmpty) return const [];
   final all = {...nutrition.allNutrients, ...perServing};
@@ -138,7 +140,9 @@ List<NutrientDisplay> buildNutrientDisplays(RecipeNutrition nutrition,
       final c = d.nutritionContribution[label] ?? d.nutritionContribution[key];
       if (c != null && c.value > 0) {
         contributors.add(NutrientContributor(
-          name: d.ingredientName.isEmpty ? '未知食材' : d.ingredientName,
+          name: d.ingredientName.isEmpty
+              ? unknownIngredientLabel
+              : d.ingredientName,
           value: c.value,
           unit: c.unit,
           color: getIngredientColor(d.ingredientId),
@@ -200,6 +204,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -210,22 +215,33 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
               Icon(Icons.food_bank_outlined,
                   color: theme.colorScheme.tertiary, size: 20),
               const SizedBox(width: 8),
-              Text('营养贡献溯源',
+              Expanded(
+                child: Text(
+                  l10n.recipeNutritionSources,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const Spacer(),
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 8),
               // 折叠按钮（下拉菜单式）：小屏下 2 段按钮拥挤，改为显示当前选择的菜单
               PopupMenuButton<bool>(
                 key: const Key('show_all_menu'),
                 initialValue: _showAll,
-                tooltip: '显示范围',
+                tooltip: l10n.recipeDisplayRange,
                 onSelected: (v) => setState(() => _showAll = v),
-                itemBuilder: (context) => const [
-                  PopupMenuItem(value: false, child: Text('NRV 指标')),
-                  PopupMenuItem(value: true, child: Text('全部')),
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                      value: false, child: Text(l10n.recipeNrvMetrics)),
+                  PopupMenuItem(
+                      value: true, child: Text(l10n.recipeAllNutrients)),
                 ],
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Text(_showAll ? '全部' : 'NRV 指标',
+                  Text(
+                      _showAll
+                          ? l10n.recipeAllNutrients
+                          : l10n.recipeNrvMetrics,
                       style: theme.textTheme.bodyMedium),
                   Icon(Icons.arrow_drop_down,
                       size: 20, color: theme.colorScheme.outline),
@@ -248,7 +264,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
                       Icon(Icons.food_bank_outlined,
                           size: 40, color: theme.colorScheme.outline),
                       const SizedBox(height: 8),
-                      Text('暂无营养数据',
+                      Text(l10n.nutritionNoData,
                           style: TextStyle(color: theme.colorScheme.outline)),
                     ],
                   ),
@@ -264,13 +280,17 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
 
   /// 单列全宽列表：每营养素一张卡片（保留空态分支）。
   Widget _buildList(ThemeData theme) {
-    final displays =
-        buildNutrientDisplays(widget.nutrition!, showAll: _showAll);
+    final l10n = AppLocalizations.of(context);
+    final displays = buildNutrientDisplays(
+      widget.nutrition!,
+      showAll: _showAll,
+      unknownIngredientLabel: l10n.recipeUnknownIngredient,
+    );
     if (displays.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(24),
         child: Center(
-            child: Text('暂无营养数据',
+            child: Text(l10n.nutritionNoData,
                 style: TextStyle(color: theme.colorScheme.outline))),
       );
     }
@@ -281,6 +301,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
 
   /// 单列卡片：标题行（箭头+名称+NRV%+总量）+ 多色段进度条 +（展开）食材明细。
   Widget _buildItem(ThemeData theme, NutrientDisplay d) {
+    final l10n = AppLocalizations.of(context);
     final expanded = _expanded.contains(d.key);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -307,7 +328,7 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
                     size: 18, color: theme.colorScheme.outline),
                 const SizedBox(width: 4),
                 Expanded(
-                  child: Text(d.label,
+                  child: Text(localizedNutrientLabel(d.label, l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.labelLarge

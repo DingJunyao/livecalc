@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/recipes/widgets/cost_proportion_chart.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -84,6 +85,9 @@ void main() {
 
     testWidgets('标题行显示总价，清单行显示 名称+金额+百分比', (tester) async {
       await tester.pumpWidget(const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
             body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
@@ -96,6 +100,9 @@ void main() {
 
     testWidgets('点击进度条段高亮对应清单行', (tester) async {
       await tester.pumpWidget(const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
             body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));
@@ -115,6 +122,9 @@ void main() {
 
     testWidgets('点击清单行高亮对应行', (tester) async {
       await tester.pumpWidget(const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
             body: CostProportionChart(breakdown: breakdown, totalCost: 6)),
       ));

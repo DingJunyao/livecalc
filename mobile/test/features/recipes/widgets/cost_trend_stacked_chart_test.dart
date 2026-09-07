@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 // fl_chart 的 tooltip 是画布绘制（TextPainter），widget finder 无法定位；
@@ -280,6 +281,9 @@ void main() {
     testWidgets('范围改下拉：选「年」回调 year', (tester) async {
       String? got;
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
@@ -313,6 +317,9 @@ void main() {
 
     testWidgets('堆叠面积倒序绘制：顶层序列在 lineBarsData 首位（填充层间可见）', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
@@ -349,6 +356,9 @@ void main() {
 
     testWidgets('点食材标签高亮：焦点色带不透明、非焦点淡化', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
@@ -394,6 +404,9 @@ void main() {
 
     testWidgets('点击图表显示 tooltip（食材成本明细）', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [
@@ -439,6 +452,9 @@ void main() {
       // 无 breakdown → buildStackedSeries 返回空 → 走 avg/min/max 回退折线图。
       // 单线图仅命中 1 个 spot，tooltip 条数必须与其一致（否则 painter throw）。
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendStackedChart(
             points: [point('07-01'), point('07-02'), point('07-03')],

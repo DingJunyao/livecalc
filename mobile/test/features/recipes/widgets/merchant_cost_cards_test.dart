@@ -1,4 +1,6 @@
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 import 'package:flutter/gestures.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -7,7 +9,10 @@ import 'package:com_a4ding_livecalc/features/recipes/widgets/merchant_cost_cards
 void main() {
   group('MerchantCostCards', () {
     testWidgets('渲染商家卡片：名称/总价/覆盖数/需外购', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantCostCards(
             merchants: [
@@ -35,7 +40,10 @@ void main() {
     });
 
     testWidgets('fallback 链点击信息图标弹出弹窗', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantCostCards(
             merchants: [
@@ -66,7 +74,10 @@ void main() {
     });
 
     testWidgets('loading 显示进度条', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantCostCards(merchants: [], loading: true),
         ),
@@ -77,7 +88,10 @@ void main() {
     });
 
     testWidgets('多商家横向滚动全部渲染', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantCostCards(
             merchants: [
@@ -119,7 +133,10 @@ void main() {
     });
 
     testWidgets('鼠标滚轮可水平滚动商家卡片', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: MerchantCostCards(
             merchants: [
@@ -188,6 +205,9 @@ void main() {
 
     testWidgets('暗色模式推荐卡用暗色表面色', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: ThemeData(brightness: Brightness.dark),
         home: const Scaffold(
           body: MerchantCostCards(
@@ -219,7 +239,10 @@ void main() {
     });
 
     testWidgets('空数据显示空态', (tester) async {
-      await tester.pumpWidget(const MaterialApp(
+      await tester.pumpWidget(MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(body: MerchantCostCards(merchants: [], loading: false)),
       ));
       expect(find.text('暂无商家价格数据'), findsOneWidget);

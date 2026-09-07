@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/smooth_path.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../repositories/recipe_repository.dart';
@@ -36,6 +37,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -43,10 +45,16 @@ class _CostTrendChartState extends State<CostTrendChart> {
           children: [
             Icon(Icons.show_chart, color: widget.color, size: 20),
             const SizedBox(width: 8),
-            Text('成本趋势',
+            Expanded(
+              child: Text(
+                l10n.recipeCostTrend,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold)),
-            const Spacer(),
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const SizedBox(width: 8),
             _buildRangeToggle(),
           ],
         ),
@@ -73,20 +81,15 @@ class _CostTrendChartState extends State<CostTrendChart> {
   // 范围切换用 DropdownButton 而非 SegmentedButton：多段按钮在窄屏标题行
   // 会撑爆报 RIGHT OVERFLOWED，下拉宽度自适应当前选中项根治溢出
   Widget _buildRangeToggle() {
-    const labels = {
-      'week': '周',
-      'month': '月',
-      'quarter': '季',
-      'year': '年',
-      'all': '全部',
-    };
+    final l10n = AppLocalizations.of(context);
     return DropdownButton<_Range>(
       key: const Key('range_dropdown'),
       value: _selected,
       isDense: true,
       underline: const SizedBox.shrink(),
       items: _Range.values
-          .map((r) => DropdownMenuItem(value: r, child: Text(labels[r.name]!)))
+          .map((r) =>
+              DropdownMenuItem(value: r, child: Text(_rangeLabel(r, l10n))))
           .toList(),
       onChanged: (r) {
         if (r == null) return;
@@ -103,7 +106,18 @@ class _CostTrendChartState extends State<CostTrendChart> {
     );
   }
 
+  String _rangeLabel(_Range range, AppLocalizations l10n) {
+    return switch (range) {
+      _Range.week => l10n.recipeWeek,
+      _Range.month => l10n.recipeMonth,
+      _Range.quarter => l10n.recipeQuarter,
+      _Range.year => l10n.recipeYear,
+      _Range.all => l10n.recipeAll,
+    };
+  }
+
   Widget _buildBody(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
     if (widget.loading && widget.points.isEmpty) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
@@ -114,7 +128,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
           children: [
             Icon(Icons.show_chart, size: 48, color: theme.colorScheme.outline),
             const SizedBox(height: 8),
-            Text('暂无成本历史数据',
+            Text(l10n.recipeNoCostTrend,
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.outline)),
           ],
@@ -216,6 +230,7 @@ class _Tooltip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final p = points[index];
     return Center(
       child: Container(
@@ -231,12 +246,13 @@ class _Tooltip extends StatelessWidget {
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
             const SizedBox(height: 2),
-            Text('均价 ${formatMoney(p.avgCost, userCurrency)}',
+            Text(
+                '${l10n.recipeAverageLabel} ${formatMoney(p.avgCost, userCurrency)}',
                 style: theme.textTheme.labelMedium?.copyWith(
                     color: theme.colorScheme.onInverseSurface,
                     fontWeight: FontWeight.bold)),
             Text(
-                '区间 ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
+                '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
           ],
@@ -298,8 +314,9 @@ class _TrendPainter extends CustomPainter {
       final v = minV + (maxV - minV) * i / 4;
       final y = yAt(v);
       canvas.drawLine(Offset(plotLeft, y), Offset(plotRight, y), gridPaint);
-      final label =
-          gridStep < 1 ? formatMoney(v, userCurrency) : formatMoney(v.round(), userCurrency);
+      final label = gridStep < 1
+          ? formatMoney(v, userCurrency)
+          : formatMoney(v.round(), userCurrency);
       _text(canvas, label, Offset(2, y - 7), gridColor, 9);
     }
 

@@ -3274,6 +3274,1014 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'（已关闭）'**
   String get mapMerchantClosedSuffix;
+
+  /// No description provided for @commonGotIt.
+  ///
+  /// In zh, this message translates to:
+  /// **'知道了'**
+  String get commonGotIt;
+
+  /// No description provided for @homeTodayTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日推荐'**
+  String get homeTodayTitle;
+
+  /// No description provided for @homeGenerating.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在生成今日推荐，AI 正在为你搭配食谱…'**
+  String get homeGenerating;
+
+  /// No description provided for @homeEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无推荐，点击刷新按钮生成今日推荐'**
+  String get homeEmpty;
+
+  /// No description provided for @homeSwapAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'换一换'**
+  String get homeSwapAll;
+
+  /// No description provided for @homeNotSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'未设置'**
+  String get homeNotSet;
+
+  /// No description provided for @homeBreakfast.
+  ///
+  /// In zh, this message translates to:
+  /// **'早餐'**
+  String get homeBreakfast;
+
+  /// No description provided for @homeLunch.
+  ///
+  /// In zh, this message translates to:
+  /// **'午餐'**
+  String get homeLunch;
+
+  /// No description provided for @homeDinner.
+  ///
+  /// In zh, this message translates to:
+  /// **'晚餐'**
+  String get homeDinner;
+
+  /// No description provided for @homeProtein.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白'**
+  String get homeProtein;
+
+  /// No description provided for @homeCarbs.
+  ///
+  /// In zh, this message translates to:
+  /// **'碳水'**
+  String get homeCarbs;
+
+  /// No description provided for @homeFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪'**
+  String get homeFat;
+
+  /// No description provided for @homeSwap.
+  ///
+  /// In zh, this message translates to:
+  /// **'换一个'**
+  String get homeSwap;
+
+  /// No description provided for @homeConnectionTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络连接超时，请检查网络后重试'**
+  String get homeConnectionTimeout;
+
+  /// No description provided for @homeConnectionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络连接失败，请检查网络后重试'**
+  String get homeConnectionFailed;
+
+  /// No description provided for @homeServerBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器繁忙，请稍后重试'**
+  String get homeServerBusy;
+
+  /// No description provided for @homeResourceNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'请求的资源不存在'**
+  String get homeResourceNotFound;
+
+  /// No description provided for @homeLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败，请稍后重试'**
+  String get homeLoadFailed;
+
+  /// No description provided for @homeGeneratingTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐正在生成中，请稍后刷新查看'**
+  String get homeGeneratingTimeout;
+
+  /// No description provided for @homeSwapLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天这餐换得太多次了，明天再来吧'**
+  String get homeSwapLimit;
+
+  /// No description provided for @homeSwapFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'换菜失败，请稍后重试'**
+  String get homeSwapFailed;
+
+  /// No description provided for @homeSwapTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'换菜超时，请稍后重试'**
+  String get homeSwapTimeout;
+
+  /// No description provided for @homeSwapAllLimit.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天换得太多次了，明天再来吧'**
+  String get homeSwapAllLimit;
+
+  /// No description provided for @homeRefreshFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新失败，请稍后重试'**
+  String get homeRefreshFailed;
+
+  /// No description provided for @homeRefreshTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新超时，请稍后重试'**
+  String get homeRefreshTimeout;
+
+  /// No description provided for @recipeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get recipeTitle;
+
+  /// No description provided for @recipeDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱详情'**
+  String get recipeDetailTitle;
+
+  /// No description provided for @recipeAnalysisTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱分析'**
+  String get recipeAnalysisTitle;
+
+  /// No description provided for @recipeAnalysisChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'分析'**
+  String get recipeAnalysisChip;
+
+  /// No description provided for @recipeSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索菜谱...'**
+  String get recipeSearch;
+
+  /// No description provided for @recipeCreateTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建菜谱'**
+  String get recipeCreateTooltip;
+
+  /// No description provided for @recipeLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载菜谱...'**
+  String get recipeLoading;
+
+  /// No description provided for @recipeEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无菜谱'**
+  String get recipeEmptyTitle;
+
+  /// No description provided for @recipeEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角创建第一个菜谱'**
+  String get recipeEmptySubtitle;
+
+  /// No description provided for @recipeCategory.
+  ///
+  /// In zh, this message translates to:
+  /// **'分类'**
+  String get recipeCategory;
+
+  /// No description provided for @recipeDifficulty.
+  ///
+  /// In zh, this message translates to:
+  /// **'难度'**
+  String get recipeDifficulty;
+
+  /// No description provided for @recipeUsedIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'所用食材'**
+  String get recipeUsedIngredients;
+
+  /// No description provided for @recipeSearchIngredientsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索食材（可多选）'**
+  String get recipeSearchIngredientsHint;
+
+  /// No description provided for @recipeSpecialConditions.
+  ///
+  /// In zh, this message translates to:
+  /// **'特殊条件'**
+  String get recipeSpecialConditions;
+
+  /// No description provided for @recipeConditionUnpriced.
+  ///
+  /// In zh, this message translates to:
+  /// **'存在原料没有维护价格'**
+  String get recipeConditionUnpriced;
+
+  /// No description provided for @recipeConditionUnnourished.
+  ///
+  /// In zh, this message translates to:
+  /// **'存在原料没有维护营养成分'**
+  String get recipeConditionUnnourished;
+
+  /// No description provided for @recipeServingsCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 人份'**
+  String recipeServingsCount(Object count);
+
+  /// No description provided for @recipeCostPerServings.
+  ///
+  /// In zh, this message translates to:
+  /// **'{amount} / {count} 人份'**
+  String recipeCostPerServings(Object amount, Object count);
+
+  /// No description provided for @recipeCaloriesPerServing.
+  ///
+  /// In zh, this message translates to:
+  /// **'{amount} kcal/份'**
+  String recipeCaloriesPerServing(Object amount);
+
+  /// No description provided for @recipeCategoryMeatDish.
+  ///
+  /// In zh, this message translates to:
+  /// **'荤菜'**
+  String get recipeCategoryMeatDish;
+
+  /// No description provided for @recipeCategoryVegetableDish.
+  ///
+  /// In zh, this message translates to:
+  /// **'素菜'**
+  String get recipeCategoryVegetableDish;
+
+  /// No description provided for @recipeCategorySeafood.
+  ///
+  /// In zh, this message translates to:
+  /// **'水产'**
+  String get recipeCategorySeafood;
+
+  /// No description provided for @recipeCategoryStaple.
+  ///
+  /// In zh, this message translates to:
+  /// **'主食'**
+  String get recipeCategoryStaple;
+
+  /// No description provided for @recipeCategorySoupPorridge.
+  ///
+  /// In zh, this message translates to:
+  /// **'汤与粥'**
+  String get recipeCategorySoupPorridge;
+
+  /// No description provided for @recipeCategoryBreakfast.
+  ///
+  /// In zh, this message translates to:
+  /// **'早餐'**
+  String get recipeCategoryBreakfast;
+
+  /// No description provided for @recipeCategoryDessert.
+  ///
+  /// In zh, this message translates to:
+  /// **'甜品'**
+  String get recipeCategoryDessert;
+
+  /// No description provided for @recipeCategorySeasoning.
+  ///
+  /// In zh, this message translates to:
+  /// **'调料'**
+  String get recipeCategorySeasoning;
+
+  /// No description provided for @recipeCategorySemiFinished.
+  ///
+  /// In zh, this message translates to:
+  /// **'半成品'**
+  String get recipeCategorySemiFinished;
+
+  /// No description provided for @recipeCategorySnack.
+  ///
+  /// In zh, this message translates to:
+  /// **'小食'**
+  String get recipeCategorySnack;
+
+  /// No description provided for @recipeDifficultySimple.
+  ///
+  /// In zh, this message translates to:
+  /// **'简单'**
+  String get recipeDifficultySimple;
+
+  /// No description provided for @recipeDifficultyEasy.
+  ///
+  /// In zh, this message translates to:
+  /// **'容易'**
+  String get recipeDifficultyEasy;
+
+  /// No description provided for @recipeDifficultyMedium.
+  ///
+  /// In zh, this message translates to:
+  /// **'中等'**
+  String get recipeDifficultyMedium;
+
+  /// No description provided for @recipeDifficultyHard.
+  ///
+  /// In zh, this message translates to:
+  /// **'困难'**
+  String get recipeDifficultyHard;
+
+  /// No description provided for @recipeDifficultyExpert.
+  ///
+  /// In zh, this message translates to:
+  /// **'专家'**
+  String get recipeDifficultyExpert;
+
+  /// No description provided for @recipePublish.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布菜谱'**
+  String get recipePublish;
+
+  /// No description provided for @recipeDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除菜谱'**
+  String get recipeDelete;
+
+  /// No description provided for @recipePublishTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布菜谱'**
+  String get recipePublishTitle;
+
+  /// No description provided for @recipePublishDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布后菜谱将对其他用户公开。普通用户提交后需管理员审核。'**
+  String get recipePublishDescription;
+
+  /// No description provided for @recipeConfirmPublish.
+  ///
+  /// In zh, this message translates to:
+  /// **'提交发布'**
+  String get recipeConfirmPublish;
+
+  /// No description provided for @recipePublishPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布已提交，待管理员审核'**
+  String get recipePublishPending;
+
+  /// No description provided for @recipePublished.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱已发布'**
+  String get recipePublished;
+
+  /// No description provided for @recipeDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除这个菜谱吗？'**
+  String get recipeDeleteConfirm;
+
+  /// No description provided for @recipeDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱已删除'**
+  String get recipeDeleted;
+
+  /// No description provided for @recipeUnpublished.
+  ///
+  /// In zh, this message translates to:
+  /// **'未发布'**
+  String get recipeUnpublished;
+
+  /// No description provided for @recipeBasicInfoTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'基本信息'**
+  String get recipeBasicInfoTitle;
+
+  /// No description provided for @recipeEditBasicInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑基本信息'**
+  String get recipeEditBasicInfo;
+
+  /// No description provided for @recipeCostEstimate.
+  ///
+  /// In zh, this message translates to:
+  /// **'成本估算'**
+  String get recipeCostEstimate;
+
+  /// No description provided for @recipeNoCostData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无成本数据'**
+  String get recipeNoCostData;
+
+  /// No description provided for @recipeIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get recipeIngredients;
+
+  /// No description provided for @recipeEditIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑原料'**
+  String get recipeEditIngredients;
+
+  /// No description provided for @recipeNoIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无原料'**
+  String get recipeNoIngredients;
+
+  /// No description provided for @recipeOptional.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选'**
+  String get recipeOptional;
+
+  /// No description provided for @recipeCalculatedFromIngredientsCost.
+  ///
+  /// In zh, this message translates to:
+  /// **'根据以下食材计算成本：'**
+  String get recipeCalculatedFromIngredientsCost;
+
+  /// No description provided for @recipeGotIt.
+  ///
+  /// In zh, this message translates to:
+  /// **'知道了'**
+  String get recipeGotIt;
+
+  /// No description provided for @recipeRecommendedQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐 {quantity} {unit}'**
+  String recipeRecommendedQuantity(Object quantity, Object unit);
+
+  /// No description provided for @recipeSteps.
+  ///
+  /// In zh, this message translates to:
+  /// **'做法步骤'**
+  String get recipeSteps;
+
+  /// No description provided for @recipeEditSteps.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑做法'**
+  String get recipeEditSteps;
+
+  /// No description provided for @recipeNoSteps.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无步骤'**
+  String get recipeNoSteps;
+
+  /// No description provided for @recipeStepMinutes.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 分钟'**
+  String recipeStepMinutes(Object count);
+
+  /// No description provided for @recipeNutritionPerServing.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养成分（每份）'**
+  String get recipeNutritionPerServing;
+
+  /// No description provided for @recipeTips.
+  ///
+  /// In zh, this message translates to:
+  /// **'小贴士'**
+  String get recipeTips;
+
+  /// No description provided for @recipeEditTips.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑小贴士'**
+  String get recipeEditTips;
+
+  /// No description provided for @recipeNoTips.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无小贴士'**
+  String get recipeNoTips;
+
+  /// No description provided for @recipePreviousImage.
+  ///
+  /// In zh, this message translates to:
+  /// **'上一张'**
+  String get recipePreviousImage;
+
+  /// No description provided for @recipeNextImage.
+  ///
+  /// In zh, this message translates to:
+  /// **'下一张'**
+  String get recipeNextImage;
+
+  /// No description provided for @recipeCreateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建菜谱'**
+  String get recipeCreateTitle;
+
+  /// No description provided for @recipeEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑菜谱'**
+  String get recipeEditTitle;
+
+  /// No description provided for @recipeName.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱名称'**
+  String get recipeName;
+
+  /// No description provided for @recipeIntroduction.
+  ///
+  /// In zh, this message translates to:
+  /// **'简介'**
+  String get recipeIntroduction;
+
+  /// No description provided for @recipeServingsField.
+  ///
+  /// In zh, this message translates to:
+  /// **'份数'**
+  String get recipeServingsField;
+
+  /// No description provided for @recipeTotalTimeMinutes.
+  ///
+  /// In zh, this message translates to:
+  /// **'总时间（分钟）'**
+  String get recipeTotalTimeMinutes;
+
+  /// No description provided for @recipeResultIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'成品产出原料'**
+  String get recipeResultIngredient;
+
+  /// No description provided for @recipeImageManager.
+  ///
+  /// In zh, this message translates to:
+  /// **'配图管理'**
+  String get recipeImageManager;
+
+  /// No description provided for @recipeUpload.
+  ///
+  /// In zh, this message translates to:
+  /// **'上传'**
+  String get recipeUpload;
+
+  /// No description provided for @recipeCoverHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'第一张图片为封面。'**
+  String get recipeCoverHint;
+
+  /// No description provided for @recipeCover.
+  ///
+  /// In zh, this message translates to:
+  /// **'封面'**
+  String get recipeCover;
+
+  /// No description provided for @recipeDeleteImage.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除图片'**
+  String get recipeDeleteImage;
+
+  /// No description provided for @recipeDragToReorder.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖动排序'**
+  String get recipeDragToReorder;
+
+  /// No description provided for @recipeUnitUnspecified.
+  ///
+  /// In zh, this message translates to:
+  /// **'不指定'**
+  String get recipeUnitUnspecified;
+
+  /// No description provided for @recipeIngredientField.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get recipeIngredientField;
+
+  /// No description provided for @recipeAddIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加原料'**
+  String get recipeAddIngredient;
+
+  /// No description provided for @recipeMoveUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'上移'**
+  String get recipeMoveUp;
+
+  /// No description provided for @recipeMoveDown.
+  ///
+  /// In zh, this message translates to:
+  /// **'下移'**
+  String get recipeMoveDown;
+
+  /// No description provided for @recipeQuantityNumeric.
+  ///
+  /// In zh, this message translates to:
+  /// **'数值'**
+  String get recipeQuantityNumeric;
+
+  /// No description provided for @recipeQuantityToTaste.
+  ///
+  /// In zh, this message translates to:
+  /// **'适量'**
+  String get recipeQuantityToTaste;
+
+  /// No description provided for @recipeQuantitySmall.
+  ///
+  /// In zh, this message translates to:
+  /// **'少许'**
+  String get recipeQuantitySmall;
+
+  /// No description provided for @recipeRecommendedAmount.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐量'**
+  String get recipeRecommendedAmount;
+
+  /// No description provided for @recipeMinimum.
+  ///
+  /// In zh, this message translates to:
+  /// **'最小'**
+  String get recipeMinimum;
+
+  /// No description provided for @recipeMaximum.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大'**
+  String get recipeMaximum;
+
+  /// No description provided for @recipeNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get recipeNote;
+
+  /// No description provided for @recipeStepNumberLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'步骤 {index}'**
+  String recipeStepNumberLabel(Object index);
+
+  /// No description provided for @recipeStepContent.
+  ///
+  /// In zh, this message translates to:
+  /// **'内容'**
+  String get recipeStepContent;
+
+  /// No description provided for @recipeStepDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'耗时（分钟）'**
+  String get recipeStepDuration;
+
+  /// No description provided for @recipeStepTips.
+  ///
+  /// In zh, this message translates to:
+  /// **'步骤提示'**
+  String get recipeStepTips;
+
+  /// No description provided for @recipeAddStep.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加步骤'**
+  String get recipeAddStep;
+
+  /// No description provided for @recipeAddTip.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加小贴士'**
+  String get recipeAddTip;
+
+  /// No description provided for @recipeSaveChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存修改'**
+  String get recipeSaveChanges;
+
+  /// No description provided for @recipeNoSectionChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前部分没有修改'**
+  String get recipeNoSectionChanges;
+
+  /// No description provided for @recipeNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入菜谱名称'**
+  String get recipeNameRequired;
+
+  /// No description provided for @recipeLoadFailedError.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱加载失败，请重试'**
+  String get recipeLoadFailedError;
+
+  /// No description provided for @recipeImagePickFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择图片失败，请重试'**
+  String get recipeImagePickFailed;
+
+  /// No description provided for @recipeImageUploaded.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片已上传，保存后生效'**
+  String get recipeImageUploaded;
+
+  /// No description provided for @recipeImageUploadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'图片上传失败，请重试'**
+  String get recipeImageUploadFailed;
+
+  /// No description provided for @recipeIngredientQuantityIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'第 {row} 行原料的用量组合不完整：仅支持推荐值、推荐值+区间或仅区间'**
+  String recipeIngredientQuantityIncomplete(Object row);
+
+  /// No description provided for @recipeIngredientFallbackName.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料 #{id}'**
+  String recipeIngredientFallbackName(Object id);
+
+  /// No description provided for @recipeSaveSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存成功'**
+  String get recipeSaveSuccess;
+
+  /// No description provided for @recipeCostShare.
+  ///
+  /// In zh, this message translates to:
+  /// **'食材成本占比'**
+  String get recipeCostShare;
+
+  /// No description provided for @recipeUnknownIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知食材'**
+  String get recipeUnknownIngredient;
+
+  /// No description provided for @recipeOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get recipeOther;
+
+  /// No description provided for @recipeCostTrend.
+  ///
+  /// In zh, this message translates to:
+  /// **'成本趋势'**
+  String get recipeCostTrend;
+
+  /// No description provided for @recipeNoCostTrend.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无成本历史数据'**
+  String get recipeNoCostTrend;
+
+  /// No description provided for @recipeNoStackedCostTrend.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无成本趋势数据'**
+  String get recipeNoStackedCostTrend;
+
+  /// No description provided for @recipeWeek.
+  ///
+  /// In zh, this message translates to:
+  /// **'周'**
+  String get recipeWeek;
+
+  /// No description provided for @recipeMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'月'**
+  String get recipeMonth;
+
+  /// No description provided for @recipeQuarter.
+  ///
+  /// In zh, this message translates to:
+  /// **'季'**
+  String get recipeQuarter;
+
+  /// No description provided for @recipeYear.
+  ///
+  /// In zh, this message translates to:
+  /// **'年'**
+  String get recipeYear;
+
+  /// No description provided for @recipeAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get recipeAll;
+
+  /// No description provided for @recipeAverageLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'均价'**
+  String get recipeAverageLabel;
+
+  /// No description provided for @recipeRangeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'区间'**
+  String get recipeRangeLabel;
+
+  /// No description provided for @recipeTotalLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'合计'**
+  String get recipeTotalLabel;
+
+  /// No description provided for @recipeMerchantCostEstimate.
+  ///
+  /// In zh, this message translates to:
+  /// **'按商家预估成本'**
+  String get recipeMerchantCostEstimate;
+
+  /// No description provided for @recipeNoMerchantPriceData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无商家价格数据'**
+  String get recipeNoMerchantPriceData;
+
+  /// No description provided for @recipeBestValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'最实惠 ✓'**
+  String get recipeBestValue;
+
+  /// No description provided for @recipeCoveredCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆盖 {covered}/{total} 种食材'**
+  String recipeCoveredCount(Object covered, Object total);
+
+  /// No description provided for @recipeInStore.
+  ///
+  /// In zh, this message translates to:
+  /// **'本店 {amount}'**
+  String recipeInStore(Object amount);
+
+  /// No description provided for @recipeExternal.
+  ///
+  /// In zh, this message translates to:
+  /// **'外部 {amount}'**
+  String recipeExternal(Object amount);
+
+  /// No description provided for @recipeMissingIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'⚠ 需外购 {ingredients}'**
+  String recipeMissingIngredients(Object ingredients);
+
+  /// No description provided for @recipeMerchantFallbackName.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家 #{id}'**
+  String recipeMerchantFallbackName(Object id);
+
+  /// No description provided for @recipeMerchantPriceRecommendation.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家比价推荐'**
+  String get recipeMerchantPriceRecommendation;
+
+  /// No description provided for @recipeNoMerchantComparisonData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无比价数据'**
+  String get recipeNoMerchantComparisonData;
+
+  /// No description provided for @recipeIngredientAndAmount.
+  ///
+  /// In zh, this message translates to:
+  /// **'食材 / 用量'**
+  String get recipeIngredientAndAmount;
+
+  /// No description provided for @recipeNutritionSources.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养贡献溯源'**
+  String get recipeNutritionSources;
+
+  /// No description provided for @recipeNrvMetrics.
+  ///
+  /// In zh, this message translates to:
+  /// **'NRV 指标'**
+  String get recipeNrvMetrics;
+
+  /// No description provided for @recipeAllNutrients.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get recipeAllNutrients;
+
+  /// No description provided for @recipeDisplayRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示范围'**
+  String get recipeDisplayRange;
+
+  /// No description provided for @recipeSource.
+  ///
+  /// In zh, this message translates to:
+  /// **'来源'**
+  String get recipeSource;
+
+  /// No description provided for @recipeTags.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get recipeTags;
+
+  /// No description provided for @recipeTotalTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'总时间'**
+  String get recipeTotalTime;
+
+  /// No description provided for @recipeImages.
+  ///
+  /// In zh, this message translates to:
+  /// **'配图'**
+  String get recipeImages;
+
+  /// No description provided for @recipeCalculatedFromIngredientsPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'根据以下食材计算价格：'**
+  String get recipeCalculatedFromIngredientsPrice;
+
+  /// No description provided for @nutritionNutrientCopper.
+  ///
+  /// In zh, this message translates to:
+  /// **'铜'**
+  String get nutritionNutrientCopper;
+
+  /// No description provided for @nutritionNutrientManganese.
+  ///
+  /// In zh, this message translates to:
+  /// **'锰'**
+  String get nutritionNutrientManganese;
+
+  /// No description provided for @nutritionNutrientSelenium.
+  ///
+  /// In zh, this message translates to:
+  /// **'硒'**
+  String get nutritionNutrientSelenium;
 }
 
 class _AppLocalizationsDelegate

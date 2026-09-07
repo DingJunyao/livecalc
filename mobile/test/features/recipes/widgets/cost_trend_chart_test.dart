@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/recipes/widgets/cost_trend_chart.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -11,6 +12,9 @@ void main() {
     testWidgets('范围切换改下拉：选「周」回调 7 天且按钮显示「周」', (tester) async {
       int? got;
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendChart(
             points: [
@@ -37,6 +41,9 @@ void main() {
     testWidgets('范围下拉含「年」：选「年」回调 365 天', (tester) async {
       int? got;
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendChart(
             points: [_point('07-01', 5)],
@@ -54,6 +61,9 @@ void main() {
 
     testWidgets('切换范围加载中：有旧数据时顶部显示进度条', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendChart(
             points: [_point('07-01', 5), _point('07-02', 6)],
@@ -72,6 +82,9 @@ void main() {
 
     testWidgets('点击图表显示 tooltip（均价+区间），无需拖动', (tester) async {
       await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: CostTrendChart(
             points: [

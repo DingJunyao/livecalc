@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/currency_fmt.dart';
 
 /// 单个成本占比段（进度条段 / 清单行共用）
@@ -16,11 +17,16 @@ class CostProportionItem {
 
 /// 构建成本占比数据：降序，前 5 + 其余合并为「其他」（对齐 web CostProportionChart）。
 List<CostProportionItem> buildCostProportionItems(
-    List<CostBreakdownItem> breakdown) {
+  List<CostBreakdownItem> breakdown, {
+  String unknownIngredientLabel = '未知食材',
+  String otherLabel = '其他',
+}) {
   if (breakdown.isEmpty) return const [];
   final items = breakdown
       .map((b) => CostProportionItem(
-          name: b.ingredientName.isEmpty ? '未知食材' : b.ingredientName,
+          name: b.ingredientName.isEmpty
+              ? unknownIngredientLabel
+              : b.ingredientName,
           value: b.cost,
           color: getIngredientColor(b.ingredientId)))
       .toList()
@@ -29,7 +35,7 @@ List<CostProportionItem> buildCostProportionItems(
     final top5 = items.sublist(0, 5);
     final otherValue = items.sublist(5).fold<double>(0, (s, i) => s + i.value);
     top5.add(CostProportionItem(
-        name: '其他', value: otherValue, color: const Color(0xFFE0E0E0)));
+        name: otherLabel, value: otherValue, color: const Color(0xFFE0E0E0)));
     return top5;
   }
   return items;
@@ -67,7 +73,12 @@ class _CostProportionChartState extends State<CostProportionChart> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final items = buildCostProportionItems(widget.breakdown);
+    final l10n = AppLocalizations.of(context);
+    final items = buildCostProportionItems(
+      widget.breakdown,
+      unknownIngredientLabel: l10n.recipeUnknownIngredient,
+      otherLabel: l10n.recipeOther,
+    );
     final hasData = !widget.loading && items.isNotEmpty;
     // 总价：优先外部传入，否则按各项求和（保留原口径）
     final total = widget.totalCost > 0
@@ -84,7 +95,7 @@ class _CostProportionChartState extends State<CostProportionChart> {
                   color: theme.colorScheme.tertiary, size: 20),
               const SizedBox(width: 8),
               Expanded(
-                child: Text('食材成本占比',
+                child: Text(l10n.recipeCostShare,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold)),
               ),
@@ -110,7 +121,7 @@ class _CostProportionChartState extends State<CostProportionChart> {
                       Icon(Icons.bar_chart_outlined,
                           size: 40, color: theme.colorScheme.outline),
                       const SizedBox(height: 8),
-                      Text('暂无成本数据',
+                      Text(l10n.recipeNoCostData,
                           style: TextStyle(color: theme.colorScheme.outline)),
                     ],
                   ),

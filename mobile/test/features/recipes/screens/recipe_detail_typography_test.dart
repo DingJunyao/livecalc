@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -152,6 +153,9 @@ void main() {
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: const RecipeDetailScreen(id: 1),
       ),
@@ -172,6 +176,9 @@ void main() {
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: const RecipeDetailScreen(id: 1),
       ),
@@ -234,6 +241,9 @@ void main() {
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: const RecipeDetailScreen(id: 1),
       ),
@@ -291,6 +301,9 @@ void main() {
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: const RecipeDetailScreen(id: 1),
       ),
@@ -340,6 +353,9 @@ void main() {
             RecipeDetailPageNotifier(RecipeRepository(client: mockClient), 1)),
       ],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         theme: AppTheme.lightTheme,
         home: const RecipeDetailScreen(id: 1),
       ),
