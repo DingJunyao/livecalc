@@ -2188,4 +2188,250 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get nutritionNutrientSelenium => '硒';
+
+  @override
+  String get barcodeScannerTitle => '扫描条码';
+
+  @override
+  String get entityUnitsMaintain => '维护';
+
+  @override
+  String get entityUnitsNoCustomUnits => '暂无自定义单位';
+
+  @override
+  String get entityUnitsUnmappedTitle => '待配置单位（来自菜谱，默认 100 g）';
+
+  @override
+  String get entityUnitsSourceAuto => '自动';
+
+  @override
+  String get entityUnitsSourceManual => '手动';
+
+  @override
+  String get entityUnitsDensityInfo => '密度信息';
+
+  @override
+  String get entityUnitsNoDensityData => '暂无密度数据';
+
+  @override
+  String get placeKindHome => '家';
+
+  @override
+  String get placeKindWork => '公司';
+
+  @override
+  String get placeKindOther => '其他';
+
+  @override
+  String get placeAdd => '添加地点';
+
+  @override
+  String get placeDeleteTitle => '删除地点';
+
+  @override
+  String placeDeleteMessage(Object name) {
+    return '确定删除「$name」吗？';
+  }
+
+  @override
+  String get placeAdded => '已添加地点';
+
+  @override
+  String get placeSaved => '已保存';
+
+  @override
+  String get placeEmptyTitle => '暂无地点';
+
+  @override
+  String get placeEmptySubtitle => '点右下角 + 添加（家、公司等）';
+
+  @override
+  String get placeMoreActions => '更多操作';
+
+  @override
+  String get placeSetDefault => '设为默认';
+
+  @override
+  String placeSubtitle(Object kind, int radius, Object coordinates) {
+    return '$kind · 视野 $radius km · $coordinates';
+  }
+
+  @override
+  String get placeMapFeatureDisabled => '地图功能已关闭，无法维护常用地点';
+
+  @override
+  String get placeOperationFailedRetry => '操作失败，请重试';
+
+  @override
+  String get placeSelectOnMapRequired => '请在地图上选择位置';
+
+  @override
+  String get placeNameRequired => '请填写名称';
+
+  @override
+  String get userPlaceEditTitle => '编辑地点';
+
+  @override
+  String get userPlaceNameLabel => '名称（如：家、公司）';
+
+  @override
+  String get userPlaceTypeLabel => '类型';
+
+  @override
+  String get userPlaceRadiusLabel => '地图视野范围（聚焦时缩放）';
+
+  @override
+  String get userPlaceAddressLabel => '地址（可选）';
+
+  @override
+  String get userPlacePositionLabel => '位置（点击地图选择）';
+
+  @override
+  String get nutritionGoalsDescription => '设置每日营养目标，用于饮食推荐。';
+
+  @override
+  String nutritionGoalEnergyLabel(Object unit) {
+    return '每日热量（$unit）';
+  }
+
+  @override
+  String get nutritionGoalProteinLabel => '蛋白质（g）';
+
+  @override
+  String get nutritionGoalCarbLabel => '碳水（g）';
+
+  @override
+  String get nutritionGoalFatLabel => '脂肪（g）';
+
+  @override
+  String get nutritionGoalCalorieRange => '每日热量需在 500-5000 千卡范围内';
+
+  @override
+  String get nutritionGoalProteinRange => '蛋白质需在 10-300 克范围内';
+
+  @override
+  String get nutritionGoalCarbRange => '碳水需在 50-600 克范围内';
+
+  @override
+  String get nutritionGoalFatRange => '脂肪需在 10-200 克范围内';
+
+  @override
+  String get unitPreferencesDescription => '设置你的默认单位，所有页面将按此显示与填写。';
+
+  @override
+  String get unitPreferencesEnergyUnit => '能量单位';
+
+  @override
+  String get unitPreferencesMassUnit => '默认质量单位';
+
+  @override
+  String get unitPreferencesVolumeUnit => '默认容积单位';
+
+  @override
+  String get unitPreferencesPriceUnit => '默认记价单位（含个/包/瓶）';
+
+  @override
+  String get unitPreferencesKilocalories => '千卡（kcal）';
+
+  @override
+  String get unitPreferencesKilojoules => '千焦（kJ）';
+
+  @override
+  String get unitPreferencesMassHint => '克（g）';
+
+  @override
+  String get unitPreferencesVolumeHint => '毫升（ml）';
+
+  @override
+  String get unitPreferencesPriceHint => '个';
+
+  @override
+  String get unitPreferencesNone => '不设置';
+
+  @override
+  String unitPreferencesAbbreviation(Object abbreviation) {
+    return '（$abbreviation）';
+  }
+
+  @override
+  String get unitPreferencesLoadFailed => '单位列表加载失败，请重试';
+
+  @override
+  String get proposalStatusApproved => '已生效';
+
+  @override
+  String get proposalStatusRejected => '已驳回';
+
+  @override
+  String get proposalStatusPending => '待审';
+
+  @override
+  String get proposalTypeIngredient => '食材';
+
+  @override
+  String get proposalTypeNutrition => '营养';
+
+  @override
+  String get proposalTypeUnit => '单位';
+
+  @override
+  String get proposalTypeMerchant => '商家';
+
+  @override
+  String get proposalTypeMerchantMerge => '商家合并';
+
+  @override
+  String get proposalTypeProduct => '商品';
+
+  @override
+  String get proposalTypeRecipe => '菜谱';
+
+  @override
+  String get proposalTypeUsdaMatch => 'USDA 匹配';
+
+  @override
+  String get proposalTypeUnknown => '未知';
+
+  @override
+  String get proposalActionCreate => '新增';
+
+  @override
+  String get proposalActionUpdate => '修改';
+
+  @override
+  String get proposalActionMerge => '合并';
+
+  @override
+  String get proposalActionPublish => '发布';
+
+  @override
+  String get proposalActionUnknown => '未知';
+
+  @override
+  String proposalDetailTitle(int id) {
+    return '提议 #$id';
+  }
+
+  @override
+  String proposalEntityId(Object id) {
+    return '实体 ID: $id';
+  }
+
+  @override
+  String get proposalReviewComment => '审核意见';
+
+  @override
+  String get proposalChanges => '变更内容';
+
+  @override
+  String get proposalNoDetails => '无明细';
+
+  @override
+  String get proposalValueNone => '无';
+
+  @override
+  String get proposalEmptyTitle => '暂无提议';
+
+  @override
+  String get proposalEmptySubtitle => '对共享数据的修改会显示在这里';
 }

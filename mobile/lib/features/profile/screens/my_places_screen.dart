@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../l10n/app_localizations.dart';
 import '../models/user_place.dart';
 import '../providers/profile_provider.dart';
 import 'user_place_form_screen.dart';
@@ -21,24 +22,11 @@ class MyPlacesScreen extends ConsumerStatefulWidget {
   ConsumerState<MyPlacesScreen> createState() => _MyPlacesScreenState();
 }
 
-const _placeKinds = [
-  (label: '家', value: 'home'),
-  (label: '公司', value: 'work'),
-  (label: '其他', value: 'custom'),
-];
-
 class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(placeListProvider.notifier).load());
-  }
-
-  String _kindLabel(String? kind) {
-    for (final k in _placeKinds) {
-      if (k.value == kind) return k.label;
-    }
-    return '其他';
   }
 
   IconData _kindIcon(String? kind) {
@@ -57,28 +45,30 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  Future<void> _run(Future<void> Function() op, String errMsg) async {
+  Future<void> _run(Future<void> Function() op) async {
     try {
       await op();
     } catch (e) {
-      _toast(placeWriteError(e));
+      if (!mounted) return;
+      _toast(placeWriteError(e, AppLocalizations.of(context)));
     }
   }
 
   Future<void> _confirmDelete(UserPlace place) async {
+    final l10n = AppLocalizations.of(context);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('删除地点'),
-        content: Text('确定删除「${place.name}」吗？'),
+        title: Text(l10n.placeDeleteTitle),
+        content: Text(l10n.placeDeleteMessage(place.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('删除'),
+            child: Text(l10n.commonDelete),
           ),
         ],
       ),
@@ -86,7 +76,6 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
     if (ok != true || !mounted) return;
     await _run(
       () => ref.read(placeListProvider.notifier).remove(place.id),
-      '删除失败',
     );
   }
 
@@ -101,7 +90,8 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
       ),
     );
     if (result?.saved == true && mounted) {
-      _toast(place == null ? '已添加地点' : '已保存');
+      final l10n = AppLocalizations.of(context);
+      _toast(place == null ? l10n.placeAdded : l10n.placeSaved);
     }
   }
 
@@ -109,12 +99,13 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(placeListProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的地点')),
+      appBar: AppBar(title: Text(l10n.profileMyPlaces)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openEditor(),
-        tooltip: '添加地点',
+        tooltip: l10n.placeAdd,
         child: const Icon(Icons.add),
       ),
       body: state.loading && state.items.isEmpty
@@ -125,10 +116,10 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                   onRetry: () => ref.read(placeListProvider.notifier).load(),
                 )
               : state.items.isEmpty
-                  ? const EmptyState(
+                  ? EmptyState(
                       icon: Icons.place_outlined,
-                      title: '暂无地点',
-                      subtitle: '点右下角 + 添加（家、公司等）')
+                      title: l10n.placeEmptyTitle,
+                      subtitle: l10n.placeEmptySubtitle)
                   : RefreshIndicator(
                       onRefresh: () =>
                           ref.read(placeListProvider.notifier).load(),
@@ -166,15 +157,22 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                                   Text(place.address!,
                                       style: theme.textTheme.bodySmall),
                                 Text(
-                                  '${_kindLabel(place.kind)} · 视野 ${(place.viewRadiusKm ?? 5).round()} km · '
-                                  '${place.latitude.toStringAsFixed(4)}, ${place.longitude.toStringAsFixed(4)}',
+                                  l10n.placeSubtitle(
+                                    savedPlaceKindLabel(
+                                      place.kind ?? 'custom',
+                                      l10n,
+                                    ),
+                                    (place.viewRadiusKm ?? 5).round(),
+                                    '${place.latitude.toStringAsFixed(4)}, '
+                                    '${place.longitude.toStringAsFixed(4)}',
+                                  ),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.outline),
                                 ),
                               ],
                             ),
                             trailing: PopupMenuButton<String>(
-                              tooltip: '更多操作',
+                              tooltip: l10n.placeMoreActions,
                               onSelected: (v) async {
                                 switch (v) {
                                   case 'default':
@@ -182,7 +180,6 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                                       () => ref
                                           .read(placeListProvider.notifier)
                                           .setDefault(place.id),
-                                      '设置默认失败',
                                     );
                                   case 'edit':
                                     _openEditor(place: place);
@@ -194,15 +191,15 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                                 PopupMenuItem(
                                   enabled: !place.isDefault,
                                   value: 'default',
-                                  child: const Text('设为默认'),
+                                  child: Text(l10n.placeSetDefault),
                                 ),
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                   value: 'edit',
-                                  child: Text('编辑'),
+                                  child: Text(l10n.commonEdit),
                                 ),
-                                const PopupMenuItem(
+                                PopupMenuItem(
                                   value: 'delete',
-                                  child: Text('删除'),
+                                  child: Text(l10n.commonDelete),
                                 ),
                               ],
                             ),

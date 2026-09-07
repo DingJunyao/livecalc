@@ -2235,4 +2235,261 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get nutritionNutrientSelenium => 'السيلينيوم';
+
+  @override
+  String get barcodeScannerTitle => 'مسح الرمز الشريطي';
+
+  @override
+  String get entityUnitsMaintain => 'الصيانة';
+
+  @override
+  String get entityUnitsNoCustomUnits => 'لا توجد وحدات مخصصة';
+
+  @override
+  String get entityUnitsUnmappedTitle =>
+      'وحدات للتهيئة (من الوصفات، افتراضي 100 غرام)';
+
+  @override
+  String get entityUnitsSourceAuto => 'تلقائي';
+
+  @override
+  String get entityUnitsSourceManual => 'يدوي';
+
+  @override
+  String get entityUnitsDensityInfo => 'معلومات الكثافة';
+
+  @override
+  String get entityUnitsNoDensityData => 'لا توجد بيانات كثافة';
+
+  @override
+  String get placeKindHome => 'المنزل';
+
+  @override
+  String get placeKindWork => 'العمل';
+
+  @override
+  String get placeKindOther => 'أخرى';
+
+  @override
+  String get placeAdd => 'إضافة مكان';
+
+  @override
+  String get placeDeleteTitle => 'حذف المكان';
+
+  @override
+  String placeDeleteMessage(Object name) {
+    return 'هل تريد حذف \"$name\"؟';
+  }
+
+  @override
+  String get placeAdded => 'تمت إضافة المكان';
+
+  @override
+  String get placeSaved => 'تم حفظ المكان';
+
+  @override
+  String get placeEmptyTitle => 'لا توجد أماكن محفوظة';
+
+  @override
+  String get placeEmptySubtitle =>
+      'اضغط + في الزاوية السفلية اليمنى لإضافة مكان (المنزل، العمل، إلخ.)';
+
+  @override
+  String get placeMoreActions => 'مزيد من الإجراءات';
+
+  @override
+  String get placeSetDefault => 'تعيين كافتراضي';
+
+  @override
+  String placeSubtitle(Object kind, int radius, Object coordinates) {
+    return '$kind · النطاق $radius كم · $coordinates';
+  }
+
+  @override
+  String get placeMapFeatureDisabled =>
+      'ميزات الخريطة معطلة، لذا يتعذر إدارة الأماكن المحفوظة.';
+
+  @override
+  String get placeOperationFailedRetry => 'فشلت العملية. أعد المحاولة.';
+
+  @override
+  String get placeSelectOnMapRequired => 'اختر موقعًا على الخريطة';
+
+  @override
+  String get placeNameRequired => 'أدخل اسم المكان';
+
+  @override
+  String get userPlaceEditTitle => 'تعديل المكان';
+
+  @override
+  String get userPlaceNameLabel => 'الاسم (مثال: المنزل، العمل)';
+
+  @override
+  String get userPlaceTypeLabel => 'النوع';
+
+  @override
+  String get userPlaceRadiusLabel => 'نطاق عرض الخريطة (تكبير عند التركيز)';
+
+  @override
+  String get userPlaceAddressLabel => 'العنوان (اختياري)';
+
+  @override
+  String get userPlacePositionLabel => 'الموقع (انقر على الخريطة للاختيار)';
+
+  @override
+  String get nutritionGoalsDescription =>
+      'اضبط أهداف التغذية اليومية لتوصيات الوجبات.';
+
+  @override
+  String nutritionGoalEnergyLabel(Object unit) {
+    return 'السعرات اليومية ($unit)';
+  }
+
+  @override
+  String get nutritionGoalProteinLabel => 'البروتين (غ)';
+
+  @override
+  String get nutritionGoalCarbLabel => 'الكربوهيدرات (غ)';
+
+  @override
+  String get nutritionGoalFatLabel => 'الدهون (غ)';
+
+  @override
+  String get nutritionGoalCalorieRange =>
+      'يجب أن تكون السعرات اليومية بين 500 و5000 سعرة حرارية';
+
+  @override
+  String get nutritionGoalProteinRange =>
+      'يجب أن يتراوح البروتين بين 10 و300 غرام';
+
+  @override
+  String get nutritionGoalCarbRange =>
+      'يجب أن تتراوح الكربوهيدرات بين 50 و600 غرام';
+
+  @override
+  String get nutritionGoalFatRange => 'يجب أن تتراوح الدهون بين 10 و200 غرام';
+
+  @override
+  String get unitPreferencesDescription =>
+      'حدد وحداتك الافتراضية؛ ستعرض الصفحات الكميات وفقًا لها عند العرض والإدخال.';
+
+  @override
+  String get unitPreferencesEnergyUnit => 'وحدة الطاقة';
+
+  @override
+  String get unitPreferencesMassUnit => 'وحدة الكتلة الافتراضية';
+
+  @override
+  String get unitPreferencesVolumeUnit => 'وحدة الحجم الافتراضية';
+
+  @override
+  String get unitPreferencesPriceUnit =>
+      'وحدة التسعير الافتراضية (تشمل القطعة/العبوة/الزجاجة)';
+
+  @override
+  String get unitPreferencesKilocalories => 'سعرات حرارية (kcal)';
+
+  @override
+  String get unitPreferencesKilojoules => 'كيلوجول (kJ)';
+
+  @override
+  String get unitPreferencesMassHint => 'غرامات (غ)';
+
+  @override
+  String get unitPreferencesVolumeHint => 'ملليلترات (مل)';
+
+  @override
+  String get unitPreferencesPriceHint => 'قطعة';
+
+  @override
+  String get unitPreferencesNone => 'غير محدد';
+
+  @override
+  String unitPreferencesAbbreviation(Object abbreviation) {
+    return '($abbreviation)';
+  }
+
+  @override
+  String get unitPreferencesLoadFailed =>
+      'تعذر تحميل قائمة الوحدات. أعد المحاولة.';
+
+  @override
+  String get proposalStatusApproved => 'ساري';
+
+  @override
+  String get proposalStatusRejected => 'مرفوض';
+
+  @override
+  String get proposalStatusPending => 'قيد المراجعة';
+
+  @override
+  String get proposalTypeIngredient => 'مكوّن';
+
+  @override
+  String get proposalTypeNutrition => 'تغذية';
+
+  @override
+  String get proposalTypeUnit => 'وحدة';
+
+  @override
+  String get proposalTypeMerchant => 'تاجر';
+
+  @override
+  String get proposalTypeMerchantMerge => 'دمج التجار';
+
+  @override
+  String get proposalTypeProduct => 'منتج';
+
+  @override
+  String get proposalTypeRecipe => 'وصفة';
+
+  @override
+  String get proposalTypeUsdaMatch => 'مطابقة USDA';
+
+  @override
+  String get proposalTypeUnknown => 'غير معروف';
+
+  @override
+  String get proposalActionCreate => 'إضافة';
+
+  @override
+  String get proposalActionUpdate => 'تعديل';
+
+  @override
+  String get proposalActionMerge => 'دمج';
+
+  @override
+  String get proposalActionPublish => 'نشر';
+
+  @override
+  String get proposalActionUnknown => 'غير معروف';
+
+  @override
+  String proposalDetailTitle(int id) {
+    return 'الاقتراح #$id';
+  }
+
+  @override
+  String proposalEntityId(Object id) {
+    return 'معرّف الكيان: $id';
+  }
+
+  @override
+  String get proposalReviewComment => 'ملاحظة المراجعة';
+
+  @override
+  String get proposalChanges => 'التغييرات';
+
+  @override
+  String get proposalNoDetails => 'لا توجد تفاصيل';
+
+  @override
+  String get proposalValueNone => 'لا يوجد';
+
+  @override
+  String get proposalEmptyTitle => 'لا توجد اقتراحات';
+
+  @override
+  String get proposalEmptySubtitle =>
+      'ستظهر تعديلاتك على البيانات المشتركة هنا';
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
+import '../../l10n/app_localizations.dart';
+
 Future<String?> showBarcodeScannerSheet(BuildContext context) {
   return showModalBottomSheet<String>(
     context: context,
@@ -39,6 +41,7 @@ class _BarcodeScannerSheetState extends State<_BarcodeScannerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return SafeArea(
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.8,
@@ -48,14 +51,14 @@ class _BarcodeScannerSheetState extends State<_BarcodeScannerSheet> {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      '扫描条码',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      l10n.barcodeScannerTitle,
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                     ),
                   ),
                   IconButton(
-                    tooltip: '关闭',
+                    tooltip: l10n.commonClose,
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close, color: Colors.white),
                   ),

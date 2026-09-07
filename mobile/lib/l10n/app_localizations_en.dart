@@ -2252,4 +2252,260 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nutritionNutrientSelenium => 'Selenium';
+
+  @override
+  String get barcodeScannerTitle => 'Scan barcode';
+
+  @override
+  String get entityUnitsMaintain => 'Maintain';
+
+  @override
+  String get entityUnitsNoCustomUnits => 'No custom units';
+
+  @override
+  String get entityUnitsUnmappedTitle =>
+      'Units to configure (from recipes, default 100 g)';
+
+  @override
+  String get entityUnitsSourceAuto => 'Auto';
+
+  @override
+  String get entityUnitsSourceManual => 'Manual';
+
+  @override
+  String get entityUnitsDensityInfo => 'Density information';
+
+  @override
+  String get entityUnitsNoDensityData => 'No density data';
+
+  @override
+  String get placeKindHome => 'Home';
+
+  @override
+  String get placeKindWork => 'Work';
+
+  @override
+  String get placeKindOther => 'Other';
+
+  @override
+  String get placeAdd => 'Add place';
+
+  @override
+  String get placeDeleteTitle => 'Delete place';
+
+  @override
+  String placeDeleteMessage(Object name) {
+    return 'Delete \"$name\"?';
+  }
+
+  @override
+  String get placeAdded => 'Place added';
+
+  @override
+  String get placeSaved => 'Place saved';
+
+  @override
+  String get placeEmptyTitle => 'No saved places';
+
+  @override
+  String get placeEmptySubtitle =>
+      'Tap + in the lower-right corner to add one (Home, Work, etc.)';
+
+  @override
+  String get placeMoreActions => 'More actions';
+
+  @override
+  String get placeSetDefault => 'Set as default';
+
+  @override
+  String placeSubtitle(Object kind, int radius, Object coordinates) {
+    return '$kind · Range $radius km · $coordinates';
+  }
+
+  @override
+  String get placeMapFeatureDisabled =>
+      'Map features are disabled, so saved places cannot be maintained.';
+
+  @override
+  String get placeOperationFailedRetry => 'Operation failed. Try again.';
+
+  @override
+  String get placeSelectOnMapRequired => 'Select a location on the map';
+
+  @override
+  String get placeNameRequired => 'Enter a place name';
+
+  @override
+  String get userPlaceEditTitle => 'Edit place';
+
+  @override
+  String get userPlaceNameLabel => 'Name (for example: Home, Work)';
+
+  @override
+  String get userPlaceTypeLabel => 'Type';
+
+  @override
+  String get userPlaceRadiusLabel => 'Map view range (zoom when focused)';
+
+  @override
+  String get userPlaceAddressLabel => 'Address (optional)';
+
+  @override
+  String get userPlacePositionLabel => 'Location (tap the map to choose)';
+
+  @override
+  String get nutritionGoalsDescription =>
+      'Set daily nutrition goals for meal recommendations.';
+
+  @override
+  String nutritionGoalEnergyLabel(Object unit) {
+    return 'Daily calories ($unit)';
+  }
+
+  @override
+  String get nutritionGoalProteinLabel => 'Protein (g)';
+
+  @override
+  String get nutritionGoalCarbLabel => 'Carbs (g)';
+
+  @override
+  String get nutritionGoalFatLabel => 'Fat (g)';
+
+  @override
+  String get nutritionGoalCalorieRange =>
+      'Daily calories must be between 500 and 5000 kcal';
+
+  @override
+  String get nutritionGoalProteinRange =>
+      'Protein must be between 10 and 300 g';
+
+  @override
+  String get nutritionGoalCarbRange => 'Carbs must be between 50 and 600 g';
+
+  @override
+  String get nutritionGoalFatRange => 'Fat must be between 10 and 200 g';
+
+  @override
+  String get unitPreferencesDescription =>
+      'Set your default units; every page will display and fill amounts with them.';
+
+  @override
+  String get unitPreferencesEnergyUnit => 'Energy unit';
+
+  @override
+  String get unitPreferencesMassUnit => 'Default mass unit';
+
+  @override
+  String get unitPreferencesVolumeUnit => 'Default volume unit';
+
+  @override
+  String get unitPreferencesPriceUnit =>
+      'Default pricing unit (including each / pack / bottle)';
+
+  @override
+  String get unitPreferencesKilocalories => 'Kilocalories (kcal)';
+
+  @override
+  String get unitPreferencesKilojoules => 'Kilojoules (kJ)';
+
+  @override
+  String get unitPreferencesMassHint => 'Grams (g)';
+
+  @override
+  String get unitPreferencesVolumeHint => 'Milliliters (ml)';
+
+  @override
+  String get unitPreferencesPriceHint => 'Each';
+
+  @override
+  String get unitPreferencesNone => 'Not set';
+
+  @override
+  String unitPreferencesAbbreviation(Object abbreviation) {
+    return '($abbreviation)';
+  }
+
+  @override
+  String get unitPreferencesLoadFailed =>
+      'Could not load the unit list. Try again.';
+
+  @override
+  String get proposalStatusApproved => 'Applied';
+
+  @override
+  String get proposalStatusRejected => 'Rejected';
+
+  @override
+  String get proposalStatusPending => 'Pending';
+
+  @override
+  String get proposalTypeIngredient => 'Ingredient';
+
+  @override
+  String get proposalTypeNutrition => 'Nutrition';
+
+  @override
+  String get proposalTypeUnit => 'Unit';
+
+  @override
+  String get proposalTypeMerchant => 'Merchant';
+
+  @override
+  String get proposalTypeMerchantMerge => 'Merchant merge';
+
+  @override
+  String get proposalTypeProduct => 'Product';
+
+  @override
+  String get proposalTypeRecipe => 'Recipe';
+
+  @override
+  String get proposalTypeUsdaMatch => 'USDA match';
+
+  @override
+  String get proposalTypeUnknown => 'Unknown';
+
+  @override
+  String get proposalActionCreate => 'New';
+
+  @override
+  String get proposalActionUpdate => 'Modified';
+
+  @override
+  String get proposalActionMerge => 'Merge';
+
+  @override
+  String get proposalActionPublish => 'Publish';
+
+  @override
+  String get proposalActionUnknown => 'Unknown';
+
+  @override
+  String proposalDetailTitle(int id) {
+    return 'Proposal #$id';
+  }
+
+  @override
+  String proposalEntityId(Object id) {
+    return 'Entity ID: $id';
+  }
+
+  @override
+  String get proposalReviewComment => 'Review comment';
+
+  @override
+  String get proposalChanges => 'Changes';
+
+  @override
+  String get proposalNoDetails => 'No details';
+
+  @override
+  String get proposalValueNone => 'None';
+
+  @override
+  String get proposalEmptyTitle => 'No proposals';
+
+  @override
+  String get proposalEmptySubtitle =>
+      'Your edits to shared data will appear here';
 }

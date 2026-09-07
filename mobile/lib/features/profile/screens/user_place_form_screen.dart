@@ -4,27 +4,33 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../merchants/widgets/map_point_picker.dart';
 import '../models/user_place.dart';
 import '../providers/profile_provider.dart';
 
-const _placeKinds = [
-  (label: '家', value: 'home'),
-  (label: '公司', value: 'work'),
-  (label: '其他', value: 'custom'),
-];
+const savedPlaceKindValues = ['home', 'work', 'custom'];
 const _placeRadii = [1, 2, 5, 10, 20, 50];
 
-String placeWriteError(Object e) {
+String savedPlaceKindLabel(String kind, AppLocalizations l10n) {
+  return switch (kind) {
+    'home' => l10n.placeKindHome,
+    'work' => l10n.placeKindWork,
+    'custom' => l10n.placeKindOther,
+    _ => l10n.placeKindOther,
+  };
+}
+
+String placeWriteError(Object e, AppLocalizations l10n) {
   if (e is DioException && e.response?.statusCode == 403) {
-    return '地图功能已关闭，无法维护常用地点';
+    return l10n.placeMapFeatureDisabled;
   }
   if (e is DioException &&
       e.response?.data is Map &&
       (e.response!.data as Map)['detail'] is String) {
     return (e.response!.data as Map)['detail'] as String;
   }
-  return '操作失败，请重试';
+  return l10n.placeOperationFailedRetry;
 }
 
 class UserPlaceFormResult {
@@ -85,10 +91,11 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    final l10n = AppLocalizations.of(context);
     final coordinate = _coordinate;
     if (coordinate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请在地图上选择位置')),
+        SnackBar(content: Text(l10n.placeSelectOnMapRequired)),
       );
       return;
     }
@@ -116,7 +123,7 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(placeWriteError(error))),
+        SnackBar(content: Text(placeWriteError(error, l10n))),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -125,9 +132,12 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final editing = widget.place != null;
     return Scaffold(
-      appBar: AppBar(title: Text(editing ? '编辑地点' : '添加地点')),
+      appBar: AppBar(
+        title: Text(editing ? l10n.userPlaceEditTitle : l10n.placeAdd),
+      ),
       body: SafeArea(
         top: false,
         child: Form(
@@ -140,24 +150,25 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
                 TextFormField(
                   controller: _nameController,
                   textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: '名称（如：家、公司）',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.userPlaceNameLabel,
+                    border: const OutlineInputBorder(),
                   ),
-                  validator: (value) =>
-                      (value == null || value.trim().isEmpty) ? '请填写名称' : null,
+                  validator: (value) => (value == null || value.trim().isEmpty)
+                      ? l10n.placeNameRequired
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _kind,
-                  decoration: const InputDecoration(
-                    labelText: '类型',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.userPlaceTypeLabel,
+                    border: const OutlineInputBorder(),
                   ),
-                  items: _placeKinds
+                  items: savedPlaceKindValues
                       .map((kind) => DropdownMenuItem(
-                            value: kind.value,
-                            child: Text(kind.label),
+                            value: kind,
+                            child: Text(savedPlaceKindLabel(kind, l10n)),
                           ))
                       .toList(),
                   onChanged: _saving
@@ -167,9 +178,9 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   initialValue: _radius,
-                  decoration: const InputDecoration(
-                    labelText: '地图视野范围（聚焦时缩放）',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.userPlaceRadiusLabel,
+                    border: const OutlineInputBorder(),
                   ),
                   items: _placeRadii
                       .map((radius) => DropdownMenuItem(
@@ -185,14 +196,14 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
                 TextFormField(
                   controller: _addressController,
                   textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    labelText: '地址（可选）',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: l10n.userPlaceAddressLabel,
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '位置（点击地图选择）',
+                  l10n.userPlacePositionLabel,
                   style: Theme.of(context)
                       .textTheme
                       .titleSmall
@@ -215,7 +226,7 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
                           height: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Text(editing ? '保存' : '添加'),
+                      : Text(editing ? l10n.commonSave : l10n.commonAdd),
                 ),
               ],
             ),

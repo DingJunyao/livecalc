@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/proposal.dart';
 import '../providers/profile_provider.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -32,65 +33,66 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
     }
   }
 
-  String _statusLabel(String status) {
+  String _statusLabel(String status, AppLocalizations l10n) {
     switch (status) {
       case 'approved':
-        return '已生效';
+        return l10n.proposalStatusApproved;
       case 'rejected':
-        return '已驳回';
+        return l10n.proposalStatusRejected;
       default:
-        return '待审';
+        return l10n.proposalStatusPending;
     }
   }
 
-  String _typeLabel(String type) {
+  String _typeLabel(String type, AppLocalizations l10n) {
     switch (type) {
       case 'ingredient':
-        return '食材';
+        return l10n.proposalTypeIngredient;
       case 'nutrition':
       case 'product_nutrition':
-        return '营养';
+        return l10n.proposalTypeNutrition;
       case 'unit':
-        return '单位';
+        return l10n.proposalTypeUnit;
       case 'merchant':
-        return '商家';
+        return l10n.proposalTypeMerchant;
       case 'merchant_merge':
-        return '商家合并';
+        return l10n.proposalTypeMerchantMerge;
       case 'product':
-        return '商品';
+        return l10n.proposalTypeProduct;
       case 'recipe':
-        return '菜谱';
+        return l10n.proposalTypeRecipe;
       case 'usda_ingredient_match':
       case 'usda_product_match':
-        return 'USDA 匹配';
+        return l10n.proposalTypeUsdaMatch;
       default:
-        return type.isEmpty ? '未知' : type;
+        return type.isEmpty ? l10n.proposalTypeUnknown : type;
     }
   }
 
-  String _actionLabel(String action) {
+  String _actionLabel(String action, AppLocalizations l10n) {
     switch (action) {
       case 'create':
-        return '新增';
+        return l10n.proposalActionCreate;
       case 'update':
-        return '修改';
+        return l10n.proposalActionUpdate;
       case 'delete':
-        return '删除';
+        return l10n.commonDelete;
       case 'merge':
-        return '合并';
+        return l10n.proposalActionMerge;
       case 'publish':
-        return '发布';
+        return l10n.proposalActionPublish;
       default:
-        return action.isEmpty ? '未知' : action;
+        return action.isEmpty ? l10n.proposalActionUnknown : action;
     }
   }
 
   void _showDetail(Proposal p) {
+    final l10n = AppLocalizations.of(context);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: Row(children: [
-          Expanded(child: Text('提议 #${p.id}')),
+          Expanded(child: Text(l10n.proposalDetailTitle(p.id))),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
@@ -98,7 +100,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              _statusLabel(p.status),
+              _statusLabel(p.status, l10n),
               style: Theme.of(ctx).textTheme.labelMedium?.copyWith(
                   color: _statusColor(p.status), fontWeight: FontWeight.bold),
             ),
@@ -113,7 +115,8 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                 Text(p.title, style: Theme.of(ctx).textTheme.titleMedium),
               const SizedBox(height: 4),
               Text(
-                '${_typeLabel(p.entityType)} · ${_actionLabel(p.action)} · ${p.createdAt}',
+                '${_typeLabel(p.entityType, l10n)} · '
+                '${_actionLabel(p.action, l10n)} · ${p.createdAt}',
                 style: Theme.of(ctx)
                     .textTheme
                     .bodySmall
@@ -121,26 +124,28 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
               ),
               if (p.entityId != null) ...[
                 const SizedBox(height: 4),
-                Text('实体 ID: ${p.entityId}',
+                Text(l10n.proposalEntityId(p.entityId!),
                     style: Theme.of(ctx).textTheme.bodySmall),
               ],
               if (p.description.isNotEmpty) ...[
                 const SizedBox(height: 12),
-                Text('审核意见', style: Theme.of(ctx).textTheme.labelLarge),
+                Text(l10n.proposalReviewComment,
+                    style: Theme.of(ctx).textTheme.labelLarge),
                 const SizedBox(height: 4),
                 Text(p.description, style: Theme.of(ctx).textTheme.bodyMedium),
               ],
               const SizedBox(height: 12),
-              Text('变更内容', style: Theme.of(ctx).textTheme.labelLarge),
+              Text(l10n.proposalChanges,
+                  style: Theme.of(ctx).textTheme.labelLarge),
               const SizedBox(height: 4),
-              ..._diffRows(p),
+              ..._diffRows(p, l10n),
             ],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('关闭'),
+            child: Text(l10n.commonClose),
           ),
         ],
       ),
@@ -149,10 +154,13 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
 
   /// 变更 diff：snapshot（before）vs payload（after）键并集，逐行展示。
   /// 简化实现：不解析嵌套结构，直接展示序列化值。
-  List<Widget> _diffRows(Proposal p) {
+  List<Widget> _diffRows(Proposal p, AppLocalizations l10n) {
     final keys = <String>{...p.snapshot.keys, ...p.payload.keys};
     if (keys.isEmpty) {
-      return [Text('无明细', style: Theme.of(context).textTheme.bodySmall)];
+      return [
+        Text(l10n.proposalNoDetails,
+            style: Theme.of(context).textTheme.bodySmall),
+      ];
     }
     final rows = <Widget>[];
     for (final k in keys.toList()..sort()) {
@@ -164,10 +172,10 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
         child: Text.rich(TextSpan(
           children: [
             TextSpan(
-                text: '$k：',
+                text: '$k: ',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             TextSpan(
-              text: '${_val(before)} → ${_val(after)}',
+              text: '${_val(before, l10n)} → ${_val(after, l10n)}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -175,13 +183,16 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
       ));
     }
     if (rows.isEmpty) {
-      return [Text('无明细', style: Theme.of(context).textTheme.bodySmall)];
+      return [
+        Text(l10n.proposalNoDetails,
+            style: Theme.of(context).textTheme.bodySmall),
+      ];
     }
     return rows;
   }
 
-  String _val(dynamic v) {
-    if (v == null) return '无';
+  String _val(dynamic v, AppLocalizations l10n) {
+    if (v == null) return l10n.proposalValueNone;
     if (v is Map || v is List) return v.toString();
     return v.toString();
   }
@@ -190,9 +201,10 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final state = ref.watch(proposalListProvider);
+    final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('我的提议')),
+      appBar: AppBar(title: Text(l10n.profileMyProposals)),
       body: state.loading && state.items.isEmpty
           ? const LoadingIndicator()
           : state.error != null && state.items.isEmpty
@@ -200,10 +212,10 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                   message: state.error!,
                   onRetry: () => ref.read(proposalListProvider.notifier).load())
               : state.items.isEmpty
-                  ? const EmptyState(
+                  ? EmptyState(
                       icon: Icons.rate_review_outlined,
-                      title: '暂无提议',
-                      subtitle: '对共享数据的修改会显示在这里')
+                      title: l10n.proposalEmptyTitle,
+                      subtitle: l10n.proposalEmptySubtitle)
                   : RefreshIndicator(
                       onRefresh: () =>
                           ref.read(proposalListProvider.notifier).load(),
@@ -216,7 +228,9 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                           return ListTile(
                             title: Text(p.title),
                             subtitle: Text(
-                                '${_typeLabel(p.entityType)} · ${_actionLabel(p.action)} · ${p.createdAt}',
+                                '${_typeLabel(p.entityType, l10n)} · '
+                                '${_actionLabel(p.action, l10n)} · '
+                                '${p.createdAt}',
                                 style: theme.textTheme.bodySmall),
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(
@@ -227,7 +241,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Text(
-                                _statusLabel(p.status),
+                                _statusLabel(p.status, l10n),
                                 style: theme.textTheme.labelMedium?.copyWith(
                                     color: _statusColor(p.status),
                                     fontWeight: FontWeight.bold),

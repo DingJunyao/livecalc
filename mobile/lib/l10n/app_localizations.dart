@@ -4282,6 +4282,474 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'硒'**
   String get nutritionNutrientSelenium;
+
+  /// No description provided for @barcodeScannerTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'扫描条码'**
+  String get barcodeScannerTitle;
+
+  /// No description provided for @entityUnitsMaintain.
+  ///
+  /// In zh, this message translates to:
+  /// **'维护'**
+  String get entityUnitsMaintain;
+
+  /// No description provided for @entityUnitsNoCustomUnits.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无自定义单位'**
+  String get entityUnitsNoCustomUnits;
+
+  /// No description provided for @entityUnitsUnmappedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'待配置单位（来自菜谱，默认 100 g）'**
+  String get entityUnitsUnmappedTitle;
+
+  /// No description provided for @entityUnitsSourceAuto.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动'**
+  String get entityUnitsSourceAuto;
+
+  /// No description provided for @entityUnitsSourceManual.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动'**
+  String get entityUnitsSourceManual;
+
+  /// No description provided for @entityUnitsDensityInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'密度信息'**
+  String get entityUnitsDensityInfo;
+
+  /// No description provided for @entityUnitsNoDensityData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无密度数据'**
+  String get entityUnitsNoDensityData;
+
+  /// No description provided for @placeKindHome.
+  ///
+  /// In zh, this message translates to:
+  /// **'家'**
+  String get placeKindHome;
+
+  /// No description provided for @placeKindWork.
+  ///
+  /// In zh, this message translates to:
+  /// **'公司'**
+  String get placeKindWork;
+
+  /// No description provided for @placeKindOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get placeKindOther;
+
+  /// No description provided for @placeAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加地点'**
+  String get placeAdd;
+
+  /// No description provided for @placeDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除地点'**
+  String get placeDeleteTitle;
+
+  /// No description provided for @placeDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」吗？'**
+  String placeDeleteMessage(Object name);
+
+  /// No description provided for @placeAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加地点'**
+  String get placeAdded;
+
+  /// No description provided for @placeSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存'**
+  String get placeSaved;
+
+  /// No description provided for @placeEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无地点'**
+  String get placeEmptyTitle;
+
+  /// No description provided for @placeEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点右下角 + 添加（家、公司等）'**
+  String get placeEmptySubtitle;
+
+  /// No description provided for @placeMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get placeMoreActions;
+
+  /// No description provided for @placeSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认'**
+  String get placeSetDefault;
+
+  /// No description provided for @placeSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{kind} · 视野 {radius} km · {coordinates}'**
+  String placeSubtitle(Object kind, int radius, Object coordinates);
+
+  /// No description provided for @placeMapFeatureDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'地图功能已关闭，无法维护常用地点'**
+  String get placeMapFeatureDisabled;
+
+  /// No description provided for @placeOperationFailedRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失败，请重试'**
+  String get placeOperationFailedRetry;
+
+  /// No description provided for @placeSelectOnMapRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在地图上选择位置'**
+  String get placeSelectOnMapRequired;
+
+  /// No description provided for @placeNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请填写名称'**
+  String get placeNameRequired;
+
+  /// No description provided for @userPlaceEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑地点'**
+  String get userPlaceEditTitle;
+
+  /// No description provided for @userPlaceNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'名称（如：家、公司）'**
+  String get userPlaceNameLabel;
+
+  /// No description provided for @userPlaceTypeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'类型'**
+  String get userPlaceTypeLabel;
+
+  /// No description provided for @userPlaceRadiusLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'地图视野范围（聚焦时缩放）'**
+  String get userPlaceRadiusLabel;
+
+  /// No description provided for @userPlaceAddressLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'地址（可选）'**
+  String get userPlaceAddressLabel;
+
+  /// No description provided for @userPlacePositionLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'位置（点击地图选择）'**
+  String get userPlacePositionLabel;
+
+  /// No description provided for @nutritionGoalsDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置每日营养目标，用于饮食推荐。'**
+  String get nutritionGoalsDescription;
+
+  /// No description provided for @nutritionGoalEnergyLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'每日热量（{unit}）'**
+  String nutritionGoalEnergyLabel(Object unit);
+
+  /// No description provided for @nutritionGoalProteinLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白质（g）'**
+  String get nutritionGoalProteinLabel;
+
+  /// No description provided for @nutritionGoalCarbLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'碳水（g）'**
+  String get nutritionGoalCarbLabel;
+
+  /// No description provided for @nutritionGoalFatLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪（g）'**
+  String get nutritionGoalFatLabel;
+
+  /// No description provided for @nutritionGoalCalorieRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'每日热量需在 500-5000 千卡范围内'**
+  String get nutritionGoalCalorieRange;
+
+  /// No description provided for @nutritionGoalProteinRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白质需在 10-300 克范围内'**
+  String get nutritionGoalProteinRange;
+
+  /// No description provided for @nutritionGoalCarbRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'碳水需在 50-600 克范围内'**
+  String get nutritionGoalCarbRange;
+
+  /// No description provided for @nutritionGoalFatRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪需在 10-200 克范围内'**
+  String get nutritionGoalFatRange;
+
+  /// No description provided for @unitPreferencesDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置你的默认单位，所有页面将按此显示与填写。'**
+  String get unitPreferencesDescription;
+
+  /// No description provided for @unitPreferencesEnergyUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'能量单位'**
+  String get unitPreferencesEnergyUnit;
+
+  /// No description provided for @unitPreferencesMassUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认质量单位'**
+  String get unitPreferencesMassUnit;
+
+  /// No description provided for @unitPreferencesVolumeUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认容积单位'**
+  String get unitPreferencesVolumeUnit;
+
+  /// No description provided for @unitPreferencesPriceUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认记价单位（含个/包/瓶）'**
+  String get unitPreferencesPriceUnit;
+
+  /// No description provided for @unitPreferencesKilocalories.
+  ///
+  /// In zh, this message translates to:
+  /// **'千卡（kcal）'**
+  String get unitPreferencesKilocalories;
+
+  /// No description provided for @unitPreferencesKilojoules.
+  ///
+  /// In zh, this message translates to:
+  /// **'千焦（kJ）'**
+  String get unitPreferencesKilojoules;
+
+  /// No description provided for @unitPreferencesMassHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'克（g）'**
+  String get unitPreferencesMassHint;
+
+  /// No description provided for @unitPreferencesVolumeHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'毫升（ml）'**
+  String get unitPreferencesVolumeHint;
+
+  /// No description provided for @unitPreferencesPriceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'个'**
+  String get unitPreferencesPriceHint;
+
+  /// No description provided for @unitPreferencesNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'不设置'**
+  String get unitPreferencesNone;
+
+  /// No description provided for @unitPreferencesAbbreviation.
+  ///
+  /// In zh, this message translates to:
+  /// **'（{abbreviation}）'**
+  String unitPreferencesAbbreviation(Object abbreviation);
+
+  /// No description provided for @unitPreferencesLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位列表加载失败，请重试'**
+  String get unitPreferencesLoadFailed;
+
+  /// No description provided for @proposalStatusApproved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已生效'**
+  String get proposalStatusApproved;
+
+  /// No description provided for @proposalStatusRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已驳回'**
+  String get proposalStatusRejected;
+
+  /// No description provided for @proposalStatusPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'待审'**
+  String get proposalStatusPending;
+
+  /// No description provided for @proposalTypeIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'食材'**
+  String get proposalTypeIngredient;
+
+  /// No description provided for @proposalTypeNutrition.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养'**
+  String get proposalTypeNutrition;
+
+  /// No description provided for @proposalTypeUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位'**
+  String get proposalTypeUnit;
+
+  /// No description provided for @proposalTypeMerchant.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get proposalTypeMerchant;
+
+  /// No description provided for @proposalTypeMerchantMerge.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家合并'**
+  String get proposalTypeMerchantMerge;
+
+  /// No description provided for @proposalTypeProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get proposalTypeProduct;
+
+  /// No description provided for @proposalTypeRecipe.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get proposalTypeRecipe;
+
+  /// No description provided for @proposalTypeUsdaMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'USDA 匹配'**
+  String get proposalTypeUsdaMatch;
+
+  /// No description provided for @proposalTypeUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知'**
+  String get proposalTypeUnknown;
+
+  /// No description provided for @proposalActionCreate.
+  ///
+  /// In zh, this message translates to:
+  /// **'新增'**
+  String get proposalActionCreate;
+
+  /// No description provided for @proposalActionUpdate.
+  ///
+  /// In zh, this message translates to:
+  /// **'修改'**
+  String get proposalActionUpdate;
+
+  /// No description provided for @proposalActionMerge.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并'**
+  String get proposalActionMerge;
+
+  /// No description provided for @proposalActionPublish.
+  ///
+  /// In zh, this message translates to:
+  /// **'发布'**
+  String get proposalActionPublish;
+
+  /// No description provided for @proposalActionUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知'**
+  String get proposalActionUnknown;
+
+  /// No description provided for @proposalDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'提议 #{id}'**
+  String proposalDetailTitle(int id);
+
+  /// No description provided for @proposalEntityId.
+  ///
+  /// In zh, this message translates to:
+  /// **'实体 ID: {id}'**
+  String proposalEntityId(Object id);
+
+  /// No description provided for @proposalReviewComment.
+  ///
+  /// In zh, this message translates to:
+  /// **'审核意见'**
+  String get proposalReviewComment;
+
+  /// No description provided for @proposalChanges.
+  ///
+  /// In zh, this message translates to:
+  /// **'变更内容'**
+  String get proposalChanges;
+
+  /// No description provided for @proposalNoDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'无明细'**
+  String get proposalNoDetails;
+
+  /// No description provided for @proposalValueNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'无'**
+  String get proposalValueNone;
+
+  /// No description provided for @proposalEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无提议'**
+  String get proposalEmptyTitle;
+
+  /// No description provided for @proposalEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'对共享数据的修改会显示在这里'**
+  String get proposalEmptySubtitle;
 }
 
 class _AppLocalizationsDelegate

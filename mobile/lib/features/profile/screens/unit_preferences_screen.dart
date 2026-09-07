@@ -6,6 +6,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../models/unit_option.dart';
 import '../repositories/profile_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 单位偏好：能量/质量/容积/记价 4 个下拉，保存 PATCH /auth/me 只传变化字段。
 class UnitPreferencesScreen extends ConsumerStatefulWidget {
@@ -41,6 +42,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
   }
 
   Future<void> _loadUnits() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _loading = true;
       _loadError = null;
@@ -57,7 +59,9 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
         _priceUnitId = _validId(prefs?.priceUnit?.id, units, null);
       });
     } catch (_) {
-      if (mounted) setState(() => _loadError = '单位列表加载失败，请重试');
+      if (mounted) {
+        setState(() => _loadError = l10n.unitPreferencesLoadFailed);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -85,6 +89,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final prefs = ref.read(authProvider).user?.unitPreferences;
     final body = <String, dynamic>{};
     if (_energyUnit != prefs?.energyUnit) {
@@ -100,7 +105,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
       body['default_price_unit_id'] = _priceUnitId;
     }
     if (body.isEmpty) {
-      _toast('没有需要保存的修改');
+      _toast(l10n.authNoChangesToSave);
       return;
     }
 
@@ -110,24 +115,24 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
           await (widget.authRepository ?? AuthRepository()).updateMe(body);
       ref.read(authProvider.notifier).applyUser(user);
       if (mounted) {
-        _toast('已保存');
+        _toast(l10n.authSaved);
         context.pop();
       }
     } on DioException catch (e) {
-      if (mounted) _toast(_extractDetail(e));
+      if (mounted) _toast(_extractDetail(e, l10n));
     } catch (_) {
-      if (mounted) _toast('保存失败，请重试');
+      if (mounted) _toast(l10n.authSaveFailedRetry);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  String _extractDetail(DioException e) {
+  String _extractDetail(DioException e, AppLocalizations l10n) {
     final data = e.response?.data;
     if (data is Map && data['detail'] is String) {
       return data['detail'] as String;
     }
-    return '保存失败，请检查输入后重试';
+    return l10n.authSaveFailedCheckInput;
   }
 
   void _toast(String msg) {
@@ -137,8 +142,9 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('单位偏好')),
+      appBar: AppBar(title: Text(l10n.profileUnitPreferences)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -149,7 +155,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
                       Text(_loadError!),
                       const SizedBox(height: 8),
                       OutlinedButton(
-                          onPressed: _loadUnits, child: const Text('重试')),
+                          onPressed: _loadUnits, child: Text(l10n.commonRetry)),
                     ],
                   ),
                 )
@@ -157,57 +163,68 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     Text(
-                      '设置你的默认单位，所有页面将按此显示与填写。',
+                      l10n.unitPreferencesDescription,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.outline),
                     ),
                     const SizedBox(height: 16),
                     _unitDropdown(
-                      label: '能量单位',
-                      hint: '千卡（kcal）',
+                      label: l10n.unitPreferencesEnergyUnit,
+                      hint: l10n.unitPreferencesKilocalories,
                       value: _energyUnit,
-                      items: const [
+                      noneLabel: l10n.unitPreferencesNone,
+                      items: [
                         DropdownMenuItem(
-                            value: 'kcal', child: Text('千卡（kcal）')),
-                        DropdownMenuItem(value: 'kJ', child: Text('千焦（kJ）')),
+                            value: 'kcal',
+                            child: Text(l10n.unitPreferencesKilocalories)),
+                        DropdownMenuItem(
+                            value: 'kJ',
+                            child: Text(l10n.unitPreferencesKilojoules)),
                       ],
                       onChanged: (v) => setState(() => _energyUnit = v),
                     ),
                     _unitDropdown(
-                      label: '默认质量单位',
-                      hint: '克（g）',
+                      label: l10n.unitPreferencesMassUnit,
+                      hint: l10n.unitPreferencesMassHint,
                       value: _massUnitId,
-                      items: _options('mass').map((u) => _item(u)).toList(),
+                      noneLabel: l10n.unitPreferencesNone,
+                      items:
+                          _options('mass').map((u) => _item(u, l10n)).toList(),
                       onChanged: (v) => setState(() => _massUnitId = v),
                     ),
                     _unitDropdown(
-                      label: '默认容积单位',
-                      hint: '毫升（ml）',
+                      label: l10n.unitPreferencesVolumeUnit,
+                      hint: l10n.unitPreferencesVolumeHint,
                       value: _volumeUnitId,
-                      items: _options('volume').map((u) => _item(u)).toList(),
+                      noneLabel: l10n.unitPreferencesNone,
+                      items: _options('volume')
+                          .map((u) => _item(u, l10n))
+                          .toList(),
                       onChanged: (v) => setState(() => _volumeUnitId = v),
                     ),
                     _unitDropdown(
-                      label: '默认记价单位（含个/包/瓶）',
-                      hint: '个',
+                      label: l10n.unitPreferencesPriceUnit,
+                      hint: l10n.unitPreferencesPriceHint,
                       value: _priceUnitId,
-                      items: _options(null).map((u) => _item(u)).toList(),
+                      noneLabel: l10n.unitPreferencesNone,
+                      items: _options(null).map((u) => _item(u, l10n)).toList(),
                       onChanged: (v) => setState(() => _priceUnitId = v),
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: _saving ? null : _save,
-                      child: Text(_saving ? '保存中...' : '保存'),
+                      child:
+                          Text(_saving ? l10n.commonSaving : l10n.commonSave),
                     ),
                   ],
                 ),
     );
   }
 
-  DropdownMenuItem<int?> _item(UnitOption u) {
+  DropdownMenuItem<int?> _item(UnitOption u, AppLocalizations l10n) {
     // abbreviation 与 name 相同（如「个」）时不重复拼后缀
     final abbr = u.abbreviation.isNotEmpty && u.abbreviation != u.name
-        ? '（${u.abbreviation}）'
+        ? l10n.unitPreferencesAbbreviation(u.abbreviation)
         : '';
     return DropdownMenuItem(value: u.id, child: Text('${u.name}$abbr'));
   }
@@ -216,6 +233,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
     required String label,
     required String hint,
     required dynamic value,
+    required String noneLabel,
     required List<DropdownMenuItem<dynamic>> items,
     required ValueChanged<dynamic> onChanged,
   }) {
@@ -230,7 +248,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
         ),
         hint: Text(hint),
         items: [
-          const DropdownMenuItem(value: null, child: Text('不设置')),
+          DropdownMenuItem(value: null, child: Text(noneLabel)),
           ...items,
         ],
         onChanged: onChanged,

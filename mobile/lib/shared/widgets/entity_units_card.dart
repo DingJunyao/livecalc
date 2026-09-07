@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/i18n/app_formatters.dart';
+import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
 import '../screens/entity_units_screen.dart';
 
@@ -66,6 +67,7 @@ class EntityUnitsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final secondaryStyle =
         theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
     return Card(
@@ -81,7 +83,7 @@ class EntityUnitsCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '单位与密度',
+                    l10n.unitsScreenTitle,
                     style: theme.textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.bold),
                   ),
@@ -89,7 +91,7 @@ class EntityUnitsCard extends StatelessWidget {
                 TextButton.icon(
                   onPressed: () => _openMaintenance(context),
                   icon: const Icon(Icons.tune, size: 18),
-                  label: const Text('维护'),
+                  label: Text(l10n.entityUnitsMaintain),
                 ),
               ],
             ),
@@ -108,16 +110,16 @@ class EntityUnitsCard extends StatelessWidget {
             else ...[
               // ---- 自定义单位明细 ----
               Text(
-                '自定义单位',
+                l10n.unitsCustomTab,
                 style: theme.textTheme.labelLarge
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               if (units.isEmpty && unmappedUnits.isEmpty)
-                Text('暂无自定义单位', style: secondaryStyle)
+                Text(l10n.entityUnitsNoCustomUnits, style: secondaryStyle)
               else ...[
                 if (unmappedUnits.isNotEmpty) ...[
-                  Text('待配置单位（来自菜谱，默认 100 g）', style: secondaryStyle),
+                  Text(l10n.entityUnitsUnmappedTitle, style: secondaryStyle),
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
@@ -126,7 +128,8 @@ class EntityUnitsCard extends StatelessWidget {
                       for (final unit in unmappedUnits)
                         ActionChip(
                           avatar: const Icon(Icons.add, size: 14),
-                          label: Text('${unit.unitName}（${unit.usageCount}次）'),
+                          label: Text(l10n.unitsUnmappedUsage(
+                              unit.unitName, unit.usageCount)),
                           onPressed: () => _openMaintenance(context),
                         ),
                     ],
@@ -165,7 +168,7 @@ class EntityUnitsCard extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        '默认',
+                                        l10n.unitsDefault,
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
                                           color: theme
@@ -184,7 +187,7 @@ class EntityUnitsCard extends StatelessWidget {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
-                                        '待审',
+                                        l10n.unitsPendingReview,
                                         style: theme.textTheme.labelSmall
                                             ?.copyWith(
                                           color: theme
@@ -201,10 +204,13 @@ class EntityUnitsCard extends StatelessWidget {
                                 Text(
                                   [
                                     if (unit.conversionFactor != null)
-                                      '1 ${unit.unitName} = '
-                                          '${_format(unit.conversionFactor!)} 个',
+                                      l10n.unitsConversionDetail(
+                                        unit.unitName,
+                                        _format(unit.conversionFactor!),
+                                      ),
                                     if (unit.weightPerUnit != null)
-                                      '${_format(unit.weightPerUnit!)} g/个',
+                                      l10n.unitsWeightDetail(
+                                          _format(unit.weightPerUnit!)),
                                   ].join(' · '),
                                   style: secondaryStyle,
                                 ),
@@ -215,7 +221,9 @@ class EntityUnitsCard extends StatelessWidget {
                         if (unit.source != null) ...[
                           const SizedBox(width: 8),
                           Text(
-                            unit.source == 'import' ? '自动' : '手动',
+                            unit.source == 'import'
+                                ? l10n.entityUnitsSourceAuto
+                                : l10n.entityUnitsSourceManual,
                             style: secondaryStyle,
                           ),
                         ],
@@ -226,13 +234,13 @@ class EntityUnitsCard extends StatelessWidget {
               const Divider(height: 12),
               // ---- 密度明细 ----
               Text(
-                '密度信息',
+                l10n.entityUnitsDensityInfo,
                 style: theme.textTheme.labelLarge
                     ?.copyWith(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 6),
               if (densities.isEmpty)
-                Text('暂无密度数据', style: secondaryStyle)
+                Text(l10n.entityUnitsNoDensityData, style: secondaryStyle)
               else
                 for (final density in densities)
                   Padding(
@@ -267,7 +275,7 @@ class EntityUnitsCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              '待审',
+                              l10n.unitsPendingReview,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.onErrorContainer,
                               ),

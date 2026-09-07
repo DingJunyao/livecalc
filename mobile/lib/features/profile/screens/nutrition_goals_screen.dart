@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
+import '../../../l10n/app_localizations.dart';
 
 /// 营养目标：每日热量/蛋白质/碳水/脂肪 4 个数字输入。
 /// 热量库存单位 kcal，按 energyUnit 换算显示（对齐 web useUserUnits）。
@@ -69,6 +70,7 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
   }
 
   Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
     final kcal = _parse(_calorie);
     final protein = _parse(_protein);
     final carb = _parse(_carb);
@@ -77,19 +79,19 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
     if (kcal != null &&
         (kcal < (_energyUnit == 'kJ' ? 2000 : 500) ||
             kcal > (_energyUnit == 'kJ' ? 21000 : 5000))) {
-      _toast('每日热量需在 500-5000 千卡范围内');
+      _toast(l10n.nutritionGoalCalorieRange);
       return;
     }
     if (protein != null && (protein < 10 || protein > 300)) {
-      _toast('蛋白质需在 10-300 克范围内');
+      _toast(l10n.nutritionGoalProteinRange);
       return;
     }
     if (carb != null && (carb < 50 || carb > 600)) {
-      _toast('碳水需在 50-600 克范围内');
+      _toast(l10n.nutritionGoalCarbRange);
       return;
     }
     if (fat != null && (fat < 10 || fat > 200)) {
-      _toast('脂肪需在 10-200 克范围内');
+      _toast(l10n.nutritionGoalFatRange);
       return;
     }
 
@@ -107,24 +109,24 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
           await (widget.authRepository ?? AuthRepository()).updateMe(body);
       ref.read(authProvider.notifier).applyUser(user);
       if (mounted) {
-        _toast('已保存');
+        _toast(l10n.authSaved);
         context.pop();
       }
     } on DioException catch (e) {
-      if (mounted) _toast(_extractDetail(e));
+      if (mounted) _toast(_extractDetail(e, l10n));
     } catch (_) {
-      if (mounted) _toast('保存失败，请重试');
+      if (mounted) _toast(l10n.authSaveFailedRetry);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  String _extractDetail(DioException e) {
+  String _extractDetail(DioException e, AppLocalizations l10n) {
     final data = e.response?.data;
     if (data is Map && data['detail'] is String) {
       return data['detail'] as String;
     }
-    return '保存失败，请检查输入后重试';
+    return l10n.authSaveFailedCheckInput;
   }
 
   void _toast(String msg) {
@@ -134,13 +136,14 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('营养目标')),
+      appBar: AppBar(title: Text(l10n.profileNutritionGoals)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            '设置每日营养目标，用于饮食推荐。',
+            l10n.nutritionGoalsDescription,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall
@@ -151,7 +154,7 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
             controller: _calorie,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: '每日热量（$_energyUnit）',
+              labelText: l10n.nutritionGoalEnergyLabel(_energyUnit),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -159,33 +162,33 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
           TextFormField(
             controller: _protein,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '蛋白质（g）',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.nutritionGoalProteinLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _carb,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '碳水（g）',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.nutritionGoalCarbLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           TextFormField(
             controller: _fat,
             keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: '脂肪（g）',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: l10n.nutritionGoalFatLabel,
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 24),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(_saving ? '保存中...' : '保存'),
+            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
           ),
         ],
       ),
