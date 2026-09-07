@@ -9,11 +9,29 @@ void main() {
       'Arabic AppBackButton localizes and mirrors without reversing pop',
       (tester) async {
     final router = GoRouter(
-      initialLocation: '/pushed',
+      initialLocation: '/home',
       routes: [
         GoRoute(
           path: '/home',
-          builder: (_, __) => const Scaffold(body: Text('home')),
+          builder: (context, __) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => context.push('/detail'),
+                child: const Text('open detail'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/detail',
+          builder: (context, __) => Scaffold(
+            body: Center(
+              child: TextButton(
+                onPressed: () => context.push('/pushed'),
+                child: const Text('open pushed'),
+              ),
+            ),
+          ),
         ),
         GoRoute(
           path: '/pushed',
@@ -32,6 +50,11 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
+    await tester.tap(find.text('open detail'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('open pushed'));
+    await tester.pumpAndSettle();
+
     expect(find.text('pushed'), findsOneWidget);
     expect(find.byTooltip('رجوع'), findsOneWidget);
     expect(find.byTooltip('返回'), findsNothing);
@@ -47,7 +70,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pumpAndSettle();
 
-    expect(find.text('home'), findsOneWidget);
+    expect(find.text('open pushed'), findsOneWidget);
     expect(find.text('pushed'), findsNothing);
+    expect(find.text('open detail'), findsNothing);
   });
 }

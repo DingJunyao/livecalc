@@ -223,10 +223,13 @@ void main() {
 
     final l10n =
         AppLocalizations.of(tester.element(find.byType(NutritionCard)));
-    final quantity = tester.widget<Text>(find.text(l10n.nutritionQuantity));
-    final value = tester.widget<Text>(find.text('120 kcal'));
-    expect(quantity.textAlign, TextAlign.end);
-    expect(value.textAlign, TextAlign.end);
+    final nutrientRect = tester.getRect(find.text(l10n.nutritionNutrient));
+    final quantityRect = tester.getRect(find.text(l10n.nutritionQuantity));
+    final valueRect = tester.getRect(find.text('120 kcal'));
+    expect(quantityRect.right, lessThanOrEqualTo(nutrientRect.left));
+    expect(valueRect.right, lessThanOrEqualTo(nutrientRect.left));
+    expect(quantityRect.center.dx, lessThan(400));
+    expect(valueRect.center.dx, lessThan(400));
   });
 
   testWidgets('Arabic matrix prices align to the trailing edge',
@@ -240,8 +243,9 @@ void main() {
       ),
     );
 
-    final price = tester.widget<Text>(find.text('3.5 CNY'));
-    expect(price.textAlign, TextAlign.end);
+    final ingredientRect = tester.getRect(find.text('Egg'));
+    final priceRect = tester.getRect(find.text('3.5 CNY'));
+    expect(priceRect.right, lessThan(ingredientRect.left));
   });
 
   testWidgets('Arabic price list keeps the menu on the trailing edge',
