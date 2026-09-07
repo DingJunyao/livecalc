@@ -238,6 +238,7 @@ class _Copy {
   final String merchantSearchHint;
   final String noHistory;
   final String addProduct;
+  final String newProductHint;
   final String productHeader;
   final String unitPrice;
   final String pasteTitle;
@@ -287,6 +288,7 @@ class _Copy {
     required this.merchantSearchHint,
     required this.noHistory,
     required this.addProduct,
+    required this.newProductHint,
     required this.productHeader,
     required this.unitPrice,
     required this.pasteTitle,
@@ -357,6 +359,7 @@ const _english = _Copy(
   merchantSearchHint: 'Search or select a merchant',
   noHistory: 'No historical products yet',
   addProduct: 'Add product',
+  newProductHint: 'New product',
   productHeader: 'Product',
   unitPrice: 'Unit price',
   pasteTitle: 'Paste price import',
@@ -408,6 +411,7 @@ const _arabic = _Copy(
   merchantSearchHint: 'ابحث عن متجر أو اختره',
   noHistory: 'لا توجد منتجات تاريخية بعد',
   addProduct: 'إضافة منتج',
+  newProductHint: 'منتج جديد',
   productHeader: 'المنتج',
   unitPrice: 'سعر الوحدة',
   pasteTitle: 'لصق واستيراد الأسعار',
@@ -579,6 +583,22 @@ void main() {
     expect(parsePasteLine('# note').error, 'comment_line');
     expect(parsePasteLine('only name').error, 'unrecognized_format');
     expect(parsePasteLine('Tomato 0').error, 'invalid_price');
+  });
+
+  test('all paste hint example lines parse', () async {
+    for (final (name, locale) in [
+      ('English', const Locale('en', 'US')),
+      ('Chinese', const Locale('zh', 'CN')),
+      ('Arabic', const Locale('ar')),
+    ]) {
+      final l10n = await AppLocalizations.delegate.load(locale);
+      final lines = l10n.pricePasteHint.split('\n');
+      expect(lines.length, 4, reason: name);
+      for (final line in lines) {
+        final parsed = parsePasteLine(line);
+        expect(parsed.ok, isTrue, reason: '$name hint line: $line');
+      }
+    }
   });
 
   for (final (name, locale, copy) in [
@@ -760,8 +780,8 @@ void main() {
       final name = tester.widget<TextField>(
         find.widgetWithText(TextField, copy.productNameLabel),
       );
-      expect(name.controller?.text,
-          copy.addProduct == 'إضافة منتج' ? 'منتج جديد' : 'New product');
+      expect(name.controller?.text, isEmpty);
+      expect(name.decoration?.hintText, copy.newProductHint);
     });
 
     testWidgets('$name paste import preview localizes malformed rows', (

@@ -309,8 +309,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                               Text(l10n.quickFillNoHistoryProducts),
                               const SizedBox(height: 8),
                               FilledButton.tonal(
-                                onPressed: () =>
-                                    _addRow(name: l10n.quickFillNewProduct),
+                                onPressed: () => _addRow(),
                                 child: Text(l10n.productAddTitle),
                               ),
                             ],
@@ -433,6 +432,7 @@ class _PriceRowWidget extends StatelessWidget {
                         controller: row.nameController,
                         decoration: InputDecoration(
                           labelText: l10n.priceProductNameLabel,
+                          hintText: l10n.quickFillNewProduct,
                           border: InputBorder.none,
                           isDense: true,
                         ),

@@ -983,7 +983,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pricePasteHint =>
-      'كرفس 1.88\nفطر 4/كيس\nتوفو 5.18/كجم\nنشا بطاطس 2.5/200غ';
+      'كرفس 1.88\nفطر 4/bag\nتوفو 5.18/kg\nنشا بطاطس 2.5/200g';
 
   @override
   String get priceParseAndMatch => 'تحليل ومطابقة';

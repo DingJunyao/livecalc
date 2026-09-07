@@ -686,7 +686,7 @@
   "@priceTemplateCopied": {},
   "pricePasteTextLabel": "الصق نص الأسعار\n(سطر لكل عنصر، الصيغة: الاسم السعر[/الوحدة])",
   "@pricePasteTextLabel": {},
-  "pricePasteHint": "كرفس 1.88\nفطر 4/كيس\nتوفو 5.18/كجم\nنشا بطاطس 2.5/200غ",
+  "pricePasteHint": "كرفس 1.88\nفطر 4/bag\nتوفو 5.18/kg\nنشا بطاطس 2.5/200g",
   "@pricePasteHint": {},
   "priceParseAndMatch": "تحليل ومطابقة",
   "@priceParseAndMatch": {},
