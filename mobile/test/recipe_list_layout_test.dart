@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -40,7 +41,12 @@ Widget _wrap(List<RecipeSummary> items) {
         (ref) => RecipeListNotifier(_FakeRecipeRepository(items)),
       ),
     ],
-    child: const MaterialApp(home: RecipeListScreen()),
+    child: const MaterialApp(
+      locale: Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: RecipeListScreen(),
+    ),
   );
 }
 
