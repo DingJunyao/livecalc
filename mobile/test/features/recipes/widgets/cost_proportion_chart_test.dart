@@ -139,4 +139,42 @@ void main() {
       expect((row0.decoration as BoxDecoration).color, isNull);
     });
   });
+
+  testWidgets('Arabic bar keeps the first value segment on the left', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(600, 600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    const barBreakdown = [
+      CostBreakdownItem(
+          ingredientName: '鸡蛋', ingredientId: 1, cost: 4, unitPrice: 0),
+      CostBreakdownItem(
+          ingredientName: '番茄', ingredientId: 2, cost: 2, unitPrice: 0),
+    ];
+    await tester.pumpWidget(const MaterialApp(
+      locale: Locale('ar'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: CostProportionChart(breakdown: barBreakdown, totalCost: 6),
+      ),
+    ));
+    final expectedColors = {
+      getIngredientColor(1),
+      getIngredientColor(2),
+    };
+    final segments = tester
+        .widgetList<ColoredBox>(find.descendant(
+          of: find.byKey(const Key('cost_bar')),
+          matching: find.byType(ColoredBox),
+        ))
+        .where((w) => expectedColors.contains(w.color))
+        .toList();
+    expect(segments.length, 2);
+    expect(segments.first.color, getIngredientColor(1));
+    final firstLeft = tester.getRect(find.byWidget(segments.first)).left;
+    final secondLeft = tester.getRect(find.byWidget(segments.last)).left;
+    expect(firstLeft, lessThan(secondLeft));
+  });
 }

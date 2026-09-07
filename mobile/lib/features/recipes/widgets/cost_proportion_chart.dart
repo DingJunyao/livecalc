@@ -156,22 +156,26 @@ class _CostProportionChartState extends State<CostProportionChart> {
       child: SizedBox(
         height: 10,
         width: double.infinity,
-        child: Row(
-          // stretch：让段在交叉轴上撑满高 10，否则默认 center 下 flex 子项高 0 不可见不可点
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < items.length; i++) ...[
-              if (i > 0) Container(width: 1, color: theme.colorScheme.surface),
-              Expanded(
-                // 段宽 = 占比（无上界，单段再大也按实际比例画）；下界 1：零成本段保留可点的细缝
-                flex: max(1, (items[i].value * 1000).round()),
-                child: GestureDetector(
-                  onTap: () => setState(() => _touchedIndex = i),
-                  child: ColoredBox(color: items[i].color),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            // stretch：让段在交叉轴上撑满高 10，否则默认 center 下 flex 子项高 0 不可见不可点
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0)
+                  Container(width: 1, color: theme.colorScheme.surface),
+                Expanded(
+                  // 段宽 = 占比（无上界，单段再大也按实际比例画）；下界 1：零成本段保留可点的细缝
+                  flex: max(1, (items[i].value * 1000).round()),
+                  child: GestureDetector(
+                    onTap: () => setState(() => _touchedIndex = i),
+                    child: ColoredBox(color: items[i].color),
+                  ),
                 ),
-              ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

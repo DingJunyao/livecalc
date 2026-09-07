@@ -793,9 +793,8 @@ class MerchantPriceRecord {
     final id = _toIntOrNull(json['merchant_id']) ?? 0;
     return MerchantPriceRecord(
       merchantId: id,
-      // 缺名回退「商家{id}」（对齐 web _merchantLabel），避免所有缺名行
-      // 都叫无 id 的 'merchant#'
-      merchantName: _str(json['merchant_name']) ?? '商家$id',
+      // 缺名保留空串；展示层按当前 UI 语言回退「Merchant #{id}」。
+      merchantName: _str(json['merchant_name']) ?? '',
       price: _toDouble(json['price']),
       unit: _str(json['unit']),
       totalCost: _toDoubleOrNull(json['total_cost']),

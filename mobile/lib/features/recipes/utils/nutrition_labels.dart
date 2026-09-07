@@ -91,6 +91,7 @@ String localizedNutrientLabel(String label, AppLocalizations l10n) {
     '碳水化合物' => l10n.nutritionNutrientCarbohydrate,
     '膳食纤维' => l10n.nutritionNutrientDietaryFiber,
     '钠' => l10n.nutritionNutrientSodium,
+    '钙' => l10n.nutritionNutrientCalcium,
     '磷' => l10n.nutritionNutrientPhosphorus,
     '钾' => l10n.nutritionNutrientPotassium,
     '镁' => l10n.nutritionNutrientMagnesium,

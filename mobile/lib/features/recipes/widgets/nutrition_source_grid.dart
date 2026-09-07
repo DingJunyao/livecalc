@@ -367,19 +367,23 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
       child: SizedBox(
         height: 10,
         width: double.infinity,
-        child: Row(
-          // stretch：段在交叉轴上撑满高 10（否则 flex 子项 0 高不可见）
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            for (var i = 0; i < d.items.length; i++) ...[
-              if (i > 0) Container(width: 1, color: theme.colorScheme.surface),
-              Expanded(
-                // 段宽 = 占比（无上界）；下界 1：零值段保留细缝
-                flex: max(1, (d.items[i].value / total * 1000).round()),
-                child: ColoredBox(color: d.items[i].color),
-              ),
+        child: Directionality(
+          textDirection: TextDirection.ltr,
+          child: Row(
+            // stretch：段在交叉轴上撑满高 10（否则 flex 子项 0 高不可见）
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (var i = 0; i < d.items.length; i++) ...[
+                if (i > 0)
+                  Container(width: 1, color: theme.colorScheme.surface),
+                Expanded(
+                  // 段宽 = 占比（无上界）；下界 1：零值段保留细缝
+                  flex: max(1, (d.items[i].value / total * 1000).round()),
+                  child: ColoredBox(color: d.items[i].color),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

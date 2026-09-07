@@ -118,7 +118,10 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
         children: [
           Row(children: [
             Expanded(
-              child: Text(m.merchantName,
+              child: Text(
+                  m.merchantName.isEmpty
+                      ? l10n.recipeMerchantFallbackName(m.merchantId)
+                      : m.merchantName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyLarge

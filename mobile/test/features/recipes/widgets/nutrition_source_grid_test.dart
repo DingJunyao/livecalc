@@ -47,6 +47,27 @@ RecipeNutrition _nutrition() => const RecipeNutrition(
       ],
     );
 
+RecipeNutrition _calciumNutrition() => const RecipeNutrition(
+      totalCalories: 0,
+      totalProtein: 0,
+      totalFat: 0,
+      totalCarbs: 0,
+      perServingNutrients: {
+        'calcium':
+            NutritionItem(value: 120, unit: 'mg', nrpPct: 12, key: 'calcium'),
+      },
+      ingredientDetails: [
+        IngredientNutritionDetail(
+          recipeIngredientId: 1,
+          ingredientId: 1,
+          ingredientName: 'Stored milk',
+          nutritionContribution: {
+            '钙': NutritionItem(value: 120, unit: 'mg'),
+          },
+        ),
+      ],
+    );
+
 void main() {
   group('buildNutrientDisplays', () {
     test('构建营养素列表（含总量与 Top2 贡献）', () {
@@ -184,6 +205,50 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('水分'), findsOneWidget); // showAll=true 出现（nameZh 兜底）
       expect(find.text('NRV 指标'), findsNothing);
+    });
+  });
+
+  group('localized chart and nutrient labels', () {
+    testWidgets('Arabic nutrition bar keeps first contribution on the left', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('ar'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
+      ));
+      final bar = find.byKey(const Key('nrv_bar')).first;
+      final surface = Theme.of(tester.element(bar)).colorScheme.surface;
+      final segments = tester
+          .widgetList<ColoredBox>(
+              find.descendant(of: bar, matching: find.byType(ColoredBox)))
+          .where((w) => w.color != surface)
+          .toList();
+      expect(segments.length, 2);
+      expect(segments.first.color, getIngredientColor(1));
+      final firstLeft = tester.getRect(find.byWidget(segments.first)).left;
+      final secondLeft = tester.getRect(find.byWidget(segments.last)).left;
+      expect(firstLeft, lessThan(secondLeft));
+    });
+
+    testWidgets('calcium uses localized nutrient label', (tester) async {
+      for (final (locale, label) in [
+        (const Locale('en', 'US'), 'Calcium'),
+        (const Locale('ar'), 'الكالسيوم'),
+      ]) {
+        await tester.pumpWidget(MaterialApp(
+          locale: locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+              body: NutritionSourceGrid(nutrition: _calciumNutrition())),
+        ));
+        expect(find.text(label), findsOneWidget);
+      }
     });
   });
 }

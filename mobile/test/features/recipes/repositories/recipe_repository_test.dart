@@ -22,30 +22,30 @@ void main() {
 
   group('getRecipeMerchantCosts', () {
     test('解析 merchant-costs 响应', () async {
-      when(() => mockDio.get('/recipes/1/merchant-costs',
+      when(() =>
+          mockDio.get('/recipes/1/merchant-costs',
               queryParameters: any(named: 'queryParameters'),
-              options: any(named: 'options')))
-          .thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(path: ''),
-                statusCode: 200,
-                data: {
-                  'currency': 'CNY',
-                  'merchants': [
-                    {
-                      'merchant_id': 2,
-                      'merchant_name': '盒马',
-                      'covered_cost': '8.50',
-                      'external_cost': '3.20',
-                      'total_cost': '11.70',
-                      'covered_count': 4,
-                      'total_ingredients': 6,
-                      'missing_ingredients': ['盐', '油'],
-                      'fallback_chains': ['大米(kg) 按面粉价'],
-                      'is_recommended': true,
-                    }
-                  ],
-                },
-              ));
+              options: any(named: 'options'))).thenAnswer((_) async => Response(
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {
+              'currency': 'CNY',
+              'merchants': [
+                {
+                  'merchant_id': 2,
+                  'merchant_name': '盒马',
+                  'covered_cost': '8.50',
+                  'external_cost': '3.20',
+                  'total_cost': '11.70',
+                  'covered_count': 4,
+                  'total_ingredients': 6,
+                  'missing_ingredients': ['盐', '油'],
+                  'fallback_chains': ['大米(kg) 按面粉价'],
+                  'is_recommended': true,
+                }
+              ],
+            },
+          ));
 
       final res = await repository.getRecipeMerchantCosts(1);
       expect(res.currency, 'CNY');
@@ -64,14 +64,14 @@ void main() {
     });
 
     test('空 merchants 不崩', () async {
-      when(() => mockDio.get('/recipes/9/merchant-costs',
+      when(() =>
+          mockDio.get('/recipes/9/merchant-costs',
               queryParameters: any(named: 'queryParameters'),
-              options: any(named: 'options')))
-          .thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(path: ''),
-                statusCode: 200,
-                data: {'currency': 'CNY'},
-              ));
+              options: any(named: 'options'))).thenAnswer((_) async => Response(
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {'currency': 'CNY'},
+          ));
       final res = await repository.getRecipeMerchantCosts(9);
       expect(res.merchants, isEmpty);
     });
@@ -126,6 +126,27 @@ void main() {
       expect(res.recipeIngredientId, 10);
       expect(res.ingredientName, '鸡蛋');
       expect(res.ingredientId, 5);
+    });
+
+    test('missing merchant name stays empty for UI localization', () async {
+      when(() => mockDio.get(
+            '/nutrition/ingredients/5/latest-price-by-merchant',
+            queryParameters: <String, dynamic>{},
+          )).thenAnswer((_) async => Response(
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 200,
+            data: {
+              'prices': [
+                {
+                  'merchant_id': 2,
+                  'price': '1.00',
+                },
+              ],
+            },
+          ));
+      final res = await repository.getIngredientMerchantPrice(5);
+      expect(res.prices.single.merchantId, 2);
+      expect(res.prices.single.merchantName, isEmpty);
     });
 
     test('quantity 为 0 时不带任何参数', () async {

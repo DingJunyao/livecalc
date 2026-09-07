@@ -109,6 +109,17 @@ const _nutrition = RecipeNutrition(
   },
 );
 
+const _unnamedMerchant = MerchantCostItem(
+  merchantId: 9,
+  merchantName: '',
+  coveredCost: 3,
+  externalCost: 0,
+  totalCost: 3,
+  coveredCount: 1,
+  totalIngredients: 1,
+  isRecommended: true,
+);
+
 const _merchant = MerchantCostItem(
   merchantId: 1,
   merchantName: 'Stored merchant',
@@ -510,5 +521,58 @@ void main() {
       const CostProportionChart(breakdown: emptyBreakdown, totalCost: 2),
     );
     expect(find.text('Unknown ingredient'), findsOneWidget);
+  });
+
+  testWidgets(
+      'empty merchant names localize fallbacks in cost cards and matrix', (
+    tester,
+  ) async {
+    const ingredients = [
+      RecipeIngredient(
+          id: 1,
+          ingredientId: 8,
+          name: 'Stored egg',
+          quantity: '100',
+          unit: 'g'),
+    ];
+    const prices = [
+      MerchantPriceItem(
+        recipeIngredientId: 1,
+        ingredientId: 8,
+        ingredientName: 'Stored egg',
+        prices: [
+          MerchantPriceRecord(
+              merchantId: 9,
+              merchantName: '',
+              price: 3,
+              totalCost: 3,
+              isLowest: true),
+        ],
+      ),
+    ];
+    for (final (locale, label) in [
+      (const Locale('en', 'US'), 'Merchant #9'),
+      (const Locale('ar'), 'تاجر #9'),
+    ]) {
+      await _pumpLocalized(
+        tester,
+        locale,
+        const Scaffold(
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                MerchantCostCards(merchants: [_unnamedMerchant]),
+                MerchantPriceMatrix(
+                  ingredients: ingredients,
+                  prices: prices,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      expect(find.text(label), findsNWidgets(2), reason: label);
+      expect(find.text('商家'), findsNothing);
+    }
   });
 }
