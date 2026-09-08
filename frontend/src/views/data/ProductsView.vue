@@ -88,7 +88,7 @@
                 <SparklineBackground :data="item.sparkline_data" color="primary" height="36" />
               </div>
               <v-btn icon="mdi-tag-plus" size="small" variant="text" @click.prevent="openPriceDialog(item)" />
-              <v-btn icon="mdi-chevron-right" size="small" variant="text" />
+              <v-btn :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" size="small" variant="text" />
             </template>
           </v-list-item>
 
@@ -303,6 +303,7 @@ import BarcodeField from '@/components/common/BarcodeField.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { useLatestPrices, formatUnitPrice } from '@/composables/useLatestPrices'
 import { useUserCurrency } from '@/composables/useUserCurrency'
+import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/currency'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
@@ -313,6 +314,7 @@ const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
 
 const route = useRoute()
+const localeStore = useLocaleStore()
 const { currency: userCurrency } = useUserCurrency()
 const router = useRouter()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()

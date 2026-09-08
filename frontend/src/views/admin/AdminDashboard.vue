@@ -90,7 +90,7 @@
             <v-chip v-if="pendingProposalCount > 0" color="warning" size="small" class="me-1">
               {{ t('admin.dashboard.pendingCount', { count: formatCount(pendingProposalCount) }) }}
             </v-chip>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -102,7 +102,7 @@
           to="/admin/users"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -114,7 +114,7 @@
           to="/admin/invite-codes"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -125,7 +125,7 @@
           to="/admin/blacklist-groups"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -136,7 +136,7 @@
           to="/admin/units"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
         <v-list-item
@@ -146,7 +146,7 @@
           to="/admin/currencies"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
         <v-list-item
@@ -156,7 +156,7 @@
           to="/admin/exchange-rates"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -167,7 +167,7 @@
           to="/admin/barcode-services"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -178,7 +178,7 @@
           to="/admin/map-settings"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -191,7 +191,7 @@
           to="/admin/storage"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -204,7 +204,7 @@
           to="/admin/email-config"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -215,7 +215,7 @@
           to="/admin/ai-config"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -228,7 +228,7 @@
           to="/admin/images-unused"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -239,7 +239,7 @@
           to="/admin/data-maintenance"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -251,7 +251,7 @@
           to="/admin/agent-console"
         >
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
       </v-list>

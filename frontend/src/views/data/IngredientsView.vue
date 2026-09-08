@@ -84,7 +84,7 @@
                 :loading="loadingProductsFor === item.id"
                 @click.prevent="openPriceDialog(item)"
               />
-              <v-btn icon="mdi-chevron-right" size="small" variant="text" />
+              <v-btn :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" size="small" variant="text" />
             </template>
           </v-list-item>
 
@@ -268,11 +268,13 @@ import FilterBar from '@/components/common/FilterBar.vue'
 import type { FilterConfig } from '@/components/common/FilterBar.vue'
 import { useLatestPrices, formatUnitPrice } from '@/composables/useLatestPrices'
 import { useUserCurrency } from '@/composables/useUserCurrency'
+import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/currency'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 const route = useRoute()
 const { currency: userCurrency } = useUserCurrency()
 const router = useRouter()
