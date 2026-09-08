@@ -53,7 +53,7 @@
 
             <v-list-item-title>{{ record.product_name }}</v-list-item-title>
             <v-list-item-subtitle>
-              <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
+              <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ formatQuantity(record.original_quantity, localeStore.effectiveFormatLocale) }} {{ record.original_unit }}
             </v-list-item-subtitle>
             <v-list-item-subtitle>
               <span v-if="record.merchant_id"
@@ -101,7 +101,7 @@
                 <div class="text-body-2 font-weight-medium text-truncate">{{ record.product_name }}</div>
               </div>
               <div class="text-h6 font-weight-bold text-tertiary mb-1">
-                <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
+                <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ formatQuantity(record.original_quantity, localeStore.effectiveFormatLocale) }} {{ record.original_unit }}
               </div>
               <div class="d-flex flex-wrap align-center ga-2">
                 <v-chip size="x-small"
@@ -397,9 +397,12 @@ import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies } from '@/utils/currency'
 import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
+import { formatQuantity } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { t } = useI18n()
 const { ask } = useConfirmDialog()
+const localeStore = useLocaleStore()
 
 const route = useRoute()
 const router = useRouter()

@@ -65,7 +65,7 @@
                   <div class="paste-inline-panel">
                     <div class="d-flex align-center justify-space-between mb-1">
                       <span class="text-body-2 font-weight-medium">{{ row.name }}</span>
-                      <span class="text-caption text-medium-emphasis">{{ row.price ?? '—' }} · {{ row.quantity }}{{ row.unit ? ' ' + row.unit : '' }}</span>
+                      <span class="text-caption text-medium-emphasis">{{ row.price == null ? '—' : formatNumber(row.price, localeStore.effectiveFormatLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }} · {{ formatQuantity(row.quantity, localeStore.effectiveFormatLocale) }}{{ row.unit ? ' ' + row.unit : '' }}</span>
                     </div>
                     <v-autocomplete
                       v-model:search="row.productSearch"
@@ -125,8 +125,8 @@
                     </span>
                   </template>
                 </td>
-                <td>{{ row.price ?? '—' }}</td>
-                <td>{{ row.quantity }}</td>
+                <td>{{ row.price == null ? '—' : formatNumber(row.price, localeStore.effectiveFormatLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</td>
+                <td>{{ formatQuantity(row.quantity, localeStore.effectiveFormatLocale) }}</td>
                 <td>{{ row.unit }}</td>
               </template>
             </tr>
@@ -208,8 +208,11 @@ import { getErrorMessage } from '@/utils/errorHandler'
 import { parsePasteText, type ParsedPriceLine } from '@/utils/pastePriceParser'
 import { copyText } from '@/utils/clipboard'
 import { useUserUnits } from '@/composables/useUserUnits'
+import { formatNumber, formatQuantity } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 const { priceUnitName } = useUserUnits()
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 interface ImportRow extends ParsedPriceLine {
   status: 'matched' | 'unmatched' | 'invalid'

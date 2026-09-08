@@ -9,9 +9,12 @@ import { getUserMapPreference } from '@/utils/mapConfig'
 import { convertCoordinate } from '@/utils/coordinateTransform'
 import { api } from '@/api'
 import L from 'leaflet'
+import { formatCoordinate } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const snap = computed(() => props.proposal.snapshot || {})
 const payload = computed(() => props.proposal.payload || {})
@@ -392,12 +395,12 @@ onBeforeUnmount(() => {
       <div class="d-flex align-center mb-2" style="gap: 8px; flex-wrap: wrap;">
         <template v-if="hasBeforeCoord">
           <v-chip size="x-small" color="warning" variant="tonal" label>{{ t('proposals.before') }}</v-chip>
-          <span class="text-caption text-medium-emphasis">{{ beforeWgs.lat.toFixed(6) }}, {{ beforeWgs.lng.toFixed(6) }}</span>
+          <span class="text-caption text-medium-emphasis">{{ formatCoordinate(beforeWgs.lat, localeStore.effectiveFormatLocale) }}, {{ formatCoordinate(beforeWgs.lng, localeStore.effectiveFormatLocale) }}</span>
         </template>
         <v-icon v-if="isCoordMove" size="small">mdi-arrow-right</v-icon>
         <template v-if="hasAfterCoord && (isCoordMove || isCoordAdd)">
           <v-chip size="x-small" color="success" variant="tonal" label>{{ isCoordAdd ? t('proposals.added') : t('proposals.after') }}</v-chip>
-          <span class="text-caption text-medium-emphasis">{{ afterWgs.lat.toFixed(6) }}, {{ afterWgs.lng.toFixed(6) }}</span>
+          <span class="text-caption text-medium-emphasis">{{ formatCoordinate(afterWgs.lat, localeStore.effectiveFormatLocale) }}, {{ formatCoordinate(afterWgs.lng, localeStore.effectiveFormatLocale) }}</span>
         </template>
       </div>
 

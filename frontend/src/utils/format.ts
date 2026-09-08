@@ -111,6 +111,25 @@ export function formatNumber(value: NumberInput, locale: string, options?: Intl.
   return new Intl.NumberFormat(resolvedLocale, options ?? {}).format(number)
 }
 
+export function formatQuantity(value: NumberInput, locale: string, options?: Intl.NumberFormatOptions): string {
+  return formatNumber(value, locale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    ...options,
+  })
+}
+
+export function formatCoordinate(value: NumberInput, locale: string, fractionDigits = 6): string {
+  const number = toNumber(value)
+  if (number === null) return '-'
+  const resolvedLocale = resolveFormatLocale(locale, null)
+  return new Intl.NumberFormat(resolvedLocale, {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+    useGrouping: false,
+  }).format(number)
+}
+
 export function formatPercent(value: NumberInput, locale: string, options?: Intl.NumberFormatOptions): string {
   const number = toNumber(value)
   if (number === null) return '-'

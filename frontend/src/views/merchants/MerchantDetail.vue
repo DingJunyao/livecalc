@@ -79,7 +79,7 @@
                 </template>
                 <v-list-item-title>{{ t('merchants.coordinates') }}</v-list-item-title>
                 <v-list-item-subtitle class="font-family-monospace" dir="ltr">
-                  {{ formatNumber(overlaidLatitude, 'en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}, {{ formatNumber(overlaidLongitude, 'en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 }) }}
+                  {{ formatCoordinate(overlaidLatitude, localeStore.effectiveFormatLocale, 4) }}, {{ formatCoordinate(overlaidLongitude, localeStore.effectiveFormatLocale, 4) }}
                 </v-list-item-subtitle>
               </v-list-item>
               <v-list-item v-else-if="mapEnabled">
@@ -361,7 +361,7 @@ import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { CURRENCY_PREFIX } from '@/data/localValues'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { useLocaleStore } from '@/stores/locale'
-import { formatNumber } from '@/utils/format'
+import { formatCoordinate, formatNumber } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
@@ -612,13 +612,19 @@ const goToProduct = (id: number) => {
 
 const formatPrice = (price: any) => {
   const num = parseFloat(price) || 0
-  return num.toFixed(2)
+  return formatNumber(num, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
 }
 
 // 单价智能格式化：整数不带小数，否则最多两位并去尾零（10.30 -> 10.3，10 -> 10）
 const formatUnitPrice = (price: any) => {
   const num = parseFloat(price) || 0
-  return Number(num.toFixed(2)).toString()
+  return formatNumber(num, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
 }
 
 // 后端 label 形如 "元/斤"，主行已有 ¥ 前缀，去掉"元"并规范为 " / 单位" 后缀

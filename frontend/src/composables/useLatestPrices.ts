@@ -1,5 +1,7 @@
 import { ref, type Ref } from 'vue'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 interface LatestPriceInfo {
   average_price: number | null
@@ -53,5 +55,8 @@ export function useLatestPrices<T extends { id: number }>(
 export function formatUnitPrice(price: number | string | null | undefined): string {
   if (price == null) return ''
   const num = parseFloat(String(price)) || 0
-  return Number(num.toFixed(2)).toString()
+  return formatNumber(num, useLocaleStore().effectiveFormatLocale, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  })
 }

@@ -411,10 +411,10 @@
                     </v-chip>
                   </template>
                   <v-list-item-title class="text-body-2">
-                    <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ unit.conversion_factor }}</span>
+                    <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ formatNumber(unit.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 }) }}</span>
                     <span v-if="unit.weight_per_unit" class="ms-2">
                       <v-icon size="x-small">mdi-weight</v-icon>
-                      {{ unit.weight_per_unit }}g
+                      {{ formatQuantity(unit.weight_per_unit, localeStore.effectiveFormatLocale) }}g
                     </span>
                     <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pending') }}</v-chip>
                   </v-list-item-title>
@@ -570,7 +570,7 @@
             </template>
 
             <v-list-item-title>
-              <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ record.original_quantity }} {{ record.original_unit }}
+              <PriceWithConvert :price="record.price" :currency="record.currency || 'CNY'" :exchange-rate="record.exchange_rate" /> / {{ formatQuantity(record.original_quantity, localeStore.effectiveFormatLocale) }} {{ record.original_unit }}
             </v-list-item-title>
             <v-list-item-subtitle>
               <template v-if="record.merchant_name">
@@ -1252,7 +1252,7 @@ import { loadCurrencies } from '@/utils/currency'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
-import { formatNumber } from '@/utils/format'
+import { formatNumber, formatQuantity } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -2223,7 +2223,10 @@ const getNutritionNRV = (item: any) => {
   }
 
   // 显示实际百分比
-  return nutrient.nrp_pct.toFixed(1)
+  return formatNumber(nutrient.nrp_pct, localeStore.effectiveFormatLocale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
 }
 
 // 聚合价格数据用于图表（按日期分组，计算最小、最大、平均价格）
