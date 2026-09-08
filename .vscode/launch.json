@@ -31,6 +31,7 @@
             //     "--host=0.0.0.0"
             // ],
             // "program": "${workspaceFolder}/backend/run.py",
+            "python": "${workspaceFolder}/.venv/Scripts/python.exe",
             "cwd": "${workspaceFolder}/backend",
             "jinja": true
         }
