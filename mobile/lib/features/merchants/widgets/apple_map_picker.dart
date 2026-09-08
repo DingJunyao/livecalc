@@ -2,6 +2,7 @@ import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import 'map_locate_button.dart';
 import 'merchant_map_logic.dart';
@@ -161,8 +162,8 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
             key: const ValueKey('apple-picker-coordinate-ltr'),
             textDirection: TextDirection.ltr,
             child: Text(
-              '${l10n.mapLatitude}: ${wgs.latitude.toStringAsFixed(6)} · '
-              '${l10n.mapLongitude}: ${wgs.longitude.toStringAsFixed(6)}',
+              '${l10n.mapLatitude}: ${formatCoordinate(wgs.latitude)} · '
+              '${l10n.mapLongitude}: ${formatCoordinate(wgs.longitude)}',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
             ),

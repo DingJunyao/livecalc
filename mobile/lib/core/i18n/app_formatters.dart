@@ -49,6 +49,20 @@ String formatQuantity(num value, {String? formatLocale}) {
   );
 }
 
+String formatCoordinate(
+  num value, {
+  int fractionDigits = 6,
+  String? formatLocale,
+}) {
+  final formatter = NumberFormat.decimalPatternDigits(
+    locale: _intlLocale(formatLocale),
+    decimalDigits: fractionDigits,
+  )
+    ..minimumFractionDigits = fractionDigits
+    ..turnOffGrouping();
+  return formatter.format(value);
+}
+
 String formatPercentValue(
   num value, {
   int maximumFractionDigits = 1,

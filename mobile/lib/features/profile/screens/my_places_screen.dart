@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/user_place.dart';
 import '../providers/profile_provider.dart';
@@ -163,8 +164,8 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                                       l10n,
                                     ),
                                     (place.viewRadiusKm ?? 5).round(),
-                                    '${place.latitude.toStringAsFixed(4)}, '
-                                    '${place.longitude.toStringAsFixed(4)}',
+                                    '${formatCoordinate(place.latitude, fractionDigits: 4)}, '
+                                    '${formatCoordinate(place.longitude, fractionDigits: 4)}',
                                   ),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.colorScheme.outline),

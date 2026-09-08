@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/map_config_provider.dart';
 import 'apple_map_picker.dart';
@@ -270,8 +271,8 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
             key: const ValueKey('picker-coordinate-ltr'),
             textDirection: TextDirection.ltr,
             child: Text(
-              '${l10n.mapLatitude}: ${wgs.latitude.toStringAsFixed(6)} · '
-              '${l10n.mapLongitude}: ${wgs.longitude.toStringAsFixed(6)}',
+              '${l10n.mapLatitude}: ${formatCoordinate(wgs.latitude)} · '
+              '${l10n.mapLongitude}: ${formatCoordinate(wgs.longitude)}',
               style: theme.textTheme.bodySmall
                   ?.copyWith(color: theme.colorScheme.outline),
             ),

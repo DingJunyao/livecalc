@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/i18n/app_formatters.dart';
 import '../../features/entities/repositories/entity_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
@@ -388,10 +389,10 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
               if (unit.conversionFactor != null)
                 l10n.unitsConversionDetail(
                   unit.unitName,
-                  _format(unit.conversionFactor!),
+                  _formatDisplay(unit.conversionFactor!),
                 ),
               if (unit.weightPerUnit != null)
-                l10n.unitsWeightDetail(_format(unit.weightPerUnit!)),
+                l10n.unitsWeightDetail(_formatDisplay(unit.weightPerUnit!)),
               if (unit.isDefault) l10n.unitsDefault,
             ].join(' · ')),
             trailing: unit.isPending
@@ -469,7 +470,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
         for (final density in widget.densities)
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('${_format(density.density)} kg/m³'),
+            title: Text('${_formatDisplay(density.density)} kg/m³'),
             subtitle: density.condition == null || density.condition!.isEmpty
                 ? null
                 : Text(density.condition!),
@@ -496,3 +497,6 @@ String _format(double value) {
   if (value == value.roundToDouble()) return value.toInt().toString();
   return value.toStringAsFixed(2);
 }
+
+String _formatDisplay(double value) =>
+    formatNumber(value, maximumFractionDigits: 6);

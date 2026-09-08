@@ -124,8 +124,7 @@ class NutritionCard extends StatelessWidget {
 String _baseLabel(NutritionInfo? info) {
   final qty = info?.baseQuantity ?? 100;
   final unit = (info?.baseUnit ?? 'g').trim();
-  final qtyStr =
-      qty == qty.roundToDouble() ? qty.toInt().toString() : _fmtValue(qty);
+  final qtyStr = _fmtValue(qty);
   return unit.isEmpty ? '${qtyStr}g' : '$qtyStr$unit';
 }
 
