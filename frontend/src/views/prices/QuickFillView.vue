@@ -97,7 +97,7 @@
                 </template>
                 <template v-else>
                   <span class="fill-row__edit-text" @click="row.isEditingQuantity = true">
-                    {{ row.quantity }}
+                    {{ formatQuantity(row.quantity, localeStore.effectiveFormatLocale) }}
                   </span>
                 </template>
                 <v-menu
@@ -211,7 +211,7 @@
                 </template>
                 <template v-else>
                   <span class="fill-row__edit-text" @click="row.isEditingQuantity = true">
-                    {{ row.quantity }}
+                    {{ formatQuantity(row.quantity, localeStore.effectiveFormatLocale) }}
                   </span>
                 </template>
                 <v-menu
@@ -289,7 +289,10 @@ import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
 import { CHINESE_JIN_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
+import { formatQuantity } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const router = useRouter()
 

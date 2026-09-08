@@ -29,7 +29,7 @@
           </v-list-item-title>
           <v-list-item-subtitle v-if="item.address">{{ item.address }}</v-list-item-subtitle>
           <v-list-item-subtitle class="text-caption">
-            {{ kindLabel(item.kind) }} · {{ t('places.viewRadius', { radius: item.view_radius_km ?? 5 }) }} · {{ item.latitude.toFixed(4) }}, {{ item.longitude.toFixed(4) }}
+            {{ kindLabel(item.kind) }} · {{ t('places.viewRadius', { radius: formatNumber(item.view_radius_km ?? 5, localeStore.effectiveFormatLocale) }) }} · {{ formatCoordinate(item.latitude, localeStore.effectiveFormatLocale, 4) }}, {{ formatCoordinate(item.longitude, localeStore.effectiveFormatLocale, 4) }}
           </v-list-item-subtitle>
           <template #append>
             <div class="d-flex ga-1">
@@ -131,8 +131,11 @@ import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useMapConfig } from '@/composables/useMapConfig'
 import MapPicker from '@/components/map/MapPicker.vue'
 import type { Coordinate } from '@/utils/map/mapTypes'
+import { formatCoordinate, formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { mapEnabled, ensureLoaded } = useMapConfig()
 const router = useRouter()

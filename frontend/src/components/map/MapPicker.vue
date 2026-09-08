@@ -32,11 +32,11 @@
     <div class="coord-display mt-3" dir="ltr">
       <v-chip size="small" variant="tonal">
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
-        {{ t('mapComponents.latitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lat.toFixed(6) : '-' }}
+        {{ t('mapComponents.latitude') }}: {{ wgs84Coordinate ? formatCoordinate(wgs84Coordinate.lat, localeStore.effectiveFormatLocale) : '-' }}
       </v-chip>
       <v-chip size="small" variant="tonal" class="ms-2">
         <v-icon start size="small">mdi-crosshairs-gps</v-icon>
-        {{ t('mapComponents.longitude') }}: {{ wgs84Coordinate ? wgs84Coordinate.lng.toFixed(6) : '-' }}
+        {{ t('mapComponents.longitude') }}: {{ wgs84Coordinate ? formatCoordinate(wgs84Coordinate.lng, localeStore.effectiveFormatLocale) : '-' }}
       </v-chip>
     </div>
 
@@ -59,6 +59,8 @@ import { mapEngineManager } from '@/utils/mapEngineManager'
 import { getUserMapPreference } from '@/utils/mapConfig'
 import { convertCoordinate, getCoordinateSystem } from '@/utils/coordinateTransform'
 import { api } from '@/api'
+import { formatCoordinate } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 // Props
 interface Props {
@@ -75,6 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
   showSwitcher: true
 })
 const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 // Emits
 const emit = defineEmits<{
