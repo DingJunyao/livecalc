@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('别名提示使用跨平台文案，逗号和空格保持原样', (tester) async {
     final tags = <List<String>>[];
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: AliasTagsField(
           label: '别名',
@@ -29,6 +33,9 @@ void main() {
   testWidgets('添加按钮同样提交，重复别名不追加', (tester) async {
     final tags = <List<String>>[];
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: AliasTagsField(
           label: '别名',
@@ -53,6 +60,9 @@ void main() {
   testWidgets('预填别名可以删除', (tester) async {
     final tags = <List<String>>[];
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: AliasTagsField(
           label: '别名',

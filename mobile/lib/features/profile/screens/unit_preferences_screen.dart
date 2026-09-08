@@ -42,7 +42,6 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
   }
 
   Future<void> _loadUnits() async {
-    final l10n = AppLocalizations.of(context);
     setState(() {
       _loading = true;
       _loadError = null;
@@ -60,6 +59,7 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
       });
     } catch (_) {
       if (mounted) {
+        final l10n = AppLocalizations.of(context);
         setState(() => _loadError = l10n.unitPreferencesLoadFailed);
       }
     } finally {

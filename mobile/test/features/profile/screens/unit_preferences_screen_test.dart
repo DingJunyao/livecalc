@@ -9,6 +9,7 @@ import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.d
 import 'package:com_a4ding_livecalc/features/profile/models/unit_option.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/unit_preferences_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
 
@@ -49,6 +50,9 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: UnitPreferencesScreen(
           repository: mockProfile,
           authRepository: mockAuth,
@@ -108,6 +112,15 @@ void main() {
     expect(find.text('克（g）'), findsOneWidget);
     expect(find.text('毫升（ml）'), findsOneWidget);
     expect(find.text('个'), findsOneWidget);
+  });
+
+  testWidgets('加载失败显示本地化错误', (tester) async {
+    when(() => mockProfile.getUnits())
+        .thenAnswer((_) async => throw StateError('load failed'));
+
+    await pumpScreen(tester);
+
+    expect(find.text('单位列表加载失败，请重试'), findsOneWidget);
   });
 
   testWidgets('改能量单位保存，只传变化字段', (tester) async {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/pending_change_banner.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('pending changes are consolidated into one notice', (
@@ -8,6 +9,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: PendingChangeBanner(
             modifications: {'总时间', '做法步骤'},
@@ -29,6 +33,9 @@ void main() {
   ) async {
     await tester.pumpWidget(
       const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: PendingChangeBanner(
             modifications: {'名称', 'updated_by', 'update_by'},

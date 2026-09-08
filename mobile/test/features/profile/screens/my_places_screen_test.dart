@@ -12,6 +12,7 @@ import 'package:com_a4ding_livecalc/features/profile/providers/profile_provider.
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/my_places_screen.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/user_place_form_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
 
@@ -115,7 +116,12 @@ void main() {
         mapConfigProvider
             .overrideWith((ref) => MapConfigNotifier(merchantRepo)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pumpAndSettle();
   }

@@ -7,6 +7,7 @@ import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/nutrition_goals_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -37,7 +38,12 @@ void main() {
     );
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
-      child: MaterialApp(home: NutritionGoalsScreen(authRepository: mockAuth)),
+      child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionGoalsScreen(authRepository: mockAuth),
+      ),
     ));
   }
 

@@ -7,6 +7,7 @@ import 'package:com_a4ding_livecalc/features/profile/models/user_place.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/profile_provider.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/user_place_form_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class _MemoryTileProvider extends TileProvider {
   @override
@@ -74,7 +75,12 @@ void main() {
       overrides: [
         placeListProvider.overrideWith((ref) => PlaceListNotifier(repository)),
       ],
-      child: MaterialApp.router(routerConfig: router),
+      child: MaterialApp.router(
+        routerConfig: router,
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+      ),
     ));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));

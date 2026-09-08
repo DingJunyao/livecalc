@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/shared/models/nutrition.dart';
 import 'package:com_a4ding_livecalc/shared/screens/nutrition_edit_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('nutrition editor is a full page and saves parsed rows', (
@@ -11,6 +12,9 @@ void main() {
     List<NutrientEntry>? saved;
     await tester.pumpWidget(ProviderScope(
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: NutritionEditScreen(
           initialNutrients: const [
             NutrientEntry(key: 'energy', label: '能量', value: 120, unit: 'kcal'),
@@ -37,6 +41,9 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: NutritionEditScreen(
         nutrition: const NutritionInfo(
           entityId: 8,
@@ -62,6 +69,9 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: NutritionEditScreen(
         initialNutrients: const [
           NutrientEntry(

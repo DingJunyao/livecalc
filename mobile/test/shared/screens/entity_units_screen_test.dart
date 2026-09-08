@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/shared/screens/entity_units_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 void main() {
   testWidgets('unit maintenance is a full page and saves multi-field form',
@@ -8,6 +9,9 @@ void main() {
     String? savedName;
     double? savedWeight;
     await tester.pumpWidget(MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: EntityUnitsScreen(
         entityType: 'ingredient',
         entityId: 5,

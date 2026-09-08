@@ -6,6 +6,7 @@ import 'package:com_a4ding_livecalc/features/profile/models/proposal.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/profile_provider.dart';
 import 'package:com_a4ding_livecalc/features/profile/repositories/profile_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/my_proposals_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
 
@@ -45,7 +46,12 @@ void main() {
         proposalListProvider
             .overrideWith((ref) => ProposalListNotifier(mockRepo)),
       ],
-      child: const MaterialApp(home: MyProposalsScreen()),
+      child: const MaterialApp(
+        locale: Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: MyProposalsScreen(),
+      ),
     ));
     await tester.pumpAndSettle();
   }
@@ -77,7 +83,7 @@ void main() {
     expect(find.text('命名规范'), findsOneWidget);
     expect(find.text('变更内容'), findsOneWidget);
     // snapshot vs payload：name 变了，unit_id 相同不展示
-    expect(find.textContaining('name：'), findsOneWidget);
+    expect(find.textContaining('name: '), findsOneWidget);
     expect(find.textContaining('unit_id'), findsNothing);
 
     await tester.tap(find.text('关闭'));

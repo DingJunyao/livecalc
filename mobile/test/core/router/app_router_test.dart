@@ -10,6 +10,7 @@ import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/startup_page_provider.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
 
@@ -36,7 +37,12 @@ class _RouterHostState extends ConsumerState<_RouterHost> {
   Widget build(BuildContext context) {
     ref.listen(authProvider, (_, __) => _notifier.notifyListeners());
     ref.listen(startupPageProvider, (_, __) => _notifier.notifyListeners());
-    return MaterialApp.router(routerConfig: _router);
+    return MaterialApp.router(
+      routerConfig: _router,
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    );
   }
 }
 

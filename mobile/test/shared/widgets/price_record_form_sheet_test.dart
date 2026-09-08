@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
+import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 /// 宿主：触发底部表单并通过 Text 暴露结果，便于断言。
 class _FormHost extends StatefulWidget {
@@ -86,6 +87,9 @@ void main() {
 
     await tester.pumpWidget(ProviderScope(
       child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: _FormHost(
           merchants: merchants,
           initialMerchantId: initialMerchantId,
@@ -193,12 +197,12 @@ void main() {
     expect(find.text('merchantId=null'), findsOneWidget);
   });
 
-
   testWidgets('计入支出默认开启，关闭后提交 recordType=price', (tester) async {
     await pumpSheet(tester);
 
     // 默认开启（purchase）
-    var sw = tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    var sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isTrue);
 
     // 输入价格，关闭计入支出，提交
@@ -214,7 +218,8 @@ void main() {
   testWidgets('预填 recordType=price 时计入支出关闭', (tester) async {
     await pumpSheet(tester, initialRecordType: 'price');
 
-    final sw = tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    final sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isFalse);
   });
 
@@ -232,7 +237,8 @@ void main() {
   testWidgets('预填备注显示在输入框', (tester) async {
     await pumpSheet(tester, initialNotes: '旧备注');
 
-    final notesField = tester.widget<TextField>(find.widgetWithText(TextField, '备注'));
+    final notesField =
+        tester.widget<TextField>(find.widgetWithText(TextField, '备注'));
     expect(notesField.controller?.text, '旧备注');
   });
 
@@ -244,7 +250,7 @@ void main() {
     await tester.tap(find.text('记录时间'));
     await tester.pumpAndSettle();
     expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('取消'));
     await tester.pumpAndSettle();
   });
 
