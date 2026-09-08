@@ -418,7 +418,7 @@
                   :disabled="products.length <= 1"
                   @click.stop="openDeleteProductDialog(product)"
                 />
-                <v-icon size="small">mdi-chevron-right</v-icon>
+                <v-icon size="small" :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
               </div>
             </div>
           </v-list-item>
@@ -543,7 +543,7 @@
               <div v-if="recipe.usages?.length" class="text-caption text-medium-emphasis mt-1">{{ formatUsages(recipe) }}</div>
             </v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
         </v-list>

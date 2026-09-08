@@ -25,12 +25,19 @@ export const useLocaleStore = defineStore('locale', () => {
     return formatLocale.value ?? defaultFormatLocale(locale.value)
   })
 
+  const isRtl = computed(() => locale.value === 'ar')
+
   function applyLocale(nextLocale: UiLocale) {
+    const nextIsRtl = nextLocale === 'ar'
     i18n.global.locale.value = nextLocale
     vuetify.locale.current.value = nextLocale
+    vuetify.locale.rtl.value = {
+      ...vuetify.locale.rtl.value,
+      [nextLocale]: nextIsRtl,
+    }
     if (typeof document !== 'undefined') {
       document.documentElement.lang = nextLocale
-      document.documentElement.dir = nextLocale === 'ar' ? 'rtl' : 'ltr'
+      document.documentElement.dir = nextIsRtl ? 'rtl' : 'ltr'
     }
   }
 
@@ -61,6 +68,7 @@ export const useLocaleStore = defineStore('locale', () => {
     locale,
     formatLocale,
     effectiveFormatLocale,
+    isRtl,
     setLocale,
     setFormatLocale,
     syncFromUser,

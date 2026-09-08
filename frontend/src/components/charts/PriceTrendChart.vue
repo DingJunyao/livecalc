@@ -55,8 +55,10 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount, nextTick, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useLocaleStore } from '@/stores/locale'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatDate } from '@/utils/format'
 import * as echarts from 'echarts/core'
 import { LineChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, GridComponent } from 'echarts/components'
@@ -99,7 +101,8 @@ const props = withDefaults(defineProps<{
   loading: false,
   color: '#42b883'
 })
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const localeStore = useLocaleStore()
 
 const emit = defineEmits<{
   'filter-change': [filter: 'week' | 'month' | 'quarter' | 'year' | 'all']
@@ -215,8 +218,7 @@ function updateChart() {
         if (dateIndex < 0 || dateIndex >= data.length) return ''
 
         const item = data[dateIndex]
-        const dateObj = new Date(item.date)
-        const dateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`
+        const dateStr = formatDate(item.date, localeStore.effectiveFormatLocale)
 
         return `
           <div style="padding: 8px 12px;">
@@ -246,11 +248,10 @@ function updateChart() {
       boundaryGap: false,
       axisLabel: {
         formatter: (value: string) => {
-          const parts = value.split('-')
-          if (parts.length === 3) {
-            return `${parts[1]}/${parts[2]}`
-          }
-          return value
+          return formatDate(value, localeStore.effectiveFormatLocale, {
+            month: '2-digit',
+            day: '2-digit',
+          })
         }
       },
       splitLine: {
@@ -368,6 +369,10 @@ watch(() => props.loading, () => {
       updateChart()
     })
   }
+})
+
+watch(() => [locale.value, localeStore.effectiveFormatLocale], () => {
+  updateChart()
 })
 
 // 生命周期

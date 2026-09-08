@@ -100,6 +100,7 @@ export default createVuetify({
   },
   rtl: {
     default: false,
+    ar: true,
   },
   theme: {
     defaultTheme: initialTheme,

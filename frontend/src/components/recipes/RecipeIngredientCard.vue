@@ -95,7 +95,7 @@
             >
               {{ ingredient.name }}
               <v-chip v-if="ingredient.is_optional" size="x-small" color="info" variant="flat" class="ms-1">{{ t('recipes.optional') }}</v-chip>
-              <v-icon size="x-small" class="ms-1">mdi-chevron-right</v-icon>
+              <v-icon size="x-small" class="ms-1" :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </div>
             <div
               class="ingredient-quantity text-body-2 text-end me-4 ingredient-clickable"

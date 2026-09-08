@@ -62,7 +62,7 @@
           <v-list-item-title>{{ t('profile.editRegion') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.editRegionSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
         <v-list-item v-if="!isLocalMode" @click="openAccountDialog">
@@ -72,7 +72,7 @@
           <v-list-item-title>{{ t('profile.editAccount') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.editAccountSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -113,7 +113,7 @@
           <v-list-item-title>{{ t('profile.locale.title') }}</v-list-item-title>
           <v-list-item-subtitle>{{ localeSubtitle }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -124,7 +124,7 @@
           <v-list-item-title>{{ t('profile.defaultCurrency') }}</v-list-item-title>
           <v-list-item-subtitle>{{ userStore.user?.default_currency || t('profile.currencyPlaceholder') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -135,7 +135,7 @@
           <v-list-item-title>{{ t('profile.defaultScope') }}</v-list-item-title>
           <v-list-item-subtitle>{{ scopeLabel }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -146,7 +146,7 @@
           <v-list-item-title>{{ t('profile.places') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.placesSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -157,7 +157,7 @@
           <v-list-item-title>{{ t('profile.proposals') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.proposalsSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -168,7 +168,7 @@
           <v-list-item-title>{{ t('profile.nutritionPreferences') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.nutritionSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -179,7 +179,7 @@
           <v-list-item-title>{{ t('profile.unitPreferences') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.unitPreferencesSubtitle') }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -190,7 +190,7 @@
           <v-list-item-title>{{ t('profile.blacklist') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.blacklistCount', { count: blacklistCount }) }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -201,7 +201,7 @@
           </template>
           <v-list-item-title>{{ t('profile.dataExport') }}</v-list-item-title>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -211,7 +211,7 @@
           </template>
           <v-list-item-title>{{ t('profile.dataImport') }}</v-list-item-title>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
 
@@ -224,7 +224,7 @@
             <v-list-item-title>{{ t('profile.unitManagement') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.unitManagementSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-item @click="router.push('/admin/blacklist-groups')">
@@ -234,7 +234,7 @@
             <v-list-item-title>{{ t('profile.blacklistGroups') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.blacklistGroupsSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-subheader>{{ t('profile.systemIntegration') }}</v-list-subheader>
@@ -245,7 +245,7 @@
             <v-list-item-title>{{ t('profile.mapSettings') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.mapSettingsSubtitle') }}</v-list-item-subtitle>
             <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-item @click="router.push('/admin/barcode-services')">
@@ -255,7 +255,7 @@
             <v-list-item-title>{{ t('profile.barcodeServices') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.barcodeServicesSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-item @click="router.push('/admin/ai-config')">
@@ -265,7 +265,7 @@
             <v-list-item-title>{{ t('profile.aiConfig') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.aiConfigSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
          </v-list-item>
           <v-list-subheader>{{ t('profile.imageManagement') }}</v-list-subheader>
@@ -276,7 +276,7 @@
             <v-list-item-title>{{ t('profile.imageStorage') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.imageStorageSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-item @click="router.push('/admin/images-unused')">
@@ -286,7 +286,7 @@
             <v-list-item-title>{{ t('profile.unusedImages') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.unusedImagesSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-subheader>{{ t('profile.dataMaintenance') }}</v-list-subheader>
@@ -297,7 +297,7 @@
             <v-list-item-title>{{ t('profile.dataMaintenanceCenter') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.dataMaintenanceSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
           <v-list-item @click="router.push('/admin/agent-console')">
@@ -307,7 +307,7 @@
             <v-list-item-title>{{ t('profile.agentConsole') }}</v-list-item-title>
             <v-list-item-subtitle>{{ t('profile.agentConsoleSubtitle') }}</v-list-item-subtitle>
             <template #append>
-              <v-icon>mdi-chevron-right</v-icon>
+              <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
             </template>
           </v-list-item>
         </template>
@@ -319,7 +319,7 @@
           <v-list-item-title>{{ t('profile.about') }}</v-list-item-title>
           <v-list-item-subtitle>{{ t('profile.version', { version: appInfo.version }) }}</v-list-item-subtitle>
           <template #append>
-            <v-icon>mdi-chevron-right</v-icon>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
           </template>
         </v-list-item>
       </v-list>

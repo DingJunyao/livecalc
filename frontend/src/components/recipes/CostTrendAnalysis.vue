@@ -54,6 +54,7 @@ import * as echarts from 'echarts'
 import { getIngredientColor } from '@/utils/ingredientColors'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
+import { formatDate } from '@/utils/format'
 import { useI18n } from 'vue-i18n'
 import { useLocaleStore } from '@/stores/locale'
 
@@ -137,7 +138,7 @@ function renderTrendChart() {
     chartInstance = echarts.init(chartRef.value)
   }
 
-  const dates = chartData.value.map((d: any) => d.date || '')
+  const dates = chartData.value.map((d: any) => formatDate(d.date, localeStore.effectiveFormatLocale))
 
   if (hasBreakdown.value) {
     // ========== 堆叠面积图 ==========
