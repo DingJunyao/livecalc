@@ -15,6 +15,12 @@ String formatDate(DateTime value, {String? formatLocale}) {
   return DateFormat.yMd(locale).format(value);
 }
 
+String formatShortDate(DateTime value, {String? formatLocale}) {
+  final locale = _intlLocale(formatLocale);
+  initializeDateFormatting(locale);
+  return DateFormat.Md(locale).format(value);
+}
+
 String formatDateTime(DateTime value, {String? formatLocale}) {
   final locale = _intlLocale(formatLocale);
   initializeDateFormatting(locale);

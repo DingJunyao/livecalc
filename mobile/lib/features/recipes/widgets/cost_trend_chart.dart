@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/smooth_path.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -29,6 +30,12 @@ class CostTrendChart extends StatefulWidget {
 }
 
 enum _Range { week, month, quarter, year, all }
+
+String _formatDate(String value, {bool short = false}) {
+  final date = DateTime.tryParse(value);
+  if (date == null) return value;
+  return short ? formatShortDate(date) : formatDate(date);
+}
 
 class _CostTrendChartState extends State<CostTrendChart> {
   _Range _selected = _Range.month;
@@ -242,7 +249,7 @@ class _Tooltip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(p.date,
+            Text(_formatDate(p.date),
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
             const SizedBox(height: 2),
@@ -381,8 +388,7 @@ class _TrendPainter extends CustomPainter {
     // X 轴日期（首/中/尾）
     final idxList = [0, (points.length / 2).floor(), points.length - 1];
     for (final i in idxList) {
-      final date = points[i].date;
-      final label = date.length >= 5 ? date.substring(5) : date;
+      final label = _formatDate(points[i].date, short: true);
       _text(canvas, label, Offset(xAt(i) - 12, plotBottom + 6), gridColor, 9);
     }
   }

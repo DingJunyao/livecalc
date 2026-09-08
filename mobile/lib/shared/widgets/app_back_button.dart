@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'directional_icons.dart';
 
 /// 子页面返回按钮：路由可返回时执行 pop，否则回首页
 /// （原料/商品/商家/地图通常由首页快捷入口进入）。
@@ -9,7 +10,7 @@ class AppBackButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.arrow_back),
+      icon: Icon(DirectionalIcons.backArrow(context)),
       tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       onPressed: () {
         if (context.canPop()) {

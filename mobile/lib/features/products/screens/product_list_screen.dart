@@ -19,6 +19,7 @@ import '../models/product.dart';
 import '../screens/product_form_screen.dart' show ProductFormResult;
 import '../providers/product_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 
 const _productConditions = <String>[
   'no_price',
@@ -403,7 +404,8 @@ class _ProductCard extends ConsumerWidget {
                 visualDensity: VisualDensity.compact,
                 onPressed: onQuickPrice,
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
             ],
           ),
         ),

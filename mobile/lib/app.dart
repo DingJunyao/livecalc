@@ -90,23 +90,26 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
         // 系统状态栏/导航栏透明并跟随明暗主题，使 Android 全面屏下
         // 底部手势提示线区域显示应用背景色而非黑色。
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            // Android 29+ 会在透明系统栏后叠加一层对比度 scrim：
-            // 浅色模式下（深色图标）会把提示条区域垫成白色，导致发白。
-            // 关闭对比度强制，让透明栏直接透出应用背景色。
-            systemStatusBarContrastEnforced: false,
-            systemNavigationBarContrastEnforced: false,
-            statusBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
-            statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
-            systemNavigationBarColor: Colors.transparent,
-            systemNavigationBarDividerColor: Colors.transparent,
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
+        return KeyedSubtree(
+          key: ValueKey('locale-format-${localeSettings.effectiveFormatLocale}'),
+          child: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              // Android 29+ 会在透明系统栏后叠加一层对比度 scrim：
+              // 浅色模式下（深色图标）会把提示条区域垫成白色，导致发白。
+              // 关闭对比度强制，让透明栏直接透出应用背景色。
+              systemStatusBarContrastEnforced: false,
+              systemNavigationBarContrastEnforced: false,
+              statusBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
+              statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+              systemNavigationBarColor: Colors.transparent,
+              systemNavigationBarDividerColor: Colors.transparent,
+              systemNavigationBarIconBrightness:
+                  isDark ? Brightness.light : Brightness.dark,
+            ),
+            child: child!,
           ),
-          child: child!,
         );
       },
     );

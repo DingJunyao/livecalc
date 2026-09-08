@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -483,7 +484,7 @@ class _ProductPricesCard extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const Icon(Icons.chevron_right,
+                        Icon(DirectionalIcons.forwardChevron(context),
                             size: 20, color: Colors.grey),
                       ],
                     ),

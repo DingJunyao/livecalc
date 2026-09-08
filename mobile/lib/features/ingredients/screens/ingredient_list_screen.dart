@@ -14,6 +14,7 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/repositories/product_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../models/ingredient.dart';
 import 'ingredient_form_screen.dart' show IngredientFormResult;
 import '../providers/ingredient_provider.dart';
@@ -405,7 +406,8 @@ class _IngredientCard extends ConsumerWidget {
                 visualDensity: VisualDensity.compact,
                 onPressed: onQuickPrice,
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
             ],
           ),
         ),

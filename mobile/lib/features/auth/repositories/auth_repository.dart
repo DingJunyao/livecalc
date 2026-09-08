@@ -69,7 +69,7 @@ class AuthRepository {
   }) {
     return updateMe({
       'locale': locale,
-      if (formatLocale != null) 'format_locale': formatLocale,
+      'format_locale': formatLocale,
     });
   }
 

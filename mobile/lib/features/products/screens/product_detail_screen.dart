@@ -7,6 +7,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/entity_units_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
@@ -537,7 +538,7 @@ class _ProductBasicInfoCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const Icon(Icons.arrow_forward,
+                      Icon(DirectionalIcons.forwardArrow(context),
                           size: 14, color: Colors.grey),
                     ],
                   ),

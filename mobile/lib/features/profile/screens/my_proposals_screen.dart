@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../models/proposal.dart';
 import '../providers/profile_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -86,6 +87,11 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
     }
   }
 
+  String _formatDateTime(String iso) {
+    final value = DateTime.tryParse(iso)?.toLocal();
+    return value == null ? iso : formatDateTime(value);
+  }
+
   void _showDetail(Proposal p) {
     final l10n = AppLocalizations.of(context);
     showDialog<void>(
@@ -116,7 +122,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
               const SizedBox(height: 4),
               Text(
                 '${_typeLabel(p.entityType, l10n)} · '
-                '${_actionLabel(p.action, l10n)} · ${p.createdAt}',
+                '${_actionLabel(p.action, l10n)} · ${_formatDateTime(p.createdAt)}',
                 style: Theme.of(ctx)
                     .textTheme
                     .bodySmall
@@ -230,7 +236,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                             subtitle: Text(
                                 '${_typeLabel(p.entityType, l10n)} · '
                                 '${_actionLabel(p.action, l10n)} · '
-                                '${p.createdAt}',
+                                '${_formatDateTime(p.createdAt)}',
                                 style: theme.textTheme.bodySmall),
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(

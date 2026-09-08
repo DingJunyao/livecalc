@@ -8,6 +8,7 @@ import '../../../core/api/api_client.dart';
 import '../../../core/i18n/locale_settings.dart';
 import '../providers/startup_page_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -56,7 +57,8 @@ class ProfileScreen extends ConsumerWidget {
                             style: theme.textTheme.bodyMedium
                                 ?.copyWith(color: theme.colorScheme.outline)),
                       ])),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  Icon(DirectionalIcons.forwardChevron(context),
+                      color: Colors.grey),
                 ]),
               ),
             ),
@@ -76,7 +78,8 @@ class ProfileScreen extends ConsumerWidget {
               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                 Text(_startupPageDisplayName(
                     ref.watch(startupPageProvider), l10n)),
-                const Icon(Icons.chevron_right, color: Colors.grey),
+                Icon(DirectionalIcons.forwardChevron(context),
+                    color: Colors.grey),
               ]),
               onTap: () => _showStartupPageDialog(context, ref),
             ),
@@ -99,14 +102,16 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.language),
               title: Text(l10n.profileLanguage),
-              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              trailing: Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
               onTap: () => _showLanguageDialog(context, ref),
             ),
             const Divider(height: 1),
             ListTile(
               leading: const Icon(Icons.numbers),
               title: Text(l10n.profileRegionalFormat),
-              trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+              trailing: Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
               onTap: () => _showRegionalFormatDialog(context, ref),
             ),
             const Divider(height: 1),

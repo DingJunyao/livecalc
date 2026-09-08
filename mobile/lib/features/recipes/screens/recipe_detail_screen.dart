@@ -14,6 +14,7 @@ import 'recipe_form_screen.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/utils/currency_fmt.dart';
 
 class RecipeDetailScreen extends ConsumerStatefulWidget {
@@ -628,7 +629,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     if (canNavigate)
                       Padding(
                         padding: const EdgeInsetsDirectional.only(start: 2),
-                        child: Icon(Icons.chevron_right,
+                        child: Icon(DirectionalIcons.forwardChevron(context),
                             size: 16, color: theme.colorScheme.outline),
                       ),
                     if (ing.isOptional) ...[

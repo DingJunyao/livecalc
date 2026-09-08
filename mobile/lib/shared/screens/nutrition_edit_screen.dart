@@ -6,6 +6,7 @@ import '../../features/nutrition/models/usda_models.dart';
 import '../../features/nutrition/repositories/usda_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
+import '../widgets/directional_icons.dart';
 
 class NutritionEditResult {
   final bool saved;
@@ -374,7 +375,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
             alignment: AlignmentDirectional.centerStart,
             child: TextButton.icon(
               onPressed: () => setState(() => _selected = null),
-              icon: const Icon(Icons.arrow_back),
+              icon: Icon(DirectionalIcons.backArrow(context)),
               label: Text(l10n.nutritionBackToList),
             ),
           ),

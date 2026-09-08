@@ -7,6 +7,7 @@ import 'package:fl_chart/fl_chart.dart';
 // 时编译报错而非运行期崩溃）；fl_chart 升级时需复核此依赖。
 // ignore: implementation_imports
 import 'package:fl_chart/src/chart/line_chart/line_chart_renderer.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../repositories/recipe_repository.dart';
 import '../utils/ingredient_colors.dart';
@@ -132,6 +133,12 @@ class _YAxisRange {
       interval,
     );
   }
+}
+
+String _formatDate(String value, {bool short = false}) {
+  final date = DateTime.tryParse(value);
+  if (date == null) return value;
+  return short ? formatShortDate(date) : formatDate(date);
 }
 
 String _formatYAxisLabel(double v, _YAxisRange range, String userCurrency) {
@@ -459,8 +466,8 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                   widget.points.length - 1
                 };
                 if (!idxList.contains(i)) return const SizedBox.shrink();
-                final date = widget.points[i].date;
-                final label = date.length >= 5 ? date.substring(5) : date;
+                final label =
+                    _formatDate(widget.points[i].date, short: true);
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Directionality(
@@ -489,7 +496,9 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           handleBuiltInTouches: false,
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) => buildStackedTooltipItems(series,
-                touchedSpots, widget.points[touchedSpots.first.x.toInt()].date,
+                touchedSpots,
+                _formatDate(
+                    widget.points[touchedSpots.first.x.toInt()].date),
                 userCurrency: widget.userCurrency,
                 totalLabel: '${l10n.recipeTotalLabel}: '),
           ),
@@ -578,8 +587,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                 if (!{0, points.length ~/ 2, points.length - 1}.contains(i)) {
                   return const SizedBox.shrink();
                 }
-                final date = points[i].date;
-                final label = date.length >= 5 ? date.substring(5) : date;
+                final label = _formatDate(points[i].date, short: true);
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Directionality(
@@ -606,7 +614,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           touchTooltipData: LineTouchTooltipData(
             getTooltipItems: (touchedSpots) {
               final idx = touchedSpots.first.x.toInt();
-              final date = points[idx].date;
+              final date = _formatDate(points[idx].date);
               // 同主图契约：返回条数必须与 touchedSpots 一致（painter 校验不一致
               // throw）。单线图仅命中 1 个 spot → 日期放 text，均价/区间行并入
               // children，渲染效果与原三条 item 一致。

@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -685,7 +686,8 @@ class _MerchantCard extends StatelessWidget {
                       value: 'delete', child: Text(l10n.commonDelete)),
                 ],
               ),
-              const Icon(Icons.chevron_right, color: Colors.grey),
+              Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
             ],
           ),
         ),
