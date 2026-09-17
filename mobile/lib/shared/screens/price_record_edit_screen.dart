@@ -36,6 +36,7 @@ class ProductOption {
 
 const priceRecordUnits = [
   'g',
+  '100g',
   'kg',
   '斤',
   '个',
@@ -140,8 +141,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     // 币种优先级：记录原币种 > 商家默认币种 > CNY
     var initialCurrency = args.initialCurrency ?? '';
     if (initialCurrency.isEmpty) {
-      final m =
-          args.merchants.where((m) => m.id == _merchantId).firstOrNull;
+      final m = args.merchants.where((m) => m.id == _merchantId).firstOrNull;
       final code = m?.defaultCurrency ?? m?.effectiveCurrency ?? '';
       initialCurrency = code.isNotEmpty ? code : 'CNY';
     }

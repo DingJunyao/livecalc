@@ -55,12 +55,12 @@ class UnitMatcher:
             if unit.name == unit_str:
                 return unit, False
 
-        # 3. 模糊匹配（处理大小写、空格等问题）
-        unit_lower = unit_str.lower()
-        for abbr, unit in self.unit_cache.items():
-            if abbr.lower() == unit_lower:
-                return unit, False
 
+        # 3. 模糊匹配（处理大小写与缩写内部空格，如 100 g -> 100g）
+        unit_compact = ''.join(unit_str.lower().split())
+        for abbr, unit in self.unit_cache.items():
+            if ''.join(abbr.lower().split()) == unit_compact:
+                return unit, False
         # 4. 没有匹配到，创建新单位
         return self._create_unit(unit_str), True
 

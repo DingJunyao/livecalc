@@ -2287,7 +2287,7 @@ const chartUnit = computed(() => massUnitName.value)
 
 // 单位选项
 const unitOptions = [
-  'g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐'
+  'g', '100g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐'
 ]
 
 // 加载按商家分组的最新价格

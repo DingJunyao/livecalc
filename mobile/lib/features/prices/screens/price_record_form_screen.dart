@@ -68,6 +68,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   int _searchSeq = 0;
   bool _isPurchase = true;
   bool _saving = false;
+  bool _currencyTouched = false;
   DateTime _recordedAt = DateTime.now();
   bool _barcodeLoading = false;
   late final bool _lockProduct;
@@ -93,15 +94,18 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           .items
           .where((m) => m.id == _merchantId)
           .firstOrNull;
-      if (m != null) _merchantController.text = m.name;
+      if (m != null) {
+        _merchantController.text = m.name;
+        _applyMerchantCurrency(m);
+      }
     }
     ref.listenManual<MerchantListState>(merchantListProvider, (previous, next) {
       if (!mounted || _merchantId == null) return;
-      if (_merchantController.text.isNotEmpty) return;
       final m = next.items.where((m) => m.id == _merchantId).firstOrNull;
-      if (m != null) {
-        _merchantController.text = m.name;
-      }
+      if (m == null) return;
+      if (_merchantController.text.isEmpty) _merchantController.text = m.name;
+      if (_currencyTouched) return;
+      setState(() => _applyMerchantCurrency(m));
     });
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
     Future.microtask(() => ref.read(merchantListProvider.notifier).load());
@@ -116,6 +120,13 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     _notesController.dispose();
     _merchantController.dispose();
     super.dispose();
+  }
+
+  void _applyMerchantCurrency(Merchant m) {
+    final code = m.defaultCurrency ?? m.effectiveCurrency;
+    if (code == null || code.isEmpty) return;
+    _currency = code;
+    _currencySymbol = currencySymbol(code);
   }
 
   Future<void> _loadCurrencies() async {
@@ -358,12 +369,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                   _merchantController.text = m.name;
                   setState(() {
                     _merchantId = m.id;
-                    final code =
-                        m.defaultCurrency ?? m.effectiveCurrency;
-                    if (code != null && code.isNotEmpty) {
-                      _currency = code;
-                      _currencySymbol = currencySymbol(code);
-                    }
+                    _currencyTouched = false;
+                    _applyMerchantCurrency(m);
                   });
                 },
                 fieldViewBuilder:
@@ -505,6 +512,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       onChanged: (code) {
                         if (code == null) return;
                         setState(() {
+                          _currencyTouched = true;
                           _currency = code;
                           _currencySymbol = currencySymbol(code);
                         });

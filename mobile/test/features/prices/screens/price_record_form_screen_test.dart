@@ -24,6 +24,7 @@ class _FakePriceRepository extends PriceRepository {
   double? lastQuantity;
   String? lastUnit;
   int? lastMerchantId;
+  String? lastCurrency;
   DateTime? lastRecordedAt;
 
   @override
@@ -41,6 +42,7 @@ class _FakePriceRepository extends PriceRepository {
     String currency = 'CNY',
   }) async {
     createCount++;
+    lastCurrency = currency;
     lastProductId = productId;
     lastProductName = productName;
     lastRecordType = recordType;
@@ -96,6 +98,10 @@ class _ScanLookupProductRepository extends ProductRepository {
 }
 
 class _FakeMerchantRepository extends MerchantRepository {
+  _FakeMerchantRepository({this.merchantCurrency});
+
+  final String? merchantCurrency;
+
   @override
   Future<MerchantPage> search({
     String? search,
@@ -106,10 +112,14 @@ class _FakeMerchantRepository extends MerchantRepository {
     int limit = 20,
   }) async {
     // 返回多个商家以便测 Autocomplete 过滤
-    return const MerchantPage(
+    return MerchantPage(
       items: [
-        Merchant(id: 1, name: '超市'),
-        Merchant(id: 2, name: '便利店'),
+        Merchant(
+          id: 1,
+          name: '超市',
+          defaultCurrency: merchantCurrency,
+        ),
+        const Merchant(id: 2, name: '便利店'),
       ],
       total: 2,
     );
@@ -146,6 +156,7 @@ void main() {
     PriceRecordFormPrefill? prefill,
     Future<String?> Function(BuildContext)? scanner,
     double viewportHeight = 1400,
+    String? merchantCurrency,
   }) async {
     // 表单整体超过默认 600 高视口，放大视口让底部保存按钮被构建。
     tester.view.physicalSize = Size(800, viewportHeight);
@@ -155,7 +166,9 @@ void main() {
     await tester.pumpWidget(ProviderScope(
       overrides: [
         merchantListProvider.overrideWith(
-          (ref) => MerchantListNotifier(_FakeMerchantRepository()),
+          (ref) => MerchantListNotifier(
+            _FakeMerchantRepository(merchantCurrency: merchantCurrency),
+          ),
         ),
       ],
       // 裸 Scaffold 在测试环境缺 Directionality，需 MaterialApp 包裹
@@ -174,6 +187,20 @@ void main() {
     await tester.tap(find.text('打开表单'));
     await tester.pumpAndSettle();
   }
+
+  testWidgets('记录价格单位包含 100g', (tester) async {
+    await pumpForm(tester);
+
+    final unitField = find.ancestor(
+      of: find.text('单位'),
+      matching: find.byType(DropdownButtonFormField<String>),
+    );
+    await tester.ensureVisible(unitField);
+    await tester.pumpAndSettle();
+    await tester.tap(unitField);
+    await tester.pumpAndSettle();
+    expect(find.text('100g'), findsOneWidget);
+  });
 
   testWidgets('渲染全部字段', (tester) async {
     await pumpForm(tester);
@@ -429,7 +456,6 @@ void main() {
     expect(repo.createCount, 1);
   });
 
-
   testWidgets('新增保存后记住商家与计入支出，再次打开表单复用', (tester) async {
     final repo = _FakePriceRepository();
     await pumpForm(tester, priceRepo: repo, viewportHeight: 2200);
@@ -469,9 +495,46 @@ void main() {
     final textField = tester.widget<TextField>(merchantField2);
     expect(textField.controller?.text, '超市');
 
-    final sw =
-        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    final sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isFalse);
+  });
+
+  testWidgets('复用记忆商家时同步带出商家默认币种', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(
+      tester,
+      priceRepo: repo,
+      viewportHeight: 2200,
+      merchantCurrency: 'IDR',
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(repo.lastCurrency, 'IDR');
+
+    await tester.tap(find.text('打开表单'));
+    await tester.pumpAndSettle();
+
+    final merchantField2 = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    final merchantText = tester.widget<TextField>(merchantField2);
+    expect(merchantText.controller?.text, '超市');
+    final priceField =
+        tester.widget<TextField>(find.widgetWithText(TextField, '价格'));
+    expect(priceField.decoration?.prefixText, 'Rp');
   });
 
   testWidgets('未记忆商家时再次打开表单为空，计入支出默认开启', (tester) async {
@@ -496,8 +559,8 @@ void main() {
     final textField = tester.widget<TextField>(merchantField);
     expect(textField.controller?.text, isEmpty);
 
-    final sw =
-        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
+    final sw = tester
+        .widget<SwitchListTile>(find.widgetWithText(SwitchListTile, '计入支出'));
     expect(sw.value, isTrue);
   });
 

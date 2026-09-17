@@ -45,6 +45,13 @@ void main() {
     });
   });
 
+  test('中国境外坐标不做 GCJ02 偏移（雅加达原样返回）', () {
+    const lat = -6.2088;
+    const lng = 106.8456;
+    expect(wgs84ToGcj02(lat, lng), const (lat, lng));
+    expect(gcj02ToWgs84(lat, lng), const (lat, lng));
+  });
+
   test('isGcj02Map：仅高德/腾讯', () {
     expect(isGcj02Map('amap'), isTrue);
     expect(isGcj02Map('tencent'), isTrue);

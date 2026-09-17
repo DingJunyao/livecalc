@@ -4182,7 +4182,7 @@ const goToAddPrice = () => {
 }
 
 // 价格记录单位选项
-const unitOptions = ['g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐']
+const unitOptions = ['g', '100g', 'kg', '斤', '两', 'ml', 'L', '个', '包', '袋', '盒', '瓶', '罐']
 
 // 商家列表
 interface Merchant {

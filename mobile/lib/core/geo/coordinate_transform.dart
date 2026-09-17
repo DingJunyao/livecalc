@@ -51,9 +51,14 @@ double _transformLng(double lat, double lng) {
   return ret;
 }
 
+/// GCJ02 加密只在中国区域生效；境外坐标与 WGS84 一致。
+bool isChinaGcj02Area(double lat, double lng) =>
+    lat >= 0.8293 && lat <= 55.8271 && lng >= 72.004 && lng <= 137.8347;
+
 /// WGS84 → GCJ02（GPS → 国测局，高德/腾讯瓦片坐标）。
 /// 返回 (lat, lng)。
 (double, double) wgs84ToGcj02(double lat, double lng) {
+  if (!isChinaGcj02Area(lat, lng)) return (lat, lng);
   var dlat = _transformLat(lng - 105.0, lat - 35.0);
   var dlng = _transformLng(lng - 105.0, lat - 35.0);
   final radlat = lat / 180.0 * math.pi;
@@ -67,6 +72,7 @@ double _transformLng(double lat, double lng) {
 
 /// GCJ02 → WGS84（国测局 → GPS）。
 (double, double) gcj02ToWgs84(double lat, double lng) {
+  if (!isChinaGcj02Area(lat, lng)) return (lat, lng);
   var dlat = _transformLat(lng - 105.0, lat - 35.0);
   var dlng = _transformLng(lng - 105.0, lat - 35.0);
   final radlat = lat / 180.0 * math.pi;
