@@ -179,7 +179,7 @@ const formRef = ref()
 const units = ref<string[]>([])
 
 // 基本单位列表（API 加载失败时的回退）
-const FALLBACK_UNITS = ['斤', '个', 'kg', '克', '升', '毫升', '盒', '包', '袋', '瓶']
+const FALLBACK_UNITS = ['斤', '个', 'kg', '100g', '克', '升', '毫升', '盒', '包', '袋', '瓶']
 
 // 加载全局单位列表
 const loadUnits = async () => {

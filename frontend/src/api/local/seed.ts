@@ -6,7 +6,7 @@ import { batchAdd, getDb, hasData } from './database'
 
 /**
  * 基础单位列表（ID 固定，确保后续代码按 ID 引用正确）
- * - id 1-15: 千克/克/斤/升/毫升/个/两/磅/盎司/cc/茶匙/汤匙/杯/份/包
+ * - id 1-16: 千克/克/斤/升/毫升/个/两/磅/盎司/cc/茶匙/汤匙/杯/份/包
  * - is_si_base: 千克、升、个 为 SI 基准单位
  * - is_common: 高频使用单位（磅/盎司在中文场景不常用）
  * - unit_system: metric/market/imperial/count/vague
@@ -27,6 +27,7 @@ export const BASE_UNITS = [
   { id: 13, name: '杯', abbreviation: 'cup', unit_type: 'volume', unit_system: 'vague', si_factor: 0.24, is_si_base: false, is_common: true, display_order: 13, plural_form: null },
   { id: 14, name: '份', abbreviation: '份', unit_type: 'count', unit_system: 'count', si_factor: 1, is_si_base: false, is_common: true, display_order: 14, plural_form: null },
   { id: 15, name: '包', abbreviation: '包', unit_type: 'count', unit_system: 'count', si_factor: 1, is_si_base: false, is_common: true, display_order: 15, plural_form: null },
+  { id: 16, name: '100克', abbreviation: '100g', unit_type: 'mass', unit_system: 'metric', si_factor: 0.1, is_si_base: false, is_common: true, display_order: 16, plural_form: null },
 ]
 
 /**
@@ -47,6 +48,7 @@ export const BASE_UNIT_CONVERSIONS = [
   { from_unit_id: 11, to_unit_id: 5, conversion_factor: 5, precision: 0, formula: null, is_bidirectional: true },
   { from_unit_id: 12, to_unit_id: 5, conversion_factor: 15, precision: 0, formula: null, is_bidirectional: true },
   { from_unit_id: 13, to_unit_id: 5, conversion_factor: 240, precision: 0, formula: null, is_bidirectional: true },
+  { from_unit_id: 16, to_unit_id: 1, conversion_factor: 0.1, precision: 1, formula: null, is_bidirectional: true },
 ]
 
 /**
@@ -54,6 +56,10 @@ export const BASE_UNIT_CONVERSIONS = [
  * 这里不写死 id，由 ensureCommonUnits() 在已存在的本地库里按名称补漏，
  * 避免覆盖用户自建单位。
  */
+export const COMMON_STANDARD_UNITS = [
+  { name: '100克', abbreviation: '100g', unit_type: 'mass', unit_system: 'metric', si_factor: 0.1, is_common: true },
+]
+
 export const COMMON_COUNT_UNITS = [
   '只', '条', '片', '根', '块', '勺', '瓣', '段', '滴', '把',
   '张', '袋', '叶', '圈', '头', '小块', '小把', '小片', '小碗', '撮',
@@ -62,15 +68,23 @@ export const COMMON_COUNT_UNITS = [
 ]
 
 /**
- * 为已初始化的本地库补齐常见计数单位。按名称去重，只新增不覆盖。
+ * 为已初始化的本地库补齐标准质量单位和常见计数单位。按名称去重，只新增不覆盖。
  */
 export async function ensureCommonUnits(): Promise<void> {
   const db = await getDb()
   const tx = db.transaction('units', 'readwrite')
   const store = tx.store
-  const existing = await store.getAll() as Array<{ id: number; name?: string }>
+  const existing = await store.getAll() as Array<{ id: number; name?: string; abbreviation?: string }>
   const existingNames = new Set(existing.map(u => u.name).filter(Boolean))
+  const existingAbbreviations = new Set(existing.map(u => u.abbreviation).filter(Boolean))
   let displayOrder = 100
+
+  for (const unit of COMMON_STANDARD_UNITS) {
+    if (existingNames.has(unit.name) || existingAbbreviations.has(unit.abbreviation)) continue
+    await store.add({ ...unit, is_si_base: false, display_order: displayOrder++, plural_form: null })
+    existingNames.add(unit.name)
+    existingAbbreviations.add(unit.abbreviation)
+  }
 
   for (const name of COMMON_COUNT_UNITS) {
     if (existingNames.has(name)) continue

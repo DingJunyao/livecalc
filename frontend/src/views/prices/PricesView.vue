@@ -641,6 +641,7 @@ const unitOptions = ref<{ title: string; value: string }[]>([])
 // 基本单位列表（API 加载失败时的回退）
 const FALLBACK_UNITS = [
   { title: '克', value: 'g' },
+  { title: '100克', value: '100g' },
   { title: '千克', value: 'kg' },
   { title: '斤', value: '斤' },
   { title: '两', value: '两' },
