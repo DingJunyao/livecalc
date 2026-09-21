@@ -590,9 +590,9 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                     Expanded(
                       child: Text(
                         l10n.pricePasteSummary(
-                          _matchedCount,
-                          _unmatchedCount,
-                          _invalidCount,
+                          formatNumber(_matchedCount),
+                          formatNumber(_unmatchedCount),
+                          formatNumber(_invalidCount),
                         ),
                         style: theme.textTheme.bodySmall,
                       ),
@@ -613,7 +613,10 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  l10n.pricePasteImporting(_progressCurrent, _progressTotal),
+                  l10n.pricePasteImporting(
+                    formatNumber(_progressCurrent),
+                    formatNumber(_progressTotal),
+                  ),
                   style: theme.textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
@@ -625,7 +628,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                   onPressed: _importing ? null : _doImport,
                   icon: const Icon(Icons.download_for_offline_outlined),
                   label: Text(
-                    l10n.pricePasteImportAll(_importable.length),
+                    l10n.pricePasteImportAll(formatNumber(_importable.length)),
                   ),
                 ),
               // 结果
@@ -644,8 +647,8 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                     children: [
                       Text(
                         l10n.pricePasteImportComplete(
-                          _result!.success,
-                          _result!.fail,
+                          formatNumber(_result!.success),
+                          formatNumber(_result!.fail),
                         ),
                         style: theme.textTheme.bodyMedium,
                       ),

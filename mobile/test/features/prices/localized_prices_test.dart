@@ -310,19 +310,19 @@ class _Copy {
   });
 
   String importAll(int count) =>
-      importAllTemplate.replaceAll('{count}', '$count');
+      importAllTemplate.replaceAll('{count}', formatNumber(count));
 
   String pasteComplete(int success, int fail) => pasteCompleteTemplate
-      .replaceAll('{success}', '$success')
-      .replaceAll('{fail}', '$fail');
+      .replaceAll('{success}', formatNumber(success))
+      .replaceAll('{fail}', formatNumber(fail));
 
   String pasteFailed(String items) =>
       pasteFailedTemplate.replaceAll('{items}', items);
 
   String summary(int matched, int unmatched, int invalid) => summaryTemplate
-      .replaceAll('{matched}', '$matched')
-      .replaceAll('{unmatched}', '$unmatched')
-      .replaceAll('{invalid}', '$invalid');
+      .replaceAll('{matched}', formatNumber(matched))
+      .replaceAll('{unmatched}', formatNumber(unmatched))
+      .replaceAll('{invalid}', formatNumber(invalid));
 
   String deleteMessage(String name, String price) => deleteMessageTemplate
       .replaceAll('{name}', name)

@@ -440,7 +440,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
                         l10n.nutritionUsdaResultDetail(
                           food.description,
                           food.dataType,
-                          food.nutrientCount,
+                          formatNumber(food.nutrientCount),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

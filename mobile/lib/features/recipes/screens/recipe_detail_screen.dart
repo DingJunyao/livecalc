@@ -366,7 +366,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
     chips.add(_chip(
         theme,
-        l10n.recipeServingsCount(detail.servings),
+        l10n.recipeServingsCount(formatNumber(detail.servings)),
         theme.colorScheme.secondaryContainer,
         theme.colorScheme.onSecondaryContainer));
     if (!detail.isPublic) {
@@ -988,7 +988,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                         size: 18),
                     label: Text(_showAllNutrients
                         ? l10n.nutritionCollapse
-                        : l10n.nutritionExpand(otherCount)),
+                        : l10n.nutritionExpand(formatNumber(otherCount))),
                     style: TextButton.styleFrom(
                         visualDensity: VisualDensity.compact,
                         padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -1180,7 +1180,7 @@ class _ServingsStepper extends StatelessWidget {
         _stepBtn(theme, Icons.remove, () => onChanged(value - 1), value <= 1),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(l10n.recipeServingsCount(value),
+          child: Text(l10n.recipeServingsCount(formatNumber(value)),
               style: theme.textTheme.bodyMedium
                   ?.copyWith(fontWeight: FontWeight.bold)),
         ),
@@ -1324,7 +1324,8 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    '${_index + 1} / ${widget.urls.length}',
+                    '${formatNumber(_index + 1)} / '
+                    '${formatNumber(widget.urls.length)}',
                     style: theme.textTheme.labelLarge
                         ?.copyWith(color: Colors.white),
                   ),
@@ -1339,7 +1340,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
               bottom: 0,
               child: Center(
                 child: IconButton(
-                  icon: const Icon(Icons.chevron_left,
+                  icon: Icon(DirectionalIcons.backChevron(context),
                       color: Colors.white, size: 36),
                   tooltip: l10n.recipePreviousImage,
                   onPressed: _prev,
@@ -1352,7 +1353,7 @@ class _RecipeLightboxState extends State<_RecipeLightbox> {
               bottom: 0,
               child: Center(
                 child: IconButton(
-                  icon: const Icon(Icons.chevron_right,
+                  icon: Icon(DirectionalIcons.forwardChevron(context),
                       color: Colors.white, size: 36),
                   tooltip: l10n.recipeNextImage,
                   onPressed: _next,

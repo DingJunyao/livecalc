@@ -181,7 +181,7 @@ class _NutritionTableState extends State<_NutritionTable> {
               label: Text(
                 _showAll
                     ? l10n.nutritionCollapse
-                    : l10n.nutritionExpand(others.length),
+                    : l10n.nutritionExpand(formatNumber(others.length)),
               ),
               style: TextButton.styleFrom(
                 visualDensity: VisualDensity.compact,

@@ -371,7 +371,10 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                 ActionChip(
                   avatar: const Icon(Icons.add, size: 14),
                   label: Text(
-                    l10n.unitsUnmappedUsage(unit.unitName, unit.usageCount),
+                    l10n.unitsUnmappedUsage(
+                      unit.unitName,
+                      formatNumber(unit.usageCount),
+                    ),
                   ),
                   onPressed: _saving
                       ? null

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:com_a4ding_livecalc/core/i18n/app_formatters.dart';
+import 'package:com_a4ding_livecalc/core/i18n/locale_settings.dart';
+import 'package:com_a4ding_livecalc/shared/models/entity_unit.dart';
 import 'package:com_a4ding_livecalc/shared/screens/entity_units_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
@@ -49,5 +52,49 @@ void main() {
 
     expect(savedName, '碗');
     expect(savedWeight, 250);
+  });
+
+  testWidgets('Arabic unit usage and conversion digits are localized',
+      (tester) async {
+    final original = localeSettingsStore.current;
+    localeSettingsStore.update(const LocaleSettings(uiLocale: 'ar'));
+    addTearDown(() => localeSettingsStore.update(original));
+
+    await tester.pumpWidget(MaterialApp(
+      locale: const Locale('ar'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: EntityUnitsScreen(
+        entityType: 'ingredient',
+        entityId: 5,
+        units: const [
+          EntityUnit(
+            id: 1,
+            unitName: 'كوب',
+            conversionFactor: 2.5,
+            weightPerUnit: 250,
+          ),
+        ],
+        unmappedUnits: const [
+          UnmappedUnit(unitId: 2, unitName: 'حزمة', usageCount: 12),
+        ],
+        densities: const [],
+        isAdmin: true,
+        onAddUnit: (_) async => null,
+        onEditUnit: (_, __) async => null,
+        onDeleteUnit: (_) async => null,
+        onQuickAddUnmapped: (_) async => null,
+        onAddDensity: (_) async => null,
+        onDeleteDensity: (_) async => null,
+      ),
+    ));
+
+    expect(find.textContaining(formatNumber(12)), findsOneWidget);
+    expect(find.textContaining(formatNumber(2.5)), findsOneWidget);
+    expect(find.textContaining(formatNumber(250)), findsOneWidget);
+    // 不能再出现 ASCII 数字。
+    expect(find.textContaining('12'), findsNothing);
+    expect(find.textContaining('2.5'), findsNothing);
+    expect(find.textContaining('250'), findsNothing);
   });
 }

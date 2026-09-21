@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../providers/recipe_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../models/recipe_summary.dart';
@@ -155,7 +156,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             height: 48,
             child: Badge(
               isLabelVisible: notifier.activeFilterCount > 0,
-              label: Text('${notifier.activeFilterCount}'),
+          label: Text(formatNumber(notifier.activeFilterCount)),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
                 tooltip: l10n.journeyFilters,
@@ -319,7 +320,9 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(
-        loading ? '--' : l10n.recipeServingsCount(r.servings),
+        loading
+            ? '--'
+            : l10n.recipeServingsCount(formatNumber(r.servings)),
         style: theme.textTheme.labelSmall
             ?.copyWith(color: theme.colorScheme.outline),
       );
@@ -330,7 +333,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
         Text(
           l10n.recipeCostPerServings(
             formatMoney(r.estimatedCost!, userCurrency),
-            servings,
+            formatNumber(servings),
           ),
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.primary,
@@ -351,7 +354,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
       final perServing = (r.calories! / servings).round();
       children.add(
         Text(
-          l10n.recipeCaloriesPerServing('$perServing'),
+          l10n.recipeCaloriesPerServing(formatNumber(perServing)),
           style: theme.textTheme.labelSmall
               ?.copyWith(color: theme.colorScheme.outline),
         ),

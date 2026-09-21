@@ -589,7 +589,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nutritionCollapse => '收起';
 
   @override
-  String nutritionExpand(int count) {
+  String nutritionExpand(String count) {
     return '展开 +$count 项';
   }
 
@@ -637,7 +637,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String nutritionUsdaResultDetail(
-      Object description, Object dataType, int nutrientCount) {
+      Object description, Object dataType, String nutrientCount) {
     return '$description · $dataType · $nutrientCount 项营养素';
   }
 
@@ -761,7 +761,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unitsUnmappedTitle => '待配置单位（默认 100 g）';
 
   @override
-  String unitsUnmappedUsage(Object unit, int count) {
+  String unitsUnmappedUsage(Object unit, String count) {
     return '$unit（$count次）';
   }
 
@@ -1183,7 +1183,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String journeyServings(int count) {
+  String journeyServings(String count) {
     return '$count 份';
   }
 
@@ -1191,7 +1191,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get journeyNoHierarchy => '暂无层级关系';
 
   @override
-  String journeyRelationStrength(int value) {
+  String journeyRelationStrength(String value) {
     return '强度：$value';
   }
 
@@ -2252,7 +2252,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get placeSetDefault => '设为默认';
 
   @override
-  String placeSubtitle(Object kind, int radius, Object coordinates) {
+  String placeSubtitle(Object kind, String radius, Object coordinates) {
     return '$kind · 视野 $radius km · $coordinates';
   }
 

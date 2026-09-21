@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -28,6 +30,42 @@ class _OfflineAdapter implements HttpClientAdapter {
       requestOptions: options,
       type: DioExceptionType.connectionError,
       message: 'offline in test',
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// 测试用：`/currencies` 返回后端按 Accept-Language 本地化后的 display_name，
+/// name 保持数据库里的中文原值（旧实现直接展示了它）。
+class _CurrenciesAdapter implements HttpClientAdapter {
+  _CurrenciesAdapter(this.displayNames);
+
+  final Map<String, String> displayNames;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final payload = [
+      for (final entry in displayNames.entries)
+        {
+          'code': entry.key,
+          'name': entry.key == 'CNY' ? '人民币' : '美元',
+          'display_name': entry.value,
+          'symbol': '¤',
+          'decimals': 2,
+        },
+    ];
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
     );
   }
 
@@ -277,6 +315,39 @@ void main() {
     expect(find.text('人民币 CNY'), findsOneWidget);
     expect(find.text('美元 USD'), findsOneWidget);
     expect(find.textContaining('¥ 人民币'), findsNothing);
+  });
+
+  testWidgets('默认币种对话框优先使用接口本地化的 display_name', (tester) async {
+    const storageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (call) async => null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null));
+
+    final dio = ApiClient.instance.dio;
+    final originalAdapter = dio.httpClientAdapter;
+    dio.httpClientAdapter = _CurrenciesAdapter(const {
+      'CNY': 'Chinese yuan',
+      'USD': 'US dollar',
+    });
+    addTearDown(() => dio.httpClientAdapter = originalAdapter);
+
+    await pumpScreen(
+      tester,
+      const User(id: 1, username: 'alice', email: 'a@test.com'),
+      locale: const Locale('en', 'US'),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Default currency'));
+    await tester.pumpAndSettle();
+
+    // 接口 display_name 已按 Accept-Language 本地化，应优先于数据库中文 name。
+    expect(find.text('Chinese yuan CNY'), findsOneWidget);
+    expect(find.text('US dollar USD'), findsOneWidget);
+    expect(find.text('人民币 CNY'), findsNothing);
+    expect(find.text('美元 USD'), findsNothing);
   });
 
   testWidgets('English fallback currency names are localized', (tester) async {

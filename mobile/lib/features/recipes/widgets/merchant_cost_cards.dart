@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/mouse_wheel_horizontal_scroll.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -143,7 +144,10 @@ class _MerchantCostCardsState extends State<MerchantCostCards> {
           Row(children: [
             Expanded(
               child: Text(
-                l10n.recipeCoveredCount(m.coveredCount, m.totalIngredients),
+                l10n.recipeCoveredCount(
+                  formatNumber(m.coveredCount),
+                  formatNumber(m.totalIngredients),
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.labelSmall

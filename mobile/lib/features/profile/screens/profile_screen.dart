@@ -262,8 +262,11 @@ const List<Map<String, String>> _fallbackCurrencies = [
   {'code': 'ZAR', 'symbol': 'R'},
 ];
 
-String _fallbackCurrencyName(String code, AppLocalizations l10n) {
+/// 内置币种文案表；未知币种返回 null，交由调用方回退到接口名称或币种代码。
+String? _localizedCurrencyName(String code, AppLocalizations l10n) {
   switch (code) {
+    case 'CNY':
+      return l10n.profileCurrencyNameCNY;
     case 'USD':
       return l10n.profileCurrencyNameUSD;
     case 'EUR':
@@ -333,8 +336,25 @@ String _fallbackCurrencyName(String code, AppLocalizations l10n) {
     case 'ZAR':
       return l10n.profileCurrencyNameZAR;
     default:
-      return l10n.profileCurrencyNameCNY;
+      return null;
   }
+}
+
+/// 币种显示名：优先接口已按 Accept-Language 本地化的 display_name，
+/// 其次本地文案表（接口不可用时的兜底），最后回退原始 name / 币种代码。
+String _currencyDisplayName(Map<String, dynamic> currency,
+    AppLocalizations l10n) {
+  final code = currency['code']?.toString() ?? '';
+  final displayName = currency['display_name']?.toString().trim();
+  if (displayName != null && displayName.isNotEmpty) return displayName;
+
+  final localized = _localizedCurrencyName(code, l10n);
+  if (localized != null) return localized;
+
+  final name = currency['name']?.toString().trim();
+  if (name != null && name.isNotEmpty) return name;
+
+  return code;
 }
 
 Future<List<Map<String, dynamic>>> _fetchCurrencies() async {
@@ -379,7 +399,7 @@ Future<void> _showDefaultCurrencyDialog(
                 RadioListTile<String>(
                   value: c['code'] as String? ?? '',
                   title: Text(
-                    '${c['name'] ?? _fallbackCurrencyName(c['code'] as String? ?? '', l10n)} ${c['code']}',
+                    '${_currencyDisplayName(c, l10n)} ${c['code']}',
                   ),
                 ),
             ],

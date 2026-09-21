@@ -10,6 +10,7 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/sparkline.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/repositories/product_repository.dart';
@@ -147,7 +148,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
             height: 48,
             child: Badge(
               isLabelVisible: notifier.activeFilterCount > 0,
-              label: Text('${notifier.activeFilterCount}'),
+          label: Text(formatNumber(notifier.activeFilterCount)),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
                 tooltip: l10n.journeyFilters,

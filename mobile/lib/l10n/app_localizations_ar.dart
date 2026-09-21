@@ -603,7 +603,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nutritionCollapse => 'طي';
 
   @override
-  String nutritionExpand(int count) {
+  String nutritionExpand(String count) {
     return 'عرض $count إضافي';
   }
 
@@ -653,7 +653,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String nutritionUsdaResultDetail(
-      Object description, Object dataType, int nutrientCount) {
+      Object description, Object dataType, String nutrientCount) {
     return '$description - $dataType - $nutrientCount عنصرًا غذائيًا';
   }
 
@@ -777,7 +777,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get unitsUnmappedTitle => 'وحدات بحاجة إلى إعداد (الافتراضي 100 جم)';
 
   @override
-  String unitsUnmappedUsage(Object unit, int count) {
+  String unitsUnmappedUsage(Object unit, String count) {
     return '$unit ($count استخدام)';
   }
 
@@ -1206,7 +1206,7 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String journeyServings(int count) {
+  String journeyServings(String count) {
     return '$count حصة';
   }
 
@@ -1214,7 +1214,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get journeyNoHierarchy => 'لا يوجد تسلسل هرمي';
 
   @override
-  String journeyRelationStrength(int value) {
+  String journeyRelationStrength(String value) {
     return 'القوة: $value';
   }
 
@@ -2301,7 +2301,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get placeSetDefault => 'تعيين كافتراضي';
 
   @override
-  String placeSubtitle(Object kind, int radius, Object coordinates) {
+  String placeSubtitle(Object kind, String radius, Object coordinates) {
     return '$kind · النطاق $radius كم · $coordinates';
   }
 

@@ -129,7 +129,8 @@ class EntityUnitsCard extends StatelessWidget {
                         ActionChip(
                           avatar: const Icon(Icons.add, size: 14),
                           label: Text(l10n.unitsUnmappedUsage(
-                              unit.unitName, unit.usageCount)),
+                              unit.unitName,
+                              formatNumber(unit.usageCount))),
                           onPressed: () => _openMaintenance(context),
                         ),
                     ],

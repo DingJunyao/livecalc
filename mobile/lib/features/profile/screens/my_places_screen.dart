@@ -163,7 +163,9 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
                                       place.kind ?? 'custom',
                                       l10n,
                                     ),
-                                    (place.viewRadiusKm ?? 5).round(),
+                                    formatNumber(
+                                      (place.viewRadiusKm ?? 5).round(),
+                                    ),
                                     '${formatCoordinate(place.latitude, fractionDigits: 4)}, '
                                     '${formatCoordinate(place.longitude, fractionDigits: 4)}',
                                   ),

@@ -14,6 +14,7 @@ import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../profile/models/user_place.dart';
 import '../../profile/repositories/profile_repository.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -275,7 +276,7 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
             height: 48,
             child: Badge(
               isLabelVisible: notifier.activeFilterCount > 0,
-              label: Text('${notifier.activeFilterCount}'),
+              label: Text(formatNumber(notifier.activeFilterCount)),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
                 tooltip: l10n.journeyFilters,

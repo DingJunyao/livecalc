@@ -1,6 +1,8 @@
 // ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables
 import 'package:flutter/gestures.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+import 'package:com_a4ding_livecalc/core/i18n/app_formatters.dart';
+import 'package:com_a4ding_livecalc/core/i18n/locale_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/recipes/repositories/recipe_repository.dart';
@@ -37,6 +39,42 @@ void main() {
       expect(find.textContaining('覆盖 4/6 种食材'), findsOneWidget);
       expect(find.textContaining('需外购'), findsOneWidget);
       expect(find.text('最实惠 ✓'), findsOneWidget);
+    });
+
+    testWidgets('Arabic covered count uses Arabic-Indic digits', (tester) async {
+      final original = localeSettingsStore.current;
+      localeSettingsStore.update(const LocaleSettings(uiLocale: 'ar'));
+      addTearDown(() => localeSettingsStore.update(original));
+
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('ar'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: MerchantCostCards(
+            merchants: [
+              MerchantCostItem(
+                merchantId: 1,
+                merchantName: 'Souq',
+                coveredCost: 8.5,
+                externalCost: 3.2,
+                totalCost: 11.7,
+                coveredCount: 4,
+                totalIngredients: 6,
+                missingIngredients: [],
+              ),
+            ],
+            loading: false,
+          ),
+        ),
+      ));
+
+      // 覆盖数走 formatNumber：阿拉伯语下必须是阿拉伯-印度数字。
+      expect(
+        find.textContaining('${formatNumber(4)}/${formatNumber(6)}'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('4/6'), findsNothing);
     });
 
     testWidgets('fallback 链点击信息图标弹出弹窗', (tester) async {

@@ -829,7 +829,7 @@ class _RelatedProductsCard extends StatelessWidget {
                 if (products.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Chip(
-                    label: Text('${products.length}'),
+                    label: Text(formatNumber(products.length)),
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -1174,7 +1174,9 @@ class _RelatedRecipesCard extends StatelessWidget {
     return r.usages.map((u) {
       final text = u.display;
       final isNumeric = u.quantity > 0 || u.quantityRange != null;
-      return isNumeric ? '$text / ${l10n.journeyServings(servings)}' : text;
+      return isNumeric
+          ? '$text / ${l10n.journeyServings(formatNumber(servings))}'
+          : text;
     }).join(l10n.commonListSeparator);
   }
 
@@ -1199,7 +1201,7 @@ class _RelatedRecipesCard extends StatelessWidget {
                 if (recipes.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Chip(
-                    label: Text('${recipes.length}+'),
+                    label: Text('${formatNumber(recipes.length)}+'),
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -1387,7 +1389,7 @@ class _HierarchyCard extends StatelessWidget {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _relationPairLabel(r, l10n),
+                              _relationPairLabel(context, r, l10n),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium
@@ -1401,7 +1403,9 @@ class _HierarchyCard extends StatelessWidget {
                               ),
                             ),
                             Text(
-                              l10n.journeyRelationStrength(r.strength),
+                              l10n.journeyRelationStrength(
+                                formatNumber(r.strength),
+                              ),
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: theme.colorScheme.outline,
                               ),
@@ -1442,6 +1446,7 @@ class _HierarchyCard extends StatelessWidget {
       };
 
   String _relationPairLabel(
+    BuildContext context,
     HierarchyRelation relation,
     AppLocalizations l10n,
   ) {
@@ -1449,7 +1454,7 @@ class _HierarchyCard extends StatelessWidget {
       storedName: relation.parentName,
       ingredientId: relation.parentId,
       fallbackName: l10n.ingredientRelationFallbackName,
-    )} → ${ingredientRelationEndpointDisplay(
+    )} ${DirectionalIcons.flowArrow(context)} ${ingredientRelationEndpointDisplay(
       storedName: relation.childName,
       ingredientId: relation.childId,
       fallbackName: l10n.ingredientRelationFallbackName,

@@ -4,6 +4,7 @@ import '../../../core/i18n/app_formatters.dart';
 import '../models/proposal.dart';
 import '../providers/profile_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -181,7 +182,9 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
                 text: '$k: ',
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             TextSpan(
-              text: '${_val(before, l10n)} → ${_val(after, l10n)}',
+              text: '${_val(before, l10n)} '
+                  '${DirectionalIcons.flowArrow(context)} '
+                  '${_val(after, l10n)}',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -200,6 +203,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
   String _val(dynamic v, AppLocalizations l10n) {
     if (v == null) return l10n.proposalValueNone;
     if (v is Map || v is List) return v.toString();
+    if (v is num) return formatQuantity(v);
     return v.toString();
   }
 

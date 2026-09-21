@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
@@ -375,7 +376,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
           (!hasRec && hasMin && hasMax) ||
           (!hasRec && !hasMin && !hasMax);
       if (!valid || (hasMin && hasMax && max < min)) {
-        return l10n.recipeIngredientQuantityIncomplete(i + 1);
+        return l10n.recipeIngredientQuantityIncomplete(formatNumber(i + 1));
       }
     }
     return null;
@@ -1479,7 +1480,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         Row(children: [
           Expanded(
             child: Text(
-              l10n.recipeStepNumberLabel(index + 1),
+              l10n.recipeStepNumberLabel(formatNumber(index + 1)),
               style: theme.textTheme.labelLarge,
             ),
           ),

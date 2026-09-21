@@ -605,7 +605,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionCollapse => 'Collapse';
 
   @override
-  String nutritionExpand(int count) {
+  String nutritionExpand(String count) {
     return 'Show $count more';
   }
 
@@ -654,7 +654,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String nutritionUsdaResultDetail(
-      Object description, Object dataType, int nutrientCount) {
+      Object description, Object dataType, String nutrientCount) {
     return '$description - $dataType - $nutrientCount nutrients';
   }
 
@@ -778,7 +778,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unitsUnmappedTitle => 'Units to configure (default 100 g)';
 
   @override
-  String unitsUnmappedUsage(Object unit, int count) {
+  String unitsUnmappedUsage(Object unit, String count) {
     return '$unit ($count uses)';
   }
 
@@ -1208,7 +1208,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String journeyServings(int count) {
+  String journeyServings(String count) {
     return '$count servings';
   }
 
@@ -1216,7 +1216,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get journeyNoHierarchy => 'No hierarchy';
 
   @override
-  String journeyRelationStrength(int value) {
+  String journeyRelationStrength(String value) {
     return 'Strength: $value';
   }
 
@@ -2318,7 +2318,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get placeSetDefault => 'Set as default';
 
   @override
-  String placeSubtitle(Object kind, int radius, Object coordinates) {
+  String placeSubtitle(Object kind, String radius, Object coordinates) {
     return '$kind · Range $radius km · $coordinates';
   }
 

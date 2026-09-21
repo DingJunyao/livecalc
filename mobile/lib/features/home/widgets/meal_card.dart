@@ -99,7 +99,7 @@ class MealCard extends StatelessWidget {
                     if (meal.calories != null)
                       _nutrientChip(
                         Icons.local_fire_department,
-                        '${meal.calories!.round()} kcal',
+                        '${formatNumber(meal.calories!.round())} kcal',
                         theme,
                       ),
                     if (meal.proteinG != null)

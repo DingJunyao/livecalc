@@ -37,11 +37,17 @@ void main() {
     expect(formatDate(value, formatLocale: 'en-GB'), '04/09/2026');
   });
 
-  test('formats Arabic dates and numbers without throwing', () {
+  test('formats Arabic dates and numbers with Arabic-Indic digits', () {
     final value = DateTime.utc(2026, 9, 4, 14, 30);
 
-    expect(formatDate(value, formatLocale: 'ar-EG'), isNotEmpty);
-    expect(formatNumber(1234.5, formatLocale: 'ar-EG'), isNotEmpty);
+    // ar-EG 的 CLDR 数字是 ٠-٩，任何落回 ASCII 的展示都算回归。
+    expect(formatDate(value, formatLocale: 'ar-EG'), contains('٢٠٢٦'));
+    expect(formatNumber(1234.5, formatLocale: 'ar-EG'), '١٬٢٣٤٫٥');
+    expect(formatQuantity(4, formatLocale: 'ar-EG'), '٤');
+    expect(
+      formatMoney(12.5, 'CNY', formatLocale: 'ar-EG'),
+      '١٢٫٥ CNY',
+    );
   });
 
   test('trims quantity trailing zeroes without losing precision', () {

@@ -405,7 +405,7 @@
   "@nutritionExpand": {
     "placeholders": {
       "count": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -445,7 +445,7 @@
       "description": {},
       "dataType": {},
       "nutrientCount": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -536,7 +536,7 @@
     "placeholders": {
       "unit": {},
       "count": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -869,7 +869,7 @@
   "@journeyServings": {
     "placeholders": {
       "count": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -879,7 +879,7 @@
   "@journeyRelationStrength": {
     "placeholders": {
       "value": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -1590,7 +1590,7 @@
     "placeholders": {
       "kind": {},
       "radius": {
-        "type": "int"
+        "type": "String"
       },
       "coordinates": {}
     }

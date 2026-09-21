@@ -33,7 +33,11 @@ const Map<String, String> _defaultFormatLocales = {
 const Map<String, Locale> _flutterLocales = {
   'zh-CN': Locale('zh', 'CN'),
   'en-US': Locale('en', 'US'),
-  'ar': Locale('ar'),
+  // Material/Cupertino 自带组件的数字与日期由 CLDR 按 Flutter locale 渲染，
+  // 而 intl 的 'ar' 数字符号是 ASCII（只有 ar-EG 等区域才是 ٠-٩）。
+  // 因此 Material 层用 ar-EG：应用自身的 uiLocale 仍是 'ar'，
+  // ARB 文案（按 languageCode 匹配）与 Accept-Language 均不受影响。
+  'ar': Locale('ar', 'EG'),
 };
 
 String resolveUiLocale({

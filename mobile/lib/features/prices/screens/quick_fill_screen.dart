@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/i18n/app_formatters.dart';
 import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/widgets/numeric_keypad.dart';
@@ -167,7 +168,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     if (mounted) {
       final l10n = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.quickFillSavedCount(saved))),
+        SnackBar(
+          content: Text(l10n.quickFillSavedCount(formatNumber(saved))),
+        ),
       );
       context.pop();
     }

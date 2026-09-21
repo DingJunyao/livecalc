@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/i18n/app_formatters.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/directional_icons.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../models/ingredient.dart';
 import '../repositories/ingredient_repository.dart';
@@ -258,11 +260,11 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   (relation) => ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text(
-                      _relationPairLabel(relation, l10n),
+                      _relationPairLabel(context, relation, l10n),
                     ),
                     subtitle: Text(
                       '${_relationLabel(relation.relationType, l10n)}'
-                      ' · ${l10n.journeyRelationStrength(relation.strength)}',
+                      ' · ${l10n.journeyRelationStrength(formatNumber(relation.strength))}',
                     ),
                     trailing: relation.isPending
                         ? Chip(label: Text(l10n.unitsPendingReview))
@@ -312,7 +314,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   ?.copyWith(fontWeight: FontWeight.bold),
             ),
             if (_editing != null) ...[
-              Text(_relationPairLabel(_editing!, l10n)),
+              Text(_relationPairLabel(context, _editing!, l10n)),
               TextButton(
                 onPressed: () => setState(() => _editing = null),
                 child: Text(l10n.ingredientChangeToAddRelation),
@@ -390,14 +392,14 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Text(l10n.journeyRelationStrength(_strength)),
+                Text(l10n.journeyRelationStrength(formatNumber(_strength))),
                 Expanded(
                   child: Slider(
                     value: _strength.toDouble(),
                     min: 1,
                     max: 100,
                     divisions: 99,
-                    label: '$_strength',
+                    label: formatNumber(_strength),
                     onChanged: (value) =>
                         setState(() => _strength = value.round()),
                   ),
@@ -434,6 +436,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
       };
 
   String _relationPairLabel(
+    BuildContext context,
     HierarchyRelation relation,
     AppLocalizations l10n,
   ) {
@@ -441,7 +444,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
       storedName: relation.parentName,
       ingredientId: relation.parentId,
       fallbackName: l10n.ingredientRelationFallbackName,
-    )} → ${ingredientRelationEndpointDisplay(
+    )} ${DirectionalIcons.flowArrow(context)} ${ingredientRelationEndpointDisplay(
       storedName: relation.childName,
       ingredientId: relation.childId,
       fallbackName: l10n.ingredientRelationFallbackName,

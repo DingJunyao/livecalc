@@ -3,7 +3,6 @@ import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../models/price_record.dart';
 import '../providers/price_provider.dart';
@@ -264,7 +263,7 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       height: 48,
       child: Badge(
         isLabelVisible: hasActive,
-        label: Text('$activeCount'),
+        label: Text(formatNumber(activeCount)),
         child: IconButton.filledTonal(
           icon: const Icon(Icons.tune),
           onPressed: () => _showFilterDialog(theme, state),
@@ -567,7 +566,9 @@ class _FilterSheetState extends State<_FilterSheet> {
     );
     if (picked != null) {
       setState(() {
-        final s = DateFormat('yyyy-MM-dd').format(picked);
+        // 筛选值始终以 ISO（yyyy-MM-dd）存放并传给后端，
+        // 语言无关；展示层再按当前格式语言本地化。
+        final s = _isoDate(picked);
         if (isStart) {
           _startDate = s;
         } else {
@@ -761,8 +762,21 @@ class _FilterSheetState extends State<_FilterSheet> {
           ),
           isDense: true,
         ),
-        child: Text(value ?? ''),
+        child: Text(value == null ? '' : _displayDate(value)),
       ),
     );
   }
+}
+
+/// ISO 日期（筛选请求参数）→ 当前格式语言的展示文本。
+String _displayDate(String isoDate) {
+  final parsed = DateTime.tryParse(isoDate);
+  return parsed == null ? isoDate : formatDate(parsed);
+}
+
+/// 本地日期 → ISO（yyyy-MM-dd），不使用本地数字，保证后端参数稳定。
+String _isoDate(DateTime value) {
+  final month = value.month.toString().padLeft(2, '0');
+  final day = value.day.toString().padLeft(2, '0');
+  return '${value.year.toString().padLeft(4, '0')}-$month-$day';
 }

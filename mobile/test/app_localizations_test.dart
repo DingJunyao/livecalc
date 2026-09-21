@@ -49,11 +49,13 @@ void main() {
     await tester.pump();
 
     final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    expect(app.locale, const Locale('ar'));
+    // Material 组件的数字/日期由 CLDR 渲染：intl 的 'ar' 是 ASCII 数字，
+    // 只有 ar-EG 是阿拉伯-印度数字，所以 Material 层用 ar-EG。
+    expect(app.locale, const Locale('ar', 'EG'));
     expect(app.supportedLocales, const [
       Locale('zh', 'CN'),
       Locale('en', 'US'),
-      Locale('ar'),
+      Locale('ar', 'EG'),
     ]);
     expect(
       app.localizationsDelegates?.contains(AppLocalizations.delegate),
@@ -76,7 +78,7 @@ void main() {
     expect(
       app.localeResolutionCallback
           ?.call(const Locale('fr'), app.supportedLocales),
-      const Locale('ar'),
+      const Locale('ar', 'EG'),
     );
   });
 }

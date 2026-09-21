@@ -1244,7 +1244,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'展开 +{count} 项'**
-  String nutritionExpand(int count);
+  String nutritionExpand(String count);
 
   /// No description provided for @nutritionNrvExplanation.
   ///
@@ -1329,7 +1329,7 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{description} · {dataType} · {nutrientCount} 项营养素'**
   String nutritionUsdaResultDetail(
-      Object description, Object dataType, int nutrientCount);
+      Object description, Object dataType, String nutrientCount);
 
   /// No description provided for @nutritionAddNutrient.
   ///
@@ -1569,7 +1569,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{unit}（{count}次）'**
-  String unitsUnmappedUsage(Object unit, int count);
+  String unitsUnmappedUsage(Object unit, String count);
 
   /// No description provided for @unitsConversionDetail.
   ///
@@ -2349,7 +2349,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{count} 份'**
-  String journeyServings(int count);
+  String journeyServings(String count);
 
   /// No description provided for @journeyNoHierarchy.
   ///
@@ -2361,7 +2361,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'强度：{value}'**
-  String journeyRelationStrength(int value);
+  String journeyRelationStrength(String value);
 
   /// No description provided for @journeyAdjustStrength.
   ///
@@ -4407,7 +4407,7 @@ abstract class AppLocalizations {
   ///
   /// In zh, this message translates to:
   /// **'{kind} · 视野 {radius} km · {coordinates}'**
-  String placeSubtitle(Object kind, int radius, Object coordinates);
+  String placeSubtitle(Object kind, String radius, Object coordinates);
 
   /// No description provided for @placeMapFeatureDisabled.
   ///

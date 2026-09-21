@@ -43,6 +43,7 @@ import '../../shared/screens/entity_units_screen.dart';
 import '../../shared/screens/nutrition_edit_screen.dart';
 import '../../shared/screens/price_record_edit_screen.dart';
 import 'route_names.dart';
+import 'shell_transition.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -640,7 +641,7 @@ int _tabRouteIndex(String location) {
 }
 
 /// Shell route 分支过渡页：根据目标 tab 与当前 tab 的索引差决定滑动方向。
-/// 往右切（newIdx > prevIdx）→ 从右滑入；往左切 → 从左滑入。
+/// 切到更靠后的 tab → 从右滑入；切到更早的 tab → 从左滑入（RTL 镜像）。
 CustomTransitionPage<void> _shellTransitionPage({
   required Widget child,
   required LocalKey key,
@@ -651,15 +652,20 @@ CustomTransitionPage<void> _shellTransitionPage({
 
   final prevIdx = prev != null ? _tabRouteIndex(prev) : -1;
   final currIdx = _tabRouteIndex(location);
-  final goLeft = prevIdx >= 0 && currIdx >= 0 && currIdx < prevIdx;
+  final toEarlierTab = prevIdx >= 0 && currIdx >= 0 && currIdx < prevIdx;
 
   return CustomTransitionPage<void>(
     key: key,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      // RTL 下 tab 视觉顺序左右相反，滑动方向需要镜像。
+      final isRtl = Directionality.of(context) == TextDirection.rtl;
       return SlideTransition(
         position: Tween<Offset>(
-          begin: goLeft ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0),
+          begin: shellTabSlideBegin(
+            toEarlierTab: toEarlierTab,
+            isRtl: isRtl,
+          ),
           end: Offset.zero,
         ).animate(CurvedAnimation(
           parent: animation,

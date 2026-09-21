@@ -396,7 +396,7 @@ class _ProductPricesCard extends StatelessWidget {
                 if (prices.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Chip(
-                    label: Text('${prices.length}+'),
+                    label: Text('${formatNumber(prices.length)}+'),
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
