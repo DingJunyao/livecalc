@@ -1546,6 +1546,7 @@
     "units": {
       "gram": "Gram",
       "kilogram": "Kilogram",
+      "hundredGrams": "100 g",
       "jin": "Jin (500 g)",
       "liang": "Liang (50 g)",
       "milliliter": "Milliliter",

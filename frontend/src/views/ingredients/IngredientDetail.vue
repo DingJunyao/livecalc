@@ -1799,10 +1799,10 @@ import {
   CORE_NUTRIENT_KEYS,
   DEFAULT_NUTRIENT_NAMES,
   ENERGY_UNIT_ALIASES,
-  LOCAL_UNIT_TRANSLATION_KEYS,
   LOCAL_UNIT_VALUES,
   NO_STANDARD_VALUES,
 } from '@/data/localValues'
+import { localizedUnitLabel } from '@/utils/localDisplay'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
@@ -4189,18 +4189,12 @@ const goToAddPrice = () => {
 }
 
 // 价格记录单位选项
-const unitOptions = computed(() => [
-  { title: t('prices.units.gram'), value: 'g' },
-  { title: t('prices.units.kilogram'), value: 'kg' },
-  { title: t(LOCAL_UNIT_TRANSLATION_KEYS[LOCAL_UNIT_VALUES[2]]), value: LOCAL_UNIT_VALUES[2] },
-  { title: t(LOCAL_UNIT_TRANSLATION_KEYS[LOCAL_UNIT_VALUES[3]]), value: LOCAL_UNIT_VALUES[3] },
-  { title: t('prices.units.milliliter'), value: 'ml' },
-  { title: t('prices.units.liter'), value: 'L' },
-  ...LOCAL_UNIT_VALUES.slice(4).map((unit) => ({
-    title: t(LOCAL_UNIT_TRANSLATION_KEYS[unit]),
-    value: unit,
+const unitOptions = computed(() =>
+  LOCAL_UNIT_VALUES.map((value) => ({
+    title: localizedUnitLabel(value),
+    value,
   })),
-])
+)
 
 // 商家列表
 interface Merchant {

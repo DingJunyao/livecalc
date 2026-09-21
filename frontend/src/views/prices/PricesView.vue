@@ -647,6 +647,7 @@ const unitOptions = ref<{ title: string; value: string }[]>([])
 // 基本单位列表（API 加载失败时的回退）
 const FALLBACK_UNITS = computed(() => [
   { title: t('prices.units.gram'), value: 'g' },
+  { title: t('prices.units.hundredGrams'), value: '100g' },
   { title: t('prices.units.kilogram'), value: 'kg' },
   { title: t('prices.units.jin'), value: CHINESE_JIN_NAME },
   { title: t('prices.units.liang'), value: CHINESE_LIANG_NAME },

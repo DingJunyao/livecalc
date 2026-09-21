@@ -115,6 +115,7 @@ export const LOCAL_UNIT_ALIASES: Record<string, { preferredName: string; fallbac
 }
 
 export const LOCAL_UNIT_TRANSLATION_KEYS: Record<string, string> = {
+  '100g': 'prices.units.hundredGrams',
   斤: 'prices.units.jin',
   两: 'prices.units.liang',
   个: 'prices.units.piece',
@@ -127,6 +128,7 @@ export const LOCAL_UNIT_TRANSLATION_KEYS: Record<string, string> = {
 
 export const LOCAL_UNIT_VALUES = [
   'g',
+  '100g',
   'kg',
   '斤',
   '两',

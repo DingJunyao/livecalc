@@ -7,6 +7,32 @@ import 'package:com_a4ding_livecalc/core/geo/coordinate_transform.dart';
 import 'package:com_a4ding_livecalc/features/merchants/widgets/apple_map_picker.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
+class _FakeJakartaGeolocator extends GeolocatorPlatform {
+  @override
+  Future<bool> isLocationServiceEnabled() async => true;
+
+  @override
+  Future<LocationPermission> checkPermission() async =>
+      LocationPermission.always;
+
+  @override
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async =>
+      Position(
+        latitude: -6.2088,
+        longitude: 106.8456,
+        timestamp: DateTime(2026, 9, 17),
+        accuracy: 10,
+        altitude: 0,
+        altitudeAccuracy: 0,
+        heading: 0,
+        headingAccuracy: 0,
+        speed: 0,
+        speedAccuracy: 0,
+      );
+}
+
 class _FakeGeolocator extends GeolocatorPlatform {
   @override
   Future<bool> isLocationServiceEnabled() async => true;
@@ -16,8 +42,9 @@ class _FakeGeolocator extends GeolocatorPlatform {
       LocationPermission.always;
 
   @override
-  Future<Position> getCurrentPosition(
-          {LocationSettings? locationSettings}) async =>
+  Future<Position> getCurrentPosition({
+    LocationSettings? locationSettings,
+  }) async =>
       Position(
         latitude: 31.25,
         longitude: 121.5,
@@ -82,5 +109,50 @@ void main() {
     final (displayLat, displayLng) = wgs84ToGcj02(31.25, 121.5);
     expect(annotation.position.latitude, closeTo(displayLat, 1e-6));
     expect(annotation.position.longitude, closeTo(displayLng, 1e-6));
+  });
+
+  testWidgets('雅加达定位不做 GCJ02 偏移', (tester) async {
+    GeolocatorPlatform.instance = _FakeJakartaGeolocator();
+    LatLng? picked;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 400,
+            height: 300,
+            child: AppleMapPicker(onChanged: (point) => picked = point),
+          ),
+        ),
+      ),
+    ));
+
+    await tester.tap(find.byKey(const ValueKey('map-locate-button')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(picked!.latitude, closeTo(-6.2088, 1e-9));
+    expect(picked!.longitude, closeTo(106.8456, 1e-9));
+    final map = tester.widget<apple.AppleMap>(find.byType(apple.AppleMap));
+    final annotation = map.annotations!.single;
+    expect(annotation.position.latitude, closeTo(-6.2088, 1e-9));
+    expect(annotation.position.longitude, closeTo(106.8456, 1e-9));
+  });
+
+  testWidgets('AppleMap 获得手势识别器以允许嵌套滚动中缩放', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 400,
+            height: 300,
+            child: AppleMapPicker(),
+          ),
+        ),
+      ),
+    ));
+
+    final map = tester.widget<apple.AppleMap>(find.byType(apple.AppleMap));
+    expect(map.gestureRecognizers, isNotNull);
+    expect(map.gestureRecognizers, isNotEmpty);
   });
 }

@@ -38,6 +38,7 @@ class ProductOption {
 
 const priceRecordUnits = [
   'g',
+  '100g',
   'kg',
   '斤',
   '个',

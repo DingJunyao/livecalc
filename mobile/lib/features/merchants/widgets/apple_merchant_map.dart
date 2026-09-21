@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
+import 'package:flutter/foundation.dart' show Factory;
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -52,6 +54,12 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
 
   apple.MapType _mapType = apple.MapType.standard;
   apple.AppleMapController? _mapController;
+
+  /// [AppleMap] 是平台视图；在表单/列表等滚动容器内，必须用 eager 手势
+  /// 识别器赢得手势竞技场，否则 pinch 缩放会被父级滚动消费。
+  final Set<Factory<OneSequenceGestureRecognizer>> _gestureRecognizers = {
+    Factory<EagerGestureRecognizer>(() => EagerGestureRecognizer()),
+  };
   LatLng? _currentLocation;
   bool _locating = false;
 
@@ -203,6 +211,7 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
           annotations: _annotations,
           myLocationEnabled: _currentLocation != null,
           onMapCreated: (c) => _mapController = c,
+          gestureRecognizers: _gestureRecognizers,
         ),
       ),
       if (widget.showControls)

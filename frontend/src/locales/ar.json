@@ -1546,6 +1546,7 @@
     "units": {
       "gram": "جرام",
       "kilogram": "كيلوغرام",
+      "hundredGrams": "100 غرام",
       "jin": "جين (500 غ)",
       "liang": "ليانغ (50 غ)",
       "milliliter": "مليلتر",

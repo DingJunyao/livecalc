@@ -1546,6 +1546,7 @@
     "units": {
       "gram": "克",
       "kilogram": "千克",
+      "hundredGrams": "100 克",
       "jin": "斤",
       "liang": "两",
       "milliliter": "毫升",

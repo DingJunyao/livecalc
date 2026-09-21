@@ -52,7 +52,8 @@ test('canonical unit helpers and localized labels stay separate', () => {
     CHINESE_PIECE_NAME,
     'kg',
   ])
-  assert.deepEqual(fallbackPriceUnitValues().slice(3, 5), [
+  assert.deepEqual(fallbackPriceUnitValues().slice(3, 6), [
+    '100g',
     CHINESE_GRAM_NAME,
     '\u5347',
   ])

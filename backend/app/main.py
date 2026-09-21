@@ -53,6 +53,25 @@ from app import __version__
 logger = logging.getLogger("app.main")
 
 
+def _ensure_hundred_gram_unit(db: Session):
+    """为既有安装补齐 100g 标准质量单位；si_factor 以 kg 为基准，100g = 0.1kg。"""
+
+    from app.models.unit import Unit
+    if db.query(Unit).filter(Unit.abbreviation == "100g").first() is None:
+        db.add(
+            Unit(
+                name="100克",
+                abbreviation="100g",
+                unit_type="mass",
+                unit_system="metric",
+                si_factor=0.1,
+                is_common=True,
+                display_order=3,
+            )
+        )
+        db.commit()
+
+
 def init_default_data(db: Session):
     """
     初始化默认数据：单位、单位转换、食材分类
@@ -63,6 +82,7 @@ def init_default_data(db: Session):
 
     # 检查是否已初始化
     if db.query(Unit).first() is not None:
+        _ensure_hundred_gram_unit(db)
         logger.info("单位数据已存在，跳过初始化")
         return
 
@@ -73,6 +93,7 @@ def init_default_data(db: Session):
         {"name": "米", "abbreviation": "m", "unit_type": "length", "unit_system": "metric", "is_si_base": True},
         {"name": "千克", "abbreviation": "kg", "unit_type": "mass", "unit_system": "metric", "is_si_base": True},
         {"name": "克", "abbreviation": "g", "unit_type": "mass", "unit_system": "metric", "si_factor": 0.001},
+        {"name": "100克", "abbreviation": "100g", "unit_type": "mass", "unit_system": "metric", "si_factor": 0.1, "is_common": True, "display_order": 3},
         {"name": "升", "abbreviation": "L", "unit_type": "volume", "unit_system": "metric", "is_si_base": True},
         {"name": "毫升", "abbreviation": "mL", "unit_type": "volume", "unit_system": "metric", "si_factor": 0.001},
         {"name": "秒", "abbreviation": "s", "unit_type": "time", "unit_system": "metric", "is_si_base": True},
