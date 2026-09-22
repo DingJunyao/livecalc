@@ -1,11 +1,12 @@
 # 价格记录 API - 支持通过食材别名搜索（最后修改: 2026-03-27 23:30）
 from decimal import Decimal
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, text, or_, and_
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
@@ -25,6 +26,7 @@ from app.services.unit_conversion_service import UnitConversionService
 from app.services.calc_scope import resolve_region_param
 from app.services.price_region import apply_region_filter, display_exchange_rate
 from app.services.proposals.pending import build_product_display_overrides
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -80,10 +82,7 @@ def _get_or_create_product(
             Ingredient.is_active == True
         ).first()
         if not ingredient:
-            raise HTTPException(
-                status_code=404,
-                detail=f"原料ID {ingredient_id} 不存在"
-            )
+            raise LocalizedHTTPException(status_code=404, message='原料ID {ingredient_id} 不存在', ingredient_id=ingredient_id)
     else:
         ingredient = _get_or_create_ingredient(db, product_name, current_user)
 
@@ -114,7 +113,7 @@ async def create_product_record(
         # 校验商家（必填）
         merchant = db.query(Merchant).filter(Merchant.id == record.merchant_id).first()
         if not merchant:
-            raise HTTPException(status_code=404, detail="商家不存在")
+            raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         # 计算记录时快照：1 record.currency = exchange_rate * 用户默认币种
         from app.services.currency_service import get_user_default_currency
@@ -129,7 +128,7 @@ async def create_product_record(
             as_of = utc_datetime_to_local_date(record.recorded_at or datetime.now(timezone.utc), "UTC")
             rate = exchange_rate_service.convert(db, Decimal("1"), currency, user_currency, as_of)
             if rate is None:
-                raise HTTPException(status_code=400, detail=f"无法获取 {currency} → {user_currency} 汇率，请手动指定")
+                raise LocalizedHTTPException(status_code=400, message='无法获取 {currency} → {user_currency} 汇率，请手动指定', currency=currency, user_currency=user_currency)
             exchange_rate = rate
 
         # 使用单位匹配器获取单位 ID
@@ -173,10 +172,7 @@ async def create_product_record(
                 Product.is_active == True
             ).first()
             if not product:
-                raise HTTPException(
-                    status_code=404,
-                    detail=f"商品ID {record.product_id} 不存在"
-                )
+                raise LocalizedHTTPException(status_code=404, message='商品ID {product_id} 不存在', product_id=record.product_id)
             product_id = record.product_id
             product_name = product.name
         else:
@@ -241,10 +237,7 @@ async def create_product_record(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"创建记录失败: {str(e)}"
-        )
+        raise LocalizedHTTPException(status_code=500, message='创建记录失败: {error}', error=str(e))
 
 
 @router.get("", response_model=PaginatedResponse)
@@ -619,7 +612,7 @@ async def get_product_record(
         ProductRecord.user_id == current_user.id
     ).first()
     if not record:
-        raise HTTPException(status_code=404, detail="记录不存在")
+        raise LocalizedHTTPException(status_code=404, message='记录不存在')
 
     # 手动构造响应对象，将 Unit 对象转换为字符串
     return ProductRecordResponse(
@@ -664,9 +657,9 @@ async def update_product_record(
         ).first()
 
         if not db_record:
-            raise HTTPException(status_code=404, detail="价格记录不存在")
+            raise LocalizedHTTPException(status_code=404, message='价格记录不存在')
         if db_record.user_id != current_user.id and not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="无权修改此价格记录")
+            raise LocalizedHTTPException(status_code=403, message='无权修改此价格记录')
 
         # 更新单位（如果需要）
         if record.original_unit:
@@ -709,12 +702,12 @@ async def update_product_record(
 
         # 商家必填：显式置空拒绝（在应用 update_data 前，避免把 merchant_id 置空绕过必填）
         if "merchant_id" in update_data and update_data.get("merchant_id") is None:
-            raise HTTPException(status_code=400, detail="商家不能为空")
+            raise LocalizedHTTPException(status_code=400, message='商家不能为空')
         # 非空时校验商家存在（404），币种重算逻辑保持
         if "merchant_id" in update_data and update_data.get("merchant_id") is not None:
             _merchant = db.query(Merchant).filter(Merchant.id == update_data["merchant_id"]).first()
             if not _merchant:
-                raise HTTPException(status_code=404, detail="商家不存在")
+                raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
         for key, value in update_data.items():
             if key not in ['original_unit', 'original_quantity']:  # 单位需要特殊处理
@@ -735,7 +728,7 @@ async def update_product_record(
             if new_merchant_id is not None:
                 merchant = db.query(Merchant).filter(Merchant.id == new_merchant_id).first()
                 if not merchant:
-                    raise HTTPException(status_code=404, detail="商家不存在")
+                    raise LocalizedHTTPException(status_code=404, message='商家不存在')
 
             from app.services.currency_service import get_user_default_currency
             from app.services import exchange_rate_service
@@ -751,7 +744,7 @@ async def update_product_record(
                 as_of = utc_datetime_to_local_date(recorded_at, "UTC")
                 rate = exchange_rate_service.convert(db, Decimal("1"), new_currency, user_currency, as_of)
                 if rate is None:
-                    raise HTTPException(status_code=400, detail=f"无法获取 {new_currency} → {user_currency} 汇率，请手动指定")
+                    raise LocalizedHTTPException(status_code=400, message='无法获取 {new_currency} → {user_currency} 汇率，请手动指定', new_currency=new_currency, user_currency=user_currency)
                 exchange_rate = rate
 
             db_record.user_currency = user_currency
@@ -787,15 +780,13 @@ async def update_product_record(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"更新记录失败: {str(e)}"
-        )
+        raise LocalizedHTTPException(status_code=500, message='更新记录失败: {error}', error=str(e))
 
 
 @router.delete("/{record_id}")
 async def delete_product_record(
     record_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -810,21 +801,18 @@ async def delete_product_record(
         ).first()
 
         if not db_record:
-            raise HTTPException(status_code=404, detail="价格记录不存在")
+            raise LocalizedHTTPException(status_code=404, message='价格记录不存在')
         if db_record.user_id != current_user.id and not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="无权删除此价格记录")
+            raise LocalizedHTTPException(status_code=403, message='无权删除此价格记录')
 
         db_record.is_active = False
         db.commit()
-        return {"message": "价格记录已删除"}
+        return {"message": api_message(request, "价格记录已删除")}
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=f"删除记录失败: {str(e)}"
-        )
+        raise LocalizedHTTPException(status_code=500, message='删除记录失败: {error}', error=str(e))
 
 
 @router.get("/history/{product_name}", response_model=ProductHistoryResponse)

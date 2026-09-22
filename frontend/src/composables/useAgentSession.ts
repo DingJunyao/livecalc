@@ -10,6 +10,7 @@
 // - tool_use / tool_result 按 tool_use_id 配对。
 import { ref, onUnmounted } from 'vue'
 import type { Ref } from 'vue'
+import { t } from '@/plugins/i18n'
 import type {
   AgentApproval,
   AgentEvent,
@@ -142,7 +143,7 @@ export function useAgentSession() {
       error.value =
         rawError && rawError !== 'success'
           ? rawError
-          : '任务执行失败，未产生可用输出'
+          : t('agent.errors.taskFailed')
     } else {
       error.value = ''
     }
@@ -289,7 +290,7 @@ export function useAgentSession() {
             status: 'timeout',
           }
         }
-        error.value = 'SQL 审批等待超时'
+        error.value = t('agent.errors.sqlApprovalTimeout')
         status.value = 'failed'
         break
       }
@@ -393,7 +394,7 @@ export function useAgentSession() {
       if (errMsg) error.value = errMsg
       await persistLocal()
     } catch (e: any) {
-      error.value = e?.message || '本地 Agent 运行失败'
+      error.value = e?.message || t('agent.errors.localRunFailed')
       status.value = 'failed'
       await persistLocal()
     } finally {
@@ -413,7 +414,7 @@ export function useAgentSession() {
       localAiMessages = (session.ai_messages || []).map((m: any) => JSON.parse(JSON.stringify(m)))
       messages.value = [...localRenders]
       status.value = session.status || 'completed'
-      error.value = session.error || (session.status === 'failed' ? '会话执行失败' : '')
+      error.value = session.error || (session.status === 'failed' ? t('agent.errors.sessionFailed') : '')
       maxSeqSeen = localRenders.length
       if (status.value === 'running' || status.value === 'pending') {
         connected.value = true
@@ -424,7 +425,7 @@ export function useAgentSession() {
             localAiMessages = (next.ai_messages || []).map((m: any) => JSON.parse(JSON.stringify(m)))
             messages.value = [...localRenders]
             status.value = next.status || status.value
-            error.value = next.error || (next.status === 'failed' ? '会话执行失败' : '')
+            error.value = next.error || (next.status === 'failed' ? t('agent.errors.sessionFailed') : '')
             maxSeqSeen = localRenders.length
             if (['success', 'completed', 'failed', 'cancelled'].includes(status.value)) {
               clearLocalPoll()
@@ -437,7 +438,7 @@ export function useAgentSession() {
         }, 1000)
       }
     } catch (e: any) {
-      error.value = e?.message || '加载会话失败'
+      error.value = e?.message || t('agent.errors.loadFailed')
       status.value = 'failed'
     }
   }
@@ -496,7 +497,7 @@ export function useAgentSession() {
           }
           // 首次 open 前出错 → reject（通常 401）
           if (messages.value.length === 0 && status.value === 'pending') {
-            reject(new Error('SSE 连接失败（可能鉴权失败或会话不存在）'))
+            reject(new Error(t('agent.errors.sseConnectionFailed')))
           }
         }
       } catch (err) {

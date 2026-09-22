@@ -22,6 +22,7 @@ from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.nutrition import Ingredient
 from app.models.recipe import Recipe
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter(tags=["sparklines"])
 
@@ -143,7 +144,7 @@ async def get_recipes_sparklines(
         return {k: v for k, v in results}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取菜谱迷你图失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取菜谱迷你图失败: {error}', error=str(e))
 
 
 @router.get("/sparklines/ingredients")
@@ -181,7 +182,7 @@ async def get_ingredients_sparklines(
 
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取原料迷你图失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取原料迷你图失败: {error}', error=str(e))
 
 
 @router.get("/sparklines/products")
@@ -207,4 +208,4 @@ async def get_products_sparklines(
 
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取商品迷你图失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取商品迷你图失败: {error}', error=str(e))

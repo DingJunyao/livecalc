@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, BackgroundTasks, Request
 from app.schemas.common import PaginatedResponse
 from sqlalchemy import or_, func
 from sqlalchemy.orm import Session, load_only, joinedload
 from typing import List, Optional
 import json
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.api.deps import get_timezone
 from app.utils.date_range_utils import utc_datetime_to_local_date, local_date_range_to_utc_range
@@ -26,6 +27,7 @@ from app.schemas.nutrition import (
 )
 from pydantic import BaseModel, Field
 from app.utils.datetime_utils import serialize_datetime
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -385,7 +387,7 @@ async def get_ingredients(
             page_size=limit
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取原料列表失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取原料列表失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/{ingredient_id}", response_model=IngredientResponse)
@@ -410,7 +412,7 @@ async def get_ingredient(
             )
         ).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="原料不存在")
+            raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
         # 获取分类显示名
         category_name = None
@@ -438,7 +440,7 @@ async def get_ingredient(
 
         return response
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取原料详情失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取原料详情失败: {error}', error=str(e))
 
 
 @router.post("/ingredients", response_model=dict)
@@ -452,7 +454,7 @@ async def create_ingredient(
     try:
         existing = db.query(Ingredient).filter(Ingredient.name == name, Ingredient.is_active == True).first()
         if existing:
-            raise HTTPException(status_code=400, detail="原料已存在")
+            raise LocalizedHTTPException(status_code=400, message='原料已存在')
 
         aliases_list = []
         if aliases:
@@ -478,7 +480,7 @@ async def create_ingredient(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"创建原料失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='创建原料失败: {error}', error=str(e))
 
 
 @router.put("/ingredients/{ingredient_id}", response_model=dict)
@@ -493,16 +495,16 @@ async def update_ingredient(
     try:
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id, Ingredient.is_active == True).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="原料不存在")
+            raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
         # 权限检查：管理员可修改任意原料，普通用户只能修改自己创建的
         if ingredient.created_by != current_user.id and not current_user.is_admin:
-            raise HTTPException(status_code=403, detail="无权修改此原料")
+            raise LocalizedHTTPException(status_code=403, message='无权修改此原料')
 
         if name and name != ingredient.name:
             existing = db.query(Ingredient).filter(Ingredient.name == name, Ingredient.is_active == True).first()
             if existing:
-                raise HTTPException(status_code=400, detail="原料已存在")
+                raise LocalizedHTTPException(status_code=400, message='原料已存在')
             ingredient.name = name
 
         if aliases is not None:
@@ -523,12 +525,13 @@ async def update_ingredient(
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"更新原料失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='更新原料失败: {error}', error=str(e))
 
 
 @router.delete("/ingredients/{ingredient_id}")
 async def soft_delete_ingredient(
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -544,17 +547,14 @@ async def soft_delete_ingredient(
             Ingredient.id == ingredient_id, Ingredient.is_active == True
         ).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="原料不存在")
+            raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
         # 菜谱引用检查（端点提交时；执行器 apply 时再查一次）
         recipe_count = db.query(RecipeIngredient).filter(
             RecipeIngredient.ingredient_id == ingredient_id
         ).count()
         if recipe_count > 0:
-            raise HTTPException(
-                status_code=400,
-                detail=f"该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。"
-            )
+            raise LocalizedHTTPException(status_code=400, message='该食材已被 {recipe_count} 个菜谱引用，无法删除。请先移除菜谱中的该食材。', recipe_count=recipe_count)
 
         # 分流：管理员直写（级联软删商品+层级在执行器）/ 普通用户提议待审
         if current_user.is_admin:
@@ -563,19 +563,28 @@ async def soft_delete_ingredient(
                 action="delete", payload={}, admin=current_user,
             )
             db.commit()
-            return {"message": "原料已删除（管理员直写，级联软删商品和层级关系）"}
+            return {"message": api_message(request, "原料已删除（管理员直写，级联软删商品和层级关系）")}
 
         p = proposal_service.submit(
             db, entity_type="ingredient", entity_id=ingredient_id,
             action="delete", payload={}, proposer=current_user,
         )
         db.commit()
-        return {"message": f"删除提议已提交（proposal_id={p.id}, status={p.status}）"}
+        return {
+            "message": api_message(
+                request,
+                "删除提议已提交（proposal_id={proposal_id}, status={status}）",
+                proposal_id=p.id,
+                status=p.status,
+            ),
+            "proposal_id": p.id,
+            "status": p.status,
+        }
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"删除原料失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='删除原料失败: {error}', error=str(e))
 
 
 @router.get("/search", response_model=List[NutritionDataResponse])
@@ -592,7 +601,7 @@ async def search_nutrition_data(
         results = await search_nutrition(query, fuzzy=fuzzy, limit=limit, db=db)
         return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"搜索营养数据失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='搜索营养数据失败: {error}', error=str(e))
 
 
 @router.post("/match", response_model=NutritionMatchResponse)
@@ -607,12 +616,13 @@ async def match_ingredient_nutrition(
         matches = await match_ingredient(ingredient_name, db=db)
         return NutritionMatchResponse(matches=matches)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"匹配食材失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='匹配食材失败: {error}', error=str(e))
 
 
 @router.post("/correct")
 async def correct_nutrition_mapping(
-    request: NutritionCorrectRequest,
+    body: NutritionCorrectRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user)
 ):
@@ -620,15 +630,15 @@ async def correct_nutrition_mapping(
     try:
         from app.services.nutrition_service import correct_mapping
         success = await correct_mapping(
-            request.ingredient_name,
-            request.nutrition_id,
+            body.ingredient_name,
+            body.nutrition_id,
             db=db
         )
         if not success:
-            raise HTTPException(status_code=404, detail="更正失败")
-        return {"success": True, "message": "更正成功"}
+            raise LocalizedHTTPException(status_code=404, message='更正失败')
+        return {"success": True, "message": api_message(request, "更正成功")}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"更正失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='更正失败: {error}', error=str(e))
 
 
 # ==================== 营养数据导入端点（新增） ====================
@@ -654,7 +664,7 @@ async def import_nutrition_data(
     """
     # 检查权限（仅管理员可以导入）
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         from app.services.nutrition_import_service import NutritionImportService
@@ -663,7 +673,7 @@ async def import_nutrition_data(
 
         return ImportResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入失败: {error}', error=str(e))
 
 
 @router.post("/import-auto", response_model=ImportResponse)
@@ -679,14 +689,14 @@ async def auto_import_nutrition_data(
     """
     # 检查权限（仅管理员可以导入）
     if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="仅限管理员访问")
+        raise LocalizedHTTPException(status_code=403, message='仅限管理员访问')
 
     try:
         from app.services.nutrition_import_service import check_and_import_nutrition
         result = check_and_import_nutrition(db, mode="incremental", force_update=False)
         return ImportResponse(**result)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入失败: {error}', error=str(e))
 
 
 @router.get("/statistics", response_model=NutrientStatisticsResponse)
@@ -705,7 +715,7 @@ async def get_nutrition_statistics(
         stats = service.get_nutrient_statistics()
         return NutrientStatisticsResponse(**stats)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取统计失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取统计失败: {error}', error=str(e))
 
 
 # ==================== 营养计算端点（新增） ====================
@@ -735,7 +745,7 @@ async def get_ingredient_nutrition(
         if not result:
             print(f"[营养查询] 食材 {ingredient_id} 营养数据不存在")
             print(f"[营养查询] 调用参数: ingredient_id={ingredient_id}, quantity={quantity}, unit={unit}")
-            raise HTTPException(status_code=404, detail="食材营养数据不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材营养数据不存在')
 
         # 查询原料名称
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
@@ -771,7 +781,7 @@ async def get_ingredient_nutrition(
     except Exception as e:
         print(f"[营养查询] 异常: {type(e).__name__}: {str(e)}")
         print(f"[营养查询] 调用参数: ingredient_id={ingredient_id}, quantity={quantity}, unit={unit}")
-        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='查询失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/{ingredient_id}/nutrition/base")
@@ -792,7 +802,7 @@ async def get_ingredient_nutrition_base(
         nutrition = NutritionMixin.get_best_nutrition_data(db, ingredient_id)
 
         if not nutrition:
-            raise HTTPException(status_code=404, detail="食材营养数据不存在")
+            raise LocalizedHTTPException(status_code=404, message='食材营养数据不存在')
 
         return {
             "ingredient_id": ingredient_id,
@@ -808,7 +818,7 @@ async def get_ingredient_nutrition_base(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='查询失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/{ingredient_id}/recipes")
@@ -905,7 +915,7 @@ async def get_ingredient_recipes(
             "page_size": limit
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"获取关联菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取关联菜谱失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/{ingredient_id}/latest-price")
@@ -1082,7 +1092,7 @@ async def get_ingredient_latest_price(
         import traceback
         print(f"[ERROR] 获取最近价格失败: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取最近价格失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取最近价格失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/latest-price/batch")
@@ -1103,7 +1113,7 @@ async def get_ingredient_latest_prices_batch(
     try:
         ids = _parse_ingredient_ids(ingredient_ids)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+        raise LocalizedHTTPException(status_code=400, message='原料 ID 列表格式无效: {error}', error=str(exc))
 
     items = {}
     for ingredient_id in ids:
@@ -1397,7 +1407,7 @@ async def get_ingredient_latest_price_by_merchant(
         import traceback
         print(f"[ERROR] 获取商家价格失败: {str(e)}")
         print(f"[ERROR] Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"获取商家价格失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='获取商家价格失败: {error}', error=str(e))
 
 
 @router.get("/ingredients/{ingredient_id}/product-weights")
@@ -1467,13 +1477,13 @@ async def get_recipe_nutrition(
         result = await calculate_recipe_nutrition(recipe_id, db, servings)
 
         if not result:
-            raise HTTPException(status_code=404, detail="菜谱不存在或营养数据不足")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在或营养数据不足')
 
         return RecipeNutritionResponse(**result)
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"计算失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='计算失败: {error}', error=str(e))
 
 
 @router.get("/recipes/{recipe_id}/nutrition/summary")
@@ -1493,7 +1503,7 @@ async def get_recipe_nutrition_summary(
         result = await calculate_recipe_nutrition(recipe_id, db, servings)
 
         if not result:
-            raise HTTPException(status_code=404, detail="菜谱不存在或营养数据不足")
+            raise LocalizedHTTPException(status_code=404, message='菜谱不存在或营养数据不足')
 
         # 提取核心营养素用于摘要
         core_nutrients = result.get("per_serving_nutrition", {}).get("core_nutrients", {})
@@ -1515,7 +1525,7 @@ async def get_recipe_nutrition_summary(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"计算失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='计算失败: {error}', error=str(e))
 
 
 @router.get("/products/{product_id}/nutrition")
@@ -1537,7 +1547,7 @@ async def get_product_nutrition(
         result = calculator.calculate_product_nutrition(product_id, quantity, unit)
 
         if not result:
-            raise HTTPException(status_code=404, detail="商品营养数据不存在")
+            raise LocalizedHTTPException(status_code=404, message='商品营养数据不存在')
 
         # 非管理员追加 pending_proposal
         if not getattr(current_user, "is_admin", False):
@@ -1550,7 +1560,7 @@ async def get_product_nutrition(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='查询失败: {error}', error=str(e))
 
 
 
@@ -1637,6 +1647,7 @@ def _build_structured_nutrients(request: NutritionEditRequest) -> dict:
 @router.post("/ingredients/{ingredient_id}/nutrition", response_model=NutritionEditResponse)
 async def edit_ingredient_nutrition(
     ingredient_id: int,
+    http_request: Request,
     request: NutritionEditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1656,7 +1667,7 @@ async def edit_ingredient_nutrition(
         # 验证原料是否存在
         ingredient = db.query(Ingredient).filter(Ingredient.id == ingredient_id).first()
         if not ingredient:
-            raise HTTPException(status_code=404, detail="原料不存在")
+            raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
         structured_nutrients = _build_structured_nutrients(request)
         payload = {
@@ -1673,7 +1684,8 @@ async def edit_ingredient_nutrition(
             )
             db.commit()
             return NutritionEditResponse(
-                success=True, message="营养数据保存成功（管理员直写）",
+                success=True,
+                message=api_message(http_request, "营养数据更新成功（管理员直写）"),
                 ingredient_id=ingredient_id,
             )
 
@@ -1682,24 +1694,32 @@ async def edit_ingredient_nutrition(
             action="update", payload=payload, proposer=current_user,
         )
         db.commit()
-        msg = (
-            "营养数据保存成功（补空自动通过）" if p.status == "applied"
-            else f"营养数据提议已提交（status={p.status}，待管理员审核）"
+        msg = api_message(
+            http_request,
+            "营养数据更新成功（补空自动通过）"
+            if p.status == "applied"
+            else "营养数据更新提议已提交（status={status}，待管理员审核）",
+            status=p.status,
         )
         return NutritionEditResponse(
-            success=True, message=msg, ingredient_id=ingredient_id,
+            success=True,
+            message=msg,
+            ingredient_id=ingredient_id,
+            status=p.status,
+            proposal_id=p.id,
         )
 
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"保存失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='保存失败: {error}', error=str(e))
 
 
 @router.post("/products/{product_id}/nutrition", response_model=NutritionEditResponse)
 async def edit_product_nutrition(
     product_id: int,
+    http_request: Request,
     request: NutritionEditRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -1717,7 +1737,7 @@ async def edit_product_nutrition(
         # 验证商品是否存在
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
-            raise HTTPException(status_code=404, detail="商品不存在")
+            raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
         # 构建结构化营养数据字典（与 import 格式一致）
         from app.services.nutrition_import_service import NutritionImportService
@@ -1807,7 +1827,7 @@ async def edit_product_nutrition(
             db.commit()
             return NutritionEditResponse(
                 success=True,
-                message="商品营养数据保存成功（管理员直写）",
+                message=api_message(http_request, "营养数据更新成功（管理员直写）"),
                 product_id=product_id,
             )
 
@@ -1819,12 +1839,23 @@ async def edit_product_nutrition(
             policy_override=policy,
         )
         db.commit()
-        msg = ("商品营养数据保存成功（补空自动通过）" if p.status == "applied"
-               else f"商品营养数据提议已提交（status={p.status}，待管理员审核）")
-        return NutritionEditResponse(success=True, message=msg, product_id=product_id)
+        msg = api_message(
+            http_request,
+            "营养数据更新成功（补空自动通过）"
+            if p.status == "applied"
+            else "营养数据更新提议已提交（status={status}，待管理员审核）",
+            status=p.status,
+        )
+        return NutritionEditResponse(
+            success=True,
+            message=msg,
+            product_id=product_id,
+            status=p.status,
+            proposal_id=p.id,
+        )
 
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=f"保存失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='保存失败: {error}', error=str(e))

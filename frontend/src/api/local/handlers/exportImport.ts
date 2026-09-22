@@ -7,6 +7,12 @@
 import { getDb, clearStore, batchAdd, addOne, getAll } from '../database'
 import JSZip from 'jszip'
 import { ensureCommonUnits } from '../seed'
+import { localError } from '../../../utils/localErrors'
+import {
+  CHINESE_GRAM_NAME,
+  VAGUE_QUANTITY_GRAM_MAP,
+} from '../../../data/localValues.ts'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 /** 导出数据类型白名单 (IndexedDB store 名称列表) */
 const EXPORT_STORES = [
@@ -131,9 +137,9 @@ async function importRecipe(
       const ing = ingList[i]
       const rawUnitName = ing.unit ?? ing.unit_name
       const isVague = typeof ing.original_quantity === 'string'
-        && (ing.original_quantity.includes('适量') || ing.original_quantity.includes('少许'))
+        && Object.keys(VAGUE_QUANTITY_GRAM_MAP).some((keyword) => ing.original_quantity.includes(keyword))
       const unitName = isVague && ing.quantity == null && ing.quantity_range == null
-        ? '克'
+        ? CHINESE_GRAM_NAME
         : rawUnitName
       const ri = {
         recipe_id: recipeId,
@@ -174,10 +180,10 @@ export async function listTasks(_params: Record<string, string>, _query?: any): 
  */
 export async function getTask(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
-  if (!Number.isFinite(id)) throw { status: 400, message: 'Invalid task id' }
+  if (!Number.isFinite(id)) throw localError('invalidTaskId', 400, { id: params.id })
   const db = await getDb()
   const task = await db.get('import_tasks', id)
-  if (!task) throw { status: 404, message: `Task ${id} not found` }
+  if (!task) throw localError('taskNotFound', 404, { id })
   return task
 }
 
@@ -232,10 +238,10 @@ export async function uploadImport(
 ): Promise<{ task_id: number }> {
   const file: File | null = data?.get?.('file') ?? null
   if (!file) {
-    throw { status: 400, message: '缺少文件：未上传 ZIP 包' }
+    throw localError('uploadFileMissing')
   }
 
-  onProgress?.('正在读取 ZIP 文件', 2)
+  onProgress?.(translate('localMessages.readingZip'), 2)
   const db = await getDb()
   const arrayBuffer = await file.arrayBuffer()
   const zip = await JSZip.loadAsync(arrayBuffer)
@@ -248,7 +254,7 @@ export async function uploadImport(
     manifest = JSON.parse(text)
   }
 
-  onProgress?.('正在读取本地单位映射', 5)
+  onProgress?.(translate('localMessages.readingUnitMappings'), 5)
   const stats: Record<string, number> = {}
   const errors: string[] = []
 
@@ -285,7 +291,11 @@ export async function uploadImport(
     if (!fileEntry) continue
 
     onProgress?.(
-      `正在导入数据表 ${fileName}（${fi + 1}/${fileStoreEntries.length}）`,
+      translate('localMessages.importingDataFile', {
+        file: fileName,
+        current: fi + 1,
+        total: fileStoreEntries.length,
+      }),
       8 + Math.round(((fi + 1) / fileStoreEntries.length) * 47),
     )
 
@@ -402,7 +412,7 @@ export async function uploadImport(
   for (let ri = 0; ri < recipeFiles.length; ri++) {
     const fname = recipeFiles[ri]
     onProgress?.(
-      `正在导入菜谱 ${ri + 1}/${recipeFiles.length}`,
+      translate('localMessages.importingRecipe', { current: ri + 1, total: recipeFiles.length }),
       56 + Math.round(((ri + 1) / recipeFiles.length) * 30),
     )
 
@@ -461,7 +471,10 @@ export async function uploadImport(
         if (imgPath.startsWith('http')) continue
         imageRefIndex++
         onProgress?.(
-          `正在导入图片 ${imageRefIndex}/${totalImageRefs}`,
+          translate('localMessages.importingImage', {
+            current: imageRefIndex,
+            total: totalImageRefs,
+          }),
           87 + Math.round((imageRefIndex / totalImageRefs) * 11),
         )
 
@@ -484,7 +497,10 @@ export async function uploadImport(
           await tx.done
           imageCount++
         } catch (e: any) {
-          errors.push(`图片 ${imgPath}: ${e.message || e}`)
+          errors.push(translate('localMessages.imageImportFailed', {
+            path: imgPath,
+            message: e.message || String(e),
+          }))
         }
       }
     }
@@ -496,12 +512,12 @@ export async function uploadImport(
     stats.recipe_ingredients = ingredientCount
   }
 
-  onProgress?.('正在写入导入记录', 99)
+  onProgress?.(translate('localMessages.writingImportRecord'), 99)
   // ---- 写入导入任务记录 ----
   const taskRecord = {
     task_type: 'upload_import',
     status: 'success',
-    progress: { stage: '完成', current: 0, total: 0, message: '导入完成' },
+    progress: { stage: 'completed', current: 0, total: 0, message: translate('localMessages.importCompleted') },
     stats,
     error: errors.length > 0 ? errors.join('; ') : null,
     created_at: new Date().toISOString(),
@@ -513,7 +529,7 @@ export async function uploadImport(
   const fullRecord = { id: taskId, ...taskRecord }
   taskCache.set(taskId, fullRecord)
 
-  onProgress?.('导入完成', 100)
+  onProgress?.(translate('localMessages.importCompleted'), 100)
   return { task_id: taskId }
 }
 
@@ -522,7 +538,7 @@ export async function uploadImport(
  */
 export async function cancelTask(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
-  if (!Number.isFinite(id)) throw { status: 400, message: 'Invalid task id' }
+  if (!Number.isFinite(id)) throw localError('invalidTaskId', 400, { id: params.id })
   const db = await getDb()
   const existing = await db.get('import_tasks', id)
   // 已完成/失败的无法取消；仅对 running/pending 标记 cancelled（本地任务几乎瞬时完成）
@@ -531,7 +547,7 @@ export async function cancelTask(params: Record<string, string>): Promise<any> {
     await db.put('import_tasks', { ...existing, status: 'cancelled', updated_at: new Date().toISOString() })
   }
   taskCache.delete(id)
-  return { message: '任务已取消' }
+  return { message: translate('localMessages.taskCancelled') }
 }
 
 /**
@@ -539,15 +555,9 @@ export async function cancelTask(params: Record<string, string>): Promise<any> {
  * 本地无 git/服务器文件系统访问能力，返回明确错误而非 404。
  */
 export async function importFromRepo(): Promise<any> {
-  throw {
-    status: 501,
-    message: '本地模式不支持从 Git 仓库导入，请使用「上传 ZIP」导入数据',
-  }
+  throw localError('localGitImportUnsupported', 501)
 }
 
 export async function importFromLocal(): Promise<any> {
-  throw {
-    status: 501,
-    message: '本地模式不支持从服务器路径导入，请使用「上传 ZIP」导入数据',
-  }
+  throw localError('localServerImportUnsupported', 501)
 }

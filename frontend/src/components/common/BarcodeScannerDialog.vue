@@ -7,9 +7,9 @@
   >
     <v-card>
       <v-card-title class="d-flex align-center">
-        扫描条码
+        {{ t('common.scanBarcodeTitle') }}
         <v-spacer />
-        <v-btn icon="mdi-close" variant="text" aria-label="关闭扫码" @click="close" />
+        <v-btn icon="mdi-close" variant="text" :aria-label="t('common.closeScanner')" @click="close" />
       </v-card-title>
       <v-card-text>
         <v-alert v-if="error" type="error" density="compact" class="mb-3">
@@ -25,6 +25,7 @@
 
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   BarcodeFormat,
   BrowserMultiFormatReader,
@@ -32,6 +33,7 @@ import {
 } from '@zxing/browser'
 
 const props = defineProps<{ modelValue: boolean }>()
+const { t } = useI18n()
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
   detected: [code: string]
@@ -68,8 +70,8 @@ async function start() {
     })
   } catch (e: any) {
     error.value = e?.name === 'NotAllowedError'
-      ? '浏览器未授权使用摄像头'
-      : e?.message || '无法启动摄像头'
+      ? t('common.cameraNotAuthorized')
+      : e?.message || t('common.cameraStartFailed')
   }
 }
 

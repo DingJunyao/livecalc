@@ -1,31 +1,40 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { unitDisplayName } from '@/utils/catalogLabels'
 
 const props = defineProps<{ proposal: Proposal }>()
 const snap = computed(() => props.proposal.snapshot || {})
 const p = computed(() => props.proposal.payload || {})
 const action = computed(() => props.proposal.action)
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 // 字段行定义：label + payload/snapshot 取值函数 + 格式化
 interface FieldDef { label: string; key: string; fmt?: (v: any, row: any) => string }
 
 function fmtFactor(v: any): string {
   if (v == null || v === '') return '—'
-  return `× ${v}`
+  return t('proposals.multiplicationFactor', { value: formatNumber(v, localeStore.effectiveFormatLocale) })
 }
 function fmtWeightPerUnit(v: any, row: any): string {
   if (v == null || v === '') return '—'
   const unitId = row.weight_unit_id
-  return unitId != null ? `${v}（单位#${unitId}）` : String(v)
+  const amount = formatNumber(v, localeStore.effectiveFormatLocale)
+  return unitId != null
+    ? t('proposals.valueWithUnitId', { amount, unitId: formatNumber(unitId, localeStore.effectiveFormatLocale) })
+    : amount
 }
 
-const fields: FieldDef[] = [
-  { label: '单位名', key: 'unit_name' },
-  { label: '换算系数', key: 'conversion_factor', fmt: fmtFactor },
-  { label: '每单位重量', key: 'weight_per_unit', fmt: fmtWeightPerUnit },
-  { label: '是否默认', key: 'is_default', fmt: (v) => v == null ? '—' : (v ? '是' : '否') },
-]
+const fields = computed<FieldDef[]>(() => [
+  { label: t('proposals.unitName'), key: 'unit_name', fmt: (v) => unitDisplayName({ name: v, abbreviation: v }) },
+  { label: t('proposals.conversionFactor'), key: 'conversion_factor', fmt: fmtFactor },
+  { label: t('proposals.weightPerUnit'), key: 'weight_per_unit', fmt: fmtWeightPerUnit },
+  { label: t('proposals.isDefault'), key: 'is_default', fmt: (v) => v == null ? '—' : (v ? t('proposals.yes') : t('proposals.no')) },
+])
 
 function getVal(source: any, f: FieldDef): string {
   const raw = source[f.key]
@@ -52,7 +61,7 @@ function rowKind(f: FieldDef): string {
         </td>
         <td class="text-center text-medium-emphasis" style="width:32px">→</td>
         <td :class="['diff-cell', 'after', action === 'delete' ? 'removed' : rowKind(f)]">
-          {{ action === 'delete' ? '（删除）' : getVal(p, f) }}
+          {{ action === 'delete' ? t('proposals.deletedValue') : getVal(p, f) }}
         </td>
       </tr>
     </tbody>

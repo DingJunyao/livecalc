@@ -34,6 +34,7 @@ class SmtpTestRequest(BaseModel):
 
 class EmailTemplateResponse(BaseModel):
     key: str
+    locale: str
     name: str
     subject: str
     body_html: str

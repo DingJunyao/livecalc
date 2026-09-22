@@ -13,6 +13,7 @@ from app.schemas.invite_code import (
 from app.schemas.common import PaginatedResponse
 from app.config import settings
 from typing import Optional
+from app.core.exceptions import LocalizedHTTPException
 
 
 router = APIRouter()
@@ -48,10 +49,7 @@ async def create_invite_code(
     if invite_code_data.code:
         code_str = invite_code_data.code.strip()
         if db.query(InviteCode).filter(InviteCode.code == code_str).first():
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="邀请码已存在",
-            )
+            raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='邀请码已存在')
     else:
         # 自动生成唯一码（冲突重试）
         for _ in range(5):
@@ -108,10 +106,7 @@ async def update_invite_code(
     """
     invite_code = db.query(InviteCode).filter(InviteCode.id == invite_code_id).first()
     if not invite_code:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="邀请码不存在",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='邀请码不存在')
 
     if update_data.expires_at is not None:
         invite_code.expires_at = update_data.expires_at
@@ -133,10 +128,7 @@ async def delete_invite_code(
     """删除邀请码 - 仅限管理员"""
     invite_code = db.query(InviteCode).filter(InviteCode.id == invite_code_id).first()
     if not invite_code:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="邀请码不存在",
-        )
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='邀请码不存在')
 
     db.delete(invite_code)
     db.commit()

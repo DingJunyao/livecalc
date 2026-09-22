@@ -2,9 +2,11 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, Request, status
 from fastapi.security import HTTPBearer
 from app.config import settings
+from app.core.exceptions import LocalizedHTTPException
+from app.core.i18n import set_request_locale
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -79,33 +81,33 @@ def resolve_user_from_token(token: "Optional[str]"):
         User 对象。
 
     Raises:
-        HTTPException: 401 / 403 / 404。
+        LocalizedHTTPException: 401 / 403 / 404。
     """
     if not token:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="未授权"
+            message="未授权"
         )
 
     payload = decode_token(token)
     if not payload:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的令牌"
+            message="无效的令牌"
         )
 
     # 验证令牌类型必须是 access
     if not validate_token_type(token, "access"):
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的令牌类型"
+            message="无效的令牌类型"
         )
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="无效的令牌"
+            message="无效的令牌"
         )
 
     from app.core.database import SessionLocal
@@ -123,31 +125,36 @@ def resolve_user_from_token(token: "Optional[str]"):
         db.close()
 
     if not user:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="用户不存在"
+            message="用户不存在"
         )
 
     if not user.is_active:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="账户已被禁用"
+            message="账户已被禁用"
         )
 
     # token 版本比对：重置密码等场景 bump token_version 后，旧 token 立即失效。
     # 老token无 ver claim 时取 0，存量用户 token_version 默认 0，不误伤。
     if payload.get("ver", 0) != user.token_version:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="凭证已失效，请重新登录"
+            message="凭证已失效，请重新登录"
         )
 
     return user
 
 
-async def get_current_user(credentials: HTTPBearer = Depends(security)):
+async def get_current_user(
+    request: Request,
+    credentials: HTTPBearer = Depends(security),
+):
     """获取当前登录用户（依赖注入）"""
-    return resolve_user_from_token(credentials.credentials)
+    user = resolve_user_from_token(credentials.credentials)
+    set_request_locale(request, user.locale)
+    return user
 
 
 async def get_current_admin_user(
@@ -159,8 +166,8 @@ async def get_current_admin_user(
     非管理员直接返回 403。
     """
     if not current_user.is_admin:
-        raise HTTPException(
+        raise LocalizedHTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="仅限管理员访问"
+            message="仅限管理员访问"
         )
     return current_user

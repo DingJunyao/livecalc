@@ -88,13 +88,13 @@ export function parseRoute(method: string, url: string): RouteResult {
       })
       const handler = (route.module as any)[method.toLowerCase()]
       if (typeof handler !== 'function') {
-        throw { status: 405, message: `Method ${method} not allowed for ${url}` }
+        throw localError('localMethodNotAllowed', 405, { method, url })
       }
       return { handler, pathParams }
     }
   }
 
-  throw { status: 404, message: `Route not found: ${method} ${url}` }
+  throw localError('localRouteNotFound', 404, { method, url })
 }
 
 // ============================================================
@@ -104,26 +104,41 @@ export function parseRoute(method: string, url: string): RouteResult {
 export async function localGet(url: string, query?: any): Promise<any> {
   try {
     const { handler, pathParams } = parseRoute('get', url)
-    return handler(pathParams, query)
+    return await handler(pathParams, query)
   } catch (e: any) {
     console.error(`[localGet] error for ${url}:`, e)
-    throw e
+    throw translateLocalError(e)
   }
 }
 
 export async function localPost(url: string, data?: any): Promise<any> {
-  const { handler, pathParams } = parseRoute('post', url)
-  return handler(pathParams, data)
+  try {
+    const { handler, pathParams } = parseRoute('post', url)
+    return await handler(pathParams, data)
+  } catch (e: any) {
+    console.error(`[localPost] error for ${url}:`, e)
+    throw translateLocalError(e)
+  }
 }
 
 export async function localPut(url: string, data?: any): Promise<any> {
-  const { handler, pathParams } = parseRoute('put', url)
-  return handler(pathParams, data)
+  try {
+    const { handler, pathParams } = parseRoute('put', url)
+    return await handler(pathParams, data)
+  } catch (e: any) {
+    console.error(`[localPut] error for ${url}:`, e)
+    throw translateLocalError(e)
+  }
 }
 
 export async function localDelete(url: string): Promise<any> {
-  const { handler, pathParams } = parseRoute('delete', url)
-  return handler(pathParams)
+  try {
+    const { handler, pathParams } = parseRoute('delete', url)
+    return await handler(pathParams)
+  } catch (e: any) {
+    console.error(`[localDelete] error for ${url}:`, e)
+    throw translateLocalError(e)
+  }
 }
 
 // ============================================================
@@ -149,6 +164,7 @@ import * as regions from './handlers/regions'
 import * as currencies from './handlers/currencies'
 import { getExportData, uploadImport, listTasks, getTask } from './handlers/exportImport'
 import { cancelTask, importFromRepo, importFromLocal } from './handlers/exportImport'
+import { localError, translateLocalError } from '../../utils/localErrors'
 
 // ---- Auth ----
 addRoute('/auth/config', { get: auth.getConfig })

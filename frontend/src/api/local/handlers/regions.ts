@@ -1,6 +1,8 @@
 // Administrative regions handler (lazy-load tree selector) - local mode
 // Data stored in IndexedDB 'regions' store; seed from src/data/regions/*.json
-import { getAll, getDb } from '../database'
+import { getAll, getDb } from '../database.ts'
+import { localError } from '../../../utils/localErrors.ts'
+import i18n from '../../../plugins/i18n.ts'
 
 interface RegionRow {
   id: number
@@ -16,6 +18,18 @@ interface RegionRow {
 
 function isActive(r: any): boolean {
   return r.is_active !== false
+}
+
+export function regionDisplayName(
+  row: Pick<RegionRow, 'code' | 'name' | 'name_en' | 'iso_country' | 'level'>,
+): string {
+  const locale = i18n.global.locale.value
+  if (Number(row.level) !== 0) {
+    return locale === 'zh-CN' ? row.name : row.name_en ?? row.name
+  }
+
+  const regionCode = row.iso_country ?? row.code
+  return new Intl.DisplayNames([locale], { type: 'region' }).of(regionCode) ?? row.name
 }
 
 function buildParentSet(rows: any[]): Set<number> {
@@ -57,6 +71,7 @@ export async function listRegions(
     iso_country: r.iso_country ?? null,
     path: r.path ?? null,
     has_children: parentSet.has(Number(r.id)),
+    display_name: regionDisplayName(r),
   }))
 }
 
@@ -65,7 +80,7 @@ export async function getRegion(params: Record<string, string>): Promise<any> {
   const id = Number(params.id)
   const all: any[] = await getAll('regions')
   const region = all.find((r) => Number(r.id) === id && isActive(r))
-  if (!region) throw { status: 404, message: '\u533a\u5212\u4e0d\u5b58\u5728' }
+  if (!region) throw localError('regionNotFound', 404, { id })
 
   const ancestors: any[] = []
   const pathCodes = String(region.path || '').split('/').filter(Boolean)
@@ -73,7 +88,13 @@ export async function getRegion(params: Record<string, string>): Promise<any> {
     if (code === region.code) continue
     const anc = all.find((r) => r.code === code && isActive(r))
     if (anc) {
-      ancestors.push({ id: anc.id, code: anc.code, name: anc.name, level: anc.level })
+      ancestors.push({
+        id: anc.id,
+        code: anc.code,
+        name: anc.name,
+        level: anc.level,
+        display_name: regionDisplayName(anc),
+      })
     }
   }
 
@@ -88,6 +109,7 @@ export async function getRegion(params: Record<string, string>): Promise<any> {
     path: region.path ?? null,
     has_children: parentSet.has(Number(region.id)),
     ancestors,
+    display_name: regionDisplayName(region),
   }
 }
 

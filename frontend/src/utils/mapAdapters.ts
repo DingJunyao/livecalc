@@ -118,14 +118,14 @@ export class LeafletAdapter implements MapAdapter {
         const converted = fromWGS84(position.lat, position.lng, this.engine)
         pos = { lat: converted.lat, lng: converted.lng }
       } catch (err) {
-        console.warn('坐标转换失败，使用原始坐标:', err)
+        console.warn('Coordinate conversion failed; using original coordinates:', err)
       }
     }
 
     // 验证坐标有效性
     if (!pos.lat || !pos.lng || isNaN(pos.lat) || isNaN(pos.lng)) {
-      console.error('无效的坐标:', position, pos)
-      throw new Error(`无效的坐标: (${pos.lat}, ${pos.lng})`)
+      console.error('Invalid coordinates:', position, pos)
+      throw new Error(`Invalid coordinates: (${pos.lat}, ${pos.lng})`)
     }
 
     // 创建标记图标
@@ -204,13 +204,13 @@ export class LeafletAdapter implements MapAdapter {
         const converted = fromWGS84(position.lat, position.lng, this.engine)
         pos = { lat: converted.lat, lng: converted.lng }
       } catch (err) {
-        console.warn('坐标转换失败，使用原始坐标:', err)
+        console.warn('Coordinate conversion failed; using original coordinates:', err)
       }
     }
 
     // 验证坐标有效性
     if (!pos.lat || !pos.lng || isNaN(pos.lat) || isNaN(pos.lng)) {
-      console.error('设置中心失败：无效的坐标', position, pos)
+      console.error('Failed to set center: invalid coordinates', position, pos)
       return
     }
 
@@ -225,7 +225,7 @@ export class LeafletAdapter implements MapAdapter {
 
     // 验证缩放级别
     if (level < 1 || level > 20 || isNaN(level)) {
-      console.warn('无效的缩放级别:', level)
+      console.warn('Invalid zoom level:', level)
       return
     }
 

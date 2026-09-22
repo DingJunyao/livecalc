@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 from typing import List
 
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user
 from app.models.user_place import UserPlace
 from app.models.map_config import MapConfiguration
@@ -12,6 +13,7 @@ from app.schemas.user_place import (
     UserPlaceUpdate,
     UserPlaceResponse,
 )
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -21,7 +23,7 @@ def _ensure_map_enabled(db: Session) -> None:
     config = db.query(MapConfiguration).first()
     enabled = bool(config.map_enabled) if config else True
     if not enabled:
-        raise HTTPException(status_code=403, detail="地图功能已关闭，无法维护常用地点")
+        raise LocalizedHTTPException(status_code=403, message='地图功能已关闭，无法维护常用地点')
 
 
 def _clear_default(db: Session, user_id: int) -> None:
@@ -50,7 +52,7 @@ async def list_user_places(
             .all()
         )
     except SQLAlchemyError:
-        raise HTTPException(status_code=500, detail="获取常用地点失败")
+        raise LocalizedHTTPException(status_code=500, message='获取常用地点失败')
 
 
 @router.post("", response_model=UserPlaceResponse, status_code=201)
@@ -80,7 +82,7 @@ async def create_user_place(
         return db_place
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="创建常用地点失败")
+        raise LocalizedHTTPException(status_code=500, message='创建常用地点失败')
 
 
 @router.put("/{place_id}", response_model=UserPlaceResponse)
@@ -98,7 +100,7 @@ async def update_user_place(
             UserPlace.user_id == current_user.id,
         ).first()
         if not db_place:
-            raise HTTPException(status_code=404, detail="常用地点不存在")
+            raise LocalizedHTTPException(status_code=404, message='常用地点不存在')
         for k, v in place.model_dump(exclude_unset=True).items():
             setattr(db_place, k, v)
         db.commit()
@@ -108,12 +110,13 @@ async def update_user_place(
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="更新常用地点失败")
+        raise LocalizedHTTPException(status_code=500, message='更新常用地点失败')
 
 
 @router.delete("/{place_id}")
 async def delete_user_place(
     place_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -125,15 +128,15 @@ async def delete_user_place(
             UserPlace.user_id == current_user.id,
         ).first()
         if not db_place:
-            raise HTTPException(status_code=404, detail="常用地点不存在")
+            raise LocalizedHTTPException(status_code=404, message='常用地点不存在')
         db.delete(db_place)
         db.commit()
-        return {"message": "常用地点已删除"}
+        return {"message": api_message(request, "常用地点已删除")}
     except HTTPException:
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="删除常用地点失败")
+        raise LocalizedHTTPException(status_code=500, message='删除常用地点失败')
 
 
 @router.put("/{place_id}/default", response_model=UserPlaceResponse)
@@ -150,7 +153,7 @@ async def set_default_user_place(
             UserPlace.user_id == current_user.id,
         ).first()
         if not db_place:
-            raise HTTPException(status_code=404, detail="常用地点不存在")
+            raise LocalizedHTTPException(status_code=404, message='常用地点不存在')
         _clear_default(db, current_user.id)
         db_place.is_default = True
         db.commit()
@@ -160,4 +163,4 @@ async def set_default_user_place(
         raise
     except SQLAlchemyError:
         db.rollback()
-        raise HTTPException(status_code=500, detail="设置默认地点失败")
+        raise LocalizedHTTPException(status_code=500, message='设置默认地点失败')

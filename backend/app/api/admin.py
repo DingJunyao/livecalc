@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
 from app.core.security import get_current_user, get_current_admin_user
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.models.user import User
 from app.models.product import ProductRecord
 from app.models.product_entity import Product as ProductEntity
@@ -17,6 +18,7 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict
 from app.services.recipe_import_service import RecipeImportService
 from app.services.storage import get_storage
+from app.core.exceptions import LocalizedHTTPException
 
 
 def _normalize_img_key(path: str) -> str:
@@ -210,7 +212,7 @@ async def import_recipes_from_url(
         result = import_service.import_recipes_from_cook_repo(repo_url=url)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入失败: {error}', error=str(e))
 
 
 @router.post("/import-recipes-initial")
@@ -224,7 +226,7 @@ async def import_initial_recipes(
         result = check_and_import_initial_recipes(db, user_id=current_user.id)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"导入初始菜谱失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='导入初始菜谱失败: {error}', error=str(e))
 
 
 @router.post("/import-from-local-path")
@@ -240,7 +242,7 @@ async def import_from_local_path(
         result = service.import_from_local_dir(request.local_path)
         return result
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"从本地路径导入失败: {str(e)}")
+        raise LocalizedHTTPException(status_code=500, message='从本地路径导入失败: {error}', error=str(e))
 
 
 # ==================== 动态配置 ====================
@@ -386,6 +388,7 @@ async def get_unused_images(
 
 @router.post("/images/scan")
 async def scan_images(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_admin_user),
 ):
@@ -396,7 +399,7 @@ async def scan_images(
     """
     from app.services.image_tracking import scan_all_images
     stats = scan_all_images(db)
-    return {"stats": stats, "message": "扫描完成"}
+    return {"stats": stats, "message": api_message(request, "扫描完成")}
 
 
 @router.post("/images/unused/delete")
@@ -412,7 +415,7 @@ async def delete_unused_images(
     """
     keys = body.get("keys", [])
     if not keys:
-        raise HTTPException(status_code=400, detail="缺少 keys")
+        raise LocalizedHTTPException(status_code=400, message='缺少 keys')
 
     storage = get_storage()
     deleted: list = []

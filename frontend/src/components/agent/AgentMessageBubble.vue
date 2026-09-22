@@ -10,8 +10,8 @@
     </div>
     <div class="agent-bubble">
       <div v-if="!msg.content && !msg.toolDone" class="text-caption text-medium-emphasis">
-        <v-progress-circular indeterminate size="14" width="2" class="mr-2" />
-        思考中…
+        <v-progress-circular indeterminate size="14" width="2" class="me-2" />
+        {{ t('agent.message.thinking') }}
       </div>
       <div v-else class="md-body" v-html="rendered"></div>
     </div>
@@ -22,23 +22,25 @@
       <v-expansion-panel elevation="0" rounded="lg" class="tool-panel">
         <v-expansion-panel-title class="py-2">
           <div class="d-flex align-center w-100">
-            <v-icon size="18" class="mr-2" :color="statusColor">
+            <v-icon size="18" class="me-2" :color="statusColor">
               {{ msg.toolDone ? 'mdi-check-circle' : 'mdi-tools' }}
             </v-icon>
             <span class="text-body-2 font-weight-medium text-truncate">{{ toolLabel }}</span>
             <v-spacer />
-            <v-chip v-if="!msg.toolDone" size="x-small" color="info" variant="tonal">运行中</v-chip>
+            <v-chip v-if="!msg.toolDone" size="x-small" color="info" variant="tonal">
+              {{ t('agent.message.running') }}
+            </v-chip>
           </div>
         </v-expansion-panel-title>
         <v-expansion-panel-text class="pt-2">
           <div v-if="toolInputText" class="mb-3">
-            <div class="text-caption text-medium-emphasis mb-1">输入</div>
+            <div class="text-caption text-medium-emphasis mb-1">{{ t('agent.message.input') }}</div>
             <pre class="code-block"><code>{{ toolInputText }}</code></pre>
           </div>
           <div v-if="msg.toolDone">
-            <div class="text-caption text-medium-emphasis mb-1">结果</div>
+            <div class="text-caption text-medium-emphasis mb-1">{{ t('agent.message.result') }}</div>
             <div v-if="resultIsError" class="text-error text-body-2">
-              <v-icon size="16" class="mr-1">mdi-alert-circle</v-icon>{{ resultErrorText }}
+              <v-icon size="16" class="me-1">mdi-alert-circle</v-icon>{{ resultErrorText }}
             </div>
             <template v-else>
               <component
@@ -61,8 +63,8 @@
             </template>
           </div>
           <div v-else class="text-caption text-medium-emphasis d-flex align-center">
-            <v-progress-circular indeterminate size="12" width="2" class="mr-2" />
-            等待工具返回…
+            <v-progress-circular indeterminate size="12" width="2" class="me-2" />
+            {{ t('agent.message.waitingForTool') }}
           </div>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -72,9 +74,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { RenderMessage } from '@/composables/useAgentSession'
 
 const props = defineProps<{ msg: RenderMessage }>()
+const { t } = useI18n()
 
 const expanded = ref(false)
 // 工具卡片：结果到达后自动展开一次（便于查看），其余保持折叠
@@ -118,7 +122,7 @@ const resultIsError = computed(() => {
 
 const resultErrorText = computed(() => {
   const r = props.msg.toolResult as any
-  return r?.error || r?.message || '工具执行失败'
+  return r?.error || r?.message || t('agent.message.toolFailed')
 })
 
 const resultRows = computed<Record<string, any>[]>(() => {
@@ -242,7 +246,7 @@ function renderInline(s: string): string {
 }
 .md-body :deep(.md-ul) {
   margin: 4px 0;
-  padding-left: 20px;
+  padding-inline-start: 20px;
 }
 .code-block,
 .md-body :deep(.code-block) {
@@ -276,7 +280,7 @@ function renderInline(s: string): string {
 .result-table td {
   border: 1px solid rgba(var(--v-theme-on-surface), 0.12);
   padding: 4px 8px;
-  text-align: left;
+  text-align: start;
   vertical-align: top;
 }
 .result-table thead th {

@@ -1,6 +1,8 @@
 // Merchants handler — CRUD, favorites, coordinates, prices.
 
 import { getAll, getById, addOne, putOne, deleteOne, getByIndex, resolvePagination } from '../database'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 
 // 本地模式商家币种推导：手选 default_currency 优先，其次按地区国家映射，无则 null（前端回落 CNY）。
@@ -87,7 +89,7 @@ export async function listMerchants(_params: Record<string, string>, query?: any
 export async function getMerchant(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const merchant = await getById('merchants', id)
-  if (!merchant) throw { status: 404, message: `Merchant ${id} not found` }
+  if (!merchant) throw localError('merchantNotFound', 404, { id })
   return await withEffectiveCurrency(merchant)
 }
 
@@ -106,7 +108,7 @@ export async function createMerchant(_params: Record<string, string>, data?: any
 export async function updateMerchant(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('merchants', id)
-  if (!existing) throw { status: 404, message: `Merchant ${id} not found` }
+  if (!existing) throw localError('merchantNotFound', 404, { id })
   await putOne('merchants', {
     ...existing,
     ...data,
@@ -121,7 +123,7 @@ export async function updateMerchant(params: Record<string, string>, data?: any)
 export async function deleteMerchant(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('merchants', id)
-  if (!existing) throw { status: 404, message: `Merchant ${id} not found` }
+  if (!existing) throw localError('merchantNotFound', 404, { id })
   await putOne('merchants', { ...existing, id, is_active: false, updated_at: new Date().toISOString() })
   return { ok: true }
 }
@@ -366,7 +368,7 @@ export async function createUserPlace(_params: Record<string, string>, data?: an
 export async function updateUserPlace(params: Record<string, string>, data?: any): Promise<any> {
   const id = parseInt(params.id)
   const existing = await getById('user_places', id)
-  if (!existing) throw { status: 404, message: '常用地点不存在' }
+  if (!existing) throw localError('userPlaceNotFound')
   await putOne('user_places', { ...existing, ...data, id })
   return getById('user_places', id)
 }
@@ -374,13 +376,13 @@ export async function updateUserPlace(params: Record<string, string>, data?: any
 export async function deleteUserPlace(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   await deleteOne('user_places', id)
-  return { message: '常用地点已删除' }
+  return { message: translate('localMessages.userPlaceDeleted') }
 }
 
 export async function setDefaultUserPlace(params: Record<string, string>): Promise<any> {
   const id = parseInt(params.id)
   const target = await getById('user_places', id)
-  if (!target) throw { status: 404, message: '常用地点不存在' }
+  if (!target) throw localError('userPlaceNotFound')
   // 清除其他默认，保证全局唯一
   const all = await getAll('user_places')
   for (const p of all) {

@@ -10,6 +10,10 @@
 // 非克/毫克）时，改用 weight_unit_name 重解析，避免计数->质量折算产生荒谬单价。
 
 import { type UnitInfo, type EntityOverride, type DensityInfo } from './unitConverter'
+import {
+  CHINESE_JIN_NAME,
+  CHINESE_PIECE_NAME,
+} from '../../../data/localValues.ts'
 
 const JIN_GRAMS = 500
 
@@ -17,7 +21,10 @@ const JIN_GRAMS = 500
 // ?? ID ?????????????? ?=7??=3?????? ID?
 function findJinUnit(units: UnitInfo[]): UnitInfo | undefined {
   return (
-    units.find(u => u.unit_type === 'mass' && (u.name === '?' || u.abbreviation === '?')) ||
+    units.find(u => (
+      u.unit_type === 'mass' &&
+      (u.name === CHINESE_JIN_NAME || u.abbreviation === CHINESE_JIN_NAME)
+    )) ||
     units.find(u => u.unit_type === 'mass' && u.si_factor != null && Math.abs(u.si_factor - 0.5) < 1e-9)
   )
 }
@@ -138,7 +145,13 @@ export function aggregatePrices(
   entityId: number,
 ): AggregatePrice {
   if (records.length === 0) {
-    return { average_price: null, unit: '斤', records: 0, min_price: null, max_price: null }
+    return {
+      average_price: null,
+      unit: CHINESE_JIN_NAME,
+      records: 0,
+      min_price: null,
+      max_price: null,
+    }
   }
 
   const massPrices: number[] = []
@@ -162,7 +175,7 @@ export function aggregatePrices(
     const sum = massPrices.reduce((a, b) => a + b, 0)
     return {
       average_price: Math.round((sum / massPrices.length) * 10000) / 10000,
-      unit: '斤',
+      unit: CHINESE_JIN_NAME,
       records: massPrices.length,
       min_price: Math.round(Math.min(...massPrices) * 10000) / 10000,
       max_price: Math.round(Math.max(...massPrices) * 10000) / 10000,
@@ -177,14 +190,20 @@ export function aggregatePrices(
     const sum = prices.reduce((a, b) => a + b, 0)
     return {
       average_price: Math.round((sum / prices.length) * 10000) / 10000,
-      unit: unit?.name || '个',
+      unit: unit?.name || CHINESE_PIECE_NAME,
       records: prices.length,
       min_price: Math.round(Math.min(...prices) * 10000) / 10000,
       max_price: Math.round(Math.max(...prices) * 10000) / 10000,
     }
   }
 
-  return { average_price: null, unit: '斤', records: 0, min_price: null, max_price: null }
+  return {
+    average_price: null,
+    unit: CHINESE_JIN_NAME,
+    records: 0,
+    min_price: null,
+    max_price: null,
+  }
 }
 
 export { JIN_GRAMS }

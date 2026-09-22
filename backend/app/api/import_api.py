@@ -4,11 +4,12 @@ import asyncio
 import os
 import threading
 
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.core.database import get_db, SessionLocal
+from app.core.i18n import DEFAULT_LOCALE, request_locale, translate, translate_format
 from app.core.security import get_current_admin_user, get_current_user
 from app.models.import_task import ImportTask
 from app.models.usda import TranslationConfig
@@ -19,6 +20,7 @@ from app.services.importer.api_service import (
     start_background_import,
 )
 from app.services.importer.ai_inference.inferrer import AIInferrer
+from app.core.exceptions import LocalizedHTTPException
 
 router = APIRouter()
 
@@ -38,7 +40,7 @@ def upload_import(
     普通用户仅可上传系统导出格式。
     """
     if not file.filename or not file.filename.endswith(".zip"):
-        raise HTTPException(400, detail="仅支持 ZIP 格式的压缩包")
+        raise LocalizedHTTPException(status_code=400, message='仅支持 ZIP 格式的压缩包')
 
     # 保存上传文件到临时路径
     import tempfile as _tmpfile
@@ -107,12 +109,9 @@ def trigger_local_import(
     """
     local_path = settings.data_local_path
     if not local_path:
-        raise HTTPException(
-            400,
-            detail="未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置",
-        )
+        raise LocalizedHTTPException(status_code=400, message='未在 .env 配置 DATA_LOCAL_PATH，请在 backend/.env 设置')
     if not os.path.isdir(local_path):
-        raise HTTPException(400, detail=f"目录不存在: {local_path}")
+        raise LocalizedHTTPException(status_code=400, message='目录不存在: {local_path}', local_path=local_path)
 
     task_id = start_background_import(
         db,
@@ -162,7 +161,7 @@ def get_task_status(
         if getattr(current_user, "is_admin", False):
             task = db.query(ImportTask).get(task_id)
         if not task:
-            raise HTTPException(404, detail="任务不存在")
+            raise LocalizedHTTPException(status_code=404, message='任务不存在')
     return task.to_dict()
 
 
@@ -196,13 +195,10 @@ def cancel_import_task(
     """
     task = db.query(ImportTask).filter(ImportTask.id == task_id).first()
     if not task:
-        raise HTTPException(404, detail="任务不存在")
+        raise LocalizedHTTPException(status_code=404, message='任务不存在')
 
     if task.status not in ("pending", "running"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"任务状态为 {task.status}，不可取消",
-        )
+        raise LocalizedHTTPException(status_code=409, message='任务状态为 {status}，不可取消', status=task.status)
 
     # 如果该 ImportTask 关联了 Agent 会话，一并取消 Agent（推测模糊量/密度/翻译等）。
     if task.stats and task.stats.get("agent_session_id"):
@@ -266,6 +262,7 @@ def _create_ai_caller(provider: str, db: Session):
 def _run_ai_inference(
     task_id: int, inference_type: str, force: bool, provider: str, db_session_factory,
     main_loop: "asyncio.AbstractEventLoop | None" = None,
+    locale: str = DEFAULT_LOCALE,
 ):
     """后台运行 AI 推测。"""
     db = db_session_factory()
@@ -278,7 +275,7 @@ def _run_ai_inference(
             "stage": "初始化",
             "current": 0,
             "total": 0,
-            "message": "准备 AI 推测...",
+            "message": translate("准备 AI 推测...", locale),
         }
         db.commit()
 
@@ -332,7 +329,7 @@ def _run_ai_inference(
                 "stage": "完成",
                 "current": 1,
                 "total": 1,
-                "message": "推测完成",
+                "message": translate("推测完成", locale),
             }
             task.stats = result.stats if hasattr(result, "stats") else {}
             if hasattr(result, "errors") and result.errors:
@@ -355,6 +352,7 @@ def _run_ai_inference(
 async def infer_fuzzy_quantities(
     force: bool = False,
     provider: str = Query("claude_code", description="AI 提供方名称"),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -373,7 +371,7 @@ async def infer_fuzzy_quantities(
     main_loop = asyncio.get_running_loop()
     thread = threading.Thread(
         target=_run_ai_inference,
-        args=(task.id, "quantities", force, provider, SessionLocal, main_loop),
+        args=(task.id, "quantities", force, provider, SessionLocal, main_loop, request_locale(request)),
         daemon=True,
     )
     thread.start()
@@ -385,6 +383,7 @@ async def infer_fuzzy_quantities(
 async def infer_densities(
     force: bool = False,
     provider: str = Query("claude_code", description="AI 提供方名称"),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -403,7 +402,7 @@ async def infer_densities(
     main_loop = asyncio.get_running_loop()
     thread = threading.Thread(
         target=_run_ai_inference,
-        args=(task.id, "densities", force, provider, SessionLocal, main_loop),
+        args=(task.id, "densities", force, provider, SessionLocal, main_loop, request_locale(request)),
         daemon=True,
     )
     thread.start()
@@ -420,6 +419,7 @@ def _run_translate_task(
     provider: str,
     db_session_factory,
     force: bool = False,
+    locale: str = DEFAULT_LOCALE,
 ):
     """后台运行 USDA 翻译任务（食材名或营养素），带 ImportTask 进度跟踪。
 
@@ -439,7 +439,7 @@ def _run_translate_task(
             "stage": "翻译中",
             "current": 0,
             "total": 0,
-            "message": f"使用 {provider} 翻译...",
+            "message": translate_format("使用 {provider} 翻译...", locale, provider=provider),
         }
         db.commit()
 
@@ -537,7 +537,7 @@ def _run_translate_task(
                                     "stage": "翻译中",
                                     "current": done,
                                     "total": total,
-                                    "message": f"Agent 翻译中（{total} 条待处理）",
+                                    "message": translate_format("Agent 翻译中（{total} 条待处理）", locale, total=total),
                                 }
                                 sync_db.commit()
 
@@ -606,7 +606,7 @@ def _run_translate_task(
                     "stage": "完成",
                     "current": 1,
                     "total": 1,
-                    "message": "翻译完成",
+                    "message": translate("翻译完成", locale),
                 }
                 final_task.stats = (
                     result_box[0] if isinstance(result_box[0], dict) else {}
@@ -638,6 +638,7 @@ def _run_translate_task(
 def translate_foods(
     provider: str = Query("claude_code", description="翻译后端名称"),
     force: bool = False,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -652,7 +653,7 @@ def translate_foods(
     thread = threading.Thread(
         target=_run_translate_task,
         args=(task.id, "foods", provider, SessionLocal),
-        kwargs={"force": force},
+        kwargs={"force": force, "locale": request_locale(request)},
         daemon=True,
     )
     thread.start()
@@ -664,6 +665,7 @@ def translate_foods(
 def translate_nutrients(
     provider: str = Query("claude_code", description="AI 翻译后端名称"),
     force: bool = False,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -678,7 +680,7 @@ def translate_nutrients(
     thread = threading.Thread(
         target=_run_translate_task,
         args=(task.id, "nutrients", provider, SessionLocal),
-        kwargs={"force": force},
+        kwargs={"force": force, "locale": request_locale(request)},
         daemon=True,
     )
     thread.start()

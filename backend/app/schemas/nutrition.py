@@ -87,3 +87,5 @@ class NutritionEditResponse(BaseModel):
     message: str
     ingredient_id: Optional[int] = None
     product_id: Optional[int] = None
+    status: Optional[str] = None
+    proposal_id: Optional[int] = None

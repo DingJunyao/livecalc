@@ -5,6 +5,8 @@
 
 import { getAll, addOne, putOne } from '../database'
 import { getTranslationConfig } from './admin'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
 import {
   executeAgentRun,
   resolveAgentConfig,
@@ -19,43 +21,43 @@ import {
 const TASK_TYPES = [
   {
     id: 'data_analysis',
-    name: '数据分析',
-    description: '分析本地数据，查看商品、食材、菜谱的价格和营养信息',
+    name: 'localAgentTasks.dataAnalysis',
+    description: 'localAgentTaskDescriptions.dataAnalysis',
   },
   {
     id: 'nutrition_audit',
-    name: '营养审核',
-    description: '检查食材营养数据是否完整，补充缺失的营养信息',
+    name: 'localAgentTasks.nutritionAudit',
+    description: 'localAgentTaskDescriptions.nutritionAudit',
   },
   {
     id: 'price_analysis',
-    name: '价格分析',
-    description: '分析商品价格趋势，查找价格异常或最优购买方案',
+    name: 'localAgentTasks.priceAnalysis',
+    description: 'localAgentTaskDescriptions.priceAnalysis',
   },
   {
     id: 'inventory_check',
-    name: '库存检查',
-    description: '检查各类数据的完整性，发现缺失或不一致的数据',
+    name: 'localAgentTasks.inventoryCheck',
+    description: 'localAgentTaskDescriptions.inventoryCheck',
   },
   {
     id: 'fill_piece_weight',
-    name: '自定义单位校准',
-    description: '校准 entity_unit_overrides 中缺失或占位的自定义单位克重',
+    name: 'localAgentTasks.fillPieceWeight',
+    description: 'localAgentTaskDescriptions.fillPieceWeight',
   },
   {
     id: 'infer_densities',
-    name: '密度推测',
-    description: '为食材补充 entity_densities 密度记录',
+    name: 'localAgentTasks.inferDensities',
+    description: 'localAgentTaskDescriptions.inferDensities',
   },
   {
     id: 'usda_translate',
-    name: '食材名翻译',
-    description: '把食材中文名翻译为英文 USDA 食物名',
+    name: 'localAgentTasks.usdaTranslate',
+    description: 'localAgentTaskDescriptions.usdaTranslate',
   },
   {
     id: 'unmapped_nutrient_translate',
-    name: '营养素翻译',
-    description: '把中文营养素名翻译为 USDA 标准英文名',
+    name: 'localAgentTasks.nutrientTranslate',
+    description: 'localAgentTaskDescriptions.nutrientTranslate',
   },
 ]
 
@@ -109,8 +111,8 @@ export async function getTaskTypes(): Promise<any> {
   // 控制台按 task_type / title 字段渲染与启动，映射成兼容结构
   return TASK_TYPES.map((t) => ({
     task_type: t.id,
-    title: t.name,
-    description: t.description,
+    title: translate(t.name),
+    description: translate(t.description),
   }))
 }
 
@@ -123,7 +125,7 @@ export async function createSession(_params: Record<string, string>, data?: any)
   const session = {
     id: await nextId(),
     task_type: taskType,
-    title: data?.title || meta?.name || '新对话',
+    title: data?.title || (meta ? translate(meta.name) : translate('localMessages.newConversation')),
    status: 'running' as const,
    provider,
    error: null as string | null,
@@ -182,7 +184,7 @@ async function runSessionInBackground(
       renders,
       ai_messages: aiMessages,
       status: 'failed',
-      error: e?.message || '运行失败',
+      error: e?.message || translate('localMessages.runFailed'),
     })
   }
 }
@@ -202,7 +204,7 @@ export async function listSessions(_params: Record<string, string>, query?: any)
 export async function getSession(params: Record<string, string>): Promise<any> {
   const all: any[] = await getAll('agent_sessions')
   const session = findById(all, params.id)
-  if (!session) throw { status: 404, message: `Session ${params.id} not found` }
+  if (!session) throw localError('agentSessionNotFound', 404, { id: params.id })
   return session
 }
 
@@ -213,7 +215,7 @@ export async function updateSession(
 ): Promise<any> {
   const all: any[] = await getAll('agent_sessions')
   const session = findById(all, params.id)
-  if (!session) throw { status: 404, message: `Session ${params.id} not found` }
+  if (!session) throw localError('agentSessionNotFound', 404, { id: params.id })
   const updated = {
     ...session,
     ...(data || {}),
@@ -228,7 +230,7 @@ export async function updateSession(
 export async function cancelSession(params: Record<string, string>): Promise<any> {
   const all: any[] = await getAll('agent_sessions')
   const session = findById(all, params.id)
-  if (!session) throw { status: 404, message: `Session ${params.id} not found` }
+  if (!session) throw localError('agentSessionNotFound', 404, { id: params.id })
 
   const updated = { ...session, status: 'cancelled', updated_at: nowISO() }
   await putOne('agent_sessions', updated)
@@ -239,7 +241,7 @@ export async function cancelSession(params: Record<string, string>): Promise<any
 export async function postMessage(params: Record<string, string>, data?: any): Promise<any> {
   const all: any[] = await getAll('agent_sessions')
   const session = findById(all, params.id)
-  if (!session) throw { status: 404, message: `Session ${params.id} not found` }
+  if (!session) throw localError('agentSessionNotFound', 404, { id: params.id })
 
   const msg = {
     role: 'user',

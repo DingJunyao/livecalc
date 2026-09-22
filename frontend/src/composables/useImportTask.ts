@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue'
 import { api } from '@/api'
+import type { ImportTaskError } from '@/utils/importTaskErrors'
 
 export interface ImportTask {
   id: number
@@ -12,7 +13,7 @@ export interface ImportTask {
     message: string
   }
   stats: Record<string, number>
-  error: string | null
+  error: ImportTaskError
   created_at: string
   updated_at: string
 }
@@ -61,7 +62,7 @@ export function useImportTask() {
           id: taskId,
           task_type: inferTaskType(endpoint),
           status: 'pending',
-          progress: { stage: '等待中', current: 0, total: 0, message: '' },
+          progress: { stage: 'pending', current: 0, total: 0, message: '' },
           stats: {},
           error: null,
           created_at: new Date().toISOString(),
@@ -90,7 +91,7 @@ export function useImportTask() {
           id: taskId,
           task_type: 'upload_import',
           status: 'pending',
-          progress: { stage: '等待中', current: 0, total: 0, message: '' },
+          progress: { stage: 'pending', current: 0, total: 0, message: '' },
           stats: {},
           error: null,
           created_at: new Date().toISOString(),

@@ -3,6 +3,8 @@
 
 import { getAll, getById, getByIndex, putOne, getDb } from '../database'
 import { parseUsdaDataset } from './usdaData'
+import { localError } from '../../../utils/localErrors'
+import { t as translate } from '../../../plugins/i18n.ts'
 
 export async function searchUsda(_params: Record<string, string>, query?: any): Promise<any> {
   const q = query?.q || ''
@@ -50,7 +52,7 @@ export async function searchUsda(_params: Record<string, string>, query?: any): 
 export async function getUsdaFood(params: Record<string, string>): Promise<any> {
   const fdcId = parseInt(params.fdcId)
   const food = await getById('usda_foods', fdcId)
-  if (!food) throw { status: 404, message: `USDA food ${fdcId} not found` }
+  if (!food) throw localError('usdaFoodNotFound', 404, { id: fdcId })
 
   const nutrients = await getByIndex('usda_food_nutrients', 'by_fdc_id', fdcId)
 
@@ -70,7 +72,7 @@ export async function getUsdaFood(params: Record<string, string>): Promise<any> 
 
 export async function previewNutrition(_params: Record<string, string>, query?: any): Promise<any> {
   const fdcId = parseInt(query?.fdc_id)
-  if (!fdcId) throw { status: 400, message: 'fdc_id is required' }
+  if (!fdcId) throw localError('fdcIdRequired')
 
   const nutrients = await getByIndex('usda_food_nutrients', 'by_fdc_id', fdcId)
 
@@ -105,7 +107,7 @@ export async function previewNutrition(_params: Record<string, string>, query?: 
 export async function matchIngredient(params: Record<string, string>, data?: any): Promise<any> {
   const ingredientId = parseInt(params.ingredientId)
   const fdcId = data?.fdc_id
-  if (!fdcId) throw { status: 400, message: 'fdc_id is required' }
+  if (!fdcId) throw localError('fdcIdRequired')
 
   // 先读 USDA 营养素（独立读事务）：在写事务内部跨事务 await 会导致写事务被浏览器自动提交，
   // 后续 store.add 抛 TransactionInactiveError。因此读取必须在写事务开启之前完成。
@@ -139,13 +141,17 @@ export async function matchIngredient(params: Record<string, string>, data?: any
   }
   await tx.done
 
-  return { ingredient_id: ingredientId, fdc_id: fdcId, message: 'USDA 匹配成功（本地模式）' }
+  return {
+    ingredient_id: ingredientId,
+    fdc_id: fdcId,
+    message: translate('localMessages.usdaLocalMatchSucceeded'),
+  }
 }
 
 export async function matchProduct(params: Record<string, string>, data?: any): Promise<any> {
   const productId = parseInt(params.productId)
   const fdcId = data?.fdc_id
-  if (!fdcId) throw { status: 400, message: 'fdc_id is required' }
+  if (!fdcId) throw localError('fdcIdRequired')
 
   // Load USDA nutrients
   const nutrients = await getByIndex('usda_food_nutrients', 'by_fdc_id', fdcId)
@@ -157,7 +163,7 @@ export async function matchProduct(params: Record<string, string>, data?: any): 
 
   // Update product's custom_nutrition_data
   const product = await getById('products', productId)
-  if (!product) throw { status: 404, message: `Product ${productId} not found` }
+  if (!product) throw localError('productNotFound', 404, { id: productId })
 
   await putOne('products', {
     ...product,
@@ -169,13 +175,17 @@ export async function matchProduct(params: Record<string, string>, data?: any): 
     updated_at: new Date().toISOString(),
   })
 
-  return { product_id: productId, fdc_id: fdcId, message: 'USDA 匹配成功（本地模式）' }
+  return {
+    product_id: productId,
+    fdc_id: fdcId,
+    message: translate('localMessages.usdaLocalMatchSucceeded'),
+  }
 }
 
 export async function downloadUsda(_params: Record<string, string>, _data?: any): Promise<any> {
   // 本地模式无后端，无法联网拉取并处理 USDA 数据集。
   // 不返回 task_id（前端据此判断是否轮询），同步给出说明，避免触发对不存在任务的轮询。
-  return { message: '本地模式使用预置 USDA 数据，如需更新请通过「上传 ZIP」导入已处理的 USDA 数据包' }
+  return { message: translate('localMessages.usdaDownloadUnsupported') }
 }
 
 // ---- Admin: USDA statistics / tasks（数据维护中心只读展示） ----
@@ -219,7 +229,7 @@ export async function getTask(): Promise<any> {
  */
 export async function uploadUsda(_params: Record<string, string>, data?: any): Promise<any> {
   const file: File | null = data?.get?.('file') ?? null
-  if (!file) throw { status: 400, message: '缺少上传文件' }
+  if (!file) throw localError('uploadFileMissing')
 
   const db = await getDb()
   let foods = 0
@@ -251,7 +261,7 @@ export async function uploadUsda(_params: Record<string, string>, data?: any): P
     } else {
       // 原始 USDA 格式：取首个 .json，用解析器转成内部结构后批量写入
       const jsonFiles = zip.file(/\.json$/) || []
-      if (!jsonFiles.length) throw { status: 400, message: 'ZIP 内未找到 JSON 文件' }
+      if (!jsonFiles.length) throw localError('usdaZipJsonMissing')
       const raw = JSON.parse(await jsonFiles[0].async('string'))
       const parsed = parseUsdaDataset(raw)
       const BATCH = 200
@@ -298,12 +308,12 @@ export async function uploadUsda(_params: Record<string, string>, data?: any): P
     }
   } catch (e: any) {
     if (e?.status) throw e
-    throw { status: 400, message: `解析 USDA 数据包失败：${e?.message || e}` }
+    throw localError('usdaDatasetParseFailed')
   }
 
   // 不返回 task_id（本地同步完成），避免前端轮询不存在的任务
   return {
-    message: `USDA 数据导入完成：食材 ${foods} 条，营养素 ${nutrients} 条`,
+    message: translate('localMessages.usdaImportCompleted', { foods, nutrients }),
     foods,
     nutrients,
   }
@@ -311,11 +321,11 @@ export async function uploadUsda(_params: Record<string, string>, data?: any): P
 
 export async function translateUsda(): Promise<any> {
   // 本地模式无 AI 翻译管线，降级提示（前端 AI 后处理已通过 Agent 会话承载翻译）
-  return { message: '本地模式请在「AI 后处理」中通过已启用的 AI 后端翻译食材名' }
+  return { message: translate('localMessages.usdaTranslateIngredientsUnsupported') }
 }
 
 export async function translateNutrients(): Promise<any> {
-  return { message: '本地模式请在「AI 后处理」中通过已启用的 AI 后端翻译营养素名' }
+  return { message: translate('localMessages.usdaTranslateNutrientsUnsupported') }
 }
 
 export async function getTaskById(_params: Record<string, string>): Promise<any> {

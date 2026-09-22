@@ -1,4 +1,5 @@
 import { api } from '@/api'
+import { t } from '@/plugins/i18n'
 
 export interface BarcodeLookupProduct {
   id?: number
@@ -21,7 +22,7 @@ export interface BarcodeLookupResult {
 export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResult> {
   const code = barcode.trim()
   if (!code) {
-    return { found: false, source: null, product: {}, errors: ['请输入条码'], has_enabled_providers: true }
+    return { found: false, source: null, product: {}, errors: [t('barcodeLookup.errors.barcodeRequired')], has_enabled_providers: true }
   }
 
   try {
@@ -34,9 +35,9 @@ export async function lookupBarcode(barcode: string): Promise<BarcodeLookupResul
       found: false,
       source: null,
       product: {},
-      errors: [error?.userMessage || '条码查询失败'],
+      errors: [error?.userMessage || t('barcodeLookup.errors.lookupFailed')],
       has_enabled_providers: false,
     }
   }
-  return { found: false, source: null, product: {}, errors: ['条码查询响应无效'], has_enabled_providers: true }
+  return { found: false, source: null, product: {}, errors: [t('barcodeLookup.errors.invalidResponse')], has_enabled_providers: true }
 }

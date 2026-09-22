@@ -9,6 +9,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 from sqlalchemy.orm import Session
+from app.core.exceptions import LocalizedHTTPException
 
 logger = logging.getLogger(__name__)
 from fastapi import HTTPException
@@ -27,7 +28,7 @@ _auto_reviewer = DefaultAutoReviewer()
 def _get_executor(entity_type: str) -> ProposalExecutor:
     ex = ExecutorRegistry.get(entity_type)
     if ex is None:
-        raise HTTPException(status_code=400, detail=f"不支持的提议类型: {entity_type}")
+        raise LocalizedHTTPException(status_code=400, message='不支持的提议类型: {entity_type}', entity_type=entity_type)
     return ex
 
 
@@ -102,9 +103,9 @@ def review(db: Session, *, proposal_id: int, approved: bool, reviewer, note: str
     """
     proposal = db.query(ChangeProposal).filter(ChangeProposal.id == proposal_id).first()
     if proposal is None:
-        raise HTTPException(status_code=404, detail="提议不存在")
+        raise LocalizedHTTPException(status_code=404, message='提议不存在')
     if proposal.status not in ("pending",):
-        raise HTTPException(status_code=409, detail=f"提议已处理（status={proposal.status}），不能重复审核")
+        raise LocalizedHTTPException(status_code=409, message='提议已处理（status={status}），不能重复审核', status=proposal.status)
 
     proposal.reviewer_id = reviewer.id
     proposal.reviewed_at = _now()
@@ -126,11 +127,11 @@ def revert(db: Session, *, proposal_id: int, reviewer) -> ChangeProposal:
     """
     proposal = db.query(ChangeProposal).filter(ChangeProposal.id == proposal_id).first()
     if proposal is None:
-        raise HTTPException(status_code=404, detail="提议不存在")
+        raise LocalizedHTTPException(status_code=404, message='提议不存在')
     if proposal.status != "applied":
-        raise HTTPException(status_code=409, detail=f"仅 applied 提议可回滚（当前 status={proposal.status}）")
+        raise LocalizedHTTPException(status_code=409, message='仅 applied 提议可回滚（当前 status={status}）', status=proposal.status)
     if proposal.revertable_until and _now() > proposal.revertable_until.replace(tzinfo=None):
-        raise HTTPException(status_code=403, detail="回滚窗口已过")
+        raise LocalizedHTTPException(status_code=403, message='回滚窗口已过')
 
     executor = _get_executor(proposal.entity_type)
     executor.revert(db, proposal)

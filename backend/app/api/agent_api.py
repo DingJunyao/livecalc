@@ -45,6 +45,7 @@ from app.schemas.agent import (
 from app.services.agent import runner_factory, session_runner, stream_bridge
 from app.services.agent.session_runner import cancel_session, _pending_approvals
 from app.services.agent.task_templates import get_template, list_task_types
+from app.core.exceptions import LocalizedHTTPException
 
 logger = logging.getLogger("app.api.agent")
 
@@ -59,7 +60,7 @@ router = APIRouter()
 def _require_admin(user) -> None:
     """管理员校验，对齐 import_api.trigger_repo_import 风格。"""
     if not getattr(user, "is_admin", False):
-        raise HTTPException(status_code=403, detail="仅管理员可操作")
+        raise LocalizedHTTPException(status_code=403, message='仅管理员可操作')
 
 
 # --------------------------------------------------------------------------- #
@@ -105,10 +106,7 @@ async def create_session(
     try:
         tpl = _resolve_template(body.task_type)
     except KeyError:
-        raise HTTPException(
-            status_code=400,
-            detail=f"未知任务类型: {body.task_type}（可用类型见 GET /api/v1/agent/task-types）",
-        )
+        raise LocalizedHTTPException(status_code=400, message='未知任务类型: {task_type}（可用类型见 GET /api/v1/agent/task-types）', task_type=body.task_type)
     initial_prompt = tpl["prompt"]
 
     # 预查询兜底原料列表，直接注入 prompt，防止 Agent 跳过
@@ -461,16 +459,10 @@ async def post_message(
     sess = _get_session_or_404(db, sid, current_user)
 
     if sess.status not in ("success", "failed", "cancelled"):
-        raise HTTPException(
-            status_code=409,
-            detail="会话仍在运行，无法插话（请在轮次结束后再追加）",
-        )
+        raise LocalizedHTTPException(status_code=409, message='会话仍在运行，无法插话（请在轮次结束后再追加）')
 
     if not sess.external_session_id:
-        raise HTTPException(
-            status_code=409,
-            detail="会话缺少外部会话 ID，无法 resume",
-        )
+        raise LocalizedHTTPException(status_code=409, message='会话缺少外部会话 ID，无法 resume')
 
     main_loop = asyncio.get_running_loop()
     db_url = _settings_db_url()
@@ -535,14 +527,11 @@ async def cancel_agent_session(
     sess = _get_session_or_404(db, sid, current_user)
 
     if sess.status not in ("pending", "running", "awaiting_approval"):
-        raise HTTPException(
-            status_code=409,
-            detail=f"会话状态为 {sess.status}，不可取消",
-        )
+        raise LocalizedHTTPException(status_code=409, message='会话状态为 {status}，不可取消', status=sess.status)
 
     ok = cancel_session(sid)
     if not ok:
-        raise HTTPException(status_code=500, detail="取消失败")
+        raise LocalizedHTTPException(status_code=500, message='取消失败')
 
     return {"status": "cancelled"}
 
@@ -563,20 +552,14 @@ def decide_approval(
     # 先校验存在性，给出更友好的错误。
     ap = db.query(AgentApproval).get(aid)
     if ap is None:
-        raise HTTPException(status_code=404, detail="审批记录不存在")
+        raise LocalizedHTTPException(status_code=404, message='审批记录不存在')
     if ap.status != "pending":
-        raise HTTPException(
-            status_code=409,
-            detail=f"审批已决策（status={ap.status}），不能重复操作",
-        )
+        raise LocalizedHTTPException(status_code=409, message='审批已决策（status={status}），不能重复操作', status=ap.status)
 
     ok = session_runner.wake_approval(aid, body.approved, current_user.id)
     if not ok:
         # 竞态：被并发决策了。
-        raise HTTPException(
-            status_code=409,
-            detail="审批已被处理或无阻塞 loop",
-        )
+        raise LocalizedHTTPException(status_code=409, message='审批已被处理或无阻塞 loop')
     return {"ok": True, "approved": body.approved}
 
 
@@ -624,10 +607,10 @@ def _settings():
 def _get_session_or_404(db: Session, sid: int, current_user) -> AgentSession:
     sess = db.query(AgentSession).get(sid)
     if sess is None:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise LocalizedHTTPException(status_code=404, message='会话不存在')
     # 管理员看全部；普通用户只看自己的。
     if not getattr(current_user, "is_admin", False) and sess.user_id != current_user.id:
-        raise HTTPException(status_code=404, detail="会话不存在")
+        raise LocalizedHTTPException(status_code=404, message='会话不存在')
     return sess
 
 

@@ -14,6 +14,7 @@ from app.services.proposals.base import ProposalExecutor, ApplyResult
 from app.services.proposals.executors._crud_base import _json_safe
 from app.models.nutrition import Ingredient
 from app.models.nutrition_data import NutritionData
+from app.core.exceptions import LocalizedHTTPException
 
 # AuditMixin 的时间戳列：snapshot 经 _json_safe 转成 isoformat 字符串，
 # 重新插入 NutritionData 整行前必须转回 datetime（SQLite DateTime 列拒收字符串）。
@@ -41,10 +42,10 @@ class UsdaIngredientMatchExecutor(ProposalExecutor):
         ingredient_id = proposal.entity_id
         fdc_id = (proposal.payload or {}).get("fdc_id")
         if ingredient_id is None or fdc_id is None:
-            raise HTTPException(status_code=400, detail="payload 缺少 fdc_id / entity_id")
+            raise LocalizedHTTPException(status_code=400, message='payload 缺少 fdc_id / entity_id')
         if db.query(Ingredient).filter(Ingredient.id == ingredient_id,
                                        Ingredient.is_active.is_(True)).first() is None:
-            raise HTTPException(status_code=404, detail="原料不存在")
+            raise LocalizedHTTPException(status_code=404, message='原料不存在')
 
     def build_snapshot(self, db, proposal) -> dict:
         """提交时预填旧 NutritionData 全行。"""

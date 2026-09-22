@@ -1,10 +1,11 @@
 """原料黑名单分组 API（管理员维护 + 公开只读）"""
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 from app.core.database import get_db
+from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.models.user import User
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
@@ -16,6 +17,7 @@ from app.schemas.blacklist_group import (
     BlacklistGroupResponse, BlacklistGroupIngredientResponse,
     BlacklistGroupPublicResponse, BlacklistGroupIngredientCreate,
 )
+from app.core.exceptions import LocalizedHTTPException
 
 blacklist_group_admin_router = APIRouter(tags=["原料黑名单分组管理"])
 blacklist_group_public_router = APIRouter(tags=["原料黑名单分组"])
@@ -72,7 +74,7 @@ def create_group(
     """创建原料黑名单分组"""
     existing = db.query(BlacklistGroup).filter(BlacklistGroup.name == body.name).first()
     if existing:
-        raise HTTPException(status_code=400, detail="分组名已存在")
+        raise LocalizedHTTPException(status_code=400, message='分组名已存在')
     group = BlacklistGroup(
         name=body.name,
         display_order=body.display_order,
@@ -98,7 +100,7 @@ def update_group(
         joinedload(BlacklistGroup.group_ingredients).joinedload(BlacklistGroupIngredient.ingredient)
     ).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     update_data = body.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(group, field, value)
@@ -112,6 +114,7 @@ def update_group(
 @blacklist_group_admin_router.delete("/blacklist-groups/{group_id}/")
 def delete_group(
     group_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -122,11 +125,11 @@ def delete_group(
     """
     group = db.query(BlacklistGroup).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     group.is_active = False
     group.updated_by = admin.id
     db.commit()
-    return {"message": "已删除"}
+    return {"message": api_message(request, "已删除")}
 
 
 @blacklist_group_admin_router.post("/blacklist-groups/{group_id}/ingredients", response_model=BlacklistGroupResponse)
@@ -142,7 +145,7 @@ def add_ingredients_to_group(
         joinedload(BlacklistGroup.group_ingredients).joinedload(BlacklistGroupIngredient.ingredient)
     ).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
     for ing_id in body.ingredient_ids:
         existing = db.query(BlacklistGroupIngredient).filter(
             BlacklistGroupIngredient.group_id == group_id,
@@ -169,6 +172,7 @@ def add_ingredients_to_group(
 def remove_ingredient_from_group(
     group_id: int,
     ingredient_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -179,11 +183,11 @@ def remove_ingredient_from_group(
         BlacklistGroupIngredient.is_active == True,
     ).first()
     if not agi:
-        raise HTTPException(status_code=404, detail="该原料不在分组中")
+        raise LocalizedHTTPException(status_code=404, message='该原料不在分组中')
     agi.is_active = False
     agi.updated_by = admin.id
     db.commit()
-    return {"message": "已移除"}
+    return {"message": api_message(request, "已移除")}
 
 
 class AiMatchResponse(BaseModel):
@@ -199,6 +203,7 @@ class AiMatchRequest(BaseModel):
 @blacklist_group_admin_router.post("/blacklist-groups/ai-match-all/", response_model=AiMatchResponse)
 async def trigger_ai_match_all(
     body: AiMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -210,7 +215,7 @@ async def trigger_ai_match_all(
         .all()
     )
     if not groups:
-        raise HTTPException(status_code=400, detail="没有可匹配的启用分组")
+        raise LocalizedHTTPException(status_code=400, message='没有可匹配的启用分组')
 
     from app.services.agent.blacklist_group_task import trigger_blacklist_group_match_all
 
@@ -224,7 +229,10 @@ async def trigger_ai_match_all(
     )
     return AiMatchResponse(
         agent_session_id=session_id,
-        message="已触发全部启用分组 AI 匹配任务，可在 Agent 任务台查看进度",
+        message=api_message(
+            request,
+            "已触发全部启用分组 AI 匹配任务，可在 Agent 任务台查看进度",
+        ),
     )
 
 
@@ -233,13 +241,14 @@ async def trigger_ai_match_all(
 async def trigger_ai_match(
     group_id: int,
     body: AiMatchRequest,
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
     """触发 AI Agent 匹配原料黑名单分组原料"""
     group = db.query(BlacklistGroup).filter(BlacklistGroup.id == group_id).first()
     if not group:
-        raise HTTPException(status_code=404, detail="分组不存在")
+        raise LocalizedHTTPException(status_code=404, message='分组不存在')
 
     from app.services.agent.blacklist_group_task import trigger_blacklist_group_match
 
@@ -255,7 +264,10 @@ async def trigger_ai_match(
 
     return AiMatchResponse(
         agent_session_id=session_id,
-        message="已触发 AI 匹配任务，可在 Agent 任务台查看进度",
+        message=api_message(
+            request,
+            "已触发 AI 匹配任务，可在 Agent 任务台查看进度",
+        ),
     )
 
 
@@ -273,6 +285,7 @@ def get_allergens_status(
 @blacklist_group_admin_router.post("/blacklist-groups/seed-allergens")
 @blacklist_group_admin_router.post("/blacklist-groups/seed-allergens/")
 def seed_allergens(
+    request: Request,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin_user),
 ):
@@ -280,9 +293,12 @@ def seed_allergens(
     from app.services.allergen_seed import upsert_allergen_groups
     result = upsert_allergen_groups(db)
     return {
-        "message": (
-            f"导入完成：新建 {result['created']} 个分组，"
-            f"复活 {result['reactivated']} 个分组，映射 {result['mapped']} 条原料"
+        "message": api_message(
+            request,
+            "导入完成：新建 {created} 个分组，复活 {reactivated} 个分组，映射 {mapped} 条原料",
+            created=result["created"],
+            reactivated=result["reactivated"],
+            mapped=result["mapped"],
         ),
         "stats": result,
     }

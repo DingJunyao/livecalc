@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
 import { api } from '@/api'
+import { formatNumber } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
 
 const props = defineProps<{ proposal: Proposal }>()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const snap = computed(() => props.proposal.snapshot || {})
 const payload = computed(() => props.proposal.payload || {})
@@ -24,7 +29,9 @@ const sourceName = computed(() =>
   snap.value.source_name || extractLabelName(props.proposal.entity_label) || `#${props.proposal.entity_id}`,
 )
 const targetName = computed(() =>
-  snap.value.target_name || targetNameFallback.value || (loadingTarget.value ? '…' : `#${targetProductId.value}`),
+  snap.value.target_name ||
+  targetNameFallback.value ||
+  (loadingTarget.value ? t('proposals.loading') : t('proposals.idOnly', { id: targetProductId.value })),
 )
 const recordsCount = computed(() => snap.value.affected_records_count ?? recordsCountFallback.value ?? 0)
 
@@ -75,16 +82,18 @@ onMounted(loadBackfill)
   <div class="pa-2">
     <v-alert type="warning" variant="tonal" density="compact" class="mb-2">
       <div class="text-body-2">
-        将<strong>「{{ sourceName }}」</strong>合并到<strong>「{{ targetName }}」</strong>，
-        <template v-if="loadingRecords">查价格记录数…</template>
+        {{ t('proposals.productMergeIntro', { source: sourceName, target: targetName }) }}
+        <template v-if="loadingRecords">{{ t('proposals.loadingPriceRecordCount') }}</template>
         <template v-else-if="recordsCount > 0">
-          迁移 <strong>{{ recordsCount }}</strong> 条价格记录。
+          {{ t('proposals.migratePriceRecords', {
+            count: formatNumber(recordsCount, localeStore.effectiveFormatLocale),
+          }) }}
         </template>
-        <template v-else>无价格记录需迁移。</template>
+        <template v-else>{{ t('proposals.noPriceRecordsToMigrate') }}</template>
       </div>
     </v-alert>
     <div class="text-caption text-medium-emphasis">
-      合并后源商品将被软删除，价格记录全部归属目标商品。
+      {{ t('proposals.productMergeResult') }}
     </div>
   </div>
 </template>

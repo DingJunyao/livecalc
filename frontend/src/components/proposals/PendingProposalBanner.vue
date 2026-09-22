@@ -15,6 +15,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { useLocaleStore } from '@/stores/locale'
 
 type PendingProposal = {
   id: number
@@ -29,6 +31,8 @@ const props = defineProps<{
   fieldLabels?: Record<string, string>
   proposalLabels?: Record<string, string>
 }>()
+const { t } = useI18n()
+const localeStore = useLocaleStore()
 
 const allProposals = computed(() => {
   if (props.proposals?.length) return props.proposals
@@ -72,16 +76,20 @@ const message = computed(() => {
   const labels = modificationLabels.value
   if (!props.proposals?.length && props.proposal) {
     if (props.proposal.action === 'delete') {
-      return '该条目已提交删除申请，待管理员审核。审核通过后该条目将被删除。'
+      return t('proposals.pendingDeleteSingle')
     }
-    return '修改待审核——您看到的是已提交的修改内容。审核通过后将正式生效。'
+    return t('proposals.pendingUpdateSingle')
   }
   if (!hasDelete.value) {
-    return `修改待管理员审核：${labels.join('、')}`
+    return t('proposals.pendingUpdates', {
+      fields: new Intl.ListFormat(localeStore.effectiveFormatLocale, { type: 'conjunction' }).format(labels),
+    })
   }
   if (!labels.length) {
-    return '该条目已提交删除申请，待管理员审核。审核通过后该条目将被删除。'
+    return t('proposals.pendingDeleteSingle')
   }
-  return `待管理员审核：修改${labels.join('、')}、删除该条目`
+  return t('proposals.pendingUpdatesAndDelete', {
+    fields: new Intl.ListFormat(localeStore.effectiveFormatLocale, { type: 'conjunction' }).format(labels),
+  })
 })
 </script>

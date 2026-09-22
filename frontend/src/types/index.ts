@@ -16,6 +16,7 @@ export interface UnitPreferences {
 export interface Currency {
   code: string
   name: string
+  display_name?: string | null
   symbol: string | null
   decimals: number
   is_active?: boolean
@@ -38,6 +39,8 @@ export interface User {
   region_id: number | null
   default_currency: string | null
   default_calc_scope: string | null
+  locale: string | null
+  format_locale: string | null
 }
 
 export interface LoginRequest {

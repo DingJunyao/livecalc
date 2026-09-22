@@ -1,13 +1,20 @@
 import type { Currency } from '@/types'
 import { api } from '@/api'
+import { formatMoney as formatMoneyWithLocale } from '@/utils/format'
+import { useLocaleStore } from '@/stores/locale'
+import { currencyDisplayName, currencyOptionLabel } from './currencyLabels'
 
-let cache: Currency[] | null = null
+let cache: { locale: string; items: Currency[] } | null = null
+
+export { currencyDisplayName, currencyOptionLabel }
 
 export async function loadCurrencies(force = false): Promise<Currency[]> {
-  if (!force && cache) return cache
+  const locale = useLocaleStore().locale
+  if (!force && cache?.locale === locale) return cache.items
   const res = await api.get('/currencies')
-  cache = Array.isArray(res) ? res : ((res as any)?.items || [])
-  return cache
+  const items = Array.isArray(res) ? res : ((res as any)?.items || [])
+  cache = { locale, items }
+  return items
 }
 
 export function symbolFromIntl(code: string): string {
@@ -31,17 +38,10 @@ export async function currencySymbol(code: string): Promise<string> {
 // ¥、Rp、IDR 的位置或符号不一致。
 export function formatMoney(amount: number, code: string): string {
   const cur = typeof code === 'string' && code ? code : 'CNY'
-  try {
-    const currencyFormat = new Intl.NumberFormat(undefined, { style: 'currency', currency: cur })
-    const { minimumFractionDigits, maximumFractionDigits } = currencyFormat.resolvedOptions()
-    const number = new Intl.NumberFormat(undefined, {
-      minimumFractionDigits,
-      maximumFractionDigits,
-    }).format(amount)
-    return `${number} ${cur}`
-  } catch {
-    return `${amount.toFixed(2)} ${cur}`
-  }
+  const locale = useLocaleStore().effectiveFormatLocale
+  const formatted = formatMoneyWithLocale(amount, cur, locale)
+  if (formatted !== '-' || cur === 'CNY') return formatted
+  return formatMoneyWithLocale(amount, 'CNY', locale)
 }
 
 export function convertAmount(amount: number, exchangeRate: number): number {
