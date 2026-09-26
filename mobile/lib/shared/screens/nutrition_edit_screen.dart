@@ -77,6 +77,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   final _searchController = TextEditingController();
   final _usdaRepo = UsdaRepository();
   Timer? _debounce;
+  int _searchSequence = 0;
   List<UsdaFood> _results = const [];
   UsdaFood? _selected;
   bool _searching = false;
@@ -122,6 +123,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
 
   Future<void> _searchUsda() async {
     final query = _searchController.text.trim();
+    final searchSequence = ++_searchSequence;
     if (query.isEmpty) {
       setState(() {
         _results = const [];
@@ -132,7 +134,7 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
     setState(() => _searching = true);
     try {
       final results = await (widget.usdaRepository ?? _usdaRepo).search(query);
-      if (mounted) {
+      if (mounted && searchSequence == _searchSequence) {
         setState(() {
           _results = results;
           _selected = null;
@@ -140,7 +142,9 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
         });
       }
     } on Exception {
-      if (mounted) setState(() => _searching = false);
+      if (mounted && searchSequence == _searchSequence) {
+        setState(() => _searching = false);
+      }
     }
   }
 

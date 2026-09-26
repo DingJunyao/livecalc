@@ -81,6 +81,7 @@ class PriceListState {
 class PriceListNotifier extends StateNotifier<PriceListState> {
   final PriceRepository _repository;
   Timer? _debounce;
+  int _requestSequence = 0;
 
   PriceListNotifier(this._repository) : super(const PriceListState());
 
@@ -94,6 +95,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
 
   Future<void> loadRecords({bool loadMore = false}) async {
     final page = loadMore ? state.currentPage + 1 : 1;
+    final requestSequence = ++_requestSequence;
     state = state.copyWith(
       loading: !loadMore,
       loadingMore: loadMore,
@@ -109,6 +111,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         page: page,
         pageSize: _pageSize,
       );
+      if (!mounted || requestSequence != _requestSequence) return;
       final records =
           loadMore ? [...state.records, ...result.records] : result.records;
       final hasMore = records.length < result.total;
@@ -121,6 +124,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         loadingMore: false,
       );
     } on Exception catch (e) {
+      if (!mounted || requestSequence != _requestSequence) return;
       state = state.copyWith(
         loading: false,
         loadingMore: false,

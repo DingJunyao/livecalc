@@ -70,6 +70,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   final FocusNode _ingredientFocusNode = FocusNode();
   Timer? _debounce;
   int _ingredientSearchSeq = 0;
+  Completer<List<Ingredient>>? _ingredientSearchCompleter;
   List<String> _aliases = const [];
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
@@ -153,10 +154,16 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   Future<List<Ingredient>> _searchIngredients(String query) {
     final q = query.trim();
     if (q.isEmpty) {
+      ++_ingredientSearchSeq;
+      _debounce?.cancel();
+      _completePendingIngredientSearch(const <Ingredient>[]);
+      if (mounted && _searching) setState(() => _searching = false);
       return Future.value(const <Ingredient>[]);
     }
     final seq = ++_ingredientSearchSeq;
+    _completePendingIngredientSearch(const <Ingredient>[]);
     final completer = Completer<List<Ingredient>>();
+    _ingredientSearchCompleter = completer;
     _debounce?.cancel();
     setState(() => _searching = true);
     _debounce = Timer(const Duration(milliseconds: 300), () async {
@@ -167,19 +174,26 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         );
         if (mounted && seq == _ingredientSearchSeq) {
           setState(() => _searching = false);
-          completer.complete(result.items);
-        } else {
-          // 已有更新的查询在途，丢弃本次结果。
-          completer.complete(const <Ingredient>[]);
         }
+        _completePendingIngredientSearch(
+          seq == _ingredientSearchSeq ? result.items : const <Ingredient>[],
+        );
       } catch (_) {
         if (mounted && seq == _ingredientSearchSeq) {
           setState(() => _searching = false);
         }
-        completer.complete(const <Ingredient>[]);
+        _completePendingIngredientSearch(const <Ingredient>[]);
       }
     });
     return completer.future;
+  }
+
+  void _completePendingIngredientSearch(List<Ingredient> result) {
+    final completer = _ingredientSearchCompleter;
+    _ingredientSearchCompleter = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(result);
+    }
   }
 
   Future<void> _scanBarcode() async {

@@ -75,6 +75,7 @@ class MerchantListState {
 class MerchantListNotifier extends StateNotifier<MerchantListState> {
   final MerchantRepository _repo;
   Timer? _debounce;
+  int _requestSequence = 0;
 
   MerchantListNotifier(this._repo) : super(const MerchantListState());
 
@@ -95,6 +96,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
   Future<void> load({bool loadMore = false}) async {
     if (loadMore && !state.hasMore) return;
     final page = loadMore ? state.currentPage + 1 : 1;
+    final requestSequence = ++_requestSequence;
     state = state.copyWith(
       loading: !loadMore,
       loadingMore: loadMore,
@@ -111,6 +113,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
               skip: (page - 1) * merchantPageSize,
               limit: merchantPageSize,
             );
+      if (!mounted || requestSequence != _requestSequence) return;
       final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
@@ -121,6 +124,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
         loadingMore: false,
       );
     } on Exception catch (e) {
+      if (!mounted || requestSequence != _requestSequence) return;
       state = state.copyWith(
         loading: false,
         loadingMore: false,

@@ -102,6 +102,7 @@ const _absent = Object();
 class ProductListNotifier extends StateNotifier<ProductListState> {
   final ProductRepository _repo;
   Timer? _debounce;
+  int _requestSequence = 0;
 
   ProductListNotifier(this._repo) : super(const ProductListState());
 
@@ -122,6 +123,7 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   Future<void> load({bool loadMore = false}) async {
     if (loadMore && !state.hasMore) return;
     final page = loadMore ? state.currentPage + 1 : 1;
+    final requestSequence = ++_requestSequence;
     state = state.copyWith(
       loading: !loadMore,
       loadingMore: loadMore,
@@ -138,6 +140,7 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
         skip: (page - 1) * productPageSize,
         limit: productPageSize,
       );
+      if (!mounted || requestSequence != _requestSequence) return;
       final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
@@ -149,6 +152,7 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
       );
       _loadDetails(items);
     } on Exception catch (e) {
+      if (!mounted || requestSequence != _requestSequence) return;
       state = state.copyWith(
         loading: false,
         loadingMore: false,

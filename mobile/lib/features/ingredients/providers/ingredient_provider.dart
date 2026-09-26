@@ -95,6 +95,7 @@ class IngredientListState {
 class IngredientListNotifier extends StateNotifier<IngredientListState> {
   final IngredientRepository _repo;
   Timer? _debounce;
+  int _requestSequence = 0;
 
   IngredientListNotifier([IngredientRepository? repository])
       : _repo = repository ?? IngredientRepository(),
@@ -115,6 +116,7 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   Future<void> load({bool loadMore = false}) async {
     if (loadMore && !state.hasMore) return;
     final page = loadMore ? state.currentPage + 1 : 1;
+    final requestSequence = ++_requestSequence;
     state = state.copyWith(
       loading: !loadMore,
       loadingMore: loadMore,
@@ -129,6 +131,7 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
         skip: (page - 1) * ingredientPageSize,
         limit: ingredientPageSize,
       );
+      if (!mounted || requestSequence != _requestSequence) return;
       final items = loadMore ? [...state.items, ...result.items] : result.items;
       state = state.copyWith(
         items: items,
@@ -140,6 +143,7 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
       );
       _loadDetails(items);
     } on Exception catch (e) {
+      if (!mounted || requestSequence != _requestSequence) return;
       state = state.copyWith(
         loading: false,
         loadingMore: false,

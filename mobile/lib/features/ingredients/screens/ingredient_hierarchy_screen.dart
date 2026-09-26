@@ -76,6 +76,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   final _searchController = TextEditingController();
   final _repository = IngredientRepository();
   Timer? _debounce;
+  int _searchSequence = 0;
   List<Ingredient> _options = const [];
   Ingredient? _selected;
   HierarchyRelation? _editing;
@@ -102,6 +103,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
     _debounce?.cancel();
     _debounce = Timer(const Duration(milliseconds: 300), () async {
       final query = _searchController.text.trim();
+      final searchSequence = ++_searchSequence;
       if (query.isEmpty) {
         setState(() {
           _options = const [];
@@ -112,7 +114,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
       setState(() => _searching = true);
       try {
         final page = await _repository.search(search: query, limit: 20);
-        if (mounted) {
+        if (mounted && searchSequence == _searchSequence) {
           setState(() {
             _options = page.items
                 .where((item) => item.id != widget.ingredientId)
@@ -121,7 +123,9 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
           });
         }
       } on Exception {
-        if (mounted) setState(() => _searching = false);
+        if (mounted && searchSequence == _searchSequence) {
+          setState(() => _searching = false);
+        }
       }
     });
   }

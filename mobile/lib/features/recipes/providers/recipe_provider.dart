@@ -74,6 +74,7 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
   // 防止旧请求的成本数据覆盖新搜索结果
   int _costToken = 0;
   Timer? _debounce;
+  int _requestSequence = 0;
 
   RecipeListNotifier(this._repository) : super(const RecipeListState());
 
@@ -96,6 +97,7 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
   Future<void> loadRecipes({bool loadMore = false, String? search}) async {
     if (loadMore && !canLoadMore) return;
     final page = loadMore ? state.currentPage + 1 : 1;
+    final requestSequence = ++_requestSequence;
     state = state.copyWith(
       loading: !loadMore,
       loadingMore: loadMore,
@@ -113,6 +115,7 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
         page: page,
         pageSize: pageSize,
       );
+      if (!mounted || requestSequence != _requestSequence) return;
       final recipes =
           loadMore ? [...state.recipes, ...result.items] : result.items;
       state = RecipeListState(
@@ -129,6 +132,7 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
       // 第二阶段：后台懒加载价格与热量
       _loadCosts(recipes);
     } on Exception catch (e) {
+      if (!mounted || requestSequence != _requestSequence) return;
       state = state.copyWith(
         loading: false,
         loadingMore: false,
