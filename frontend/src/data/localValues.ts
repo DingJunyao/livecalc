@@ -115,9 +115,13 @@ export const LOCAL_UNIT_ALIASES: Record<string, { preferredName: string; fallbac
 }
 
 export const LOCAL_UNIT_TRANSLATION_KEYS: Record<string, string> = {
+  g: 'prices.units.gram',
   '100g': 'prices.units.hundredGrams',
+  kg: 'prices.units.kilogram',
   斤: 'prices.units.jin',
   两: 'prices.units.liang',
+  ml: 'prices.units.milliliter',
+  L: 'prices.units.liter',
   个: 'prices.units.piece',
   包: 'prices.units.package',
   袋: 'prices.units.bag',

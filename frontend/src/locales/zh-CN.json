@@ -1545,6 +1545,7 @@
     "unit": "单位",
     "units": {
       "gram": "克",
+      "gram100": "100克",
       "kilogram": "千克",
       "hundredGrams": "100 克",
       "jin": "斤",

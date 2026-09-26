@@ -2564,7 +2564,9 @@ const loadMerchants = async () => {
 }
 
 // 加载原料列表
+let ingredientOptionsSequence = 0
 const loadIngredients = async (searchText?: string) => {
+  const requestSequence = ++ingredientOptionsSequence
   loadingIngredients.value = true
   try {
     const params: Record<string, any> = { limit: 100 }
@@ -2572,11 +2574,12 @@ const loadIngredients = async (searchText?: string) => {
       params.q = searchText
     }
     const response = await api.get('/ingredients', { params })
+    if (requestSequence !== ingredientOptionsSequence) return
     ingredients.value = response.items || []
   } catch (e: any) {
     console.error('Failed to load ingredients', e)
   } finally {
-    loadingIngredients.value = false
+    if (requestSequence === ingredientOptionsSequence) loadingIngredients.value = false
   }
 }
 

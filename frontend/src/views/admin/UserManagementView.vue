@@ -391,23 +391,27 @@ const activeTooltip = (user: User): string => {
 }
 
 // 获取用户列表
+let fetchUsersSequence = 0
 const fetchUsers = async ({ page, itemsPerPage: limit }: { page: number; itemsPerPage: number }) => {
+  const requestSequence = ++fetchUsersSequence
   loading.value = true
   try {
     const skip = (page - 1) * limit
     const params: Record<string, any> = { skip, limit }
     if (search.value) params.search = search.value
     const response = await api.get('/auth/users', { params })
+    if (requestSequence !== fetchUsersSequence) return
     users.value = response.items.map((u: any) => ({
       ...u,
       is_active: u.is_active !== false,
     }))
     totalItems.value = response.total
   } catch (error) {
+    if (requestSequence !== fetchUsersSequence) return
     console.error('Failed to get users:', error)
     showSnackbar(t('admin.users.loadFailed'), 'error', 'mdi-alert-circle')
   } finally {
-    loading.value = false
+    if (requestSequence === fetchUsersSequence) loading.value = false
   }
 }
 

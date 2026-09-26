@@ -752,7 +752,9 @@ const onProductSelect = (productId: number | null) => {
   }
 }
 
+let loadRecordsSequence = 0
 const loadRecords = async () => {
+  const requestSequence = ++loadRecordsSequence
   loading.value = true
   error.value = null
   try {
@@ -776,12 +778,14 @@ const loadRecords = async () => {
       params.end_date = requestFilters.value.date_range_end
     }
     const response = await api.get('/products', { params })
+    if (requestSequence !== loadRecordsSequence) return
     records.value = response.items || []
     total.value = response.total || 0
   } catch (e: any) {
+    if (requestSequence !== loadRecordsSequence) return
     error.value = getErrorMessage(e, t('prices.loadFailed'))
   } finally {
-    loading.value = false
+    if (requestSequence === loadRecordsSequence) loading.value = false
   }
 }
 
@@ -794,7 +798,9 @@ const loadMerchants = async () => {
   }
 }
 
+let searchProductsSequence = 0
 const searchProducts = async () => {
+  const requestSequence = ++searchProductsSequence
   if (!productSearch.value || productSearch.value.length < 1) {
     productSuggestions.value = []
     return
@@ -805,13 +811,15 @@ const searchProducts = async () => {
     const response = await api.get('/products/autocomplete', {
       params: { q: productSearch.value, limit: 20 }
     })
+    if (requestSequence !== searchProductsSequence) return
     productSuggestions.value = response || []
     console.log('[DEBUG] Search products:', productSearch.value, 'results:', productSuggestions.value)
   } catch (e: any) {
+    if (requestSequence !== searchProductsSequence) return
     console.error('Failed to search products', e)
     productSuggestions.value = []
   } finally {
-    productLoading.value = false
+    if (requestSequence === searchProductsSequence) productLoading.value = false
   }
 }
 

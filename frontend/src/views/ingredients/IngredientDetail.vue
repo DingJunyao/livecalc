@@ -3561,7 +3561,9 @@ const loadHierarchy = async () => {
 }
 
 // 搜索原料
+let searchIngredientsSequence = 0
 const searchIngredients = async (search: string) => {
+  const requestSequence = ++searchIngredientsSequence
   if (!search || search.length < 1) {
     availableIngredients.value = []
     return
@@ -3572,15 +3574,16 @@ const searchIngredients = async (search: string) => {
     const response = await api.get('/ingredients', {
       params: { q: search, limit: 50 }
     })
+    if (requestSequence !== searchIngredientsSequence) return
     // 过滤掉当前原料
     availableIngredients.value = (response.items || []).filter(
       (item: Ingredient) => item.id !== ingredientId.value
     )
     console.log('[DEBUG] Search ingredients:', search, 'results:', availableIngredients.value)
   } catch (e) {
-    availableIngredients.value = []
+    if (requestSequence === searchIngredientsSequence) availableIngredients.value = []
   } finally {
-    loadingIngredients.value = false
+    if (requestSequence === searchIngredientsSequence) loadingIngredients.value = false
   }
 }
 
@@ -4284,7 +4287,9 @@ const deletePriceRecord = async (id: number) => {
 }
 
 // 搜索合并目标
+let searchMergeTargetsSequence = 0
 const searchMergeTargets = async (search?: string) => {
+  const requestSequence = ++searchMergeTargetsSequence
   if (!search || search.length < 1) {
     mergeTargets.value = []
     return
@@ -4295,14 +4300,15 @@ const searchMergeTargets = async (search?: string) => {
     const response = await api.get('/ingredients', {
       params: { q: search, limit: 20 }
     })
+    if (requestSequence !== searchMergeTargetsSequence) return
     // 过滤掉当前原料
     mergeTargets.value = (response.items || []).filter(
       (item: Ingredient) => item.id !== ingredientId.value
     )
   } catch (e) {
-    mergeTargets.value = []
+    if (requestSequence === searchMergeTargetsSequence) mergeTargets.value = []
   } finally {
-    loadingMergeTargets.value = false
+    if (requestSequence === searchMergeTargetsSequence) loadingMergeTargets.value = false
   }
 }
 

@@ -84,5 +84,7 @@ export function fallbackPriceUnitValues(): string[] {
     '\u5305',
     '\u888b',
     '\u74f6',
+    // 100g 计价单位（与本地单位表 seed 中的 100g 单位保持一致）
+    '100g',
   ]
 }

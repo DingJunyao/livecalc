@@ -492,7 +492,10 @@ const handleCreate = async () => {
   }
 }
 
+let loadRecipesSequence = 0
 const loadRecipes = async () => {
+  const requestSequence = ++loadRecipesSequence
+
   loading.value = true
   error.value = null
   try {
@@ -523,6 +526,8 @@ const loadRecipes = async () => {
     }
 
     const response = await api.get('/recipes', { params })
+    if (requestSequence !== loadRecipesSequence) return
+
     recipes.value = response.items || []
     total.value = response.total || 0
     // 本地模式：从 IndexedDB 加载图片
@@ -530,11 +535,14 @@ const loadRecipes = async () => {
     // 基础数据渲染后，后台加载成本
     loadCostsForVisibleRecipes()
   } catch (e: any) {
+    if (requestSequence !== loadRecipesSequence) return
     console.error('Failed to load recipes', e)
+
     error.value = getErrorMessage(e, t('recipes.loadFailed'))
   } finally {
-    loading.value = false
+    if (requestSequence === loadRecipesSequence) loading.value = false
   }
+
 }
 
 const handlePageSizeChange = () => {

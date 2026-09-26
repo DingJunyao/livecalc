@@ -581,7 +581,9 @@ const debouncedSearch = () => {
   }, 300)
 }
 
+let loadMerchantsSequence = 0
 const loadMerchants = async () => {
+  const requestSequence = ++loadMerchantsSequence
   loading.value = true
   error.value = null
   try {
@@ -589,6 +591,7 @@ const loadMerchants = async () => {
     // 全量拉取后在客户端做搜索/营业/分页过滤（收藏量通常不大，可接受）
     if (favoritesOnly.value) {
       const favs: Merchant[] = await api.get('/merchants/favorites')
+      if (requestSequence !== loadMerchantsSequence) return
       let filtered = Array.isArray(favs) ? favs : []
       if (!showAllMerchants.value) {
         filtered = filtered.filter(m => m.is_open !== false)
@@ -624,13 +627,15 @@ const loadMerchants = async () => {
     }
 
     const response = await api.get('/merchants', { params })
+    if (requestSequence !== loadMerchantsSequence) return
     items.value = response.items || []
     total.value = response.total || 0
   } catch (e: any) {
+    if (requestSequence !== loadMerchantsSequence) return
     console.error('Failed to load merchants', e)
     error.value = getErrorMessage(e, t('merchants.loadFailed'))
   } finally {
-    loading.value = false
+    if (requestSequence === loadMerchantsSequence) loading.value = false
   }
 }
 

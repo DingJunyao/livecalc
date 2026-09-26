@@ -1545,6 +1545,7 @@
     "unit": "Unit",
     "units": {
       "gram": "Gram",
+      "gram100": "100 g",
       "kilogram": "Kilogram",
       "hundredGrams": "100 g",
       "jin": "Jin (500 g)",
