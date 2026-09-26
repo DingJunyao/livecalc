@@ -168,6 +168,7 @@ function showSuccess(msg: string) {
 const selectedIngredient = ref<any>(null)
 const searchResults = ref<any[]>([])
 let searchTimer: ReturnType<typeof setTimeout> | null = null
+let searchSequence = 0
 
 function isGroupSubscribed(gid: number): boolean {
   return subscribedGroupIds.value.has(gid)
@@ -233,11 +234,13 @@ function searchIngredients(search: string | null) {
   }
   if (searchTimer) clearTimeout(searchTimer)
   searchTimer = setTimeout(async () => {
+    const requestSequence = ++searchSequence
     try {
       const data = await api.get(`/ingredients/search-by-name/${encodeURIComponent(search)}`)
+      if (requestSequence !== searchSequence) return
       searchResults.value = Array.isArray(data) ? data : []
     } catch {
-      searchResults.value = []
+      if (requestSequence === searchSequence) searchResults.value = []
     }
   }, 300)
 }

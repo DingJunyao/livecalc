@@ -383,6 +383,8 @@ const historyRows = ref<FillRow[]>([])
 const newRows = ref<FillRow[]>([])
 const newRowSuggestions = ref<Record<number, any[]>>({})
 const searchDebounceTimers: Record<number, ReturnType<typeof setTimeout>> = {}
+const searchRequestSequences: Record<number, number> = {}
+
 const snackbar = ref({ show: false, message: '', color: 'success' })
 const unitOptions = ref<UnitOption[]>([])
 const FALLBACK_UNIT_OPTIONS = computed(() => [
@@ -660,7 +662,9 @@ function removeNewRow(index: number) {
     clearTimeout(searchDebounceTimers[index])
     delete searchDebounceTimers[index]
   }
+  delete searchRequestSequences[index]
   newRows.value.splice(index, 1)
+
   // 移位 suggestions
   const shiftedSuggestions: Record<number, any[]> = {}
   const keys = Object.keys(newRowSuggestions.value).map(Number).sort((a, b) => a - b)
@@ -685,14 +689,26 @@ function removeNewRow(index: number) {
     delete searchDebounceTimers[Number(k)]
   }
   Object.assign(searchDebounceTimers, shiftedTimers)
+  const shiftedSequences: Record<number, number> = {}
+  for (const k of Object.keys(searchRequestSequences).map(Number).sort((a, b) => a - b)) {
+    if (k > index) shiftedSequences[k - 1] = searchRequestSequences[k]
+    else if (k < index) shiftedSequences[k] = searchRequestSequences[k]
+  }
+  for (const k of Object.keys(searchRequestSequences)) {
+    delete searchRequestSequences[Number(k)]
+  }
+  Object.assign(searchRequestSequences, shiftedSequences)
 }
 
 const onNewRowSearch = (index: number, query: string) => {
   if (searchDebounceTimers[index]) {
     clearTimeout(searchDebounceTimers[index])
   }
+  const requestSequence = (searchRequestSequences[index] ?? 0) + 1
+  searchRequestSequences[index] = requestSequence
   searchDebounceTimers[index] = setTimeout(async () => {
     const row = newRows.value[index]
+
     if (!row) return
     if (!query || query.length < 1) {
       newRowSuggestions.value[index] = []
@@ -704,15 +720,20 @@ const onNewRowSearch = (index: number, query: string) => {
         params: { q: query, limit: 20 },
       })
       const items = response || []
+      if (searchRequestSequences[index] !== requestSequence) return
       newRowSuggestions.value[index] = items.filter(
         (item: any) => !existingProductIds.value.has(item.id)
       )
     } catch {
-      newRowSuggestions.value[index] = []
+      if (searchRequestSequences[index] === requestSequence) {
+        newRowSuggestions.value[index] = []
+      }
     } finally {
+      if (searchRequestSequences[index] !== requestSequence) return
       const curRow = newRows.value[index]
       if (curRow) curRow.loading = false
     }
+
   }, 300)
 }
 
@@ -720,7 +741,11 @@ onUnmounted(() => {
   for (const k of Object.keys(searchDebounceTimers)) {
     clearTimeout(searchDebounceTimers[Number(k)])
   }
+  for (const k of Object.keys(searchRequestSequences)) {
+    delete searchRequestSequences[Number(k)]
+  }
 })
+
 
 // 历史商品「首次填上有效价格」的时间戳记录：保存时按填写顺序排序，
 // 而非页面显示顺序。改为无效值则清空，重新填会重新计时。

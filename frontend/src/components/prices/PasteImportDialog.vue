@@ -257,7 +257,9 @@ const copied = ref(false)
 
 // 模块级 timer（WeakMap 以 row 为 key，随 row 回收自动清理，避免内存泄漏）
 const productTimers = new WeakMap<ImportRow, ReturnType<typeof setTimeout>>()
+const productSearchSequences = new WeakMap<ImportRow, number>()
 const ingredientTimers = new WeakMap<ImportRow, ReturnType<typeof setTimeout>>()
+const ingredientSearchSequences = new WeakMap<ImportRow, number>()
 
 const summaryText = computed(() => {
   if (rows.value.length === 0) return ''
@@ -440,13 +442,16 @@ function onProductSearch(row: ImportRow, query: string) {
   row.productSearch = query
   const prev = productTimers.get(row)
   if (prev) clearTimeout(prev)
+  const requestSequence = (productSearchSequences.get(row) ?? 0) + 1
+  productSearchSequences.set(row, requestSequence)
   const timer = setTimeout(async () => {
     if (!query || query.length < 1) { row.suggestions = []; return }
     try {
       const list: any[] = await api.get('/products/autocomplete', { params: { q: query, limit: 20 } })
+      if (productSearchSequences.get(row) !== requestSequence) return
       row.suggestions = (list || []).map((it: any) => ({ id: it.id, name: it.name }))
     } catch {
-      row.suggestions = []
+      if (productSearchSequences.get(row) === requestSequence) row.suggestions = []
     }
   }, 300)
   productTimers.set(row, timer)
@@ -457,13 +462,16 @@ function onIngredientSearch(row: ImportRow, query: string) {
   row.ingredientSearch = query
   const prev = ingredientTimers.get(row)
   if (prev) clearTimeout(prev)
+  const requestSequence = (ingredientSearchSequences.get(row) ?? 0) + 1
+  ingredientSearchSequences.set(row, requestSequence)
   const timer = setTimeout(async () => {
     if (!query || query.length < 1) { row.ingredientSuggestions = []; return }
     try {
       const res: any = await api.get('/ingredients', { params: { q: query, limit: 20 } })
+      if (ingredientSearchSequences.get(row) !== requestSequence) return
       row.ingredientSuggestions = ((res.items || []) as any[]).map((it: any) => ({ id: it.id, name: it.name }))
     } catch {
-      row.ingredientSuggestions = []
+      if (ingredientSearchSequences.get(row) === requestSequence) row.ingredientSuggestions = []
     }
   }, 300)
   ingredientTimers.set(row, timer)

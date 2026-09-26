@@ -459,11 +459,14 @@ const openPriceDialog = async (ingredient: Ingredient) => {
   }
 }
 
+let ingredientSparklineSequence = 0
 const loadIngredientSparklines = async () => {
+  const requestSequence = ++ingredientSparklineSequence
   const ids = items.value.map((i: Ingredient) => i.id).join(',')
   if (!ids) return
   try {
     const sparklines = await api.get('/sparklines/ingredients', { params: { ids } })
+    if (requestSequence !== ingredientSparklineSequence) return
     if (sparklines) {
       items.value = items.value.map((item: any) => ({
         ...item,
@@ -489,7 +492,9 @@ const loadOptions = async () => {
   }
 }
 
+let loadIngredientsSequence = 0
 const loadIngredients = async () => {
+  const requestSequence = ++loadIngredientsSequence
   loading.value = true
   error.value = null
   try {
@@ -514,6 +519,7 @@ const loadIngredients = async () => {
     }
 
     const response = await api.get('/ingredients', { params })
+    if (requestSequence !== loadIngredientsSequence) return
     items.value = response.items || []
     total.value = response.total || 0
     // 基本数据到位，立即渲染页面
@@ -522,6 +528,7 @@ const loadIngredients = async () => {
     loadLatestPrices()
     if (items.value.length > 0) loadIngredientSparklines()
   } catch (e: any) {
+    if (requestSequence !== loadIngredientsSequence) return
     console.error('Failed to load ingredient', e)
     error.value = getErrorMessage(e, t('ingredients.loadFailed'))
     loading.value = false

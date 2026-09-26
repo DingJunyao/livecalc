@@ -211,19 +211,22 @@ const ingredientOptions = ref<{ id: number; name: string }[]>([])
 const ingredientSearching = ref(false)
 const resultIngredientName = ref('')
 let searchTimer: any = null
+let searchSequence = 0
 
 const onIngredientSearch = (q: string) => {
   if (searchTimer) clearTimeout(searchTimer)
   if (!q || !q.trim()) return
   searchTimer = setTimeout(async () => {
+    const requestSequence = ++searchSequence
     ingredientSearching.value = true
     try {
       const res = await api.get(`/ingredients/search-by-name/${encodeURIComponent(q.trim())}`)
+      if (requestSequence !== searchSequence) return
       ingredientOptions.value = (res || []).map((i: any) => ({ id: i.id, name: i.name }))
     } catch (e) {
       console.error('Failed to search ingredients', e)
     } finally {
-      ingredientSearching.value = false
+      if (requestSequence === searchSequence) ingredientSearching.value = false
     }
   }, 300)
 }

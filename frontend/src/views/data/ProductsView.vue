@@ -530,7 +530,9 @@ const loadBrands = async () => {
 }
 
 // 加载原料列表
+let ingredientOptionsSequence = 0
 const loadIngredients = async (searchText?: string) => {
+  const requestSequence = ++ingredientOptionsSequence
   loadingIngredients.value = true
   try {
     const params: Record<string, any> = { limit: 100 }
@@ -538,11 +540,12 @@ const loadIngredients = async (searchText?: string) => {
       params.q = searchText
     }
     const response = await api.get('/ingredients', { params })
+    if (requestSequence !== ingredientOptionsSequence) return
     ingredients.value = response.items || []
   } catch (e: any) {
     console.error('Failed to load ingredients', e)
   } finally {
-    loadingIngredients.value = false
+    if (requestSequence === ingredientOptionsSequence) loadingIngredients.value = false
   }
 }
 
@@ -571,7 +574,9 @@ const debouncedSearch = () => {
   }, 300)
 }
 
+let loadProductsSequence = 0
 const loadProducts = async () => {
+  const requestSequence = ++loadProductsSequence
   loading.value = true
   error.value = null
   try {
@@ -602,6 +607,7 @@ const loadProducts = async () => {
     }
 
     const response = await api.get('/products/entity', { params })
+    if (requestSequence !== loadProductsSequence) return
     items.value = response.items || []
     total.value = response.total || 0
     // 基本数据到位，立即渲染页面
@@ -610,6 +616,7 @@ const loadProducts = async () => {
     loadLatestPrices()
     if (items.value.length > 0) loadProductSparklines()
   } catch (e: any) {
+    if (requestSequence !== loadProductsSequence) return
     console.error('Failed to load products', e)
     error.value = getErrorMessage(e, t('products.loadFailed'))
     loading.value = false
@@ -633,11 +640,14 @@ const openPriceDialog = (product: Product) => {
   showPriceDialog.value = true
 }
 
+let productSparklineSequence = 0
 const loadProductSparklines = async () => {
+  const requestSequence = ++productSparklineSequence
   const ids = items.value.map((i: Product) => i.id).join(',')
   if (!ids) return
   try {
     const sparklines = await api.get('/sparklines/products', { params: { ids } })
+    if (requestSequence !== productSparklineSequence) return
     if (sparklines) {
       items.value = items.value.map((item: any) => ({
         ...item,

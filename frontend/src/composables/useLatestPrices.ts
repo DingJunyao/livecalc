@@ -23,13 +23,16 @@ export function useLatestPrices<T extends { id: number }>(
   urlFor: (item: T) => string
 ) {
   const loading = ref(false)
+  let requestSequence = 0
 
   const load = async () => {
+    const currentRequest = ++requestSequence
     if (!items.value.length) return
     loading.value = true
     const results = await Promise.allSettled(
       items.value.map(item => api.get<LatestPriceInfo>(urlFor(item)))
     )
+    if (currentRequest !== requestSequence) return
     items.value.forEach((item, i) => {
       const r = results[i]
       const anyItem = item as any
