@@ -10,7 +10,6 @@ from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
 from app.services.unit_conversion_service import UnitConversionService
 from app.services.ingredient_matcher import IngredientMatcher
-from app.services.ingredient_search import find_fuzzy_ingredient_ids
 from app.utils.database_helpers import json_text_contains
 from app.models.ingredient_category import IngredientCategory
 from app.models.unit import Unit
@@ -179,20 +178,7 @@ async def search_ingredients_by_name(
     """按名称搜索食材"""
     try:
         matcher = IngredientMatcher(db)
-        matches = matcher.match_product_to_ingredient(name)
-        if not matches:
-            # The smart matcher also uses substring semantics. Keep a narrow
-            # one-character typo fallback so endpoints used by autocomplete
-            # share the same behavior as the paginated ingredient list.
-            fuzzy_ids = find_fuzzy_ingredient_ids(db, name)
-            if fuzzy_ids:
-                matches = [
-                    (ingredient, 0.75)
-                    for ingredient in db.query(Ingredient)
-                    .filter(Ingredient.id.in_(fuzzy_ids), Ingredient.is_active == True)
-                    .all()
-                ]
-        matches = matches[:limit]
+        matches = matcher.match_product_to_ingredient(name)[:limit]
 
         results = []
         for ingredient, confidence in matches:
@@ -724,38 +710,6 @@ async def get_ingredients(
         from app.models.product import ProductRecord
         from sqlalchemy import func
 
-        # SQL substring search remains the primary path. If it has no direct
-        # hit, fall back to a one-character typo match before pagination so the
-        # web/mobile autocomplete can still suggest the closest local item.
-        fuzzy_ingredient_ids: set[int] | None = None
-        if search is not None:
-            direct_filter = (
-                (Ingredient.name.contains(search))
-                | json_text_contains(Ingredient.aliases, search)
-                | (Ingredient.products.any(Product.name.contains(search)))
-                | (Ingredient.products.any(json_text_contains(Product.aliases, search)))
-            )
-            has_direct_match = (
-                db.query(Ingredient.id)
-                .filter(Ingredient.is_active == True, direct_filter)
-                .first()
-                is not None
-            )
-            if not has_direct_match:
-                fuzzy_ingredient_ids = find_fuzzy_ingredient_ids(db, search)
-
-        def apply_search(query):
-            if fuzzy_ingredient_ids is not None:
-                return query.filter(Ingredient.id.in_(fuzzy_ingredient_ids))
-            if search is None:
-                return query
-            return query.filter(
-                (Ingredient.name.contains(search))
-                | json_text_contains(Ingredient.aliases, search)
-                | (Ingredient.products.any(Product.name.contains(search)))
-                | (Ingredient.products.any(json_text_contains(Product.aliases, search)))
-            )
-
         # 合并 category_id（单值）和 category_ids（逗号分隔多值）
         _category_filter_ids: list[int] = []
         if category_id is not None:
@@ -778,7 +732,14 @@ async def get_ingredients(
                 ProductRecord, Product.id == ProductRecord.product_id
             ).filter(Ingredient.is_active == True)
 
-            subquery = apply_search(subquery)
+            if search is not None:
+                # 搜索名称、原料别名或商品别名
+                subquery = subquery.filter(
+                    (Ingredient.name.contains(search)) |
+                    json_text_contains(Ingredient.aliases, search) |
+                    (Ingredient.products.any(Product.name.contains(search))) |
+                    (Ingredient.products.any(json_text_contains(Product.aliases, search)))
+                )
 
             if _category_filter_ids:
                 subquery = subquery.filter(Ingredient.category_id.in_(_category_filter_ids))
@@ -792,7 +753,14 @@ async def get_ingredients(
                 subquery, Ingredient.id == subquery.c.ingredient_id
             ).filter(Ingredient.is_active == True)
 
-            query = apply_search(query)
+            if search is not None:
+                # 搜索名称、原料别名或商品别名
+                query = query.filter(
+                    (Ingredient.name.contains(search)) |
+                    json_text_contains(Ingredient.aliases, search) |
+                    (Ingredient.products.any(Product.name.contains(search))) |
+                    (Ingredient.products.any(json_text_contains(Product.aliases, search)))
+                )
 
             if _category_filter_ids:
                 query = query.filter(Ingredient.category_id.in_(_category_filter_ids))
@@ -813,7 +781,14 @@ async def get_ingredients(
                 subquery, Ingredient.id == subquery.c.ingredient_id
             ).filter(Ingredient.is_active == True)
 
-            total_query = apply_search(total_query)
+            if search is not None:
+                # 搜索名称、原料别名或商品别名
+                total_query = total_query.filter(
+                    (Ingredient.name.contains(search)) |
+                    json_text_contains(Ingredient.aliases, search) |
+                    (Ingredient.products.any(Product.name.contains(search))) |
+                    (Ingredient.products.any(json_text_contains(Product.aliases, search)))
+                )
 
             if _category_filter_ids:
                 total_query = total_query.filter(Ingredient.category_id.in_(_category_filter_ids))
@@ -830,7 +805,14 @@ async def get_ingredients(
                 joinedload(Ingredient.category_obj)
             ).filter(Ingredient.is_active == True)
 
-            query = apply_search(query)
+            if search is not None:
+                # 搜索名称、原料别名或商品别名
+                query = query.filter(
+                    (Ingredient.name.contains(search)) |
+                    json_text_contains(Ingredient.aliases, search) |
+                    (Ingredient.products.any(Product.name.contains(search))) |
+                    (Ingredient.products.any(json_text_contains(Product.aliases, search)))
+                )
 
             if _category_filter_ids:
                 query = query.filter(Ingredient.category_id.in_(_category_filter_ids))
