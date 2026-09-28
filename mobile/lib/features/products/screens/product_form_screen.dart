@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
@@ -68,9 +66,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   late final TextEditingController _barcodeController;
   late final TextEditingController _ingredientSearchController;
   final FocusNode _ingredientFocusNode = FocusNode();
-  Timer? _debounce;
   int _ingredientSearchSeq = 0;
-  Completer<List<Ingredient>>? _ingredientSearchCompleter;
   List<String> _aliases = const [];
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
@@ -110,7 +106,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _nameController.dispose();
     _brandController.dispose();
     _barcodeController.dispose();
@@ -150,49 +145,32 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     }
   }
 
-  /// 防抖搜索关联原料（供 Autocomplete.optionsBuilder 异步调用）。
-  Future<List<Ingredient>> _searchIngredients(String query) {
+  /// 搜索关联原料（供 Autocomplete.optionsBuilder 异步调用）。
+  Future<List<Ingredient>> _searchIngredients(String query) async {
     final q = query.trim();
     if (q.isEmpty) {
       ++_ingredientSearchSeq;
-      _debounce?.cancel();
-      _completePendingIngredientSearch(const <Ingredient>[]);
       if (mounted && _searching) setState(() => _searching = false);
-      return Future.value(const <Ingredient>[]);
+      return const <Ingredient>[];
     }
-    final seq = ++_ingredientSearchSeq;
-    _completePendingIngredientSearch(const <Ingredient>[]);
-    final completer = Completer<List<Ingredient>>();
-    _ingredientSearchCompleter = completer;
-    _debounce?.cancel();
-    setState(() => _searching = true);
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      try {
-        final result = await _ingredientRepository.search(
-          search: q,
-          limit: 20,
-        );
-        if (mounted && seq == _ingredientSearchSeq) {
-          setState(() => _searching = false);
-        }
-        _completePendingIngredientSearch(
-          seq == _ingredientSearchSeq ? result.items : const <Ingredient>[],
-        );
-      } catch (_) {
-        if (mounted && seq == _ingredientSearchSeq) {
-          setState(() => _searching = false);
-        }
-        _completePendingIngredientSearch(const <Ingredient>[]);
-      }
-    });
-    return completer.future;
-  }
 
-  void _completePendingIngredientSearch(List<Ingredient> result) {
-    final completer = _ingredientSearchCompleter;
-    _ingredientSearchCompleter = null;
-    if (completer != null && !completer.isCompleted) {
-      completer.complete(result);
+    final seq = ++_ingredientSearchSeq;
+    if (mounted) setState(() => _searching = true);
+    try {
+      final result = await _ingredientRepository.search(
+        search: q,
+        limit: 20,
+      );
+      if (!mounted || seq != _ingredientSearchSeq) {
+        return const <Ingredient>[];
+      }
+      if (mounted) setState(() => _searching = false);
+      return result.items;
+    } catch (_) {
+      if (mounted && seq == _ingredientSearchSeq) {
+        setState(() => _searching = false);
+      }
+      return const <Ingredient>[];
     }
   }
 

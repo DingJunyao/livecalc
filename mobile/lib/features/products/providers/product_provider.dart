@@ -162,8 +162,22 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   }
 
   void setSearch(String query) {
-    state = state.copyWith(searchQuery: query);
+    // Drop the previous page immediately. Otherwise a failed refresh after the
+    // user clears the keyword can leave stale filtered items looking like the
+    // complete list.
+    state = state.copyWith(
+      items: const [],
+      clearError: true,
+      searchQuery: query,
+      total: 0,
+      currentPage: 1,
+      hasMore: false,
+    );
     _debounce?.cancel();
+    if (query.isEmpty) {
+      load();
+      return;
+    }
     _debounce = Timer(const Duration(milliseconds: 400), () => load());
   }
 
