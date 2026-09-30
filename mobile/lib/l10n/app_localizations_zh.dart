@@ -1666,7 +1666,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeTodayTitle => '今日推荐';
 
   @override
-  String get homeGenerating => '正在生成今日推荐，AI 正在为你搭配食谱…';
+  String get homeGenerating => '正在生成今日推荐…';
 
   @override
   String get homeEmpty => '暂无推荐，点击刷新按钮生成今日推荐';

@@ -1709,8 +1709,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeTodayTitle => 'Today\'s recommendations';
 
   @override
-  String get homeGenerating =>
-      'Generating today\'s recommendations. AI is planning your meals…';
+  String get homeGenerating => 'Generating today\'s recommendations…';
 
   @override
   String get homeEmpty =>

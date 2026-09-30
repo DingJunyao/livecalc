@@ -1700,8 +1700,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get homeTodayTitle => 'توصيات اليوم';
 
   @override
-  String get homeGenerating =>
-      'جارٍ إنشاء توصيات اليوم؛ الذكاء الاصطناعي يجهّز وجباتك…';
+  String get homeGenerating => 'جارٍ إنشاء توصيات اليوم…';
 
   @override
   String get homeEmpty =>

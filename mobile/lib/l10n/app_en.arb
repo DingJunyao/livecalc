@@ -1209,7 +1209,7 @@
   "@commonGotIt": {},
   "homeTodayTitle": "Today's recommendations",
   "@homeTodayTitle": {},
-  "homeGenerating": "Generating today's recommendations. AI is planning your meals…",
+  "homeGenerating": "Generating today's recommendations…",
   "@homeGenerating": {},
   "homeEmpty": "No recommendations yet. Tap refresh to generate today's recommendations.",
   "@homeEmpty": {},

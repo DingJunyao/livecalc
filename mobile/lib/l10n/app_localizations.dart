@@ -3290,7 +3290,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeGenerating.
   ///
   /// In zh, this message translates to:
-  /// **'正在生成今日推荐，AI 正在为你搭配食谱…'**
+  /// **'正在生成今日推荐…'**
   String get homeGenerating;
 
   /// No description provided for @homeEmpty.
