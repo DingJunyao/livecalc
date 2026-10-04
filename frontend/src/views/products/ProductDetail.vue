@@ -322,7 +322,7 @@
                 v-for="mp in merchantPrices"
                 :key="mp.merchant_id"
                 class="merchant-price-item"
-                :class="{ 'merchant-price-lowest': mp.is_lowest }"
+                :class="{ 'merchant-price-lowest': mp.is_lowest, 'merchant-price-stale': mp.is_stale }"
                 style="position: relative"
               >
                 <SparklineBackground
@@ -1439,6 +1439,7 @@ interface MerchantPrice {
   recorded_at: string | null
   product_name: string
   is_lowest: boolean
+  is_stale?: boolean
 }
 const merchantPrices = ref<MerchantPrice[]>([])
 const merchantPriceUnit = ref<string | null>(null)
@@ -3142,6 +3143,12 @@ onMounted(() => {
 
 .merchant-price-lowest:hover {
   background: rgba(var(--v-theme-success), 0.12);
+}
+
+/* 陈旧记录（超过 30 天）：置灰弱化，排在列表最后 */
+.merchant-price-stale {
+  opacity: 0.5;
+  filter: grayscale(1);
 }
 
 .merchant-price-name {

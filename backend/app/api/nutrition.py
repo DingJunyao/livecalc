@@ -1163,7 +1163,8 @@ async def get_ingredient_latest_price_by_merchant(
     获取原料按商家分组的最新价格
 
     返回每个商家的最新一条价格记录（已转换为原料默认单位）。
-    按价格从低到高排序，并标注最低价。
+    按价格从低到高排序，并标注最低价；记录超过 30 天的陈旧商家价排到最后、
+    置 is_stale=True 且不参与最低价比较（全部陈旧时不标注最低价）。
     可选传入 quantity + quantity_unit 来计算该食材在该商家的预估总价。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
@@ -1172,7 +1173,7 @@ async def get_ingredient_latest_price_by_merchant(
         from app.models.merchant import Merchant
         from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType
         from app.services.unit_conversion_service import UnitConversionService
-        from app.services.price_region import apply_region_filter
+        from app.services.price_region import apply_region_filter, is_stale_recorded_at
         from datetime import datetime, timedelta
         from decimal import Decimal
         from typing import Optional as OptType
@@ -1306,6 +1307,7 @@ async def get_ingredient_latest_price_by_merchant(
                     "unit": ing_target or sample_record.original_unit.abbreviation,
                     "total_cost": total_cost,
                     "recorded_at": serialize_datetime(sample_record.recorded_at) if sample_record.recorded_at else None,
+                    "is_stale": is_stale_recorded_at(sample_record.recorded_at),
                     "product_name": sample_record.product_name,
                 })
 
@@ -1384,14 +1386,16 @@ async def get_ingredient_latest_price_by_merchant(
                 results = _lookup_merchant_prices(fb_ingredient)
                 fallback_chain = fb_chain
 
-        # 按价格从低到高排序
-        results.sort(key=lambda x: x["price"])
+        # 陈旧记录（超过 30 天）排到最后，两组内仍按价格升序
+        results.sort(key=lambda x: (x["is_stale"], x["price"]))
 
-        # 标注最低价
-        if results:
-            results[0]["is_lowest"] = True
-            for r in results[1:]:
-                r["is_lowest"] = False
+        # 最低价只在非陈旧记录中标注；全部陈旧时不标注
+        for r in results:
+            r["is_lowest"] = False
+        for r in results:
+            if not r["is_stale"]:
+                r["is_lowest"] = True
+                break
 
             # 迷你图注入已移除——在大数据量或 SQLite 并发场景下可能挂死
             # 将来如需恢复，建议改为异步任务预计算 + 缓存
