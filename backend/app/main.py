@@ -72,6 +72,39 @@ def _ensure_hundred_gram_unit(db: Session):
         db.commit()
 
 
+def _ensure_price_query_indexes() -> None:
+    """为既有安装幂等补齐 product_records(product_id, recorded_at) 复合索引。
+
+    价格取数（成本计算前向填充 / latest-price / sparkline）全部是
+    ``WHERE product_id=? AND recorded_at<=? ORDER BY recorded_at`` 形态，
+    缺索引时每次取价全表扫描。新装库由 create_all 建表时带出该索引，
+    老库在此补齐。对应迁移 20261004_0001 与
+    scripts/sql/20261004_product_records_perf_indexes_*.sql。
+    """
+    from sqlalchemy import text
+    from app.core.database import engine
+
+    try:
+        with engine.begin() as conn:
+            if conn.dialect.name == "mysql":
+                # MySQL 8.0 无 CREATE INDEX IF NOT EXISTS；索引已存在时报 1061，忽略
+                try:
+                    conn.execute(text(
+                        "CREATE INDEX ix_product_records_product_recorded "
+                        "ON product_records (product_id, recorded_at)"
+                    ))
+                except Exception:
+                    pass
+            else:
+                conn.execute(text(
+                    "CREATE INDEX IF NOT EXISTS ix_product_records_product_recorded "
+                    "ON product_records (product_id, recorded_at)"
+                ))
+        logger.info("product_records 性能索引检查完成")
+    except Exception as e:
+        logger.warning(f"product_records 性能索引创建失败: {e}")
+
+
 def init_default_data(db: Session):
     """
     初始化默认数据：单位、单位转换、食材分类
@@ -235,6 +268,9 @@ async def lifespan(app: FastAPI):
     # 检查并创建缺失的数据库表
     from app.core.database import Base, engine
     Base.metadata.create_all(bind=engine)
+
+    # 为既有安装补齐查询性能索引（create_all 不会给已存在的表补索引）
+    _ensure_price_query_indexes()
 
     # 获取数据库会话
     db_gen = get_db()
