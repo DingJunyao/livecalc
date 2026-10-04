@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Boolean, Enum as PyEnum
+from sqlalchemy import Column, Integer, String, DateTime, Numeric, ForeignKey, Boolean, Enum as PyEnum, Index
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -29,6 +29,11 @@ class ProductRecord(Base):
     recorded_at = Column(DateTime(timezone=True), server_default=func.now())
     notes = Column(String(500), nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
+
+    # 价格查询热点：几乎所有取价都是 WHERE product_id=? AND recorded_at<=? ORDER BY recorded_at
+    __table_args__ = (
+        Index("ix_product_records_product_recorded", "product_id", "recorded_at"),
+    )
 
     # 关系
     user = relationship("User", back_populates="product_records")

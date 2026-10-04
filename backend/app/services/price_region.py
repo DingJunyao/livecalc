@@ -9,21 +9,37 @@ from app.models.administrative_region import AdministrativeRegion
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
 
+# 与 app.services.lookup_cache.clear 共用的子树缓存 key（写 AdministrativeRegion 时一并失效）
+_REGION_SUBTREE_CACHE_KEY = "_livecalc_region_subtree_cache"
+
 
 def region_subtree_ids(db: Session, region_id: int) -> list[int]:
+    """地区子树 id 列表（含自身）。请求级缓存：成本/趋势计算会对同一 region_id
+    调用上万次 apply_region_filter，子树为准静态数据，挂在 db.info 上随请求失效。"""
+    cache = db.info.get(_REGION_SUBTREE_CACHE_KEY)
+    if cache is None:
+        cache = {}
+        db.info[_REGION_SUBTREE_CACHE_KEY] = cache
+    if region_id in cache:
+        return cache[region_id]
+
     region = db.query(AdministrativeRegion).filter(
         AdministrativeRegion.id == region_id,
         AdministrativeRegion.is_active == True,  # noqa: E712
     ).first()
     if region is None:
-        return []
-    if region.path:
+        ids: list[int] = []
+    elif region.path:
         rows = db.query(AdministrativeRegion.id).filter(
             AdministrativeRegion.path.like(f"{region.path}%"),
             AdministrativeRegion.is_active == True,  # noqa: E712
         ).all()
-        return [region.id] + [r[0] for r in rows if r[0] != region.id]
-    return [region.id]
+        ids = [region.id] + [r[0] for r in rows if r[0] != region.id]
+    else:
+        ids = [region.id]
+
+    cache[region_id] = ids
+    return ids
 
 
 def apply_region_filter(query: Query, db: Session, region_id: Optional[int]) -> Query:
