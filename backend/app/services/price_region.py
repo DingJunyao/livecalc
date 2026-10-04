@@ -1,4 +1,5 @@
 """价格计算用的地区过滤与币种折算 helper。"""
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
 
@@ -11,6 +12,21 @@ from app.models.product import ProductRecord
 
 # 与 app.services.lookup_cache.clear 共用的子树缓存 key（写 AdministrativeRegion 时一并失效）
 _REGION_SUBTREE_CACHE_KEY = "_livecalc_region_subtree_cache"
+
+# 各商家最新价的「陈旧」阈值：超过 30 天的记录不参与最低价比较，展示时排到最后并置灰
+MERCHANT_PRICE_STALE_DAYS = 30
+
+
+def is_stale_recorded_at(recorded_at: Optional[datetime]) -> bool:
+    """商家最新价是否陈旧（距现在超过 MERCHANT_PRICE_STALE_DAYS 天）。
+
+    naive datetime 视为 UTC（与 app.utils.datetime_utils.serialize_datetime 口径一致）；
+    recorded_at 缺失时视为不陈旧（不改变既有展示行为）。
+    """
+    if recorded_at is None:
+        return False
+    aware = recorded_at if recorded_at.tzinfo else recorded_at.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - aware > timedelta(days=MERCHANT_PRICE_STALE_DAYS)
 
 
 def region_subtree_ids(db: Session, region_id: int) -> list[int]:

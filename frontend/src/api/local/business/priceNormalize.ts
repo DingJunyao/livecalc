@@ -207,3 +207,26 @@ export function aggregatePrices(
 }
 
 export { JIN_GRAMS }
+
+// ============================================================
+// 各商家最新价的陈旧判定（与后端 MERCHANT_PRICE_STALE_DAYS = 30 保持同步）
+// ============================================================
+
+export const MERCHANT_PRICE_STALE_MS = 30 * 24 * 60 * 60 * 1000
+
+/** 各商家最新价排序与最低价标注：陈旧排到最后、两组内按价升序、最低价只标非陈旧的第一条。 */
+export function sortMerchantPrices(
+  prices: { price: number; is_stale?: boolean; is_lowest?: boolean }[],
+): void {
+  prices.sort(
+    (a, b) => Number(a.is_stale ?? false) - Number(b.is_stale ?? false) || a.price - b.price,
+  )
+  let lowestMarked = false
+  for (const p of prices) {
+    p.is_lowest = false
+    if (!lowestMarked && !p.is_stale) {
+      p.is_lowest = true
+      lowestMarked = true
+    }
+  }
+}
