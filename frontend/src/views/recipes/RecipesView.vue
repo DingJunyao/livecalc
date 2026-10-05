@@ -604,7 +604,7 @@ const goToDetail = (id: number) => {
 
 // 加载全部食材（用于食材筛选器的 v-select 客户端搜索）
 const loadIngredients = async () => {
-  const ingFilter = recipeFilters.find(f => f.key === 'ingredient_ids')
+  const ingFilter = recipeFilters.value.find(f => f.key === 'ingredient_ids')
   if (!ingFilter) return
   try {
     // 加载尽可能多的食材，用户通过 v-select 内置搜索过滤
