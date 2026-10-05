@@ -1,7 +1,7 @@
 // Products handler — product entities, price records, barcodes, weights.
 
 import { getAll, getById, addOne, putOne, deleteOne, getByIndex, paginate, resolvePagination, DEFAULT_CURRENCY, DEFAULT_USER_CURRENCY } from '../database'
-import { aggregatePrices } from '../business/priceNormalize'
+import { aggregatePrices, normalizeRecordToJin, MERCHANT_PRICE_STALE_MS, sortMerchantPrices } from '../business/priceNormalize'
 import { exchangeRateToUserCurrency } from '../business/staticRates'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import {
@@ -496,24 +496,50 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
 }
 
 export async function getLatestPriceByMerchant(params: Record<string, string>, query?: any): Promise<any> {
-  // Return per-merchant pricing for a product
+  // 各商家最新一条价格（折算到斤，无法折算回退记录单价）。
+  // 陈旧记录（>30 天）排到最后、置 is_stale 且不参与最低价比较（对齐云端端点语义）。
   const id = parseInt(params.id)
   if (!Number.isFinite(id)) return { prices: [], unit: null }
   const regionId = parseRegionId(query?.region_id)
   let records = await getByIndex('product_records', 'by_product_id', id)
   records = await applyRegionFilter(records, regionId)
-  // 前端模板期望 { prices: [...], unit: "..." }
-  return {
-    prices: records.map((r: any) => ({
-      unit_name: r.unit_name || r.original_unit_name || '',
-      price: r.price ?? 0,
-      quantity: r.original_quantity ?? 1,
+
+  const product = await getById('products', id)
+  const [units, overrides, densities] = await Promise.all([
+    getAll('units') as Promise<UnitInfo[]>,
+    getAll('entity_unit_overrides') as Promise<EntityOverride[]>,
+    getAll('entity_densities') as Promise<DensityInfo[]>,
+  ])
+  const entId = product?.ingredient_id ?? id
+
+  // 每商家保留最新一条
+  const latestByMerchant = new Map<number, any>()
+  for (const r of records) {
+    if (!r.merchant_id) continue
+    const prev = latestByMerchant.get(r.merchant_id)
+    if (!prev || (r.recorded_at || '') > (prev.recorded_at || '')) {
+      latestByMerchant.set(r.merchant_id, r)
+    }
+  }
+
+  const staleBefore = Date.now() - MERCHANT_PRICE_STALE_MS
+  const prices = Array.from(latestByMerchant.values()).map((r: any) => {
+    const np = normalizeRecordToJin(r, units, overrides, densities, 'ingredient', entId)
+    const ts = r.recorded_at ? Date.parse(r.recorded_at) : NaN
+    return {
       merchant_id: r.merchant_id,
       merchant_name: r.merchant_name || '',
-      recorded_at: r.recorded_at,
-    })),
-    unit: records[0]?.unit_name || CHINESE_JIN_NAME,
-  }
+      price: Math.round((np.pricePerJin ?? np.rawUnitPrice) * 100) / 100,
+      currency: r.currency || DEFAULT_CURRENCY,
+      unit: CHINESE_JIN_NAME,
+      recorded_at: r.recorded_at ?? null,
+      is_stale: Number.isFinite(ts) && ts < staleBefore,
+      product_name: r.product_name || '',
+    }
+  })
+
+  sortMerchantPrices(prices)
+  return { prices, unit: CHINESE_JIN_NAME }
 }
 
 export async function getProductHistory(params: Record<string, string>): Promise<any> {

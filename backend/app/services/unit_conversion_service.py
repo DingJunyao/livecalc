@@ -40,7 +40,8 @@ def _get_piece_weight_kg(
         # 1. 优先查 entity_unit_overrides
         override = service.get_entity_override(entity_type, entity_id, count_unit_abbr)
         if override is not None and override.weight_per_unit is not None and override.weight_unit_id is not None:
-            weight_unit = service.db.query(Unit).filter(Unit.id == override.weight_unit_id).first()
+            from app.services.lookup_cache import unit_by_id
+            weight_unit = unit_by_id(service.db, override.weight_unit_id)
             if weight_unit is not None and weight_unit.si_factor is not None:
                 kg_unit = service.get_unit_by_abbr("kg")
                 if kg_unit is not None:
@@ -78,8 +79,9 @@ class UnitConversionService:
     # ------------------------------------------------------------------ #
 
     def get_unit_by_abbr(self, abbreviation: str) -> Optional[Unit]:
-        """根据缩写获取单位"""
-        return self.db.query(Unit).filter(Unit.abbreviation == abbreviation).first()
+        """根据缩写获取单位（请求级缓存，见 lookup_cache）"""
+        from app.services.lookup_cache import unit_by_abbr
+        return unit_by_abbr(self.db, abbreviation)
 
     # 保留旧方法名的别名，兼容现有调用
     def get_unit_by_abbreviation(self, abbreviation: str) -> Optional[Unit]:
@@ -116,61 +118,24 @@ class UnitConversionService:
         1. 直接查 entity_densities 表中 entity_type+entity_id
         2. 如果是 product 且无结果，查关联 ingredient 的密度
         3. 默认返回水的密度 1000 kg/m³
+
+        各级查询走请求级缓存（lookup_cache），优先级链与无缓存版完全一致。
         """
+        from app.services.lookup_cache import entity_density as cached_density
+        from app.services.lookup_cache import product_ingredient_id
+
         # 1. 直接查找实体的密度
-        density_record = (
-            self.db.query(EntityDensity)
-            .filter(
-                EntityDensity.entity_type == entity_type,
-                EntityDensity.entity_id == entity_id,
-                EntityDensity.is_active.is_(True),
-            )
-            .order_by(EntityDensity.confidence.desc())
-            .first()
-        )
-        if density_record is not None:
-            return density_record.density
+        d = cached_density(self.db, entity_type, entity_id)
+        if d is not False and d is not None:
+            return d
 
         # 2. 如果是 product，查找关联 ingredient 的密度
         if entity_type == "product":
-            from app.models.product_entity import Product
-            from app.models.product_ingredient_link import ProductIngredientLink
-
-            product = self.db.query(Product).filter(Product.id == entity_id).first()
-            if product is not None and product.ingredient_id is not None:
-                # 通过 ingredient_id 查密度
-                density_record = (
-                    self.db.query(EntityDensity)
-                    .filter(
-                        EntityDensity.entity_type == "ingredient",
-                        EntityDensity.entity_id == product.ingredient_id,
-                        EntityDensity.is_active.is_(True),
-                    )
-                    .order_by(EntityDensity.confidence.desc())
-                    .first()
-                )
-                if density_record is not None:
-                    return density_record.density
-
-            # 也可以通过 product_ingredient_links 查找
-            link = (
-                self.db.query(ProductIngredientLink)
-                .filter(ProductIngredientLink.product_id == entity_id)
-                .first()
-            )
-            if link is not None:
-                density_record = (
-                    self.db.query(EntityDensity)
-                    .filter(
-                        EntityDensity.entity_type == "ingredient",
-                        EntityDensity.entity_id == link.ingredient_id,
-                        EntityDensity.is_active.is_(True),
-                    )
-                    .order_by(EntityDensity.confidence.desc())
-                    .first()
-                )
-                if density_record is not None:
-                    return density_record.density
+            ing_id = product_ingredient_id(self.db, entity_id)
+            if ing_id is not None:
+                d = cached_density(self.db, "ingredient", ing_id)
+                if d is not False and d is not None:
+                    return d
 
         # 3. 默认返回水的密度
         return WATER_DENSITY
@@ -210,19 +175,9 @@ class UnitConversionService:
         # 质量 = 体积(m³) * 密度(kg/m³)
         mass_kg = volume_m3 * density
 
-        # 查找 SI 基本质量单位（kg）并将结果转换为 kg
-        kg_unit = (
-            self.db.query(Unit)
-            .filter(Unit.unit_type == "mass", Unit.is_si_base == True)
-            .first()
-        )
-        if kg_unit is None:
-            # 如果没有标记 is_si_base 的单位，用 si_factor=1 的质量单位
-            kg_unit = (
-                self.db.query(Unit)
-                .filter(Unit.unit_type == "mass", Unit.si_factor == 1)
-                .first()
-            )
+        # 查找 SI 基本质量单位（kg）并将结果转换为 kg（请求级缓存）
+        from app.services.lookup_cache import unit_si_base
+        kg_unit = unit_si_base(self.db, "mass")
 
         if kg_unit is not None and kg_unit.si_factor is not None and kg_unit.si_factor != 0:
             mass_in_unit = mass_kg / kg_unit.si_factor
@@ -264,18 +219,11 @@ class UnitConversionService:
         # m³ → L：1 m³ = 1000 L（体积 si_factor 以 L 为基准）
         volume_L = volume_m3 * Decimal("1000")
 
-        # 查找一个合适的体积单位来表示结果（优先 L）
-        target_unit = (
-            self.db.query(Unit)
-            .filter(Unit.abbreviation == "L")
-            .first()
-        )
+        # 查找一个合适的体积单位来表示结果（优先 L；请求级缓存）
+        target_unit = self.get_unit_by_abbr("L")
         if target_unit is None:
-            target_unit = (
-                self.db.query(Unit)
-                .filter(Unit.unit_type == "volume", Unit.is_si_base == True)
-                .first()
-            )
+            from app.services.lookup_cache import unit_si_base
+            target_unit = unit_si_base(self.db, "volume")
         if target_unit is None:
             target_unit = (
                 self.db.query(Unit)
@@ -308,59 +256,24 @@ class UnitConversionService:
         查询实体单位覆盖，遵循优先级链：商品>原料>全局
         - 对于 product：先查 product 自身的覆盖，再查关联 ingredient 的覆盖
         - 对于 ingredient：直接查 ingredient 的覆盖
+
+        各级查询走请求级缓存（lookup_cache.entity_override_map，
+        一次取实体全部 active 覆盖后按 unit_name 取），优先级链不变。
         """
+        from app.services.lookup_cache import entity_override_map, product_ingredient_id
+
         # 1. 直接查找实体的覆盖
-        override = (
-            self.db.query(EntityUnitOverride)
-            .filter(
-                EntityUnitOverride.entity_type == entity_type,
-                EntityUnitOverride.entity_id == entity_id,
-                EntityUnitOverride.unit_name == unit_name,
-                EntityUnitOverride.is_active.is_(True),
-            )
-            .first()
-        )
-        if override is not None:
-            return override
+        m = entity_override_map(self.db, entity_type, entity_id)
+        if m is not None and unit_name in m:
+            return m[unit_name]
 
         # 2. 如果是 product，查找关联 ingredient 的覆盖
         if entity_type == "product":
-            from app.models.product_entity import Product
-            from app.models.product_ingredient_link import ProductIngredientLink
-
-            product = self.db.query(Product).filter(Product.id == entity_id).first()
-            if product is not None and product.ingredient_id is not None:
-                override = (
-                    self.db.query(EntityUnitOverride)
-                    .filter(
-                        EntityUnitOverride.entity_type == "ingredient",
-                        EntityUnitOverride.entity_id == product.ingredient_id,
-                        EntityUnitOverride.unit_name == unit_name,
-                        EntityUnitOverride.is_active.is_(True),
-                    )
-                    .first()
-                )
-                if override is not None:
-                    return override
-
-            link = (
-                self.db.query(ProductIngredientLink)
-                .filter(ProductIngredientLink.product_id == entity_id)
-                .first()
-            )
-            if link is not None:
-                override = (
-                    self.db.query(EntityUnitOverride)
-                    .filter(
-                        EntityUnitOverride.entity_type == "ingredient",
-                        EntityUnitOverride.entity_id == link.ingredient_id,
-                        EntityUnitOverride.unit_name == unit_name,
-                        EntityUnitOverride.is_active.is_(True),
-                    )
-                    .first()
-                )
-                if override is not None:
-                    return override
+            ing_id = product_ingredient_id(self.db, entity_id)
+            if ing_id is not None:
+                m = entity_override_map(self.db, "ingredient", ing_id)
+                if m is not None and unit_name in m:
+                    return m[unit_name]
 
         return None
 
@@ -407,11 +320,8 @@ class UnitConversionService:
             )
             if override is not None and override.weight_per_unit is not None:
                 if override.weight_unit_id:
-                    weight_unit = (
-                        self.db.query(Unit)
-                        .filter(Unit.id == override.weight_unit_id)
-                        .first()
-                    )
+                    from app.services.lookup_cache import unit_by_id
+                    weight_unit = unit_by_id(self.db, override.weight_unit_id)
                 else:
                     # weight_unit_id 未设置时默认为 g
                     weight_unit = self.get_unit_by_abbr("g")

@@ -15,7 +15,6 @@ from typing import Optional, Sequence
 
 from sqlalchemy.orm import Session
 
-from app.models.product_entity import Product
 from app.models.user_product_weight_override import UserProductWeightOverride
 from app.utils.date_range_utils import local_date_range_to_utc_range, utc_datetime_to_local_date
 
@@ -140,21 +139,24 @@ def get_weighted_ingredient_price(
     except Exception:
         _get_price_records_with_fallback = None
 
-    products = db.query(Product).filter(
-        Product.ingredient_id == ingredient_id,
-        Product.is_active == True,  # noqa: E712
-    ).all()
+    from app.services.lookup_cache import active_products_for_ingredient
+    products = active_products_for_ingredient(db, ingredient_id)
 
-    # 预取用户覆盖（一次查询）
+    # 预取用户覆盖（一次查询；结果缓存——趋势循环内每原料每天重复取同一批）
     overrides = {}
     if user_id is not None and products:
+        from app.services.lookup_cache import memoize_result
         pid_list = [p.id for p in products]
-        rows = db.query(UserProductWeightOverride).filter(
-            UserProductWeightOverride.user_id == user_id,
-            UserProductWeightOverride.product_id.in_(pid_list),
-            UserProductWeightOverride.is_active == True,  # noqa: E712
-        ).all()
-        overrides = {r.product_id: r.weight for r in rows}
+
+        def _load_overrides():
+            rows = db.query(UserProductWeightOverride).filter(
+                UserProductWeightOverride.user_id == user_id,
+                UserProductWeightOverride.product_id.in_(pid_list),
+                UserProductWeightOverride.is_active == True,  # noqa: E712
+            ).all()
+            return {r.product_id: r.weight for r in rows}
+
+        overrides = memoize_result(db, "weight_overrides", (user_id, ingredient_id), _load_overrides)
 
     # 收集每个商品的当日有效记录
     product_records = {}
@@ -176,6 +178,13 @@ def get_weighted_ingredient_price(
 
     result = _aggregate_weighted(product_records)
     result["target_unit"] = target_unit_abbr
+    # 透传各参与商品已取的记录，供调用方（如 _direct_cost_range_ppg）复用，
+    # 避免对同一商品重复执行 _get_price_records_with_fallback（参数完全相同）。
+    result["participant_records"] = {
+        pt["product_id"]: product_records[pt["product_id"]][0]
+        for pt in result.get("participants", [])
+        if pt.get("product_id") in product_records
+    }
     return result
 
 
@@ -212,8 +221,11 @@ def resolve_direct_weighted_for_cost(db: Session, ingredient_id: int, *, user_id
     """直接商品加权价（成本口径：元/standard_unit）。
 
     供菜谱成本计算用，取代 recipe_service 里「遍历商品取第一个有记录的」。
-    返回 (unit_price_decimal, participants, std_unit_id) 或 None（无可用记录）。
+    返回 (unit_price_decimal, participants, std_unit_id, participant_records) 或
+    None（无可用记录）。
     std_unit_id 取自首个参与商品的最近记录，供成本计算的后续单位转换段使用。
+    participant_records 为 {product_id: 当日有效记录}，与加权聚合用的是同一批
+    记录，调用方复用可避免重复取数。
     """
     from app.models.product import ProductRecord
     w = get_weighted_ingredient_price(
@@ -223,8 +235,14 @@ def resolve_direct_weighted_for_cost(db: Session, ingredient_id: int, *, user_id
     if w["unit_price"] is None:
         return None
     pid = w["participants"][0]["product_id"]
-    std_rec = db.query(ProductRecord).filter(
-        ProductRecord.product_id == pid,
-    ).order_by(ProductRecord.recorded_at.desc()).first()
-    std_unit_id = std_rec.standard_unit_id if std_rec else None
-    return Decimal(str(w["unit_price"])), w["participants"], std_unit_id
+
+    def _latest_std_unit():
+        std_rec = db.query(ProductRecord).filter(
+            ProductRecord.product_id == pid,
+        ).order_by(ProductRecord.recorded_at.desc()).first()
+        return std_rec.standard_unit_id if std_rec else None
+
+    # 「全局最近记录的标准单位」不依赖 as_of，结果缓存
+    from app.services.lookup_cache import memoize_result
+    std_unit_id = memoize_result(db, "std_unit_of_product", pid, _latest_std_unit)
+    return Decimal(str(w["unit_price"])), w["participants"], std_unit_id, w.get("participant_records", {})

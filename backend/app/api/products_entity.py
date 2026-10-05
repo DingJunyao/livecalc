@@ -779,13 +779,19 @@ def get_product_latest_price_by_merchant(
     获取商品按商家分组的最新价格
 
     返回每个商家的最新一条价格记录（已转换为关联原料默认单位，缺失时回退原价）。
-    按价格从低到高排序，并标注最低价。
+    按价格从低到高排序，并标注最低价；记录超过 30 天的陈旧商家价排到最后、
+    置 is_stale=True 且不参与最低价比较（全部陈旧时不标注最低价）。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
     region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.models.merchant import Merchant
-        from app.services.price_region import apply_region_filter, record_price_in_user_currency, display_exchange_rate
+        from app.services.price_region import (
+            apply_region_filter,
+            record_price_in_user_currency,
+            display_exchange_rate,
+            is_stale_recorded_at,
+        )
 
         product = db.query(Product).filter(Product.id == product_id).first()
         if not product:
@@ -864,15 +870,20 @@ def get_product_latest_price_by_merchant(
                 "exchange_rate": round(float(display_exchange_rate(record)), 6),
                 "unit": target_unit_abbr or original_unit_abbr,
                 "recorded_at": serialize_datetime(record.recorded_at) if record.recorded_at else None,
+                "is_stale": is_stale_recorded_at(record.recorded_at),
                 "product_name": record.product_name,
             })
 
-        results.sort(key=lambda x: x["price"] * (x.get("exchange_rate") or 1.0))
+        # 陈旧记录（超过 30 天）排到最后，两组内仍按价格升序
+        results.sort(key=lambda x: (x["is_stale"], x["price"] * (x.get("exchange_rate") or 1.0)))
 
-        if results:
-            results[0]["is_lowest"] = True
-            for r in results[1:]:
-                r["is_lowest"] = False
+        # 最低价只在非陈旧记录中标注；全部陈旧时不标注
+        for r in results:
+            r["is_lowest"] = False
+        for r in results:
+            if not r["is_stale"]:
+                r["is_lowest"] = True
+                break
 
             # 迷你图注入已移除——在大数据量或 SQLite 并发场景下可能挂死
             # 将来如需恢复，建议改为异步任务预计算 + 缓存
