@@ -272,7 +272,8 @@ class IngredientMerger:
 
         # 1. 更新作为父节点的层级关系
         parent_relations = self.db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.parent_id.in_(source_ingredient_ids)
+            IngredientHierarchy.parent_id.in_(source_ingredient_ids),
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         for rel in parent_relations:
@@ -280,7 +281,8 @@ class IngredientMerger:
             existing = self.db.query(IngredientHierarchy).filter(
                 and_(
                     IngredientHierarchy.parent_id == target_ingredient_id,
-                    IngredientHierarchy.child_id == rel.child_id
+                    IngredientHierarchy.child_id == rel.child_id,
+                    IngredientHierarchy.is_active == True  # noqa: E712
                 )
             ).first()
 
@@ -294,7 +296,8 @@ class IngredientMerger:
 
         # 2. 更新作为子节点的层级关系
         child_relations = self.db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.child_id.in_(source_ingredient_ids)
+            IngredientHierarchy.child_id.in_(source_ingredient_ids),
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         for rel in child_relations:
@@ -302,7 +305,8 @@ class IngredientMerger:
             existing = self.db.query(IngredientHierarchy).filter(
                 and_(
                     IngredientHierarchy.parent_id == rel.parent_id,
-                    IngredientHierarchy.child_id == target_ingredient_id
+                    IngredientHierarchy.child_id == target_ingredient_id,
+                    IngredientHierarchy.is_active == True  # noqa: E712
                 )
             ).first()
 

@@ -856,6 +856,7 @@ def _get_ingredient_nutrition(
     # substitutable（可替代）关系也可作为营养回退源
     hierarchies = db.query(IngredientHierarchy).filter(
         IngredientHierarchy.child_id == ingredient.id,
+        IngredientHierarchy.is_active == True,  # noqa: E712
         IngredientHierarchy.relation_type.in_([
             HierarchyRelationType.FALLBACK.value,
             HierarchyRelationType.SUBSTITUTABLE.value,
@@ -865,6 +866,7 @@ def _get_ingredient_nutrition(
     # 对于 SUBSTITUTABLE，也需要检查反向关系（parent_id == ingredient.id）
     reverse_substitutes = db.query(IngredientHierarchy).filter(
         IngredientHierarchy.parent_id == ingredient.id,
+        IngredientHierarchy.is_active == True,  # noqa: E712
         IngredientHierarchy.relation_type == HierarchyRelationType.SUBSTITUTABLE.value,
     ).order_by(IngredientHierarchy.strength.desc()).all()
 

@@ -1320,6 +1320,7 @@ async def get_ingredient_latest_price_by_merchant(
         # ② 无直接价格 → 走 FALLBACK / SUBSTITUTABLE 回退链（P2：跨用户公开，不按 user_id 隔离）
         if not results:
             hierarchies = db.query(IngredientHierarchy).filter(
+                IngredientHierarchy.is_active == True,  # noqa: E712
                 IngredientHierarchy.relation_type.in_([
                     HierarchyRelationType.FALLBACK.value,
                     HierarchyRelationType.SUBSTITUTABLE.value,
