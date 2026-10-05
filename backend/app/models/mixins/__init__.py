@@ -171,7 +171,8 @@ class NutritionMixin:
         """
         hierarchy = db.query(IngredientHierarchy).filter(
             IngredientHierarchy.child_id == ingredient.id,
-            IngredientHierarchy.relation_type == HierarchyRelationType.FALLBACK.value
+            IngredientHierarchy.relation_type == HierarchyRelationType.FALLBACK.value,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).order_by(IngredientHierarchy.strength.desc()).first()
 
         return hierarchy.parent if hierarchy else None

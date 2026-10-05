@@ -128,7 +128,8 @@ def create_hierarchy_relation(
     existing_relation = db.query(IngredientHierarchy).filter(
         IngredientHierarchy.parent_id == actual_parent_id,
         IngredientHierarchy.child_id == actual_child_id,
-        IngredientHierarchy.relation_type == relation.relation_type
+        IngredientHierarchy.relation_type == relation.relation_type,
+        IngredientHierarchy.is_active == True  # noqa: E712
     ).first()
     if existing_relation:
         raise LocalizedHTTPException(status_code=400, message='该层级关系已存在（{value}）', value=relation_type.value)
@@ -208,14 +209,16 @@ def get_ingredient_hierarchy(
 
     # 获取作为父节点的关系（child relations）
     child_relations = db.query(IngredientHierarchy).filter(
-        IngredientHierarchy.parent_id == ingredient_id
+        IngredientHierarchy.parent_id == ingredient_id,
+        IngredientHierarchy.is_active == True  # noqa: E712
     ).all()
 
     child_responses = [r for r in (_build_relation_response(rel, db) for rel in child_relations) if r]
 
     # 获取作为子节点的关系（parent relations）
     parent_relations = db.query(IngredientHierarchy).filter(
-        IngredientHierarchy.child_id == ingredient_id
+        IngredientHierarchy.child_id == ingredient_id,
+        IngredientHierarchy.is_active == True  # noqa: E712
     ).all()
 
     parent_responses = [r for r in (_build_relation_response(rel, db) for rel in parent_relations) if r]
@@ -243,10 +246,12 @@ def get_ingredient_hierarchy(
 
             # 获取该食材的直接关系，排除已访问的食材
             rel_children = db.query(IngredientHierarchy).filter(
-                IngredientHierarchy.parent_id == rid
+                IngredientHierarchy.parent_id == rid,
+                IngredientHierarchy.is_active == True  # noqa: E712
             ).all()
             rel_parents = db.query(IngredientHierarchy).filter(
-                IngredientHierarchy.child_id == rid
+                IngredientHierarchy.child_id == rid,
+                IngredientHierarchy.is_active == True  # noqa: E712
             ).all()
 
             rel_child_responses = []

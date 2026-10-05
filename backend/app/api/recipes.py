@@ -1289,6 +1289,7 @@ async def get_recipe_merchant_costs(
 
         # 预加载所有层级关系（不限 user_id，与直接查价一致）
         all_hierarchies = db.query(IngredientHierarchy).filter(
+            IngredientHierarchy.is_active == True,  # noqa: E712
             IngredientHierarchy.relation_type.in_([
                 HierarchyRelationType.FALLBACK.value,
                 HierarchyRelationType.SUBSTITUTABLE.value,

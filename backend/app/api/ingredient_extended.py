@@ -220,7 +220,8 @@ async def get_ingredient_hierarchy(
             raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
         parent_relations = db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.child_id == ingredient_id
+            IngredientHierarchy.child_id == ingredient_id,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         parents = []
@@ -235,7 +236,8 @@ async def get_ingredient_hierarchy(
                 })
 
         child_relations = db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.parent_id == ingredient_id
+            IngredientHierarchy.parent_id == ingredient_id,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         children = []

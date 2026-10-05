@@ -166,7 +166,8 @@ class IngredientMatcher:
 
             # 尝试在层级关系中查找
             children = self.db.query(IngredientHierarchy).filter(
-                IngredientHierarchy.parent_id == base_ing.id
+                IngredientHierarchy.parent_id == base_ing.id,
+                IngredientHierarchy.is_active == True  # noqa: E712
             ).all()
 
             for child_rel in children:
@@ -198,7 +199,8 @@ class IngredientMatcher:
         # 从层级关系查找替代品
         # 查找父级（更通用的类别）
         parent_relations = self.db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.child_id == unavailable_ingredient.id
+            IngredientHierarchy.child_id == unavailable_ingredient.id,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         for parent_rel in parent_relations:
@@ -216,7 +218,8 @@ class IngredientMatcher:
         if parent_relations:
             for parent_rel in parent_relations:
                 sibling_rels = self.db.query(IngredientHierarchy).filter(
-                    IngredientHierarchy.parent_id == parent_rel.parent_id
+                    IngredientHierarchy.parent_id == parent_rel.parent_id,
+                    IngredientHierarchy.is_active == True  # noqa: E712
                 ).all()
 
                 for sibling_rel in sibling_rels:
@@ -393,7 +396,8 @@ class IngredientMatcher:
             parent_relation = self.db.query(IngredientHierarchy).filter(
                 and_(
                     IngredientHierarchy.child_id == child_ingredient.id,
-                    IngredientHierarchy.relation_type == "fallback"  # 使用fallback关系
+                    IngredientHierarchy.relation_type == "fallback",  # 使用fallback关系
+                    IngredientHierarchy.is_active == True  # noqa: E712
                 )
             ).first()
 
@@ -458,7 +462,8 @@ class IngredientMatcher:
         # 获取层级关系
         # 查找作为子级的关系（获取父级）
         parent_relations = self.db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.child_id == ingredient.id
+            IngredientHierarchy.child_id == ingredient.id,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         for rel in parent_relations:
@@ -478,7 +483,8 @@ class IngredientMatcher:
 
         # 查找作为父级的关系（获取子级）
         child_relations = self.db.query(IngredientHierarchy).filter(
-            IngredientHierarchy.parent_id == ingredient.id
+            IngredientHierarchy.parent_id == ingredient.id,
+            IngredientHierarchy.is_active == True  # noqa: E712
         ).all()
 
         for rel in child_relations:

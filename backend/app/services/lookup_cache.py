@@ -175,7 +175,9 @@ def hierarchy_all(db: Session) -> list:
 
     c = _cache(db)
     if "hierarchy_all" not in c:
-        c["hierarchy_all"] = db.query(IngredientHierarchy).all()
+        c["hierarchy_all"] = db.query(IngredientHierarchy).filter(
+            IngredientHierarchy.is_active == True  # noqa: E712
+        ).all()
     return c["hierarchy_all"]
 
 
