@@ -5,6 +5,7 @@ class MerchantPrice {
   final String? unit;
   final bool isLowest;
   final String? recordedAt;
+  final bool isStale;
   final List<double>? sparklineData;
   final String? currency;
   final double? exchangeRate;
@@ -16,6 +17,7 @@ class MerchantPrice {
     this.unit,
     this.isLowest = false,
     this.recordedAt,
+    this.isStale = false,
     this.sparklineData,
     this.currency,
     this.exchangeRate,
@@ -29,6 +31,7 @@ class MerchantPrice {
       unit: json['unit'] as String?,
       isLowest: json['is_lowest'] as bool? ?? false,
       recordedAt: json['recorded_at'] as String?,
+      isStale: json['is_stale'] as bool? ?? false,
       sparklineData: (json['sparkline_data'] as List?)
           ?.map((e) => (e as num).toDouble())
           .toList(),

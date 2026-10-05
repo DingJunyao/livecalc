@@ -455,6 +455,62 @@ void main() {
     expect(find.text('Server Merchant'), findsOneWidget);
   });
 
+  testWidgets('merchant price list shows recorded date and greys out stale records',
+      (tester) async {
+    const prices = [
+      MerchantPrice(
+        merchantId: 1,
+        merchantName: 'Fresh Merchant',
+        price: 6.88,
+        unit: 'kg',
+        isLowest: true,
+        recordedAt: '2026-09-01T00:00:00+00:00',
+      ),
+      MerchantPrice(
+        merchantId: 2,
+        merchantName: 'Stale Merchant',
+        price: 1.0,
+        unit: 'kg',
+        recordedAt: '2025-01-01T00:00:00+00:00',
+        isStale: true,
+      ),
+    ];
+
+    await pumpLocalized(
+      tester,
+      const Locale('en', 'US'),
+      const MerchantPriceList(prices: prices, unit: 'kg'),
+    );
+    expect(find.text('Fresh Merchant'), findsOneWidget);
+    expect(find.text('Stale Merchant'), findsOneWidget);
+    // 最低价徽标只出现在新鲜卡片上；陈旧卡片即使价格更低也不标
+    expect(find.text('Lowest'), findsOneWidget);
+    // 每张卡片显示记录日期（年份一定出现，日期格式随区域设置变化）
+    expect(find.textContaining('2026'), findsOneWidget);
+    expect(find.textContaining('2025'), findsOneWidget);
+    // 陈旧卡片整体半透明置灰
+    final staleText = find.text('Stale Merchant');
+    final opacityFinder = find.ancestor(
+      of: staleText,
+      matching: find.byType(Opacity),
+    );
+    expect(opacityFinder, findsWidgets);
+    final opacity = tester.widget<Opacity>(opacityFinder.first).opacity;
+    expect(opacity, lessThan(1.0));
+  });
+
+  test('MerchantPrice.fromJson parses is_stale flag', () {
+    final stale = MerchantPrice.fromJson({
+      'merchant_id': 3,
+      'merchant_name': 'X',
+      'price': 2,
+      'is_stale': true,
+      'recorded_at': '2025-01-01T00:00:00+00:00',
+    });
+    expect(stale.isStale, isTrue);
+    expect(MerchantPrice.fromJson(const {}).isStale, isFalse);
+  });
+
   testWidgets('entity editors localize unit, nutrition, and price labels',
       (tester) async {
     await pumpLocalized(
