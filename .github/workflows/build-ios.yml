@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: 检出代码
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: 配置 Flutter（stable）
         uses: subosito/flutter-action@v2
@@ -95,7 +95,7 @@ jobs:
           zip -qry Runner.ipa Payload
 
       - name: 上传 IPA 产物
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: livecalc-ios-ipa
           path: mobile/build/ios/derived/Build/Products/Release-iphoneos/Runner.ipa

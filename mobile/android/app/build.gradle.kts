@@ -1,7 +1,7 @@
-﻿plugins {
+plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    // KGP 由 Flutter 的 Built-in Kotlin 提供，应用侧不再显式声明。
+    // The Flutter Gradle Plugin must be applied after the Android Gradle plugin.
     id("dev.flutter.flutter-gradle-plugin")
 }
 
@@ -15,8 +15,9 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        // 与 Flutter Built-in Kotlin 的默认 JVM Target（21）保持一致，否则 Java/Kotlin 编译目标不一致
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
     }
 
     defaultConfig {
@@ -42,10 +43,4 @@ android {
 flutter {
     source = "../.."
 }
-
-
-kotlin {
-    compilerOptions {
-        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
-    }
-}
+// jvmTarget 由 Flutter Built-in Kotlin 按项目的 Java 兼容级别自动设置，无需手动配置。
