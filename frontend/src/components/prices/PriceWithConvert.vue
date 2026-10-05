@@ -1,6 +1,6 @@
 <template>
   <span class="price-with-convert">
-    <span class="price-native">{{ formatMoney(price, currency) }}</span>
+    <span class="price-native">{{ formatMoney(numericPrice, currency) }}</span>
     <span v-if="converted != null" class="price-converted text-caption text-medium-emphasis">
       ≈ {{ formatMoney(converted, userCurrency) }}
     </span>
@@ -12,15 +12,21 @@ import { computed } from 'vue'
 import { formatMoney, convertAmount } from '@/utils/currency'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 
+// 后端 Pydantic v2 会把 Decimal 序列化为字符串（如 "8.98"），此处统一归一化为 number
 const props = defineProps<{
-  price: number
+  price: number | string
   currency: string
-  exchangeRate?: number | null
+  exchangeRate?: number | string | null
 }>()
 const { currency: userCurrency } = useUserCurrency()
+const numericPrice = computed(() => Number(props.price))
+const numericExchangeRate = computed(() =>
+  props.exchangeRate == null ? null : Number(props.exchangeRate),
+)
 const converted = computed(() => {
-  if (!props.exchangeRate || props.currency === userCurrency.value) return null
-  return convertAmount(props.price, props.exchangeRate)
+  const rate = numericExchangeRate.value
+  if (!rate || props.currency === userCurrency.value) return null
+  return convertAmount(numericPrice.value, rate)
 })
 </script>
 
