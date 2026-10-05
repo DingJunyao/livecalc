@@ -138,7 +138,8 @@ function renderTrendChart() {
     chartInstance = echarts.init(chartRef.value)
   }
 
-  const dates = chartData.value.map((d: any) => formatDate(d.date, localeStore.effectiveFormatLocale))
+  // X 轴按真实日期分布（time 轴）：记录点间距反映天数间隔，而非等距排列
+  const points = chartData.value.map((d: any) => new Date(`${d.date}T00:00:00`).getTime())
 
   if (hasBreakdown.value) {
     // ========== 堆叠面积图 ==========
@@ -147,7 +148,7 @@ function renderTrendChart() {
       ingMap.set(bi.ingredientId, {
         name: bi.name,
         color: bi.color,
-        data: new Array(dates.length).fill(0),
+        data: new Array(points.length).fill(0),
       })
     }
 
@@ -172,7 +173,7 @@ function renderTrendChart() {
         name: entry.name,
         type: 'line',
         stack: 'total',
-        data: entry.data,
+        data: entry.data.map((v, i) => [points[i], v]),
         smooth: true,
         symbol: 'none',
         lineStyle: { width: 1, color: entry.color },
@@ -202,7 +203,7 @@ function renderTrendChart() {
         trigger: 'axis',
         extraCssText: 'direction:ltr;',
         formatter: (params: any[]) => {
-          const date = params[0]?.axisValue || ''
+          const date = params[0] ? formatDate(params[0].axisValue, localeStore.effectiveFormatLocale) : ''
           let html = `<div style="font-weight:600;margin-bottom:4px">${date}</div>`
           let total = 0
           for (const p of params) {
@@ -223,10 +224,15 @@ function renderTrendChart() {
       legend: { show: false },
       grid: { left: 50, right: 16, top: 8, bottom: 24 },
       xAxis: {
-        type: 'category',
-        data: dates,
-        axisLabel: { fontSize: 10, rotate: 30 },
-        boundaryGap: false,
+        type: 'time',
+        min: 'dataMin',
+        max: 'dataMax',
+        axisLabel: {
+          fontSize: 10,
+          rotate: 30,
+          hideOverlap: true,
+          formatter: (value: number) => formatDate(value, localeStore.effectiveFormatLocale, { month: '2-digit', day: '2-digit' }),
+        },
       },
       yAxis: {
         type: 'value',
@@ -247,7 +253,7 @@ function renderTrendChart() {
         trigger: 'axis',
         extraCssText: 'direction:ltr;',
         formatter: (params: any[]) => {
-          const date = params[0]?.axisValue || ''
+          const date = params[0] ? formatDate(params[0].axisValue, localeStore.effectiveFormatLocale) : ''
           const avg = params.find((p: any) => p.seriesName === t('recipes.averageCost'))
           const minP = params.find((p: any) => p.seriesName === t('recipes.minimum'))
           const maxP = params.find((p: any) => p.seriesName === t('recipes.maximum'))
@@ -259,10 +265,15 @@ function renderTrendChart() {
       },
       grid: { left: 50, right: 16, top: 8, bottom: 24 },
       xAxis: {
-        type: 'category',
-        data: dates,
-        axisLabel: { fontSize: 10, rotate: 30 },
-        boundaryGap: false,
+        type: 'time',
+        min: 'dataMin',
+        max: 'dataMax',
+        axisLabel: {
+          fontSize: 10,
+          rotate: 30,
+          hideOverlap: true,
+          formatter: (value: number) => formatDate(value, localeStore.effectiveFormatLocale, { month: '2-digit', day: '2-digit' }),
+        },
       },
       yAxis: {
         type: 'value',
@@ -273,7 +284,7 @@ function renderTrendChart() {
         {
           name: t('recipes.minimum'),
           type: 'line',
-          data: minValues,
+          data: minValues.map((v, i) => [points[i], v]),
           lineStyle: { width: 0 },
           symbol: 'none',
           areaStyle: { opacity: 0 },
@@ -282,7 +293,7 @@ function renderTrendChart() {
         {
           name: t('recipes.averageCost'),
           type: 'line',
-          data: avgValues,
+          data: avgValues.map((v, i) => [points[i], v]),
           smooth: true,
           symbol: 'circle',
           symbolSize: 4,
@@ -298,7 +309,7 @@ function renderTrendChart() {
         {
           name: t('recipes.maximum'),
           type: 'line',
-          data: maxValues,
+          data: maxValues.map((v, i) => [points[i], v]),
           lineStyle: { width: 0 },
           symbol: 'none',
           areaStyle: { opacity: 0 },

@@ -2463,6 +2463,7 @@
     "clickPreferredUnit": "点击使用推荐单位",
     "recommendedParenthetical": "（推荐 {amount} {unit}）",
     "calculatedFromIngredientsCost": "按食材成本计算",
+    "priceStaleTooltip": "价格更新于 {date}，已超过 30 天未更新",
     "noIngredients": "暂无食材",
     "ingredient": "食材",
     "type": "类型",

@@ -135,7 +135,14 @@
                   </div>
                 </v-tooltip>
               </template>
-              <span>{{ formatIngredientCost(ingredient) }}</span>
+              <span>
+                <v-tooltip
+                  v-if="isIngredientPriceStale(ingredient)"
+                  location="top"
+                  activator="parent"
+                >{{ t('recipes.priceStaleTooltip', { date: ingredientPriceStaleDate(ingredient) }) }}</v-tooltip>
+                {{ formatIngredientCost(ingredient) }}
+              </span>
             </div>
           </div>
           <div v-if="ingredient.note" class="text-caption text-medium-emphasis ps-2 pb-1">
@@ -328,6 +335,8 @@ import { useUserUnits, type UnitPref } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
+import { formatToLocalDate } from '@/utils/timezone'
+import { isRecordedAtStale } from '@/utils/priceStaleness'
 import { useLocaleStore } from '@/stores/locale'
 import { useI18n } from 'vue-i18n'
 import { QUANTITY_TYPE_KEYS, VAGUE_QUANTITY_VALUES } from '@/data/localValues'
@@ -510,6 +519,19 @@ const getIngredientFallbackChain = (ingredient: RecipeIngredient): string | null
   if (item?.recipe_chain) return item.recipe_chain
   if (item?.aggregation_chain) return item.aggregation_chain
   return item?.fallback_chain || null
+}
+
+// 该食材所用价格记录的更新时间（超过 PRICE_STALE_DAYS 天未更新时在价格处提示）
+const isIngredientPriceStale = (ingredient: RecipeIngredient): boolean => {
+  if (!props.costBreakdown) return false
+  const item = props.costBreakdown.find((b: any) => b.recipe_ingredient_id === ingredient.id)
+  return isRecordedAtStale(item?.price_recorded_at)
+}
+
+const ingredientPriceStaleDate = (ingredient: RecipeIngredient): string => {
+  if (!props.costBreakdown) return ''
+  const item = props.costBreakdown.find((b: any) => b.recipe_ingredient_id === ingredient.id)
+  return formatToLocalDate(item?.price_recorded_at)
 }
 
 const goToIngredient = (ingredientId: number | null | undefined) => {

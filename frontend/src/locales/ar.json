@@ -2463,6 +2463,7 @@
     "clickPreferredUnit": "انقر لاستخدام الوحدة الموصى بها",
     "recommendedParenthetical": "(موصى به {amount} {unit})",
     "calculatedFromIngredientsCost": "محسوب من تكاليف المكوّنات",
+    "priceStaleTooltip": "آخر تحديث للسعر في {date}، مرّ أكثر من 30 يومًا",
     "noIngredients": "لا توجد مكوّنات",
     "ingredient": "المكوّن",
     "type": "النوع",

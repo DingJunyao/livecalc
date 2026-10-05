@@ -2463,6 +2463,7 @@
     "clickPreferredUnit": "Click to use the recommended unit",
     "recommendedParenthetical": "(recommended {amount} {unit})",
     "calculatedFromIngredientsCost": "Calculated from ingredient costs",
+    "priceStaleTooltip": "Price last updated on {date}, over 30 days ago",
     "noIngredients": "No ingredients",
     "ingredient": "Ingredient",
     "type": "Type",
