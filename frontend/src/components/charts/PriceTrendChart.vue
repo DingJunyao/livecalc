@@ -132,6 +132,10 @@ const filters = computed(() => [
 // 单位后缀
 const unitSuffix = computed(() => props.unit ? ` / ${props.unit}` : '')
 
+// 日期 → 本地时间戳：date 为 YYYY-MM-DD，按本地午夜解析，
+// 保证 X 轴按真实天数间隔分布且格式化回显的日期跨时区稳定
+const toTimestamp = (date: string): number => new Date(`${date}T00:00:00`).getTime()
+
 // 过滤数据
 const chartData = computed(() => {
   if (!props.data || props.data.length === 0) return []
@@ -214,7 +218,9 @@ function updateChart() {
         }
       },
       formatter: (params: any) => {
-        const dateIndex = params[2]?.dataIndex ?? -1
+        // time 轴：params 与 series 顺序一致，第三系列为平均值线
+        const avgPoint = params[2] ?? params[0]
+        const dateIndex = avgPoint?.dataIndex ?? -1
         if (dateIndex < 0 || dateIndex >= data.length) return ''
 
         const item = data[dateIndex]
@@ -243,15 +249,24 @@ function updateChart() {
       containLabel: true
     },
     xAxis: {
-      type: 'category',
-      data: data.map(d => d.date),
-      boundaryGap: false,
+      type: 'time',
+      // 按真实日期时间分布：记录点之间的距离随天数变化，而非等距排列
+      min: 'dataMin',
+      max: 'dataMax',
       axisLabel: {
-        formatter: (value: string) => {
+        hideOverlap: true,
+        formatter: (value: number) => {
           return formatDate(value, localeStore.effectiveFormatLocale, {
             month: '2-digit',
             day: '2-digit',
           })
+        }
+      },
+      axisPointer: {
+        label: {
+          formatter: (params: any) => {
+            return formatDate(params.value, localeStore.effectiveFormatLocale)
+          }
         }
       },
       splitLine: {
@@ -282,7 +297,7 @@ function updateChart() {
       {
         name: 'L',
         type: 'line',
-        data: data.map(d => d.min - base),
+        data: data.map(d => [toTimestamp(d.date), d.min - base]),
         lineStyle: { opacity: 0 },
         stack: 'confidence-band',
         symbol: 'none',
@@ -292,7 +307,7 @@ function updateChart() {
       {
         name: 'U',
         type: 'line',
-        data: data.map(d => d.max - d.min),
+        data: data.map(d => [toTimestamp(d.date), d.max - d.min]),
         lineStyle: { opacity: 0 },
         areaStyle: {
           color: {
@@ -312,7 +327,7 @@ function updateChart() {
       {
         name: props.avgLabel,
         type: 'line',
-        data: data.map(d => d.avg),
+        data: data.map(d => [toTimestamp(d.date), d.avg]),
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,

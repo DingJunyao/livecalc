@@ -14,6 +14,7 @@ from app.services.lookup_cache import unit_by_id, active_products_for_ingredient
 from app.models.unit import Unit
 from decimal import Decimal
 from app.utils.date_range_utils import local_date_range_to_utc_range, utc_datetime_to_local_date
+from app.utils.datetime_utils import serialize_datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -1011,8 +1012,14 @@ async def calculate_recipe_cost(
     region_id: Optional[int] = None,
     recipe_ingredients_override=None,
     servings_override=None,
+    include_price_dates: bool = False,
 ) -> Dict:
-    """计算菜谱成本，使用当天价格区间的平均值"""
+    """计算菜谱成本，使用当天价格区间的平均值
+
+    include_price_dates：为成本明细附加 price_recorded_at（所用价格记录的
+    最新时间，供前端提示「价格多久没更新」）。依赖 direct/fallback/name_match
+    层的记录集查询（请求级缓存），仅详情页单菜谱路径开启，批量调用不开启。
+    """
     recipe = db.get(Recipe, recipe_id)
     if not recipe:
         return None
@@ -1089,6 +1096,11 @@ async def calculate_recipe_cost(
                 unit_price, aggregation_chain = child_agg
                 # unit_price 已经是元/克
 
+        # 所用价格记录的最新时间（制作菜谱/子食材聚合推导价无直接记录，不标注）
+        price_recorded_at = None
+        if unit_price is not None and include_price_dates and recipe_chain is None and aggregation_chain is None:
+            price_recorded_at = _latest_price_recorded_at(db, ingredient, user_id, now, tz=tz, region_id=region_id)
+
         if unit_price is not None:
             # 计算成本：单价 × 菜谱中的数量 = 成本
             # 优先使用 quantity，如果为 None 则从 quantity_range 取平均值
@@ -1152,6 +1164,7 @@ async def calculate_recipe_cost(
                         "fallback_chain": fallback_chain,  # 回退链信息（如果有）
                         "aggregation_chain": aggregation_chain,  # 子食材聚合链信息（如果有）
                         "recipe_chain": recipe_chain,  # 制作菜谱链信息（如果有）
+                        "price_recorded_at": serialize_datetime(price_recorded_at) if price_recorded_at else None,
                         "cost_source": "recipe" if recipe_chain else ("contains_aggregation" if aggregation_chain else ("fallback" if fallback_chain else "direct"))
                     })
                 except Exception as e:
@@ -1168,6 +1181,7 @@ async def calculate_recipe_cost(
                         "fallback_chain": fallback_chain,  # 回退链信息（如果有）
                         "aggregation_chain": aggregation_chain,  # 子食材聚合链信息（如果有）
                         "recipe_chain": recipe_chain,  # 制作菜谱链信息（如果有）
+                        "price_recorded_at": serialize_datetime(price_recorded_at) if price_recorded_at else None,
                         "cost_source": "recipe" if recipe_chain else ("contains_aggregation" if aggregation_chain else ("fallback" if fallback_chain else "direct"))
                     })
             else:
@@ -1184,6 +1198,7 @@ async def calculate_recipe_cost(
                     "fallback_chain": fallback_chain,  # 回退链信息（如果有）
                     "aggregation_chain": aggregation_chain,  # 子食材聚合链信息（如果有）
                     "recipe_chain": recipe_chain,  # 制作菜谱链信息（如果有）
+                    "price_recorded_at": serialize_datetime(price_recorded_at) if price_recorded_at else None,
                     "cost_source": "recipe" if recipe_chain else ("contains_aggregation" if aggregation_chain else ("fallback" if fallback_chain else "direct"))
                 })
 
@@ -1199,6 +1214,62 @@ async def calculate_recipe_cost(
         "cost_per_serving": total_cost / (servings_override or recipe.servings or 1),
         "cost_breakdown": cost_breakdown
     }
+
+
+def _latest_price_recorded_at(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+) -> Optional[datetime]:
+    """食材当前成本所用价格记录的最新时间（direct → fallback → name_match 链）。
+
+    与 calculate_recipe_cost 的降级链同序，取实际参与计价那批记录的最新
+    recorded_at；制作菜谱/子食材聚合推导出的价格无直接记录，调用方不进入本函数。
+    全部查询走时间轴索引/请求级缓存，仅供详情页单菜谱路径（include_price_dates）。
+    """
+    # direct：参与商品的锚点日有效记录（与 _direct_cost_range_ppg 同源）
+    from app.services.ingredient_price_service import resolve_direct_weighted_for_cost
+    dw = resolve_direct_weighted_for_cost(
+        db, ingredient.id, user_id=user_id, as_of_date=as_of_date, tz=tz, region_id=region_id,
+    )
+    if dw is not None:
+        _, _participants, _, participant_records = dw
+        times = [
+            r.recorded_at
+            for recs in (participant_records or {}).values()
+            for r in (recs or [])
+            if r is not None and not _is_dirty_record(r) and r.recorded_at is not None
+        ]
+        if times:
+            return max(times)
+
+    # fallback（含 substitutable）：回退食材各商品锚点日记录集（与 _fallback_cost_range_ppg 同源）
+    fb = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
+    if fb:
+        fb_ingredient, _latest, _chain = fb
+        times = []
+        for p in active_products_for_ingredient(db, fb_ingredient.id):
+            recs = _get_price_records_with_fallback(
+                db=db, user_id=user_id, product_id=p.id, as_of_date=as_of_date, tz=tz,
+                region_id=region_id,
+            )
+            for r in recs or []:
+                if r is not None and not _is_dirty_record(r) and r.recorded_at is not None:
+                    times.append(r.recorded_at)
+        if times:
+            return max(times)
+
+    # name_match：前向填充锚点记录（与 _name_match_cost_range_ppg 同源）
+    anchor = _get_price_record_with_fallback(
+        db=db, user_id=user_id, product_name_contains=ingredient.name,
+        as_of_date=as_of_date, tz=tz, region_id=region_id,
+    )
+    if anchor is not None:
+        return anchor.recorded_at
+    return None
 
 
 def _is_dirty_record(record) -> bool:

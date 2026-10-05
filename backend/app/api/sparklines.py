@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app.core.database import get_db
 from app.core.security import get_current_user
@@ -31,6 +31,30 @@ def _unit_price_per_jin(row) -> float:
     """记录 → ¥/斤 单价（按记录时用户币种快照折算 + 500g 归一化）。"""
     std_qty_f = float(row.standard_quantity) if row.standard_quantity and float(row.standard_quantity) > 0 else 500.0
     return float(record_price_in_user_currency(row)) * 500.0 / std_qty_f
+
+
+def _forward_fill_daily(day_values: Dict[str, float], tz: str) -> List[float]:
+    """按本地日历日从首个有值日填充到今天，无记录日沿用前一日的值。
+
+    迷你图 X 轴语义是时间：每天占一格，点间距才能反映真实天数间隔。
+    价格在两次记录之间视为不变（与成本计算的前向填充口径一致），
+    久未更新时表现为长平尾。调用方传入的值已完成聚合与舍入。
+    """
+    if not day_values:
+        return []
+    d0 = date.fromisoformat(min(day_values.keys()))
+    d1 = utc_datetime_to_local_date(datetime.utcnow(), tz)
+    out: List[float] = []
+    last: Optional[float] = None
+    cur = d0
+    while cur <= d1:
+        v = day_values.get(cur.isoformat())
+        if v is not None:
+            last = v
+        if last is not None:
+            out.append(last)
+        cur += timedelta(days=1)
+    return out
 
 
 def _fetch_recent_records(db: Session, product_ids: List[int], days: int, region_id: Optional[int]):
@@ -88,6 +112,7 @@ def _daily_avg_for_product_ids(
       修正「记录多的商品被放大」的偏置）。
     - 不传：退化为记录级日均（旧行为，商品 sparkline 用）。
     归一化到 ¥/斤（1斤=500g），按 standard_quantity 确保跨单位可比。
+    返回按日历日前向填充后的序列（每天一格，无记录日沿用前值）。
     """
     if not product_ids:
         return []
@@ -102,7 +127,7 @@ def _daily_avg_for_product_ids(
         dkey = utc_datetime_to_local_date(row.recorded_at, tz).isoformat()
         by_day_product[dkey].setdefault(row.product_id, []).append(unit_price)
 
-    result: List[float] = []
+    daily: dict = {}
     for dkey in sorted(by_day_product.keys()):
         prods = by_day_product[dkey]
         if ingredient_id is not None:
@@ -119,8 +144,8 @@ def _daily_avg_for_product_ids(
             all_up = [up for ups in prods.values() for up in ups]
             avg = sum(all_up) / len(all_up) if all_up else None
         if avg is not None:
-            result.append(round(avg, 2))
-    return result
+            daily[dkey] = round(avg, 2)
+    return _forward_fill_daily(daily, tz)
 
 
 def _products_sparklines_batched(
@@ -133,7 +158,7 @@ def _products_sparklines_batched(
     """商品 sparkline 批量版：一次记录查询，内存按 (商品, 日) 分组做记录级日均。
 
     聚合口径与 _daily_avg_for_product_ids([pid])（ingredient_id=None，记录级日均）
-    完全一致，只是消除了逐商品 N+1 查询。
+    完全一致，只是消除了逐商品 N+1 查询。返回前向填充到今天的日历日序列。
     """
     rows = _fetch_recent_records(db, product_ids, days, region_id)
     # {pid: {date: [unit_price,...]}}；记录按 recorded_at 升序流入，append 顺序与单查版一致
@@ -148,11 +173,11 @@ def _products_sparklines_batched(
         if not day_map:
             result[str(pid)] = None
             continue
-        data = []
+        daily: dict = {}
         for dkey in sorted(day_map.keys()):
             ups = day_map[dkey]
-            data.append(round(sum(ups) / len(ups), 2))
-        result[str(pid)] = data
+            daily[dkey] = round(sum(ups) / len(ups), 2)
+        result[str(pid)] = _forward_fill_daily(daily, tz) or None
     return result
 
 
@@ -201,7 +226,7 @@ def _ingredients_sparklines_batched(
         if not day_prod:
             result[str(ing_id)] = None
             continue
-        data = []
+        daily: dict = {}
         for dkey in sorted(day_prod.keys()):
             prods = day_prod[dkey]
             num = den = 0.0
@@ -212,8 +237,9 @@ def _ingredients_sparklines_batched(
                 num += (sum(ups) / len(ups)) * w
                 den += w
             if den > 0:
-                data.append(round(num / den, 2))
-        result[str(ing_id)] = data if data else None
+                daily[dkey] = round(num / den, 2)
+        filled = _forward_fill_daily(daily, tz)
+        result[str(ing_id)] = filled if filled else None
     return result
 
 
@@ -242,7 +268,14 @@ async def get_recipes_sparklines(
             try:
                 trend = calculate_recipe_cost_range_trend(rid, current_user.id, session, days=days, tz=tz, region_id=region_id)
                 if trend:
-                    data = [t["avg_cost"] for t in trend if t.get("avg_cost") is not None]
+                    # 趋势本身逐天计算但无价日缺失；按日历日前向填充，
+                    # 保证迷你图每天一格、点间距反映真实天数间隔
+                    day_values = {
+                        t["date"]: t["avg_cost"]
+                        for t in trend
+                        if t.get("date") and t.get("avg_cost") is not None
+                    }
+                    data = _forward_fill_daily(day_values, tz)
                     return (str(rid), data if data else None)
                 return (str(rid), None)
             except Exception:

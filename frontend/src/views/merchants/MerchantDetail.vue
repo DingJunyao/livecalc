@@ -159,12 +159,13 @@
 
           <!-- 移动端：列表样式 -->
           <v-list v-else-if="productPrices.length > 0 && smAndDown" lines="two">
-            <v-list-item
-              v-for="record in productPrices"
-              :key="record.product_id"
-              class="cursor-pointer"
-              @click="goToProduct(record.product_id)"
-            >
+              <v-list-item
+                v-for="record in productPrices"
+                :key="record.product_id"
+                class="cursor-pointer"
+                :class="{ 'price-record-stale': isRecordedAtStale(record.recorded_at) }"
+                @click="goToProduct(record.product_id)"
+              >
               <template #prepend>
                 <v-avatar color="tertiary-container" size="40">
                   <v-icon color="tertiary">mdi-package-variant-closed</v-icon>
@@ -201,7 +202,12 @@
               lg="3"
               xl="2"
             >
-              <v-card elevation="0" class="list-grid-card cursor-pointer h-100" @click="goToProduct(record.product_id)">
+              <v-card
+                elevation="0"
+                class="list-grid-card cursor-pointer h-100"
+                :class="{ 'price-record-stale': isRecordedAtStale(record.recorded_at) }"
+                @click="goToProduct(record.product_id)"
+              >
                 <v-card-text>
                   <div class="d-flex align-center mb-2">
                     <v-avatar color="primary" size="40" class="me-3">
@@ -362,6 +368,7 @@ import { CURRENCY_PREFIX } from '@/data/localValues'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { useLocaleStore } from '@/stores/locale'
 import { formatCoordinate, formatNumber } from '@/utils/format'
+import { isRecordedAtStale } from '@/utils/priceStaleness'
 
 const route = useRoute()
 const router = useRouter()
@@ -653,6 +660,12 @@ onUnmounted(() => {
 <style scoped>
 .cursor-pointer {
   cursor: pointer;
+}
+
+/* 价格记录超过 30 天未更新：置灰弱化（与商品详情页商家最新价口径一致） */
+.price-record-stale {
+  opacity: 0.5;
+  filter: grayscale(1);
 }
 
 .font-family-monospace {

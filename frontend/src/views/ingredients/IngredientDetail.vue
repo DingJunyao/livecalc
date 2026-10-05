@@ -1816,6 +1816,7 @@ import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { formatNumber, formatQuantity } from '@/utils/format'
+import { buildDailySparklineSeries } from '@/utils/sparkline'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -3353,15 +3354,14 @@ const loadProductPrice = async (product: Product) => {
       params: { product_id: pid, limit: 20 },
     })
     const items: any[] = records.items || []
-    // 按日期排序，算单价
+    // 按日期聚合前向填充（每天一格），迷你图 X 轴反映真实天数间隔
     const pricePoints = items
       .filter((r: any) => r.price && Number(r.original_quantity) > 0)
-      .sort((a: any, b: any) => (a.recorded_at || '').localeCompare(b.recorded_at || ''))
       .map((r: any) => {
         const qty = Number(r.original_quantity) || 1
-        return Number(r.price) / qty
+        return { date: r.recorded_at, value: Number(r.price) / qty }
       })
-    info.sparklineData = pricePoints
+    info.sparklineData = buildDailySparklineSeries(pricePoints)
   } catch (e) {
     console.error(`Failed to load price data for product ${product.name}`, e)
   } finally {

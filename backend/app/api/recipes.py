@@ -1089,6 +1089,7 @@ async def get_recipe_cost(
             current_user.id,
             db=db,
             region_id=region_id,
+            include_price_dates=True,
             recipe_ingredients_override=(
                 pending_cost[0] if pending_cost else None
             ),
