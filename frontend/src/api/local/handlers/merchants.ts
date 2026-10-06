@@ -238,9 +238,11 @@ export async function getMerchantProductPrices(params: Record<string, string>, q
     }
   })
 
-  // 陈旧（超 30 天未更新）排到最后，组内保持填写顺序/名称序，与云端口径一致
+  // 陈旧（超 30 天未更新）沉底仅商家详情页开启（stale_last=true）；
+  // 快速填写页保持填写顺序，与云端口径一致
+  const staleLast = query?.stale_last === 'true' || query?.stale_last === true
   enriched.sort((a: any, b: any) => {
-    if (a.is_stale !== b.is_stale) return a.is_stale ? 1 : -1
+    if (staleLast && a.is_stale !== b.is_stale) return a.is_stale ? 1 : -1
     const aHas = a.fill_sort_order != null
     const bHas = b.fill_sort_order != null
     if (aHas !== bHas) return aHas ? -1 : 1

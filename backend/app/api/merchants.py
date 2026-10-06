@@ -445,6 +445,7 @@ async def get_merchant_product_prices(
     merchant_id: int,
     skip: int = Query(0, ge=0, description="跳过的记录数"),
     limit: int = Query(20, ge=1, le=500, description="每页记录数"),
+    stale_last: bool = Query(False, description="超 30 天未更新的陈旧价格排到列表最后（商家详情页开启；快速填写页保持填写顺序，不开启）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -465,7 +466,9 @@ async def get_merchant_product_prices(
 
         # 原生 SQL：CTE 取每商品最新价，外层 JOIN 出 standard_unit 缩写与
         # 商品关联原料的默认单位缩写，供 Python 层做单位换算。
-        sql = text("""
+        # 陈旧沉底仅商家详情页开启（stale_last=true）；快速填写页保持用户上次填写顺序
+        stale_order = "is_stale ASC," if stale_last else ""
+        sql = text(f"""
             WITH latest AS (
                 SELECT product_id, price, currency, exchange_rate, original_quantity, standard_quantity,
                        standard_unit_id, recorded_at,
@@ -505,7 +508,7 @@ async def get_merchant_product_prices(
             LEFT JOIN recent_orders ro ON ro.product_id = l.product_id
             WHERE l.rn = 1
             ORDER BY
-                is_stale ASC,
+                {stale_order}
                 (ro.product_id IS NULL) ASC,
                 ro.session_date DESC,
                 ro.sort_order ASC,

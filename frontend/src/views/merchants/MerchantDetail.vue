@@ -518,7 +518,8 @@ const loadProductPrices = async () => {
   try {
     const skip = (pricePage.value - 1) * pricePageSize.value
     const response = await api.get(`/merchants/${merchantId.value}/product-prices`, {
-      params: { skip, limit: pricePageSize.value }
+      // stale_last：超 30 天未更新的陈旧价格排到列表最后
+      params: { skip, limit: pricePageSize.value, stale_last: true }
     })
     productPrices.value = response.items || []
     priceTotal.value = response.total || 0
