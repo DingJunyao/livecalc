@@ -124,25 +124,29 @@
               <span v-else>-</span>
             </div>
             <div class="ingredient-cost text-body-2 text-end d-flex align-center justify-end" style="min-width: 60px">
-              <template v-if="getIngredientFallbackChain(ingredient)">
-                <v-tooltip location="top">
-                  <template #activator="{ props }">
-                    <v-icon v-bind="props" size="small" color="info" class="me-1">mdi-information</v-icon>
-                  </template>
-                  <div>
+              <!-- 计算来源链 / 价格久未更新共用一个 info 图标，tooltip 信息合并 -->
+              <v-tooltip
+                v-if="getIngredientFallbackChain(ingredient) || isIngredientPriceStale(ingredient)"
+                location="top"
+              >
+                <template #activator="{ props }">
+                  <v-icon v-bind="props" size="small" color="info" class="me-1">mdi-information</v-icon>
+                </template>
+                <div>
+                  <template v-if="getIngredientFallbackChain(ingredient)">
                     <div class="text-caption">{{ t('recipes.calculatedFromIngredientsCost') }}</div>
                     <div class="text-body-2 font-weight-bold">{{ getIngredientFallbackChain(ingredient) }}</div>
+                  </template>
+                  <div
+                    v-if="isIngredientPriceStale(ingredient)"
+                    class="text-caption"
+                    :class="{ 'mt-1': getIngredientFallbackChain(ingredient) }"
+                  >
+                    {{ t('recipes.priceStaleTooltip', { date: ingredientPriceStaleDate(ingredient) }) }}
                   </div>
-                </v-tooltip>
-              </template>
-              <span>
-                <v-tooltip
-                  v-if="isIngredientPriceStale(ingredient)"
-                  location="top"
-                  activator="parent"
-                >{{ t('recipes.priceStaleTooltip', { date: ingredientPriceStaleDate(ingredient) }) }}</v-tooltip>
-                {{ formatIngredientCost(ingredient) }}
-              </span>
+                </div>
+              </v-tooltip>
+              <span>{{ formatIngredientCost(ingredient) }}</span>
             </div>
           </div>
           <div v-if="ingredient.note" class="text-caption text-medium-emphasis ps-2 pb-1">

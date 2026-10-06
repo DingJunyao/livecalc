@@ -163,7 +163,7 @@
                 v-for="record in productPrices"
                 :key="record.product_id"
                 class="cursor-pointer"
-                :class="{ 'price-record-stale': isRecordedAtStale(record.recorded_at) }"
+                :class="{ 'price-record-stale': record.is_stale }"
                 @click="goToProduct(record.product_id)"
               >
               <template #prepend>
@@ -205,7 +205,7 @@
               <v-card
                 elevation="0"
                 class="list-grid-card cursor-pointer h-100"
-                :class="{ 'price-record-stale': isRecordedAtStale(record.recorded_at) }"
+                :class="{ 'price-record-stale': record.is_stale }"
                 @click="goToProduct(record.product_id)"
               >
                 <v-card-text>
@@ -368,7 +368,6 @@ import { CURRENCY_PREFIX } from '@/data/localValues'
 import { useMapConfig } from '@/composables/useMapConfig'
 import { useLocaleStore } from '@/stores/locale'
 import { formatCoordinate, formatNumber } from '@/utils/format'
-import { isRecordedAtStale } from '@/utils/priceStaleness'
 
 const route = useRoute()
 const router = useRouter()
@@ -402,6 +401,7 @@ interface ProductPrice {
   standard_unit_label: string | null
   original_quantity: number
   recorded_at: string
+  is_stale?: boolean
 }
 
 const merchantId = computed(() => Number(route.params.id))

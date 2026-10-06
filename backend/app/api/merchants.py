@@ -10,7 +10,7 @@ from app.core.security import get_current_user
 from app.models.merchant import Merchant
 from app.models.map_config import MapConfiguration
 from app.models.administrative_region import AdministrativeRegion
-from app.services.price_region import display_exchange_rate
+from app.services.price_region import display_exchange_rate, MERCHANT_PRICE_STALE_DAYS
 from app.services.proposals import service as proposal_service
 from app.schemas.merchant import (
     MerchantCreate,
@@ -28,7 +28,7 @@ from app.models.unit import Unit
 from app.schemas.product import ProductRecordResponse
 from app.models.user import User
 
-from datetime import date as date_type, datetime as _dt
+from datetime import date as date_type, datetime as _dt, timedelta
 from app.utils.datetime_utils import serialize_datetime
 from app.core.exceptions import LocalizedHTTPException
 
@@ -488,6 +488,7 @@ async def get_merchant_product_prices(
             )
             SELECT l.product_id, l.price, l.currency, l.exchange_rate, l.original_quantity, l.standard_quantity,
                    l.recorded_at,
+                   (l.recorded_at < :stale_cutoff) AS is_stale,
                    su.abbreviation AS standard_unit_abbr,
                    su.unit_type     AS standard_unit_type,
                    p.name,
@@ -504,6 +505,7 @@ async def get_merchant_product_prices(
             LEFT JOIN recent_orders ro ON ro.product_id = l.product_id
             WHERE l.rn = 1
             ORDER BY
+                is_stale ASC,
                 (ro.product_id IS NULL) ASC,
                 ro.session_date DESC,
                 ro.sort_order ASC,
@@ -517,6 +519,10 @@ async def get_merchant_product_prices(
             "mid": merchant_id,
             "limit": limit,
             "skip": skip,
+            # 与 price_region.MERCHANT_PRICE_STALE_DAYS 一致：超过 30 天未更新的最新价视为陈旧，
+            # 排到列表最后并置灰。recorded_at 为 naive UTC；SQLite 存 TEXT（'YYYY-MM-DD HH:MM:SS.%f'），
+            # cutoff 用同格式字符串比较（PG/MySQL 下该字面量也能与 timestamp 列直接比较）
+            "stale_cutoff": (_dt.utcnow() - timedelta(days=MERCHANT_PRICE_STALE_DAYS)).strftime('%Y-%m-%d %H:%M:%S.%f'),
         }).fetchall()
 
         # 去重后的商品总数（用于分页）
@@ -561,6 +567,7 @@ async def get_merchant_product_prices(
                 "standard_unit_label": unit_label,
                 "original_quantity": float(r.original_quantity) if r.original_quantity is not None else 0,
                 "recorded_at": _to_iso(r.recorded_at),
+                "is_stale": bool(r.is_stale),
                 "category_id": r.category_id,
                 "category_display_name": r.category_display_name,
                 "category_sort_order": r.category_sort_order,

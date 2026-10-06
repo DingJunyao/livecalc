@@ -3,6 +3,7 @@
 import { getAll, getById, addOne, putOne, deleteOne, getByIndex, resolvePagination } from '../database'
 import { localError } from '../../../utils/localErrors'
 import { t as translate } from '../../../plugins/i18n.ts'
+import { isRecordedAtStale } from '@/utils/priceStaleness'
 
 
 // 本地模式商家币种推导：手选 default_currency 优先，其次按地区国家映射，无则 null（前端回落 CNY）。
@@ -228,6 +229,7 @@ export async function getMerchantProductPrices(params: Record<string, string>, q
     return {
       ...rec,
       product_name: product?.name ?? '',
+      is_stale: isRecordedAtStale(rec.recorded_at),
       category_id: category?.id ?? ingredient?.category_id ?? null,
       category_display_name: category?.display_name ?? null,
       category_sort_order: category?.sort_order ?? null,
@@ -236,7 +238,9 @@ export async function getMerchantProductPrices(params: Record<string, string>, q
     }
   })
 
+  // 陈旧（超 30 天未更新）排到最后，组内保持填写顺序/名称序，与云端口径一致
   enriched.sort((a: any, b: any) => {
+    if (a.is_stale !== b.is_stale) return a.is_stale ? 1 : -1
     const aHas = a.fill_sort_order != null
     const bHas = b.fill_sort_order != null
     if (aHas !== bHas) return aHas ? -1 : 1
