@@ -1361,6 +1361,8 @@
   "@recipeOptional": {},
   "recipeCalculatedFromIngredientsCost": "محسوب من تكاليف المكوّنات:",
   "@recipeCalculatedFromIngredientsCost": {},
+  "recipePriceStaleTooltip": "آخر تحديث للسعر في {date}، مرّ أكثر من 30 يومًا",
+  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
   "recipeGotIt": "فهمت",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "الموصى به {quantity} {unit}",

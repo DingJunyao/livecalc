@@ -3743,6 +3743,12 @@ abstract class AppLocalizations {
   /// **'根据以下食材计算成本：'**
   String get recipeCalculatedFromIngredientsCost;
 
+  /// No description provided for @recipePriceStaleTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格更新于 {date}，已超过 30 天未更新'**
+  String recipePriceStaleTooltip(Object date);
+
   /// No description provided for @recipeGotIt.
   ///
   /// In zh, this message translates to:

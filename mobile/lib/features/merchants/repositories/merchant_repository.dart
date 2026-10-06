@@ -205,14 +205,22 @@ class MerchantRepository {
   }
 
   /// 商家各商品最新价格（GET /merchants/{id}/product-prices）。
+  ///
+  /// [staleLast] 为 true 时超 30 天未更新的陈旧价格排到列表最后（商家详情页）；
+  /// 快速填写页保持用户上次填写顺序，不开启。
   Future<MerchantProductPricePage> getProductPrices(
     int id, {
     int skip = 0,
     int limit = 20,
+    bool staleLast = false,
   }) async {
     final response = await _client.dio.get(
       '/merchants/$id/product-prices',
-      queryParameters: {'skip': skip, 'limit': limit},
+      queryParameters: {
+        'skip': skip,
+        'limit': limit,
+        if (staleLast) 'stale_last': true,
+      },
     );
     final data = response.data;
     final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
@@ -225,7 +233,8 @@ class MerchantRepository {
   }
 
   /// List regions (GET /regions). Returns region nodes, each containing at least id and name.
-  Future<List<Map<String, dynamic>>> listRegions({int? parentId, int? level}) async {
+  Future<List<Map<String, dynamic>>> listRegions(
+      {int? parentId, int? level}) async {
     final params = <String, dynamic>{
       if (parentId != null) 'parent_id': parentId,
       if (level != null) 'level': level,
@@ -235,15 +244,15 @@ class MerchantRepository {
     final list = (data is List)
         ? data
         : ((data is Map ? data['items'] as List? : null) ?? const []);
-    return list
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   /// Get one region with its ancestor chain (GET /regions/{id}).
   Future<Map<String, dynamic>> getRegion(int id) async {
     final response = await _client.dio.get('/regions/$id');
     final data = response.data;
-    return (data is Map) ? Map<String, dynamic>.from(data) : <String, dynamic>{};
+    return (data is Map)
+        ? Map<String, dynamic>.from(data)
+        : <String, dynamic>{};
   }
 }

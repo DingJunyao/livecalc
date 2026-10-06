@@ -301,7 +301,8 @@ class MerchantDetailPageNotifier
   Future<void> _loadPrices() async {
     state = state.copyWith(loadingPrices: true);
     try {
-      final result = await _repo.getProductPrices(merchantId, limit: 20);
+      final result =
+          await _repo.getProductPrices(merchantId, limit: 20, staleLast: true);
       state = state.copyWith(
         productPrices: result.items,
         pricesPage: 1,
@@ -322,6 +323,7 @@ class MerchantDetailPageNotifier
         merchantId,
         skip: next * 20 - 20,
         limit: 20,
+        staleLast: true,
       );
       state = state.copyWith(
         productPrices: [...state.productPrices, ...result.items],

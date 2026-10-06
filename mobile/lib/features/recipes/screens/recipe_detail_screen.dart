@@ -602,6 +602,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final recommendedText = _scaledRecommendedQuantity(ing, ratio, l10n);
     final hasFallback =
         cb != null && cb.fallbackChain != null && cb.fallbackChain!.isNotEmpty;
+    // 价格久未更新（>30 天）与计算来源链共用同一个 info 图标，tooltip 信息合并
+    final hasPriceStale = cb?.isPriceStale ?? false;
+    final hasInfo = hasFallback || hasPriceStale;
     final canNavigate = ing.ingredientId != null;
     final onTap = canNavigate
         ? () => context.push('/ingredients/${ing.ingredientId}')
@@ -690,10 +693,9 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (hasFallback)
+              if (hasInfo && cb != null)
                 Tooltip(
-                  message:
-                      '${l10n.recipeCalculatedFromIngredientsCost}\n${cb.fallbackChain}',
+                  message: _priceInfoMessage(l10n, cb),
                   child: IconButton(
                     visualDensity: VisualDensity.compact,
                     constraints: const BoxConstraints(
@@ -710,15 +712,11 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
                     iconSize: 16,
                     icon: Icon(Icons.info_outline,
                         color: theme.colorScheme.tertiary),
-                    onPressed: () => _showFallbackChain(
-                      context,
-                      ing.name,
-                      cb.fallbackChain!,
-                    ),
+                    onPressed: () => _showPriceInfo(context, cb),
                   ),
                 ),
               if (cb != null && cb.cost > 0) ...[
-                if (hasFallback) const SizedBox(width: 4),
+                if (hasInfo) const SizedBox(width: 4),
                 Flexible(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
@@ -740,27 +738,50 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     );
   }
 
-  void _showFallbackChain(
-    BuildContext context,
-    String ingredientName,
-    String fallbackChain,
-  ) {
+  /// 食材价格 info 提示内容：计算来源链 + 价格更新时间（合并展示）
+  String _priceInfoMessage(AppLocalizations l10n, CostBreakdownItem cb) {
+    final parts = <String>[];
+    if (cb.fallbackChain != null && cb.fallbackChain!.isNotEmpty) {
+      parts.add(
+          '${l10n.recipeCalculatedFromIngredientsCost}\n${cb.fallbackChain}');
+    }
+    if (cb.isPriceStale && cb.priceRecordedAt != null) {
+      parts.add(
+          l10n.recipePriceStaleTooltip(_fmtStaleDate(cb.priceRecordedAt!)));
+    }
+    return parts.join('\n');
+  }
+
+  String _fmtStaleDate(String iso) {
+    final dt = DateTime.tryParse(iso);
+    if (dt == null) return iso;
+    return formatDate(dt.toLocal());
+  }
+
+  void _showPriceInfo(BuildContext context, CostBreakdownItem cb) {
     final l10n = AppLocalizations.of(context);
+    final hasFallback =
+        cb.fallbackChain != null && cb.fallbackChain!.isNotEmpty;
+    final hasPriceStale = cb.isPriceStale && cb.priceRecordedAt != null;
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(l10n.recipeCalculatedFromIngredientsCost),
+        title: Text(cb.ingredientName),
         scrollable: true,
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              ingredientName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(fallbackChain),
+            if (hasFallback) ...[
+              Text(l10n.recipeCalculatedFromIngredientsCost),
+              const SizedBox(height: 4),
+              Text(cb.fallbackChain!),
+            ],
+            if (hasPriceStale) ...[
+              if (hasFallback) const SizedBox(height: 8),
+              Text(l10n
+                  .recipePriceStaleTooltip(_fmtStaleDate(cb.priceRecordedAt!))),
+            ],
           ],
         ),
         actions: [

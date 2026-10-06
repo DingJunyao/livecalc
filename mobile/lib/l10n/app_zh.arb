@@ -1361,6 +1361,8 @@
   "@recipeOptional": {},
   "recipeCalculatedFromIngredientsCost": "根据以下食材计算成本：",
   "@recipeCalculatedFromIngredientsCost": {},
+  "recipePriceStaleTooltip": "价格更新于 {date}，已超过 30 天未更新",
+  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
   "recipeGotIt": "知道了",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "推荐 {quantity} {unit}",

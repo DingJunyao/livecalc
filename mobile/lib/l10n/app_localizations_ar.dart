@@ -1945,6 +1945,11 @@ class AppLocalizationsAr extends AppLocalizations {
       'محسوب من تكاليف المكوّنات:';
 
   @override
+  String recipePriceStaleTooltip(Object date) {
+    return 'آخر تحديث للسعر في $date، مرّ أكثر من 30 يومًا';
+  }
+
+  @override
   String get recipeGotIt => 'فهمت';
 
   @override

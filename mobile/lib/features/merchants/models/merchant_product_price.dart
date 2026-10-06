@@ -16,6 +16,9 @@ class MerchantProductPrice {
   final String currency;
   final double? exchangeRate;
 
+  /// 价格记录超过 30 天未更新（后端排序已把陈旧记录排到最后）。
+  final bool isStale;
+
   const MerchantProductPrice({
     required this.productId,
     required this.productName,
@@ -26,6 +29,7 @@ class MerchantProductPrice {
     required this.recordedAt,
     this.currency = 'CNY',
     this.exchangeRate,
+    this.isStale = false,
   });
 
   factory MerchantProductPrice.fromJson(Map<String, dynamic> json) {
@@ -40,6 +44,7 @@ class MerchantProductPrice {
           json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
       currency: json['currency'] as String? ?? 'CNY',
       exchangeRate: _toDouble(json['exchange_rate']),
+      isStale: json['is_stale'] == true,
     );
   }
 

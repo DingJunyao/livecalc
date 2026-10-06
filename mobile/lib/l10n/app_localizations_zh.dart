@@ -1900,6 +1900,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get recipeCalculatedFromIngredientsCost => '根据以下食材计算成本：';
 
   @override
+  String recipePriceStaleTooltip(Object date) {
+    return '价格更新于 $date，已超过 30 天未更新';
+  }
+
+  @override
   String get recipeGotIt => '知道了';
 
   @override

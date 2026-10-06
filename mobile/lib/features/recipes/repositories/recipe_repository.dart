@@ -493,6 +493,10 @@ class CostBreakdownItem {
   final String? quantity;
   final double unitPrice;
   final String? fallbackChain;
+
+  /// 所用价格记录的最新时间（ISO 字符串），仅详情页 /cost 端点返回；
+  /// 制作菜谱/子食材聚合推导价无此字段。
+  final String? priceRecordedAt;
   const CostBreakdownItem({
     required this.ingredientName,
     this.recipeIngredientId,
@@ -501,6 +505,7 @@ class CostBreakdownItem {
     this.quantity,
     required this.unitPrice,
     this.fallbackChain,
+    this.priceRecordedAt,
   });
   factory CostBreakdownItem.fromJson(Map<String, dynamic> json) {
     return CostBreakdownItem(
@@ -515,7 +520,17 @@ class CostBreakdownItem {
       fallbackChain: _str(json['recipe_chain']) ??
           _str(json['aggregation_chain']) ??
           _str(json['fallback_chain']),
+      priceRecordedAt: _str(json['price_recorded_at']),
     );
+  }
+
+  /// 价格记录距今超过 30 天（与后端 MERCHANT_PRICE_STALE_DAYS 口径一致）
+  bool get isPriceStale {
+    final raw = priceRecordedAt;
+    if (raw == null) return false;
+    final dt = DateTime.tryParse(raw);
+    if (dt == null) return false;
+    return DateTime.now().difference(dt) > const Duration(days: 30);
   }
 }
 

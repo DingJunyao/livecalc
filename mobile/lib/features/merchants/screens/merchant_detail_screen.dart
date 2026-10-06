@@ -437,56 +437,61 @@ class _ProductPricesCard extends StatelessWidget {
                   onTap: () => context.push('/products/${p.productId}'),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: theme.colorScheme.tertiaryContainer,
-                          foregroundColor:
-                              theme.colorScheme.onTertiaryContainer,
-                          radius: 18,
-                          child:
-                              const Icon(Icons.inventory_2_outlined, size: 18),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    // 陈旧记录（>30 天未更新）整行置灰弱化；后端已把陈旧记录排到最后
+                    child: Opacity(
+                      opacity: p.isStale ? 0.5 : 1.0,
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor:
+                                theme.colorScheme.tertiaryContainer,
+                            foregroundColor:
+                                theme.colorScheme.onTertiaryContainer,
+                            radius: 18,
+                            child: const Icon(Icons.inventory_2_outlined,
+                                size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p.productName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 2),
+                                Text(_fmtDateTime(p.recordedAt),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                        color: theme.colorScheme.outline)),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(p.productName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyMedium
-                                      ?.copyWith(fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 2),
-                              Text(_fmtDateTime(p.recordedAt),
+                              Text(
+                                '${formatMoney(p.displayPrice, p.currency)}${p.displayUnit}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.colorScheme.tertiary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (p.exchangeRate != null &&
+                                  p.currency != userCurrency)
+                                Text(
+                                  '≈ ${formatMoney(convertAmount(p.displayPrice, p.exchangeRate), userCurrency)}',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.outline)),
+                                      color: theme.colorScheme.outline),
+                                ),
                             ],
                           ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${formatMoney(p.displayPrice, p.currency)}${p.displayUnit}',
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.tertiary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (p.exchangeRate != null &&
-                                p.currency != userCurrency)
-                              Text(
-                                '≈ ${formatMoney(convertAmount(p.displayPrice, p.exchangeRate), userCurrency)}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.outline),
-                              ),
-                          ],
-                        ),
-                        Icon(DirectionalIcons.forwardChevron(context),
-                            size: 20, color: Colors.grey),
-                      ],
+                          Icon(DirectionalIcons.forwardChevron(context),
+                              size: 20, color: Colors.grey),
+                        ],
+                      ),
                     ),
                   ),
                 ),

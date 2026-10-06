@@ -1959,6 +1959,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Calculated from ingredient costs:';
 
   @override
+  String recipePriceStaleTooltip(Object date) {
+    return 'Price last updated on $date, over 30 days ago';
+  }
+
+  @override
   String get recipeGotIt => 'Got it';
 
   @override

@@ -1361,6 +1361,8 @@
   "@recipeOptional": {},
   "recipeCalculatedFromIngredientsCost": "Calculated from ingredient costs:",
   "@recipeCalculatedFromIngredientsCost": {},
+  "recipePriceStaleTooltip": "Price last updated on {date}, over 30 days ago",
+  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
   "recipeGotIt": "Got it",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "Recommended {quantity} {unit}",
