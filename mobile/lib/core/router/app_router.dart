@@ -26,6 +26,7 @@ import '../../features/merchants/screens/merchant_form_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/my_proposals_screen.dart';
 import '../../features/profile/screens/my_places_screen.dart';
+import '../../features/profile/screens/blacklist_screen.dart';
 import '../../features/profile/screens/user_place_form_screen.dart';
 import '../../features/profile/screens/unit_preferences_screen.dart';
 import '../../features/profile/screens/nutrition_goals_screen.dart';
@@ -467,6 +468,11 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             path: '/profile/places',
             name: RouteNames.myPlaces,
             builder: (_, __) => const MyPlacesScreen(),
+          ),
+          GoRoute(
+            path: '/profile/blacklist',
+            name: RouteNames.blacklist,
+            builder: (_, __) => const BlacklistScreen(),
           ),
           GoRoute(
             path: '/profile/places/new',

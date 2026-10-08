@@ -26,7 +26,7 @@ import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/ingredient.dart';
 import '../models/ingredient_category.dart';
 import '../repositories/ingredient_repository.dart'
-    show IngredientHierarchyData;
+    show IngredientHierarchyData, IngredientRepository;
 import '../widgets/hierarchy_graph.dart';
 import 'ingredient_form_screen.dart' show IngredientFormResult;
 import 'ingredient_hierarchy_screen.dart';
@@ -137,6 +137,31 @@ class _IngredientDetailScreenState
             icon: const Icon(Icons.payments_outlined),
             tooltip: l10n.journeyRecordPrice,
             onPressed: () => _openRecordPrice(notifier, state, ingredient),
+          ),
+          PopupMenuButton<String>(
+            onSelected: (v) {
+              if (v == 'edit') {
+                _openEditBasicPage(notifier, ingredient);
+              } else if (v == 'merge') {
+                _openMergeDialog(notifier, ingredient);
+              } else if (v == 'delete') {
+                _confirmDelete(notifier, ingredient);
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                child: Text(l10n.commonEdit),
+              ),
+              PopupMenuItem(
+                value: 'merge',
+                child: Text(l10n.ingredientMergeIntoOther),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Text(l10n.ingredientDeleteIngredient),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -526,6 +551,224 @@ class _IngredientDetailScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(l10n.journeyDeleteFailed)),
+        );
+      }
+    }
+  }
+
+  // ---- 合并到其他原料 / 删除原料 ----
+  Future<void> _openMergeDialog(
+    IngredientDetailPageNotifier notifier,
+    Ingredient ingredient,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    Ingredient? target;
+    bool merging = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text(l10n.ingredientMergeTitle),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(l10n.ingredientMergeDescription),
+                ),
+                Autocomplete<Ingredient>(
+                  displayStringForOption: (i) => i.name,
+                  optionsBuilder: (value) async {
+                    final query = value.text.trim();
+                    if (query.isEmpty) return const <Ingredient>[];
+                    try {
+                      final page = await IngredientRepository()
+                          .search(search: query, limit: 20);
+                      return page.items
+                          .where((i) => i.id != widget.id)
+                          .toList();
+                    } catch (_) {
+                      return const <Ingredient>[];
+                    }
+                  },
+                  onSelected: (i) => setDialogState(() => target = i),
+                  fieldViewBuilder: (
+                    ctx,
+                    controller,
+                    focusNode,
+                    onFieldSubmitted,
+                  ) =>
+                      TextField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    decoration: InputDecoration(
+                      labelText: l10n.ingredientMergeSearchHint,
+                      prefixIcon: const Icon(Icons.search),
+                      border: const OutlineInputBorder(),
+                    ),
+                    onSubmitted: (_) => onFieldSubmitted(),
+                    onChanged: (value) {
+                      // 文本改动后原选择失效，需重新点选。
+                      if (target != null && target!.name != value.trim()) {
+                        setDialogState(() => target = null);
+                      }
+                    },
+                  ),
+                ),
+                if (target != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      l10n.ingredientMergeConfirmText(
+                        ingredient.name,
+                        target!.name,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: merging ? null : () => Navigator.of(dialogCtx).pop(),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: target == null || merging
+                  ? null
+                  : () async {
+                      final selected = target!;
+                      // 二次确认
+                      final ok = await showDialog<bool>(
+                        context: dialogCtx,
+                        builder: (confirmCtx) => AlertDialog(
+                          title: Text(l10n.ingredientConfirmMerge),
+                          content: Text(
+                            l10n.ingredientMergeConfirmText(
+                              ingredient.name,
+                              selected.name,
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () =>
+                                  Navigator.of(confirmCtx).pop(false),
+                              child: Text(l10n.commonCancel),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor:
+                                    Theme.of(confirmCtx).colorScheme.error,
+                              ),
+                              onPressed: () =>
+                                  Navigator.of(confirmCtx).pop(true),
+                              child: Text(l10n.ingredientConfirmMerge),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      setDialogState(() => merging = true);
+                      try {
+                        final review =
+                            await IngredientRepository().mergeIngredient(
+                          sourceIngredientId: widget.id,
+                          targetIngredientId: selected.id,
+                        );
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              review.pending
+                                  ? (review.message.isEmpty
+                                      ? l10n.ingredientMergeProposalSubmitted
+                                      : review.message)
+                                  : (review.message.isEmpty
+                                      ? l10n.ingredientMergeSuccess
+                                      : review.message),
+                            ),
+                          ),
+                        );
+                        // 管理员直写：跳转到目标原料；待审：留在当前页
+                        if (review.applied) {
+                          context.go('/ingredients/${selected.id}');
+                        } else {
+                          await notifier.load(initialDays: 30);
+                        }
+                      } catch (_) {
+                        if (dialogCtx.mounted) {
+                          setDialogState(() => merging = false);
+                        }
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.ingredientMergeFailed),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: Text(
+                merging ? l10n.commonSaving : l10n.ingredientConfirmMerge,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete(
+    IngredientDetailPageNotifier notifier,
+    Ingredient ingredient,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.ingredientConfirmDelete),
+        content: Text(l10n.ingredientDeleteConfirmText(ingredient.name)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.commonDelete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      final review = await IngredientRepository().deleteIngredient(widget.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            review.pending
+                ? (review.message.isEmpty
+                    ? l10n.ingredientDeleteProposalSubmitted
+                    : review.message)
+                : l10n.ingredientDeleted,
+          ),
+        ),
+      );
+      if (review.applied) context.go('/ingredients');
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.ingredientDeleteFailed)),
         );
       }
     }

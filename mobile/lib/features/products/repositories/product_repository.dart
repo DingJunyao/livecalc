@@ -27,6 +27,61 @@ class ProductMutationResult {
   String get message => review.message;
 }
 
+/// 商品合并结果（POST /products/entity/{id}/merge-into/{target}）。
+/// [targetId] 仅管理员直写时返回，表示合并后的目标商品。
+class ProductMergeResult {
+  final MutationReviewResult review;
+  final int? targetId;
+
+  const ProductMergeResult({required this.review, this.targetId});
+
+  bool get pending => review.pending;
+  bool get applied => !pending;
+  String get message => review.message;
+}
+
+/// 商品拆分为原料结果（POST /products/entity/{id}/split-to-ingredient）。
+/// [ingredientId] 仅管理员直写时返回，表示新原料 id。
+class ProductSplitResult {
+  final MutationReviewResult review;
+  final int? ingredientId;
+
+  const ProductSplitResult({required this.review, this.ingredientId});
+
+  bool get pending => review.pending;
+  bool get applied => !pending;
+  String get message => review.message;
+}
+
+/// 商品对当前用户的生效价格权重（GET /products/{id}/my-weight）。
+class MyWeightInfo {
+  final int productId;
+  final int effectiveWeight;
+  final int globalWeight;
+  final int? overrideWeight;
+  final String source; // "override" | "global"
+
+  const MyWeightInfo({
+    required this.productId,
+    required this.effectiveWeight,
+    required this.globalWeight,
+    this.overrideWeight,
+    required this.source,
+  });
+
+  factory MyWeightInfo.fromJson(Map<String, dynamic> json) {
+    int? asInt(dynamic v) =>
+        v is int ? v : (v is num ? v.toInt() : int.tryParse('${v ?? ''}'));
+    return MyWeightInfo(
+      productId: asInt(json['product_id']) ?? 0,
+      effectiveWeight: asInt(json['effective_weight']) ?? 0,
+      globalWeight: asInt(json['global_weight']) ?? 0,
+      overrideWeight: asInt(json['override_weight']),
+      source: json['source']?.toString() ?? 'global',
+    );
+  }
+}
+
 class ProductRepository {
   final ApiClient _client;
   ProductRepository({ApiClient? client})
@@ -160,6 +215,65 @@ class ProductRepository {
     return MutationReviewResult.fromJson(
       data is Map<String, dynamic> ? data : const {},
     );
+  }
+
+  /// 同一原料下的其他商品（合并目标候选）。
+  Future<List<Product>> listSiblingProducts(int productId, int ingredientId) async {
+    final page = await search(ingredientIds: [ingredientId], limit: 50);
+    return page.items.where((p) => p.id != productId).toList();
+  }
+
+  /// 合并商品（POST /products/entity/{id}/merge-into/{target}）。
+  /// 同名冲突等约束由后端返回 400/409，调用方按需处理。
+  Future<ProductMergeResult> mergeIntoProduct(
+    int productId, {
+    required int targetProductId,
+  }) async {
+    final response = await _client.dio
+        .post('/products/entity/$productId/merge-into/$targetProductId');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    return ProductMergeResult(
+      review: MutationReviewResult.fromJson(data),
+      targetId: data['target_id'] is int ? data['target_id'] as int : null,
+    );
+  }
+
+  /// 拆分为原料（POST /products/entity/{id}/split-to-ingredient）。
+  /// 同名冲突时后端返回 409，抛出 [DioException] 由调用方引导重命名。
+  Future<ProductSplitResult> splitToIngredient(
+    int productId, {
+    String? newName,
+  }) async {
+    final response = await _client.dio.post(
+      '/products/entity/$productId/split-to-ingredient',
+      data: newName == null ? null : {'new_name': newName},
+    );
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    return ProductSplitResult(
+      review: MutationReviewResult.fromJson(data),
+      ingredientId:
+          data['ingredient_id'] is int ? data['ingredient_id'] as int : null,
+    );
+  }
+
+  /// 我的商品价格权重（个人偏好，不走审核）。
+  Future<MyWeightInfo> getMyWeight(int productId) async {
+    final response =
+        await _client.dio.get('/products/$productId/my-weight');
+    return MyWeightInfo.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  Future<void> setMyWeight(int productId, int weight) async {
+    await _client.dio
+        .put('/products/$productId/my-weight', data: {'weight': weight});
+  }
+
+  Future<void> deleteMyWeight(int productId) async {
+    await _client.dio.delete('/products/$productId/my-weight');
   }
 
   Future<LatestPriceInfo> getLatestPrice(int id, {int? regionId}) async {

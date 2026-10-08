@@ -2496,4 +2496,162 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get proposalEmptySubtitle =>
       'ستظهر تعديلاتك على البيانات المشتركة هنا';
+
+  @override
+  String get commonConfirm => 'تأكيد';
+
+  @override
+  String get commonLoadFailedRetry => 'تعذّر التحميل، يرجى إعادة المحاولة.';
+
+  @override
+  String get productMergeIntoProduct => 'دمج في منتج مرتبط';
+
+  @override
+  String productMergeDialogPrompt(Object name) {
+    return 'اختر المنتج الذي تريد دمج $name فيه:';
+  }
+
+  @override
+  String get productMergeNoSiblings =>
+      'لا توجد منتجات أخرى ضمن هذا المكوّن لدمجها.';
+
+  @override
+  String get productMergeSuccess => 'تم الدمج بنجاح';
+
+  @override
+  String get productMergeFailed => 'فشل الدمج';
+
+  @override
+  String get productMergeProposalSubmitted =>
+      'تم إرسال اقتراح الدمج بانتظار مراجعة المدير';
+
+  @override
+  String get productSplitToIngredient => 'تحويل إلى مكوّن';
+
+  @override
+  String get productSplitSuccess => 'تم التقسيم بنجاح';
+
+  @override
+  String get productSplitFailed => 'فشل التقسيم';
+
+  @override
+  String get productSplitProposalSubmitted =>
+      'تم إرسال اقتراح التقسيم بانتظار مراجعة المدير';
+
+  @override
+  String get productSpecifyNewIngredientName => 'حدد اسم المكوّن الجديد';
+
+  @override
+  String get productNewIngredientName => 'اسم المكوّن الجديد';
+
+  @override
+  String get productInputIngredientName => 'أدخل اسم المكوّن';
+
+  @override
+  String get localNewNameSuffix => ' (جديد)';
+
+  @override
+  String get productMyWeightOverride => 'تجاوز الوزن العام (يؤثر عليّ فقط)';
+
+  @override
+  String productMyWeightGlobalDefault(Object value) {
+    return 'الافتراضي العام: $value (يُستخدم عند عدم التجاوز)';
+  }
+
+  @override
+  String get ingredientMergeIntoOther => 'دمج في مكوّن آخر';
+
+  @override
+  String get ingredientMergeTitle => 'دمج المكوّن';
+
+  @override
+  String get ingredientMergeDescription =>
+      'بعد الدمج تنتقل مراجع الوصفات وارتباطات المنتجات إلى المكوّن الهدف. لا يمكن التراجع!';
+
+  @override
+  String get ingredientMergeSearchHint => 'ابحث عن المكوّن الهدف';
+
+  @override
+  String get ingredientConfirmMerge => 'تأكيد الدمج';
+
+  @override
+  String ingredientMergeConfirmText(Object source, Object target) {
+    return 'دمج \"$source\" في \"$target\"؟';
+  }
+
+  @override
+  String get ingredientMergeSuccess => 'تم الدمج';
+
+  @override
+  String get ingredientMergeFailed => 'فشل الدمج';
+
+  @override
+  String get ingredientMergeProposalSubmitted =>
+      'تم إرسال اقتراح الدمج بانتظار مراجعة المدير';
+
+  @override
+  String get ingredientDeleteIngredient => 'حذف المكوّن';
+
+  @override
+  String get ingredientConfirmDelete => 'تأكيد الحذف';
+
+  @override
+  String ingredientDeleteConfirmText(Object name) {
+    return 'حذف المكوّن \"$name\"؟ لا يمكن التراجع عن هذا الإجراء.';
+  }
+
+  @override
+  String get ingredientDeleted => 'تم الحذف';
+
+  @override
+  String get ingredientDeleteFailed => 'فشل الحذف';
+
+  @override
+  String get ingredientDeleteProposalSubmitted =>
+      'تم إرسال اقتراح الحذف بانتظار مراجعة المدير';
+
+  @override
+  String get blacklistTitle => 'القائمة السوداء للمكوّنات';
+
+  @override
+  String get blacklistQuickSelect => 'اختيار سريع';
+
+  @override
+  String get blacklistSubscribedGroups => 'المجموعات المشترك بها';
+
+  @override
+  String blacklistGroupTitle(Object name, Object count) {
+    return '$name ($count مكوّنًا)';
+  }
+
+  @override
+  String get blacklistManualAdd => 'إضافات يدوية';
+
+  @override
+  String get blacklistManualEmpty => 'لا توجد مكوّنات مضافة يدويًا';
+
+  @override
+  String get blacklistSearchLabel =>
+      'ابحث عن مكوّن لإضافته إلى القائمة السوداء';
+
+  @override
+  String get blacklistSubscribed => 'تم الاشتراك في المجموعة';
+
+  @override
+  String get blacklistUnsubscribed => 'تم إلغاء الاشتراك';
+
+  @override
+  String blacklistAddFailed(Object message) {
+    return 'تعذّرت الإضافة: $message';
+  }
+
+  @override
+  String blacklistRemoveFailed(Object message) {
+    return 'تعذّر الإزالة: $message';
+  }
+
+  @override
+  String blacklistActionFailed(Object message) {
+    return 'فشلت العملية: $message';
+  }
 }

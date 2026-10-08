@@ -173,6 +173,36 @@ class IngredientRepository {
     return Ingredient.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// 删除原料（软删，级联软删其下商品与层级关系）。
+  /// 与 web 端一致走 DELETE /nutrition/ingredients/{id}：
+  /// 管理员直写生效，普通用户提交删除提议待审。
+  Future<MutationReviewResult> deleteIngredient(int id) async {
+    final response = await _client.dio.delete('/nutrition/ingredients/$id');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    return MutationReviewResult.fromJson(data);
+  }
+
+  /// 合并原料（POST /ingredients/merge）。
+  /// 管理员直写完成合并；普通用户提交合并提议待审。
+  Future<MutationReviewResult> mergeIngredient({
+    required int sourceIngredientId,
+    required int targetIngredientId,
+  }) async {
+    final response = await _client.dio.post(
+      '/ingredients/merge',
+      data: {
+        'source_ingredient_ids': [sourceIngredientId],
+        'target_ingredient_id': targetIngredientId,
+      },
+    );
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    return MutationReviewResult.fromJson(data);
+  }
+
   /// 最近一天平均价（GET /nutrition/ingredients/{id}/latest-price）。
   Future<LatestPriceInfo> getLatestPrice(int id, {int? regionId}) async {
     final response = await _client.dio.get(

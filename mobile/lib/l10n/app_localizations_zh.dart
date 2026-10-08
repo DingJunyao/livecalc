@@ -2439,4 +2439,156 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get proposalEmptySubtitle => '对共享数据的修改会显示在这里';
+
+  @override
+  String get commonConfirm => '确认';
+
+  @override
+  String get commonLoadFailedRetry => '加载失败，请重试';
+
+  @override
+  String get productMergeIntoProduct => '合并到关联商品';
+
+  @override
+  String productMergeDialogPrompt(Object name) {
+    return '选择要把 $name 合并到哪个商品：';
+  }
+
+  @override
+  String get productMergeNoSiblings => '当前原料下没有其他商品可以合并';
+
+  @override
+  String get productMergeSuccess => '合并成功';
+
+  @override
+  String get productMergeFailed => '合并失败';
+
+  @override
+  String get productMergeProposalSubmitted => '合并提议已提交，待管理员审核';
+
+  @override
+  String get productSplitToIngredient => '拆分为原料';
+
+  @override
+  String get productSplitSuccess => '拆分成功';
+
+  @override
+  String get productSplitFailed => '拆分失败';
+
+  @override
+  String get productSplitProposalSubmitted => '拆分提议已提交，待管理员审核';
+
+  @override
+  String get productSpecifyNewIngredientName => '指定新原料名称';
+
+  @override
+  String get productNewIngredientName => '新原料名称';
+
+  @override
+  String get productInputIngredientName => '请输入原料名称';
+
+  @override
+  String get localNewNameSuffix => '(新)';
+
+  @override
+  String get productMyWeightOverride => '覆盖全局权重（仅影响我）';
+
+  @override
+  String productMyWeightGlobalDefault(Object value) {
+    return '全局默认：$value（不覆盖即用此值）';
+  }
+
+  @override
+  String get ingredientMergeIntoOther => '合并到其他原料';
+
+  @override
+  String get ingredientMergeTitle => '合并原料';
+
+  @override
+  String get ingredientMergeDescription =>
+      '合并后，当前原料的菜谱引用、商品关联将迁移到目标原料，此操作不可恢复！';
+
+  @override
+  String get ingredientMergeSearchHint => '搜索目标原料';
+
+  @override
+  String get ingredientConfirmMerge => '确认合并';
+
+  @override
+  String ingredientMergeConfirmText(Object source, Object target) {
+    return '确定要将「$source」合并到「$target」吗？';
+  }
+
+  @override
+  String get ingredientMergeSuccess => '合并成功';
+
+  @override
+  String get ingredientMergeFailed => '合并失败';
+
+  @override
+  String get ingredientMergeProposalSubmitted => '合并提议已提交，待管理员审核';
+
+  @override
+  String get ingredientDeleteIngredient => '删除原料';
+
+  @override
+  String get ingredientConfirmDelete => '确认删除';
+
+  @override
+  String ingredientDeleteConfirmText(Object name) {
+    return '确定要删除原料「$name」吗？此操作不可恢复。';
+  }
+
+  @override
+  String get ingredientDeleted => '删除成功';
+
+  @override
+  String get ingredientDeleteFailed => '删除失败';
+
+  @override
+  String get ingredientDeleteProposalSubmitted => '删除提议已提交，待管理员审核';
+
+  @override
+  String get blacklistTitle => '原料黑名单';
+
+  @override
+  String get blacklistQuickSelect => '快速选择';
+
+  @override
+  String get blacklistSubscribedGroups => '已订阅的分组';
+
+  @override
+  String blacklistGroupTitle(Object name, Object count) {
+    return '$name（$count 种原料）';
+  }
+
+  @override
+  String get blacklistManualAdd => '手动添加';
+
+  @override
+  String get blacklistManualEmpty => '暂无手动添加的原料';
+
+  @override
+  String get blacklistSearchLabel => '搜索原料添加到黑名单';
+
+  @override
+  String get blacklistSubscribed => '已订阅分组';
+
+  @override
+  String get blacklistUnsubscribed => '已取消订阅';
+
+  @override
+  String blacklistAddFailed(Object message) {
+    return '添加失败：$message';
+  }
+
+  @override
+  String blacklistRemoveFailed(Object message) {
+    return '移除失败：$message';
+  }
+
+  @override
+  String blacklistActionFailed(Object message) {
+    return '操作失败：$message';
+  }
 }

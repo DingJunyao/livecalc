@@ -17,5 +17,6 @@ class RouteNames {
   static const profile = 'profile';
   static const myProposals = 'my-proposals';
   static const myPlaces = 'my-places';
+  static const blacklist = 'blacklist';
   static const editAccount = 'edit-account';
 }

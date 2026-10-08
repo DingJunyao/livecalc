@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' show DioException;
 import 'package:flutter/material.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,6 +136,10 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             onSelected: (v) {
               if (v == 'edit') {
                 _openEditBasicPage(notifier, product);
+              } else if (v == 'merge') {
+                _openMergeDialog(notifier, product);
+              } else if (v == 'split') {
+                _splitToIngredient(notifier, product);
               } else if (v == 'delete') {
                 _confirmDelete(notifier, product);
               }
@@ -143,6 +148,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               PopupMenuItem(
                 value: 'edit',
                 child: Text(l10n.productEditBasicInfo),
+              ),
+              PopupMenuItem(
+                value: 'merge',
+                enabled: product.ingredientId != null,
+                child: Text(l10n.productMergeIntoProduct),
+              ),
+              PopupMenuItem(
+                value: 'split',
+                child: Text(l10n.productSplitToIngredient),
               ),
               PopupMenuItem(
                 value: 'delete',
@@ -454,6 +468,280 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
       }
     }
+  }
+
+  // ---- 合并到关联商品 ----
+  Future<void> _openMergeDialog(
+    ProductDetailPageNotifier notifier,
+    Product product,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final ingredientId = product.ingredientId;
+    if (ingredientId == null) return;
+    List<Product> siblings;
+    try {
+      siblings = await ProductRepository()
+          .listSiblingProducts(widget.id, ingredientId);
+    } catch (_) {
+      siblings = const [];
+    }
+    if (!mounted) return;
+    Product? selected;
+    bool merging = false;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text(l10n.productMergeIntoProduct),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: siblings.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(l10n.productMergeNoSiblings),
+                  )
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Text(l10n.productMergeDialogPrompt(product.name)),
+                      ),
+                      Flexible(
+                        child: RadioGroup<int>(
+                          groupValue: selected?.id,
+                          onChanged: (v) => setDialogState(
+                            () => selected = siblings.firstWhere(
+                              (s) => s.id == v,
+                            ),
+                          ),
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: [
+                              for (final sibling in siblings)
+                                RadioListTile<int>(
+                                  value: sibling.id,
+                                  title: Text(sibling.name),
+                                  subtitle: sibling.brand != null &&
+                                          sibling.brand!.isNotEmpty
+                                      ? Text(sibling.brand!)
+                                      : null,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: merging ? null : () => Navigator.of(dialogCtx).pop(),
+              child: Text(l10n.commonCancel),
+            ),
+            if (siblings.isNotEmpty)
+              FilledButton(
+                onPressed: selected == null || merging
+                    ? null
+                    : () async {
+                        setDialogState(() => merging = true);
+                        try {
+                          final result = await ProductRepository().mergeIntoProduct(
+                            widget.id,
+                            targetProductId: selected!.id,
+                          );
+                          if (dialogCtx.mounted) {
+                            Navigator.of(dialogCtx).pop();
+                          }
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                result.pending
+                                    ? (result.message.isEmpty
+                                        ? l10n.productMergeProposalSubmitted
+                                        : result.message)
+                                    : (result.message.isEmpty
+                                        ? l10n.productMergeSuccess
+                                        : result.message),
+                              ),
+                            ),
+                          );
+                          // 管理员直写：跳转到合并后的目标商品；待审：留在当前页
+                          if (result.targetId != null) {
+                            context.go('/products/${result.targetId}');
+                          } else if (result.applied) {
+                            await notifier.load(initialDays: 30);
+                          }
+                        } catch (_) {
+                          if (dialogCtx.mounted) {
+                            setDialogState(() => merging = false);
+                          }
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l10n.productMergeFailed),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: Text(
+                  merging ? l10n.commonSaving : l10n.commonConfirm,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ---- 拆分为原料 ----
+  Future<void> _splitToIngredient(
+    ProductDetailPageNotifier notifier,
+    Product product,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    try {
+      final result = await ProductRepository().splitToIngredient(widget.id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            result.pending
+                ? (result.message.isEmpty
+                    ? l10n.productSplitProposalSubmitted
+                    : result.message)
+                : (result.message.isEmpty
+                    ? l10n.productSplitSuccess
+                    : result.message),
+          ),
+        ),
+      );
+      if (result.ingredientId != null) {
+        context.go('/ingredients/${result.ingredientId}');
+      } else {
+        await notifier.load(initialDays: 30);
+      }
+    } on DioException catch (e) {
+      if (!mounted) return;
+      // 同名冲突（409）：引导用户指定新原料名称后重试
+      if (e.response?.statusCode == 409) {
+        final data = e.response?.data;
+        final detail =
+            data is Map && data['detail'] is String ? data['detail'] as String : '';
+        await _showSplitRenameDialog(notifier, product, detail);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.productSplitFailed)),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l10n.productSplitFailed)),
+        );
+      }
+    }
+  }
+
+  Future<void> _showSplitRenameDialog(
+    ProductDetailPageNotifier notifier,
+    Product product,
+    String message,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final controller = TextEditingController(
+      text: '${product.name}${l10n.localNewNameSuffix}',
+    );
+    bool splitting = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (dialogCtx, setDialogState) => AlertDialog(
+          title: Text(l10n.productSpecifyNewIngredientName),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (message.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(message),
+                ),
+              TextField(
+                controller: controller,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: l10n.productNewIngredientName,
+                  border: const OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: splitting
+                  ? null
+                  : () => Navigator.of(dialogCtx).pop(),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              onPressed: splitting
+                  ? null
+                  : () async {
+                      final name = controller.text.trim();
+                      if (name.isEmpty) return;
+                      setDialogState(() => splitting = true);
+                      try {
+                        final result = await ProductRepository()
+                            .splitToIngredient(widget.id, newName: name);
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              result.pending
+                                  ? (result.message.isEmpty
+                                      ? l10n.productSplitProposalSubmitted
+                                      : result.message)
+                                  : (result.message.isEmpty
+                                      ? l10n.productSplitSuccess
+                                      : result.message),
+                            ),
+                          ),
+                        );
+                        if (result.ingredientId != null) {
+                          context.go('/ingredients/${result.ingredientId}');
+                        } else {
+                          await notifier.load(initialDays: 30);
+                        }
+                      } catch (_) {
+                        if (dialogCtx.mounted) {
+                          setDialogState(() => splitting = false);
+                        }
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(l10n.productSplitFailed),
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: Text(
+                splitting ? l10n.commonSaving : l10n.commonConfirm,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    controller.dispose();
   }
 }
 

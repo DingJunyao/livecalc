@@ -71,6 +71,20 @@ class _FakeProductRepository extends ProductRepository {
   }
 
   @override
+  Future<MyWeightInfo> getMyWeight(int productId) async => MyWeightInfo(
+        productId: productId,
+        effectiveWeight: 50,
+        globalWeight: 50,
+        source: 'global',
+      );
+
+  @override
+  Future<void> setMyWeight(int productId, int weight) async {}
+
+  @override
+  Future<void> deleteMyWeight(int productId) async {}
+
+  @override
   Future<Product> createProduct({
     required String name,
     required int ingredientId,

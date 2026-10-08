@@ -23,9 +23,30 @@ class _FakeProductRepository extends ProductRepository {
   String? lastName;
   List<String>? lastAliases;
   List<String>? lastTags;
+  MyWeightInfo myWeight = const MyWeightInfo(
+    productId: 0,
+    effectiveWeight: 50,
+    globalWeight: 50,
+    source: 'global',
+  );
+  int? lastSetMyWeight;
+  int deleteMyWeightCalls = 0;
 
   @override
   Future<Product> getProduct(int id) async => existing;
+
+  @override
+  Future<MyWeightInfo> getMyWeight(int productId) async => myWeight;
+
+  @override
+  Future<void> setMyWeight(int productId, int weight) async {
+    lastSetMyWeight = weight;
+  }
+
+  @override
+  Future<void> deleteMyWeight(int productId) async {
+    deleteMyWeightCalls += 1;
+  }
 
   @override
   Future<Product> createProduct({
@@ -292,5 +313,56 @@ void main() {
 
     expect(repo.lastCreatedName, '高筋粉');
     expect(repo.lastCreatedIngredientId, 1);
+  });
+
+  testWidgets('编辑页提供我的权重覆盖开关并随保存提交', (tester) async {
+    await useTallViewport(tester);
+    final repo = _FakeProductRepository(const Product(
+      id: 12,
+      name: '低筋粉',
+      ingredientId: 8,
+      ingredientName: '面粉',
+    ))
+      ..myWeight = const MyWeightInfo(
+        productId: 12,
+        effectiveWeight: 70,
+        globalWeight: 50,
+        overrideWeight: 70,
+        source: 'override',
+      );
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ProductFormScreen(
+        product: const Product(id: 12, name: '低筋粉'),
+        repository: repo,
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 滚动到表单底部，让「我的权重覆盖」区块完成构建
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pump();
+
+    // 已有覆盖：开关初始为开，显示覆盖值 70 与全局默认 50
+    final switchTile = find.widgetWithText(
+      SwitchListTile,
+      'Override global weight (only affects me)',
+    );
+    expect(switchTile, findsOneWidget);
+    expect(tester.widget<SwitchListTile>(switchTile).value, isTrue);
+    expect(find.text('70'), findsOneWidget);
+    expect(find.textContaining('50'), findsWidgets);
+
+    // 关闭开关后保存：提交删除覆盖（回退全局）
+    await tester.tap(switchTile);
+    await tester.pump();
+    expect(find.byType(Slider), findsNothing);
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastSetMyWeight, isNull);
+    expect(repo.deleteMyWeightCalls, 1);
   });
 }

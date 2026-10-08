@@ -4756,6 +4756,276 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'对共享数据的修改会显示在这里'**
   String get proposalEmptySubtitle;
+
+  /// No description provided for @commonConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认'**
+  String get commonConfirm;
+
+  /// No description provided for @commonLoadFailedRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载失败，请重试'**
+  String get commonLoadFailedRetry;
+
+  /// No description provided for @productMergeIntoProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并到关联商品'**
+  String get productMergeIntoProduct;
+
+  /// No description provided for @productMergeDialogPrompt.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择要把 {name} 合并到哪个商品：'**
+  String productMergeDialogPrompt(Object name);
+
+  /// No description provided for @productMergeNoSiblings.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前原料下没有其他商品可以合并'**
+  String get productMergeNoSiblings;
+
+  /// No description provided for @productMergeSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并成功'**
+  String get productMergeSuccess;
+
+  /// No description provided for @productMergeFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并失败'**
+  String get productMergeFailed;
+
+  /// No description provided for @productMergeProposalSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并提议已提交，待管理员审核'**
+  String get productMergeProposalSubmitted;
+
+  /// No description provided for @productSplitToIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'拆分为原料'**
+  String get productSplitToIngredient;
+
+  /// No description provided for @productSplitSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'拆分成功'**
+  String get productSplitSuccess;
+
+  /// No description provided for @productSplitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'拆分失败'**
+  String get productSplitFailed;
+
+  /// No description provided for @productSplitProposalSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'拆分提议已提交，待管理员审核'**
+  String get productSplitProposalSubmitted;
+
+  /// No description provided for @productSpecifyNewIngredientName.
+  ///
+  /// In zh, this message translates to:
+  /// **'指定新原料名称'**
+  String get productSpecifyNewIngredientName;
+
+  /// No description provided for @productNewIngredientName.
+  ///
+  /// In zh, this message translates to:
+  /// **'新原料名称'**
+  String get productNewIngredientName;
+
+  /// No description provided for @productInputIngredientName.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入原料名称'**
+  String get productInputIngredientName;
+
+  /// No description provided for @localNewNameSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'(新)'**
+  String get localNewNameSuffix;
+
+  /// No description provided for @productMyWeightOverride.
+  ///
+  /// In zh, this message translates to:
+  /// **'覆盖全局权重（仅影响我）'**
+  String get productMyWeightOverride;
+
+  /// No description provided for @productMyWeightGlobalDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'全局默认：{value}（不覆盖即用此值）'**
+  String productMyWeightGlobalDefault(Object value);
+
+  /// No description provided for @ingredientMergeIntoOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并到其他原料'**
+  String get ingredientMergeIntoOther;
+
+  /// No description provided for @ingredientMergeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并原料'**
+  String get ingredientMergeTitle;
+
+  /// No description provided for @ingredientMergeDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并后，当前原料的菜谱引用、商品关联将迁移到目标原料，此操作不可恢复！'**
+  String get ingredientMergeDescription;
+
+  /// No description provided for @ingredientMergeSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索目标原料'**
+  String get ingredientMergeSearchHint;
+
+  /// No description provided for @ingredientConfirmMerge.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认合并'**
+  String get ingredientConfirmMerge;
+
+  /// No description provided for @ingredientMergeConfirmText.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要将「{source}」合并到「{target}」吗？'**
+  String ingredientMergeConfirmText(Object source, Object target);
+
+  /// No description provided for @ingredientMergeSuccess.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并成功'**
+  String get ingredientMergeSuccess;
+
+  /// No description provided for @ingredientMergeFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并失败'**
+  String get ingredientMergeFailed;
+
+  /// No description provided for @ingredientMergeProposalSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并提议已提交，待管理员审核'**
+  String get ingredientMergeProposalSubmitted;
+
+  /// No description provided for @ingredientDeleteIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除原料'**
+  String get ingredientDeleteIngredient;
+
+  /// No description provided for @ingredientConfirmDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认删除'**
+  String get ingredientConfirmDelete;
+
+  /// No description provided for @ingredientDeleteConfirmText.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定要删除原料「{name}」吗？此操作不可恢复。'**
+  String ingredientDeleteConfirmText(Object name);
+
+  /// No description provided for @ingredientDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除成功'**
+  String get ingredientDeleted;
+
+  /// No description provided for @ingredientDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除失败'**
+  String get ingredientDeleteFailed;
+
+  /// No description provided for @ingredientDeleteProposalSubmitted.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除提议已提交，待管理员审核'**
+  String get ingredientDeleteProposalSubmitted;
+
+  /// No description provided for @blacklistTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料黑名单'**
+  String get blacklistTitle;
+
+  /// No description provided for @blacklistQuickSelect.
+  ///
+  /// In zh, this message translates to:
+  /// **'快速选择'**
+  String get blacklistQuickSelect;
+
+  /// No description provided for @blacklistSubscribedGroups.
+  ///
+  /// In zh, this message translates to:
+  /// **'已订阅的分组'**
+  String get blacklistSubscribedGroups;
+
+  /// No description provided for @blacklistGroupTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（{count} 种原料）'**
+  String blacklistGroupTitle(Object name, Object count);
+
+  /// No description provided for @blacklistManualAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动添加'**
+  String get blacklistManualAdd;
+
+  /// No description provided for @blacklistManualEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无手动添加的原料'**
+  String get blacklistManualEmpty;
+
+  /// No description provided for @blacklistSearchLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索原料添加到黑名单'**
+  String get blacklistSearchLabel;
+
+  /// No description provided for @blacklistSubscribed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已订阅分组'**
+  String get blacklistSubscribed;
+
+  /// No description provided for @blacklistUnsubscribed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消订阅'**
+  String get blacklistUnsubscribed;
+
+  /// No description provided for @blacklistAddFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加失败：{message}'**
+  String blacklistAddFailed(Object message);
+
+  /// No description provided for @blacklistRemoveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'移除失败：{message}'**
+  String blacklistRemoveFailed(Object message);
+
+  /// No description provided for @blacklistActionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失败：{message}'**
+  String blacklistActionFailed(Object message);
 }
 
 class _AppLocalizationsDelegate

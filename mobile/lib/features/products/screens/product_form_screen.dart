@@ -76,6 +76,10 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   bool _loading = false;
   bool _saving = false;
   String? _error;
+  // 我的权重覆盖（仅编辑态显示；个人偏好不走审核）
+  bool _myWeightEnabled = false;
+  int _myWeight = 50;
+  int _globalWeight = 50;
 
   bool get _isEdit => widget.product != null;
 
@@ -119,6 +123,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
     try {
       final product = (await _productRepository.getProduct(widget.product!.id))
           .mergedWithPending();
+      // 我的权重覆盖与商品信息并行加载；失败不阻塞表单（与 web 行为一致）
+      MyWeightInfo? myWeight;
+      try {
+        myWeight = await _productRepository.getMyWeight(widget.product!.id);
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _nameController.text = product.name;
@@ -133,6 +142,11 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                 name: product.ingredientName ?? '',
               );
         _ingredientSearchController.text = _selectedIngredient?.name ?? '';
+        if (myWeight != null) {
+          _myWeightEnabled = myWeight.source == 'override';
+          _myWeight = myWeight.overrideWeight ?? myWeight.globalWeight;
+          _globalWeight = myWeight.globalWeight;
+        }
         _loading = false;
       });
     } catch (_) {
@@ -269,6 +283,19 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
         );
         return;
       }
+      // 我的权重覆盖：开关开 → set；关 → delete（用回全局）。
+      // 个人偏好接口失败不阻塞保存，与 web 行为一致。
+      try {
+        if (_myWeightEnabled) {
+          await _productRepository.setMyWeight(
+            widget.product!.id,
+            _myWeight,
+          );
+        } else {
+          await _productRepository.deleteMyWeight(widget.product!.id);
+        }
+      } catch (_) {}
+      if (!mounted) return;
       Navigator.of(context).pop(
         ProductFormResult(
           saved: true,
@@ -461,6 +488,41 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                         initialTags: _tags,
                         onTagsChanged: (tags) => _tags = tags,
                       ),
+                      const SizedBox(height: 8),
+                      // 我的权重覆盖：开关 + 滑块（所有人可设，仅影响自己）
+                      SwitchListTile(
+                        title: Text(l10n.productMyWeightOverride),
+                        subtitle:
+                            Text(l10n.productMyWeightGlobalDefault(_globalWeight)),
+                        value: _myWeightEnabled,
+                        onChanged: (v) =>
+                            setState(() => _myWeightEnabled = v),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      if (_myWeightEnabled)
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Slider(
+                                value: _myWeight.toDouble(),
+                                min: 0,
+                                max: 100,
+                                divisions: 100,
+                                label: '$_myWeight',
+                                onChanged: (v) =>
+                                    setState(() => _myWeight = v.round()),
+                              ),
+                            ),
+                            SizedBox(
+                              width: 40,
+                              child: Text(
+                                '$_myWeight',
+                                textAlign: TextAlign.end,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
+                        ),
                     ],
                     if (_error != null)
                       Padding(

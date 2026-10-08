@@ -145,6 +145,11 @@ class ProfileScreen extends ConsumerWidget {
                 leading: const Icon(Icons.place_outlined),
                 title: Text(l10n.profileMyPlaces),
                 onTap: () => context.push('/profile/places')),
+            const Divider(height: 1),
+            ListTile(
+                leading: const Icon(Icons.block_outlined),
+                title: Text(l10n.blacklistTitle),
+                onTap: () => context.push('/profile/blacklist')),
           ])),
           const SizedBox(height: 32),
 

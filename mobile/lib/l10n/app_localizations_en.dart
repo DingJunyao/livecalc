@@ -2512,4 +2512,163 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get proposalEmptySubtitle =>
       'Your edits to shared data will appear here';
+
+  @override
+  String get commonConfirm => 'Confirm';
+
+  @override
+  String get commonLoadFailedRetry => 'Failed to load. Please retry.';
+
+  @override
+  String get productMergeIntoProduct => 'Merge into related product';
+
+  @override
+  String productMergeDialogPrompt(Object name) {
+    return 'Choose which product to merge $name into:';
+  }
+
+  @override
+  String get productMergeNoSiblings =>
+      'There are no other products under this ingredient to merge.';
+
+  @override
+  String get productMergeSuccess => 'Merge succeeded';
+
+  @override
+  String get productMergeFailed => 'Merge failed';
+
+  @override
+  String get productMergeProposalSubmitted =>
+      'Merge proposal submitted and awaiting admin review';
+
+  @override
+  String get productSplitToIngredient => 'Split into ingredient';
+
+  @override
+  String get productSplitSuccess => 'Split succeeded';
+
+  @override
+  String get productSplitFailed => 'Split failed';
+
+  @override
+  String get productSplitProposalSubmitted =>
+      'Split proposal submitted and awaiting admin review';
+
+  @override
+  String get productSpecifyNewIngredientName => 'Name the new ingredient';
+
+  @override
+  String get productNewIngredientName => 'New ingredient name';
+
+  @override
+  String get productInputIngredientName => 'Enter an ingredient name';
+
+  @override
+  String get localNewNameSuffix => ' (new)';
+
+  @override
+  String get productMyWeightOverride =>
+      'Override global weight (only affects me)';
+
+  @override
+  String productMyWeightGlobalDefault(Object value) {
+    return 'Global default: $value (used when not overridden)';
+  }
+
+  @override
+  String get ingredientMergeIntoOther => 'Merge into other ingredient';
+
+  @override
+  String get ingredientMergeTitle => 'Merge ingredient';
+
+  @override
+  String get ingredientMergeDescription =>
+      'After merging, recipe references and product links move to the target ingredient. This cannot be undone!';
+
+  @override
+  String get ingredientMergeSearchHint => 'Search target ingredient';
+
+  @override
+  String get ingredientConfirmMerge => 'Confirm merge';
+
+  @override
+  String ingredientMergeConfirmText(Object source, Object target) {
+    return 'Merge \"$source\" into \"$target\"?';
+  }
+
+  @override
+  String get ingredientMergeSuccess => 'Merge complete';
+
+  @override
+  String get ingredientMergeFailed => 'Merge failed';
+
+  @override
+  String get ingredientMergeProposalSubmitted =>
+      'Merge proposal submitted and awaiting admin review';
+
+  @override
+  String get ingredientDeleteIngredient => 'Delete ingredient';
+
+  @override
+  String get ingredientConfirmDelete => 'Confirm delete';
+
+  @override
+  String ingredientDeleteConfirmText(Object name) {
+    return 'Delete ingredient \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String get ingredientDeleted => 'Deleted';
+
+  @override
+  String get ingredientDeleteFailed => 'Delete failed';
+
+  @override
+  String get ingredientDeleteProposalSubmitted =>
+      'Delete proposal submitted and awaiting admin review';
+
+  @override
+  String get blacklistTitle => 'Ingredient blacklist';
+
+  @override
+  String get blacklistQuickSelect => 'Quick select';
+
+  @override
+  String get blacklistSubscribedGroups => 'Subscribed groups';
+
+  @override
+  String blacklistGroupTitle(Object name, Object count) {
+    return '$name ($count ingredients)';
+  }
+
+  @override
+  String get blacklistManualAdd => 'Manual additions';
+
+  @override
+  String get blacklistManualEmpty => 'No manually added ingredients';
+
+  @override
+  String get blacklistSearchLabel =>
+      'Search an ingredient to add to the blacklist';
+
+  @override
+  String get blacklistSubscribed => 'Group subscribed';
+
+  @override
+  String get blacklistUnsubscribed => 'Unsubscribed';
+
+  @override
+  String blacklistAddFailed(Object message) {
+    return 'Could not add: $message';
+  }
+
+  @override
+  String blacklistRemoveFailed(Object message) {
+    return 'Could not remove: $message';
+  }
+
+  @override
+  String blacklistActionFailed(Object message) {
+    return 'Operation failed: $message';
+  }
 }
