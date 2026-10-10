@@ -17,6 +17,8 @@ class EntityUnitsCard extends StatelessWidget {
   final List<EntityDensity> densities;
   final bool loading;
   final bool isAdmin;
+  // 生效密度（kg/m³）：自身 > 关联原料 > 水密度 1000（由 provider 计算）
+  final double? effectiveDensityKgM3;
   final Future<Object?> Function(UnitWriteInput input) onAddUnit;
   final Future<Object?> Function(int unitId, UnitWriteInput input) onEditUnit;
   final Future<Object?> Function(int unitId) onDeleteUnit;
@@ -34,6 +36,7 @@ class EntityUnitsCard extends StatelessWidget {
     required this.densities,
     required this.loading,
     this.isAdmin = true,
+    this.effectiveDensityKgM3,
     required this.onAddUnit,
     required this.onEditUnit,
     required this.onDeleteUnit,
@@ -41,6 +44,11 @@ class EntityUnitsCard extends StatelessWidget {
     required this.onAddDensity,
     required this.onDeleteDensity,
   });
+
+  double get _effectiveDensity {
+    final d = effectiveDensityKgM3;
+    return (d == null || d <= 0) ? 1000 : d;
+  }
 
   Future<void> _openMaintenance(BuildContext context) async {
     await context.push<EntityUnitsResult>(
@@ -54,6 +62,7 @@ class EntityUnitsCard extends StatelessWidget {
         densities: densities,
         loading: loading,
         isAdmin: isAdmin,
+        effectiveDensityKgM3: effectiveDensityKgM3,
         onAddUnit: onAddUnit,
         onEditUnit: onEditUnit,
         onDeleteUnit: onDeleteUnit,
@@ -210,8 +219,15 @@ class EntityUnitsCard extends StatelessWidget {
                                         _format(unit.conversionFactor!),
                                       ),
                                     if (unit.weightPerUnit != null)
-                                      l10n.unitsWeightDetail(
-                                          _format(unit.weightPerUnit!)),
+                                      unit.isVolumeWeight
+                                          ? l10n.unitsVolumeDetail(
+                                              _format(unit.weightPerUnit!),
+                                              _format(unit.weightPerUnit! *
+                                                  _effectiveDensity /
+                                                  1000),
+                                            )
+                                          : l10n.unitsWeightDetail(
+                                              _format(unit.weightPerUnit!)),
                                   ].join(' · '),
                                   style: secondaryStyle,
                                 ),

@@ -553,6 +553,42 @@
       "weight": {}
     }
   },
+  "unitsWeightKind": "每单位量类型",
+  "@unitsWeightKind": {},
+  "unitsWeightKindMass": "质量 (g)",
+  "@unitsWeightKindMass": {},
+  "unitsWeightKindVolume": "体积 (mL)",
+  "@unitsWeightKindVolume": {},
+  "unitsVolumeLabel": "单位容量 (mL)",
+  "@unitsVolumeLabel": {},
+  "unitsVolumeDetail": "{volume} mL（≈{grams} g）",
+  "@unitsVolumeDetail": {
+    "placeholders": {
+      "volume": {},
+      "grams": {}
+    }
+  },
+  "unitsVolumeDensityHint": "按当前密度 {density} g/mL 折算 ≈ {grams} g；未设置密度时按水密度估算",
+  "@unitsVolumeDensityHint": {
+    "placeholders": {
+      "density": {},
+      "grams": {}
+    }
+  },
+  "unitsVolumeDensityHintEmpty": "填写每单位体积后显示折算重量",
+  "@unitsVolumeDensityHintEmpty": {},
+  "unitsDensityPresets": "常见液体密度（kg/m³）",
+  "@unitsDensityPresets": {},
+  "unitsPresetWater": "水",
+  "@unitsPresetWater": {},
+  "unitsPresetMilk": "牛奶",
+  "@unitsPresetMilk": {},
+  "unitsPresetCookingOil": "食用油",
+  "@unitsPresetCookingOil": {},
+  "unitsPresetSoySauce": "酱油",
+  "@unitsPresetSoySauce": {},
+  "unitsPresetHoney": "蜂蜜",
+  "@unitsPresetHoney": {},
   "unitsDefault": "默认",
   "@unitsDefault": {},
   "unitsPendingReview": "待审",
@@ -1288,11 +1324,24 @@
   "recipeConditionUnnourished": "存在原料没有维护营养成分",
   "@recipeConditionUnnourished": {},
   "recipeServingsCount": "{count} 人份",
-  "@recipeServingsCount": {"placeholders": {"count": {}}},
+  "@recipeServingsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeCostPerServings": "{amount} / {count} 人份",
-  "@recipeCostPerServings": {"placeholders": {"amount": {}, "count": {}}},
+  "@recipeCostPerServings": {
+    "placeholders": {
+      "amount": {},
+      "count": {}
+    }
+  },
   "recipeCaloriesPerServing": "{amount} kcal/份",
-  "@recipeCaloriesPerServing": {"placeholders": {"amount": {}}},
+  "@recipeCaloriesPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeCategoryMeatDish": "荤菜",
   "@recipeCategoryMeatDish": {},
   "recipeCategoryVegetableDish": "素菜",
@@ -1362,11 +1411,20 @@
   "recipeCalculatedFromIngredientsCost": "根据以下食材计算成本：",
   "@recipeCalculatedFromIngredientsCost": {},
   "recipePriceStaleTooltip": "价格更新于 {date}，已超过 30 天未更新",
-  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
+  "@recipePriceStaleTooltip": {
+    "placeholders": {
+      "date": {}
+    }
+  },
   "recipeGotIt": "知道了",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "推荐 {quantity} {unit}",
-  "@recipeRecommendedQuantity": {"placeholders": {"quantity": {}, "unit": {}}},
+  "@recipeRecommendedQuantity": {
+    "placeholders": {
+      "quantity": {},
+      "unit": {}
+    }
+  },
   "recipeSteps": "做法步骤",
   "@recipeSteps": {},
   "recipeEditSteps": "编辑做法",
@@ -1374,7 +1432,11 @@
   "recipeNoSteps": "暂无步骤",
   "@recipeNoSteps": {},
   "recipeStepMinutes": "{count} 分钟",
-  "@recipeStepMinutes": {"placeholders": {"count": {}}},
+  "@recipeStepMinutes": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeNutritionPerServing": "营养成分（每份）",
   "@recipeNutritionPerServing": {},
   "recipeTips": "小贴士",
@@ -1438,7 +1500,11 @@
   "recipeNote": "备注",
   "@recipeNote": {},
   "recipeStepNumberLabel": "步骤 {index}",
-  "@recipeStepNumberLabel": {"placeholders": {"index": {}}},
+  "@recipeStepNumberLabel": {
+    "placeholders": {
+      "index": {}
+    }
+  },
   "recipeStepContent": "内容",
   "@recipeStepContent": {},
   "recipeStepDuration": "耗时（分钟）",
@@ -1464,9 +1530,17 @@
   "recipeImageUploadFailed": "图片上传失败，请重试",
   "@recipeImageUploadFailed": {},
   "recipeIngredientQuantityIncomplete": "第 {row} 行原料的用量组合不完整：仅支持推荐值、推荐值+区间或仅区间",
-  "@recipeIngredientQuantityIncomplete": {"placeholders": {"row": {}}},
+  "@recipeIngredientQuantityIncomplete": {
+    "placeholders": {
+      "row": {}
+    }
+  },
   "recipeIngredientFallbackName": "原料 #{id}",
-  "@recipeIngredientFallbackName": {"placeholders": {"id": {}}},
+  "@recipeIngredientFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeSaveSuccess": "保存成功",
   "@recipeSaveSuccess": {},
   "recipeCostShare": "食材成本占比",
@@ -1504,15 +1578,36 @@
   "recipeBestValue": "最实惠 ✓",
   "@recipeBestValue": {},
   "recipeCoveredCount": "覆盖 {covered}/{total} 种食材",
-  "@recipeCoveredCount": {"placeholders": {"covered": {}, "total": {}}},
+  "@recipeCoveredCount": {
+    "placeholders": {
+      "covered": {},
+      "total": {}
+    }
+  },
   "recipeInStore": "本店 {amount}",
-  "@recipeInStore": {"placeholders": {"amount": {}}},
+  "@recipeInStore": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeExternal": "外部 {amount}",
-  "@recipeExternal": {"placeholders": {"amount": {}}},
+  "@recipeExternal": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeMissingIngredients": "⚠ 需外购 {ingredients}",
-  "@recipeMissingIngredients": {"placeholders": {"ingredients": {}}},
+  "@recipeMissingIngredients": {
+    "placeholders": {
+      "ingredients": {}
+    }
+  },
   "recipeMerchantFallbackName": "商家 #{id}",
-  "@recipeMerchantFallbackName": {"placeholders": {"id": {}}},
+  "@recipeMerchantFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeMerchantPriceRecommendation": "商家比价推荐",
   "@recipeMerchantPriceRecommendation": {},
   "recipeNoMerchantComparisonData": "暂无比价数据",
@@ -1737,7 +1832,9 @@
   "@productMergeIntoProduct": {},
   "productMergeDialogPrompt": "选择要把 {name} 合并到哪个商品：",
   "@productMergeDialogPrompt": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "productMergeNoSiblings": "当前原料下没有其他商品可以合并",
   "@productMergeNoSiblings": {},
@@ -1767,7 +1864,9 @@
   "@productMyWeightOverride": {},
   "productMyWeightGlobalDefault": "全局默认：{value}（不覆盖即用此值）",
   "@productMyWeightGlobalDefault": {
-    "placeholders": {"value": {}}
+    "placeholders": {
+      "value": {}
+    }
   },
   "ingredientMergeIntoOther": "合并到其他原料",
   "@ingredientMergeIntoOther": {},
@@ -1781,7 +1880,10 @@
   "@ingredientConfirmMerge": {},
   "ingredientMergeConfirmText": "确定要将「{source}」合并到「{target}」吗？",
   "@ingredientMergeConfirmText": {
-    "placeholders": {"source": {}, "target": {}}
+    "placeholders": {
+      "source": {},
+      "target": {}
+    }
   },
   "ingredientMergeSuccess": "合并成功",
   "@ingredientMergeSuccess": {},
@@ -1795,7 +1897,9 @@
   "@ingredientConfirmDelete": {},
   "ingredientDeleteConfirmText": "确定要删除原料「{name}」吗？此操作不可恢复。",
   "@ingredientDeleteConfirmText": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "ingredientDeleted": "删除成功",
   "@ingredientDeleted": {},
@@ -1811,7 +1915,10 @@
   "@blacklistSubscribedGroups": {},
   "blacklistGroupTitle": "{name}（{count} 种原料）",
   "@blacklistGroupTitle": {
-    "placeholders": {"name": {}, "count": {}}
+    "placeholders": {
+      "name": {},
+      "count": {}
+    }
   },
   "blacklistManualAdd": "手动添加",
   "@blacklistManualAdd": {},
@@ -1825,14 +1932,20 @@
   "@blacklistUnsubscribed": {},
   "blacklistAddFailed": "添加失败：{message}",
   "@blacklistAddFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistRemoveFailed": "移除失败：{message}",
   "@blacklistRemoveFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistActionFailed": "操作失败：{message}",
   "@blacklistActionFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   }
 }

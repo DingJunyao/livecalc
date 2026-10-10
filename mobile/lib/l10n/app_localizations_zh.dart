@@ -776,6 +776,49 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get unitsWeightKind => '每单位量类型';
+
+  @override
+  String get unitsWeightKindMass => '质量 (g)';
+
+  @override
+  String get unitsWeightKindVolume => '体积 (mL)';
+
+  @override
+  String get unitsVolumeLabel => '单位容量 (mL)';
+
+  @override
+  String unitsVolumeDetail(Object volume, Object grams) {
+    return '$volume mL（≈$grams g）';
+  }
+
+  @override
+  String unitsVolumeDensityHint(Object density, Object grams) {
+    return '按当前密度 $density g/mL 折算 ≈ $grams g；未设置密度时按水密度估算';
+  }
+
+  @override
+  String get unitsVolumeDensityHintEmpty => '填写每单位体积后显示折算重量';
+
+  @override
+  String get unitsDensityPresets => '常见液体密度（kg/m³）';
+
+  @override
+  String get unitsPresetWater => '水';
+
+  @override
+  String get unitsPresetMilk => '牛奶';
+
+  @override
+  String get unitsPresetCookingOil => '食用油';
+
+  @override
+  String get unitsPresetSoySauce => '酱油';
+
+  @override
+  String get unitsPresetHoney => '蜂蜜';
+
+  @override
   String get unitsDefault => '默认';
 
   @override

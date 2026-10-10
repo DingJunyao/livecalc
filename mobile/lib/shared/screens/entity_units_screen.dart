@@ -5,17 +5,22 @@ import '../../features/entities/repositories/entity_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
 
+/// 每单位量的语义类型：质量（g）或体积（mL），体积折算质量时经实体密度。
+enum UnitWeightKind { mass, volume }
+
 class UnitWriteInput {
   final String unitName;
   final double? conversionFactor;
   final double? weightPerUnit;
   final bool isDefault;
+  final UnitWeightKind weightKind;
 
   const UnitWriteInput({
     required this.unitName,
     this.conversionFactor,
     this.weightPerUnit,
     this.isDefault = false,
+    this.weightKind = UnitWeightKind.mass,
   });
 }
 
@@ -40,6 +45,8 @@ class EntityUnitsArguments {
   final List<EntityDensity> densities;
   final bool loading;
   final bool isAdmin;
+  // 生效密度（kg/m³）：自身 > 关联原料 > 水密度 1000（由 provider 计算）
+  final double? effectiveDensityKgM3;
   final Future<Object?> Function(UnitWriteInput input) onAddUnit;
   final Future<Object?> Function(
     int unitId,
@@ -59,6 +66,7 @@ class EntityUnitsArguments {
     required this.densities,
     this.loading = false,
     this.isAdmin = true,
+    this.effectiveDensityKgM3,
     required this.onAddUnit,
     required this.onEditUnit,
     required this.onDeleteUnit,
@@ -77,6 +85,7 @@ class EntityUnitsScreen extends StatefulWidget {
   final List<EntityDensity> densities;
   final bool loading;
   final bool isAdmin;
+  final double? effectiveDensityKgM3;
   final Future<Object?> Function(UnitWriteInput input) onAddUnit;
   final Future<Object?> Function(int unitId, UnitWriteInput input) onEditUnit;
   final Future<Object?> Function(int unitId) onDeleteUnit;
@@ -94,6 +103,7 @@ class EntityUnitsScreen extends StatefulWidget {
     required this.densities,
     this.loading = false,
     this.isAdmin = true,
+    this.effectiveDensityKgM3,
     required this.onAddUnit,
     required this.onEditUnit,
     required this.onDeleteUnit,
@@ -116,6 +126,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
   final _condition = TextEditingController();
   EntityUnit? _editingUnit;
   bool _unitDefault = false;
+  UnitWeightKind _weightKind = UnitWeightKind.mass;
   bool _saving = false;
   bool _changed = false;
 
@@ -143,6 +154,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
       _conversion.clear();
       _weight.clear();
       _unitDefault = false;
+      _weightKind = UnitWeightKind.mass;
       _tabController.index = 0;
     });
   }
@@ -156,6 +168,8 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
       _weight.text =
           unit.weightPerUnit == null ? '' : _format(unit.weightPerUnit!);
       _unitDefault = unit.isDefault;
+      _weightKind =
+          unit.isVolumeWeight ? UnitWeightKind.volume : UnitWeightKind.mass;
       _tabController.index = 0;
     });
   }
@@ -171,6 +185,7 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
       conversionFactor: double.tryParse(_conversion.text.trim()),
       weightPerUnit: double.tryParse(_weight.text.trim()),
       isDefault: _unitDefault,
+      weightKind: _weightKind,
     );
     await _run(
       () => _editingUnit == null
@@ -254,6 +269,24 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  // 生效密度（kg/m³）：未提供时按水密度兜底，与后端 get_density 链一致
+  double get _effectiveDensity {
+    final d = widget.effectiveDensityKgM3;
+    return (d == null || d <= 0) ? 1000 : d;
+  }
+
+  String _volumeDensityHint(AppLocalizations l10n) {
+    final wpu = double.tryParse(_weight.text.trim());
+    if (wpu == null || wpu <= 0) {
+      return l10n.unitsVolumeDensityHintEmpty;
+    }
+    final d = _effectiveDensity;
+    return l10n.unitsVolumeDensityHint(
+      _formatDisplay(d / 1000),
+      _formatDisplay(wpu * d / 1000),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -326,6 +359,33 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    l10n.unitsWeightKind,
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SegmentedButton<UnitWeightKind>(
+                  segments: [
+                    ButtonSegment(
+                      value: UnitWeightKind.mass,
+                      label: Text(l10n.unitsWeightKindMass),
+                    ),
+                    ButtonSegment(
+                      value: UnitWeightKind.volume,
+                      label: Text(l10n.unitsWeightKindVolume),
+                    ),
+                  ],
+                  selected: {_weightKind},
+                  onSelectionChanged: _saving
+                      ? null
+                      : (selection) =>
+                          setState(() => _weightKind = selection.first),
+                ),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
@@ -345,14 +405,25 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                         controller: _weight,
                         keyboardType: const TextInputType.numberWithOptions(
                             decimal: true),
+                        onChanged: (_) => setState(() {}),
                         decoration: InputDecoration(
-                          labelText: l10n.unitsWeightLabel,
+                          labelText: _weightKind == UnitWeightKind.volume
+                              ? l10n.unitsVolumeLabel
+                              : l10n.unitsWeightLabel,
                           border: const OutlineInputBorder(),
                         ),
                       ),
                     ),
                   ],
                 ),
+                if (_weightKind == UnitWeightKind.volume) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    _volumeDensityHint(l10n),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
+                ],
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(l10n.unitsSetDefault),
@@ -402,7 +473,13 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                   _formatDisplay(unit.conversionFactor!),
                 ),
               if (unit.weightPerUnit != null)
-                l10n.unitsWeightDetail(_formatDisplay(unit.weightPerUnit!)),
+                unit.isVolumeWeight
+                    ? l10n.unitsVolumeDetail(
+                        _formatDisplay(unit.weightPerUnit!),
+                        _formatDisplay(
+                            unit.weightPerUnit! * _effectiveDensity / 1000),
+                      )
+                    : l10n.unitsWeightDetail(_formatDisplay(unit.weightPerUnit!)),
               if (unit.isDefault) l10n.unitsDefault,
             ].join(' · ')),
             trailing: unit.isPending
@@ -477,6 +554,33 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                     labelText: l10n.densityConditionLabel,
                     border: const OutlineInputBorder(),
                   ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.unitsDensityPresets,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final preset in [
+                      (label: l10n.unitsPresetWater, value: 1000.0),
+                      (label: l10n.unitsPresetMilk, value: 1030.0),
+                      (label: l10n.unitsPresetCookingOil, value: 920.0),
+                      (label: l10n.unitsPresetSoySauce, value: 1150.0),
+                      (label: l10n.unitsPresetHoney, value: 1420.0),
+                    ])
+                      ActionChip(
+                        label: Text('${preset.label} ${_format(preset.value)}'),
+                        onPressed: _saving
+                            ? null
+                            : () =>
+                                setState(() => _density.text = _format(preset.value)),
+                      ),
+                  ],
                 ),
               ],
             ),

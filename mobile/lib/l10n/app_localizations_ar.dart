@@ -792,6 +792,50 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get unitsWeightKind => 'نوع الكمية لكل وحدة';
+
+  @override
+  String get unitsWeightKindMass => 'كتلة (g)';
+
+  @override
+  String get unitsWeightKindVolume => 'حجم (mL)';
+
+  @override
+  String get unitsVolumeLabel => 'الحجم لكل وحدة (mL)';
+
+  @override
+  String unitsVolumeDetail(Object volume, Object grams) {
+    return '$volume mL (≈$grams g)';
+  }
+
+  @override
+  String unitsVolumeDensityHint(Object density, Object grams) {
+    return '≈$grams g عند الكثافة الحالية $density g/mL؛ عند عدم التحديد تُستخدم كثافة الماء';
+  }
+
+  @override
+  String get unitsVolumeDensityHintEmpty =>
+      'أدخل الحجم لكل وحدة لعرض الوزن المكافئ';
+
+  @override
+  String get unitsDensityPresets => 'كثافات سوائل شائعة (kg/m³)';
+
+  @override
+  String get unitsPresetWater => 'ماء';
+
+  @override
+  String get unitsPresetMilk => 'حليب';
+
+  @override
+  String get unitsPresetCookingOil => 'زيت طهي';
+
+  @override
+  String get unitsPresetSoySauce => 'صلصة صويا';
+
+  @override
+  String get unitsPresetHoney => 'عسل';
+
+  @override
   String get unitsDefault => 'افتراضي';
 
   @override

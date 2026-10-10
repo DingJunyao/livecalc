@@ -1583,6 +1583,84 @@ abstract class AppLocalizations {
   /// **'{weight} g / 个'**
   String unitsWeightDetail(Object weight);
 
+  /// No description provided for @unitsWeightKind.
+  ///
+  /// In zh, this message translates to:
+  /// **'每单位量类型'**
+  String get unitsWeightKind;
+
+  /// No description provided for @unitsWeightKindMass.
+  ///
+  /// In zh, this message translates to:
+  /// **'质量 (g)'**
+  String get unitsWeightKindMass;
+
+  /// No description provided for @unitsWeightKindVolume.
+  ///
+  /// In zh, this message translates to:
+  /// **'体积 (mL)'**
+  String get unitsWeightKindVolume;
+
+  /// No description provided for @unitsVolumeLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位容量 (mL)'**
+  String get unitsVolumeLabel;
+
+  /// No description provided for @unitsVolumeDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'{volume} mL（≈{grams} g）'**
+  String unitsVolumeDetail(Object volume, Object grams);
+
+  /// No description provided for @unitsVolumeDensityHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按当前密度 {density} g/mL 折算 ≈ {grams} g；未设置密度时按水密度估算'**
+  String unitsVolumeDensityHint(Object density, Object grams);
+
+  /// No description provided for @unitsVolumeDensityHintEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'填写每单位体积后显示折算重量'**
+  String get unitsVolumeDensityHintEmpty;
+
+  /// No description provided for @unitsDensityPresets.
+  ///
+  /// In zh, this message translates to:
+  /// **'常见液体密度（kg/m³）'**
+  String get unitsDensityPresets;
+
+  /// No description provided for @unitsPresetWater.
+  ///
+  /// In zh, this message translates to:
+  /// **'水'**
+  String get unitsPresetWater;
+
+  /// No description provided for @unitsPresetMilk.
+  ///
+  /// In zh, this message translates to:
+  /// **'牛奶'**
+  String get unitsPresetMilk;
+
+  /// No description provided for @unitsPresetCookingOil.
+  ///
+  /// In zh, this message translates to:
+  /// **'食用油'**
+  String get unitsPresetCookingOil;
+
+  /// No description provided for @unitsPresetSoySauce.
+  ///
+  /// In zh, this message translates to:
+  /// **'酱油'**
+  String get unitsPresetSoySauce;
+
+  /// No description provided for @unitsPresetHoney.
+  ///
+  /// In zh, this message translates to:
+  /// **'蜂蜜'**
+  String get unitsPresetHoney;
+
   /// No description provided for @unitsDefault.
   ///
   /// In zh, this message translates to:

@@ -793,6 +793,50 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get unitsWeightKind => 'Amount type';
+
+  @override
+  String get unitsWeightKindMass => 'Mass (g)';
+
+  @override
+  String get unitsWeightKindVolume => 'Volume (mL)';
+
+  @override
+  String get unitsVolumeLabel => 'Volume per unit (mL)';
+
+  @override
+  String unitsVolumeDetail(Object volume, Object grams) {
+    return '$volume mL (≈$grams g)';
+  }
+
+  @override
+  String unitsVolumeDensityHint(Object density, Object grams) {
+    return '≈$grams g at current density $density g/mL; falls back to water density when unset';
+  }
+
+  @override
+  String get unitsVolumeDensityHintEmpty =>
+      'Enter the volume per unit to see the converted weight';
+
+  @override
+  String get unitsDensityPresets => 'Common liquid densities (kg/m³)';
+
+  @override
+  String get unitsPresetWater => 'Water';
+
+  @override
+  String get unitsPresetMilk => 'Milk';
+
+  @override
+  String get unitsPresetCookingOil => 'Cooking oil';
+
+  @override
+  String get unitsPresetSoySauce => 'Soy sauce';
+
+  @override
+  String get unitsPresetHoney => 'Honey';
+
+  @override
   String get unitsDefault => 'Default';
 
   @override
