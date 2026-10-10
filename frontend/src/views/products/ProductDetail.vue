@@ -413,8 +413,8 @@
                   <v-list-item-title class="text-body-2">
                     <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ formatNumber(unit.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 }) }}</span>
                     <span v-if="unit.weight_per_unit" class="ms-2">
-                      <v-icon size="x-small">mdi-weight</v-icon>
-                      {{ formatQuantity(unit.weight_per_unit, localeStore.effectiveFormatLocale) }}g
+                      <v-icon size="x-small">{{ isVolumeOverride(unit) ? 'mdi-cup-water' : 'mdi-weight' }}</v-icon>
+                      {{ overrideWeightDisplay(unit) }}
                     </span>
                     <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pending') }}</v-chip>
                   </v-list-item-title>
@@ -896,6 +896,19 @@
                 required
                 class="mb-3"
               />
+              <div class="mb-1 text-caption text-medium-emphasis">{{ t('products.weightKind') }}</div>
+              <v-btn-toggle
+                v-model="unitForm.weight_kind"
+                mandatory
+                color="primary"
+                density="compact"
+                variant="outlined"
+                divided
+                class="mb-3"
+              >
+                <v-btn value="mass">{{ t('products.weightKindMass') }}</v-btn>
+                <v-btn value="volume">{{ t('products.weightKindVolume') }}</v-btn>
+              </v-btn-toggle>
               <v-text-field
                 v-model.number="unitForm.conversion_factor"
                 :label="t('products.conversionFactor')"
@@ -907,13 +920,22 @@
               />
               <v-text-field
                 v-model.number="unitForm.weight_per_unit"
-                :label="t('products.weightPerUnit')"
+                :label="unitForm.weight_kind === 'volume' ? t('products.volumePerUnit') : t('products.weightPerUnit')"
                 variant="outlined"
                 type="number"
-                :hint="t('products.weightHint')"
+                :hint="unitForm.weight_kind === 'volume' ? t('products.volumeHint') : t('products.weightHint')"
                 persistent-hint
                 class="mb-3"
               />
+              <v-alert
+                v-if="volumePreviewText"
+                density="compact"
+                type="info"
+                variant="tonal"
+                class="mb-3"
+              >
+                {{ volumePreviewText }}
+              </v-alert>
               <v-checkbox
                 v-model="unitForm.is_default"
                 :label="t('products.setDefaultUnit')"
@@ -976,6 +998,20 @@
                 :placeholder="t('products.sourcePlaceholder')"
                 class="mb-3"
               />
+              <div class="mb-1 text-caption text-medium-emphasis">{{ t('products.densityPresets') }}</div>
+              <div>
+                <v-chip
+                  v-for="preset in densityPresets"
+                  :key="preset.labelKey"
+                  size="small"
+                  variant="outlined"
+                  class="me-1 mb-1"
+                  style="cursor: pointer"
+                  @click="applyDensityPreset(preset.value)"
+                >
+                  {{ t(preset.labelKey) }} {{ preset.value }}
+                </v-chip>
+              </div>
             </v-form>
           </v-card-text>
           <v-card-actions class="d-none d-md-flex">
@@ -1785,11 +1821,15 @@ const priceOverrides = ref<EntityOverride[]>([])
 const priceDensities = ref<DensityInfo[]>([])
 const loadPriceNormalizeData = async () => {
   try {
-    const [u, ov] = await Promise.all([
+    const [u, ov, ingDensity] = await Promise.all([
       api.get('/units/'),
       // 覆盖表按 ingredient 维护；商品页用其 ingredient_id 查找
       product.value?.ingredient_id
         ? api.get(`/entities/ingredient/${product.value.ingredient_id}/units`)
+        : Promise.resolve([]),
+      // 体积覆盖折算展示用：商品无自身密度时后端回退关联原料密度
+      product.value?.ingredient_id
+        ? api.get(`/entities/ingredient/${product.value.ingredient_id}/density`).catch(() => [])
         : Promise.resolve([]),
     ])
     const uArr: any[] = Array.isArray(u) ? u : (u?.items || [])
@@ -1806,6 +1846,8 @@ const loadPriceNormalizeData = async () => {
       weight_unit_id: x.weight_unit_id ?? null,
       weight_unit_name: x.weight_unit_name,
     }))
+    const dArr: any[] = Array.isArray(ingDensity) ? ingDensity : []
+    ingredientDensity.value = dArr.length > 0 && dArr[0]?.density != null ? Number(dArr[0].density) : null
   } catch (e) {
     console.error('Failed to load normalized prices', e)
   }
@@ -1820,12 +1862,14 @@ const unitForm = ref<{
   conversion_factor: number | null
   weight_per_unit: number | null
   is_default: boolean
+  weight_kind: 'mass' | 'volume'
 }>({
   id: null,
   unit_name: '',
   conversion_factor: null,
   weight_per_unit: null,
-  is_default: false
+  is_default: false,
+  weight_kind: 'mass'
 })
 const densityForm = ref<{
   id: number | null
@@ -1903,15 +1947,87 @@ const loadDensity = async () => {
   }
 }
 
+// ---------- 每单位量类型（质量 g / 体积 mL）----------
+// 关联原料密度（kg/m³）：商品无自身密度时后端折算回退链用它
+const ingredientDensity = ref<number | null>(null)
+// 生效密度（kg/m³）：自身密度 > 关联原料密度 > 水密度（与后端 get_density 链一致）
+const effectiveDensityKgM3 = computed(() => {
+  const own = displayDensity.value?.density
+  if (own != null) return Number(own)
+  return ingredientDensity.value
+})
+const weightUnitTypeById = ref<Map<number, string>>(new Map())
+const weightUnitIds = ref<{ mass: number | null; volume: number | null }>({ mass: null, volume: null })
+const ensureWeightUnits = async () => {
+  if (weightUnitIds.value.mass && weightUnitIds.value.volume) return
+  try {
+    const res = await api.get('/units/', { params: { limit: 100 } })
+    const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
+    const map = new Map<number, string>()
+    arr.forEach((x: any) => map.set(x.id, x.unit_type))
+    weightUnitTypeById.value = map
+    const g = arr.find((x: any) => x.unit_type === 'mass' && x.abbreviation === 'g')
+    const ml = arr.find((x: any) => x.unit_type === 'volume' && x.abbreviation === 'mL')
+    weightUnitIds.value = { mass: g?.id ?? null, volume: ml?.id ?? null }
+  } catch (e) {
+    console.error('Failed to load units for weight kind', e)
+  }
+}
+const isVolumeOverride = (u: EntityUnitOverride) =>
+  u.weight_unit_id != null && weightUnitTypeById.value.get(u.weight_unit_id) === 'volume'
+
+const overrideWeightDisplay = (u: EntityUnitOverride): string => {
+  if (u.weight_per_unit == null) return ''
+  const amount = formatQuantity(u.weight_per_unit, localeStore.effectiveFormatLocale)
+  if (!isVolumeOverride(u)) return `${amount}g`
+  const d = effectiveDensityKgM3.value ?? 1000
+  const grams = Number(u.weight_per_unit) * d / 1000
+  return t('products.unitVolumeDisplay', {
+    volume: amount,
+    grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+  })
+}
+
+// 单位对话框：体积语义下的密度折算提示
+const volumePreviewText = computed(() => {
+  if (unitForm.value.weight_kind !== 'volume') return ''
+  const wpu = unitForm.value.weight_per_unit
+  if (!wpu || wpu <= 0) return t('products.volumeDensityHintEmpty')
+  const d = effectiveDensityKgM3.value ?? 1000
+  const grams = wpu * d / 1000
+  return t('products.volumeDensityHint', {
+    density: formatNumber(d / 1000, localeStore.effectiveFormatLocale, { maximumFractionDigits: 3 }),
+    grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+  })
+})
+
+// 常见液体密度预设（g/cm³），点击填入当前输入单位
+const densityPresets = [
+  { labelKey: 'products.presetWater', value: 1.0 },
+  { labelKey: 'products.presetMilk', value: 1.03 },
+  { labelKey: 'products.presetCookingOil', value: 0.92 },
+  { labelKey: 'products.presetSoySauce', value: 1.15 },
+  { labelKey: 'products.presetHoney', value: 1.42 },
+]
+const applyDensityPreset = (value: number) => {
+  densityForm.value.density = densityInputUnit.value === 'g/cm3' ? value : value * 1000
+}
+
 // 打开单位对话框（支持传入 EntityUnitOverride 或 unit_name 字符串）
-const openUnitDialog = (unit?: EntityUnitOverride | string) => {
+const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
+  await ensureWeightUnits()
+  let kind: 'mass' | 'volume' = 'mass'
+  if (typeof unit !== 'string' && unit?.weight_unit_id != null) {
+    kind = weightUnitTypeById.value.get(unit.weight_unit_id) === 'volume' ? 'volume' : 'mass'
+  }
   if (typeof unit === 'string') {
     unitForm.value = {
       id: null,
       unit_name: unit,
       conversion_factor: null,
       weight_per_unit: 100,
-      is_default: false
+      is_default: false,
+      weight_kind: kind
     }
   } else if (unit) {
     unitForm.value = {
@@ -1919,7 +2035,8 @@ const openUnitDialog = (unit?: EntityUnitOverride | string) => {
       unit_name: unit.unit_name,
       conversion_factor: unit.conversion_factor,
       weight_per_unit: unit.weight_per_unit,
-      is_default: unit.is_default
+      is_default: unit.is_default,
+      weight_kind: kind
     }
   } else {
     unitForm.value = {
@@ -1927,7 +2044,8 @@ const openUnitDialog = (unit?: EntityUnitOverride | string) => {
       unit_name: '',
       conversion_factor: null,
       weight_per_unit: null,
-      is_default: false
+      is_default: false,
+      weight_kind: 'mass'
     }
   }
   showUnitDialog.value = true
@@ -1954,12 +2072,24 @@ const saveEntityUnit = async () => {
     showMessage(t('products.unitNameRequired'), 'error')
     return
   }
+  // 每单位量类型：质量(g) / 体积(mL)，体积折算质量时经实体密度
+  let weight_unit_id: number | null = null
+  if (unitForm.value.weight_kind === 'volume') {
+    if (!weightUnitIds.value.volume) {
+      showMessage(t('products.weightUnitIdsMissing'), 'error')
+      return
+    }
+    weight_unit_id = weightUnitIds.value.volume
+  } else {
+    weight_unit_id = weightUnitIds.value.mass
+  }
   savingUnit.value = true
   try {
     const payload = {
       unit_name: unitForm.value.unit_name,
       conversion_factor: unitForm.value.conversion_factor,
       weight_per_unit: unitForm.value.weight_per_unit,
+      weight_unit_id,
       is_default: unitForm.value.is_default
     }
     if (unitForm.value.id) {
@@ -2436,6 +2566,7 @@ const loadData = async () => {
    loadDensity()
    loadPriceNormalizeData()
    loadUnmappedUnits()
+   ensureWeightUnits()
     loadSiblingProducts()
   } catch (e: any) {
     console.error('Failed to load products', e)

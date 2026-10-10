@@ -42,12 +42,21 @@ def _get_piece_weight_kg(
         if override is not None and override.weight_per_unit is not None and override.weight_unit_id is not None:
             from app.services.lookup_cache import unit_by_id
             weight_unit = unit_by_id(service.db, override.weight_unit_id)
-            if weight_unit is not None and weight_unit.si_factor is not None:
-                kg_unit = service.get_unit_by_abbr("kg")
-                if kg_unit is not None:
+            kg_unit = service.get_unit_by_abbr("kg")
+            if weight_unit is not None and kg_unit is not None:
+                wp_kg: Optional[Decimal] = None
+                if weight_unit.unit_type == "volume":
+                    # 体积语义的每单位量（如 1瓶=500mL）：经实体密度折算为 kg
+                    mass = service.convert_volume_to_mass(
+                        override.weight_per_unit, weight_unit, entity_type, entity_id
+                    )
+                    if mass is not None:
+                        mass_value, mass_unit = mass
+                        wp_kg = service.convert_si(mass_value, mass_unit, kg_unit)
+                elif weight_unit.si_factor is not None:
                     wp_kg = service.convert_si(override.weight_per_unit, weight_unit, kg_unit)
-                    if wp_kg is not None and wp_kg > 0:
-                        return wp_kg
+                if wp_kg is not None and wp_kg > 0:
+                    return wp_kg
 
         # 2. 回退：查原料的 piece_weight（Agent 推断的每单位克重）
         if entity_type == "ingredient":
@@ -242,6 +251,38 @@ class UnitConversionService:
 
         return (volume_in_unit, target_unit)
 
+    def _convert_override_weight(
+        self,
+        value: Decimal,
+        weight_unit: Unit,
+        to_unit: Unit,
+        entity_type: str,
+        entity_id: int,
+    ) -> Optional[Decimal]:
+        """将覆盖定义的"每单位量"（以 weight_unit 计）换算到目标单位。
+
+        同类型走 si_factor；跨类型（体积↔质量）经实体密度桥接，
+        支持"1瓶=500mL"这类以体积语义维护的自定义单位。
+        """
+        result = self.convert_si(value, weight_unit, to_unit)
+        if result is not None:
+            return result
+        if weight_unit.unit_type == "volume" and to_unit.unit_type == "mass":
+            mass = self.convert_volume_to_mass(value, weight_unit, entity_type, entity_id)
+            if mass is not None:
+                mass_value, mass_unit = mass
+                if mass_unit.id == to_unit.id:
+                    return mass_value
+                return self.convert_si(mass_value, mass_unit, to_unit)
+        if weight_unit.unit_type == "mass" and to_unit.unit_type == "volume":
+            vol = self.convert_mass_to_volume(value, weight_unit, entity_type, entity_id)
+            if vol is not None:
+                vol_value, vol_unit = vol
+                if vol_unit.id == to_unit.id:
+                    return vol_value
+                return self.convert_si(vol_value, vol_unit, to_unit)
+        return None
+
     # ------------------------------------------------------------------ #
     #  实体覆盖查询
     # ------------------------------------------------------------------ #
@@ -295,7 +336,8 @@ class UnitConversionService:
 
         逻辑：
         1. 相同单位 -> 直接返回
-        2. 实体覆盖单位 -> entity_override（自定义包装单位换算到质量）
+        2. 实体覆盖单位 -> entity_override（自定义包装单位按每单位量换算，
+           weight_unit 可为质量或体积，体积经实体密度折算）
         3. 同类型 -> si_factor 计算
         4. 体积 -> 质量 -> 通过密度
         5. 质量 -> 体积 -> 通过密度反向
@@ -326,14 +368,16 @@ class UnitConversionService:
                     # weight_unit_id 未设置时默认为 g
                     weight_unit = self.get_unit_by_abbr("g")
                 # value 个自定义单位 -> value × conversion_factor 个基础单位
-                # -> value × conversion_factor × weight_per_unit g
+                # -> value × conversion_factor × weight_per_unit（weight_unit 计）
                 base_count = value * (override.conversion_factor or Decimal("1"))
                 total_weight = base_count * override.weight_per_unit
                 if to_unit and weight_unit:
                     if weight_unit.id == to_unit.id:
                         return (total_weight, "entity_override")
-                    # weight_unit -> to_unit (同类型 si_factor)
-                    final = self.convert_si(total_weight, weight_unit, to_unit)
+                    # weight_unit -> to_unit（同类型 si_factor；跨类型经密度桥接）
+                    final = self._convert_override_weight(
+                        total_weight, weight_unit, to_unit, entity_type, entity_id
+                    )
                     if final is not None:
                         return (final, "entity_override")
                 elif not to_unit:
