@@ -155,7 +155,7 @@ void main() {
     // 输入价格（数量默认 1）
     await tester.enterText(priceFieldFinder(), '5');
 
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('merchantId=1'), findsOneWidget);
@@ -177,7 +177,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // initialMerchantId 非空但 initialPrice 为空 → isEdit=false → 按钮文本「添加」
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('merchantId=null'), findsOneWidget);
@@ -191,7 +191,7 @@ void main() {
 
     await tester.enterText(priceFieldFinder(), '5');
 
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('merchantId=null'), findsOneWidget);
@@ -209,7 +209,7 @@ void main() {
     await tester.enterText(priceFieldFinder(), '5');
     await tester.tap(find.text('计入支出'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('recordType=price'), findsOneWidget);
@@ -228,7 +228,7 @@ void main() {
 
     await tester.enterText(priceFieldFinder(), '5');
     await tester.enterText(find.widgetWithText(TextField, '备注'), '临期特价');
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('notes=临期特价'), findsOneWidget);
@@ -277,7 +277,7 @@ void main() {
     await tester.enterText(priceFieldFinder(), '5');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, '添加'));
+    await tester.tap(find.widgetWithText(TextButton, '添加'));
     await tester.pumpAndSettle();
 
     expect(find.text('merchantId=null'), findsOneWidget);

@@ -299,12 +299,23 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _editingUnit == null
-                      ? l10n.unitsAddTitle
-                      : l10n.unitsEditTitle,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                // 保存按钮放在卡片标题行右上角，避免软键盘遮挡底部的确认按钮。
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _editingUnit == null
+                            ? l10n.unitsAddTitle
+                            : l10n.unitsEditTitle,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _saving ? null : _saveUnit,
+                      child: Text(l10n.unitsSave),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -347,10 +358,6 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                   title: Text(l10n.unitsSetDefault),
                   value: _unitDefault,
                   onChanged: (value) => setState(() => _unitDefault = value),
-                ),
-                FilledButton(
-                  onPressed: _saving ? null : _saveUnit,
-                  child: Text(l10n.unitsSave),
                 ),
               ],
             ),
@@ -437,10 +444,21 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  l10n.densityAddTitle,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                // 保存按钮放在卡片标题行右上角，避免软键盘遮挡底部的确认按钮。
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        l10n.densityAddTitle,
+                        style: theme.textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _saving ? null : _saveDensity,
+                      child: Text(l10n.densitySave),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -459,11 +477,6 @@ class _EntityUnitsScreenState extends State<EntityUnitsScreen>
                     labelText: l10n.densityConditionLabel,
                     border: const OutlineInputBorder(),
                   ),
-                ),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: _saving ? null : _saveDensity,
-                  child: Text(l10n.densitySave),
                 ),
               ],
             ),

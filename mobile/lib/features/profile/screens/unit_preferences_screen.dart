@@ -144,7 +144,15 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileUnitPreferences)),
+      appBar: AppBar(
+        title: Text(l10n.profileUnitPreferences),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ),
+        ],
+      ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _loadError != null
@@ -209,12 +217,6 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
                       noneLabel: l10n.unitPreferencesNone,
                       items: _options(null).map((u) => _item(u, l10n)).toList(),
                       onChanged: (v) => setState(() => _priceUnitId = v),
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: _saving ? null : _save,
-                      child:
-                          Text(_saving ? l10n.commonSaving : l10n.commonSave),
                     ),
                   ],
                 ),

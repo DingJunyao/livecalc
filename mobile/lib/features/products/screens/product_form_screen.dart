@@ -420,6 +420,12 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
             title: Text(
               _isEdit ? l10n.productEditTitle : l10n.productAddTitle,
             ),
+            actions: [
+              TextButton(
+                onPressed: _saving ? null : _save,
+                child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+              ),
+            ],
           ),
           body: _loading
               ? const Center(child: CircularProgressIndicator())
@@ -536,15 +542,6 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
                       ),
                   ],
                 ),
-          bottomNavigationBar: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-              child: FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
-              ),
-            ),
-          ),
         ),
         if (_barcodeLoading) LoadingOverlay(message: l10n.productLookupLoading),
       ],

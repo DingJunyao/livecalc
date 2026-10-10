@@ -180,7 +180,15 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
         : l10n.commonUserInitial;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.authEditAccountTitle)),
+      appBar: AppBar(
+        title: Text(l10n.authEditAccountTitle),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? l10n.authSaving : l10n.commonSave),
+          ),
+        ],
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -347,11 +355,6 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
                 }
                 return null;
               },
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(_saving ? l10n.authSaving : l10n.commonSave),
             ),
           ],
         ),

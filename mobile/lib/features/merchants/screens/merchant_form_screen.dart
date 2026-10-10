@@ -184,6 +184,20 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    editing ? l10n.commonSave : l10n.merchantCreateButton,
+                  ),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -265,19 +279,6 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                 initialValue: _coordinate,
                 onChanged: _saving ? null : _onMapChanged,
                 tileProvider: widget.mapTileProvider,
-              ),
-              const SizedBox(height: 16),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        editing ? l10n.commonSave : l10n.merchantCreateButton,
-                      ),
               ),
             ],
           ),

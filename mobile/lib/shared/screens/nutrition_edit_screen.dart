@@ -293,6 +293,19 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
               onPressed: _saving ? null : _clearCustom,
               child: Text(l10n.nutritionClearCustom),
             ),
+          TextButton(
+            onPressed:
+                _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave,
+                  ),
+          ),
         ],
       ),
       body: Column(
@@ -311,24 +324,6 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
             child: _usdaMode ? _buildUsdaPane(theme) : _buildManualPane(theme),
           ),
         ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: FilledButton(
-            onPressed:
-                _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),
-            child: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(
-                    _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave,
-                  ),
-          ),
-        ),
       ),
     );
   }
