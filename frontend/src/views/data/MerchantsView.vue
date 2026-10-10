@@ -331,7 +331,11 @@
     <!-- 添加/编辑对话框 -->
     <v-dialog v-model="addDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ editingItem ? t('merchants.editTitle') : t('merchants.addTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ editingItem ? t('merchants.editTitle') : t('merchants.addTitle') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
@@ -389,7 +393,7 @@
             </div>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="addDialog = false">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>

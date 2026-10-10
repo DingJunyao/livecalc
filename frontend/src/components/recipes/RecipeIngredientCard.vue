@@ -215,6 +215,7 @@
               hide-details
               class="flex-grow-1"
               style="min-width: 140px"
+              :custom-filter="() => true"
               :loading="searchingIngredient"
               @update:search="onSearchIngredient"
               @update:model-value="(val: string) => onSelectIngredient(row, val)"
@@ -331,7 +332,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/api'
 import type { RecipeDetail, RecipeIngredient, IngredientEditRow, IngredientOption, UnitOption } from './types'
@@ -408,6 +409,10 @@ const unitOptions = computed(() => unitRows.value.map(unit => ({
 })))
 const unitMap = ref<Record<string, number>>({})
 const searchingIngredient = ref(false)
+
+onBeforeUnmount(() => {
+  if (ingredientSearchTimer) clearTimeout(ingredientSearchTimer)
+})
 
 const quantityTypeOptions = computed(() => [
   { label: quantityTypeLabel(''), value: '' },
@@ -543,25 +548,37 @@ const goToIngredient = (ingredientId: number | null | undefined) => {
   router.push(`/data/ingredients/${ingredientId}`)
 }
 
-// 搜索原料
-const onSearchIngredient = async (query: string) => {
+// 搜索原料（300ms 防抖 + 序号保护：只应用最后一次查询的响应，防止 IME
+// 组合输入期间先发出的空结果晚到覆盖最终查询）
+let ingredientSearchSequence = 0
+let ingredientSearchTimer: ReturnType<typeof setTimeout> | null = null
+const onSearchIngredient = (query: string) => {
+  if (ingredientSearchTimer) clearTimeout(ingredientSearchTimer)
   if (!query || query.length < 1) {
+    ingredientSearchSequence++
     ingredientSearchResults.value = []
+    searchingIngredient.value = false
     return
   }
-  searchingIngredient.value = true
-  try {
-    const res = await api.get('/ingredients', { params: { q: query, limit: 20 } })
-    ingredientSearchResults.value = (res.items || []).map((i: any) => ({
-      id: i.id,
-      name: i.name,
-      aliases: i.aliases || [],
-    }))
-  } catch (e) {
-    console.error('Failed to search ingredients', e)
-  } finally {
-    searchingIngredient.value = false
-  }
+  ingredientSearchTimer = setTimeout(async () => {
+    const sequence = ++ingredientSearchSequence
+    searchingIngredient.value = true
+    try {
+      const res = await api.get('/ingredients', { params: { q: query, limit: 20 } })
+      if (sequence !== ingredientSearchSequence) return
+      ingredientSearchResults.value = (res.items || []).map((i: any) => ({
+        id: i.id,
+        name: i.name,
+        aliases: i.aliases || [],
+      }))
+    } catch (e) {
+      console.error('Failed to search ingredients', e)
+    } finally {
+      if (sequence === ingredientSearchSequence) {
+        searchingIngredient.value = false
+      }
+    }
+  }, 300)
 }
 
 const onSelectIngredient = (row: IngredientEditRow, name: string) => {

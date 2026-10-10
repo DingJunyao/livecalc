@@ -133,6 +133,7 @@
         @update:search="onIngredientSearch"
         hide-details
         class="mb-4"
+        :custom-filter="() => true"
       />
 
       <!-- 配图管理 -->

@@ -208,7 +208,11 @@
     <!-- 添加对话框 -->
     <v-dialog v-model="showAddDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.addTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.addTitle') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
@@ -244,7 +248,7 @@
             />
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddDialog = false">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>

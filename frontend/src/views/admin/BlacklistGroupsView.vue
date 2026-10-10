@@ -116,13 +116,17 @@
     <!-- 创建/编辑对话框 -->
     <v-dialog v-model="editDialog" max-width="400">
       <v-card>
-        <v-card-title>{{ editingGroup ? t('admin.blacklist.editGroup') : t('admin.blacklist.createGroup') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ editingGroup ? t('admin.blacklist.editGroup') : t('admin.blacklist.createGroup') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveGroup">{{ t('actions.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-text-field v-model="form.name" :label="t('admin.blacklist.groupName')" variant="outlined" density="compact" />
           <v-text-field v-model.number="form.display_order" :label="t('admin.blacklist.order')" type="number" variant="outlined" density="compact" />
           <v-switch v-if="editingGroup" v-model="form.is_active" :label="t('admin.blacklist.enabled')" density="compact" hide-details />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn variant="text" @click="editDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveGroup">{{ t('actions.save') }}</v-btn>
@@ -133,7 +137,11 @@
     <!-- 添加原料对话框 -->
     <v-dialog v-model="addIngredientsDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('admin.blacklist.addIngredientsTo', { name: selectedGroupForAdd?.name ?? '' }) }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('admin.blacklist.addIngredientsTo', { name: selectedGroupForAdd?.name ?? '' }) }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveIngredients">{{ t('admin.blacklist.confirmAdd') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-autocomplete
             v-model="selectedIngredientIds"
@@ -146,10 +154,11 @@
             multiple
             chips
             closable-chips
+            :custom-filter="() => true"
             @update:search="searchAllIngredients"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn variant="text" @click="addIngredientsDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveIngredients">{{ t('admin.blacklist.confirmAdd') }}</v-btn>
@@ -365,26 +374,35 @@ function openAddIngredients(group: BlacklistGroup) {
   addIngredientsDialog.value = true
 }
 
-async function searchAllIngredients(search: string | null) {
+let ingredientSearchTimer: ReturnType<typeof setTimeout> | null = null
+let ingredientSearchSequence = 0
+function searchAllIngredients(search: string | null) {
+  if (ingredientSearchTimer) clearTimeout(ingredientSearchTimer)
   if (!search || search.length < 1) {
+    ingredientSearchSequence++
     // 无搜索词时显示已选中的原料
     ingredientOptions.value = Array.from(selectedIngredientsCache.value.values())
     return
   }
-  try {
-    const data = await api.get(`/ingredients/search-by-name/${encodeURIComponent(search || '')}`)
-    const results: any[] = Array.isArray(data) ? data : []
-    // 将已选中的原料合并进结果，避免已选项只显示数字 ID
-    const merged = [...results]
-    for (const cached of selectedIngredientsCache.value.values()) {
-      if (!merged.some((r: any) => r.id === cached.id)) {
-        merged.unshift(cached)
+  ingredientSearchTimer = setTimeout(async () => {
+    const requestSequence = ++ingredientSearchSequence
+    try {
+      const data = await api.get(`/ingredients/search-by-name/${encodeURIComponent(search)}`)
+      const results: any[] = Array.isArray(data) ? data : []
+      // 将已选中的原料合并进结果，避免已选项只显示数字 ID
+      const merged = [...results]
+      for (const cached of selectedIngredientsCache.value.values()) {
+        if (!merged.some((r: any) => r.id === cached.id)) {
+          merged.unshift(cached)
+        }
       }
+      if (requestSequence !== ingredientSearchSequence) return
+      ingredientOptions.value = merged
+    } catch {
+      if (requestSequence !== ingredientSearchSequence) return
+      ingredientOptions.value = Array.from(selectedIngredientsCache.value.values())
     }
-    ingredientOptions.value = merged
-  } catch {
-    ingredientOptions.value = Array.from(selectedIngredientsCache.value.values())
-  }
+  }, 300)
 }
 
 // 监听选中变化，缓存完整对象避免只显示数字 ID

@@ -212,7 +212,10 @@
           <v-icon class="me-2">
             {{ editingUnit ? 'mdi-pencil' : 'mdi-plus' }}
           </v-icon>
-          <span>{{ editingUnit ? t('admin.units.editTitle') : t('admin.units.add') }}</span>
+          <span class="text-h6">{{ editingUnit ? t('admin.units.editTitle') : t('admin.units.add') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveUnit">{{ t('actions.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="unitDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
@@ -292,7 +295,7 @@
           </v-form>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4">
+        <v-card-actions class="pa-4 d-none d-md-flex">
           <v-spacer />
           <v-btn variant="tonal" @click="unitDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveUnit">{{ t('actions.save') }}</v-btn>
