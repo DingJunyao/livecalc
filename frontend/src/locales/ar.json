@@ -1404,7 +1404,6 @@
     "confidence": "درجة الثقة",
     "condition": "الشرط",
     "multiplicationFactor": "×{value}",
-    "valueWithUnitId": "{amount} (معرّف الوحدة: {unitId})",
     "unitName": "اسم الوحدة",
     "conversionFactor": "معامل التحويل",
     "weightPerUnit": "الوزن لكل وحدة",
@@ -1488,7 +1487,8 @@
       "delete": "حذف",
       "merge": "دمج",
       "publish": "نشر"
-    }
+    },
+    "valueWithUnit": "{amount} {unit}"
   },
   "places": {
     "title": "الأماكن المحفوظة",
@@ -1781,7 +1781,22 @@
     "splitFailed": "فشل التقسيم",
     "mergeSuccess": "تم الدمج بنجاح",
     "mergeFailed": "فشل الدمج",
-    "splitSuccess": "تم التقسيم بنجاح"
+    "splitSuccess": "تم التقسيم بنجاح",
+    "weightKind": "نوع الكمية لكل وحدة",
+    "weightKindMass": "كتلة (g)",
+    "weightKindVolume": "حجم (mL)",
+    "volumePerUnit": "الحجم لكل وحدة (mL)",
+    "volumeHint": "الحجم لكل وحدة بالمليلتر",
+    "unitVolumeDisplay": "{volume} mL (≈{grams} g)",
+    "volumeDensityHint": "≈{grams} g عند الكثافة الحالية {density} g/mL؛ عند عدم التحديد تُستخدم كثافة الماء",
+    "volumeDensityHintEmpty": "أدخل الحجم لكل وحدة لعرض الوزن المكافئ",
+    "weightUnitIdsMissing": "لم يتم العثور على وحدة الحجم (mL)، يرجى التحديث والمحاولة",
+    "densityPresets": "كثافات سوائل شائعة",
+    "presetWater": "ماء",
+    "presetMilk": "حليب",
+    "presetCookingOil": "زيت طهي",
+    "presetSoySauce": "صلصة صويا",
+    "presetHoney": "عسل"
   },
   "ingredients": {
     "title": "إدارة المكونات",
@@ -2024,7 +2039,22 @@
     "mergeProposalSubmitted": "تم إرسال اقتراح الدمج بانتظار مراجعة المدير",
     "mergeFailed": "فشل الدمج",
     "mergeSuccessFallback": "تم الدمج",
-    "perServing": "حصة"
+    "perServing": "حصة",
+    "weightKind": "نوع الكمية لكل وحدة",
+    "weightKindMass": "كتلة (g)",
+    "weightKindVolume": "حجم (mL)",
+    "volumePerUnit": "الحجم لكل وحدة (mL)",
+    "volumeHint": "الحجم لكل وحدة بالمليلتر",
+    "unitVolumeDisplay": "{volume} mL (≈{grams} g)",
+    "volumeDensityHint": "≈{grams} g عند الكثافة الحالية {density} g/mL؛ عند عدم التحديد تُستخدم كثافة الماء",
+    "volumeDensityHintEmpty": "أدخل الحجم لكل وحدة لعرض الوزن المكافئ",
+    "weightUnitIdsMissing": "لم يتم العثور على وحدة الحجم (mL)، يرجى التحديث والمحاولة",
+    "densityPresets": "كثافات سوائل شائعة",
+    "presetWater": "ماء",
+    "presetMilk": "حليب",
+    "presetCookingOil": "زيت طهي",
+    "presetSoySauce": "صلصة صويا",
+    "presetHoney": "عسل"
   },
   "merchants": {
     "title": "إدارة المتاجر",

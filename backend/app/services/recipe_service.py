@@ -1905,7 +1905,20 @@ async def calculate_recipe_nutrition(
                 if entity_override and entity_override.weight_per_unit:
                     # 使用自定义单位中维护的每件标准重量（如 1 颗=0.2g）
                     weight_unit = db.query(Unit).filter(Unit.id == entity_override.weight_unit_id).first()
-                    if weight_unit:
+                    if weight_unit and weight_unit.unit_type == "volume":
+                        # 体积语义的每单位量（如 1瓶=500mL）：经实体密度折算为克
+                        ucs = UnitConversionService(db)
+                        grams_result = ucs.convert(
+                            Decimal(str(entity_override.weight_per_unit)),
+                            weight_unit.abbreviation, "g",
+                            entity_type="ingredient", entity_id=ingredient.id,
+                        )
+                        if grams_result is not None and grams_result[0] > 0:
+                            total_weight = quantity * grams_result[0]
+                            ratio = total_weight / reference_amount
+                        else:
+                            ratio = Decimal("0")
+                    elif weight_unit:
                         converted_weight, converted_unit = convert_to_standard(
                             Decimal(str(entity_override.weight_per_unit)),
                             weight_unit.abbreviation

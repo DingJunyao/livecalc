@@ -109,26 +109,31 @@ export function convert(input: ConvertInput): ConvertResult {
   }
 
   // 计数单位回退：查实体单位覆盖中的 weight_per_unit
-  if (fromUnit.unit_type === 'count' || toUnit.unit_type === 'count') {
+  if (fromUnit.unit_type === 'count') {
     const override = findOverride(entity_type, entity_id, overrides, fromUnit.name)
-    if (override?.weight_per_unit != null && override?.weight_unit_id != null) {
+    if (override?.weight_per_unit != null) {
       // Resolve the weight unit: prefer name match over ID, because cloud-exported
       // override records carry cloud DB unit IDs that may not align with local seed IDs
       // (e.g. cloud 克=3 but local 斤=3). weight_unit_name is always authoritative.
       const weightUnit = resolveWeightUnit(override, units)
       if (weightUnit && toUnit.si_factor != null && weightUnit.si_factor != null) {
-        if (fromUnit.unit_type === 'count' && isMassType(toUnit.unit_type)) {
-          // count → mass: value * weight_per_unit * weight_unit_si_factor / toUnit_si_factor
-          const massInKg = value * override.weight_per_unit * weightUnit.si_factor
-          return { value: massInKg / toUnit.si_factor, to_unit_id }
+        // 体积语义覆盖（如 1瓶=500mL）且目标为体积：直接 si 换算，无需密度
+        if (weightUnit.unit_type === 'volume' && isVolumeType(toUnit.unit_type)) {
+          return { value: value * override.weight_per_unit * weightUnit.si_factor / toUnit.si_factor, to_unit_id }
         }
-        if (fromUnit.unit_type === 'count' && isVolumeType(toUnit.unit_type)) {
-          // count → volume: mass via density
-          const massInKg = value * override.weight_per_unit * weightUnit.si_factor
-          const density = findDensity(override.weight_unit_id, to_unit_id, entity_type, entity_id, units, overrides, densities)
-          if (density != null) {
-            const liters = massInKg / density
-            return { value: liters / toUnit.si_factor, to_unit_id }
+        const gramsPerUnit = resolveOverrideGramsPerUnit(override, units, densities, entity_type, entity_id)
+        if (gramsPerUnit != null && gramsPerUnit > 0) {
+          if (isMassType(toUnit.unit_type)) {
+            // count → mass: value × 每单位克数 → kg → 目标单位
+            return { value: value * gramsPerUnit / 1000 / toUnit.si_factor, to_unit_id }
+          }
+          if (isVolumeType(toUnit.unit_type)) {
+            // count → volume: 质量 via 覆盖，再经密度桥接
+            const density = findDensity(override.weight_unit_id, to_unit_id, entity_type, entity_id, units, overrides, densities)
+            if (density != null) {
+              const liters = value * gramsPerUnit / 1000 / density
+              return { value: liters / toUnit.si_factor, to_unit_id }
+            }
           }
         }
       }
@@ -147,6 +152,54 @@ function isMassType(type: string): boolean {
 
 function isVolumeType(type: string): boolean {
   return type === 'volume'
+}
+
+/**
+ * 查找实体密度（kg/m³）。仅按实体精确匹配，无记录返回 null。
+ */
+function findEntityDensityKgM3(
+  densities?: DensityInfo[], entityType?: string, entityId?: number,
+): number | null {
+  if (entityType && entityId && densities) {
+    const d = densities.find(x => x.entity_type === entityType && x.entity_id === entityId && x.density > 0)
+    if (d) return d.density
+  }
+  return null
+}
+
+/**
+ * 解析实体覆盖的"每单位量"（折算为克）。
+ * - 体积语义覆盖（weight_unit 为 mL/L，如 1瓶=500mL）：经实体密度折算，
+ *   无密度记录时按水密度 1 g/mL 兜底（与后端 get_density 链一致）。
+ * - 质量语义覆盖：按 si_factor 折 g。
+ * - weight_unit 优先按 name/abbreviation 解析（云端导出记录的 id 与本地
+ *   seed 不对齐），再按 id 回退。
+ * 返回 null 表示无法折算。
+ */
+export function resolveOverrideGramsPerUnit(
+  override: EntityOverride,
+  units: UnitInfo[],
+  densities?: DensityInfo[],
+  entityType?: string,
+  entityId?: number,
+): number | null {
+  if (override.weight_per_unit == null) return null
+  const wpu = Number(override.weight_per_unit)
+  if (!Number.isFinite(wpu) || wpu <= 0) return null
+  let wu: UnitInfo | undefined
+  if (override.weight_unit_name) {
+    wu = units.find(u => u.name === override.weight_unit_name || u.abbreviation === override.weight_unit_name)
+  }
+  if (!wu) wu = units.find(u => u.id === override.weight_unit_id)
+  if (!wu || wu.si_factor == null) return null
+  if (wu.unit_type === 'volume') {
+    // wpu × si_factor = L；L × kg/m³ = kg；kg → g 恰好等于 L × kg/m³ × 1000 / 1000
+    return wpu * wu.si_factor * (findEntityDensityKgM3(densities, entityType, entityId) ?? 1000)
+  }
+  if (wu.unit_type === 'mass') {
+    return wpu * wu.si_factor * 1000
+  }
+  return null
 }
 
 /**

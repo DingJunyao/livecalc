@@ -1404,7 +1404,6 @@
     "confidence": "Confidence",
     "condition": "Condition",
     "multiplicationFactor": "×{value}",
-    "valueWithUnitId": "{amount} (unit ID: {unitId})",
     "unitName": "Unit name",
     "conversionFactor": "Conversion factor",
     "weightPerUnit": "Weight per unit",
@@ -1488,7 +1487,8 @@
       "delete": "Delete",
       "merge": "Merge",
       "publish": "Publish"
-    }
+    },
+    "valueWithUnit": "{amount} {unit}"
   },
   "places": {
     "title": "Saved places",
@@ -1781,7 +1781,22 @@
     "splitFailed": "Split failed",
     "mergeSuccess": "Merge succeeded",
     "mergeFailed": "Merge failed",
-    "splitSuccess": "Split succeeded"
+    "splitSuccess": "Split succeeded",
+    "weightKind": "Amount type",
+    "weightKindMass": "Mass (g)",
+    "weightKindVolume": "Volume (mL)",
+    "volumePerUnit": "Volume per unit (mL)",
+    "volumeHint": "Volume per unit in milliliters",
+    "unitVolumeDisplay": "{volume} mL (≈{grams} g)",
+    "volumeDensityHint": "≈{grams} g at current density {density} g/mL; falls back to water density when unset",
+    "volumeDensityHintEmpty": "Enter the volume per unit to see the converted weight",
+    "weightUnitIdsMissing": "Volume unit (mL) not found, please refresh and retry",
+    "densityPresets": "Common liquid densities",
+    "presetWater": "Water",
+    "presetMilk": "Milk",
+    "presetCookingOil": "Cooking oil",
+    "presetSoySauce": "Soy sauce",
+    "presetHoney": "Honey"
   },
   "ingredients": {
     "title": "Ingredients",
@@ -2024,7 +2039,22 @@
     "mergeProposalSubmitted": "Merge proposal submitted and awaiting admin review",
     "mergeFailed": "Merge failed",
     "mergeSuccessFallback": "Merge complete",
-    "perServing": "serving"
+    "perServing": "serving",
+    "weightKind": "Amount type",
+    "weightKindMass": "Mass (g)",
+    "weightKindVolume": "Volume (mL)",
+    "volumePerUnit": "Volume per unit (mL)",
+    "volumeHint": "Volume per unit in milliliters",
+    "unitVolumeDisplay": "{volume} mL (≈{grams} g)",
+    "volumeDensityHint": "≈{grams} g at current density {density} g/mL; falls back to water density when unset",
+    "volumeDensityHintEmpty": "Enter the volume per unit to see the converted weight",
+    "weightUnitIdsMissing": "Volume unit (mL) not found, please refresh and retry",
+    "densityPresets": "Common liquid densities",
+    "presetWater": "Water",
+    "presetMilk": "Milk",
+    "presetCookingOil": "Cooking oil",
+    "presetSoySauce": "Soy sauce",
+    "presetHoney": "Honey"
   },
   "merchants": {
     "title": "Merchants",
