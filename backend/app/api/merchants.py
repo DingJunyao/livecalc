@@ -455,6 +455,7 @@ async def get_merchant_product_prices(
     """
     from decimal import Decimal
     from app.services.unit_conversion_service import UnitConversionService
+    from app.services.price_aggregator import record_standard_grams
 
     try:
         # 校验商家存在于共享池
@@ -494,6 +495,7 @@ async def get_merchant_product_prices(
                    (l.recorded_at < :stale_cutoff) AS is_stale,
                    su.abbreviation AS standard_unit_abbr,
                    su.unit_type     AS standard_unit_type,
+                   su.id            AS standard_unit_id,
                    p.name,
                    ic.id            AS category_id,
                    ic.display_name  AS category_display_name,
@@ -551,14 +553,20 @@ async def get_merchant_product_prices(
             unit_price = None
             unit_label = None
 
-            # 原料默认单位字段已迁移至用户级偏好，直接按固定参考单位换算（质量->元/斤，体积->元/L）
+            # 历史遗留的体积标准记录（standard_unit 为 ml）：经实体密度折算为克后
+            # 并入 元/斤 口径，与其余行可比；密度链异常时回退 元/L 直出
             if unit_price is None and std_qty > 0:
                 if r.standard_unit_type == "mass":
                     unit_price = price / std_qty * 500
                     unit_label = "元 / 斤"
                 elif r.standard_unit_type == "volume":
-                    unit_price = price / std_qty * 1000
-                    unit_label = "元 / L"
+                    # 历史遗留的体积标准记录：经实体密度折克并入 元/斤 口径，
+                    # 与其余行可比（record_standard_grams 链路异常按 1 g/mL 兜底）
+                    grams = record_standard_grams(
+                        db, r.standard_quantity, r.standard_unit_id, r.product_id
+                    )
+                    unit_price = price / grams * 500
+                    unit_label = "元 / 斤"
 
             items.append({
                 "product_id": r.product_id,

@@ -144,26 +144,39 @@ async def convert_units(
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
-    """单位转换"""
+    """单位转换
+
+    走 UnitConversionService 统一入口：同类型 si_factor、体积↔质量经实体
+    密度链（entity_densities：自身>水兜底）、count 单位经实体覆盖折算。
+    传 ingredient_name 时以该原料为实体上下文。
+    """
     try:
         service = UnitConversionService(db)
 
+        entity_type = None
+        entity_id = None
         if ingredient_name:
-            if from_unit.lower() in ['ml', 'l', 'cup', 'tbsp', 'tsp'] and to_unit.lower() in ['g', 'kg', 'lb', 'oz', 'jin']:
-                result = service.convert_volume_to_weight(value, from_unit, ingredient_name)
-                if result:
-                    converted_value, _ = result
-                    final_result = service.convert(converted_value, "g", to_unit)
-                    return final_result
-            elif from_unit.lower() in ['g', 'kg', 'lb', 'oz', 'jin'] and to_unit.lower() in ['ml', 'l', 'cup', 'tbsp', 'tsp']:
-                result = service.convert_weight_to_volume(value, from_unit, ingredient_name)
-                if result:
-                    converted_value, _ = result
-                    final_result = service.convert(converted_value, "ml", to_unit)
-                    return final_result
+            ingredient = (
+                db.query(Ingredient)
+                .filter(Ingredient.name == ingredient_name, Ingredient.is_active == True)
+                .first()
+            )
+            if ingredient:
+                entity_type, entity_id = "ingredient", ingredient.id
 
-        result = service.convert(value, from_unit, to_unit)
-        return result
+        result = service.convert(
+            Decimal(str(value)), from_unit, to_unit,
+            entity_type=entity_type, entity_id=entity_id,
+        )
+        if result is None:
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='单位 {from_unit} 无法转换为 {to_unit}',
+                from_unit=from_unit, to_unit=to_unit,
+            )
+        return float(result[0])
+    except LocalizedHTTPException:
+        raise
     except Exception as e:
         raise LocalizedHTTPException(status_code=500, message='单位转换失败: {error}', error=str(e))
 
@@ -193,7 +206,6 @@ async def search_ingredients_by_name(
                     "name": ingredient.name,
                     "category_id": ingredient.category_id,
                     "category": ingredient_with_unit.category_obj.display_name if ingredient_with_unit.category_obj else None,
-                    "density": ingredient.density,
                     "aliases": ingredient.aliases or [],
                     "confidence": float(confidence)
                 })
@@ -257,7 +269,6 @@ async def get_ingredient_hierarchy(
                 "name": ingredient.name,
                 "category_id": ingredient.category_id,
                 "category": ingredient.category_obj.display_name if ingredient.category_obj else None,
-                "density": ingredient.density,
                 "aliases": ingredient.aliases or []
             },
             "parents": parents,
@@ -319,7 +330,6 @@ async def resolve_ingredient_hierarchy(
                 "name": ingredient.name,
                 "category_id": ingredient.category_id,
                 "category": ingredient_with_unit.category_obj.display_name if ingredient_with_unit.category_obj else None,
-                "density": ingredient.density,
                 "aliases": ingredient.aliases or []
             }
         else:
@@ -350,7 +360,6 @@ async def get_ingredient_alternatives(
             "name": alt.name,
             "category_id": alt.category_id,
             "category": alt.category_obj.display_name if alt.category_obj else None,
-            "density": alt.density,
             "aliases": alt.aliases or []
         } for alt in alternatives]
     except Exception as e:
@@ -480,7 +489,6 @@ async def create_ingredient(
             "name": new_ingredient.name,
             "category_id": new_ingredient.category_id,
             "category": ingredient_with_unit.category_obj.display_name if ingredient_with_unit.category_obj else None,
-            "density": new_ingredient.density,
             "aliases": new_ingredient.aliases or [],
             "created_at": new_ingredient.created_at
         }
@@ -523,8 +531,7 @@ async def update_ingredient(
             payload["category_id"] = category_id
         if aliases is not None:
             payload["aliases"] = aliases
-        if density is not None:
-            payload["density"] = density
+        # ingredients.density 列已废弃（现行密度存 entity_densities），入参仅保留兼容、不再写入
         if serving_weight is not None:
             payload["serving_weight"] = serving_weight if serving_weight > 0 else None
         if serving_weight_unit_id is not None:
@@ -651,7 +658,6 @@ async def update_ingredient(
             "name": ingredient.name,
             "category_id": ingredient.category_id,
             "category": ingredient_with_unit.category_obj.display_name if ingredient_with_unit.category_obj else None,
-            "density": ingredient.density,
             "serving_weight": float(ingredient.serving_weight) if ingredient.serving_weight is not None else None,
             "serving_weight_unit_id": ingredient.serving_weight_unit_id,
             "serving_weight_unit_name": ingredient_with_unit.serving_weight_unit.abbreviation if ingredient_with_unit.serving_weight_unit else None,
@@ -853,7 +859,6 @@ async def get_ingredients(
                 "name": draft_name if isinstance(draft_name, str) and draft_name else ing.name,
                 "category_id": ing.category_id,
                 "category": ing.category_obj.display_name if ing.category_obj else None,
-                "density": ing.density,
                 "aliases": ing.aliases or [],
                 "created_at": ing.created_at,
                 "pending_proposal": (
@@ -905,7 +910,6 @@ async def get_ingredient(
             "name": ingredient.name,
             "category_id": ingredient.category_id,
             "category": ingredient.category_obj.display_name if ingredient.category_obj else None,
-            "density": ingredient.density,
             "serving_weight": float(ingredient.serving_weight) if ingredient.serving_weight is not None else None,
             "serving_weight_unit_id": ingredient.serving_weight_unit_id,
             "serving_weight_unit_name": ingredient.serving_weight_unit.abbreviation if ingredient.serving_weight_unit else None,

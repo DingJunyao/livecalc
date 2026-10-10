@@ -12,6 +12,38 @@ from app.models.product import ProductRecord
 from app.models.price_summary import ProductMerchantPriceSummary
 
 
+def record_standard_grams(
+    db: Session,
+    std_quantity,
+    std_unit_id: Optional[int],
+    product_id: int,
+) -> float:
+    """记录的标准量折算为克（¥/斤 归一化的分母）。
+
+    质量标准直接取值（None/0 按 500g=1斤 兜底）；体积标准为历史遗留
+    （现行记价路径已统一经密度折克），经实体密度链（product>关联原料>水）
+    折算，链路异常时按 1 g/mL 原值返回（与旧行为一致）。
+    """
+    grams = float(std_quantity) if std_quantity and float(std_quantity) > 0 else 500.0
+    if std_unit_id is None:
+        return grams
+    from app.services.lookup_cache import unit_by_id
+    unit_row = unit_by_id(db, std_unit_id)
+    if unit_row is None or unit_row.unit_type != "volume":
+        return grams
+    try:
+        from app.services.unit_conversion_service import UnitConversionService
+        mass = UnitConversionService(db).convert(
+            Decimal(str(std_quantity)), unit_row.abbreviation or "ml", "g",
+            entity_type="product", entity_id=product_id,
+        )
+        if mass is not None and mass[0] > 0:
+            return float(mass[0])
+    except Exception:
+        pass
+    return grams
+
+
 def recompute_summary(db: Session, *, product_id: int, merchant_id: Optional[int]) -> None:
     """重算指定 product×merchant 的汇总行。
 
@@ -40,9 +72,9 @@ def recompute_summary(db: Session, *, product_id: int, merchant_id: Optional[int
     for idx, r in enumerate(records):
         if r.price is None:
             continue
-        std_qty = float(r.standard_quantity) if r.standard_quantity and float(r.standard_quantity) > 0 else 500.0
+        grams = record_standard_grams(db, r.standard_quantity, r.standard_unit_id, product_id)
         from app.services.price_region import record_price_in_user_currency
-        unit_price = float(record_price_in_user_currency(r)) * 500.0 / std_qty
+        unit_price = float(record_price_in_user_currency(r)) * 500.0 / grams
         unit_prices.append(unit_price)
         # records 已按 recorded_at desc 排序，第一条有效单价即为最近价
         if idx == 0:
