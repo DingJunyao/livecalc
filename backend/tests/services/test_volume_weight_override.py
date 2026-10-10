@@ -180,3 +180,84 @@ def test_recipe_nutrition_count_volume_override(db, units):
     from app.services.recipe_service import calculate_recipe_nutrition
     result = asyncio.run(calculate_recipe_nutrition(recipe.id, db))
     assert result["total_calories"] == pytest.approx(278.1, abs=0.05)
+
+
+# ---------- 存量修复：/nutrition 单品接口与 ¥/斤 归一 ----------
+
+def test_nutrition_single_item_count_volume_override(db, units):
+    """单品营养：1瓶牛奶（体积覆盖 500mL、密度1.03）→ base_quantity=515g（原按 1g 算）"""
+    from app.services.nutrition_calculator import NutritionCalculator
+    ing = make_milk(db, units, density=1030)
+    base = NutritionCalculator(db)._convert_to_base(1.0, "瓶", ing.id)
+    assert base == pytest.approx(515.0)
+
+
+def test_nutrition_single_item_count_without_data_returns_zero(db, units):
+    """计数单位无覆盖无 piece_weight → 0（与菜谱营养口径一致，不按 100g 臆估）"""
+    from app.services.nutrition_calculator import NutritionCalculator
+    ing = Ingredient(name="蒜")
+    db.add(ing)
+    db.commit()
+    base = NutritionCalculator(db)._convert_to_base(2.0, "瓶", ing.id)
+    assert base == 0.0
+
+
+def test_nutrition_single_item_volume_with_density(db, units):
+    """单品营养：200mL 牛奶（密度1.03）→ 206g（原 1:1 按 200g）"""
+    from app.services.nutrition_calculator import NutritionCalculator
+    ing = make_milk(db, units, density=1030)
+    base = NutritionCalculator(db)._convert_to_base(200.0, "mL", ing.id)
+    assert base == pytest.approx(206.0)
+
+
+def test_nutrition_single_item_mass_regression(db, units):
+    """单品营养回归：100g / 1kg 与旧转换表一致"""
+    from app.services.nutrition_calculator import NutritionCalculator
+    ing = Ingredient(name="米")
+    db.add(ing)
+    db.commit()
+    calc = NutritionCalculator(db)
+    assert calc._convert_to_base(100.0, "g", ing.id) == pytest.approx(100.0)
+    assert calc._convert_to_base(1.0, "kg", ing.id) == pytest.approx(1000.0)
+
+
+def test_record_standard_grams_mass_and_volume(db, units):
+    """record_standard_grams：质量标准直取；体积标准（历史遗留）经密度折克"""
+    from app.services.price_aggregator import record_standard_grams
+    ing = make_milk(db, units, density=1030)
+    product = Product(name="某牌牛奶", ingredient_id=ing.id)
+    db.add(product)
+    db.commit()
+    # 质量标准：直取
+    assert record_standard_grams(db, 250, units["g"].id, product.id) == pytest.approx(250.0)
+    # 体积标准（ml）：250 × 1.03 = 257.5
+    assert record_standard_grams(db, 250, units["mL"].id, product.id) == pytest.approx(257.5)
+    # 体积标准、无密度记录 → 水兜底 1:1
+    ing2 = Ingredient(name="清水")
+    db.add(ing2)
+    db.commit()
+    product2 = Product(name="瓶装水", ingredient_id=ing2.id)
+    db.add(product2)
+    db.commit()
+    assert record_standard_grams(db, 250, units["mL"].id, product2.id) == pytest.approx(250.0)
+
+
+def test_recompute_summary_volume_record_uses_density(db, units):
+    """recompute_summary：体积标准记录折克后归一 ¥/斤（原把 ml 当克）"""
+    from app.models.product import ProductRecord
+    from app.models.price_summary import ProductMerchantPriceSummary
+    from app.services.price_aggregator import recompute_summary
+    ing = make_milk(db, units, density=1030)
+    product = Product(name="某牌牛奶1L", ingredient_id=ing.id)
+    db.add(product)
+    db.commit()
+    db.add(ProductRecord(
+        product_id=product.id, price=10.0, user_id=1, product_name=product.name,
+        original_quantity=1, original_unit_id=units["L"].id,
+        standard_quantity=1000, standard_unit_id=units["mL"].id,
+    ))
+    db.commit()
+    recompute_summary(db, product_id=product.id, merchant_id=None)
+    s = db.query(ProductMerchantPriceSummary).filter_by(product_id=product.id).one()
+    # 1000 ml × 1.03 = 1030 g → 10 / 1030 × 500 ≈ 4.854 元/斤（原按 1000g → 5.0）
+    assert float(s.avg_price_30d) == pytest.approx(10 / 1030 * 500, abs=0.01)

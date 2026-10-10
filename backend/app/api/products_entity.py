@@ -17,6 +17,7 @@ from app.models.user import User
 from app.models.product_entity import Product
 from app.models.product_barcode import ProductBarcode
 from app.models.product import ProductRecord
+from app.services.price_aggregator import record_standard_grams
 from app.models.nutrition import Ingredient
 from app.schemas.product_entity import (
     ProductCreate, ProductUpdate, ProductResponse, ProductWithDetails,
@@ -732,7 +733,9 @@ def get_product_latest_price(
         for record in recent_records:
             std_qty = record.standard_quantity
             if record.price is not None and std_qty is not None and float(std_qty) > 0:
-                unit_price = float(record_price_in_user_currency(record)) * 500.0 / float(std_qty)
+                # 体积标准的历史遗留记录经密度折克（record_standard_grams）
+                grams = record_standard_grams(db, std_qty, record.standard_unit_id, record.product_id)
+                unit_price = float(record_price_in_user_currency(record)) * 500.0 / grams
                 unit_prices.append(unit_price)
 
         if not unit_prices:

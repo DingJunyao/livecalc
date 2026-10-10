@@ -1844,24 +1844,19 @@ async def calculate_recipe_nutrition(
 
         # 首先处理容量单位的密度转换
         if standard_unit.lower() == "ml" and recipe_ingredient.unit:
-            # 如果是容量单位，尝试使用密度转换为重量
-            from app.models.ingredient_density import IngredientDensity
-
-            # 查找密度数据（mL → g）
-            density = db.query(IngredientDensity).filter(
-                IngredientDensity.ingredient_id == ingredient.id,
-                IngredientDensity.from_unit_id == recipe_ingredient.unit.id,
-                IngredientDensity.to_unit_id == 3  # g 的 ID
-            ).first()
-
-            if density and density.density_value:
-                # 使用密度转换：重量 = 容量 × 密度
-                standard_quantity = standard_quantity * Decimal(str(density.density_value))
-                standard_unit = "g"  # 转换为克
-            else:
-                # 没有密度数据，假设密度为 1.0 g/mL
-                standard_quantity = standard_quantity
-                standard_unit = "g"
+            # 体积→质量：经实体密度链（entity_densities：自身>水兜底，与成本/
+            # 换算口径一致），替换已废弃的 ingredient_densities 表查询
+            try:
+                mass = UnitConversionService(db).convert_volume_to_mass(
+                    standard_quantity, recipe_ingredient.unit,
+                    "ingredient", ingredient.id,
+                )
+                if mass is not None:
+                    # convert_volume_to_mass 返回 kg，换回 g
+                    standard_quantity = mass[0] * Decimal("1000")
+            except Exception:
+                pass
+            standard_unit = "g"
 
         if standard_unit.lower() in ["g", "ml"] and reference_unit.lower() in ["g", "ml"]:
             # 如果都是重量或容量单位，可以计算比例
