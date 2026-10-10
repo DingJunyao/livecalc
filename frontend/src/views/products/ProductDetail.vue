@@ -881,7 +881,11 @@
       <!-- 添加/编辑单位对话框 -->
       <v-dialog v-model="showUnitDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ unitForm.id ? t('products.editUnit') : t('products.addUnitTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ unitForm.id ? t('products.editUnit') : t('products.addUnitTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingUnit" @click="saveEntityUnit">{{ t('products.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveEntityUnit">
               <v-text-field
@@ -918,7 +922,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showUnitDialog = false">{{ t('products.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">{{ t('products.save') }}</v-btn>
@@ -929,7 +933,11 @@
       <!-- 添加/编辑密度对话框 -->
       <v-dialog v-model="showDensityDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ densityForm.id ? t('products.editDensity') : t('products.setDensityTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ densityForm.id ? t('products.editDensity') : t('products.setDensityTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingDensity" @click="saveDensity">{{ t('products.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveDensity">
               <div class="d-flex align-start ga-2 mb-3">
@@ -970,7 +978,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showDensityDialog = false">{{ t('products.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingDensity" @click="saveDensity">{{ t('products.save') }}</v-btn>
@@ -1016,7 +1024,11 @@
     <!-- 添加/编辑价格记录对话框 -->
     <v-dialog v-model="showAddPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ editingPriceRecord ? t('products.editPriceRecord') : t('products.addPriceRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ editingPriceRecord ? t('products.editPriceRecord') : t('products.addPriceRecord') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="savingPrice" @click="savePriceRecord">{{ t('products.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="savePriceRecord">
             <!-- 商家（置于商品前） -->
@@ -1083,7 +1095,7 @@
             </v-row>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddPriceDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingPrice" @click="savePriceRecord">{{ t('products.save') }}</v-btn>
@@ -1109,7 +1121,12 @@
     <!-- 拆分为原料 - 重命名对话框 -->
     <v-dialog v-model="showSplitRenameDialog" max-width="400" persistent>
       <v-card>
-        <v-card-title>{{ t('products.specifyNewIngredientName') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('products.specifyNewIngredientName') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="splitting" @click="confirmSplitWithNewName">{{ t('products.confirm') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="showSplitRenameDialog = false" />
+        </v-card-title>
         <v-card-text>
           <p class="text-body-2 mb-3">{{ splitRenameMessage }}</p>
           <v-text-field
@@ -1120,7 +1137,7 @@
             @keyup.enter="confirmSplitWithNewName"
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showSplitRenameDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn color="primary" :loading="splitting" @click="confirmSplitWithNewName">{{ t('products.confirm') }}</v-btn>
@@ -1131,9 +1148,19 @@
     <!-- 合并到关联商品 - 对话框 -->
     <v-dialog v-model="showMergeDialog" max-width="500" @update:model-value="onMergeDialogToggle">
       <v-card>
-        <v-card-title class="text-warning">
+        <v-card-title class="text-warning d-flex align-center pa-4">
           <v-icon start color="warning">mdi-merge</v-icon>
-          {{ t('products.mergeIntoProduct') }}
+          <span class="text-h6">{{ t('products.mergeIntoProduct') }}</span>
+          <v-spacer />
+          <v-btn
+            color="warning"
+            variant="text"
+            :disabled="!selectedMergeTarget"
+            :loading="merging"
+            @click="doMerge"
+          >
+            {{ t('products.confirmMerge') }}
+          </v-btn>
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 mb-3">
@@ -1181,7 +1208,7 @@
           </ul>
           <p class="text-body-2 mt-2 text-error">{{ t('products.irreversible') }}</p>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showMergeDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn

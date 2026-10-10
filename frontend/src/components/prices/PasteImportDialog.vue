@@ -1,9 +1,19 @@
 <template>
   <v-dialog :model-value="modelValue" max-width="720" persistent @update:model-value="emit('update:modelValue', $event)">
     <v-card class="paste-card">
-      <v-card-title class="d-flex align-center">
-        {{ t('prices.pasteImportTitle') }}
+      <v-card-title class="d-flex align-center pa-4">
+        <span class="text-h6">{{ t('prices.pasteImportTitle') }}</span>
         <v-spacer />
+        <v-btn
+          v-if="importableCount > 0"
+          color="primary"
+          variant="text"
+          :loading="importing"
+          :disabled="importing"
+          @click="doImport"
+        >
+          {{ t('prices.importAll', { count: importableCount }) }}
+        </v-btn>
         <v-btn icon="mdi-close" variant="text" size="small" @click="emit('update:modelValue', false)" />
       </v-card-title>
 
@@ -155,7 +165,7 @@
         </div>
       </v-alert>
 
-      <v-card-actions>
+      <v-card-actions class="d-none d-md-flex">
         <v-spacer />
         <v-btn variant="text" @click="emit('update:modelValue', false)">{{ t('prices.close') }}</v-btn>
       </v-card-actions>

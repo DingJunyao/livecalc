@@ -1176,7 +1176,11 @@
       <!-- 添加/编辑单位对话框 -->
       <v-dialog v-model="showUnitDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ unitForm.id ? t('ingredients.editUnit') : t('ingredients.addUnitTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ unitForm.id ? t('ingredients.editUnit') : t('ingredients.addUnitTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingUnit" @click="saveEntityUnit">{{ t('ingredients.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveEntityUnit">
               <v-text-field
@@ -1213,7 +1217,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showUnitDialog = false">{{ t('ingredients.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">{{ t('ingredients.save') }}</v-btn>
@@ -1224,7 +1228,11 @@
       <!-- 添加/编辑密度对话框 -->
       <v-dialog v-model="showDensityDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ densityForm.id ? t('ingredients.editDensity') : t('ingredients.setDensityTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ densityForm.id ? t('ingredients.editDensity') : t('ingredients.setDensityTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingDensity" @click="saveDensity">{{ t('ingredients.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveDensity">
               <div class="d-flex align-start ga-2 mb-3">
@@ -1265,7 +1273,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showDensityDialog = false">{{ t('ingredients.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingDensity" @click="saveDensity">{{ t('ingredients.save') }}</v-btn>
@@ -1277,7 +1285,18 @@
     <!-- 添加价格记录对话框 -->
     <v-dialog v-model="showAddPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.addPriceRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.addPriceRecord') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :disabled="!priceForm.product_id"
+            @click="goToAddPrice"
+          >
+            {{ t('ingredients.goToAdd') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-alert type="info" class="mb-4">
             {{ t('ingredients.selectRelatedProductFirst') }}
@@ -1293,7 +1312,7 @@
             return-object
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1310,7 +1329,11 @@
     <!-- 编辑价格记录对话框 -->
     <v-dialog v-model="showEditPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.editPriceRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.editPriceRecord') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="savingPrice" @click="saveEditPriceRecord">{{ t('ingredients.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <div class="text-body-2 text-medium-emphasis mb-3">
             {{ t('ingredients.product') }}：{{ editingPriceRecord?.product_name }}
@@ -1378,7 +1401,7 @@
             </v-row>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showEditPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingPrice" @click="saveEditPriceRecord">{{ t('ingredients.save') }}</v-btn>
@@ -1389,7 +1412,19 @@
     <!-- 合并对话框 -->
     <v-dialog v-model="showMergeDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.mergeTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.mergeTitle') }}</span>
+          <v-spacer />
+          <v-btn
+            color="warning"
+            variant="text"
+            :loading="merging"
+            :disabled="!mergeTargetId"
+            @click="mergeIngredient"
+          >
+            {{ t('ingredients.confirmMerge') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-alert type="warning" class="mb-4">
             {{ t('ingredients.mergeDescription') }}
@@ -1409,7 +1444,7 @@
             return-object
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showMergeDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1444,7 +1479,19 @@
     <!-- 添加层级关系对话框 -->
     <v-dialog v-model="showAddRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.addRelationTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.addRelationTitle') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :loading="savingRelation"
+            :disabled="!relationForm.target_ingredient_id"
+            @click="addRelation"
+          >
+            {{ t('ingredients.add') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="addRelation">
             <v-autocomplete
@@ -1526,7 +1573,7 @@
             </v-alert>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1544,7 +1591,18 @@
     <!-- 编辑层级关系对话框 -->
     <v-dialog v-model="showEditRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.editRelation') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.editRelation') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :loading="savingRelation"
+            @click="saveEditRelation"
+          >
+            {{ t('ingredients.save') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="saveEditRelation">
             <!-- 关系预览 -->
@@ -1604,7 +1662,7 @@
             </v-slider>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showEditRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -2359,20 +2417,28 @@ const basicEditForm = ref({
 const recipeOptions = ref<{ id: number; name: string }[]>([])
 const recipeSearching = ref(false)
 let recipeSearchTimer: any = null
+let recipeSearchSequence = 0
 
 const onRecipeSearch = (q: string) => {
   if (recipeSearchTimer) clearTimeout(recipeSearchTimer)
-  if (!q || !q.trim()) return
+  if (!q || !q.trim()) {
+    recipeSearchSequence++
+    return
+  }
   recipeSearchTimer = setTimeout(async () => {
+    const sequence = ++recipeSearchSequence
     recipeSearching.value = true
     try {
       const res = await api.get('/recipes', { params: { search: q.trim(), page: 1, per_page: 20 } })
       const items = (res as any)?.items || (res as any)?.data || []
+      if (sequence !== recipeSearchSequence) return
       recipeOptions.value = items.map((r: any) => ({ id: r.id, name: r.name }))
     } catch (e) {
       console.error('Failed to search recipes', e)
     } finally {
-      recipeSearching.value = false
+      if (sequence === recipeSearchSequence) {
+        recipeSearching.value = false
+      }
     }
   }, 300)
 }
