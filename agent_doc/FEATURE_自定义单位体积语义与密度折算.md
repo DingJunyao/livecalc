@@ -51,20 +51,36 @@ g/cm³↔kg/m³ 切换，预设按 g/cm³ 值填入；移动端固定 kg/m³）�
 - 移动端：flutter analyze 0 issue；全量 flutter test 565 通过，6 失败（apple_map×3、
   locale×2、my_proposals×1）经 stash 在 HEAD 复跑确认为存量。
 
-## 已知存量问题（本次未动）
+## 存量问题清理（2026-10-11 追记，master c55206a）
 
-1. **/nutrition/* 单品接口 count 单位按"1单位=1克"算**：
-   `nutrition_calculator._convert_to_base`（backend/app/services/nutrition_calculator.py）
-   依赖废弃的 `unit_converter.convert_to_standard`，无实体上下文，"瓶"不在转换表时
-   base_quantity=1 直接当克 → 按 100g 基准的 1% 计算。菜谱营养链路（recipe_service）
-   本次已修，单品接口需给 NutritionCalculator 增加实体上下文的单位解析后另行对齐。
-2. 废弃存储未清理：`ingredient_densities` 表（recipe_service 营养 ml 分支还在用，
-   查不到按 1.0 g/mL）、`ingredients.density` 列（仅导出/回显）。
-3. `ingredient_extended.py` 旧换算端点调用 `UnitConversionService` 上不存在的
-   `convert_volume_to_weight/convert_weight_to_volume` 方法（现名 convert_volume_to_mass/
-   convert_mass_to_volume），命中即 500——独立 bug，待修。
-4. 商家列表体积记录按元/L 直出（merchants.py `standard_unit_type==volume` 分支），
-   与质量口径（元/斤）并存展示，未参与本次密度折算。
+上述四项存量问题已全部修复：
+
+1. **/nutrition 单品接口 count 单位**：`nutrition_calculator._convert_to_base` 增加
+   `ingredient_id` 实体上下文，走 `UnitConversionService`（体积经密度链、count 经
+   覆盖/piece_weight，含体积语义覆盖）；计数单位无任何单件重量数据时**归 0**
+   （与 recipe_service 营养口径一致，不再按"1单位=1克"或 100g 臆估）。该类的
+   菜谱循环（/nutrition/recipes/{id}/nutrition）一并受益。
+2. **废弃密度存储清理**：recipe_service 营养 ml 分支改走 `entity_densities` 链
+   （原查废弃 `ingredient_densities` 表、查不到按 1.0 g/mL）；`ingredients.density`
+   废弃列停止导出（serializers）、导入回填（importer）、更新写路径与 8 处 API
+   回显（ingredient_extended），模型列保留并标记废弃（物理删列需迁移+SQL 脚本，
+   未做）。`ingredient_densities` 表已无任何计算消费方，表本体未删。
+3. **ingredient_extended 旧换算端点**：原调用不存在的
+   `convert_volume_to_weight/convert_weight_to_volume` 命中即 500，改走统一
+   `convert` 入口（`ingredient_name` 按名解析实体上下文），不可换算返回 400；
+   原实现把 convert 返回的元组直接当 float 返回的问题一并修复。
+4. **历史体积标准记录并入 ¥/斤 口径**：新增共享 `record_standard_grams`
+   （price_aggregator.py；体积标准经密度折克、链路异常按 1 g/mL 兜底），接入
+   recompute_summary、sparklines._unit_price_per_jin、nutrition 三处批量
+   sparkline（SQL 补选 standard_unit_id 列）、products_entity、merchants 共
+   5 个归一点——原实现把这些 ml 标准记录当克归一。注意 ingredient_price_service
+   是"元/标准单位"语义（下游 _convert_record_to_price_per_gram 二次转克），不适用。
+
+定责方法：独立 `git worktree` 挂 HEAD + 软链 dev DB 跑可疑子集对照
+（16 失败与带改动名单一致），其余 14 个失败属 agent/storage/downloader 等
+未触及子系统——全量 30 个失败全部为存量，无一由本次改动引入。
+**教训：后台对照任务里的 `git stash` 会收走工作树改动，与主会话编辑并发时
+必须用 worktree 而不是 stash 做基线对照。**
 
 ## 经验
 
