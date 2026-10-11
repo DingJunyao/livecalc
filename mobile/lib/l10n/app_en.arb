@@ -553,6 +553,42 @@
       "weight": {}
     }
   },
+  "unitsWeightKind": "Amount type",
+  "@unitsWeightKind": {},
+  "unitsWeightKindMass": "Mass (g)",
+  "@unitsWeightKindMass": {},
+  "unitsWeightKindVolume": "Volume (mL)",
+  "@unitsWeightKindVolume": {},
+  "unitsVolumeLabel": "Volume per unit (mL)",
+  "@unitsVolumeLabel": {},
+  "unitsVolumeDetail": "{volume} mL (≈{grams} g)",
+  "@unitsVolumeDetail": {
+    "placeholders": {
+      "volume": {},
+      "grams": {}
+    }
+  },
+  "unitsVolumeDensityHint": "≈{grams} g at current density {density} g/mL; falls back to water density when unset",
+  "@unitsVolumeDensityHint": {
+    "placeholders": {
+      "grams": {},
+      "density": {}
+    }
+  },
+  "unitsVolumeDensityHintEmpty": "Enter the volume per unit to see the converted weight",
+  "@unitsVolumeDensityHintEmpty": {},
+  "unitsDensityPresets": "Common liquid densities (kg/m³)",
+  "@unitsDensityPresets": {},
+  "unitsPresetWater": "Water",
+  "@unitsPresetWater": {},
+  "unitsPresetMilk": "Milk",
+  "@unitsPresetMilk": {},
+  "unitsPresetCookingOil": "Cooking oil",
+  "@unitsPresetCookingOil": {},
+  "unitsPresetSoySauce": "Soy sauce",
+  "@unitsPresetSoySauce": {},
+  "unitsPresetHoney": "Honey",
+  "@unitsPresetHoney": {},
   "unitsDefault": "Default",
   "@unitsDefault": {},
   "unitsPendingReview": "Pending",
@@ -1288,11 +1324,24 @@
   "recipeConditionUnnourished": "Has ingredients without nutrition data",
   "@recipeConditionUnnourished": {},
   "recipeServingsCount": "{count} servings",
-  "@recipeServingsCount": {"placeholders": {"count": {}}},
+  "@recipeServingsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeCostPerServings": "{amount} / {count} servings",
-  "@recipeCostPerServings": {"placeholders": {"amount": {}, "count": {}}},
+  "@recipeCostPerServings": {
+    "placeholders": {
+      "amount": {},
+      "count": {}
+    }
+  },
   "recipeCaloriesPerServing": "{amount} kcal / serving",
-  "@recipeCaloriesPerServing": {"placeholders": {"amount": {}}},
+  "@recipeCaloriesPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeCategoryMeatDish": "Meat dish",
   "@recipeCategoryMeatDish": {},
   "recipeCategoryVegetableDish": "Vegetable dish",
@@ -1362,11 +1411,20 @@
   "recipeCalculatedFromIngredientsCost": "Calculated from ingredient costs:",
   "@recipeCalculatedFromIngredientsCost": {},
   "recipePriceStaleTooltip": "Price last updated on {date}, over 30 days ago",
-  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
+  "@recipePriceStaleTooltip": {
+    "placeholders": {
+      "date": {}
+    }
+  },
   "recipeGotIt": "Got it",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "Recommended {quantity} {unit}",
-  "@recipeRecommendedQuantity": {"placeholders": {"quantity": {}, "unit": {}}},
+  "@recipeRecommendedQuantity": {
+    "placeholders": {
+      "quantity": {},
+      "unit": {}
+    }
+  },
   "recipeSteps": "Steps",
   "@recipeSteps": {},
   "recipeEditSteps": "Edit steps",
@@ -1374,7 +1432,11 @@
   "recipeNoSteps": "No steps",
   "@recipeNoSteps": {},
   "recipeStepMinutes": "{count} min",
-  "@recipeStepMinutes": {"placeholders": {"count": {}}},
+  "@recipeStepMinutes": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeNutritionPerServing": "Nutrition (per serving)",
   "@recipeNutritionPerServing": {},
   "recipeTips": "Tips",
@@ -1438,7 +1500,11 @@
   "recipeNote": "Note",
   "@recipeNote": {},
   "recipeStepNumberLabel": "Step {index}",
-  "@recipeStepNumberLabel": {"placeholders": {"index": {}}},
+  "@recipeStepNumberLabel": {
+    "placeholders": {
+      "index": {}
+    }
+  },
   "recipeStepContent": "Content",
   "@recipeStepContent": {},
   "recipeStepDuration": "Duration (minutes)",
@@ -1464,9 +1530,17 @@
   "recipeImageUploadFailed": "Could not upload the image. Try again.",
   "@recipeImageUploadFailed": {},
   "recipeIngredientQuantityIncomplete": "Ingredient row {row} has an incomplete quantity: enter a recommended amount, a recommended amount plus a range, or a range only.",
-  "@recipeIngredientQuantityIncomplete": {"placeholders": {"row": {}}},
+  "@recipeIngredientQuantityIncomplete": {
+    "placeholders": {
+      "row": {}
+    }
+  },
   "recipeIngredientFallbackName": "Ingredient #{id}",
-  "@recipeIngredientFallbackName": {"placeholders": {"id": {}}},
+  "@recipeIngredientFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeSaveSuccess": "Saved",
   "@recipeSaveSuccess": {},
   "recipeCostShare": "Ingredient cost share",
@@ -1504,15 +1578,36 @@
   "recipeBestValue": "Best value",
   "@recipeBestValue": {},
   "recipeCoveredCount": "{covered}/{total} ingredients covered",
-  "@recipeCoveredCount": {"placeholders": {"covered": {}, "total": {}}},
+  "@recipeCoveredCount": {
+    "placeholders": {
+      "covered": {},
+      "total": {}
+    }
+  },
   "recipeInStore": "In store {amount}",
-  "@recipeInStore": {"placeholders": {"amount": {}}},
+  "@recipeInStore": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeExternal": "External {amount}",
-  "@recipeExternal": {"placeholders": {"amount": {}}},
+  "@recipeExternal": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeMissingIngredients": "Missing ingredients: {ingredients}",
-  "@recipeMissingIngredients": {"placeholders": {"ingredients": {}}},
+  "@recipeMissingIngredients": {
+    "placeholders": {
+      "ingredients": {}
+    }
+  },
   "recipeMerchantFallbackName": "Merchant #{id}",
-  "@recipeMerchantFallbackName": {"placeholders": {"id": {}}},
+  "@recipeMerchantFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeMerchantPriceRecommendation": "Merchant price recommendations",
   "@recipeMerchantPriceRecommendation": {},
   "recipeNoMerchantComparisonData": "No merchant comparison data",
@@ -1737,7 +1832,9 @@
   "@productMergeIntoProduct": {},
   "productMergeDialogPrompt": "Choose which product to merge {name} into:",
   "@productMergeDialogPrompt": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "productMergeNoSiblings": "There are no other products under this ingredient to merge.",
   "@productMergeNoSiblings": {},
@@ -1767,7 +1864,9 @@
   "@productMyWeightOverride": {},
   "productMyWeightGlobalDefault": "Global default: {value} (used when not overridden)",
   "@productMyWeightGlobalDefault": {
-    "placeholders": {"value": {}}
+    "placeholders": {
+      "value": {}
+    }
   },
   "ingredientMergeIntoOther": "Merge into other ingredient",
   "@ingredientMergeIntoOther": {},
@@ -1781,7 +1880,10 @@
   "@ingredientConfirmMerge": {},
   "ingredientMergeConfirmText": "Merge \"{source}\" into \"{target}\"?",
   "@ingredientMergeConfirmText": {
-    "placeholders": {"source": {}, "target": {}}
+    "placeholders": {
+      "source": {},
+      "target": {}
+    }
   },
   "ingredientMergeSuccess": "Merge complete",
   "@ingredientMergeSuccess": {},
@@ -1795,7 +1897,9 @@
   "@ingredientConfirmDelete": {},
   "ingredientDeleteConfirmText": "Delete ingredient \"{name}\"? This cannot be undone.",
   "@ingredientDeleteConfirmText": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "ingredientDeleted": "Deleted",
   "@ingredientDeleted": {},
@@ -1811,7 +1915,10 @@
   "@blacklistSubscribedGroups": {},
   "blacklistGroupTitle": "{name} ({count} ingredients)",
   "@blacklistGroupTitle": {
-    "placeholders": {"name": {}, "count": {}}
+    "placeholders": {
+      "name": {},
+      "count": {}
+    }
   },
   "blacklistManualAdd": "Manual additions",
   "@blacklistManualAdd": {},
@@ -1825,14 +1932,20 @@
   "@blacklistUnsubscribed": {},
   "blacklistAddFailed": "Could not add: {message}",
   "@blacklistAddFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistRemoveFailed": "Could not remove: {message}",
   "@blacklistRemoveFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistActionFailed": "Operation failed: {message}",
   "@blacklistActionFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   }
 }

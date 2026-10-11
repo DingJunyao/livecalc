@@ -310,12 +310,29 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              _editing == null
-                  ? l10n.ingredientAddRelation
-                  : l10n.ingredientAdjustRelationStrength,
-              style: theme.textTheme.titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+            // 保存按钮放在卡片标题行右上角，避免软键盘遮挡底部的确认按钮。
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _editing == null
+                        ? l10n.ingredientAddRelation
+                        : l10n.ingredientAdjustRelationStrength,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _saving ? null : _save,
+                  child: _saving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(l10n.ingredientSaveRelation),
+                ),
+              ],
             ),
             if (_editing != null) ...[
               Text(_relationPairLabel(context, _editing!, l10n)),
@@ -409,10 +426,6 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                   ),
                 ),
               ],
-            ),
-            FilledButton(
-              onPressed: _saving ? null : _save,
-              child: Text(l10n.ingredientSaveRelation),
             ),
           ],
         ),

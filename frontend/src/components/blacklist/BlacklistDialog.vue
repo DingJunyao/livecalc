@@ -41,6 +41,7 @@
             density="compact"
             hide-details="auto"
             clearable
+            :custom-filter="() => true"
             @update:search="searchIngredients"
             @update:model-value="onSelectIngredient"
           >
@@ -229,6 +230,8 @@ async function removeItem(item: BlacklistItem) {
 
 function searchIngredients(search: string | null) {
   if (!search || search.length < 1) {
+    if (searchTimer) clearTimeout(searchTimer)
+    searchSequence++
     searchResults.value = []
     return
   }

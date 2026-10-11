@@ -802,7 +802,37 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         );
       },
       child: Scaffold(
-        appBar: AppBar(title: Text(_appBarTitle(l10n))),
+        appBar: AppBar(
+          title: Text(_appBarTitle(l10n)),
+          actions: [
+            if (_isEdit && widget.section != null)
+              TextButton(
+                onPressed: _activeSectionSaveKey == null ||
+                        _savingSection != null ||
+                        _uploadingImage
+                    ? null
+                    : () => _saveActiveSection(),
+                child: _savingSection != null || _uploadingImage
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.recipeSaveChanges),
+              )
+            else if (!_isEdit)
+              TextButton(
+                onPressed: _saving ? null : _save,
+                child: _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(l10n.recipeCreateTitle),
+              ),
+          ],
+        ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(
@@ -992,44 +1022,6 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                   const SizedBox(height: 16),
                 ],
               ),
-        bottomNavigationBar: _isEdit && widget.section != null
-            ? SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                  child: FilledButton(
-                    onPressed: _activeSectionSaveKey == null ||
-                            _savingSection != null ||
-                            _uploadingImage
-                        ? null
-                        : () => _saveActiveSection(),
-                    child: _savingSection != null || _uploadingImage
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(l10n.recipeSaveChanges),
-                  ),
-                ),
-              )
-            : _isEdit
-                ? null
-                : SafeArea(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: FilledButton(
-                        onPressed: _saving ? null : _save,
-                        child: _saving
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : Text(l10n.recipeCreateTitle),
-                      ),
-                    ),
-                  ),
       ),
     );
   }

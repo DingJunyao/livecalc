@@ -124,7 +124,8 @@ def test_serialize_ingredient_extended_fields():
     out = serialize_ingredient(ing, category_display_name="禽蛋", usda_id=171287)
     assert out["id"] == 5
     assert out["category_id"] == 6
-    assert out["density"] == 1.03
+    # ingredients.density 已废弃（现行密度存 entity_densities），不再导出
+    assert "density" not in out
     assert out["nutrition_id"] == 20
     assert out["piece_weight"] == 50.0
 

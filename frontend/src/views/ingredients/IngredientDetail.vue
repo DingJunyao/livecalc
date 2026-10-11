@@ -1041,8 +1041,8 @@
               <v-list-item-title class="text-body-2">
                 <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ formatNumber(unit.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 }) }}</span>
                 <span v-if="unit.weight_per_unit" class="ms-2">
-                  <v-icon size="x-small">mdi-weight</v-icon>
-                      {{ formatQuantity(unit.weight_per_unit, localeStore.effectiveFormatLocale) }}g
+                  <v-icon size="x-small">{{ isVolumeOverride(unit) ? 'mdi-cup-water' : 'mdi-weight' }}</v-icon>
+                      {{ overrideWeightDisplay(unit) }}
                 </span>
                 <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('ingredients.pending') }}</v-chip>
               </v-list-item-title>
@@ -1176,7 +1176,11 @@
       <!-- 添加/编辑单位对话框 -->
       <v-dialog v-model="showUnitDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ unitForm.id ? t('ingredients.editUnit') : t('ingredients.addUnitTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ unitForm.id ? t('ingredients.editUnit') : t('ingredients.addUnitTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingUnit" @click="saveEntityUnit">{{ t('ingredients.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveEntityUnit">
               <v-text-field
@@ -1187,6 +1191,19 @@
                 required
                 class="mb-3"
               />
+              <div class="mb-1 text-caption text-medium-emphasis">{{ t('ingredients.weightKind') }}</div>
+              <v-btn-toggle
+                v-model="unitForm.weight_kind"
+                mandatory
+                color="primary"
+                density="compact"
+                variant="outlined"
+                divided
+                class="mb-3"
+              >
+                <v-btn value="mass">{{ t('ingredients.weightKindMass') }}</v-btn>
+                <v-btn value="volume">{{ t('ingredients.weightKindVolume') }}</v-btn>
+              </v-btn-toggle>
               <v-text-field
                 v-model.number="unitForm.conversion_factor"
                 :label="t('ingredients.conversionFactor')"
@@ -1198,13 +1215,22 @@
               />
               <v-text-field
                 v-model.number="unitForm.weight_per_unit"
-                :label="t('ingredients.weightPerUnit')"
+                :label="unitForm.weight_kind === 'volume' ? t('ingredients.volumePerUnit') : t('ingredients.weightPerUnit')"
                 variant="outlined"
                 type="number"
-                :hint="t('ingredients.weightHint')"
+                :hint="unitForm.weight_kind === 'volume' ? t('ingredients.volumeHint') : t('ingredients.weightHint')"
                 persistent-hint
                 class="mb-3"
               />
+              <v-alert
+                v-if="volumePreviewText"
+                density="compact"
+                type="info"
+                variant="tonal"
+                class="mb-3"
+              >
+                {{ volumePreviewText }}
+              </v-alert>
               <v-checkbox
                 v-model="unitForm.is_default"
                 :label="t('ingredients.setDefaultUnit')"
@@ -1213,7 +1239,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showUnitDialog = false">{{ t('ingredients.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">{{ t('ingredients.save') }}</v-btn>
@@ -1224,7 +1250,11 @@
       <!-- 添加/编辑密度对话框 -->
       <v-dialog v-model="showDensityDialog" max-width="450">
         <v-card>
-          <v-card-title>{{ densityForm.id ? t('ingredients.editDensity') : t('ingredients.setDensityTitle') }}</v-card-title>
+          <v-card-title class="d-flex align-center pa-4">
+            <span class="text-h6">{{ densityForm.id ? t('ingredients.editDensity') : t('ingredients.setDensityTitle') }}</span>
+            <v-spacer />
+            <v-btn color="primary" variant="text" :loading="savingDensity" @click="saveDensity">{{ t('ingredients.save') }}</v-btn>
+          </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveDensity">
               <div class="d-flex align-start ga-2 mb-3">
@@ -1263,9 +1293,23 @@
                 :placeholder="t('ingredients.sourcePlaceholder')"
                 class="mb-3"
               />
+              <div class="mb-1 text-caption text-medium-emphasis">{{ t('ingredients.densityPresets') }}</div>
+              <div>
+                <v-chip
+                  v-for="preset in densityPresets"
+                  :key="preset.labelKey"
+                  size="small"
+                  variant="outlined"
+                  class="me-1 mb-1"
+                  style="cursor: pointer"
+                  @click="applyDensityPreset(preset.value)"
+                >
+                  {{ t(preset.labelKey) }} {{ preset.value }}
+                </v-chip>
+              </div>
             </v-form>
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="d-none d-md-flex">
             <v-spacer />
             <v-btn @click="showDensityDialog = false">{{ t('ingredients.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingDensity" @click="saveDensity">{{ t('ingredients.save') }}</v-btn>
@@ -1277,7 +1321,18 @@
     <!-- 添加价格记录对话框 -->
     <v-dialog v-model="showAddPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.addPriceRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.addPriceRecord') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :disabled="!priceForm.product_id"
+            @click="goToAddPrice"
+          >
+            {{ t('ingredients.goToAdd') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-alert type="info" class="mb-4">
             {{ t('ingredients.selectRelatedProductFirst') }}
@@ -1293,7 +1348,7 @@
             return-object
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1310,7 +1365,11 @@
     <!-- 编辑价格记录对话框 -->
     <v-dialog v-model="showEditPriceDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.editPriceRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.editPriceRecord') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="savingPrice" @click="saveEditPriceRecord">{{ t('ingredients.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <div class="text-body-2 text-medium-emphasis mb-3">
             {{ t('ingredients.product') }}：{{ editingPriceRecord?.product_name }}
@@ -1378,7 +1437,7 @@
             </v-row>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showEditPriceDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingPrice" @click="saveEditPriceRecord">{{ t('ingredients.save') }}</v-btn>
@@ -1389,7 +1448,19 @@
     <!-- 合并对话框 -->
     <v-dialog v-model="showMergeDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.mergeTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.mergeTitle') }}</span>
+          <v-spacer />
+          <v-btn
+            color="warning"
+            variant="text"
+            :loading="merging"
+            :disabled="!mergeTargetId"
+            @click="mergeIngredient"
+          >
+            {{ t('ingredients.confirmMerge') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-alert type="warning" class="mb-4">
             {{ t('ingredients.mergeDescription') }}
@@ -1409,7 +1480,7 @@
             return-object
           />
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showMergeDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1444,7 +1515,19 @@
     <!-- 添加层级关系对话框 -->
     <v-dialog v-model="showAddRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.addRelationTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.addRelationTitle') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :loading="savingRelation"
+            :disabled="!relationForm.target_ingredient_id"
+            @click="addRelation"
+          >
+            {{ t('ingredients.add') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="addRelation">
             <v-autocomplete
@@ -1526,7 +1609,7 @@
             </v-alert>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showAddRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -1544,7 +1627,18 @@
     <!-- 编辑层级关系对话框 -->
     <v-dialog v-model="showEditRelationDialog" max-width="500">
       <v-card>
-        <v-card-title>{{ t('ingredients.editRelation') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('ingredients.editRelation') }}</span>
+          <v-spacer />
+          <v-btn
+            color="primary"
+            variant="text"
+            :loading="savingRelation"
+            @click="saveEditRelation"
+          >
+            {{ t('ingredients.save') }}
+          </v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="saveEditRelation">
             <!-- 关系预览 -->
@@ -1604,7 +1698,7 @@
             </v-slider>
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="showEditRelationDialog = false">{{ t('ingredients.cancel') }}</v-btn>
           <v-btn
@@ -2359,20 +2453,28 @@ const basicEditForm = ref({
 const recipeOptions = ref<{ id: number; name: string }[]>([])
 const recipeSearching = ref(false)
 let recipeSearchTimer: any = null
+let recipeSearchSequence = 0
 
 const onRecipeSearch = (q: string) => {
   if (recipeSearchTimer) clearTimeout(recipeSearchTimer)
-  if (!q || !q.trim()) return
+  if (!q || !q.trim()) {
+    recipeSearchSequence++
+    return
+  }
   recipeSearchTimer = setTimeout(async () => {
+    const sequence = ++recipeSearchSequence
     recipeSearching.value = true
     try {
       const res = await api.get('/recipes', { params: { search: q.trim(), page: 1, per_page: 20 } })
       const items = (res as any)?.items || (res as any)?.data || []
+      if (sequence !== recipeSearchSequence) return
       recipeOptions.value = items.map((r: any) => ({ id: r.id, name: r.name }))
     } catch (e) {
       console.error('Failed to search recipes', e)
     } finally {
-      recipeSearching.value = false
+      if (sequence === recipeSearchSequence) {
+        recipeSearching.value = false
+      }
     }
   }, 300)
 }
@@ -2633,12 +2735,14 @@ const unitForm = ref<{
   conversion_factor: number | null
   weight_per_unit: number | null
   is_default: boolean
+  weight_kind: 'mass' | 'volume'
 }>({
   id: null,
   unit_name: '',
   conversion_factor: null,
   weight_per_unit: null,
-  is_default: false
+  is_default: false,
+  weight_kind: 'mass'
 })
 const densityForm = ref<{
   id: number | null
@@ -2716,15 +2820,85 @@ const loadDensity = async () => {
   }
 }
 
+// ---------- 每单位量类型（质量 g / 体积 mL）----------
+// 生效密度（kg/m³）：自身密度 > 水密度（与后端 get_density 链一致）
+const effectiveDensityKgM3 = computed(() => {
+  const own = displayDensity.value?.density
+  if (own != null) return Number(own)
+  return null
+})
+const weightUnitTypeById = ref<Map<number, string>>(new Map())
+const weightUnitIds = ref<{ mass: number | null; volume: number | null }>({ mass: null, volume: null })
+const ensureWeightUnits = async () => {
+  if (weightUnitIds.value.mass && weightUnitIds.value.volume) return
+  try {
+    const res = await api.get('/units/', { params: { limit: 100 } })
+    const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
+    const map = new Map<number, string>()
+    arr.forEach((x: any) => map.set(x.id, x.unit_type))
+    weightUnitTypeById.value = map
+    const g = arr.find((x: any) => x.unit_type === 'mass' && x.abbreviation === 'g')
+    const ml = arr.find((x: any) => x.unit_type === 'volume' && x.abbreviation === 'mL')
+    weightUnitIds.value = { mass: g?.id ?? null, volume: ml?.id ?? null }
+  } catch (e) {
+    console.error('Failed to load units for weight kind', e)
+  }
+}
+const isVolumeOverride = (u: EntityUnitOverride) =>
+  u.weight_unit_id != null && weightUnitTypeById.value.get(u.weight_unit_id) === 'volume'
+
+const overrideWeightDisplay = (u: EntityUnitOverride): string => {
+  if (u.weight_per_unit == null) return ''
+  const amount = formatQuantity(u.weight_per_unit, localeStore.effectiveFormatLocale)
+  if (!isVolumeOverride(u)) return `${amount}g`
+  const d = effectiveDensityKgM3.value ?? 1000
+  const grams = Number(u.weight_per_unit) * d / 1000
+  return t('ingredients.unitVolumeDisplay', {
+    volume: amount,
+    grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+  })
+}
+
+// 单位对话框：体积语义下的密度折算提示
+const volumePreviewText = computed(() => {
+  if (unitForm.value.weight_kind !== 'volume') return ''
+  const wpu = unitForm.value.weight_per_unit
+  if (!wpu || wpu <= 0) return t('ingredients.volumeDensityHintEmpty')
+  const d = effectiveDensityKgM3.value ?? 1000
+  const grams = wpu * d / 1000
+  return t('ingredients.volumeDensityHint', {
+    density: formatNumber(d / 1000, localeStore.effectiveFormatLocale, { maximumFractionDigits: 3 }),
+    grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+  })
+})
+
+// 常见液体密度预设（g/cm³），点击填入当前输入单位
+const densityPresets = [
+  { labelKey: 'ingredients.presetWater', value: 1.0 },
+  { labelKey: 'ingredients.presetMilk', value: 1.03 },
+  { labelKey: 'ingredients.presetCookingOil', value: 0.92 },
+  { labelKey: 'ingredients.presetSoySauce', value: 1.15 },
+  { labelKey: 'ingredients.presetHoney', value: 1.42 },
+]
+const applyDensityPreset = (value: number) => {
+  densityForm.value.density = densityInputUnit.value === 'g/cm3' ? value : value * 1000
+}
+
 // 打开单位对话框（支持传入 EntityUnitOverride 或 unit_name 字符串）
-const openUnitDialog = (unit?: EntityUnitOverride | string) => {
+const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
+  await ensureWeightUnits()
+  let kind: 'mass' | 'volume' = 'mass'
+  if (typeof unit !== 'string' && unit?.weight_unit_id != null) {
+    kind = weightUnitTypeById.value.get(unit.weight_unit_id) === 'volume' ? 'volume' : 'mass'
+  }
   if (typeof unit === 'string') {
     unitForm.value = {
       id: null,
       unit_name: unit,
       conversion_factor: null,
       weight_per_unit: 100,
-      is_default: false
+      is_default: false,
+      weight_kind: kind
     }
   } else if (unit) {
     unitForm.value = {
@@ -2732,7 +2906,8 @@ const openUnitDialog = (unit?: EntityUnitOverride | string) => {
       unit_name: unit.unit_name,
       conversion_factor: unit.conversion_factor,
       weight_per_unit: unit.weight_per_unit,
-      is_default: unit.is_default
+      is_default: unit.is_default,
+      weight_kind: kind
     }
   } else {
     unitForm.value = {
@@ -2740,7 +2915,8 @@ const openUnitDialog = (unit?: EntityUnitOverride | string) => {
       unit_name: '',
       conversion_factor: null,
       weight_per_unit: null,
-      is_default: false
+      is_default: false,
+      weight_kind: 'mass'
     }
   }
   showUnitDialog.value = true
@@ -2767,12 +2943,24 @@ const saveEntityUnit = async () => {
     showMessage(t('ingredients.unitNameRequired'), 'error')
     return
   }
+  // 每单位量类型：质量(g) / 体积(mL)，体积折算质量时经实体密度
+  let weight_unit_id: number | null = null
+  if (unitForm.value.weight_kind === 'volume') {
+    if (!weightUnitIds.value.volume) {
+      showMessage(t('ingredients.weightUnitIdsMissing'), 'error')
+      return
+    }
+    weight_unit_id = weightUnitIds.value.volume
+  } else {
+    weight_unit_id = weightUnitIds.value.mass
+  }
   savingUnit.value = true
   try {
     const payload = {
       unit_name: unitForm.value.unit_name,
       conversion_factor: unitForm.value.conversion_factor,
       weight_per_unit: unitForm.value.weight_per_unit,
+      weight_unit_id,
       is_default: unitForm.value.is_default
     }
     if (unitForm.value.id) {
@@ -3249,6 +3437,7 @@ const loadData = async () => {
     loadEntityUnits()
     loadDensity()
     loadUnmappedUnits()
+    ensureWeightUnits()
   } catch (e: any) {
     console.error('Failed to load ingredient', e)
     error.value = getErrorMessage(e, t('ingredients.loadFailed'))

@@ -138,7 +138,15 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileNutritionGoals)),
+      appBar: AppBar(
+        title: Text(l10n.profileNutritionGoals),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -184,11 +192,6 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
               labelText: l10n.nutritionGoalFatLabel,
               border: const OutlineInputBorder(),
             ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
           ),
         ],
       ),

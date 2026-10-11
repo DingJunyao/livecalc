@@ -1,7 +1,12 @@
 <template>
   <v-dialog v-model="show" max-width="500" persistent>
     <v-card>
-      <v-card-title>{{ t('prices.recordPrice') }}{{ displayProductName ? ' - ' + displayProductName : '' }}</v-card-title>
+      <v-card-title class="d-flex align-center pa-4">
+        <span class="text-h6">{{ t('prices.recordPrice') }}{{ displayProductName ? ' - ' + displayProductName : '' }}</span>
+        <v-spacer />
+        <v-btn color="primary" variant="text" :loading="saving" :disabled="!formValid" @click="save">{{ t('prices.add') }}</v-btn>
+        <v-btn icon="mdi-close" variant="text" size="small" @click="close" />
+      </v-card-title>
       <v-card-text>
         <v-form ref="formRef" v-model="formValid">
           <!-- 商家（必填，置于商品前） -->
@@ -113,7 +118,7 @@
       <v-alert v-if="saveError" type="error" variant="tonal" class="mx-4 mb-2" closable @click:close="saveError = ''">
         {{ saveError }}
       </v-alert>
-      <v-card-actions>
+      <v-card-actions class="d-none d-md-flex">
         <v-spacer />
         <v-btn @click="close">{{ t('prices.cancel') }}</v-btn>
         <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="save">{{ t('prices.add') }}</v-btn>

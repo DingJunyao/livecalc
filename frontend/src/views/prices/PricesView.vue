@@ -182,7 +182,14 @@
             <div class="text-body-2 mt-3 text-grey-darken-2">{{ t('prices.barcodeLookup') }}</div>
           </div>
         </v-overlay>
-        <v-card-title>{{ isEditing ? t('prices.editRecord') : t('prices.addRecord') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ isEditing ? t('prices.editRecord') : t('prices.addRecord') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" :disabled="!formValid" @click="saveRecord">
+            {{ isEditing ? t('prices.save') : t('prices.add') }}
+          </v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="closeDialog" />
+        </v-card-title>
         <v-card-text>
           <v-form ref="formRef" v-model="formValid">
             <!-- 商家（置于商品前） -->
@@ -346,7 +353,7 @@
             />
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="closeDialog">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="saveRecord">
@@ -813,7 +820,6 @@ const searchProducts = async () => {
     })
     if (requestSequence !== searchProductsSequence) return
     productSuggestions.value = response || []
-    console.log('[DEBUG] Search products:', productSearch.value, 'results:', productSuggestions.value)
   } catch (e: any) {
     if (requestSequence !== searchProductsSequence) return
     console.error('Failed to search products', e)
@@ -840,8 +846,14 @@ watch(productSearch, (newSearch) => {
   if (productSearchTimeout) clearTimeout(productSearchTimeout)
   productSearchTimeout = setTimeout(() => {
     const query = normalizeProductSearch(newSearch)
-    if (query) searchProducts()
-    else productSuggestions.value = []
+    if (query) {
+      searchProducts()
+    } else {
+      // 递增序号作废在途请求，防止旧响应把已清空的建议列表重新填上
+      searchProductsSequence++
+      productLoading.value = false
+      productSuggestions.value = []
+    }
   }, 300)
 })
 

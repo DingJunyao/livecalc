@@ -681,9 +681,9 @@ void main() {
       expect(find.text(copy.countExpense), findsOneWidget);
       expect(find.text(copy.recordedAt), findsOneWidget);
       expect(find.text(copy.notes), findsOneWidget);
-      expect(find.widgetWithText(FilledButton, copy.save), findsOneWidget);
+      expect(find.widgetWithText(TextButton, copy.save), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilledButton, copy.save));
+      await tester.tap(find.widgetWithText(TextButton, copy.save));
       await tester.pump();
       expect(find.text(copy.validPrice), findsOneWidget);
       expect(repo.createCount, 0);
@@ -709,7 +709,7 @@ void main() {
         find.widgetWithText(TextField, copy.quantityLabel),
         '2.5',
       );
-      await tester.tap(find.widgetWithText(FilledButton, copy.save));
+      await tester.tap(find.widgetWithText(TextButton, copy.save));
       await tester.pumpAndSettle();
 
       expect(repo.createCount, 1);

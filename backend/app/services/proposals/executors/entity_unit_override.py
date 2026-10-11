@@ -34,6 +34,7 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
             unit_name = p.get("unit_name")
             if biz_type is None or biz_id is None or unit_name is None:
                 raise LocalizedHTTPException(status_code=400, message='payload 缺少 entity_type/entity_id/unit_name')
+            self._validate_weight_unit(db, p)
             dup = (
                 db.query(EntityUnitOverride)
                 .filter(
@@ -61,6 +62,28 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
         )
         if obj is None:
             raise LocalizedHTTPException(status_code=404, message='实体单位覆盖 {eid} 不存在或已删除', eid=eid)
+        if action == "update":
+            self._validate_weight_unit(db, proposal.payload or {})
+
+    @staticmethod
+    def _validate_weight_unit(db: Session, payload: dict) -> None:
+        """weight_unit_id（若提供）须指向质量或体积单位。
+
+        覆盖的"每单位量"语义为"1个该单位 = N（g/mL）"，计数等单位无法参与换算。
+        """
+        wu_id = payload.get("weight_unit_id")
+        if wu_id is None:
+            return
+        from app.models.unit import Unit
+        unit = db.query(Unit).filter(Unit.id == wu_id).first()
+        if unit is None:
+            raise LocalizedHTTPException(status_code=400, message='weight_unit_id {wu_id} 不存在', wu_id=wu_id)
+        if unit.unit_type not in ("mass", "volume"):
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='每单位量单位 {name} 须为质量或体积单位',
+                name=unit.name,
+            )
 
     def apply(self, db: Session, proposal) -> "ApplyResult":
         """apply 后按业务实体重算价格记录，保证既有记录换算跟随最新覆盖。"""

@@ -192,6 +192,12 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
         title: Text(
           _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
         ),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -226,15 +232,6 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
                   ),
               ],
             ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-          child: FilledButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
-          ),
-        ),
-      ),
     );
   }
 }

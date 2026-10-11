@@ -219,7 +219,7 @@ void main() {
     expect(find.text('计入支出'), findsOneWidget);
     expect(find.text('记录时间'), findsOneWidget);
     expect(find.text('备注'), findsOneWidget);
-    expect(find.widgetWithText(FilledButton, '保存'), findsOneWidget);
+    expect(find.widgetWithText(TextButton, '保存'), findsOneWidget);
   });
 
   testWidgets('prefills a product and searches within its ingredient', (
@@ -256,8 +256,8 @@ void main() {
 
     final priceField = find.widgetWithText(TextField, '价格');
     await tester.enterText(priceField, '2.5');
-    await tester.ensureVisible(find.widgetWithText(FilledButton, '保存'));
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.ensureVisible(find.widgetWithText(TextButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -269,7 +269,7 @@ void main() {
     await pumpForm(tester, priceRepo: repo);
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pump();
 
     expect(find.text('请输入有效的价格'), findsOneWidget);
@@ -292,7 +292,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -315,7 +315,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '新商品A');
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, '价格'), '3');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -331,7 +331,7 @@ void main() {
     await tester.tap(find.text('计入支出'));
     await tester.pump();
     await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.lastRecordType, 'price');
@@ -356,7 +356,7 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄酱');
     await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, '价格'), '3');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -398,7 +398,7 @@ void main() {
     await tester.tap(find.text('超市'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -411,7 +411,7 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
     await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.lastMerchantId, isNull);
@@ -437,7 +437,7 @@ void main() {
     await tester.enterText(merchantField, '超市X');
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.lastMerchantId, isNull);
@@ -450,9 +450,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
     await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
     // 两次 tap 之间不 pump：第一次同步置 _saving，第二次命中同一按钮
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.tap(
-      find.widgetWithText(FilledButton, '保存'),
+      find.widgetWithText(TextButton, '保存'),
       warnIfMissed: false,
     );
     await tester.pumpAndSettle();
@@ -481,7 +481,7 @@ void main() {
     await tester.tap(find.text('计入支出'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.createCount, 1);
@@ -523,7 +523,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('超市'));
     await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
     expect(repo.lastCurrency, 'IDR');
 
@@ -547,7 +547,7 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
     await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
-    await tester.tap(find.widgetWithText(FilledButton, '保存'));
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
     await tester.pumpAndSettle();
 
     expect(repo.lastMerchantId, isNull);

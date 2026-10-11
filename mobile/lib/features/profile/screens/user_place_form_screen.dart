@@ -137,6 +137,18 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(editing ? l10n.userPlaceEditTitle : l10n.placeAdd),
+        actions: [
+          TextButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(editing ? l10n.commonSave : l10n.commonAdd),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -216,17 +228,6 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
                       ? null
                       : (value) => setState(() => _coordinate = value),
                   tileProvider: widget.mapTileProvider,
-                ),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(editing ? l10n.commonSave : l10n.commonAdd),
                 ),
               ],
             ),

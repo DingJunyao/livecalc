@@ -1844,24 +1844,19 @@ async def calculate_recipe_nutrition(
 
         # 首先处理容量单位的密度转换
         if standard_unit.lower() == "ml" and recipe_ingredient.unit:
-            # 如果是容量单位，尝试使用密度转换为重量
-            from app.models.ingredient_density import IngredientDensity
-
-            # 查找密度数据（mL → g）
-            density = db.query(IngredientDensity).filter(
-                IngredientDensity.ingredient_id == ingredient.id,
-                IngredientDensity.from_unit_id == recipe_ingredient.unit.id,
-                IngredientDensity.to_unit_id == 3  # g 的 ID
-            ).first()
-
-            if density and density.density_value:
-                # 使用密度转换：重量 = 容量 × 密度
-                standard_quantity = standard_quantity * Decimal(str(density.density_value))
-                standard_unit = "g"  # 转换为克
-            else:
-                # 没有密度数据，假设密度为 1.0 g/mL
-                standard_quantity = standard_quantity
-                standard_unit = "g"
+            # 体积→质量：经实体密度链（entity_densities：自身>水兜底，与成本/
+            # 换算口径一致），替换已废弃的 ingredient_densities 表查询
+            try:
+                mass = UnitConversionService(db).convert_volume_to_mass(
+                    standard_quantity, recipe_ingredient.unit,
+                    "ingredient", ingredient.id,
+                )
+                if mass is not None:
+                    # convert_volume_to_mass 返回 kg，换回 g
+                    standard_quantity = mass[0] * Decimal("1000")
+            except Exception:
+                pass
+            standard_unit = "g"
 
         if standard_unit.lower() in ["g", "ml"] and reference_unit.lower() in ["g", "ml"]:
             # 如果都是重量或容量单位，可以计算比例
@@ -1905,7 +1900,20 @@ async def calculate_recipe_nutrition(
                 if entity_override and entity_override.weight_per_unit:
                     # 使用自定义单位中维护的每件标准重量（如 1 颗=0.2g）
                     weight_unit = db.query(Unit).filter(Unit.id == entity_override.weight_unit_id).first()
-                    if weight_unit:
+                    if weight_unit and weight_unit.unit_type == "volume":
+                        # 体积语义的每单位量（如 1瓶=500mL）：经实体密度折算为克
+                        ucs = UnitConversionService(db)
+                        grams_result = ucs.convert(
+                            Decimal(str(entity_override.weight_per_unit)),
+                            weight_unit.abbreviation, "g",
+                            entity_type="ingredient", entity_id=ingredient.id,
+                        )
+                        if grams_result is not None and grams_result[0] > 0:
+                            total_weight = quantity * grams_result[0]
+                            ratio = total_weight / reference_amount
+                        else:
+                            ratio = Decimal("0")
+                    elif weight_unit:
                         converted_weight, converted_unit = convert_to_standard(
                             Decimal(str(entity_override.weight_per_unit)),
                             weight_unit.abbreviation

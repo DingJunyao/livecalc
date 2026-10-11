@@ -323,7 +323,7 @@ class NutritionCalculator:
             return None
 
         # 转换单位到基准单位（g 或 ml）
-        base_quantity = self._convert_to_base(quantity, unit)
+        base_quantity = self._convert_to_base(quantity, unit, ingredient_id)
 
         # 计算缩放比例
         scale_factor = base_quantity / nutrition.reference_amount
@@ -564,22 +564,48 @@ class NutritionCalculator:
             "维生素K": {"unit": "μg"}
         }
 
-    def _convert_to_base(self, quantity: float, unit: str) -> float:
+    def _convert_to_base(
+        self, quantity: float, unit: str, ingredient_id: Optional[int] = None
+    ) -> float:
         """
-        转换单位到基准单位
+        转换单位为克当量
 
-        使用 app.utils.unit_converter 的转换函数
+        有实体上下文时走 UnitConversionService：质量/体积经 si_factor 与实体
+        密度链（支持"1瓶=500mL"这类体积语义自定义单位）；计数单位用实体覆盖
+        或 piece_weight，无任何单件重量数据时返回 0（与 recipe_service 营养
+        口径一致，避免按默认 100g/个 高估）。无实体上下文或单位不在单位表中
+        时回退旧转换表。
         """
-        from app.utils.unit_converter import convert_to_standard
+        from app.services.unit_conversion_service import (
+            UnitConversionService,
+            _get_piece_weight_kg,
+        )
 
         quantity_decimal = Decimal(str(quantity))
+        if ingredient_id is not None:
+            ucs = UnitConversionService(self.db)
+            unit_obj = ucs.get_unit_by_abbr(unit)
+            if unit_obj is not None and unit_obj.unit_type == "count":
+                # default_kg=None：无覆盖且无 piece_weight 时返回 None 而非 100g 默认估算
+                piece_kg = _get_piece_weight_kg(
+                    ucs, "ingredient", ingredient_id, unit, None
+                )
+                if piece_kg is None:
+                    return 0.0
+                return float(piece_kg * quantity_decimal * Decimal("1000"))
+            result = ucs.convert(
+                quantity_decimal, unit, "g",
+                entity_type="ingredient", entity_id=ingredient_id,
+            )
+            if result is not None:
+                return float(result[0])
+
+        from app.utils.unit_converter import convert_to_standard
+
         converted_quantity, standard_unit = convert_to_standard(quantity_decimal, unit)
 
-        # 转换为标准单位后再转换为克或毫升
+        # 转换为标准单位后再转换为克或毫升（ml 与 g 按 1:1 处理）
         if standard_unit in ["g", "ml"]:
-            return float(converted_quantity)
-        elif standard_unit == "ml":
-            # 假设 1ml = 1g（简化处理）
             return float(converted_quantity)
         else:
             # 其他单位不转换

@@ -1404,7 +1404,6 @@
     "confidence": "置信度",
     "condition": "适用条件",
     "multiplicationFactor": "×{value}",
-    "valueWithUnitId": "{amount}（单位 ID：{unitId}）",
     "unitName": "单位名称",
     "conversionFactor": "换算系数",
     "weightPerUnit": "单位重量",
@@ -1488,7 +1487,8 @@
       "delete": "删除",
       "merge": "合并",
       "publish": "发布"
-    }
+    },
+    "valueWithUnit": "{amount} {unit}"
   },
   "places": {
     "title": "我的常用地点",
@@ -1781,7 +1781,22 @@
     "splitFailed": "拆分失败",
     "mergeSuccess": "合并成功",
     "mergeFailed": "合并失败",
-    "splitSuccess": "拆分成功"
+    "splitSuccess": "拆分成功",
+    "weightKind": "每单位量类型",
+    "weightKindMass": "质量 (g)",
+    "weightKindVolume": "体积 (mL)",
+    "volumePerUnit": "单位容量 (mL)",
+    "volumeHint": "每个单位对应的体积（毫升）",
+    "unitVolumeDisplay": "{volume} mL（≈{grams} g）",
+    "volumeDensityHint": "按当前密度 {density} g/mL 折算 ≈ {grams} g；未设置密度时按水密度估算",
+    "volumeDensityHintEmpty": "填写每单位体积后显示折算重量",
+    "weightUnitIdsMissing": "未找到体积单位（mL），请刷新后重试",
+    "densityPresets": "常见液体密度",
+    "presetWater": "水",
+    "presetMilk": "牛奶",
+    "presetCookingOil": "食用油",
+    "presetSoySauce": "酱油",
+    "presetHoney": "蜂蜜"
   },
   "ingredients": {
     "title": "原料管理",
@@ -2024,7 +2039,22 @@
     "mergeProposalSubmitted": "合并提议已提交，待管理员审核",
     "mergeFailed": "合并失败",
     "mergeSuccessFallback": "合并成功",
-    "perServing": "份"
+    "perServing": "份",
+    "weightKind": "每单位量类型",
+    "weightKindMass": "质量 (g)",
+    "weightKindVolume": "体积 (mL)",
+    "volumePerUnit": "单位容量 (mL)",
+    "volumeHint": "每个单位对应的体积（毫升）",
+    "unitVolumeDisplay": "{volume} mL（≈{grams} g）",
+    "volumeDensityHint": "按当前密度 {density} g/mL 折算 ≈ {grams} g；未设置密度时按水密度估算",
+    "volumeDensityHintEmpty": "填写每单位体积后显示折算重量",
+    "weightUnitIdsMissing": "未找到体积单位（mL），请刷新后重试",
+    "densityPresets": "常见液体密度",
+    "presetWater": "水",
+    "presetMilk": "牛奶",
+    "presetCookingOil": "食用油",
+    "presetSoySauce": "酱油",
+    "presetHoney": "蜂蜜"
   },
   "merchants": {
     "title": "商家管理",

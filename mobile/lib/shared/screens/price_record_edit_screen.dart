@@ -270,6 +270,12 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? l10n.priceEditTitle : l10n.priceRecordTitle),
+        actions: [
+          TextButton(
+            onPressed: _submit,
+            child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -503,11 +509,6 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _submit,
-                child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
               ),
             ],
           ),

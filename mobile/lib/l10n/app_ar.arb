@@ -553,6 +553,42 @@
       "weight": {}
     }
   },
+  "unitsWeightKind": "نوع الكمية لكل وحدة",
+  "@unitsWeightKind": {},
+  "unitsWeightKindMass": "كتلة (g)",
+  "@unitsWeightKindMass": {},
+  "unitsWeightKindVolume": "حجم (mL)",
+  "@unitsWeightKindVolume": {},
+  "unitsVolumeLabel": "الحجم لكل وحدة (mL)",
+  "@unitsVolumeLabel": {},
+  "unitsVolumeDetail": "{volume} mL (≈{grams} g)",
+  "@unitsVolumeDetail": {
+    "placeholders": {
+      "volume": {},
+      "grams": {}
+    }
+  },
+  "unitsVolumeDensityHint": "≈{grams} g عند الكثافة الحالية {density} g/mL؛ عند عدم التحديد تُستخدم كثافة الماء",
+  "@unitsVolumeDensityHint": {
+    "placeholders": {
+      "grams": {},
+      "density": {}
+    }
+  },
+  "unitsVolumeDensityHintEmpty": "أدخل الحجم لكل وحدة لعرض الوزن المكافئ",
+  "@unitsVolumeDensityHintEmpty": {},
+  "unitsDensityPresets": "كثافات سوائل شائعة (kg/m³)",
+  "@unitsDensityPresets": {},
+  "unitsPresetWater": "ماء",
+  "@unitsPresetWater": {},
+  "unitsPresetMilk": "حليب",
+  "@unitsPresetMilk": {},
+  "unitsPresetCookingOil": "زيت طهي",
+  "@unitsPresetCookingOil": {},
+  "unitsPresetSoySauce": "صلصة صويا",
+  "@unitsPresetSoySauce": {},
+  "unitsPresetHoney": "عسل",
+  "@unitsPresetHoney": {},
   "unitsDefault": "افتراضي",
   "@unitsDefault": {},
   "unitsPendingReview": "قيد المراجعة",
@@ -1288,11 +1324,24 @@
   "recipeConditionUnnourished": "يحتوي مكوّنات بلا بيانات تغذية",
   "@recipeConditionUnnourished": {},
   "recipeServingsCount": "{count} حصة",
-  "@recipeServingsCount": {"placeholders": {"count": {}}},
+  "@recipeServingsCount": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeCostPerServings": "{amount} / {count} حصة",
-  "@recipeCostPerServings": {"placeholders": {"amount": {}, "count": {}}},
+  "@recipeCostPerServings": {
+    "placeholders": {
+      "amount": {},
+      "count": {}
+    }
+  },
   "recipeCaloriesPerServing": "{amount} سعرة / حصة",
-  "@recipeCaloriesPerServing": {"placeholders": {"amount": {}}},
+  "@recipeCaloriesPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeCategoryMeatDish": "طبق باللحم",
   "@recipeCategoryMeatDish": {},
   "recipeCategoryVegetableDish": "طبق نباتي",
@@ -1362,11 +1411,20 @@
   "recipeCalculatedFromIngredientsCost": "محسوب من تكاليف المكوّنات:",
   "@recipeCalculatedFromIngredientsCost": {},
   "recipePriceStaleTooltip": "آخر تحديث للسعر في {date}، مرّ أكثر من 30 يومًا",
-  "@recipePriceStaleTooltip": {"placeholders": {"date": {}}},
+  "@recipePriceStaleTooltip": {
+    "placeholders": {
+      "date": {}
+    }
+  },
   "recipeGotIt": "فهمت",
   "@recipeGotIt": {},
   "recipeRecommendedQuantity": "الموصى به {quantity} {unit}",
-  "@recipeRecommendedQuantity": {"placeholders": {"quantity": {}, "unit": {}}},
+  "@recipeRecommendedQuantity": {
+    "placeholders": {
+      "quantity": {},
+      "unit": {}
+    }
+  },
   "recipeSteps": "الخطوات",
   "@recipeSteps": {},
   "recipeEditSteps": "تعديل الخطوات",
@@ -1374,7 +1432,11 @@
   "recipeNoSteps": "لا توجد خطوات",
   "@recipeNoSteps": {},
   "recipeStepMinutes": "{count} دقيقة",
-  "@recipeStepMinutes": {"placeholders": {"count": {}}},
+  "@recipeStepMinutes": {
+    "placeholders": {
+      "count": {}
+    }
+  },
   "recipeNutritionPerServing": "التغذية لكل حصة",
   "@recipeNutritionPerServing": {},
   "recipeTips": "نصائح",
@@ -1438,7 +1500,11 @@
   "recipeNote": "ملاحظة",
   "@recipeNote": {},
   "recipeStepNumberLabel": "الخطوة {index}",
-  "@recipeStepNumberLabel": {"placeholders": {"index": {}}},
+  "@recipeStepNumberLabel": {
+    "placeholders": {
+      "index": {}
+    }
+  },
   "recipeStepContent": "المحتوى",
   "@recipeStepContent": {},
   "recipeStepDuration": "المدة (دقائق)",
@@ -1464,9 +1530,17 @@
   "recipeImageUploadFailed": "تعذّر رفع الصورة. حاول مجددًا.",
   "@recipeImageUploadFailed": {},
   "recipeIngredientQuantityIncomplete": "كمية المكوّن في الصف {row} غير مكتملة: أدخل كمية موصى بها، أو كمية موصى بها مع نطاق، أو نطاقًا فقط.",
-  "@recipeIngredientQuantityIncomplete": {"placeholders": {"row": {}}},
+  "@recipeIngredientQuantityIncomplete": {
+    "placeholders": {
+      "row": {}
+    }
+  },
   "recipeIngredientFallbackName": "مكوّن #{id}",
-  "@recipeIngredientFallbackName": {"placeholders": {"id": {}}},
+  "@recipeIngredientFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeSaveSuccess": "تم الحفظ",
   "@recipeSaveSuccess": {},
   "recipeCostShare": "توزيع تكلفة المكوّنات",
@@ -1504,15 +1578,36 @@
   "recipeBestValue": "أفضل قيمة",
   "@recipeBestValue": {},
   "recipeCoveredCount": "تم تغطية {covered}/{total} من المكوّنات",
-  "@recipeCoveredCount": {"placeholders": {"covered": {}, "total": {}}},
+  "@recipeCoveredCount": {
+    "placeholders": {
+      "covered": {},
+      "total": {}
+    }
+  },
   "recipeInStore": "في المتجر {amount}",
-  "@recipeInStore": {"placeholders": {"amount": {}}},
+  "@recipeInStore": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeExternal": "خارجي {amount}",
-  "@recipeExternal": {"placeholders": {"amount": {}}},
+  "@recipeExternal": {
+    "placeholders": {
+      "amount": {}
+    }
+  },
   "recipeMissingIngredients": "مكوّنات ناقصة: {ingredients}",
-  "@recipeMissingIngredients": {"placeholders": {"ingredients": {}}},
+  "@recipeMissingIngredients": {
+    "placeholders": {
+      "ingredients": {}
+    }
+  },
   "recipeMerchantFallbackName": "تاجر #{id}",
-  "@recipeMerchantFallbackName": {"placeholders": {"id": {}}},
+  "@recipeMerchantFallbackName": {
+    "placeholders": {
+      "id": {}
+    }
+  },
   "recipeMerchantPriceRecommendation": "توصيات أسعار التاجر",
   "@recipeMerchantPriceRecommendation": {},
   "recipeNoMerchantComparisonData": "لا توجد بيانات مقارنة التاجر",
@@ -1737,7 +1832,9 @@
   "@productMergeIntoProduct": {},
   "productMergeDialogPrompt": "اختر المنتج الذي تريد دمج {name} فيه:",
   "@productMergeDialogPrompt": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "productMergeNoSiblings": "لا توجد منتجات أخرى ضمن هذا المكوّن لدمجها.",
   "@productMergeNoSiblings": {},
@@ -1767,7 +1864,9 @@
   "@productMyWeightOverride": {},
   "productMyWeightGlobalDefault": "الافتراضي العام: {value} (يُستخدم عند عدم التجاوز)",
   "@productMyWeightGlobalDefault": {
-    "placeholders": {"value": {}}
+    "placeholders": {
+      "value": {}
+    }
   },
   "ingredientMergeIntoOther": "دمج في مكوّن آخر",
   "@ingredientMergeIntoOther": {},
@@ -1781,7 +1880,10 @@
   "@ingredientConfirmMerge": {},
   "ingredientMergeConfirmText": "دمج \"{source}\" في \"{target}\"؟",
   "@ingredientMergeConfirmText": {
-    "placeholders": {"source": {}, "target": {}}
+    "placeholders": {
+      "source": {},
+      "target": {}
+    }
   },
   "ingredientMergeSuccess": "تم الدمج",
   "@ingredientMergeSuccess": {},
@@ -1795,7 +1897,9 @@
   "@ingredientConfirmDelete": {},
   "ingredientDeleteConfirmText": "حذف المكوّن \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
   "@ingredientDeleteConfirmText": {
-    "placeholders": {"name": {}}
+    "placeholders": {
+      "name": {}
+    }
   },
   "ingredientDeleted": "تم الحذف",
   "@ingredientDeleted": {},
@@ -1811,7 +1915,10 @@
   "@blacklistSubscribedGroups": {},
   "blacklistGroupTitle": "{name} ({count} مكوّنًا)",
   "@blacklistGroupTitle": {
-    "placeholders": {"name": {}, "count": {}}
+    "placeholders": {
+      "name": {},
+      "count": {}
+    }
   },
   "blacklistManualAdd": "إضافات يدوية",
   "@blacklistManualAdd": {},
@@ -1825,14 +1932,20 @@
   "@blacklistUnsubscribed": {},
   "blacklistAddFailed": "تعذّرت الإضافة: {message}",
   "@blacklistAddFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistRemoveFailed": "تعذّر الإزالة: {message}",
   "@blacklistRemoveFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   },
   "blacklistActionFailed": "فشلت العملية: {message}",
   "@blacklistActionFailed": {
-    "placeholders": {"message": {}}
+    "placeholders": {
+      "message": {}
+    }
   }
 }

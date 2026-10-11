@@ -27,10 +27,14 @@ from app.core.exceptions import LocalizedHTTPException
 router = APIRouter(tags=["sparklines"])
 
 
-def _unit_price_per_jin(row) -> float:
-    """记录 → ¥/斤 单价（按记录时用户币种快照折算 + 500g 归一化）。"""
-    std_qty_f = float(row.standard_quantity) if row.standard_quantity and float(row.standard_quantity) > 0 else 500.0
-    return float(record_price_in_user_currency(row)) * 500.0 / std_qty_f
+def _unit_price_per_jin(db, row) -> float:
+    """记录 → ¥/斤 单价（按记录时用户币种快照折算 + 500g 归一化）。
+
+    体积标准的历史遗留记录经实体密度折克（record_standard_grams）。
+    """
+    from app.services.price_aggregator import record_standard_grams
+    grams = record_standard_grams(db, row.standard_quantity, row.standard_unit_id, row.product_id)
+    return float(record_price_in_user_currency(row)) * 500.0 / grams
 
 
 def _forward_fill_daily(day_values: Dict[str, float], tz: str) -> List[float]:
@@ -123,7 +127,7 @@ def _daily_avg_for_product_ids(
     # 按日 + 按商品：{date: {product_id: [unit_price,...]}}
     by_day_product: dict = defaultdict(dict)
     for row in records:
-        unit_price = _unit_price_per_jin(row)
+        unit_price = _unit_price_per_jin(db, row)
         dkey = utc_datetime_to_local_date(row.recorded_at, tz).isoformat()
         by_day_product[dkey].setdefault(row.product_id, []).append(unit_price)
 
@@ -165,7 +169,7 @@ def _products_sparklines_batched(
     by_pid_day: dict = defaultdict(lambda: defaultdict(list))
     for row in rows:
         by_pid_day[row.product_id][utc_datetime_to_local_date(row.recorded_at, tz).isoformat()].append(
-            _unit_price_per_jin(row)
+            _unit_price_per_jin(db, row)
         )
     result: Dict[str, Optional[List[float]]] = {}
     for pid in product_ids:
@@ -218,7 +222,7 @@ def _ingredients_sparklines_batched(
         d = by_ing_day_prod[ing_id]
         d[utc_datetime_to_local_date(row.recorded_at, tz).isoformat()].setdefault(
             row.product_id, []
-        ).append(_unit_price_per_jin(row))
+        ).append(_unit_price_per_jin(db, row))
 
     result: Dict[str, Optional[List[float]]] = {}
     for ing_id in ingredient_ids:

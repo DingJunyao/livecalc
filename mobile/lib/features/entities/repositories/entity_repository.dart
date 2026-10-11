@@ -38,6 +38,7 @@ class EntityRepository {
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
+    int? weightUnitId,
     bool isDefault = false,
     bool isAdmin = true,
   }) async {
@@ -47,6 +48,7 @@ class EntityRepository {
         'unit_name': unitName,
         if (conversionFactor != null) 'conversion_factor': conversionFactor,
         if (weightPerUnit != null) 'weight_per_unit': weightPerUnit,
+        if (weightUnitId != null) 'weight_unit_id': weightUnitId,
         'is_default': isDefault,
         'source': 'manual',
       },
@@ -68,6 +70,7 @@ class EntityRepository {
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
+    int? weightUnitId,
     bool? isDefault,
     bool isAdmin = true,
   }) async {
@@ -77,6 +80,7 @@ class EntityRepository {
       payload['conversion_factor'] = conversionFactor;
     }
     if (weightPerUnit != null) payload['weight_per_unit'] = weightPerUnit;
+    if (weightUnitId != null) payload['weight_unit_id'] = weightUnitId;
     if (isDefault != null) payload['is_default'] = isDefault;
     final response = await _client.dio.put(
       '/entities/$entityType/$entityId/units/$unitId',
@@ -132,6 +136,17 @@ class EntityRepository {
     final list = (data is List) ? data : (data['items'] as List?) ?? const [];
     return list
         .map((e) => EntityDensity.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// 全局单位表（原始 Map），用于解析 weight_unit_id 的类型语义（质量/体积）。
+  Future<List<Map<String, dynamic>>> listGlobalUnits() async {
+    final response =
+        await _client.dio.get('/units/', queryParameters: {'limit': 100});
+    final data = response.data;
+    final list = (data is List) ? data : (data['items'] as List?) ?? const [];
+    return list
+        .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
   }
 

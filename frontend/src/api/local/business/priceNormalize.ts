@@ -9,7 +9,7 @@
 // 本模块对 weight_unit 解析做容错：id 指向的单位 si_factor 过大（>0.1，显然
 // 非克/毫克）时，改用 weight_unit_name 重解析，避免计数->质量折算产生荒谬单价。
 
-import { type UnitInfo, type EntityOverride, type DensityInfo } from './unitConverter'
+import { type UnitInfo, type EntityOverride, type DensityInfo, resolveOverrideGramsPerUnit } from './unitConverter'
 import {
   CHINESE_JIN_NAME,
   CHINESE_PIECE_NAME,
@@ -46,30 +46,18 @@ export interface NormalizedPrice {
 
 /**
  * 解析实体单位覆盖里的 weight_per_unit（克数）。
- * 容错：weight_unit_id 与 weight_unit_name 不一致时（系统性脏数据），
- * 若 id 指向的单位 si_factor 过大（>0.1，显然非克/毫克），改用 name 重解析。
+ * 体积语义覆盖（如 1瓶=500mL）经实体密度折算，无密度按水 1 g/mL 兜底；
+ * 质量语义覆盖按 si_factor 折 g（含 weight_unit_name 容错，见共享实现）。
  */
 export function resolveWeightGrams(
   override: EntityOverride | undefined | null,
   units: UnitInfo[],
+  densities?: DensityInfo[],
+  entityType?: string,
+  entityId?: number,
 ): number | null {
-  if (!override || override.weight_per_unit == null) return null
-  const wpu = override.weight_per_unit
-
-  const byId = units.find(u => u.id === override.weight_unit_id)
-  if (byId?.si_factor != null && byId.si_factor <= 0.1) {
-    return wpu * byId.si_factor * 1000
-  }
-
-  const wname = (override as any).weight_unit_name as string | undefined
-  if (wname) {
-    const byName = units.find(u => u.name === wname || u.abbreviation === wname)
-    if (byName?.si_factor != null && byName.si_factor <= 0.1) {
-      return wpu * byName.si_factor * 1000
-    }
-  }
-
-  return null
+  if (!override) return null
+  return resolveOverrideGramsPerUnit(override, units, densities, entityType, entityId)
 }
 
 /**
@@ -80,7 +68,7 @@ export function normalizeRecordToJin(
   record: PriceRecordLike,
   units: UnitInfo[],
   overrides: EntityOverride[],
-  _densities: DensityInfo[],
+  densities: DensityInfo[],
   entityType: string,
   entityId: number,
 ): NormalizedPrice {
@@ -108,7 +96,7 @@ export function normalizeRecordToJin(
     const override = overrides.find(
       o => o.entity_type === entityType && o.entity_id === entityId,
     )
-    const gramsPerUnit = resolveWeightGrams(override, units)
+    const gramsPerUnit = resolveWeightGrams(override, units, densities, entityType, entityId)
     if (gramsPerUnit != null && gramsPerUnit > 0) {
       return {
         pricePerJin: rawUnitPrice / gramsPerUnit * JIN_GRAMS,

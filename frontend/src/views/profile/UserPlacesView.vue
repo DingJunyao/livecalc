@@ -74,7 +74,12 @@
     <!-- 添加/编辑对话框 -->
     <v-dialog v-model="addDialog" max-width="500" :fullscreen="!isDesktop">
       <v-card>
-        <v-card-title>{{ editingItem ? t('places.editTitle') : t('places.addTitle') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <v-btn icon="mdi-arrow-left" variant="text" @click="addDialog = false" />
+          <span class="text-h6 ms-2">{{ editingItem ? t('places.editTitle') : t('places.addTitle') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('actions.save') }}</v-btn>
+        </v-card-title>
         <v-card-text>
           <v-form>
             <v-text-field
@@ -111,7 +116,7 @@
             <MapPicker v-model="pickerCoords" :show-switcher="true" />
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn @click="addDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('actions.save') }}</v-btn>

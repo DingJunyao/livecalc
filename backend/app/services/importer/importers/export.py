@@ -238,15 +238,13 @@ class ExportImporter(Importer):
                 old_id = item.get("id")
                 if old_id:
                     self.mapping.ingredients[old_id] = existing.id
-                density_val = item.get("density")
-                if density_val is not None and existing.density is None:
-                    existing.density = density_val
+                # ingredients.density 列已废弃（现行密度存 entity_densities），
+                # 不再回填；旧导出文件中的 density 键直接忽略
                 continue
             ingredient = Ingredient(
                 name=name,
                 aliases=item.get("aliases", []),
                 category_id=self.mapping.categories.get(item.get("category_id")),
-                density=item.get("density"),
                 is_imported=item.get("is_imported", False),
             )
             self.db.add(ingredient)

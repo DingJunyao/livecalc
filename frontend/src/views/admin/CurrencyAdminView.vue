@@ -55,7 +55,12 @@
     <!-- 新增币种对话框 -->
     <v-dialog v-model="createDialog" max-width="480px" persistent>
       <v-card>
-        <v-card-title>{{ t('admin.currency.create') }}</v-card-title>
+        <v-card-title class="d-flex align-center pa-4">
+          <span class="text-h6">{{ t('admin.currency.create') }}</span>
+          <v-spacer />
+          <v-btn color="primary" variant="text" :loading="saving" @click="submitCreate">{{ t('actions.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" @click="createDialog = false" />
+        </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="submitCreate">
             <v-text-field
@@ -71,7 +76,7 @@
             <v-text-field v-model="form.decimals" :label="t('admin.currency.decimals')" type="number" min="0" max="4" />
           </v-form>
         </v-card-text>
-        <v-card-actions>
+        <v-card-actions class="d-none d-md-flex">
           <v-spacer />
           <v-btn variant="text" @click="createDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="submitCreate">{{ t('actions.save') }}</v-btn>

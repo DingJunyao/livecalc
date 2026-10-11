@@ -6,6 +6,8 @@ import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/nutrition.dart';
 import '../../../shared/models/entity_pending_proposal.dart';
 import '../../entities/repositories/entity_repository.dart';
+import '../../../shared/screens/entity_units_screen.dart'
+    show UnitWeightKind;
 import '../../nutrition/repositories/nutrition_repository.dart';
 import '../../nutrition/repositories/usda_repository.dart';
 import '../../profile/models/proposal.dart';
@@ -269,6 +271,8 @@ class ProductDetailPageState {
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
   final bool loadingUnits;
+  // 生效密度（kg/m³）：自身 > 关联原料；null 表示无密度记录（UI 按水密度兜底）
+  final double? effectiveDensityKgM3;
   final List<Proposal> pendingProposals;
   final Set<int> deletedUnitIds;
   final Set<int> deletedDensityIds;
@@ -294,6 +298,7 @@ class ProductDetailPageState {
     this.unmappedUnits = const [],
     this.densities = const [],
     this.loadingUnits = false,
+    this.effectiveDensityKgM3,
     this.pendingProposals = const [],
     this.deletedUnitIds = const {},
     this.deletedDensityIds = const {},
@@ -320,6 +325,7 @@ class ProductDetailPageState {
     List<UnmappedUnit>? unmappedUnits,
     List<EntityDensity>? densities,
     bool? loadingUnits,
+    Object? effectiveDensityKgM3 = _absent,
     List<Proposal>? pendingProposals,
     Set<int>? deletedUnitIds,
     Set<int>? deletedDensityIds,
@@ -350,6 +356,9 @@ class ProductDetailPageState {
       unmappedUnits: unmappedUnits ?? this.unmappedUnits,
       densities: densities ?? this.densities,
       loadingUnits: loadingUnits ?? this.loadingUnits,
+      effectiveDensityKgM3: identical(effectiveDensityKgM3, _absent)
+          ? this.effectiveDensityKgM3
+          : effectiveDensityKgM3 as double?,
       pendingProposals: pendingProposals ?? this.pendingProposals,
       deletedUnitIds: deletedUnitIds ?? this.deletedUnitIds,
       deletedDensityIds: deletedDensityIds ?? this.deletedDensityIds,
@@ -367,6 +376,11 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   final ProfileRepository _proposalRepo;
   final int productId;
   int? _regionId;
+  // 全局单位表缓存：解析 weight_unit_id 语义（质量 g / 体积 mL）
+  int? _gramUnitId;
+  int? _millilitreUnitId;
+  Set<int> _volumeUnitIds = const {};
+  bool _globalUnitsLoaded = false;
 
   ProductDetailPageNotifier(
     this.productId, {
@@ -533,6 +547,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
               isDefault: data['is_default'] == true,
               source: 'pending',
               isPending: true,
+              weightUnitId: _toInt(data['weight_unit_id']),
             ),
           ];
         }
@@ -555,6 +570,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
                   : unit.isDefault,
               source: 'pending',
               isPending: true,
+              weightUnitId: data.containsKey('weight_unit_id')
+                  ? _toInt(data['weight_unit_id'])
+                  : unit.weightUnitId,
             )
           else
             unit,
@@ -612,7 +630,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     }
 
     state = state.copyWith(
-      units: units,
+      units: _annotateUnits(units),
       densities: densities,
       deletedUnitIds: deletedUnits,
       deletedDensityIds: deletedDensities,
@@ -756,19 +774,97 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   Future<void> _loadUnits() async {
     state = state.copyWith(loadingUnits: true);
     try {
+      await _ensureGlobalUnits();
       final units = await _entityRepo.listUnits('product', productId);
       final unmapped =
           await _entityRepo.listUnmappedUnits('product', productId);
       final densities = await _entityRepo.listDensities('product', productId);
       state = state.copyWith(
-        units: units,
+        units: _annotateUnits(units),
         unmappedUnits: unmapped,
         densities: densities,
+        effectiveDensityKgM3:
+            await _computeEffectiveDensity(densities),
         loadingUnits: false,
       );
     } on Exception {
       state = state.copyWith(loadingUnits: false);
     }
+  }
+
+  /// 拉取全局单位表（一次），缓存 g/mL 单位 id 与体积单位 id 集。
+  Future<void> _ensureGlobalUnits() async {
+    if (_globalUnitsLoaded) return;
+    try {
+      final units = await _entityRepo.listGlobalUnits();
+      int? findId(bool Function(Map<String, dynamic> u) test) {
+        for (final u in units) {
+          if (test(u)) return (u['id'] as num?)?.toInt();
+        }
+        return null;
+      }
+
+      _gramUnitId = findId(
+        (u) => u['unit_type'] == 'mass' && u['abbreviation'] == 'g',
+      );
+      _millilitreUnitId = findId(
+        (u) => u['unit_type'] == 'volume' && u['abbreviation'] == 'mL',
+      );
+      _volumeUnitIds = {
+        for (final u in units)
+          if (u['unit_type'] == 'volume') (u['id'] as num?)?.toInt() ?? -1,
+      };
+    } on Exception {
+      // 拉取失败保持空集：全部按质量语义处理
+    } finally {
+      _globalUnitsLoaded = true;
+    }
+  }
+
+  /// 按 weightUnitId 是否指向体积单位标注 isVolumeWeight。
+  List<EntityUnit> _annotateUnits(List<EntityUnit> units) {
+    if (_volumeUnitIds.isEmpty) return units;
+    return [
+      for (final unit in units)
+        unit.copyWith(
+          isVolumeWeight: unit.weightUnitId != null &&
+              _volumeUnitIds.contains(unit.weightUnitId),
+        ),
+    ];
+  }
+
+  /// 每单位量类型 → weight_unit_id（体积 mL / 质量 g；缺失时质量返回 null
+  /// 由后端默认 g，体积缺失视为错误）。
+  int? _weightUnitIdFor(UnitWeightKind kind) {
+    if (kind == UnitWeightKind.volume) {
+      final id = _millilitreUnitId;
+      if (id == null) {
+        throw Exception('volume unit (mL) not found; cannot save volume-based unit');
+      }
+      return id;
+    }
+    return _gramUnitId;
+  }
+
+  /// 生效密度（kg/m³）：自身 > 关联原料（与后端 get_density 链一致）；
+  /// 无记录返回 null（UI 按水密度 1000 兜底）。
+  Future<double?> _computeEffectiveDensity(List<EntityDensity> own) async {
+    for (final d in own) {
+      if (d.density > 0) return d.density;
+    }
+    final ingredientId = state.product?.ingredientId;
+    if (ingredientId != null) {
+      try {
+        final ingDensities =
+            await _entityRepo.listDensities('ingredient', ingredientId);
+        for (final d in ingDensities) {
+          if (d.density > 0) return d.density;
+        }
+      } on Exception {
+        // 忽略：保持 null
+      }
+    }
+    return null;
   }
 
   Future<void> _refreshUnitsAndPendingDrafts() async {
@@ -802,15 +898,18 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
+    UnitWeightKind weightKind = UnitWeightKind.mass,
     bool isDefault = false,
     bool isAdmin = true,
   }) async {
+    await _ensureGlobalUnits();
     final result = await _entityRepo.createUnit(
       'product',
       productId,
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
+      weightUnitId: _weightUnitIdFor(weightKind),
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
@@ -823,9 +922,11 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
+    UnitWeightKind? weightKind,
     bool? isDefault,
     bool isAdmin = true,
   }) async {
+    await _ensureGlobalUnits();
     final result = await _entityRepo.updateUnit(
       'product',
       productId,
@@ -833,6 +934,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
+      weightUnitId:
+          weightKind == null ? null : _weightUnitIdFor(weightKind),
       isDefault: isDefault,
       isAdmin: isAdmin,
     );

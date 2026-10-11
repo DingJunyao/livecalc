@@ -116,7 +116,7 @@ void main() {
       find.widgetWithText(TextFormField, '小贴士'),
       '热锅快炒',
     );
-    final createButton = find.widgetWithText(FilledButton, '创建菜谱');
+    final createButton = find.widgetWithText(TextButton, '创建菜谱');
     await tester.ensureVisible(createButton);
     await tester.tap(createButton);
     await tester.pumpAndSettle();
@@ -374,7 +374,7 @@ void main() {
         find.byKey(const ValueKey('recipe-form-section-tips')), findsNothing);
 
     await tester.enterText(find.widgetWithText(TextFormField, '2'), '3');
-    await tester.tap(find.widgetWithText(FilledButton, '保存修改'));
+    await tester.tap(find.widgetWithText(TextButton, '保存修改'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 

@@ -3,6 +3,7 @@ import {
   CHINESE_GRAM_NAME,
   VAGUE_QUANTITY_GRAM_MAP,
 } from '../../../data/localValues.ts'
+import { resolveOverrideGramsPerUnit, type EntityOverride, type UnitInfo } from './unitConverter'
 
 export interface CostCalcIngredient {
   recipe_ingredient_id?: number
@@ -470,9 +471,9 @@ function isCostVolume(type: string): boolean {
 
 /** Resolve grams-per-count for an ingredient via entity_unit_overrides (weight_per_unit).
  *  Matches the override by unit name first because one ingredient can have several
- *  count units (蒜: 瓣/片/粒/颗). Mirrors priceNormalize.resolveWeightGrams for the
- *  legacy off-by-one where weight_unit_id points at a non-gram unit but
- *  weight_unit_name is "克". */
+ *  count units (蒜: 瓣/片/粒/颗). Delegates to resolveOverrideGramsPerUnit for the
+ *  weight unit resolution (legacy off-by-one tolerance) and the volume→mass
+ *  density bridge (e.g. 1瓶=500mL). */
 function findCostCountGrams(ingredientId: number, recipeUnit: any, input: CostInput): number | null {
   const candidates = input.overrides?.filter(
     (o: any) => o.entity_type === 'ingredient'
@@ -487,18 +488,13 @@ function findCostCountGrams(ingredientId: number, recipeUnit: any, input: CostIn
     : candidates[0]
 
   if (!matched || matched.weight_per_unit == null) return null
-  const wpu = Number(matched.weight_per_unit)
-  if (!Number.isFinite(wpu) || wpu <= 0) return null
-
-  const wname = (matched as any).weight_unit_name as string | undefined
-  if (wname) {
-    const byName = input.units.find((u: any) => u.name === wname || u.abbreviation === wname)
-    if (byName?.si_factor != null && byName.si_factor > 0) return wpu * byName.si_factor * 1000
-  }
-
-  const byId = input.units.find((u: any) => u.id === matched.weight_unit_id)
-  if (byId?.si_factor != null && byId.si_factor > 0) return wpu * byId.si_factor * 1000
-  return null
+  return resolveOverrideGramsPerUnit(
+    matched as EntityOverride,
+    (input.units as unknown) as UnitInfo[],
+    input.densities,
+    'ingredient',
+    ingredientId,
+  )
 }
 
 /** Convert an effective quantity from the recipe unit to the price unit.

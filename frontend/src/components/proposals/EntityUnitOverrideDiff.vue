@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Proposal } from '@/api/proposals'
+import { api } from '@/api'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 import { unitDisplayName } from '@/utils/catalogLabels'
@@ -13,6 +14,18 @@ const action = computed(() => props.proposal.action)
 const { t } = useI18n()
 const localeStore = useLocaleStore()
 
+// weight_unit_id → 缩写（g/mL），用于展示每单位量的类型
+const unitAbbrById = ref<Map<number, string>>(new Map())
+onMounted(async () => {
+  try {
+    const res = await api.get('/units/', { params: { limit: 100 } })
+    const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
+    unitAbbrById.value = new Map(arr.map((x: any) => [x.id, x.abbreviation]))
+  } catch {
+    // 拿不到单位表时回退显示原始 id
+  }
+})
+
 // 字段行定义：label + payload/snapshot 取值函数 + 格式化
 interface FieldDef { label: string; key: string; fmt?: (v: any, row: any) => string }
 
@@ -22,10 +35,10 @@ function fmtFactor(v: any): string {
 }
 function fmtWeightPerUnit(v: any, row: any): string {
   if (v == null || v === '') return '—'
-  const unitId = row.weight_unit_id
   const amount = formatNumber(v, localeStore.effectiveFormatLocale)
-  return unitId != null
-    ? t('proposals.valueWithUnitId', { amount, unitId: formatNumber(unitId, localeStore.effectiveFormatLocale) })
+  const abbr = row.weight_unit_id != null ? unitAbbrById.value.get(row.weight_unit_id) : null
+  return abbr
+    ? t('proposals.valueWithUnit', { amount, unit: abbr })
     : amount
 }
 

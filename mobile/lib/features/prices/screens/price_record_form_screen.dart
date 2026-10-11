@@ -361,7 +361,15 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(title: Text(l10n.priceAddRecordTitle)),
+          appBar: AppBar(
+            title: Text(l10n.priceAddRecordTitle),
+            actions: [
+              TextButton(
+                onPressed: _saving ? null : _save,
+                child: Text(l10n.commonSave),
+              ),
+            ],
+          ),
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
@@ -596,11 +604,6 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _saving ? null : _save,
-                child: Text(l10n.commonSave),
               ),
             ],
           ),
