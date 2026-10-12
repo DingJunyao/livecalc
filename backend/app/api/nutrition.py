@@ -931,19 +931,21 @@ async def get_ingredient_latest_price(
     tz: str = Depends(get_timezone),
 ):
     """
-    获取原料的最近一天平均价格
+    获取原料的加权综合价（「商品加权综合价」）
 
     - **ingredient_id**: 食材ID
 
-    返回该原料关联商品在最近一天的平均价格（基于原料的默认单位）。
+    口径（与菜谱成本、原料价格趋势图一致）：每个商品取各自「最近有记录日」的
+    均价 → 商品间按 price_weight（用户覆盖 > 全局 > 50）加权，权重 0 的商品排除。
+    旧口径只取全局最近 24 小时内的记录，会把其他商品整段排除，
+    使综合价退化成「最新被记录的那个商品的价格」。
+    结果按目标单位（当前用户质量偏好，fallback 斤）折算。
     P2：价格跨用户公开，响应去标识（不含 user_id/record_type）。
     """
     region_id = resolve_region_param(db, current_user, region_id)
     try:
-        from app.models.product import ProductRecord
         from app.services.unit_conversion_service import UnitConversionService
-        from app.services.price_region import apply_region_filter
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         # 查询原料及其默认单位
         ingredient = db.query(Ingredient).filter(
@@ -956,58 +958,26 @@ async def get_ingredient_latest_price(
 
         # 查询该原料关联的商品
         products = db.query(Product).filter(
-            Product.ingredient_id == ingredient_id
+            Product.ingredient_id == ingredient_id,
+            Product.is_active == True,  # noqa: E712
         ).all()
 
         if not products:
             return {"average_price": None, "unit": None}
 
 
-        product_ids = [p.id for p in products]
+        # 每个商品取各自「最近有记录日」的全部记录（与菜谱成本同口径）。
+        # 旧逻辑先取全局最近 24 小时窗口，只有窗口为空才回退到全局最新一天，
+        # 结果其他商品整段不参与加权——综合价退化成单品价（胡萝卜案例差 3 倍）。
+        from app.services.ingredient_price_service import _collect_recent_records
 
-        # 首先尝试获取最近24小时内的记录（P2：跨用户公开，不按 user_id 过滤）
-        from sqlalchemy import func
         now = datetime.utcnow()
-        one_day_ago = now - timedelta(days=1)
-
-        recent_records = apply_region_filter(
-            db.query(ProductRecord).options(
-                joinedload(ProductRecord.original_unit)
-            ).filter(
-                ProductRecord.product_id.in_(product_ids),
-                ProductRecord.recorded_at >= one_day_ago,
-            ),
-            db, region_id,
-        ).order_by(ProductRecord.recorded_at.desc()).all()
-
-        # 如果最近24小时内没有记录，则查找最近一次记录的那一天的所有记录
-        if not recent_records:
-            latest_record = apply_region_filter(
-                db.query(ProductRecord).filter(
-                    ProductRecord.product_id.in_(product_ids),
-                ),
-                db, region_id,
-            ).order_by(ProductRecord.recorded_at.desc()).first()
-
-            if not latest_record:
-                return {"average_price": None, "unit": None}
-
-            latest_date = utc_datetime_to_local_date(latest_record.recorded_at, tz)
-            day_start, day_end = local_date_range_to_utc_range(latest_date, latest_date, tz)
-            recent_records = apply_region_filter(
-                db.query(ProductRecord).options(
-                    joinedload(ProductRecord.original_unit)
-                ).filter(
-                    ProductRecord.product_id.in_(product_ids),
-                    ProductRecord.recorded_at >= day_start,
-                    ProductRecord.recorded_at <= day_end,
-                ),
-                db, region_id,
-            ).all()
-
-
-        if not recent_records:
-            return {"average_price": None, "unit": None}
+        product_records_raw = {
+            p.id: _collect_recent_records(db, p.id, now, tz=tz, region_id=region_id)
+            for p in products
+        }
+        if not any(product_records_raw.values()):
+            return {"average_price": None, "unit": None, "participants": [], "mode": "none"}
 
         # 初始化单位转换服务
         unit_service = UnitConversionService(db)
@@ -1032,12 +1002,6 @@ async def get_ingredient_latest_price(
             ).all()
             overrides = {r.product_id: r.weight for r in _ov_rows}
 
-        # 按商品分组最近记录
-        from collections import defaultdict
-        by_product = defaultdict(list)
-        for r in recent_records:
-            by_product[r.product_id].append(r)
-
         # 每商品逐条折算到目标单位 → 构造伪记录 → 商品级加权聚合
         # （用 _aggregate_weighted 取代旧的「全部记录简单平均」，修正记录数偏置：
         #   旧逻辑下记录多的商品被无形放大；新逻辑下先商品内均价、再商品间按权重加权）
@@ -1047,8 +1011,9 @@ async def get_ingredient_latest_price(
             __slots__ = ("price", "standard_quantity", "exchange_rate")
 
         product_records = {}
+        participant_dates = {}
         for p in products:
-            recs = by_product.get(p.id, [])
+            recs = product_records_raw.get(p.id) or []
             if p.id in overrides:
                 w, src = overrides[p.id], "override"
             else:
@@ -1076,6 +1041,9 @@ async def get_ingredient_latest_price(
                 ps.standard_quantity = converted_qty
                 ps.exchange_rate = r.exchange_rate
                 pseudo.append(ps)
+                prev_at = participant_dates.get(p.id)
+                if prev_at is None or r.recorded_at > prev_at:
+                    participant_dates[p.id] = r.recorded_at
             product_records[p.id] = (pseudo, w, {"product_id": p.id, "name": p.name, "weight_source": src})
 
         weighted = _aggregate_weighted(product_records)
@@ -1083,7 +1051,12 @@ async def get_ingredient_latest_price(
         if weighted["unit_price"] is None:
             return {"average_price": None, "unit": None, "participants": [], "mode": "none"}
 
-        latest_date = max(r.recorded_at for r in recent_records)
+        # 日期口径：实际参与加权的商品中最新一笔记录时间（被排除商品不影响）
+        participant_ids = [pt["product_id"] for pt in weighted["participants"]]
+        latest_date = max(
+            (participant_dates[pid] for pid in participant_ids if pid in participant_dates),
+            default=None,
+        )
         return {
             "average_price": round(weighted["unit_price"], 2),
             "unit": target_unit_abbr,

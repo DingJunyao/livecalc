@@ -5,6 +5,7 @@
 import { getAll, getByIndex } from '../database'
 import { normalizeRecordToJin } from '../business/priceNormalize'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
+import { buildWeightedAsOfDailySeries, toLocalDayKey } from '@/utils/priceAsOf'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 
 /** getById 的安全包装（sparklines 模块未导入 getById，这里局部复用 getAll 查找）。 */
@@ -79,9 +80,17 @@ export async function getIngredientSparklines(_params: Record<string, string>, q
     getAll('entity_unit_overrides') as Promise<EntityOverride[]>,
     getAll('entity_densities') as Promise<DensityInfo[]>,
   ])
+  const weightOverrides = (await getAll('product_weight_overrides')) as any[]
 
   // 按 recorded_at 降序排序
   allRecords.sort((a: any, b: any) => ((b.recorded_at || '') > (a.recorded_at || '') ? 1 : -1))
+
+  // 序列窗口与云端 /sparklines/ingredients 默认一致：近 90 天到今天
+  const startDate = new Date()
+  startDate.setHours(0, 0, 0, 0)
+  startDate.setDate(startDate.getDate() - 89)
+  const startDay = toLocalDayKey(startDate) as string
+  const endDay = toLocalDayKey(new Date()) as string
 
   const result: Record<number, number[]> = {}
 
@@ -90,18 +99,28 @@ export async function getIngredientSparklines(_params: Record<string, string>, q
     const ingredientProducts = allProducts.filter(
       (p: any) => p.is_active !== false && p.ingredient_id === ingredientId,
     )
-    const productIds = ingredientProducts.map((p: any) => p.id)
+    const productIds = new Set(ingredientProducts.map((p: any) => p.id))
+    const weights = new Map<number, number>()
+    for (const p of ingredientProducts) {
+      const override = weightOverrides.find((w: any) => w.product_id === p.id)
+      weights.set(p.id, override?.weight ?? p.price_weight ?? 50)
+    }
 
     // 折算到 ¥/斤，避免按个计价的记录拉爆趋势（鸡蛋问题）
     const points = allRecords
-      .filter((r: any) => productIds.includes(r.product_id))
-      .slice(0, 30)
+      .filter((r: any) => productIds.has(r.product_id) && r.is_active !== false && r.price != null)
       .map((r: any) => {
         const np = normalizeRecordToJin(r, units, overrides, densities, 'ingredient', ingredientId)
-        return { date: r.recorded_at, value: np.pricePerJin }
+        return { product_id: r.product_id, date: r.recorded_at, value: np.pricePerJin }
       })
+      .filter((p: any) => p.value != null && isFinite(p.value))
 
-    result[ingredientId] = buildDailySparklineSeries(points)
+    // 与云端同口径：每个商品最近一次价格向前携带，再按权重逐日加权
+    result[ingredientId] = buildWeightedAsOfDailySeries(
+      points,
+      (pid) => (pid == null ? 50 : weights.get(pid) ?? 50),
+      { startDay, endDay },
+    ).map((d) => Math.round(d.avg * 100) / 100)
   }
 
   return result

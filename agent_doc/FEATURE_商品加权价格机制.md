@@ -89,3 +89,42 @@
 - **subagent 不可用**：本环境 subagent 底层模型配置坏（两次「模型不存在」API 错误），subagent-driven-development 回退为 inline 执行。
 - **venv 在项目根**（`d:\code\livecalc\.venv`，非 `backend/.venv` 后者是空壳）：后端命令在 backend 目录用 `../.venv\Scripts\python.exe`。
 - 开发库走「直接补」惯例（不走 alembic，参见 CLAUDE.md），操作前已备份。
+
+## 补遗（2026-10-12）：综合价口径统一为「每商品最近价 as-of 加权」
+
+**问题**（用户反馈）：原料「胡萝卜」下三个商品（胡萝卜 / 泥胡萝卜 / 水果胡萝卜），综合最新价与价格趋势图只
+反映最新被记录的那一个商品（泥胡萝卜 ¥0.79/斤），而菜谱成本对同一原料算的是 ¥2.52/斤（三商品加权），差 3.2 倍。
+
+**根因**：`GET /nutrition/ingredients/{id}/latest-price` 仍保留最初实现的「先取全局最近 24 小时滚动窗口、
+窗口为空才回退到全局最新一天」的记录挑选逻辑——只要有任一商品在窗口内被记录，其余商品整段不参与加权，
+综合价退化成单品价。设计意图的实现（`ingredient_price_service._collect_recent_records` + `mode="recent"`：
+每商品各自「最近有记录日」）当时已写好，但**全仓库零调用**（死代码）。前端趋势图同理：按自然日分桶、
+只让「当天有记录的商品」参与加权，没有把其他商品的最近价向前携带。
+
+**统一后的口径（三处一致）**：
+
+1. 每个商品的价格 = 该商品「最近有记录日」的均价（同日多条取均价）；
+2. 该价格一直有效到下一次记录（as-of 向前携带，价格在两次记录之间视为不变）；
+3. 每日 / 每次综合价 = 各商品当日有效价按权重（用户覆盖 > price_weight > 50）加权，权重 0 排除。
+
+| 消费点 | 改动 |
+| --- | --- |
+| `/nutrition/ingredients/{id}/latest-price` | 24h 窗口 → `_collect_recent_records`（每商品最近有记录日）；`participants/excluded/mode` 完整返回；`latest_date` 取参与者最新记录时间；商品查询补 `is_active` |
+| `/sparklines/ingredients` | 逐日 as-of 加权；窗口前最近一次记录作为携带起点（新增 `_fetch_carry_forward_seeds`）；序列 = 窗口起点 → 今天，一格一天 |
+| 原料详情趋势图 avg 线（`IngredientDetail.vue`） | 复用新增共享工具 `frontend/src/utils/priceAsOf.ts` 的 `buildWeightedAsOfDailySeries`；min/max/count 改为「参与加权的商品价区间 / 商品数」（`PriceTrendChart` 新增 `countLabel`，卡片「记录数」→「商品数」，l10n 三语 `charts.productCount`） |
+| 本地模式 | `handlers/nutrition.getLatestPrice`（原「全部历史记录平均」→ 每商品最近价加权）、`handlers/sparklines.getIngredientSparklines`（as-of 加权） |
+
+**顺带修复**：
+
+- `_fetch_recent_records` 漏选 `standard_unit_id`（c55206a1 体积语义重构引入）：`_unit_price_per_jin → record_standard_grams`
+  取该列时 AttributeError，被端点 try/except 吞成 500 → `/sparklines/products|ingredients` 整体不可用（前端静默无迷你图）。
+- `_collect_recent_records`、`_price_timeline_index` 未过滤 `ProductRecord.is_active`：已软删的价格记录仍在参与成本 / 趋势的日聚合。
+
+**移动端**：app 复用同一批端点（原料最新价 / 迷你图），零改动自动对齐；`Sparkline` painter 已处理等值（全平）序列。
+
+**验证**：后端新增 [test_ingredient_latest_price_weighted.py](../backend/tests/test_ingredient_latest_price_weighted.py)
+（三商品等权 2.00 / 60 天前记录仍参与 / 权重 0 排除）与
+[test_ingredient_sparkline_asof.py](../backend/tests/test_ingredient_sparkline_asof.py)
+（窗口前价格继续携带、序列长度 = days+1、商品 sparkline 500 回归）共 4 用例通过；前端新增
+[priceAsOf.test.ts](../frontend/src/utils/priceAsOf.test.ts) 5 用例（`npm run test:utils` 13/13）；
+vite build、check:i18n 通过；胡萝卜实测综合价 ¥0.79 → ¥2.52（与菜谱成本一致）。

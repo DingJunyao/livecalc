@@ -1,0 +1,137 @@
+/**
+ * 逐日「as-of 加权综合价」。
+ *
+ * 与后端同一口径（综合最新价 / 原料 sparkline / 菜谱成本）：
+ *   - 每个商品的价格 = 该商品「最近有记录日」的当日均价
+ *   - 该价格一直有效到下一次记录（价格在两次记录之间视为不变）
+ *   - 每日综合价 = 各商品当日有效价按权重（默认 50，0 = 排除）加权
+ *
+ * 用途：原料价格趋势图的 avg 线、原料迷你图。避免「某天只有单个商品有记录
+ * → 该点退化成单品价」，也让久未记录的商品继续参与综合价。
+ */
+
+export interface AsOfPricePoint {
+  product_id?: number | null
+  date: string | number | Date
+  value: number | null | undefined
+}
+
+export interface AsOfDayPoint {
+  /** 本地日历日 YYYY-MM-DD（与日期展示口径一致） */
+  date: string
+  /** 各商品当日有效价的加权平均 */
+  avg: number
+  /** 参与加权的商品价区间 */
+  min: number
+  max: number
+  /** 参与加权的商品数 */
+  count: number
+}
+
+export interface AsOfOptions {
+  /** 序列起始日（YYYY-MM-DD）；不传则从首个有值日起 */
+  startDay?: string | null
+  /** 序列结束日（YYYY-MM-DD）；默认今天 */
+  endDay?: string | null
+}
+
+const DEFAULT_WEIGHT = 50
+
+/** 本地日 key（YYYY-MM-DD）：与日期展示口径一致，跨时区稳定。 */
+export function toLocalDayKey(value: string | number | Date): string | null {
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return null
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+function dayToDate(day: string): Date {
+  return new Date(`${day}T00:00:00`)
+}
+
+function addDays(day: string, delta: number): string {
+  const d = dayToDate(day)
+  d.setDate(d.getDate() + delta)
+  return toLocalDayKey(d) as string
+}
+
+/**
+ * 记录点集 → 逐日 as-of 加权序列。
+ *
+ * @param points 价格点（按商品 + 日期）；同商品同日多条先取当日均价
+ * @param weightOf 生效权重查询（用户覆盖 > 全局 > 50）；返回 <=0 的商品被排除
+ */
+export function buildWeightedAsOfDailySeries(
+  points: AsOfPricePoint[],
+  weightOf: (productId: number | null) => number = () => DEFAULT_WEIGHT,
+  opts: AsOfOptions = {},
+): AsOfDayPoint[] {
+  // 1) 按商品 + 本地日聚合当日均价
+  const byProduct = new Map<string, Map<string, { sum: number; count: number }>>()
+  for (const p of points) {
+    if (!p || p.value == null || !isFinite(Number(p.value))) continue
+    const day = toLocalDayKey(p.date)
+    if (!day) continue
+    const pid = p.product_id == null ? '' : String(p.product_id)
+    if (!byProduct.has(pid)) byProduct.set(pid, new Map())
+    const dayMap = byProduct.get(pid)!
+    const agg = dayMap.get(day)
+    if (agg) {
+      agg.sum += Number(p.value)
+      agg.count += 1
+    } else {
+      dayMap.set(day, { sum: Number(p.value), count: 1 })
+    }
+  }
+  if (byProduct.size === 0) return []
+
+  // 2) 每商品：日升序阶梯（日 → 当日均价）+ 游标
+  type Step = { days: string[]; values: number[]; next: number; current: number; weight: number }
+  const steps: Step[] = []
+  let firstDay: string | null = null
+  for (const [pid, dayMap] of byProduct) {
+    const days = [...dayMap.keys()].sort()
+    const values = days.map((d) => {
+      const agg = dayMap.get(d)!
+      return agg.sum / agg.count
+    })
+    const numericPid = pid === '' ? null : Number(pid)
+    const weight = weightOf(numericPid)
+    if (!(weight > 0)) continue
+    steps.push({ days, values, next: 0, current: -1, weight })
+    if (firstDay === null || days[0] < firstDay) firstDay = days[0]
+  }
+  if (firstDay === null || steps.length === 0) return []
+
+  // 3) 逐日推进：每个商品取「截至当日的最新价」
+  const endDay = opts.endDay ?? (toLocalDayKey(new Date()) as string)
+  let cur = opts.startDay && opts.startDay > firstDay ? opts.startDay : firstDay
+  const out: AsOfDayPoint[] = []
+  while (cur <= endDay) {
+    let num = 0
+    let den = 0
+    let min = Number.POSITIVE_INFINITY
+    let max = Number.NEGATIVE_INFINITY
+    let count = 0
+    for (const step of steps) {
+      while (step.next < step.days.length && step.days[step.next] <= cur) {
+        step.current = step.next
+        step.next += 1
+      }
+      if (step.current < 0) continue
+      const value = step.values[step.current]
+      num += value * step.weight
+      den += step.weight
+      count += 1
+      if (value < min) min = value
+      if (value > max) max = value
+    }
+    if (den > 0) {
+      out.push({ date: cur, avg: num / den, min, max, count })
+    }
+    cur = addDays(cur, 1)
+  }
+  return out
+}

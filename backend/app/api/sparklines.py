@@ -66,6 +66,8 @@ def _fetch_recent_records(db: Session, product_ids: List[int], days: int, region
 
     与旧版「逐商品分别查询 ORDER BY recorded_at」同源同序：同一商品内记录
     的相对顺序一致，保证逐日聚合的浮点累加顺序不变。
+    必须带上 standard_unit_id：_unit_price_per_jin → record_standard_grams 需要它
+    （体积语义折克），漏选会在取用时抛 AttributeError。
     """
     if not product_ids:
         return []
@@ -75,13 +77,40 @@ def _fetch_recent_records(db: Session, product_ids: List[int], days: int, region
         ProductRecord.price,
         ProductRecord.exchange_rate,
         ProductRecord.standard_quantity,
+        ProductRecord.standard_unit_id,
         ProductRecord.recorded_at,
     ).filter(
         ProductRecord.product_id.in_(product_ids),
         ProductRecord.recorded_at >= cutoff,
         ProductRecord.price.isnot(None),
+        ProductRecord.is_active == True,  # noqa: E712
     ).order_by(ProductRecord.recorded_at)
     return apply_region_filter(q, db, region_id).all()
+
+
+def _fetch_carry_forward_seeds(
+    db: Session,
+    product_ids: List[int],
+    days: int,
+    tz: str,
+    region_id: Optional[int],
+):
+    """每个商品在窗口起点之前的「最近有记录日」的全部记录（as-of 携带起点）。
+
+    综合价语义是「某商品的最近一次价格一直有效」，所以窗口前最后一次记录价必须
+    参与窗口内每一天的加权；否则久未记录的商品会在图上整段消失，综合价退化成
+    单品价。以「日」为单位取（与 _collect_recent_records 同口径），保证同日多条
+    记录仍取当天均价。
+    """
+    if not product_ids:
+        return []
+    from app.services.ingredient_price_service import _collect_recent_records
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    seeds = []
+    for pid in product_ids:
+        seeds.extend(_collect_recent_records(db, pid, cutoff, tz=tz, region_id=region_id))
+    return seeds
 
 
 def _weight_map(db: Session, product_ids: List[int], user_id: Optional[int]) -> dict:
@@ -193,57 +222,74 @@ def _ingredients_sparklines_batched(
     tz: str,
     region_id: Optional[int],
 ) -> Dict[str, Optional[List[float]]]:
-    """原料 sparkline 批量版：一次记录/权重查询，内存按 (原料, 日, 商品) 分组。
+    """原料 sparkline 批量版：一次记录/权重查询，内存按商品组装「as-of 加权」序列。
 
-    聚合口径与逐原料调 _daily_avg_for_product_ids(prod_ids, ingredient_id=ing_id)
-    完全一致：商品内日均 → 商品间按权重（用户覆盖 > price_weight > 50）加权。
+    口径与原料详情页趋势图、综合最新价、菜谱成本一致：
+      - 每个商品的价格 = 该商品「最近有记录日」的均价（同日多条取均价）
+      - 该价格一直有效到下一次记录；窗口起点之前的最近一次记录作为起点携带，
+        否则久未记录的商品会在图上整段消失，综合价退化成单品价
+      - 每日综合价 = 各商品当日有效价按权重（用户覆盖 > price_weight > 50）加权
+    返回按本地日历日、从窗口起点到今天的一格一天序列。
     """
     products = db.query(Product.id, Product.ingredient_id).filter(
         Product.ingredient_id.in_(ingredient_ids),
         Product.is_active == True,  # noqa: E712
     ).all()
     ing_to_prods: dict = defaultdict(list)
-    prod_to_ing: dict = {}
     all_pids: List[int] = []
     for prod_id, ing_id in products:
         ing_to_prods[ing_id].append(prod_id)
-        prod_to_ing[prod_id] = ing_id
         all_pids.append(prod_id)
 
     rows = _fetch_recent_records(db, all_pids, days, region_id)
+    seeds = _fetch_carry_forward_seeds(db, all_pids, days, tz, region_id)
     pw = _weight_map(db, all_pids, user_id)
 
-    # {ing_id: {date: {pid: [unit_price,...]}}}；保持记录时间序 → pid 首现序与逐查版一致
-    by_ing_day_prod: dict = defaultdict(lambda: defaultdict(dict))
-    for row in rows:
-        ing_id = prod_to_ing.get(row.product_id)
-        if ing_id is None:
-            continue
-        d = by_ing_day_prod[ing_id]
-        d[utc_datetime_to_local_date(row.recorded_at, tz).isoformat()].setdefault(
-            row.product_id, []
-        ).append(_unit_price_per_jin(db, row))
+    # {pid: {本地日: [unit_price,...]}}（含窗口前的携带起点）
+    steps: dict = defaultdict(lambda: defaultdict(list))
+    for row in rows + seeds:
+        steps[row.product_id][utc_datetime_to_local_date(row.recorded_at, tz)].append(
+            _unit_price_per_jin(db, row)
+        )
+
+    today = utc_datetime_to_local_date(datetime.utcnow(), tz)
+    window_start = today - timedelta(days=days)
 
     result: Dict[str, Optional[List[float]]] = {}
     for ing_id in ingredient_ids:
-        day_prod = by_ing_day_prod.get(ing_id)
-        if not day_prod:
+        # 每商品一个日升序阶梯 + 游标（逐日推进只前进不回退）
+        per_pid_steps: dict = {}
+        first_day = None
+        for pid in ing_to_prods.get(ing_id) or []:
+            by_day = steps.get(pid)
+            if not by_day:
+                continue
+            ordered = sorted((d, sum(v) / len(v)) for d, v in by_day.items())
+            per_pid_steps[pid] = [ordered, 0, None]
+            first_day = ordered[0][0] if first_day is None else min(first_day, ordered[0][0])
+        if first_day is None:
             result[str(ing_id)] = None
             continue
-        daily: dict = {}
-        for dkey in sorted(day_prod.keys()):
-            prods = day_prod[dkey]
+
+        series: List[float] = []
+        cur = max(first_day, window_start)
+        while cur <= today:
             num = den = 0.0
-            for pid, ups in prods.items():
+            for pid, state in per_pid_steps.items():
+                ordered, idx, value = state
+                while idx < len(ordered) and ordered[idx][0] <= cur:
+                    value = ordered[idx][1]
+                    idx += 1
+                state[1], state[2] = idx, value
                 w = pw.get(pid, 50)
-                if w <= 0 or not ups:
+                if value is None or w <= 0:
                     continue
-                num += (sum(ups) / len(ups)) * w
+                num += value * w
                 den += w
             if den > 0:
-                daily[dkey] = round(num / den, 2)
-        filled = _forward_fill_daily(daily, tz)
-        result[str(ing_id)] = filled if filled else None
+                series.append(round(num / den, 2))
+            cur += timedelta(days=1)
+        result[str(ing_id)] = series or None
     return result
 
 

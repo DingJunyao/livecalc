@@ -242,7 +242,7 @@
                 </div>
               </div>
               <div v-if="latestChartTrend.count" class="text-center">
-                <div class="text-caption text-medium-emphasis">{{ t('ingredients.recordCount') }}</div>
+                <div class="text-caption text-medium-emphasis">{{ t('charts.productCount') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">{{ latestChartTrend.count }}</div>
               </div>
             </template>
@@ -332,6 +332,7 @@
         :loading="loadingChartPrices"
         color="#ff9800"
         :avg-label="t('ingredients.weightedAverage')"
+        :count-label="t('charts.productCount')"
         class="grid-item item-price-trend"
         @filter-change="onPriceTrendFilterChange"
       />
@@ -1911,6 +1912,7 @@ import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { formatNumber, formatQuantity } from '@/utils/format'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
+import { buildWeightedAsOfDailySeries, type AsOfPricePoint } from '@/utils/priceAsOf'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -3285,7 +3287,7 @@ const hasRelations = computed(() => {
   )
 })
 
-// 聚合价格数据用于图表（按日期分组，转换到原料的默认单位）
+// 聚合价格数据用于图表（逐日 as-of 加权：每商品最近一次价格向前携带）
 const chartData = computed(() => {
   if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
 
@@ -3293,17 +3295,11 @@ const chartData = computed(() => {
   // ⚠️ 用单位缩写（abbr）作 key 查 unitFactors，不能用 name——
   // 表里是 'kg':1000 而非 '千克':1000，用 name 会命中不到→toFactor=1→单价少算 1000 倍
   const defaultUnit = massUnit.value?.abbreviation ?? CHINESE_JIN_NAME
-  const dailyAll = new Map<string, number[]>()
-  const dailyByProduct = new Map<string, Map<number, number[]>>()
+  const unitFactors = CHART_UNIT_FACTORS_TO_GRAMS
+  const points: AsOfPricePoint[] = []
 
   for (const record of chartPriceRecords.value) {
     if (!record.recorded_at) continue
-    const date = new Date(record.recorded_at)
-    if (isNaN(date.getTime())) continue
-    const dateKey = date.toISOString().split('T')[0]
-
-    // 常用单位转换系数（相对于g）
-    const unitFactors = CHART_UNIT_FACTORS_TO_GRAMS
 
     // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
     // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
@@ -3349,49 +3345,21 @@ const chartData = computed(() => {
       }
     }
 
-    if (!dailyAll.has(dateKey)) {
-      dailyAll.set(dateKey, [])
-    }
-    dailyAll.get(dateKey)!.push(convertedUnitPrice)
-
-    // 按商品分组（仅用于加权 avg；权重只作用于平均值）
-    const pid = (record as any).product_id
-    if (pid != null) {
-      if (!dailyByProduct.has(dateKey)) dailyByProduct.set(dateKey, new Map())
-      const pm = dailyByProduct.get(dateKey)!
-      if (!pm.has(pid)) pm.set(pid, [])
-      pm.get(pid)!.push(convertedUnitPrice)
-    }
+    if (convertedUnitPrice == null || !isFinite(convertedUnitPrice)) continue
+    points.push({
+      product_id: (record as any).product_id ?? null,
+      date: record.recorded_at,
+      value: convertedUnitPrice,
+    })
   }
 
-  // 计算每日统计值：min/max/count 用记录级（不动），avg 按商品权重加权
-  return Array.from(dailyAll.entries())
-    .map(([date, prices]) => {
-      const sorted = [...prices].sort((a, b) => a - b)
-      // 加权 avg：每商品当日均价 × 生效权重（覆盖>全局>50），权重 0 排除
-      const pm = dailyByProduct.get(date)
-      let avg: number
-      if (pm && pm.size > 0) {
-        let num = 0, den = 0
-        for (const [pid, ups] of pm) {
-          const w = productWeights.value.get(pid) ?? 50
-          if (w <= 0 || !ups.length) continue
-          num += (ups.reduce((a, b) => a + b, 0) / ups.length) * w
-          den += w
-        }
-        avg = den > 0 ? num / den : (prices.reduce((a, b) => a + b, 0) / prices.length)
-      } else {
-        avg = prices.reduce((a, b) => a + b, 0) / prices.length
-      }
-      return {
-        date,
-        min: sorted[0] || 0,
-        max: sorted[sorted.length - 1] || 0,
-        avg,
-        count: prices.length
-      }
-    })
-    .sort((a, b) => a.date.localeCompare(b.date))
+  // 逐日 as-of 加权（与后端综合价 / 原料迷你图 / 菜谱成本同口径）：
+  // 每个商品取其「最近有记录日」的均价，并一直有效到下一次记录；
+  // 这样某天只有单个商品有记录时，该点仍是综合价而不是单品价。
+  // min/max/count 为参与加权的商品价区间与商品数（当日可见价集合）。
+  return buildWeightedAsOfDailySeries(points, (pid) =>
+    pid == null ? 50 : (productWeights.value.get(pid) ?? 50),
+  ).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count }))
 })
 
 // 最新趋势数据点（用于最新价格卡片右侧展示）

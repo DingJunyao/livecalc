@@ -45,7 +45,8 @@ def _price_timeline_index(
     key = ("pid" if product_id else "name", product_id or product_name_contains, tz, region_id)
 
     def _build():
-        q = db.query(ProductRecord)
+        # 已软删的价格记录不参与（列表/详情均不可见，成本与趋势不能继续引用）
+        q = db.query(ProductRecord).filter(ProductRecord.is_active == True)  # noqa: E712
         if product_id:
             q = q.filter(ProductRecord.product_id == product_id)
         if product_name_contains:
