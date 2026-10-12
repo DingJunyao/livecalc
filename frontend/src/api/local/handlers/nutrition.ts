@@ -2,7 +2,8 @@
 
 import { getAll, getById, putOne, getByIndex, getDb, paginate } from '../database'
 import { calcNRV } from '../business/nutritionAggregator'
-import { aggregatePrices, normalizeRecordToJin, MERCHANT_PRICE_STALE_MS, sortMerchantPrices } from '../business/priceNormalize'
+import { normalizeRecordToJin, MERCHANT_PRICE_STALE_MS, sortMerchantPrices } from '../business/priceNormalize'
+import { toLocalDayKey } from '@/utils/priceAsOf'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
 import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
@@ -128,41 +129,107 @@ export async function updateIngredientNutrition(params: Record<string, string>, 
 export async function getLatestPrice(params: Record<string, string>, query?: any): Promise<any> {
   const id = parseInt(params.id)
   const regionId = parseRegionId(query?.region_id)
-  // Find all products for this ingredient
-  const products = await getByIndex('products', 'by_ingredient_id', id)
+  const allProducts = await getByIndex('products', 'by_ingredient_id', id)
+  const products = allProducts.filter((p: any) => p.is_active !== false)
   if (products.length === 0) {
     return { price: null, unit: null, records: 0 }
   }
 
-  // 收集该食材所有商品的价格记录，统一归一化后聚合
-  // （避免质量/计数记录混算，鸡蛋类 ¥0.23/个、¥108/斤 的根因）
+  // 口径与云端 /nutrition/ingredients/{id}/latest-price 一致：
+  // 每个商品取各自「最近有记录日」的均价（同日多条取均价）→ 商品间按权重
+  // （用户覆盖 > price_weight > 50）加权；权重 0 排除。
+  // 旧实现用「全部历史记录平均」，与本地成本计算（每商品最新价加权）不一致。
   const [units, overrides, densities] = await Promise.all([
     getAll('units') as Promise<UnitInfo[]>,
     getAll('entity_unit_overrides') as Promise<EntityOverride[]>,
     getAll('entity_densities') as Promise<DensityInfo[]>,
   ])
-  const allRecords: any[] = []
+  const weightOverrides = (await getAll('product_weight_overrides')) as any[]
+
+  const participants: any[] = []
+  const excluded: any[] = []
+  const participatingPrices: number[] = []
+  let latestRec: any = null
+  let countUnitId: number | null = null
+  let anyMass = false
+
   for (const p of products) {
     const recs = await getByIndex('product_records', 'by_product_id', p.id)
-    allRecords.push(...recs)
-  }
+    const active = recs.filter((r: any) => r.is_active !== false && r.price != null)
+    const inRegion = await applyRegionFilter(active, regionId)
+    if (inRegion.length === 0) {
+      excluded.push({ product_id: p.id, name: p.name, reason: 'no_record' })
+      continue
+    }
 
-  const recordsInRegion = await applyRegionFilter(allRecords, regionId)
-  let latestRec: any = null
-  for (const rec of recordsInRegion) {
-    if (!latestRec || (rec.recorded_at || '') > (latestRec.recorded_at || '')) {
-      latestRec = rec
+    // 该商品「最近有记录日」（本地日）的全部记录
+    const latest = inRegion.reduce((a: any, b: any) =>
+      (b.recorded_at || '') > (a.recorded_at || '') ? b : a)
+    const latestDay = toLocalDayKey(latest.recorded_at)
+    const dayRecords = inRegion.filter((r: any) => toLocalDayKey(r.recorded_at) === latestDay)
+
+    const override = weightOverrides.find((w: any) => w.product_id === p.id)
+    const weight = override?.weight ?? p.price_weight ?? 50
+    if (!(weight > 0)) {
+      excluded.push({ product_id: p.id, name: p.name, reason: 'weight_zero' })
+      continue
+    }
+
+    const normalized = dayRecords.map((r: any) =>
+      normalizeRecordToJin(r, units, overrides, densities, 'ingredient', id))
+    const massPrices = normalized
+      .filter((np: any) => np.unitType === 'mass' && np.pricePerJin != null)
+      .map((np: any) => np.pricePerJin as number)
+    const countPrices = normalized
+      .filter((np: any) => np.unitType === 'count')
+      .map((np: any) => np.rawUnitPrice)
+    const prices = massPrices.length > 0 ? massPrices : countPrices
+    if (prices.length === 0) {
+      excluded.push({ product_id: p.id, name: p.name, reason: 'no_record' })
+      continue
+    }
+    if (massPrices.length > 0) {
+      anyMass = true
+    } else if (countUnitId == null) {
+      countUnitId = dayRecords[0]?.standard_unit_id ?? dayRecords[0]?.unit_id ?? null
+    }
+
+    const unitPrice = prices.reduce((a: number, b: number) => a + b, 0) / prices.length
+    participants.push({
+      product_id: p.id,
+      name: p.name,
+      weight: Number(weight),
+      weight_source: override ? 'override' : 'global',
+      unit_price: Math.round(unitPrice * 10000) / 10000,
+      record_count: dayRecords.length,
+    })
+    participatingPrices.push(unitPrice)
+    if (!latestRec || (latest.recorded_at || '') > (latestRec.recorded_at || '')) {
+      latestRec = latest
     }
   }
 
-  const agg = aggregatePrices(recordsInRegion, units, overrides, densities, 'ingredient', id)
+  if (participants.length === 0) {
+    return { average_price: null, unit: null, records: 0, participants: [], excluded, mode: 'none' }
+  }
+
+  const totalWeight = participants.reduce((s, p) => s + p.weight, 0)
+  const weightedSum = participants.reduce((s, p) => s + p.unit_price * p.weight, 0)
+  const average = totalWeight > 0 ? weightedSum / totalWeight : null
+  const round4 = (v: number) => Math.round(v * 10000) / 10000
+  const countUnit = countUnitId != null ? units.find((u: UnitInfo) => u.id === countUnitId) : undefined
+
   return {
-    average_price: agg.average_price,
-    unit: agg.average_price != null ? agg.unit : null,
-    min_price: agg.min_price,
-    max_price: agg.max_price,
-    records: agg.records,
+    average_price: average == null ? null : round4(average),
+    unit: anyMass ? CHINESE_JIN_NAME : (countUnit?.name || CHINESE_JIN_NAME),
+    min_price: round4(Math.min(...participatingPrices)),
+    max_price: round4(Math.max(...participatingPrices)),
+    records: participants.reduce((s, p) => s + p.record_count, 0),
     latest_record: latestRec || null,
+    latest_date: latestRec?.recorded_at ?? null,
+    participants,
+    excluded,
+    mode: participants.length === 1 ? 'single' : 'weighted',
   }
 }
 

@@ -94,6 +94,7 @@ const props = withDefaults(defineProps<{
   loading?: boolean
   color?: string
   avgLabel?: string
+  countLabel?: string
 }>(), {
   icon: 'mdi-chart-line',
   iconColor: 'primary',
@@ -121,6 +122,7 @@ const selectedFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month
 const chartTitle = computed(() => props.title ?? t('charts.priceTrend'))
 const emptyMessage = computed(() => props.emptyText ?? t('charts.noData'))
 const averageLabel = computed(() => props.avgLabel ?? t('charts.average'))
+const countLabel = computed(() => props.countLabel ?? t('charts.recordCount'))
 const filters = computed(() => [
   { label: t('recipes.week'), value: 'week' as const },
   { label: t('recipes.month'), value: 'month' as const },
@@ -237,7 +239,7 @@ function updateChart() {
               <span style="display: inline-block; width: 12px; height: 12px; background-color: ${props.color}33; border-radius: 2px;"></span>
               <span>${t('charts.range')}: ${formatMoney(item.min, userCurrency.value)} - ${formatMoney(item.max, userCurrency.value)}${unitSuffix.value}</span>
             </div>
-            ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">${t('charts.recordCount')}: ${item.count}</div>` : ''}
+            ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">${countLabel.value}: ${item.count}</div>` : ''}
           </div>
         `
       }

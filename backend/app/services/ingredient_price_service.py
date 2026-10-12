@@ -191,14 +191,16 @@ def get_weighted_ingredient_price(
 def _collect_recent_records(db: Session, product_id: int, as_of_date: datetime, tz: str = "UTC", region_id: Optional[int] = None) -> list:
     """latest-price 语义：该商品「最近有记录的那天」的全部记录。
 
-    与 nutrition.get_ingredient_latest_price 的最近一天口径一致（去掉 24h 优先段，
-    统一为「最近有记录日」以简化跨商品对齐）。
+    nutrition.get_ingredient_latest_price 的「每商品最近有记录日」口径即为本函数
+    （不做 24h 优先段，统一为「最近有记录日」以简化跨商品对齐）。
+    已软删的价格记录不参与（与列表/成本可见口径一致）。
     """
     from app.models.product import ProductRecord
     from app.services.price_region import apply_region_filter
     latest = apply_region_filter(
         db.query(ProductRecord).filter(
             ProductRecord.product_id == product_id,
+            ProductRecord.is_active == True,  # noqa: E712
             ProductRecord.recorded_at <= as_of_date,
         ),
         db, region_id,
@@ -210,6 +212,7 @@ def _collect_recent_records(db: Session, product_id: int, as_of_date: datetime, 
     return apply_region_filter(
         db.query(ProductRecord).filter(
             ProductRecord.product_id == product_id,
+            ProductRecord.is_active == True,  # noqa: E712
             ProductRecord.recorded_at >= day_start,
             ProductRecord.recorded_at <= day_end,
         ),
