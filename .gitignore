@@ -23,3 +23,6 @@ docker-compose.yml
 # 本地工具目录（不入库）
 .v2c/
 .video_agent/
+build/CMakeCache.txt
+build/.cmake/
+build/CMakeFiles/
