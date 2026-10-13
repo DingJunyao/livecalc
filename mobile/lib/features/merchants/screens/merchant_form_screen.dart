@@ -9,6 +9,8 @@ import '../../../shared/widgets/region_select_field.dart';
 import '../models/merchant.dart';
 import '../repositories/merchant_repository.dart';
 import '../widgets/map_point_picker.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 
 class MerchantFormResult {
   final bool saved;
@@ -181,23 +183,25 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final editing = widget.merchant != null;
+    final savePosition = ref.watch(saveButtonPositionProvider);
+    final saveLabel =
+        editing ? l10n.commonSave : l10n.merchantCreateButton;
     return Scaffold(
       appBar: AppBar(
         title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(
-                    editing ? l10n.commonSave : l10n.merchantCreateButton,
-                  ),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : saveLabel,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.commonSaving : saveLabel,
       ),
       body: SafeArea(
         top: false,

@@ -186,6 +186,14 @@
   "@profileUnitPreferences": {},
   "profileNutritionGoals": "Nutrition goals",
   "@profileNutritionGoals": {},
+  "profileSaveButtonPosition": "Save button position",
+  "@profileSaveButtonPosition": {},
+  "saveButtonPositionTop": "Top right",
+  "@saveButtonPositionTop": {},
+  "saveButtonPositionBottom": "Bottom of page",
+  "@saveButtonPositionBottom": {},
+  "saveButtonPositionHint": "Saved on this device only",
+  "@saveButtonPositionHint": {},
   "profileMyData": "My data",
   "@profileMyData": {},
   "profileMyProposals": "My proposals",
@@ -577,6 +585,37 @@
   },
   "unitsVolumeDensityHintEmpty": "Enter the volume per unit to see the converted weight",
   "@unitsVolumeDensityHintEmpty": {},
+  "unitsWeightValueLabel": "Amount",
+  "@unitsWeightValueLabel": {},
+  "unitsWeightUnitLabel": "Unit",
+  "@unitsWeightUnitLabel": {},
+  "unitsCustomUnitOption": "{name} (custom unit)",
+  "@unitsCustomUnitOption": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "unitsQuantityChain": "1 {unit} = {amount} {weightUnit}",
+  "@unitsQuantityChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {}
+    }
+  },
+  "unitsQuantityVolumeChain": "1 {unit} = {amount} {weightUnit} (≈ {grams} g)",
+  "@unitsQuantityVolumeChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {},
+      "grams": {}
+    }
+  },
+  "unitsSelfReference": "A custom unit cannot reference itself",
+  "@unitsSelfReference": {},
+  "unitsReferenceMissing": "The referenced custom unit does not exist",
+  "@unitsReferenceMissing": {},
   "unitsDensityPresets": "Common liquid densities (kg/m³)",
   "@unitsDensityPresets": {},
   "unitsPresetWater": "Water",

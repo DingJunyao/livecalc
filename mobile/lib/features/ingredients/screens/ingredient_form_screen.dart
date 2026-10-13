@@ -6,6 +6,8 @@ import '../models/ingredient.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/ingredient_provider.dart';
 import '../repositories/ingredient_repository.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 
 class IngredientFormResult {
   final bool saved;
@@ -187,17 +189,25 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(
           _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
         ),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : l10n.commonSave,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.commonSaving : l10n.commonSave,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

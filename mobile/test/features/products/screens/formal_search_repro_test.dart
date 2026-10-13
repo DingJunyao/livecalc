@@ -7,6 +7,7 @@ import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class _FakeProductRepository extends ProductRepository {
   @override
@@ -50,14 +51,15 @@ Future<void> pumpForm(WidgetTester tester) async {
   tester.view.devicePixelRatio = 3.0;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
-  await tester.pumpWidget(MaterialApp(
+  await tester.pumpWidget(ProviderScope(
+    child: MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: ProductFormScreen(
       repository: _FakeProductRepository(),
       ingredientRepository: _FormalDataIngredientRepository(),
     ),
-  ));
+  )));
   await tester.pumpAndSettle();
 }
 

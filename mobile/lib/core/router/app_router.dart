@@ -40,7 +40,6 @@ import '../../features/auth/screens/splash_screen.dart';
 import '../../features/auth/screens/edit_account_screen.dart';
 import '../../features/prices/providers/price_provider.dart';
 import '../../l10n/app_localizations.dart';
-import '../../shared/screens/entity_units_screen.dart';
 import '../../shared/screens/nutrition_edit_screen.dart';
 import '../../shared/screens/price_record_edit_screen.dart';
 import 'route_names.dart';
@@ -120,45 +119,6 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
         navigatorKey: _shellNavigatorKey,
         builder: (_, __, child) => ScaffoldWithNavBar(child: child),
         routes: [
-          GoRoute(
-            path: '/entities/:entityType/:entityId/units',
-            name: 'entity-units',
-            builder: (_, state) {
-              final args = state.extra;
-              if (args is EntityUnitsArguments) {
-                return EntityUnitsScreen(
-                  entityType: args.entityType,
-                  entityId: args.entityId,
-                  entityName: args.entityName,
-                  units: args.units,
-                  unmappedUnits: args.unmappedUnits,
-                  densities: args.densities,
-                  loading: args.loading,
-                  isAdmin: args.isAdmin,
-                  onAddUnit: args.onAddUnit,
-                  onEditUnit: args.onEditUnit,
-                  onDeleteUnit: args.onDeleteUnit,
-                  onQuickAddUnmapped: args.onQuickAddUnmapped,
-                  onAddDensity: args.onAddDensity,
-                  onDeleteDensity: args.onDeleteDensity,
-                );
-              }
-              return EntityUnitsScreen(
-                entityType: state.pathParameters['entityType'] ?? 'ingredient',
-                entityId:
-                    int.tryParse(state.pathParameters['entityId'] ?? '') ?? 0,
-                units: const [],
-                unmappedUnits: const [],
-                densities: const [],
-                onAddUnit: (_) async => null,
-                onEditUnit: (_, __) async => null,
-                onDeleteUnit: (_) async => null,
-                onQuickAddUnmapped: (_) async => null,
-                onAddDensity: (_) async => null,
-                onDeleteDensity: (_) async => null,
-              );
-            },
-          ),
           GoRoute(
             path: '/entities/:entityType/:entityId/nutrition',
             name: 'entity-nutrition-edit',

@@ -9,6 +9,9 @@ import '../models/product.dart';
 import '../repositories/product_repository.dart';
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 
 class ProductFormPrefill {
   final String barcode;
@@ -36,7 +39,7 @@ class ProductFormResult {
   });
 }
 
-class ProductFormScreen extends StatefulWidget {
+class ProductFormScreen extends ConsumerStatefulWidget {
   final Ingredient? fixedIngredient;
   final Product? product;
   final ProductRepository? repository;
@@ -57,10 +60,10 @@ class ProductFormScreen extends StatefulWidget {
   });
 
   @override
-  State<ProductFormScreen> createState() => _ProductFormScreenState();
+  ConsumerState<ProductFormScreen> createState() => _ProductFormScreenState();
 }
 
-class _ProductFormScreenState extends State<ProductFormScreen> {
+class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final ProductRepository _productRepository;
   late final IngredientRepository _ingredientRepository;
   late final TextEditingController _nameController;
@@ -449,6 +452,7 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Stack(
       children: [
         Scaffold(
@@ -457,11 +461,18 @@ class _ProductFormScreenState extends State<ProductFormScreen> {
               _isEdit ? l10n.productEditTitle : l10n.productAddTitle,
             ),
             actions: [
-              TextButton(
-                onPressed: _saving ? null : _save,
-                child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+              ...saveAppBarActions(
+                position: savePosition,
+                onSave: _saving ? null : _save,
+                label: _saving ? l10n.commonSaving : l10n.commonSave,
               ),
             ],
+          ),
+          bottomNavigationBar: saveBottomBar(
+            context: context,
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : l10n.commonSave,
           ),
           body: _loading
               ? const Center(child: CircularProgressIndicator())

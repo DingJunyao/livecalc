@@ -7,6 +7,7 @@ import '../../auth/repositories/auth_repository.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/i18n/locale_settings.dart';
 import '../providers/startup_page_provider.dart';
+import '../providers/save_button_position_provider.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/directional_icons.dart';
 
@@ -116,6 +117,18 @@ class ProfileScreen extends ConsumerWidget {
             ),
             const Divider(height: 1),
             ListTile(
+              leading: const Icon(Icons.save_outlined),
+              title: Text(l10n.profileSaveButtonPosition),
+              trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                Text(_saveButtonPositionDisplayName(
+                    ref.watch(saveButtonPositionProvider), l10n)),
+                Icon(DirectionalIcons.forwardChevron(context),
+                    color: Colors.grey),
+              ]),
+              onTap: () => _showSaveButtonPositionDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
               leading: const Icon(Icons.scale),
               title: Text(l10n.profileUnitPreferences),
               onTap: () => context.push('/profile/settings/unit-preferences'),
@@ -212,6 +225,52 @@ String _startupPageDisplayName(String page, AppLocalizations l10n) {
     default:
       return l10n.profileStartupPageHome;
   }
+}
+
+/// 保存按钮位置单选对话框：点选即生效（仅存本机）并关闭。
+Future<void> _showSaveButtonPositionDialog(
+    BuildContext context, WidgetRef ref) async {
+  final current = ref.read(saveButtonPositionProvider);
+  final l10n = AppLocalizations.of(context);
+  final selected = await showDialog<SaveButtonPosition>(
+    context: context,
+    builder: (ctx) => SimpleDialog(
+      title: Text(l10n.profileSaveButtonPosition),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+          child: Text(
+            l10n.saveButtonPositionHint,
+            style: Theme.of(ctx).textTheme.bodySmall,
+          ),
+        ),
+        RadioGroup<SaveButtonPosition>(
+          groupValue: current,
+          onChanged: (v) => Navigator.of(ctx).pop(v),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final position in SaveButtonPosition.values)
+                RadioListTile<SaveButtonPosition>(
+                  value: position,
+                  title: Text(_saveButtonPositionDisplayName(position, l10n)),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+  if (selected != null && selected != current) {
+    await ref.read(saveButtonPositionProvider.notifier).setPosition(selected);
+  }
+}
+
+String _saveButtonPositionDisplayName(
+    SaveButtonPosition position, AppLocalizations l10n) {
+  return position == SaveButtonPosition.bottom
+      ? l10n.saveButtonPositionBottom
+      : l10n.saveButtonPositionTop;
 }
 
 String _calcScopeDisplayName(String? scope, AppLocalizations l10n) {

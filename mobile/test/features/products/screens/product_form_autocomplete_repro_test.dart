@@ -5,6 +5,7 @@ import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class _FakeProductRepository extends ProductRepository {}
 
@@ -56,11 +57,12 @@ Future<ProductFormScreen> buildScreen(
 }
 
 Future<void> pumpApp(WidgetTester tester, ProductFormScreen screen) async {
-  await tester.pumpWidget(MaterialApp(
+  await tester.pumpWidget(ProviderScope(
+    child: MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: screen,
-  ));
+  )));
   await tester.pumpAndSettle();
 }
 

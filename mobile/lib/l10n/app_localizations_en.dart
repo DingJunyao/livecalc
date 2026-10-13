@@ -298,6 +298,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileNutritionGoals => 'Nutrition goals';
 
   @override
+  String get profileSaveButtonPosition => 'Save button position';
+
+  @override
+  String get saveButtonPositionTop => 'Top right';
+
+  @override
+  String get saveButtonPositionBottom => 'Bottom of page';
+
+  @override
+  String get saveButtonPositionHint => 'Saved on this device only';
+
+  @override
   String get profileMyData => 'My data';
 
   @override
@@ -817,6 +829,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get unitsVolumeDensityHintEmpty =>
       'Enter the volume per unit to see the converted weight';
+
+  @override
+  String get unitsWeightValueLabel => 'Amount';
+
+  @override
+  String get unitsWeightUnitLabel => 'Unit';
+
+  @override
+  String unitsCustomUnitOption(Object name) {
+    return '$name (custom unit)';
+  }
+
+  @override
+  String unitsQuantityChain(Object unit, Object amount, Object weightUnit) {
+    return '1 $unit = $amount $weightUnit';
+  }
+
+  @override
+  String unitsQuantityVolumeChain(
+      Object unit, Object amount, Object weightUnit, Object grams) {
+    return '1 $unit = $amount $weightUnit (≈ $grams g)';
+  }
+
+  @override
+  String get unitsSelfReference => 'A custom unit cannot reference itself';
+
+  @override
+  String get unitsReferenceMissing =>
+      'The referenced custom unit does not exist';
 
   @override
   String get unitsDensityPresets => 'Common liquid densities (kg/m³)';

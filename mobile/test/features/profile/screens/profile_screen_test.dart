@@ -207,6 +207,9 @@ void main() {
     expect(find.text('单位偏好'), findsOneWidget);
     expect(find.text('营养目标'), findsOneWidget);
 
+    // 设置项增多后目标行可能在折叠区外，先滚动到可见再点
+    await tester.ensureVisible(find.text('单位偏好'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('单位偏好'));
     await tester.pumpAndSettle();
     expect(find.text('单位偏好页'), findsOneWidget);

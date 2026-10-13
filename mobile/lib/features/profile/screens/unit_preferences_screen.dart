@@ -7,6 +7,8 @@ import '../../auth/repositories/auth_repository.dart';
 import '../models/unit_option.dart';
 import '../repositories/profile_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../providers/save_button_position_provider.dart';
 
 /// 单位偏好：能量/质量/容积/记价 4 个下拉，保存 PATCH /auth/me 只传变化字段。
 class UnitPreferencesScreen extends ConsumerStatefulWidget {
@@ -143,15 +145,23 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.profileUnitPreferences),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : l10n.commonSave,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.commonSaving : l10n.commonSave,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

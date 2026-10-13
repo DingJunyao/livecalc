@@ -646,6 +646,30 @@ abstract class AppLocalizations {
   /// **'营养目标'**
   String get profileNutritionGoals;
 
+  /// No description provided for @profileSaveButtonPosition.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存按钮位置'**
+  String get profileSaveButtonPosition;
+
+  /// No description provided for @saveButtonPositionTop.
+  ///
+  /// In zh, this message translates to:
+  /// **'右上角'**
+  String get saveButtonPositionTop;
+
+  /// No description provided for @saveButtonPositionBottom.
+  ///
+  /// In zh, this message translates to:
+  /// **'页面下方'**
+  String get saveButtonPositionBottom;
+
+  /// No description provided for @saveButtonPositionHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅保存在本机，不影响其他设备'**
+  String get saveButtonPositionHint;
+
   /// No description provided for @profileMyData.
   ///
   /// In zh, this message translates to:
@@ -1624,6 +1648,49 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'填写每单位体积后显示折算重量'**
   String get unitsVolumeDensityHintEmpty;
+
+  /// No description provided for @unitsWeightValueLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'单个重量'**
+  String get unitsWeightValueLabel;
+
+  /// No description provided for @unitsWeightUnitLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'重量单位'**
+  String get unitsWeightUnitLabel;
+
+  /// No description provided for @unitsCustomUnitOption.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（自定义单位）'**
+  String unitsCustomUnitOption(Object name);
+
+  /// No description provided for @unitsQuantityChain.
+  ///
+  /// In zh, this message translates to:
+  /// **'1 {unit} = {amount} {weightUnit}'**
+  String unitsQuantityChain(Object unit, Object amount, Object weightUnit);
+
+  /// No description provided for @unitsQuantityVolumeChain.
+  ///
+  /// In zh, this message translates to:
+  /// **'1 {unit} = {amount} {weightUnit}（≈ {grams} g）'**
+  String unitsQuantityVolumeChain(
+      Object unit, Object amount, Object weightUnit, Object grams);
+
+  /// No description provided for @unitsSelfReference.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位不能引用自身'**
+  String get unitsSelfReference;
+
+  /// No description provided for @unitsReferenceMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'引用的自定义单位不存在'**
+  String get unitsReferenceMissing;
 
   /// No description provided for @unitsDensityPresets.
   ///

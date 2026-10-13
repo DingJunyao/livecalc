@@ -40,7 +40,8 @@ void main() {
   testWidgets('nutrition editor prefills rows from detail nutrition data', (
     tester,
   ) async {
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -58,7 +59,7 @@ void main() {
         ),
         onSave: (rows) async => null,
       ),
-    ));
+    )));
 
     expect(find.widgetWithText(TextField, '120'), findsOneWidget);
   });
@@ -68,7 +69,8 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -83,7 +85,7 @@ void main() {
         ],
         onSave: (rows) async => null,
       ),
-    ));
+    )));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);

@@ -13,12 +13,12 @@ import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/models/entity_unit.dart';
 import 'package:com_a4ding_livecalc/shared/models/merchant_price.dart';
 import 'package:com_a4ding_livecalc/shared/models/nutrition.dart';
-import 'package:com_a4ding_livecalc/shared/screens/entity_units_screen.dart';
 import 'package:com_a4ding_livecalc/shared/screens/nutrition_edit_screen.dart';
 import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/calc_context_menu_button.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/empty_state.dart';
+import 'package:com_a4ding_livecalc/shared/widgets/entity_units_card.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/error_display.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_indicator.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
@@ -516,7 +516,7 @@ void main() {
     await pumpLocalized(
       tester,
       const Locale('en', 'US'),
-      EntityUnitsScreen(
+      EntityUnitsCard(
         entityType: 'ingredient',
         entityId: 1,
         units: const [
@@ -527,13 +527,11 @@ void main() {
         onAddUnit: (_) async => null,
         onEditUnit: (_, __) async => null,
         onDeleteUnit: (_) async => null,
-        onQuickAddUnmapped: (_) async => null,
         onAddDensity: (_) async => null,
         onDeleteDensity: (_) async => null,
       ),
     );
     expect(find.text('Units & densities'), findsOneWidget);
-    expect(find.text('Save unit'), findsOneWidget);
     expect(find.text('Server unit'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
@@ -545,7 +543,7 @@ void main() {
     await pumpLocalized(
       tester,
       const Locale('ar'),
-      EntityUnitsScreen(
+      EntityUnitsCard(
         entityType: 'ingredient',
         entityId: 1,
         units: const [
@@ -556,13 +554,11 @@ void main() {
         onAddUnit: (_) async => null,
         onEditUnit: (_, __) async => null,
         onDeleteUnit: (_) async => null,
-        onQuickAddUnmapped: (_) async => null,
         onAddDensity: (_) async => null,
         onDeleteDensity: (_) async => null,
       ),
     );
     expect(find.text('الوحدات والكثافات'), findsOneWidget);
-    expect(find.text('حفظ الوحدة'), findsOneWidget);
     expect(find.text('Server unit'), findsOneWidget);
     await tester.ensureVisible(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
@@ -634,7 +630,7 @@ void main() {
     await pumpLocalized(
       tester,
       const Locale('zh', 'CN'),
-      EntityUnitsScreen(
+      EntityUnitsCard(
         entityType: 'ingredient',
         entityId: 1,
         units: const [
@@ -645,13 +641,11 @@ void main() {
         onAddUnit: (_) async => null,
         onEditUnit: (_, __) async => null,
         onDeleteUnit: (_) async => null,
-        onQuickAddUnmapped: (_) async => null,
         onAddDensity: (_) async => null,
         onDeleteDensity: (_) async => null,
       ),
     );
     expect(find.text('单位与密度'), findsOneWidget);
-    expect(find.text('保存单位'), findsOneWidget);
     expect(find.text('Server unit'), findsOneWidget);
     expect(find.byTooltip('删除'), findsOneWidget);
 

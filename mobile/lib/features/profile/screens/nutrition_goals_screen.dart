@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../providers/save_button_position_provider.dart';
 
 /// 营养目标：每日热量/蛋白质/碳水/脂肪 4 个数字输入。
 /// 热量库存单位 kcal，按 energyUnit 换算显示（对齐 web useUserUnits）。
@@ -137,15 +139,23 @@ class _NutritionGoalsScreenState extends ConsumerState<NutritionGoalsScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.profileNutritionGoals),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.commonSaving : l10n.commonSave),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : l10n.commonSave,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.commonSaving : l10n.commonSave,
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

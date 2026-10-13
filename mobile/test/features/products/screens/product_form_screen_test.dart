@@ -12,6 +12,7 @@ import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class _FakeProductRepository extends ProductRepository {
   _FakeProductRepository(this.existing);
@@ -136,7 +137,8 @@ void main() {
     await useTallViewport(tester);
     const ingredient = Ingredient(id: 8, name: '面粉');
     final repo = _FakeProductRepository(const Product(id: 0, name: ''));
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
@@ -152,7 +154,7 @@ void main() {
           child: const Text('Open'),
         ),
       ),
-    ));
+    )));
 
     await tester.tap(find.text('Open'));
     await tester.pumpAndSettle();
@@ -196,14 +198,15 @@ void main() {
       aliases: ['蛋糕粉'],
       tags: ['烘焙'],
     ));
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         product: const Product(id: 12, name: '低筋粉'),
         repository: repo,
       ),
-    ));
+    )));
     await tester.pumpAndSettle();
 
     expect(find.widgetWithText(AppBar, 'Edit product'), findsOneWidget);
@@ -236,7 +239,8 @@ void main() {
     await useTallViewport(tester);
     final lookupCompleter = Completer<BarcodeLookupResult>();
     final repo = _ScanLookupRepository(lookupCompleter);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -244,7 +248,7 @@ void main() {
         repository: repo,
         scanner: (_) async => '6901234567890',
       ),
-    ));
+    )));
     await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.byIcon(Icons.barcode_reader));
@@ -270,14 +274,15 @@ void main() {
       Ingredient(id: 1, name: '面粉', category: '谷物'),
       Ingredient(id: 2, name: '砂糖', category: '调味'),
     ]);
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         repository: repo,
         ingredientRepository: ingredientRepo,
       ),
-    ));
+    )));
     await tester.pumpAndSettle();
 
     // 下拉带输入：非 tag/Chip 形式
@@ -330,14 +335,15 @@ void main() {
         overrideWeight: 70,
         source: 'override',
       );
-    await tester.pumpWidget(MaterialApp(
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
         product: const Product(id: 12, name: '低筋粉'),
         repository: repo,
       ),
-    ));
+    )));
     await tester.pumpAndSettle();
 
     // 滚动到表单底部，让「我的权重覆盖」区块完成构建

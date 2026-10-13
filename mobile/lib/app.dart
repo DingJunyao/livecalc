@@ -10,6 +10,7 @@ import 'l10n/app_localizations.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/auth/providers/server_provider.dart';
 import 'features/profile/providers/startup_page_provider.dart';
+import 'features/profile/providers/save_button_position_provider.dart';
 
 /// Thin [ChangeNotifier] wrapper so [GoRouter.refreshListenable] can be nudged
 /// from outside (notifyListeners is otherwise protected).
@@ -56,6 +57,8 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     // 起始页配置与服务器地址一样只存在本地，认证恢复前先加载，
     // 保证认证后的首次 redirect 就能落到用户配置的起始页。
     await ref.read(startupPageProvider.notifier).load();
+    // 保存按钮位置（右上角/页面下方）同样只存本地，表单首次构建前加载好
+    await ref.read(saveButtonPositionProvider.notifier).load();
     await ref.read(authProvider.notifier).checkAuth();
   }
 

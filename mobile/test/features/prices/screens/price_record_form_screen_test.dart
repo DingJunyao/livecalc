@@ -156,6 +156,8 @@ void main() {
     ProductRepository? productRepo,
     PriceRecordFormPrefill? prefill,
     Future<String?> Function(BuildContext)? scanner,
+    Future<List<String>> Function(int productId, int? ingredientId)?
+        unitNamesLoader,
     double viewportHeight = 1400,
     String? merchantCurrency,
   }) async {
@@ -184,6 +186,7 @@ void main() {
             productRepository: productRepo ?? _FakeProductRepository(const []),
             prefill: prefill,
             scanner: scanner,
+            unitNamesLoader: unitNamesLoader,
           ),
         ),
       ),
@@ -204,6 +207,41 @@ void main() {
     await tester.tap(unitField);
     await tester.pumpAndSettle();
     expect(find.text('100g'), findsOneWidget);
+  });
+
+  testWidgets('选中商品后自定义单位出现在单位下拉里', (tester) async {
+    // 用户反馈：在原料/商品详情自定义了「桶」，回到价格记录页下拉里选不到
+    final product = Product.fromJson({
+      'id': 42,
+      'name': '食用油',
+      'ingredient_id': 7,
+    });
+    int? requestedProductId;
+    int? requestedIngredientId;
+
+    await pumpForm(
+      tester,
+      productRepo: _FakeProductRepository([product]),
+      prefill: PriceRecordFormPrefill(product: product, lockProduct: true),
+      unitNamesLoader: (productId, ingredientId) async {
+        requestedProductId = productId;
+        requestedIngredientId = ingredientId;
+        return const ['桶'];
+      },
+    );
+
+    expect(requestedProductId, 42);
+    expect(requestedIngredientId, 7);
+
+    final unitField = find.ancestor(
+      of: find.text('单位'),
+      matching: find.byType(DropdownButtonFormField<String>),
+    );
+    await tester.ensureVisible(unitField);
+    await tester.pumpAndSettle();
+    await tester.tap(unitField);
+    await tester.pumpAndSettle();
+    expect(find.text('桶'), findsOneWidget);
   });
 
   testWidgets('渲染全部字段', (tester) async {

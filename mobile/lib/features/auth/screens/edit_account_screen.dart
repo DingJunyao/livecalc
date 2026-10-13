@@ -14,6 +14,8 @@ import '../models/user.dart';
 import '../providers/auth_provider.dart';
 import '../repositories/auth_repository.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 
 /// 编辑账号信息：头像（选图 + 方形裁剪 + 上传）+ 用户名/昵称/邮箱/手机 +
 /// 所在地区（四级级联）+ 修改密码（可选，与 web 用户信息编辑对齐）。
@@ -179,15 +181,23 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
         ? user!.displayName[0]
         : l10n.commonUserInitial;
 
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.authEditAccountTitle),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: Text(_saving ? l10n.authSaving : l10n.commonSave),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.authSaving : l10n.commonSave,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.authSaving : l10n.commonSave,
       ),
       body: Form(
         key: _formKey,

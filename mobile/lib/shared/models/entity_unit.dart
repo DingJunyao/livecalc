@@ -12,7 +12,14 @@ class EntityUnit {
   final bool isDefault;
   final String? source;
   final bool isPending;
+
+  /// 每单位量指向的全局质量/体积单位（g/kg/斤/mL…）。
   final int? weightUnitId;
+
+  /// 每单位量指向的本实体另一个自定义单位（嵌套，如 1箱 = 12盒）。
+  /// 与 [weightUnitId] 互斥；都为空时按克处理。
+  final int? weightUnitOverrideId;
+
   // 每单位量为体积语义（1瓶=500mL）；由 provider 依据全局单位表标注
   final bool isVolumeWeight;
 
@@ -25,6 +32,7 @@ class EntityUnit {
     this.source,
     this.isPending = false,
     this.weightUnitId,
+    this.weightUnitOverrideId,
     this.isVolumeWeight = false,
   });
 
@@ -38,6 +46,8 @@ class EntityUnit {
       source: json['source'] as String?,
       isPending: false,
       weightUnitId: (json['weight_unit_id'] as num?)?.toInt(),
+      weightUnitOverrideId:
+          (json['weight_unit_override_id'] as num?)?.toInt(),
     );
   }
 
@@ -53,7 +63,37 @@ class EntityUnit {
       source: source,
       isPending: isPending,
       weightUnitId: weightUnitId,
+      weightUnitOverrideId: weightUnitOverrideId,
       isVolumeWeight: isVolumeWeight ?? this.isVolumeWeight,
+    );
+  }
+}
+
+/// 可选作「重量单位」的全局单位（质量/体积），用于单位表单下拉。
+class GlobalUnitOption {
+  final int id;
+  final String name;
+  final String abbreviation;
+  final String unitType; // mass / volume
+  final double siFactor;
+
+  const GlobalUnitOption({
+    required this.id,
+    required this.name,
+    required this.abbreviation,
+    required this.unitType,
+    required this.siFactor,
+  });
+
+  bool get isVolume => unitType == 'volume';
+
+  factory GlobalUnitOption.fromJson(Map<String, dynamic> json) {
+    return GlobalUnitOption(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: json['name'] as String? ?? '',
+      abbreviation: json['abbreviation'] as String? ?? '',
+      unitType: json['unit_type'] as String? ?? '',
+      siFactor: _toDouble(json['si_factor']) ?? 0,
     );
   }
 }

@@ -7,6 +7,9 @@ import '../../features/nutrition/repositories/usda_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
 import '../widgets/directional_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../widgets/save_action_button.dart';
+import '../../features/profile/providers/save_button_position_provider.dart';
 
 class NutritionEditResult {
   final bool saved;
@@ -42,7 +45,7 @@ class NutritionEditArguments {
   });
 }
 
-class NutritionEditScreen extends StatefulWidget {
+class NutritionEditScreen extends ConsumerStatefulWidget {
   final String entityType;
   final int entityId;
   final String? entityName;
@@ -69,10 +72,10 @@ class NutritionEditScreen extends StatefulWidget {
   });
 
   @override
-  State<NutritionEditScreen> createState() => _NutritionEditScreenState();
+  ConsumerState<NutritionEditScreen> createState() => _NutritionEditScreenState();
 }
 
-class _NutritionEditScreenState extends State<NutritionEditScreen> {
+class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
   final _rows = <_NutritionEditRow>[];
   final _searchController = TextEditingController();
   final _usdaRepo = UsdaRepository();
@@ -282,6 +285,9 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
+    final saveLabel =
+        _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.entityName == null
@@ -293,20 +299,22 @@ class _NutritionEditScreenState extends State<NutritionEditScreen> {
               onPressed: _saving ? null : _clearCustom,
               child: Text(l10n.nutritionClearCustom),
             ),
-          TextButton(
-            onPressed:
-                _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),
-            child: _saving
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(
-                    _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave,
-                  ),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving
+                ? null
+                : (_usdaMode ? _confirmUsdaMatch : _saveManual),
+            label: _saving ? l10n.commonSaving : saveLabel,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving
+            ? null
+            : (_usdaMode ? _confirmUsdaMatch : _saveManual),
+        label: _saving ? l10n.commonSaving : saveLabel,
       ),
       body: Column(
         children: [

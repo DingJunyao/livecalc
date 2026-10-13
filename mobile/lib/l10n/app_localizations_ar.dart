@@ -297,6 +297,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileNutritionGoals => 'أهداف التغذية';
 
   @override
+  String get profileSaveButtonPosition => 'موضع زر الحفظ';
+
+  @override
+  String get saveButtonPositionTop => 'أعلى اليمين';
+
+  @override
+  String get saveButtonPositionBottom => 'أسفل الصفحة';
+
+  @override
+  String get saveButtonPositionHint => 'يُحفظ على هذا الجهاز فقط';
+
+  @override
   String get profileMyData => 'بياناتي';
 
   @override
@@ -816,6 +828,34 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get unitsVolumeDensityHintEmpty =>
       'أدخل الحجم لكل وحدة لعرض الوزن المكافئ';
+
+  @override
+  String get unitsWeightValueLabel => 'الكمية';
+
+  @override
+  String get unitsWeightUnitLabel => 'الوحدة';
+
+  @override
+  String unitsCustomUnitOption(Object name) {
+    return '$name (وحدة مخصصة)';
+  }
+
+  @override
+  String unitsQuantityChain(Object unit, Object amount, Object weightUnit) {
+    return '1 $unit = $amount $weightUnit';
+  }
+
+  @override
+  String unitsQuantityVolumeChain(
+      Object unit, Object amount, Object weightUnit, Object grams) {
+    return '1 $unit = $amount $weightUnit (≈ $grams غم)';
+  }
+
+  @override
+  String get unitsSelfReference => 'لا يمكن للوحدة المخصصة أن تشير إلى نفسها';
+
+  @override
+  String get unitsReferenceMissing => 'الوحدة المخصصة المرجعية غير موجودة';
 
   @override
   String get unitsDensityPresets => 'كثافات سوائل شائعة (kg/m³)';

@@ -8,8 +8,6 @@ import '../../../shared/models/nutrition.dart';
 import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../entities/repositories/entity_repository.dart';
-import '../../../shared/screens/entity_units_screen.dart'
-    show UnitWeightKind;
 import '../../nutrition/repositories/nutrition_repository.dart';
 import '../../nutrition/models/usda_models.dart';
 import '../../nutrition/repositories/usda_repository.dart';
@@ -254,6 +252,8 @@ class IngredientDetailPageState {
   final List<EntityUnit> units;
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
+  /// 可作为「重量单位」的全局质量/体积单位（单位表单下拉用）
+  final List<GlobalUnitOption> globalUnitOptions;
   final bool loadingUnits;
   // 生效密度（kg/m³）：自身 > 关联原料；null 表示无密度记录（UI 按水密度兜底）
   final double? effectiveDensityKgM3;
@@ -291,6 +291,7 @@ class IngredientDetailPageState {
     this.units = const [],
     this.unmappedUnits = const [],
     this.densities = const [],
+    this.globalUnitOptions = const [],
     this.loadingUnits = false,
     this.effectiveDensityKgM3,
     this.recipes = const [],
@@ -328,6 +329,7 @@ class IngredientDetailPageState {
     List<EntityUnit>? units,
     List<UnmappedUnit>? unmappedUnits,
     List<EntityDensity>? densities,
+    List<GlobalUnitOption>? globalUnitOptions,
     bool? loadingUnits,
     Object? effectiveDensityKgM3 = _absent,
     List<IngredientRecipeRef>? recipes,
@@ -369,6 +371,7 @@ class IngredientDetailPageState {
       units: units ?? this.units,
       unmappedUnits: unmappedUnits ?? this.unmappedUnits,
       densities: densities ?? this.densities,
+      globalUnitOptions: globalUnitOptions ?? this.globalUnitOptions,
       loadingUnits: loadingUnits ?? this.loadingUnits,
       effectiveDensityKgM3: identical(effectiveDensityKgM3, _absent)
           ? this.effectiveDensityKgM3
@@ -401,9 +404,8 @@ class IngredientDetailPageNotifier
   final ProfileRepository _proposalRepo;
   final int ingredientId;
   int? _regionId;
-  // 全局单位表缓存：解析 weight_unit_id 语义（质量 g / 体积 mL）
-  int? _gramUnitId;
-  int? _millilitreUnitId;
+  // 全局单位表缓存：解析 weight_unit_id 语义（质量 g / 体积 mL）并填充选择器
+  List<GlobalUnitOption> _weightUnitOptions = const [];
   Set<int> _volumeUnitIds = const {};
   bool _globalUnitsLoaded = false;
 
@@ -614,6 +616,8 @@ class IngredientDetailPageNotifier
               source: 'pending',
               isPending: true,
               weightUnitId: _toInt(data['weight_unit_id']),
+              weightUnitOverrideId:
+                  _toInt(data['weight_unit_override_id']),
             ),
           ];
         }
@@ -639,6 +643,10 @@ class IngredientDetailPageNotifier
               weightUnitId: data.containsKey('weight_unit_id')
                   ? _toInt(data['weight_unit_id'])
                   : unit.weightUnitId,
+              weightUnitOverrideId:
+                  data.containsKey('weight_unit_override_id')
+                      ? _toInt(data['weight_unit_override_id'])
+                      : unit.weightUnitOverrideId,
             )
           else
             unit,
@@ -887,6 +895,7 @@ class IngredientDetailPageNotifier
         units: _annotateUnits(units),
         unmappedUnits: unmapped,
         densities: densities,
+        globalUnitOptions: _weightUnitOptions,
         effectiveDensityKgM3: effectiveDensity,
         loadingUnits: false,
       );
@@ -895,24 +904,16 @@ class IngredientDetailPageNotifier
     }
   }
 
-  /// 拉取全局单位表（一次），缓存 g/mL 单位 id 与体积单位 id 集。
+  /// 拉取全局单位表（一次），缓存质量/体积单位选项与体积单位 id 集。
   Future<void> _ensureGlobalUnits() async {
     if (_globalUnitsLoaded) return;
     try {
       final units = await _entityRepo.listGlobalUnits();
-      int? findId(bool Function(Map<String, dynamic> u) test) {
-        for (final u in units) {
-          if (test(u)) return (u['id'] as num?)?.toInt();
-        }
-        return null;
-      }
-
-      _gramUnitId = findId(
-        (u) => u['unit_type'] == 'mass' && u['abbreviation'] == 'g',
-      );
-      _millilitreUnitId = findId(
-        (u) => u['unit_type'] == 'volume' && u['abbreviation'] == 'mL',
-      );
+      _weightUnitOptions = [
+        for (final u in units)
+          if (u['unit_type'] == 'mass' || u['unit_type'] == 'volume')
+            GlobalUnitOption.fromJson(u),
+      ];
       _volumeUnitIds = {
         for (final u in units)
           if (u['unit_type'] == 'volume') (u['id'] as num?)?.toInt() ?? -1,
@@ -924,36 +925,41 @@ class IngredientDetailPageNotifier
     }
   }
 
-  /// 按 weightUnitId 是否指向体积单位标注 isVolumeWeight。
+  /// 自定义单位是否最终指向体积单位（经 weight_unit_override_id 链解析）。
+  bool _resolvesToVolume(EntityUnit unit, Map<int, EntityUnit> byId) {
+    final seen = <int>{unit.id};
+    int? refId = unit.weightUnitOverrideId;
+    var current = unit;
+    for (var depth = 0; depth < 8; depth++) {
+      final unitId = current.weightUnitId;
+      if (unitId != null) return _volumeUnitIds.contains(unitId);
+      if (refId == null || !seen.add(refId)) return false;
+      final next = byId[refId];
+      if (next == null) return false;
+      current = next;
+      refId = next.weightUnitOverrideId;
+    }
+    return false;
+  }
+
+  /// 按重量单位（或嵌套引用链）标注 isVolumeWeight。
   List<EntityUnit> _annotateUnits(List<EntityUnit> units) {
     if (_volumeUnitIds.isEmpty) return units;
+    final byId = {for (final unit in units) unit.id: unit};
     return [
       for (final unit in units)
-        unit.copyWith(
-          isVolumeWeight: unit.weightUnitId != null &&
-              _volumeUnitIds.contains(unit.weightUnitId),
-        ),
+        unit.copyWith(isVolumeWeight: _resolvesToVolume(unit, byId)),
     ];
   }
 
-  /// 每单位量类型 → weight_unit_id（体积 mL / 质量 g；缺失时质量返回 null
-  /// 由后端默认 g，体积缺失视为错误）。
-  int? _weightUnitIdFor(UnitWeightKind kind) {
-    if (kind == UnitWeightKind.volume) {
-      final id = _millilitreUnitId;
-      if (id == null) {
-        throw Exception('volume unit (mL) not found; cannot save volume-based unit');
-      }
-      return id;
-    }
-    return _gramUnitId;
-  }
-
+  /// 新增自定义单位；[weightUnitId]（全局单位）与 [weightUnitOverrideId]
+  /// （本实体另一个自定义单位）互斥，都为空表示按克。
   Future<Object?> addUnit({
     required String unitName,
     double? conversionFactor,
     double? weightPerUnit,
-    UnitWeightKind weightKind = UnitWeightKind.mass,
+    int? weightUnitId,
+    int? weightUnitOverrideId,
     bool isDefault = false,
     bool isAdmin = true,
   }) async {
@@ -964,7 +970,8 @@ class IngredientDetailPageNotifier
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
-      weightUnitId: _weightUnitIdFor(weightKind),
+      weightUnitId: weightUnitId,
+      weightUnitOverrideId: weightUnitOverrideId,
       isDefault: isDefault,
       isAdmin: isAdmin,
     );
@@ -977,7 +984,8 @@ class IngredientDetailPageNotifier
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
-    UnitWeightKind? weightKind,
+    int? weightUnitId,
+    int? weightUnitOverrideId,
     bool? isDefault,
     bool isAdmin = true,
   }) async {
@@ -989,8 +997,8 @@ class IngredientDetailPageNotifier
       unitName: unitName,
       conversionFactor: conversionFactor,
       weightPerUnit: weightPerUnit,
-      weightUnitId:
-          weightKind == null ? null : _weightUnitIdFor(weightKind),
+      weightUnitId: weightUnitId,
+      weightUnitOverrideId: weightUnitOverrideId,
       isDefault: isDefault,
       isAdmin: isAdmin,
     );

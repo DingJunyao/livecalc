@@ -8,6 +8,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../merchants/widgets/map_point_picker.dart';
 import '../models/user_place.dart';
 import '../providers/profile_provider.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../providers/save_button_position_provider.dart';
 
 const savedPlaceKindValues = ['home', 'work', 'custom'];
 const _placeRadii = [1, 2, 5, 10, 20, 50];
@@ -134,21 +136,24 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final editing = widget.place != null;
+    final savePosition = ref.watch(saveButtonPositionProvider);
+    final saveLabel = editing ? l10n.commonSave : l10n.commonAdd;
     return Scaffold(
       appBar: AppBar(
         title: Text(editing ? l10n.userPlaceEditTitle : l10n.placeAdd),
         actions: [
-          TextButton(
-            onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Text(editing ? l10n.commonSave : l10n.commonAdd),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: _saving ? l10n.commonSaving : saveLabel,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: _saving ? l10n.commonSaving : saveLabel,
       ),
       body: SafeArea(
         top: false,

@@ -10,6 +10,8 @@ import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 
 class RecipeFormResult {
   final bool saved;
@@ -792,10 +794,38 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     });
   }
 
+  /// 页面级保存按钮：编辑态的「保存修改」（当前分区）或新建态的「创建菜谱」。
+  /// 编辑态且未指定分区时没有页面级保存（由各分区卡片自己的保存按钮负责）。
+  bool get _hasPageSave => !_isEdit || widget.section != null;
+
+  bool get _pageSaveBusy =>
+      _isEdit && widget.section != null
+          ? (_savingSection != null || _uploadingImage)
+          : _saving;
+
+  String _pageSaveLabel(AppLocalizations l10n) =>
+      _isEdit && widget.section != null
+          ? l10n.recipeSaveChanges
+          : l10n.recipeCreateTitle;
+
+  VoidCallback? _pageSaveAction() {
+    if (!_hasPageSave) return null;
+    if (_isEdit && widget.section != null) {
+      if (_activeSectionSaveKey == null ||
+          _savingSection != null ||
+          _uploadingImage) {
+        return null;
+      }
+      return () => _saveActiveSection();
+    }
+    return _saving ? null : _save;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return PopScope<RecipeFormResult>(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
@@ -812,34 +842,24 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         appBar: AppBar(
           title: Text(_appBarTitle(l10n)),
           actions: [
-            if (_isEdit && widget.section != null)
-              TextButton(
-                onPressed: _activeSectionSaveKey == null ||
-                        _savingSection != null ||
-                        _uploadingImage
-                    ? null
-                    : () => _saveActiveSection(),
-                child: _savingSection != null || _uploadingImage
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l10n.recipeSaveChanges),
-              )
-            else if (!_isEdit)
-              TextButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(l10n.recipeCreateTitle),
+            if (_hasPageSave)
+              ...saveAppBarActions(
+                position: savePosition,
+                onSave: _pageSaveAction(),
+                label: _pageSaveLabel(l10n),
+                busy: _pageSaveBusy,
               ),
           ],
         ),
+        bottomNavigationBar: !_hasPageSave
+            ? null
+            : saveBottomBar(
+                context: context,
+                position: savePosition,
+                onSave: _pageSaveAction(),
+                label: _pageSaveLabel(l10n),
+                busy: _pageSaveBusy,
+              ),
         body: _loading
             ? const Center(child: CircularProgressIndicator())
             : ListView(

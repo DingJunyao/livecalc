@@ -2,6 +2,9 @@ import '../../../core/api/api_client.dart';
 import '../../nutrition/models/usda_models.dart';
 import '../../../shared/models/entity_unit.dart';
 
+/// 「字段未提供」哨兵：与显式 null（清空）区分。
+const Object _keep = Object();
+
 class EntityWriteResult<T> {
   final T? value;
   final bool pending;
@@ -32,6 +35,10 @@ class EntityRepository {
         .toList();
   }
 
+  /// 创建自定义单位。
+  ///
+  /// [weightUnitId]（全局质量/体积单位）与 [weightUnitOverrideId]（本实体另一个
+  /// 自定义单位）互斥，都为空表示按克；[conversionFactor] 为空表示 1。
   Future<EntityWriteResult<EntityUnit>> createUnit(
     String entityType,
     int entityId, {
@@ -39,9 +46,14 @@ class EntityRepository {
     double? conversionFactor,
     double? weightPerUnit,
     int? weightUnitId,
+    int? weightUnitOverrideId,
     bool isDefault = false,
     bool isAdmin = true,
   }) async {
+    assert(
+      weightUnitId == null || weightUnitOverrideId == null,
+      'weightUnitId 与 weightUnitOverrideId 互斥',
+    );
     final response = await _client.dio.post(
       '/entities/$entityType/$entityId/units',
       data: {
@@ -49,6 +61,8 @@ class EntityRepository {
         if (conversionFactor != null) 'conversion_factor': conversionFactor,
         if (weightPerUnit != null) 'weight_per_unit': weightPerUnit,
         if (weightUnitId != null) 'weight_unit_id': weightUnitId,
+        if (weightUnitOverrideId != null)
+          'weight_unit_override_id': weightUnitOverrideId,
         'is_default': isDefault,
         'source': 'manual',
       },
@@ -63,6 +77,10 @@ class EntityRepository {
     );
   }
 
+  /// 更新自定义单位。
+  ///
+  /// 单位引用字段用 `_keep` 哨兵区分「不改动」（缺省）与「清空」（显式传 null）：
+  /// 后端 `exclude_unset` 语义下不发送的字段保持原值，显式 null 才会清空。
   Future<EntityWriteResult<EntityUnit>> updateUnit(
     String entityType,
     int entityId,
@@ -70,7 +88,8 @@ class EntityRepository {
     String? unitName,
     double? conversionFactor,
     double? weightPerUnit,
-    int? weightUnitId,
+    Object? weightUnitId = _keep,
+    Object? weightUnitOverrideId = _keep,
     bool? isDefault,
     bool isAdmin = true,
   }) async {
@@ -80,7 +99,12 @@ class EntityRepository {
       payload['conversion_factor'] = conversionFactor;
     }
     if (weightPerUnit != null) payload['weight_per_unit'] = weightPerUnit;
-    if (weightUnitId != null) payload['weight_unit_id'] = weightUnitId;
+    if (!identical(weightUnitId, _keep)) {
+      payload['weight_unit_id'] = weightUnitId;
+    }
+    if (!identical(weightUnitOverrideId, _keep)) {
+      payload['weight_unit_override_id'] = weightUnitOverrideId;
+    }
     if (isDefault != null) payload['is_default'] = isDefault;
     final response = await _client.dio.put(
       '/entities/$entityType/$entityId/units/$unitId',

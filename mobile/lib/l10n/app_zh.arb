@@ -186,6 +186,14 @@
   "@profileUnitPreferences": {},
   "profileNutritionGoals": "营养目标",
   "@profileNutritionGoals": {},
+  "profileSaveButtonPosition": "保存按钮位置",
+  "@profileSaveButtonPosition": {},
+  "saveButtonPositionTop": "右上角",
+  "@saveButtonPositionTop": {},
+  "saveButtonPositionBottom": "页面下方",
+  "@saveButtonPositionBottom": {},
+  "saveButtonPositionHint": "仅保存在本机，不影响其他设备",
+  "@saveButtonPositionHint": {},
   "profileMyData": "我的数据",
   "@profileMyData": {},
   "profileMyProposals": "我的提议",
@@ -577,6 +585,37 @@
   },
   "unitsVolumeDensityHintEmpty": "填写每单位体积后显示折算重量",
   "@unitsVolumeDensityHintEmpty": {},
+  "unitsWeightValueLabel": "单个重量",
+  "@unitsWeightValueLabel": {},
+  "unitsWeightUnitLabel": "重量单位",
+  "@unitsWeightUnitLabel": {},
+  "unitsCustomUnitOption": "{name}（自定义单位）",
+  "@unitsCustomUnitOption": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "unitsQuantityChain": "1 {unit} = {amount} {weightUnit}",
+  "@unitsQuantityChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {}
+    }
+  },
+  "unitsQuantityVolumeChain": "1 {unit} = {amount} {weightUnit}（≈ {grams} g）",
+  "@unitsQuantityVolumeChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {},
+      "grams": {}
+    }
+  },
+  "unitsSelfReference": "自定义单位不能引用自身",
+  "@unitsSelfReference": {},
+  "unitsReferenceMissing": "引用的自定义单位不存在",
+  "@unitsReferenceMissing": {},
   "unitsDensityPresets": "常见液体密度（kg/m³）",
   "@unitsDensityPresets": {},
   "unitsPresetWater": "水",

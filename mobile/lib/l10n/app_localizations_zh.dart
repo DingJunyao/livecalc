@@ -284,6 +284,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileNutritionGoals => '营养目标';
 
   @override
+  String get profileSaveButtonPosition => '保存按钮位置';
+
+  @override
+  String get saveButtonPositionTop => '右上角';
+
+  @override
+  String get saveButtonPositionBottom => '页面下方';
+
+  @override
+  String get saveButtonPositionHint => '仅保存在本机，不影响其他设备';
+
+  @override
   String get profileMyData => '我的数据';
 
   @override
@@ -799,6 +811,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unitsVolumeDensityHintEmpty => '填写每单位体积后显示折算重量';
+
+  @override
+  String get unitsWeightValueLabel => '单个重量';
+
+  @override
+  String get unitsWeightUnitLabel => '重量单位';
+
+  @override
+  String unitsCustomUnitOption(Object name) {
+    return '$name（自定义单位）';
+  }
+
+  @override
+  String unitsQuantityChain(Object unit, Object amount, Object weightUnit) {
+    return '1 $unit = $amount $weightUnit';
+  }
+
+  @override
+  String unitsQuantityVolumeChain(
+      Object unit, Object amount, Object weightUnit, Object grams) {
+    return '1 $unit = $amount $weightUnit（≈ $grams g）';
+  }
+
+  @override
+  String get unitsSelfReference => '自定义单位不能引用自身';
+
+  @override
+  String get unitsReferenceMissing => '引用的自定义单位不存在';
 
   @override
   String get unitsDensityPresets => '常见液体密度（kg/m³）';

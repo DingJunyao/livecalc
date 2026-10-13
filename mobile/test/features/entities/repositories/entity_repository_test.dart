@@ -77,4 +77,85 @@ void main() {
     expect(result.pending, isTrue);
     expect(result.message, message);
   });
+
+  test('create sends the nested weight unit override', () async {
+    when(() => dio.post(
+          '/entities/product/6/units',
+          data: any(named: 'data'),
+        )).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          data: {
+            'id': 21,
+            'unit_name': '箱',
+            'conversion_factor': 12,
+            'weight_unit_override_id': 11,
+          },
+        ));
+
+    final result = await repository.createUnit(
+      'product',
+      6,
+      unitName: '箱',
+      conversionFactor: 12,
+      weightUnitOverrideId: 11,
+    );
+
+    final payload = verify(() => dio.post(
+          '/entities/product/6/units',
+          data: captureAny(named: 'data'),
+        )).captured.single as Map<String, dynamic>;
+    expect(payload['weight_unit_override_id'], 11);
+    expect(payload.containsKey('weight_unit_id'), isFalse);
+    expect(result.value?.weightUnitOverrideId, 11);
+    expect(result.value?.conversionFactor, 12);
+  });
+
+  test('update sends explicit nulls to clear both weight unit references',
+      () async {
+    when(() => dio.put(
+          '/entities/product/6/units/21',
+          data: any(named: 'data'),
+        )).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          data: {'id': 21, 'unit_name': '箱'},
+        ));
+
+    await repository.updateUnit(
+      'product',
+      6,
+      21,
+      unitName: '箱',
+      weightUnitId: null,
+      weightUnitOverrideId: null,
+    );
+
+    final payload = verify(() => dio.put(
+          '/entities/product/6/units/21',
+          data: captureAny(named: 'data'),
+        )).captured.single as Map<String, dynamic>;
+    expect(payload.containsKey('weight_unit_id'), isTrue);
+    expect(payload['weight_unit_id'], isNull);
+    expect(payload.containsKey('weight_unit_override_id'), isTrue);
+    expect(payload['weight_unit_override_id'], isNull);
+  });
+
+  test('update omits untouched weight unit references', () async {
+    when(() => dio.put(
+          '/entities/product/6/units/21',
+          data: any(named: 'data'),
+        )).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          data: {'id': 21, 'unit_name': '箱'},
+        ));
+
+    await repository.updateUnit('product', 6, 21, isDefault: true);
+
+    final payload = verify(() => dio.put(
+          '/entities/product/6/units/21',
+          data: captureAny(named: 'data'),
+        )).captured.single as Map<String, dynamic>;
+    expect(payload.containsKey('weight_unit_id'), isFalse);
+    expect(payload.containsKey('weight_unit_override_id'), isFalse);
+    expect(payload['is_default'], isTrue);
+  });
 }

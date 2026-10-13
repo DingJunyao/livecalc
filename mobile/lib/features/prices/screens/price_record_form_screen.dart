@@ -13,6 +13,9 @@ import '../../products/screens/product_form_screen.dart'
     show ProductFormPrefill, ProductFormResult;
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
+import '../../../shared/widgets/save_action_button.dart';
+import '../../../shared/utils/entity_unit_names.dart';
+import '../../profile/providers/save_button_position_provider.dart';
 import '../repositories/price_repository.dart';
 import '../providers/price_record_session_memory.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -40,12 +43,17 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
   final PriceRecordFormPrefill? prefill;
   final Future<String?> Function(BuildContext context)? scanner;
 
+  /// 测试注入：商品自定义单位名加载器（缺省走 /entities/... 接口）。
+  final Future<List<String>> Function(int productId, int? ingredientId)?
+      unitNamesLoader;
+
   const PriceRecordFormScreen({
     super.key,
     this.priceRepository,
     this.productRepository,
     this.prefill,
     this.scanner,
+    this.unitNamesLoader,
   });
 
   @override
@@ -65,6 +73,11 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   String _currencySymbol = '¥';
   List<dynamic> _currencies = const [];
   String _unit = '斤';
+  /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
+  List<String> _customUnits = const [];
+  /// 已按其加载过自定义单位的商品 id，避免重复请求
+  int? _unitsLoadedForProductId;
+  int _unitsSeq = 0;
   int? _merchantId;
   Product? _selectedProduct;
   List<Product> _searchResults = const [];
@@ -115,6 +128,10 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
     Future.microtask(() => ref.read(merchantListProvider.notifier).load());
     _loadCurrencies();
+    final prefillProduct = widget.prefill?.product;
+    if (prefillProduct != null) {
+      _loadCustomUnits(prefillProduct.id, prefillProduct.ingredientId);
+    }
   }
 
   @override
@@ -159,6 +176,8 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
       setState(() {
         _searchResults = const [];
         _selectedProduct = null;
+        _customUnits = const [];
+        _unitsLoadedForProductId = null;
         _searching = false;
       });
       return;
@@ -167,6 +186,9 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     // 商品名被改动则撤销原选择，避免保存时携带旧的 productId。
     if (_selectedProduct != null && _selectedProduct!.name != q) {
       _selectedProduct = null;
+      _unitsSeq++;
+      _customUnits = const [];
+      _unitsLoadedForProductId = null;
     }
     setState(() => _searching = true);
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
@@ -196,6 +218,27 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     setState(() {
       _selectedProduct = p;
       _searchResults = const [];
+    });
+    _loadCustomUnits(p.id, p.ingredientId);
+  }
+
+  /// 选中商品后拉取「商品 + 关联原料」的自定义单位，并到价格单位下拉最前。
+  /// 每次都以全局单位为基础重建，避免切换商品后残留上一个商品的单位。
+  Future<void> _loadCustomUnits(int productId, int? ingredientId) async {
+    if (_unitsLoadedForProductId == productId && _customUnits.isNotEmpty) {
+      return;
+    }
+    final seq = ++_unitsSeq;
+    final names = await (widget.unitNamesLoader?.call(productId, ingredientId) ??
+        loadEntityUnitNames(
+          entityType: 'product',
+          entityId: productId,
+          ingredientId: ingredientId,
+        ));
+    if (!mounted || seq != _unitsSeq) return;
+    setState(() {
+      _customUnits = names;
+      _unitsLoadedForProductId = productId;
     });
   }
 
@@ -365,6 +408,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final merchants = ref.watch(merchantListProvider).items;
+    final savePosition = ref.watch(saveButtonPositionProvider);
 
     return Stack(
       children: [
@@ -372,11 +416,18 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           appBar: AppBar(
             title: Text(l10n.priceAddRecordTitle),
             actions: [
-              TextButton(
-                onPressed: _saving ? null : _save,
-                child: Text(l10n.commonSave),
+              ...saveAppBarActions(
+                position: savePosition,
+                onSave: _saving ? null : _save,
+                label: l10n.commonSave,
               ),
             ],
+          ),
+          bottomNavigationBar: saveBottomBar(
+            context: context,
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: l10n.commonSave,
           ),
           body: ListView(
             padding: const EdgeInsets.all(16),
@@ -576,7 +627,11 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                         ),
                       ),
                       items: [
-                        for (final u in priceRecordUnits)
+                        for (final u in mergePriceUnitOptions(
+                          _customUnits,
+                          priceRecordUnits,
+                          current: _unit,
+                        ))
                           DropdownMenuItem(value: u, child: Text(u)),
                       ],
                       onChanged: (v) => setState(() => _unit = v ?? '斤'),

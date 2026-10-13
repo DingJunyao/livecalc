@@ -5,6 +5,9 @@ import '../../features/merchants/models/merchant.dart';
 import '../../features/prices/repositories/price_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../utils/currency_fmt.dart';
+import '../utils/entity_unit_names.dart';
+import '../widgets/save_action_button.dart';
+import '../../features/profile/providers/save_button_position_provider.dart';
 
 class PriceRecordFormResult {
   final double price;
@@ -109,6 +112,9 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   late String _unit;
   int? _merchantId;
   int? _productId;
+  /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
+  List<String> _customUnits = const [];
+  int _unitsSeq = 0;
   late bool _isPurchase;
   late DateTime _recordedAt;
   String _currency = 'CNY';
@@ -150,6 +156,22 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     _currency = initialCurrency;
     _currencySymbol = currencySymbol(_currency);
     _loadCurrencies();
+    if (_productId != null) {
+      _loadCustomUnits(_productId!);
+    }
+  }
+
+  /// 拉取「商品 + 关联原料」的自定义单位，并到价格单位下拉最前。
+  /// 记录本身用的自定义单位（如「桶」）即便已停用也要保留在列表里，
+  /// 否则 DropdownButton 会因为初始值不在 items 中而断言失败。
+  Future<void> _loadCustomUnits(int productId) async {
+    final seq = ++_unitsSeq;
+    final names = await loadEntityUnitNames(
+      entityType: 'product',
+      entityId: productId,
+    );
+    if (!mounted || seq != _unitsSeq) return;
+    setState(() => _customUnits = names);
   }
 
   @override
@@ -267,15 +289,23 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     final args = widget.arguments;
     final isEdit = args.initialPrice != null;
     final l10n = AppLocalizations.of(context);
+    final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(isEdit ? l10n.priceEditTitle : l10n.priceRecordTitle),
         actions: [
-          TextButton(
-            onPressed: _submit,
-            child: Text(isEdit ? l10n.commonSave : l10n.commonAdd),
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _submit,
+            label: isEdit ? l10n.commonSave : l10n.commonAdd,
           ),
         ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _submit,
+        label: isEdit ? l10n.commonSave : l10n.commonAdd,
       ),
       body: SafeArea(
         top: false,
@@ -472,7 +502,11 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                         ),
                       ),
                       items: [
-                        for (final unit in priceRecordUnits)
+                        for (final unit in mergePriceUnitOptions(
+                          _customUnits,
+                          priceRecordUnits,
+                          current: _unit,
+                        ))
                           DropdownMenuItem(value: unit, child: Text(unit)),
                       ],
                       onChanged: (value) =>

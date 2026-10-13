@@ -186,6 +186,14 @@
   "@profileUnitPreferences": {},
   "profileNutritionGoals": "أهداف التغذية",
   "@profileNutritionGoals": {},
+  "profileSaveButtonPosition": "موضع زر الحفظ",
+  "@profileSaveButtonPosition": {},
+  "saveButtonPositionTop": "أعلى اليمين",
+  "@saveButtonPositionTop": {},
+  "saveButtonPositionBottom": "أسفل الصفحة",
+  "@saveButtonPositionBottom": {},
+  "saveButtonPositionHint": "يُحفظ على هذا الجهاز فقط",
+  "@saveButtonPositionHint": {},
   "profileMyData": "بياناتي",
   "@profileMyData": {},
   "profileMyProposals": "اقتراحاتي",
@@ -577,6 +585,37 @@
   },
   "unitsVolumeDensityHintEmpty": "أدخل الحجم لكل وحدة لعرض الوزن المكافئ",
   "@unitsVolumeDensityHintEmpty": {},
+  "unitsWeightValueLabel": "الكمية",
+  "@unitsWeightValueLabel": {},
+  "unitsWeightUnitLabel": "الوحدة",
+  "@unitsWeightUnitLabel": {},
+  "unitsCustomUnitOption": "{name} (وحدة مخصصة)",
+  "@unitsCustomUnitOption": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "unitsQuantityChain": "1 {unit} = {amount} {weightUnit}",
+  "@unitsQuantityChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {}
+    }
+  },
+  "unitsQuantityVolumeChain": "1 {unit} = {amount} {weightUnit} (≈ {grams} غم)",
+  "@unitsQuantityVolumeChain": {
+    "placeholders": {
+      "unit": {},
+      "amount": {},
+      "weightUnit": {},
+      "grams": {}
+    }
+  },
+  "unitsSelfReference": "لا يمكن للوحدة المخصصة أن تشير إلى نفسها",
+  "@unitsSelfReference": {},
+  "unitsReferenceMissing": "الوحدة المخصصة المرجعية غير موجودة",
+  "@unitsReferenceMissing": {},
   "unitsDensityPresets": "كثافات سوائل شائعة (kg/m³)",
   "@unitsDensityPresets": {},
   "unitsPresetWater": "ماء",
