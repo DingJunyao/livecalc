@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 430" width="900" height="430"
+     font-family="system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#90a4ae"/>
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b0bec5"/>
+    </marker>
+    <marker id="arrowDark" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#607d8b"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="900" height="430" fill="#ffffff"/>
+
+  <!-- 原料 -->
+  <rect x="20" y="168" width="150" height="94" rx="12" fill="#eceff1" stroke="#cfd8dc"/>
+  <text x="95" y="200" font-size="15" fill="#455a64" text-anchor="middle">原料</text>
+  <text x="95" y="226" font-size="20" font-weight="700" fill="#263238" text-anchor="middle">胡萝卜</text>
+  <text x="95" y="248" font-size="12" fill="#78909c" text-anchor="middle">名下 3 个商品</text>
+
+  <!-- 商品卡片（第 3 张为超期） -->
+  <g>
+    <rect x="210" y="34" width="380" height="76" rx="10" fill="#ffffff" stroke="#cfd8dc"/>
+    <text x="228" y="60" font-size="15" font-weight="600" fill="#263238">商品「胡萝卜」</text>
+    <text x="228" y="82" font-size="13" fill="#607d8b">最近有记录日 2026-10-10</text>
+    <text x="228" y="101" font-size="13" fill="#607d8b">当日均价 1.18 元/斤　·　权重 50</text>
+    <text x="572" y="76" font-size="14" font-weight="700" fill="#2e7d32" text-anchor="end">✓ 参与</text>
+  </g>
+  <g>
+    <rect x="210" y="128" width="380" height="76" rx="10" fill="#ffffff" stroke="#cfd8dc"/>
+    <text x="228" y="154" font-size="15" font-weight="600" fill="#263238">商品「泥胡萝卜」</text>
+    <text x="228" y="176" font-size="13" fill="#607d8b">最近有记录日 2026-10-12</text>
+    <text x="228" y="195" font-size="13" fill="#607d8b">当日均价 0.788 元/斤　·　权重 50</text>
+    <text x="572" y="170" font-size="14" font-weight="700" fill="#2e7d32" text-anchor="end">✓ 参与</text>
+  </g>
+  <g opacity="0.62">
+    <rect x="210" y="222" width="380" height="76" rx="10" fill="#fafafa" stroke="#e0e0e0" stroke-dasharray="4 3"/>
+    <text x="228" y="248" font-size="15" font-weight="600" fill="#546e7a">商品「水果胡萝卜」</text>
+    <text x="228" y="270" font-size="13" fill="#90a4ae">最近有记录日 2026-08-15（已 59 天）</text>
+    <text x="228" y="289" font-size="13" fill="#90a4ae">当日均价 5.58 元/斤　·　权重 50</text>
+    <text x="572" y="264" font-size="14" font-weight="700" fill="#c62828" text-anchor="end">✗ 超期，不参与</text>
+  </g>
+
+  <!-- 原料 → 商品 -->
+  <path d="M 170 215 L 210 72" stroke="#90a4ae" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 170 215 L 210 166" stroke="#90a4ae" stroke-width="1.4" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 170 215 L 210 260" stroke="#cfd8dc" stroke-width="1.4" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowDash)"/>
+
+  <!-- 30 天门 -->
+  <path d="M 620 24 L 620 340" stroke="#b0bec5" stroke-width="1.6" stroke-dasharray="6 5" fill="none"/>
+  <text x="620" y="16" font-size="13" font-weight="700" fill="#546e7a" text-anchor="middle">最近记录 ≤ 30 天？</text>
+  <path d="M 590 72 L 620 72" stroke="#b0bec5" stroke-width="1.4" fill="none" marker-end="url(#arrowDash)"/>
+  <path d="M 590 166 L 620 166" stroke="#b0bec5" stroke-width="1.4" fill="none" marker-end="url(#arrowDash)"/>
+  <path d="M 590 260 L 620 260" stroke="#e0e0e0" stroke-width="1.4" fill="none" marker-end="url(#arrowDash)"/>
+
+  <!-- 参与集合 -->
+  <path d="M 620 166 L 656 166" stroke="#607d8b" stroke-width="1.6" fill="none" marker-end="url(#arrowDark)"/>
+  <rect x="660" y="128" width="220" height="76" rx="10" fill="#e8f5e9" stroke="#a5d6a7"/>
+  <text x="770" y="154" font-size="14" font-weight="700" fill="#2e7d32" text-anchor="middle">参与加权：2 个商品</text>
+  <text x="770" y="176" font-size="12.5" fill="#4e6d52" text-anchor="middle">胡萝卜 + 泥胡萝卜</text>
+  <text x="770" y="194" font-size="12" fill="#7b9b7f" text-anchor="middle">超期的在「加权明细」里列原因</text>
+
+  <!-- 综合价 -->
+  <path d="M 770 204 L 770 238" stroke="#607d8b" stroke-width="1.6" fill="none" marker-end="url(#arrowDark)"/>
+  <rect x="660" y="242" width="220" height="92" rx="10" fill="#fff3e0" stroke="#ffcc80"/>
+  <text x="770" y="268" font-size="13" fill="#6d4c41" text-anchor="middle">综合价 = Σ(价格 × 权重) ÷ Σ权重</text>
+  <text x="770" y="300" font-size="20" font-weight="700" fill="#e65100" text-anchor="middle">0.98 元/斤</text>
+  <text x="770" y="322" font-size="11.5" fill="#8d6e63" text-anchor="middle">(1.18×50 + 0.788×50) ÷ 100</text>
+
+  <!-- 兜底：全部超期 -->
+  <path d="M 620 340 L 654 364" stroke="#b0bec5" stroke-width="1.4" fill="none" stroke-dasharray="5 4" marker-end="url(#arrowDash)"/>
+  <text x="604" y="356" font-size="12" fill="#78909c" text-anchor="end">否 → 先排除</text>
+  <rect x="660" y="344" width="220" height="66" rx="10" fill="#f5f5f5" stroke="#e0e0e0" stroke-dasharray="4 3"/>
+  <text x="770" y="368" font-size="13" font-weight="600" fill="#546e7a" text-anchor="middle">全部商品都超期？</text>
+  <text x="770" y="390" font-size="12" fill="#78909c" text-anchor="middle">→ 取消 30 天限制，按最近一次已知价算</text>
+</svg>
