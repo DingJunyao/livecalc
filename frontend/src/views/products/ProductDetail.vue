@@ -285,17 +285,17 @@
             <div class="text-h3 font-weight-bold text-tertiary">
               {{ formatMoney(Number(product.latest_price), userCurrency) }}<span v-if="product.latest_price_unit" class="text-h6 font-weight-regular"> / {{ product.latest_price_unit }}</span>
             </div>
-            <template v-if="latestChartTrend">
+            <template v-if="latestRecordStats">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('products.range') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">
-                  {{ formatMoney(latestChartTrend.min, userCurrency) }} - {{ formatMoney(latestChartTrend.max, userCurrency) }} / {{ chartUnit }}
+                  {{ formatMoney(latestRecordStats.min, userCurrency) }} - {{ formatMoney(latestRecordStats.max, userCurrency) }} / {{ chartUnit }}
                 </div>
               </div>
-              <div v-if="latestChartTrend.count" class="text-center">
+              <div v-if="latestRecordStats.count" class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('products.recordCount') }}</div>
-                <div class="text-subtitle-1 font-weight-bold">{{ latestChartTrend.count }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ latestRecordStats.count }}</div>
               </div>
             </template>
           </div>
@@ -1287,6 +1287,7 @@ import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@
 import { getErrorMessage } from '@/utils/errorHandler'
 import BarcodeField from '@/components/common/BarcodeField.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
+import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, toLocalDayKey, type AsOfPricePoint } from '@/utils/priceAsOf'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
@@ -2387,20 +2388,15 @@ const getNutritionNRV = (item: any) => {
   })
 }
 
-// 聚合价格数据用于图表（按日期分组，计算最小、最大、平均价格）
-const chartData = computed(() => {
-  if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
-
-  // 按日期分组
-  const dailyMap = new Map<string, number[]>()
+// 归一化后的价格点（按用户质量偏好单位），供图表与价格卡片共用
+const chartPricePoints = computed<AsOfPricePoint[]>(() => {
+  const points: AsOfPricePoint[] = []
 
   for (const record of chartPriceRecords.value) {
     if (!record.recorded_at) continue
 
     const date = new Date(record.recorded_at)
     if (isNaN(date.getTime())) continue
-
-    const dateKey = date.toISOString().split('T')[0]
 
     // 按记录单位类型归一化到 ¥/斤：质量记录直接换算，计数记录经
     // weight_per_unit 折算；无法归一化（如纯计数且无覆盖）的记录跳过，
@@ -2423,32 +2419,49 @@ const chartData = computed(() => {
     // 再按用户质量偏好单位折算（convertFromJin 未知单位时保持斤）
     const unitPrice = convertFromJin(np.pricePerJin) ?? np.pricePerJin
 
-    if (!dailyMap.has(dateKey)) {
-      dailyMap.set(dateKey, [])
-    }
-    dailyMap.get(dateKey)!.push(unitPrice)
+    points.push({ product_id: record.product_id ?? null, date, value: unitPrice })
   }
 
-  // 计算每日统计值
-  return Array.from(dailyMap.entries())
-    .map(([date, prices]) => {
-      const sorted = prices.sort((a, b) => a - b)
-      return {
-        date,
-        min: sorted[0] || 0,
-        max: sorted[sorted.length - 1] || 0,
-        avg: prices.reduce((a, b) => a + b, 0) / prices.length,
-        count: prices.length
-      }
-    })
-    .sort((a, b) => a.date.localeCompare(b.date))
+  return points
 })
 
-// 最新趋势数据点（用于最新价格卡片右侧展示）
-const latestChartTrend = computed(() => {
-  const data = chartData.value
-  if (!data || data.length === 0) return null
-  return data[data.length - 1]
+// 图表数据：逐日 as-of（每个商品的最近一次价向前携带；全部超期时放开），
+// 与原料详情、后端迷你图同口径——所选区间内没有新记录时也要画出最近一次
+// 已知价，否则「近一个月没有更新」会被显示成「暂无价格历史数据」。
+const chartData = computed(() => {
+  const points = chartPricePoints.value
+  if (points.length === 0) return []
+
+  // 每个自然日的记录条数（「记录数」用）；由 as-of 携带出来的日期不显示条数
+  const recordCountByDay = new Map<string, number>()
+  for (const p of points) {
+    const day = toLocalDayKey(p.date)
+    if (!day) continue
+    recordCountByDay.set(day, (recordCountByDay.get(day) ?? 0) + 1)
+  }
+
+  return buildWeightedAsOfDailySeries(points, () => 50).map((d) => ({
+    date: d.date,
+    min: d.min,
+    max: d.max,
+    avg: d.avg,
+    count: recordCountByDay.get(d.date) ?? 0,
+  }))
+})
+
+// 最新一次记录日的区间/条数（价格卡片右侧展示；不从图表尾点取，尾点可能是携带日）
+const latestRecordStats = computed(() => {
+  const byDay = new Map<string, number[]>()
+  for (const p of chartPricePoints.value) {
+    const day = toLocalDayKey(p.date)
+    if (!day || p.value == null || !isFinite(Number(p.value))) continue
+    if (!byDay.has(day)) byDay.set(day, [])
+    byDay.get(day)!.push(Number(p.value))
+  }
+  const days = [...byDay.keys()].sort()
+  if (days.length === 0) return null
+  const prices = byDay.get(days[days.length - 1])!.sort((a, b) => a - b)
+  return { min: prices[0], max: prices[prices.length - 1], count: prices.length }
 })
 
 // 图表使用用户偏好的质量单位（默认斤）
@@ -2604,6 +2617,39 @@ const daysAgo = (n: number): Date => {
   return d
 }
 
+// 请求图表价格记录并合并进累积池；返回本次请求命中的记录条数
+const fetchChartPriceRecords = async (start?: Date): Promise<number> => {
+  const params: Record<string, any> = {
+    product_id: productId.value,
+    limit: 1000,
+    region_id: null,
+  }
+  if (start) {
+    params.start_date = start.toISOString().split('T')[0]
+  }
+  const response = await api.get('/products', {
+    params,
+    timeout: start ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
+  })
+  const items = response.items || []
+  // 按 id 去重合并
+  const existing = new Set(chartPriceRecords.value.map(r => r.id))
+  for (const r of items) {
+    if (!existing.has(r.id)) {
+      chartPriceRecords.value.push(r)
+    }
+  }
+  // 更新已覆盖范围（取更早）
+  if (start) {
+    chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < start)
+      ? chartEarliestDate.value
+      : start
+  } else {
+    chartEarliestDate.value = null
+  }
+  return items.length
+}
+
 // 加载图表价格记录（按时间区间累积）
 // startDate 为空表示「全部」；「全部」请求放宽超时到 30s，规避前端 10s 上限
 const loadChartPriceRecords = async (startDate?: Date) => {
@@ -2626,33 +2672,16 @@ const loadChartPriceRecords = async (startDate?: Date) => {
 
   loadingChartPrices.value = true
   try {
-    const params: Record<string, any> = {
-      product_id: productId.value,
-      limit: 1000,
-      region_id: null,
-    }
-    if (startDate) {
-      params.start_date = startDate.toISOString().split('T')[0]
-    }
-    const response = await api.get('/products', {
-      params,
-      timeout: startDate ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
-    })
-    const items = response.items || []
-    // 按 id 去重合并
-    const existing = new Set(chartPriceRecords.value.map(r => r.id))
-    for (const r of items) {
-      if (!existing.has(r.id)) {
-        chartPriceRecords.value.push(r)
-      }
-    }
-    // 更新已覆盖范围（取更早）
-    if (startDate) {
-      chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < startDate)
-        ? chartEarliestDate.value
-        : startDate
-    } else {
-      chartEarliestDate.value = null
+    const windowHits = await fetchChartPriceRecords(startDate)
+    // 区间内一条记录都没有，且累积池也是空的：说明所有记录都早于该区间
+    // （商品「近一个月没有更新」的场景）。回退全量，让 as-of 序列拿到最近
+    // 一次价作为携带起点，图表才不会空白。
+    if (shouldLoadFullPriceHistory({
+      windowStart: startDate,
+      windowHits,
+      loadedCount: chartPriceRecords.value.length,
+    })) {
+      await fetchChartPriceRecords(undefined)
     }
   } catch (e) {
     console.error('Failed to load chart price records', e)

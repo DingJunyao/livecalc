@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { buildWeightedAsOfDailySeries } from './priceAsOf.ts'
+import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory } from './priceAsOf.ts'
 
 const END = '2026-10-12'
 
@@ -105,5 +105,29 @@ test('无有效点时返回空序列', () => {
   assert.deepEqual(
     buildWeightedAsOfDailySeries([{ product_id: 1, date: 'bad-date', value: 10 }], () => 50),
     [],
+  )
+})
+
+test('区间内无记录且池为空时回退全量（保证 as-of 序列有携带起点）', () => {
+  const windowStart = new Date('2026-09-13T00:00:00')
+  // 区间一条没命中、池也是空的（数据整体陈旧）→ 回退全量
+  assert.equal(
+    shouldLoadFullPriceHistory({ windowStart, windowHits: 0, loadedCount: 0 }),
+    true,
+  )
+  // 区间命中了记录 → 不回退
+  assert.equal(
+    shouldLoadFullPriceHistory({ windowStart, windowHits: 3, loadedCount: 3 }),
+    false,
+  )
+  // 池里已有记录（切过更宽的区间）→ 不回退
+  assert.equal(
+    shouldLoadFullPriceHistory({ windowStart, windowHits: 0, loadedCount: 5 }),
+    false,
+  )
+  // 「全部」请求本身没有区间起点 → 不回退
+  assert.equal(
+    shouldLoadFullPriceHistory({ windowStart: undefined, windowHits: 0, loadedCount: 0 }),
+    false,
   )
 })

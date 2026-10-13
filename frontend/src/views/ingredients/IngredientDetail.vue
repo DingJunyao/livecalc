@@ -1916,7 +1916,7 @@ import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { formatNumber, formatQuantity } from '@/utils/format'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
-import { buildWeightedAsOfDailySeries, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
+import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -3580,6 +3580,39 @@ const daysAgo = (n: number): Date => {
   return d
 }
 
+// 请求图表价格记录并合并进累积池；返回本次请求命中的记录条数
+const fetchChartPriceRecords = async (start?: Date): Promise<number> => {
+  const params: Record<string, any> = {
+    ingredient_id: ingredientId.value,
+    limit: 1000,
+    region_id: null,
+  }
+  if (start) {
+    params.start_date = start.toISOString().split('T')[0]
+  }
+  const response = await api.get('/products', {
+    params,
+    timeout: start ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
+  })
+  const items = response.items || []
+  // 按 id 去重合并
+  const existing = new Set(chartPriceRecords.value.map(r => r.id))
+  for (const r of items) {
+    if (!existing.has(r.id)) {
+      chartPriceRecords.value.push(r)
+    }
+  }
+  // 更新已覆盖范围（取更早）
+  if (start) {
+    chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < start)
+      ? chartEarliestDate.value
+      : start
+  } else {
+    chartEarliestDate.value = null
+  }
+  return items.length
+}
+
 // 加载图表价格记录（按时间区间累积）
 // startDate 为空表示「全部」；「全部」请求放宽超时到 30s，规避前端 10s 上限
 const loadChartPriceRecords = async (startDate?: Date) => {
@@ -3606,33 +3639,16 @@ const loadChartPriceRecords = async (startDate?: Date) => {
 
   loadingChartPrices.value = true
   try {
-    const params: Record<string, any> = {
-      ingredient_id: ingredientId.value,
-      limit: 1000,
-      region_id: null,
-    }
-    if (fetchStart) {
-      params.start_date = fetchStart.toISOString().split('T')[0]
-    }
-    const response = await api.get('/products', {
-      params,
-      timeout: fetchStart ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
-    })
-    const items = response.items || []
-    // 按 id 去重合并
-    const existing = new Set(chartPriceRecords.value.map(r => r.id))
-    for (const r of items) {
-      if (!existing.has(r.id)) {
-        chartPriceRecords.value.push(r)
-      }
-    }
-    // 更新已覆盖范围（取更早）
-    if (fetchStart) {
-      chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < fetchStart)
-        ? chartEarliestDate.value
-        : fetchStart
-    } else {
-      chartEarliestDate.value = null
+    const windowHits = await fetchChartPriceRecords(fetchStart)
+    // 区间内一条记录都没有，且累积池也是空的：说明所有记录都早于该区间
+    // （原材料「全部商品都超过 30 天未更新」的场景）。回退全量，让 as-of
+    // 序列拿到每个商品的最近一次价作为携带起点，图表才不会空白。
+    if (shouldLoadFullPriceHistory({
+      windowStart: fetchStart,
+      windowHits,
+      loadedCount: chartPriceRecords.value.length,
+    })) {
+      await fetchChartPriceRecords(undefined)
     }
   } catch (e) {
     console.error('Failed to load chart price records', e)
