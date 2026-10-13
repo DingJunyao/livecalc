@@ -792,6 +792,7 @@ class _UnitDialogState extends State<_UnitDialog> {
     }
     return true;
   }
+
   bool get _selectedIsVolume {
     final globalId = _weightUnitId;
     if (globalId == null) return false;

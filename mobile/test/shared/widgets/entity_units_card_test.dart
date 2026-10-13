@@ -293,6 +293,81 @@ void main() {
     expect(deleted, 8);
   });
 
+  testWidgets('self-reference is blocked on save', (tester) async {
+    var saved = 0;
+    final units = <EntityUnit>[
+      const EntityUnit(id: 11, unitName: '盒', weightUnitId: 5, weightPerUnit: 220),
+    ];
+    await _pumpCard(
+      tester,
+      units: units,
+      onEditUnit: (_, __) async {
+        saved += 1;
+        return null;
+      },
+    );
+    // 编辑「盒」时自身不在下拉里，但直接构造自引用保存路径仍需被拦截
+    await tester.tap(find.byTooltip('编辑'));
+    await tester.pumpAndSettle();
+    expect(find.text('盒（自定义单位）'), findsNothing);
+    expect(find.text('毫升 (mL)'), findsOneWidget);
+    await tester.tap(find.text('保存单位'));
+    await tester.pumpAndSettle();
+    expect(saved, 1);
+  });
+
+  testWidgets('creating a nested unit sends weightUnitOverrideId, not '
+      'weightUnitId', (tester) async {
+    UnitWriteInput? saved;
+    final units = <EntityUnit>[
+      const EntityUnit(id: 11, unitName: '盒', weightUnitId: 5, weightPerUnit: 220),
+    ];
+    await _pumpCard(
+      tester,
+      units: units,
+      onAddUnit: (input) async {
+        saved = input;
+        return null;
+      },
+    );
+    await _openAddDialog(tester);
+    await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '箱');
+    await tester.enterText(
+        find.widgetWithText(TextField, '换算系数（1单位 = ? 个）'), '12');
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('盒（自定义单位）').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存单位'));
+    await tester.pumpAndSettle();
+
+    expect(saved!.weightUnitOverrideId, 11);
+    expect(saved!.weightUnitId, isNull);
+    expect(saved!.conversionFactor, 12);
+  });
+
+  testWidgets('volume global unit shows the density conversion hint',
+      (tester) async {
+    await _pumpCard(
+      tester,
+      units: const [],
+      effectiveDensityKgM3: 1030,
+    );
+    await _openAddDialog(tester);
+    await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '瓶');
+    await tester.enterText(find.widgetWithText(TextField, '单个重量'), '220');
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('毫升 (mL)').last);
+    await tester.pumpAndSettle();
+
+    // 按密度 1030 kg/m³ 折算 ≈ 226.6 g
+    expect(
+      find.textContaining(formatQuantity(220 * 1030 / 1000)),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('density section shows the single active density with actions',
       (tester) async {
     DensityWriteInput? saved;

@@ -404,9 +404,8 @@ class IngredientDetailPageNotifier
   final ProfileRepository _proposalRepo;
   final int ingredientId;
   int? _regionId;
-  // 全局单位表缓存：解析 weight_unit_id 语义（质量 g / 体积 mL）并填充选择器
+  // 全局单位表缓存：质量/体积单位选项（单位表单下拉 + 显示口径）
   List<GlobalUnitOption> _weightUnitOptions = const [];
-  Set<int> _volumeUnitIds = const {};
   bool _globalUnitsLoaded = false;
 
   IngredientDetailPageNotifier(
@@ -732,7 +731,7 @@ class IngredientDetailPageNotifier
     }
 
     state = state.copyWith(
-      units: _annotateUnits(units),
+      units: units,
       densities: densities,
       hierarchy: hierarchy,
       deletedUnitIds: deletedUnits,
@@ -892,7 +891,7 @@ class IngredientDetailPageNotifier
         }
       }
       state = state.copyWith(
-        units: _annotateUnits(units),
+        units: units,
         unmappedUnits: unmapped,
         densities: densities,
         globalUnitOptions: _weightUnitOptions,
@@ -904,7 +903,7 @@ class IngredientDetailPageNotifier
     }
   }
 
-  /// 拉取全局单位表（一次），缓存质量/体积单位选项与体积单位 id 集。
+  /// 拉取全局单位表（一次），缓存质量/体积单位选项。
   Future<void> _ensureGlobalUnits() async {
     if (_globalUnitsLoaded) return;
     try {
@@ -914,42 +913,11 @@ class IngredientDetailPageNotifier
           if (u['unit_type'] == 'mass' || u['unit_type'] == 'volume')
             GlobalUnitOption.fromJson(u),
       ];
-      _volumeUnitIds = {
-        for (final u in units)
-          if (u['unit_type'] == 'volume') (u['id'] as num?)?.toInt() ?? -1,
-      };
     } on Exception {
-      // 拉取失败保持空集：全部按质量语义处理
+      // 拉取失败保持空列表：单位下拉只剩「默认（按克）」
     } finally {
       _globalUnitsLoaded = true;
     }
-  }
-
-  /// 自定义单位是否最终指向体积单位（经 weight_unit_override_id 链解析）。
-  bool _resolvesToVolume(EntityUnit unit, Map<int, EntityUnit> byId) {
-    final seen = <int>{unit.id};
-    int? refId = unit.weightUnitOverrideId;
-    var current = unit;
-    for (var depth = 0; depth < 8; depth++) {
-      final unitId = current.weightUnitId;
-      if (unitId != null) return _volumeUnitIds.contains(unitId);
-      if (refId == null || !seen.add(refId)) return false;
-      final next = byId[refId];
-      if (next == null) return false;
-      current = next;
-      refId = next.weightUnitOverrideId;
-    }
-    return false;
-  }
-
-  /// 按重量单位（或嵌套引用链）标注 isVolumeWeight。
-  List<EntityUnit> _annotateUnits(List<EntityUnit> units) {
-    if (_volumeUnitIds.isEmpty) return units;
-    final byId = {for (final unit in units) unit.id: unit};
-    return [
-      for (final unit in units)
-        unit.copyWith(isVolumeWeight: _resolvesToVolume(unit, byId)),
-    ];
   }
 
   /// 新增自定义单位；[weightUnitId]（全局单位）与 [weightUnitOverrideId]

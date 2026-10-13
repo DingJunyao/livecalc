@@ -20,9 +20,6 @@ class EntityUnit {
   /// 与 [weightUnitId] 互斥；都为空时按克处理。
   final int? weightUnitOverrideId;
 
-  // 每单位量为体积语义（1瓶=500mL）；由 provider 依据全局单位表标注
-  final bool isVolumeWeight;
-
   const EntityUnit({
     required this.id,
     required this.unitName,
@@ -33,7 +30,6 @@ class EntityUnit {
     this.isPending = false,
     this.weightUnitId,
     this.weightUnitOverrideId,
-    this.isVolumeWeight = false,
   });
 
   factory EntityUnit.fromJson(Map<String, dynamic> json) {
@@ -48,23 +44,6 @@ class EntityUnit {
       weightUnitId: (json['weight_unit_id'] as num?)?.toInt(),
       weightUnitOverrideId:
           (json['weight_unit_override_id'] as num?)?.toInt(),
-    );
-  }
-
-  EntityUnit copyWith({
-    bool? isVolumeWeight,
-  }) {
-    return EntityUnit(
-      id: id,
-      unitName: unitName,
-      conversionFactor: conversionFactor,
-      weightPerUnit: weightPerUnit,
-      isDefault: isDefault,
-      source: source,
-      isPending: isPending,
-      weightUnitId: weightUnitId,
-      weightUnitOverrideId: weightUnitOverrideId,
-      isVolumeWeight: isVolumeWeight ?? this.isVolumeWeight,
     );
   }
 }
