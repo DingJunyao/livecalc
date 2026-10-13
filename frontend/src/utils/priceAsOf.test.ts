@@ -131,3 +131,38 @@ test('区间内无记录且池为空时回退全量（保证 as-of 序列有携�
     false,
   )
 })
+
+test('bandFromRecords：区间按记录口径 as-of 携带（单商品多商家）', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [
+      { product_id: 1, date: '2026-10-10T09:00:00+08:00', value: 2.99 },
+      { product_id: 1, date: '2026-10-10T10:00:00+08:00', value: 4.18 },
+      { product_id: 1, date: '2026-10-10T11:00:00+08:00', value: 4.18 },
+    ],
+    () => 50,
+    { endDay: END, bandFromRecords: true },
+  )
+  // 当日有 3 条记录：区间是记录价 2.99-4.18（而非当日均价）；avg 仍是当日均价
+  assert.equal(series[0].min, 2.99)
+  assert.equal(series[0].max, 4.18)
+  assert.ok(Math.abs(series[0].avg - (2.99 + 4.18 + 4.18) / 3) < 1e-9)
+  // 之后没有新记录 → 区间沿用最近一次记录日（与「最新价格」卡片区间一致）
+  for (const d of series.slice(1)) {
+    assert.equal(d.min, 2.99)
+    assert.equal(d.max, 4.18)
+  }
+})
+
+test('不传 bandFromRecords 时区间仍是「参与商品」口径', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [
+      { product_id: 1, date: '2026-10-10T09:00:00+08:00', value: 2.99 },
+      { product_id: 1, date: '2026-10-10T10:00:00+08:00', value: 4.18 },
+    ],
+    () => 50,
+    { endDay: END },
+  )
+  // 单商品当日均价 3.585：按商品口径 min=max=avg（区间带退化成线）
+  assert.equal(series[0].min, series[0].avg)
+  assert.equal(series[0].max, series[0].avg)
+})

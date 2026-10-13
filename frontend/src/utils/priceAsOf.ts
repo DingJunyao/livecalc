@@ -43,6 +43,13 @@ export interface AsOfOptions {
    * 当日全部商品都过期时自动放开，按最近一次已知价计算。
    */
   staleDays?: number | null
+  /**
+   * 区间（min/max）改按「记录」口径：当日有记录取当日全部记录价的 min/max，
+   * 无记录日沿用最近一次记录日的区间（as-of 携带）。
+   * 单商品视图里「按商品」区间会退化成均价线，需要打开此开关；
+   * avg / count 语义不受影响。
+   */
+  bandFromRecords?: boolean
 }
 
 const DEFAULT_WEIGHT = 50
@@ -126,10 +133,35 @@ export function buildWeightedAsOfDailySeries(
   }
   if (firstDay === null || steps.length === 0) return []
 
+  // 记录口径区间：所有有效记录按本地日聚合（不看权重/超期），as-of 携带
+  const bandDays: string[] = []
+  const bandValues: Array<{ min: number; max: number }> = []
+  if (opts.bandFromRecords) {
+    const byDay = new Map<string, { min: number; max: number }>()
+    for (const p of points) {
+      if (!p || p.value == null || !isFinite(Number(p.value))) continue
+      const day = toLocalDayKey(p.date)
+      if (!day) continue
+      const value = Number(p.value)
+      const agg = byDay.get(day)
+      if (agg) {
+        agg.min = Math.min(agg.min, value)
+        agg.max = Math.max(agg.max, value)
+      } else {
+        byDay.set(day, { min: value, max: value })
+      }
+    }
+    for (const day of [...byDay.keys()].sort()) {
+      bandDays.push(day)
+      bandValues.push(byDay.get(day)!)
+    }
+  }
+
   // 3) 逐日推进：每个商品取「截至当日的最新价」
   const endDay = opts.endDay ?? (toLocalDayKey(new Date()) as string)
   let cur = opts.startDay && opts.startDay > firstDay ? opts.startDay : firstDay
   const out: AsOfDayPoint[] = []
+  let bandNext = 0
   while (cur <= endDay) {
     // fresh：staleDays 内有价的商品；all：全部商品（当日全部过期时的放开兜底）
     let num = 0
@@ -163,12 +195,22 @@ export function buildWeightedAsOfDailySeries(
     }
     // 当日没有「新鲜」商品 → 放开上限，用全部商品的最近一次已知价
     const relaxed = den <= 0
+    // 区间口径：默认按参与商品价区间（放开时用全部商品）；bandFromRecords 按记录区间 as-of 携带
+    let bandMin = relaxed ? minAll : min
+    let bandMax = relaxed ? maxAll : max
+    if (opts.bandFromRecords) {
+      while (bandNext < bandDays.length && bandDays[bandNext] <= cur) bandNext += 1
+      if (bandNext > 0) {
+        bandMin = bandValues[bandNext - 1].min
+        bandMax = bandValues[bandNext - 1].max
+      }
+    }
     if (denAll > 0) {
       out.push({
         date: cur,
         avg: (relaxed ? numAll : num) / (relaxed ? denAll : den),
-        min: relaxed ? minAll : min,
-        max: relaxed ? maxAll : max,
+        min: bandMin,
+        max: bandMax,
         count: relaxed ? countAll : count,
         relaxed,
       })
