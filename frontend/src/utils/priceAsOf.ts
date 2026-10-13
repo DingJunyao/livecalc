@@ -5,6 +5,8 @@
  *   - 每个商品的价格 = 该商品「最近有记录日」的当日均价
  *   - 该价格一直有效到下一次记录（价格在两次记录之间视为不变）
  *   - 每日综合价 = 各商品当日有效价按权重（默认 50，0 = 排除）加权
+ *   - 参与上限 staleDays：超过 N 天的价格不参与；但当日全部商品都过期时放开，
+ *     按最近一次已知价计算（宁可显示旧价格，也不能没有价格）
  *
  * 用途：原料价格趋势图的 avg 线、原料迷你图。避免「某天只有单个商品有记录
  * → 该点退化成单品价」，也让久未记录的商品继续参与综合价。
@@ -26,6 +28,8 @@ export interface AsOfDayPoint {
   max: number
   /** 参与加权的商品数 */
   count: number
+  /** 当日全部商品都超过参与上限（按最近一次已知价计算） */
+  relaxed?: boolean
 }
 
 export interface AsOfOptions {
@@ -36,6 +40,7 @@ export interface AsOfOptions {
   /**
    * 参与上限（天）：商品最近一次价格超过 N 天不再参与当日综合价。
    * 与后端 INGREDIENT_PRICE_STALE_DAYS / 商家价 30 天陈旧口径一致；<=0 表示不限。
+   * 当日全部商品都过期时自动放开，按最近一次已知价计算。
    */
   staleDays?: number | null
 }
@@ -126,27 +131,47 @@ export function buildWeightedAsOfDailySeries(
   let cur = opts.startDay && opts.startDay > firstDay ? opts.startDay : firstDay
   const out: AsOfDayPoint[] = []
   while (cur <= endDay) {
+    // fresh：staleDays 内有价的商品；all：全部商品（当日全部过期时的放开兜底）
     let num = 0
     let den = 0
     let min = Number.POSITIVE_INFINITY
     let max = Number.NEGATIVE_INFINITY
     let count = 0
+    let numAll = 0
+    let denAll = 0
+    let minAll = Number.POSITIVE_INFINITY
+    let maxAll = Number.NEGATIVE_INFINITY
+    let countAll = 0
     for (const step of steps) {
       while (step.next < step.days.length && step.days[step.next] <= cur) {
         step.current = step.next
         step.next += 1
       }
       if (step.current < 0) continue
-      if (step.expiresOn !== null && cur > step.expiresOn) continue
       const value = step.values[step.current]
+      numAll += value * step.weight
+      denAll += step.weight
+      countAll += 1
+      if (value < minAll) minAll = value
+      if (value > maxAll) maxAll = value
+      if (step.expiresOn !== null && cur > step.expiresOn) continue
       num += value * step.weight
       den += step.weight
       count += 1
       if (value < min) min = value
       if (value > max) max = value
     }
-    if (den > 0) {
-      out.push({ date: cur, avg: num / den, min, max, count })
+    // 当日没有「新鲜」商品 → 放开上限，用全部商品的最近一次已知价
+    const relaxed = den <= 0
+    if (denAll > 0) {
+      out.push({
+        date: cur,
+        avg: (relaxed ? numAll : num) / (relaxed ? denAll : den),
+        min: relaxed ? minAll : min,
+        max: relaxed ? maxAll : max,
+        count: relaxed ? countAll : count,
+        relaxed,
+      })
     }
     cur = addDays(cur, 1)
   }

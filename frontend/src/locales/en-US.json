@@ -1842,6 +1842,7 @@
     "weightZero": "Weight is 0",
     "noRecordToday": "No record today",
     "priceStale": "Outdated (over 30 days)",
+    "staleRelaxed": "All product prices are over 30 days old; using each product's latest known price",
     "merchantPrices": "Prices by merchant",
     "loadingMerchantPrices": "Loading merchant prices...",
     "lowest": "Lowest",

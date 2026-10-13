@@ -259,3 +259,61 @@ def test_different_users_see_different_price(db):
     assert abs(r2["unit_price"] - 0.04) < 1e-6
     db.query(UserProductWeightOverride).filter(UserProductWeightOverride.user_id == 1).delete()
     db.commit()
+
+
+# ===== 30 天参与上限（成本口径 mode="as_of"）=====
+
+
+def _seed_with_dates(db, ing_name, products_spec):
+    """products_spec: [(name, weight, [(price, std_qty, recorded_at)])]"""
+    ing = Ingredient(name=ing_name, is_active=True)
+    db.add(ing)
+    db.flush()
+    for pname, w, recs in products_spec:
+        p = Product(name=pname, ingredient_id=ing.id, is_active=True, price_weight=w)
+        db.add(p)
+        db.flush()
+        for price, sq, recorded_at in recs:
+            db.add(ProductRecord(
+                user_id=1, product_id=p.id, product_name=pname,
+                price=price, original_quantity=500, original_unit_id=3,
+                standard_quantity=sq, standard_unit_id=3,
+                recorded_at=recorded_at, is_active=True,
+            ))
+    db.commit()
+    return ing.id
+
+
+def test_get_weighted_as_of_excludes_stale_product(db):
+    """有「限内」商品时，超过 30 天的商品不参与成本加权。"""
+    ing_id = _seed_with_dates(db, "TSK_青椒", [
+        ("TSK_新鲜", 50, [(10, 500, datetime(2026, 7, 6, 12, 0))]),
+        ("TSK_超期", 50, [(40, 500, datetime(2026, 5, 1, 12, 0))]),  # 66 天前
+    ])
+    res = get_weighted_ingredient_price(
+        db, ing_id, as_of_date=datetime(2026, 7, 6, 20, 0), user_id=1,
+        target_unit_abbr="克", mode="as_of",
+    )
+    # 只有新鲜商品参与：10/500 = 0.02
+    assert abs(res["unit_price"] - 0.02) < 1e-6
+    assert {p["name"] for p in res["participants"]} == {"TSK_新鲜"}
+    assert {e["name"]: e["reason"] for e in res["excluded"]}["TSK_超期"] == "stale"
+    assert res["stale_relaxed"] is False
+
+
+def test_get_weighted_as_of_relaxes_when_all_stale(db):
+    """全部商品都超过 30 天 → 放开上限，按各自最近一次已知价参与成本。"""
+    ing_id = _seed_with_dates(db, "TSK_冬瓜", [
+        ("TSK_甲", 50, [(10, 500, datetime(2026, 7, 6, 12, 0))]),
+        ("TSK_乙", 50, [(30, 500, datetime(2026, 6, 1, 12, 0))]),
+    ])
+    # as_of 9 月：两个商品的最新记录都已超过 30 天
+    res = get_weighted_ingredient_price(
+        db, ing_id, as_of_date=datetime(2026, 9, 15), user_id=1,
+        target_unit_abbr="克", mode="as_of",
+    )
+    # 放开后等权：(0.02 + 0.06) / 2 = 0.04
+    assert abs(res["unit_price"] - 0.04) < 1e-6
+    assert len(res["participants"]) == 2
+    assert res["excluded"] == []
+    assert res["stale_relaxed"] is True

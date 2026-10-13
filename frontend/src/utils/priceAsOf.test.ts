@@ -61,13 +61,30 @@ test('超过 30 天的价格过期，不再参与综合价', () => {
     () => 50,
     { endDay: END },
   )
-  // P1 参与到「记录后 30 天」（10-10）；10-11 无参与者不产出点；10-12 只剩 P2
-  assert.equal(series.length, 32)
+  // P1 参与到「记录后 30 天」（10-10）；10-11 当日全部过期 → 放开（仍显示 P1 的最近已知价）
+  assert.equal(series.length, 33)
   assert.equal(series[30].date, '2026-10-10')
   assert.equal(series[30].avg, 10)
-  assert.equal(series[31].date, '2026-10-12')
-  assert.equal(series[31].avg, 20)
-  assert.equal(series[31].count, 1)
+  assert.equal(series[31].date, '2026-10-11')
+  assert.equal(series[31].avg, 10)
+  assert.equal(series[31].relaxed, true)
+  assert.equal(series[32].date, '2026-10-12')
+  assert.equal(series[32].avg, 20)
+  assert.equal(series[32].count, 1)
+  assert.equal(series[32].relaxed, false)
+})
+
+test('全部商品都过期时放开上限，按最近一次已知价计算', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [{ product_id: 1, date: '2026-09-10T08:00:00+08:00', value: 10 }],
+    () => 50,
+    { endDay: END },
+  )
+  assert.equal(series.length, 33)
+  assert.equal(series[0].avg, 10)
+  assert.equal(series[series.length - 1].avg, 10)
+  assert.equal(series[series.length - 1].count, 1)
+  assert.equal(series[series.length - 1].relaxed, true)
 })
 
 test('按商品权重加权并支持区间截断', () => {

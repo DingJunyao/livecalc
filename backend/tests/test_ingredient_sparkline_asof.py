@@ -5,6 +5,7 @@
     （旧口径下该商品整段消失，综合价退化成单品价）
   - 序列按本地日历日一格一天，覆盖窗口起点到今天
   - 最近一次价格超过 30 天的商品不再参与（与综合最新价 excluded[stale] 同规则）
+  - 当日全部商品都超期时放开上限（按最近一次已知价继续显示，不出现空档）
 并回归 GET /api/v1/sparklines/products（_fetch_recent_records 曾漏选
 standard_unit_id，取价时抛 AttributeError → 500）。
 """
@@ -96,10 +97,12 @@ def test_ingredient_sparkline_carries_stale_product_forward(as_admin):
         assert series is not None
         # P1 记录于 40 天前：窗口起点（今天 -30）时「年龄」10 天，仍参与
         assert series[0] == 10.0
-        # P1 参与到「记录后 30 天」（今天 -10）；之后到 P2 出现前无参与者、不产出点
-        assert len(series) == 27
+        # P1 参与到「记录后 30 天」（今天 -10）；之后到 P2 出现前全部超期 → 放开（继续显示 P1）
+        assert len(series) == 31
         assert series[20] == 10.0
-        assert series[21] == 20.0
+        assert series[21] == 10.0
+        assert series[24] == 10.0
+        assert series[25] == 20.0
         assert series[-1] == 20.0
         assert 15.0 not in series
     finally:

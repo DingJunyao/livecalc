@@ -947,7 +947,7 @@ async def get_ingredient_latest_price(
     region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.services.unit_conversion_service import UnitConversionService
-        from datetime import datetime, timedelta
+        from datetime import datetime
 
         # 查询原料及其默认单位
         ingredient = db.query(Ingredient).filter(
@@ -973,11 +973,11 @@ async def get_ingredient_latest_price(
         # 结果其他商品整段不参与加权——综合价退化成单品价（胡萝卜案例差 3 倍）。
         from app.services.ingredient_price_service import (
             INGREDIENT_PRICE_STALE_DAYS,
+            apply_stale_participation,
             _collect_recent_records,
         )
 
         now = datetime.utcnow()
-        stale_cutoff = now - timedelta(days=INGREDIENT_PRICE_STALE_DAYS)
         product_records_raw = {
             p.id: _collect_recent_records(db, p.id, now, tz=tz, region_id=region_id)
             for p in products
@@ -1018,6 +1018,7 @@ async def get_ingredient_latest_price(
 
         product_records = {}
         participant_dates = {}
+        entries = {}
         for p in products:
             recs = product_records_raw.get(p.id) or []
             if p.id in overrides:
@@ -1027,13 +1028,21 @@ async def get_ingredient_latest_price(
                 src = "global"
             meta = {"product_id": p.id, "name": p.name, "weight_source": src}
 
-            # 近 30 天没有价格的商品不参与综合价（与商家价/菜谱价 30 天陈旧口径一致）：
-            # 否则一次很久以前的高价会长期主导综合价，且与图表（只加载区间内记录）对不上。
-            latest_at = max((r.recorded_at for r in recs), default=None)
-            if latest_at is not None and latest_at < stale_cutoff:
-                product_records[p.id] = ([], w, {**meta, "exclude_reason": "stale"})
-                continue
+            entries[p.id] = {
+                "records": recs,
+                "weight": w,
+                "meta": meta,
+                "latest_at": max((r.recorded_at for r in recs), default=None),
+            }
 
+        # 30 天参与上限；全部超期时放开（relaxed=True，保证原料总有价格）
+        entries, stale_relaxed = apply_stale_participation(entries, now=now)
+
+        for p in products:
+            entry = entries[p.id]
+            recs = entry["records"]
+            w = entry["weight"]
+            meta = entry["meta"]
             pseudo = []
             for r in recs:
                 if r.price is None or r.original_quantity is None or float(r.original_quantity) <= 0:
@@ -1079,6 +1088,8 @@ async def get_ingredient_latest_price(
             "participants": weighted["participants"],
             "excluded": weighted["excluded"],
             "mode": weighted["mode"],
+            # 全部商品都超期 30 天时放开上限（按最近一次已知价参与），供前端提示
+            "stale_relaxed": stale_relaxed,
         }
     except Exception as e:
         import traceback

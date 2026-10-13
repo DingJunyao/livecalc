@@ -9,13 +9,13 @@
 
 权重读取优先级：用户覆盖(is_active) → Product.price_weight → 兜底 50。
 
-参与上限：商品最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS 天不再参与
-「原料综合价」（综合最新价 / 原料 sparkline），超期商品进 excluded（reason="stale"）。
-30 天与商家价（MERCHANT_PRICE_STALE_DAYS）、菜谱价格提示的陈旧口径保持一致；
-菜谱成本仍按「最近一次已知价」计算（成本语义），两者口径差异见
-FEATURE_商品加权价格机制.md 补遗。
+参与上限：商品最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS（30）天不参与加权
+（综合最新价 / 原料 sparkline / 菜谱成本 as_of 同口径），超期商品进 excluded
+（reason="stale"）；若参与集合里所有商品都超期，则放开上限、按各自最近一次
+已知价计算（宁可显示旧价格，也不能没有价格）。30 天与商家价
+（MERCHANT_PRICE_STALE_DAYS）、菜谱价格提示的陈旧口径保持一致。
 """
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional, Sequence
 
@@ -129,6 +129,54 @@ def _resolve_weight(db, *, user_id: Optional[int], product) -> int:
     return _DEFAULT_WEIGHT
 
 
+def _naive_utc(value: Optional[datetime]) -> Optional[datetime]:
+    """统一成 naive UTC 再比较（recorded_at 为 naive；as_of 可能带时区）。"""
+    if value is None:
+        return None
+    if value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+def apply_stale_participation(
+    entries: dict,
+    *,
+    now: datetime,
+    stale_days: int = INGREDIENT_PRICE_STALE_DAYS,
+) -> tuple:
+    """30 天参与上限：存在「限内」商品时剔除超期者；全部超期时放开（不剔除）。
+
+    entries: {pid: {"records": [...], "weight": int, "meta": {...}, "latest_at": datetime|None}}
+
+    返回 (entries, relaxed)：
+      - relaxed=False：超期商品以空记录 + meta["exclude_reason"]="stale" 留在集合里，
+        由 _aggregate_weighted 产出 excluded（weight_zero 优先级更高）；
+      - relaxed=True：所有商品都超期 → 全部放开，按各自最近一次已知价参与，
+        保证原料总有价格（调用方可用该标记做「按旧价计算」提示）。
+    """
+    now = _naive_utc(now)
+    fresh = {}
+    stale = {}
+    for pid, entry in entries.items():
+        latest_at = _naive_utc(entry.get("latest_at"))
+        is_stale = latest_at is not None and (now - latest_at) > timedelta(days=stale_days)
+        (stale if is_stale else fresh)[pid] = entry
+
+    if not stale:
+        return entries, False
+    if not fresh:
+        return entries, True
+
+    result = dict(fresh)
+    for pid, entry in stale.items():
+        result[pid] = {
+            **entry,
+            "records": [],
+            "meta": {**entry["meta"], "exclude_reason": "stale"},
+        }
+    return result, False
+
+
 def get_weighted_ingredient_price(
     db: Session,
     ingredient_id: int,
@@ -174,7 +222,7 @@ def get_weighted_ingredient_price(
         overrides = memoize_result(db, "weight_overrides", (user_id, ingredient_id), _load_overrides)
 
     # 收集每个商品的当日有效记录
-    product_records = {}
+    entries = {}
     for p in products:
         if mode == "recent":
             records = _collect_recent_records(db, p.id, as_of_date, tz, region_id=region_id)
@@ -189,10 +237,25 @@ def get_weighted_ingredient_price(
         else:
             w = p.price_weight if p.price_weight is not None else _DEFAULT_WEIGHT
             src = "global"
-        product_records[p.id] = (records, w, {"product_id": p.id, "name": p.name, "weight_source": src})
+
+        entries[p.id] = {
+            "records": records,
+            "weight": w,
+            "meta": {"product_id": p.id, "name": p.name, "weight_source": src},
+            "latest_at": max((r.recorded_at for r in records), default=None),
+        }
+
+    # 30 天参与上限；全部超期时放开（relaxed=True，保证原料总有价格）
+    entries, stale_relaxed = apply_stale_participation(entries, now=as_of_date)
+
+    product_records = {
+        pid: (entry["records"], entry["weight"], entry["meta"])
+        for pid, entry in entries.items()
+    }
 
     result = _aggregate_weighted(product_records)
     result["target_unit"] = target_unit_abbr
+    result["stale_relaxed"] = stale_relaxed
     # 透传各参与商品已取的记录，供调用方（如 _direct_cost_range_ppg）复用，
     # 避免对同一商品重复执行 _get_price_records_with_fallback（参数完全相同）。
     result["participant_records"] = {
