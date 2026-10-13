@@ -4,6 +4,7 @@ import {
   VAGUE_QUANTITY_GRAM_MAP,
 } from '../../../data/localValues.ts'
 import { resolveOverrideGramsPerUnit, type EntityOverride, type UnitInfo } from './unitConverter'
+import { PRICE_STALE_DAYS } from '@/utils/priceAsOf'
 
 export interface CostCalcIngredient {
   recipe_ingredient_id?: number
@@ -315,14 +316,18 @@ export function calculateCost(input: CostInput): CostResult {
 
 /**
  * 计算加权平均价格。
- * 对每个商品，取最新价格记录，按 price_weight（或用户覆盖）加权平均。
+ * 对每个商品取「最近一条价格记录」，按 price_weight（或用户覆盖）加权平均；
+ * 最近一次价格超过 PRICE_STALE_DAYS 天的商品默认不参与，但全部商品都超期时放开
+ * （与云端 综合最新价 / 菜谱成本 的 apply_stale_participation 同规则）。
  */
 function calculateWeightedPrice(
   products: CostCalcProduct[],
   records: CostCalcPriceRecord[],
   weightOverrides?: Array<{ product_id: number; weight: number }>,
 ): { pricePerUnit: number; unit_id: number; product_id: number } | null {
-  const productPrices = products.map(p => {
+  const staleMs = PRICE_STALE_DAYS * 86400000
+  const now = Date.now()
+  const candidates = products.map(p => {
     const productRecords = records
       .filter(r => r.product_id === p.id)
       .sort((a, b) => (b.recorded_at || '').localeCompare(a.recorded_at || ''))
@@ -336,27 +341,33 @@ function calculateWeightedPrice(
     const convertedPrice = convertAmount(latest.price, latest.exchange_rate || 1)
     const pricePerUnit = qty && qty > 0 ? convertedPrice / qty : convertedPrice
     const weight = weightOverrides?.find(w => w.product_id === p.id)?.weight ?? p.price_weight ?? 50
+    const latestTs = Date.parse(latest.recorded_at || '')
+    const isStale = Number.isFinite(latestTs) && now - latestTs > staleMs
 
     return {
       product_id: p.id,
       pricePerUnit,
       unit_id: latest.standard_unit_id ?? latest.unit_id ?? 0,
       weight,
+      isStale,
     }
   }).filter((p): p is NonNullable<typeof p> => p !== null)
 
-  if (productPrices.length === 0) return null
+  // 30 天参与上限；全部商品都超期时放开（宁可显示旧价格，也不能没有价格）
+  const fresh = candidates.filter(p => !p.isStale)
+  const chosen = fresh.length > 0 ? fresh : candidates
+  if (chosen.length === 0) return null
 
   // 加权平均
-  const totalWeight = productPrices.reduce((s, p) => s + p.weight, 0)
+  const totalWeight = chosen.reduce((s, p) => s + p.weight, 0)
   if (totalWeight <= 0) return null
 
-  const weightedSum = productPrices.reduce((s, p) => s + p.pricePerUnit * p.weight, 0)
+  const weightedSum = chosen.reduce((s, p) => s + p.pricePerUnit * p.weight, 0)
 
   return {
     pricePerUnit: weightedSum / totalWeight,
-    unit_id: productPrices[0].unit_id,
-    product_id: productPrices[0].product_id,
+    unit_id: chosen[0].unit_id,
+    product_id: chosen[0].product_id,
   }
 }
 
