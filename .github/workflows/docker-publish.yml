@@ -69,6 +69,10 @@ jobs:
   build:
     needs: resolve
     runs-on: ubuntu-latest
+    # 单个变体曾在 step「构建并推送镜像」里悬挂到 GitHub 的 6 小时上限
+    # （v0.3.2/v0.3.3 的 build (local) 都是 360.2 min 被杀，同批其它变体 7~12 min 就完了）。
+    # 正常一次构建 7~15 min，45 min 足够；悬挂时快速失败重试，别白占 runner。
+    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
@@ -94,6 +98,33 @@ jobs:
           esac
           echo "target=${target}" >> "$GITHUB_OUTPUT"
           echo "short=${short}" >> "$GITHUB_OUTPUT"
+
+          # ── buildx GHA 缓存 scope ──
+          # 四个变体都要构同一个 frontend-builder stage（含 `RUN npm ci`，双架构各跑一次
+          # = 最多 8 次 npm 网络抓包）。以前每个变体各写各的 scope，谁也不命中谁的缓存，
+          # 于是这一步既慢又更容易撞上 ECONNRESET / 悬挂。
+          # 现在：所有变体都读共享 scope「frontend-builder」；frontend 与 aio 两个变体
+          # 的构建都完整包含该 stage 的层，由它们负责写这个共享 scope（两者写同样的层，
+          # 并发写不会互相破坏），其余变体只写自己的 per-variant scope 以保留各自的层缓存。
+          {
+            echo "cache_from<<EOF"
+            echo "type=gha,scope=frontend-builder"
+            echo "type=gha,scope=${short}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          case "${{ matrix.variant }}" in
+            frontend|aio)
+              {
+                echo "cache_to<<EOF"
+                echo "type=gha,mode=max,scope=${short}"
+                echo "type=gha,mode=max,scope=frontend-builder"
+                echo "EOF"
+              } >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "cache_to=type=gha,mode=max,scope=${short}" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
           # ── GHCR 镜像名（必须小写；所有 variant 共用同一镜像，靠标签区分） ──
           ghcr_image="ghcr.io/${GITHUB_REPOSITORY}"
@@ -185,5 +216,5 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
             org.opencontainers.image.title=livecalc-${{ steps.config.outputs.short }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.variant }}
+          cache-from: ${{ steps.config.outputs.cache_from }}
+          cache-to: ${{ steps.config.outputs.cache_to }}
