@@ -4,6 +4,7 @@
   - 窗口内没有新记录的商品，其窗口前的最近一次价格继续参与每日加权
     （旧口径下该商品整段消失，综合价退化成单品价）
   - 序列按本地日历日一格一天，覆盖窗口起点到今天
+  - 最近一次价格超过 30 天的商品不再参与（与综合最新价 excluded[stale] 同规则）
 并回归 GET /api/v1/sparklines/products（_fetch_recent_records 曾漏选
 standard_unit_id，取价时抛 AttributeError → 500）。
 """
@@ -93,12 +94,14 @@ def test_ingredient_sparkline_carries_stale_product_forward(as_admin):
         assert r.status_code == 200
         series = r.json()[str(ing_id)]
         assert series is not None
-        # 窗口起点（30 天前）到今天，一格一天
-        assert len(series) == 31
-        # P1 的 40 天前价格继续有效；此时 P2 尚无记录
+        # P1 记录于 40 天前：窗口起点（今天 -30）时「年龄」10 天，仍参与
         assert series[0] == 10.0
-        # P2 出现后：等权 (10 + 20) / 2
-        assert series[-1] == 15.0
+        # P1 参与到「记录后 30 天」（今天 -10）；之后到 P2 出现前无参与者、不产出点
+        assert len(series) == 27
+        assert series[20] == 10.0
+        assert series[21] == 20.0
+        assert series[-1] == 20.0
+        assert 15.0 not in series
     finally:
         db = TestingSessionLocal()
         try:

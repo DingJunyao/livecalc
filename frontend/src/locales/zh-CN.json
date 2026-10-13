@@ -1840,6 +1840,7 @@
     "excluded": "已排除：{name}（{reason}）",
     "weightZero": "权重为0",
     "noRecordToday": "当日无记录",
+    "priceStale": "超期未更新（>30 天）",
     "merchantPrices": "各商家价格",
     "loadingMerchantPrices": "加载商家价格...",
     "lowest": "最低",

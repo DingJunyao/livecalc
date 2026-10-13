@@ -1840,6 +1840,7 @@
     "excluded": "مستبعد: {name} ({reason})",
     "weightZero": "الوزن 0",
     "noRecordToday": "لا يوجد سجل اليوم",
+    "priceStale": "لم يُحدَّث لأكثر من 30 يوماً",
     "merchantPrices": "الأسعار حسب المتجر",
     "loadingMerchantPrices": "جارٍ تحميل أسعار المتاجر...",
     "lowest": "الأدنى",

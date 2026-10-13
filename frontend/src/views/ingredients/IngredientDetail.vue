@@ -233,17 +233,18 @@
             <div class="text-h3 font-weight-bold text-tertiary">
               {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
             </div>
-            <template v-if="latestChartTrend">
+            <!-- 区间/商品数与综合价同源（接口 participants），保证平均值必落在区间内 -->
+            <template v-if="latestPriceRange">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('ingredients.range') }}</div>
                 <div class="text-subtitle-1 font-weight-bold">
-                  {{ formatMoney(latestChartTrend.min, userCurrency) }} - {{ formatMoney(latestChartTrend.max, userCurrency) }} / {{ chartUnit }}
+                  {{ formatMoney(latestPriceRange.min, userCurrency) }} - {{ formatMoney(latestPriceRange.max, userCurrency) }} / {{ chartUnit }}
                 </div>
               </div>
-              <div v-if="latestChartTrend.count" class="text-center">
+              <div v-if="latestPriceRange.count" class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('charts.productCount') }}</div>
-                <div class="text-subtitle-1 font-weight-bold">{{ latestChartTrend.count }}</div>
+                <div class="text-subtitle-1 font-weight-bold">{{ latestPriceRange.count }}</div>
               </div>
             </template>
           </div>
@@ -262,7 +263,7 @@
                   <span class="text-medium-emphasis">{{ formatMoney(Number(p.unit_price), userCurrency) }}（{{ p.weight_source === 'override' ? t('ingredients.weightSourceMine') : t('ingredients.weightSourceGlobal') }}）</span>
                 </div>
                 <div v-for="e in latestPriceExcluded" :key="'ex_' + e.product_id" class="text-caption text-medium-emphasis">
-                  {{ t('ingredients.excluded', { name: e.name, reason: e.reason === 'weight_zero' ? t('ingredients.weightZero') : t('ingredients.noRecordToday') }) }}
+                  {{ t('ingredients.excluded', { name: e.name, reason: excludedReasonLabel(e.reason) }) }}
                 </div>
               </v-expansion-panel-text>
             </v-expansion-panel>
@@ -1912,7 +1913,7 @@ import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { formatNumber, formatQuantity } from '@/utils/format'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
-import { buildWeightedAsOfDailySeries, type AsOfPricePoint } from '@/utils/priceAsOf'
+import { buildWeightedAsOfDailySeries, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -3362,12 +3363,26 @@ const chartData = computed(() => {
   ).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count }))
 })
 
-// 最新趋势数据点（用于最新价格卡片右侧展示）
-const latestChartTrend = computed(() => {
-  const data = chartData.value
-  if (!data || data.length === 0) return null
-  return data[data.length - 1]
+// 最新价格卡片右侧的区间/商品数：直接取接口返回的参与商品，
+// 不再从图表尾点推导（图表数据按区间加载，参与者集合可能与接口不一致）
+const latestPriceRange = computed(() => {
+  const prices = latestPriceParticipants.value
+    .map((p: any) => Number(p.unit_price))
+    .filter((v: number) => isFinite(v))
+  if (prices.length === 0) return null
+  return {
+    min: Math.min(...prices),
+    max: Math.max(...prices),
+    count: prices.length,
+  }
 })
+
+// excluded 原因文案（weight_zero / stale / no_record）
+function excludedReasonLabel(reason?: string): string {
+  if (reason === 'weight_zero') return t('ingredients.weightZero')
+  if (reason === 'stale') return t('ingredients.priceStale')
+  return t('ingredients.noRecordToday')
+}
 
 // 图表使用用户偏好的质量单位（默认斤）
 const chartUnit = computed(() => massUnitLabel.value)
@@ -3561,15 +3576,21 @@ const daysAgo = (n: number): Date => {
 // 加载图表价格记录（按时间区间累积）
 // startDate 为空表示「全部」；「全部」请求放宽超时到 30s，规避前端 10s 上限
 const loadChartPriceRecords = async (startDate?: Date) => {
+  // 综合价参与上限是 30 天：区间短于 30 天（周）时也要把 30 天内的记录取回来，
+  // 否则「最近一次记录在区间外」的商品无法参与加权，图表综合价会与卡片对不上。
+  // 显示范围仍由 PriceTrendChart 按所选区间切片。
+  const fetchFloor = daysAgo(PRICE_STALE_DAYS)
+  const fetchStart = startDate ? ((startDate < fetchFloor) ? startDate : fetchFloor) : undefined
+
   // 判断是否需要发请求（已覆盖则跳过）
   let needFetch = false
-  if (startDate) {
+  if (fetchStart) {
     if (chartEarliestDate.value === undefined) {
       needFetch = true
     } else if (chartEarliestDate.value === null) {
       needFetch = false  // 已全量，已覆盖
     } else {
-      needFetch = startDate < chartEarliestDate.value
+      needFetch = fetchStart < chartEarliestDate.value
     }
   } else {
     needFetch = chartEarliestDate.value !== null
@@ -3583,12 +3604,12 @@ const loadChartPriceRecords = async (startDate?: Date) => {
       limit: 1000,
       region_id: null,
     }
-    if (startDate) {
-      params.start_date = startDate.toISOString().split('T')[0]
+    if (fetchStart) {
+      params.start_date = fetchStart.toISOString().split('T')[0]
     }
     const response = await api.get('/products', {
       params,
-      timeout: startDate ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
+      timeout: fetchStart ? undefined : LONG_REQUEST_TIMEOUT,  // 「全部」用长超时
     })
     const items = response.items || []
     // 按 id 去重合并
@@ -3599,10 +3620,10 @@ const loadChartPriceRecords = async (startDate?: Date) => {
       }
     }
     // 更新已覆盖范围（取更早）
-    if (startDate) {
-      chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < startDate)
+    if (fetchStart) {
+      chartEarliestDate.value = (chartEarliestDate.value instanceof Date && chartEarliestDate.value < fetchStart)
         ? chartEarliestDate.value
-        : startDate
+        : fetchStart
     } else {
       chartEarliestDate.value = null
     }

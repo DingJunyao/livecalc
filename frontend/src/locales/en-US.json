@@ -1840,6 +1840,7 @@
     "excluded": "Excluded: {name} ({reason})",
     "weightZero": "Weight is 0",
     "noRecordToday": "No record today",
+    "priceStale": "Outdated (over 30 days)",
     "merchantPrices": "Prices by merchant",
     "loadingMerchantPrices": "Loading merchant prices...",
     "lowest": "Lowest",

@@ -52,6 +52,24 @@ test('权重 0 的商品整段排除', () => {
   assert.equal(series[0].max, 10)
 })
 
+test('超过 30 天的价格过期，不再参与综合价', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [
+      { product_id: 1, date: '2026-09-10T08:00:00+08:00', value: 10 },
+      { product_id: 2, date: '2026-10-12T08:00:00+08:00', value: 20 },
+    ],
+    () => 50,
+    { endDay: END },
+  )
+  // P1 参与到「记录后 30 天」（10-10）；10-11 无参与者不产出点；10-12 只剩 P2
+  assert.equal(series.length, 32)
+  assert.equal(series[30].date, '2026-10-10')
+  assert.equal(series[30].avg, 10)
+  assert.equal(series[31].date, '2026-10-12')
+  assert.equal(series[31].avg, 20)
+  assert.equal(series[31].count, 1)
+})
+
 test('按商品权重加权并支持区间截断', () => {
   const series = buildWeightedAsOfDailySeries(
     [

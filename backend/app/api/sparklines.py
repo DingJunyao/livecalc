@@ -229,8 +229,12 @@ def _ingredients_sparklines_batched(
       - 该价格一直有效到下一次记录；窗口起点之前的最近一次记录作为起点携带，
         否则久未记录的商品会在图上整段消失，综合价退化成单品价
       - 每日综合价 = 各商品当日有效价按权重（用户覆盖 > price_weight > 50）加权
+    参与上限：商品最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS 天不再参与当日综合价
+    （与综合最新价的 excluded[reason="stale"] 同一规则，保证卡片与图表对得上）。
     返回按本地日历日、从窗口起点到今天的一格一天序列。
     """
+    from app.services.ingredient_price_service import INGREDIENT_PRICE_STALE_DAYS
+
     products = db.query(Product.id, Product.ingredient_id).filter(
         Product.ingredient_id.in_(ingredient_ids),
         Product.is_active == True,  # noqa: E712
@@ -265,7 +269,7 @@ def _ingredients_sparklines_batched(
             if not by_day:
                 continue
             ordered = sorted((d, sum(v) / len(v)) for d, v in by_day.items())
-            per_pid_steps[pid] = [ordered, 0, None]
+            per_pid_steps[pid] = [ordered, 0, None, ordered[-1][0] + timedelta(days=INGREDIENT_PRICE_STALE_DAYS)]
             first_day = ordered[0][0] if first_day is None else min(first_day, ordered[0][0])
         if first_day is None:
             result[str(ing_id)] = None
@@ -276,13 +280,15 @@ def _ingredients_sparklines_batched(
         while cur <= today:
             num = den = 0.0
             for pid, state in per_pid_steps.items():
-                ordered, idx, value = state
+                ordered, idx, value, expires_on = state
                 while idx < len(ordered) and ordered[idx][0] <= cur:
                     value = ordered[idx][1]
                     idx += 1
                 state[1], state[2] = idx, value
                 w = pw.get(pid, 50)
                 if value is None or w <= 0:
+                    continue
+                if cur > expires_on:
                     continue
                 num += value * w
                 den += w
