@@ -641,16 +641,26 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     state = state.copyWith(loadingChart: true);
     try {
       final startDate = _startDateFor(days);
-      final result = await _priceRepo.getRecords(
+      var result = await _priceRepo.getRecords(
         productId: productId,
         startDate: startDate.isEmpty ? null : startDate,
         page: 1,
         pageSize: 500,
       );
+      // 区间内一条记录都没有（数据整体陈旧，全部超过 30 天参与上限）：回退全量
+      // 取数，让 as-of 序列拿到最近一次价作为携带起点，图表才不会空白
+      if (startDate.isNotEmpty && result.records.isEmpty) {
+        result = await _priceRepo.getRecords(
+          productId: productId,
+          page: 1,
+          pageSize: 500,
+        );
+      }
       state = state.copyWith(
         chartPoints: buildPriceTrendPoints(
           result.records,
           useStandardQuantity: true,
+          startDay: startDate.isEmpty ? null : startDate,
         ),
         loadingChart: false,
       );
