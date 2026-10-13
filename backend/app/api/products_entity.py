@@ -323,7 +323,13 @@ def lookup_product_by_barcode(
 
 @router.get("/products/entity/{product_id}", response_model=ProductWithDetails)
 @router.get("/products/entity/{product_id}/", response_model=ProductWithDetails)
-def get_product(product_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user), tz: str = Depends(get_timezone)):
+def get_product(
+    product_id: int,
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认按用户计算范围）"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
     """获取商品详情"""
     product = db.query(Product).options(
         joinedload(Product.ingredient)
@@ -338,11 +344,18 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
         product.tags = []
 
     from sqlalchemy import func
+    from app.services.price_region import apply_region_filter
+
+    # 地区口径与价格记录列表、趋势图保持一致：会话 X-Region 或用户默认计算范围
+    region_id = resolve_region_param(db, current_user, region_id)
 
     # 获取最近有记录的日期
-    all_dates = db.query(ProductRecord.recorded_at).filter(
-        ProductRecord.product_id == product_id,
-        ProductRecord.is_active == True,
+    all_dates = apply_region_filter(
+        db.query(ProductRecord.recorded_at).filter(
+            ProductRecord.product_id == product_id,
+            ProductRecord.is_active == True,
+        ),
+        db, region_id,
     ).all()
     latest_date = max((utc_datetime_to_local_date(d[0], tz) for d in all_dates), default=None)
 
@@ -353,13 +366,16 @@ def get_product(product_id: int, db: Session = Depends(get_db), current_user: Us
     if latest_date:
         # 取最近一天（用户本地日）的所有记录
         day_start, day_end = local_date_range_to_utc_range(latest_date, latest_date, tz)
-        day_records = db.query(ProductRecord).options(
-            joinedload(ProductRecord.original_unit)
-        ).filter(
-            ProductRecord.product_id == product_id,
-            ProductRecord.recorded_at >= day_start,
-            ProductRecord.recorded_at <= day_end,
-            ProductRecord.is_active == True
+        day_records = apply_region_filter(
+            db.query(ProductRecord).options(
+                joinedload(ProductRecord.original_unit)
+            ).filter(
+                ProductRecord.product_id == product_id,
+                ProductRecord.recorded_at >= day_start,
+                ProductRecord.recorded_at <= day_end,
+                ProductRecord.is_active == True
+            ),
+            db, region_id,
         ).all()
 
         if day_records:
