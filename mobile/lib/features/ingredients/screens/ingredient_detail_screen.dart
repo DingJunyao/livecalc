@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -565,8 +567,57 @@ class _IngredientDetailScreenState
     Ingredient ingredient,
   ) async {
     final l10n = AppLocalizations.of(context);
+    final repository = IngredientRepository();
     Ingredient? target;
     bool merging = false;
+    Timer? searchDebounce;
+    Completer<List<Ingredient>>? pendingSearch;
+    int searchSeq = 0;
+
+    Future<List<Ingredient>> searchIngredients(String query) {
+      final q = query.trim();
+      final seq = ++searchSeq;
+      searchDebounce?.cancel();
+      final completer = pendingSearch;
+      pendingSearch = null;
+      if (completer != null && !completer.isCompleted) {
+        completer.complete(const <Ingredient>[]);
+      }
+      if (q.isEmpty) return Future.value(const <Ingredient>[]);
+
+      final nextCompleter = Completer<List<Ingredient>>();
+      pendingSearch = nextCompleter;
+      searchDebounce = Timer(const Duration(milliseconds: 300), () async {
+        try {
+          final page = await repository.search(search: q, limit: 20);
+          final result = seq == searchSeq
+              ? page.items.where((i) => i.id != widget.id).toList()
+              : const <Ingredient>[];
+          if (pendingSearch == nextCompleter && !nextCompleter.isCompleted) {
+            pendingSearch = null;
+            nextCompleter.complete(result);
+          }
+        } catch (_) {
+          if (pendingSearch == nextCompleter && !nextCompleter.isCompleted) {
+            pendingSearch = null;
+            nextCompleter.complete(const <Ingredient>[]);
+          }
+        }
+      });
+      return nextCompleter.future;
+    }
+
+    void cancelSearch() {
+      searchSeq++;
+      searchDebounce?.cancel();
+      searchDebounce = null;
+      final completer = pendingSearch;
+      pendingSearch = null;
+      if (completer != null && !completer.isCompleted) {
+        completer.complete(const <Ingredient>[]);
+      }
+    }
+
     await showDialog<void>(
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
@@ -584,19 +635,7 @@ class _IngredientDetailScreenState
                 ),
                 Autocomplete<Ingredient>(
                   displayStringForOption: (i) => i.name,
-                  optionsBuilder: (value) async {
-                    final query = value.text.trim();
-                    if (query.isEmpty) return const <Ingredient>[];
-                    try {
-                      final page = await IngredientRepository()
-                          .search(search: query, limit: 20);
-                      return page.items
-                          .where((i) => i.id != widget.id)
-                          .toList();
-                    } catch (_) {
-                      return const <Ingredient>[];
-                    }
-                  },
+                  optionsBuilder: (value) => searchIngredients(value.text),
                   onSelected: (i) => setDialogState(() => target = i),
                   fieldViewBuilder: (
                     ctx,
@@ -725,6 +764,7 @@ class _IngredientDetailScreenState
         ),
       ),
     );
+    cancelSearch();
   }
 
   Future<void> _confirmDelete(

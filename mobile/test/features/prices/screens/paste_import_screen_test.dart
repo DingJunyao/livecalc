@@ -499,7 +499,8 @@ void main() {
     await tester.enterText(field, '番茄');
     await tester.pump(const Duration(milliseconds: 50));
 
-    // 等待 '番' 的延迟也跑完
+    // 显式跨过 300ms 防抖；无帧可渲染时 pumpAndSettle 不会继续推进 Timer。
+    await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
 
     // 期望：suggestions 是第二次 '番茄' 的结果（'番茄新'），

@@ -75,7 +75,7 @@ void main() {
       (tester) async {
     await pumpForm(tester);
     await tester.enterText(field, '???');
-    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 400));
     expect(option, findsWidgets);
   });
 

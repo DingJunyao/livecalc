@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../repositories/price_repository.dart';
@@ -28,12 +30,14 @@ class _ImportRow {
   TextEditingController? searchController;
 
   /// _onExistingSearch 的请求序号，用于丢弃过期的异步响应（竞态保护）。
+  Timer? searchDebounce;
   int searchSeq = 0;
 
   /// 原料搜索的状态（new_attach 模式：新建商品并关联到原料）。
   String ingredientSearch = '';
   List<Map<String, dynamic>> ingredientSuggestions = const [];
   TextEditingController? ingredientSearchController;
+  Timer? ingredientSearchDebounce;
   int ingredientSearchSeq = 0;
 
   _ImportRow({required this.parsed, required this.status});
@@ -107,10 +111,14 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
   void dispose() {
     _rawTextController.dispose();
     _scrollController.dispose();
-    // 释放展开行残留的搜索 controller（防异常退出泄漏）
+    // 释放展开行残留的搜索 controller 与防抖计时器（防异常退出泄漏）。
     for (final row in _rows) {
+      row.searchDebounce?.cancel();
+      row.ingredientSearchDebounce?.cancel();
       row.searchController?.dispose();
       row.searchController = null;
+      row.ingredientSearchController?.dispose();
+      row.ingredientSearchController = null;
     }
     super.dispose();
   }
@@ -304,6 +312,10 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
   }
 
   void _releaseEditor(_ImportRow row) {
+    row.searchDebounce?.cancel();
+    row.searchDebounce = null;
+    row.ingredientSearchDebounce?.cancel();
+    row.ingredientSearchDebounce = null;
     row.searchController?.dispose();
     row.searchController = null;
     row.ingredientSearchController?.dispose();
@@ -319,20 +331,23 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
   Future<void> _onExistingSearch(_ImportRow row, String query) async {
     setState(() => row.productSearch = query);
+    row.searchDebounce?.cancel();
+    final seq = ++row.searchSeq;
     if (query.isEmpty) {
       setState(() => row.suggestions = const []);
       return;
     }
-    // 序号守卫：快速输入时旧请求晚回会被丢弃，避免覆盖最新结果
-    final mySeq = ++row.searchSeq;
-    try {
-      final list = await _productRepo.autocomplete(query, limit: 20);
-      if (!mounted || mySeq != row.searchSeq) return;
-      setState(() => row.suggestions = list);
-    } on Exception {
-      if (!mounted || mySeq != row.searchSeq) return;
-      setState(() => row.suggestions = const []);
-    }
+
+    row.searchDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final list = await _productRepo.autocomplete(query, limit: 20);
+        if (!mounted || seq != row.searchSeq) return;
+        setState(() => row.suggestions = list);
+      } on Exception {
+        if (!mounted || seq != row.searchSeq) return;
+        setState(() => row.suggestions = const []);
+      }
+    });
   }
 
   void _chooseExisting(_ImportRow row, Map<String, dynamic> opt) {
@@ -361,29 +376,34 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
 
   Future<void> _onIngredientSearch(_ImportRow row, String query) async {
     setState(() => row.ingredientSearch = query);
+    row.ingredientSearchDebounce?.cancel();
+    final seq = ++row.ingredientSearchSeq;
     if (query.isEmpty) {
       setState(() => row.ingredientSuggestions = const []);
       return;
     }
-    final mySeq = ++row.ingredientSearchSeq;
-    try {
-      final resp = await _priceRepo.client.dio.get(
-        '/ingredients',
-        queryParameters: {'q': query, 'limit': 20},
-      );
-      if (!mounted || mySeq != row.ingredientSearchSeq) return;
-      final data = resp.data;
-      final list =
-          (data is List) ? data : ((data['items'] as List?) ?? const []);
-      final items = list.cast<Map<String, dynamic>>();
-      setState(() {
-        row.ingredientSuggestions =
-            items.map((e) => {'id': e['id'], 'name': e['name']}).toList();
-      });
-    } on Exception {
-      if (!mounted || mySeq != row.ingredientSearchSeq) return;
-      setState(() => row.ingredientSuggestions = const []);
-    }
+
+    row.ingredientSearchDebounce =
+        Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final resp = await _priceRepo.client.dio.get(
+          '/ingredients',
+          queryParameters: {'q': query, 'limit': 20},
+        );
+        if (!mounted || seq != row.ingredientSearchSeq) return;
+        final data = resp.data;
+        final list =
+            (data is List) ? data : ((data['items'] as List?) ?? const []);
+        final items = list.cast<Map<String, dynamic>>();
+        setState(() {
+          row.ingredientSuggestions =
+              items.map((e) => {'id': e['id'], 'name': e['name']}).toList();
+        });
+      } on Exception {
+        if (!mounted || seq != row.ingredientSearchSeq) return;
+        setState(() => row.ingredientSuggestions = const []);
+      }
+    });
   }
 
   void _chooseAttach(_ImportRow row, Map<String, dynamic> opt) {

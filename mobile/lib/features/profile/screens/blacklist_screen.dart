@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart' show DioException;
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
@@ -19,6 +21,8 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
   final IngredientRepository _ingredientRepository = IngredientRepository();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  Timer? _searchDebounce;
+  Completer<List<Ingredient>>? _pendingSearch;
   int _searchSeq = 0;
 
   bool _loading = true;
@@ -37,6 +41,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
 
   @override
   void dispose() {
+    _cancelPendingSearch();
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
@@ -86,17 +91,46 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
     return e.toString();
   }
 
-  Future<List<Ingredient>> _searchIngredients(String query) async {
+  Future<List<Ingredient>> _searchIngredients(String query) {
     final q = query.trim();
-    if (q.isEmpty) return const <Ingredient>[];
     final seq = ++_searchSeq;
-    try {
-      final page = await _ingredientRepository.search(search: q, limit: 20);
-      if (seq != _searchSeq) return const <Ingredient>[];
-      return page.items;
-    } catch (_) {
-      return const <Ingredient>[];
+    _cancelPendingSearch();
+
+    if (q.isEmpty) return Future.value(const <Ingredient>[]);
+    final completer = Completer<List<Ingredient>>();
+    _pendingSearch = completer;
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final page = await _ingredientRepository.search(search: q, limit: 20);
+        _completeSearch(
+          completer,
+          seq == _searchSeq ? page.items : const <Ingredient>[],
+        );
+      } catch (_) {
+        _completeSearch(completer, const <Ingredient>[]);
+      }
+    });
+    return completer.future;
+  }
+
+  void _cancelPendingSearch() {
+    _searchDebounce?.cancel();
+    _searchDebounce = null;
+
+    final completer = _pendingSearch;
+    _pendingSearch = null;
+    if (completer != null && !completer.isCompleted) {
+      completer.complete(const <Ingredient>[]);
     }
+  }
+
+  void _completeSearch(
+    Completer<List<Ingredient>> completer,
+    List<Ingredient> result,
+  ) {
+    if (_pendingSearch != completer) return;
+    _pendingSearch = null;
+    if (!completer.isCompleted) completer.complete(result);
   }
 
   Future<void> _toggleGroup(BlacklistGroup group) async {

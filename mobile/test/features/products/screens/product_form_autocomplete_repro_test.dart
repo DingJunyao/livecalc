@@ -67,7 +67,38 @@ Future<void> pumpApp(WidgetTester tester, ProductFormScreen screen) async {
 Finder get ingredientField => find.widgetWithText(
     TextField, 'Search and select a linked ingredient *');
 
-void main() {  testWidgets('单次输入完整词「牛奶」应显示下拉项（复现：转圈结束后无内容）',
+void main() {
+  testWidgets('IME composition queries are debounced to the final keyword',
+      (tester) async {
+    final repo = _LatencyIngredientRepository(
+      _milkLikeIngredients,
+      latency: const Duration(milliseconds: 20),
+    );
+    await pumpApp(tester, await buildScreen(tester, repo));
+    await tester.tap(ingredientField);
+    await tester.pump();
+
+    for (final composing in ['n', 'ni', 'niu', 'niun', 'niuna', 'niunai']) {
+      tester.testTextInput.updateEditingValue(TextEditingValue(
+        text: composing,
+        selection: TextSelection.collapsed(offset: composing.length),
+        composing: TextRange(start: 0, end: composing.length),
+      ));
+      await tester.pump(const Duration(milliseconds: 30));
+    }
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '牛奶',
+      selection: TextSelection.collapsed(offset: 2),
+      composing: TextRange(start: 0, end: 2),
+    ));
+    await tester.pump(const Duration(milliseconds: 350));
+
+    expect(repo.searchLog, ['牛奶'],
+        reason: 'IME 组合期间的中间拼音不应逐键请求服务端');
+    expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets);
+  });
+
+  testWidgets('单次输入完整词「牛奶」应显示下拉项（复现：转圈结束后无内容）',
       (tester) async {
     final repo = _LatencyIngredientRepository(
       _milkLikeIngredients,
@@ -77,7 +108,7 @@ void main() {  testWidgets('单次输入完整词「牛奶」应显示下拉项�
 
     await tester.enterText(ingredientField, '牛奶');
     await tester.pump(const Duration(milliseconds: 60)); // 请求进行中
-    await tester.pump(const Duration(milliseconds: 150)); // 响应到达
+    await tester.pump(const Duration(milliseconds: 400)); // 响应到达
 
     expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets,
         reason: '搜索「牛奶」返回 2 条结果时下拉必须显示');
@@ -93,8 +124,8 @@ void main() {  testWidgets('单次输入完整词「牛奶」应显示下拉项�
     await tester.enterText(ingredientField, '牛');
     await tester.pump(const Duration(milliseconds: 60));
     await tester.enterText(ingredientField, '牛奶');
-    await tester.pump(const Duration(milliseconds: 150));
-    await tester.pump(const Duration(milliseconds: 150));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets,
         reason: '最后一次查询「牛奶」的结果应显示');
@@ -108,7 +139,7 @@ void main() {  testWidgets('单次输入完整词「牛奶」应显示下拉项�
     await pumpApp(tester, await buildScreen(tester, repo));
 
     await tester.enterText(ingredientField, '牛');
-    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 450));
 
     expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets);
   });
@@ -139,8 +170,8 @@ void main() {  testWidgets('单次输入完整词「牛奶」应显示下拉项�
       selection: TextSelection.collapsed(offset: 2),
       composing: TextRange(start: 0, end: 2),
     ));
-    await tester.pump(const Duration(milliseconds: 120)); // 之前的空结果陆续返回
-    await tester.pump(const Duration(milliseconds: 120)); // 「牛奶」响应到达
+    await tester.pump(const Duration(milliseconds: 220)); // 之前的空结果陆续返回
+    await tester.pump(const Duration(milliseconds: 220)); // 「牛奶」响应到达
 
     expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets,
         reason: 'IME 组合输入后提交「牛奶」，最后一次查询的结果应显示');

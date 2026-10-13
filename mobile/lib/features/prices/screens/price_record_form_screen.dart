@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -67,6 +69,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   Product? _selectedProduct;
   List<Product> _searchResults = const [];
   bool _searching = false;
+  Timer? _searchDebounce;
   int _searchSeq = 0;
   bool _isPurchase = true;
   bool _saving = false;
@@ -116,6 +119,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _nameController.dispose();
     _priceController.dispose();
     _quantityController.dispose();
@@ -145,11 +149,13 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     }
   }
 
-  Future<void> _searchProducts(String query) async {
-    if (_lockProduct) return;
+  void _searchProducts(String query) {
+    if (_lockProduct || !mounted) return;
     final q = query.trim();
+    _searchDebounce?.cancel();
+    final seq = ++_searchSeq;
+
     if (q.isEmpty) {
-      _searchSeq++; // 使在途搜索失效，避免清空后被旧结果覆盖
       setState(() {
         _searchResults = const [];
         _selectedProduct = null;
@@ -157,30 +163,32 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
       });
       return;
     }
-    // 商品名被改动则撤销原选择，避免保存时携带旧的 productId
+
+    // 商品名被改动则撤销原选择，避免保存时携带旧的 productId。
     if (_selectedProduct != null && _selectedProduct!.name != q) {
       _selectedProduct = null;
     }
-    final seq = ++_searchSeq;
     setState(() => _searching = true);
-    try {
-      final page = await _productRepo.search(
-        search: q,
-        ingredientId: _ingredientId,
-        limit: 10,
-      );
-      if (!mounted || seq != _searchSeq) return;
-      setState(() {
-        _searchResults = page.items;
-        _searching = false;
-      });
-    } on Exception {
-      if (!mounted || seq != _searchSeq) return;
-      setState(() {
-        _searchResults = const [];
-        _searching = false;
-      });
-    }
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final page = await _productRepo.search(
+          search: q,
+          ingredientId: _ingredientId,
+          limit: 10,
+        );
+        if (!mounted || seq != _searchSeq) return;
+        setState(() {
+          _searchResults = page.items;
+          _searching = false;
+        });
+      } on Exception {
+        if (!mounted || seq != _searchSeq) return;
+        setState(() {
+          _searchResults = const [];
+          _searching = false;
+        });
+      }
+    });
   }
 
   void _selectProduct(Product p) {

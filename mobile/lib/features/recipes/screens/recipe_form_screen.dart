@@ -96,6 +96,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   final _ingredientSearch = TextEditingController();
   Timer? _ingredientDebounce;
+  int _ingredientSearchSeq = 0;
   List<IngredientOption> _ingredientOptions = const [];
   List<RecipeUnitOption> _unitOptions = const [];
   List<String> _images = const [];
@@ -313,6 +314,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   void _onIngredientSearch() {
     _ingredientDebounce?.cancel();
     final query = _ingredientSearch.text.trim();
+    final seq = ++_ingredientSearchSeq;
     if (query.isEmpty) {
       setState(() => _ingredientOptions = const []);
       return;
@@ -320,9 +322,11 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     _ingredientDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
         final options = await _repository.getIngredientOptions(query);
-        if (mounted) setState(() => _ingredientOptions = options);
+        if (!mounted || seq != _ingredientSearchSeq) return;
+        setState(() => _ingredientOptions = options);
       } on Exception {
-        if (mounted) setState(() => _ingredientOptions = const []);
+        if (!mounted || seq != _ingredientSearchSeq) return;
+        setState(() => _ingredientOptions = const []);
       }
     });
   }
@@ -429,6 +433,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
 
   void _reorderImages(int oldIndex, int newIndex) {
     if (oldIndex < 0 || oldIndex >= _images.length) return;
+    // ReorderableListView reports the target slot after removal when moving
+    // right, so its callback contract requires decrementing newIndex first.
+    if (newIndex > oldIndex) newIndex--;
     newIndex = newIndex.clamp(0, _images.length);
     if (newIndex == oldIndex) return;
 
@@ -1093,7 +1100,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                     scrollDirection: Axis.horizontal,
                     buildDefaultDragHandles: false,
                     itemCount: _images.length,
-                    onReorderItem: _reorderImages,
+                    onReorder: _reorderImages,
                     itemBuilder: (context, index) => Padding(
                       key: ValueKey('recipe-image-item-${_images[index]}'),
                       padding: const EdgeInsetsDirectional.only(end: 10),
