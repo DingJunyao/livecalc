@@ -264,7 +264,7 @@ ZIP 文件结构应包含各数据表的 JSON 文件和 `recipes/` 目录下的�
 | 单位换算 | `unit_conversion_service.py` |
 | 营养聚合 | `nutrition.py` |
 | 今日推荐 | `meal_recommender.py` |
-| 商品加权 | `price_weighted.py` |
+| 商品加权 / 30 天参与上限 | `ingredient_price_service.py` |
 | 原料层级 | `hierarchy_resolver.py` |
 
 ---
