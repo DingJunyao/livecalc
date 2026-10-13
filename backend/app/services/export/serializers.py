@@ -410,10 +410,13 @@ def serialize_entity_unit_override(
     entity_name: Optional[str],
     base_unit_name: Optional[str],
     weight_unit_name: Optional[str],
+    weight_unit_override_name: Optional[str] = None,
 ) -> dict:
     """EntityUnitOverride → entity_unit_overrides.json 元素。
 
     entity_name/base_unit_name/weight_unit_name 由调用方按 id 解析冗余注入。
+    weight_unit_override_name 是嵌套引用的**同一实体内另一个自定义单位名**——
+    导入时行 id 会重排，只能按名字回填 weight_unit_override_id（见 importer）。
     """
     return {
         "id": euo.id,
@@ -427,6 +430,8 @@ def serialize_entity_unit_override(
         "weight_per_unit": to_float(euo.weight_per_unit),
         "weight_unit_id": euo.weight_unit_id,
         "weight_unit_name": weight_unit_name,
+        "weight_unit_override_id": getattr(euo, "weight_unit_override_id", None),
+        "weight_unit_override_name": weight_unit_override_name,
         "is_default": bool(euo.is_default),
         "source": euo.source,
         "created_at": to_iso(euo.created_at),

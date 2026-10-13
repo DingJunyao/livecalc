@@ -115,11 +115,15 @@ class ProductMergeExecutor(ProposalExecutor):
             "target_name": tgt.name,
         }
 
-        # 迁移价格记录
+        # 迁移价格记录（product_name 是快照列，必须一并改成目标商品名，
+        # 否则合并后价格信息里仍显示源商品旧名）
         if record_ids:
             db.query(ProductRecord).filter(
                 ProductRecord.id.in_(record_ids)
-            ).update({ProductRecord.product_id: target_id}, synchronize_session=False)
+            ).update(
+                {ProductRecord.product_id: target_id, ProductRecord.product_name: tgt.name},
+                synchronize_session=False,
+            )
 
         # 软删源商品
         src.is_active = False
@@ -140,11 +144,14 @@ class ProductMergeExecutor(ProposalExecutor):
         record_ids = rp.get("record_ids") or snap.get("record_ids") or []
         source_id = rp.get("source_id") or snap.get("source_id")
 
-        # 还原价格记录到源商品
+        # 还原价格记录到源商品（product_name 快照列一并还原）
         if record_ids and source_id:
+            restore_values = {ProductRecord.product_id: source_id}
+            if snap.get("source_name"):
+                restore_values[ProductRecord.product_name] = snap["source_name"]
             db.query(ProductRecord).filter(
                 ProductRecord.id.in_(record_ids)
-            ).update({ProductRecord.product_id: source_id}, synchronize_session=False)
+            ).update(restore_values, synchronize_session=False)
 
         # 复活源商品
         if source_id:

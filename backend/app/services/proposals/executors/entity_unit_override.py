@@ -35,6 +35,7 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
             if biz_type is None or biz_id is None or unit_name is None:
                 raise LocalizedHTTPException(status_code=400, message='payload 缺少 entity_type/entity_id/unit_name')
             self._validate_weight_unit(db, p)
+            self._validate_weight_unit_override(db, p, biz_type, biz_id, None)
             dup = (
                 db.query(EntityUnitOverride)
                 .filter(
@@ -63,7 +64,18 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
         if obj is None:
             raise LocalizedHTTPException(status_code=404, message='实体单位覆盖 {eid} 不存在或已删除', eid=eid)
         if action == "update":
-            self._validate_weight_unit(db, proposal.payload or {})
+            p = proposal.payload or {}
+            self._validate_weight_unit(db, p)
+            # 与存量值合并后再校验互斥/成环（payload 里不带的字段沿用原值）
+            merged = {
+                "weight_unit_id": p.get("weight_unit_id", obj.weight_unit_id),
+                "weight_unit_override_id": p.get(
+                    "weight_unit_override_id", obj.weight_unit_override_id
+                ),
+            }
+            self._validate_weight_unit_override(
+                db, merged, obj.entity_type, obj.entity_id, obj.id
+            )
 
     @staticmethod
     def _validate_weight_unit(db: Session, payload: dict) -> None:
@@ -84,6 +96,69 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
                 message='每单位量单位 {name} 须为质量或体积单位',
                 name=unit.name,
             )
+
+    @staticmethod
+    def _validate_weight_unit_override(
+        db: Session, payload: dict, biz_type: str, biz_id: int, self_id: Optional[int]
+    ) -> None:
+        """weight_unit_override_id（若提供）须指向同一实体的另一个活跃自定义单位，且不能成环。
+
+        嵌套语义：1箱 = 12 盒，盒自身再定义 220 mL。
+        """
+        ref_id = payload.get("weight_unit_override_id")
+        if ref_id is None:
+            return
+        if payload.get("weight_unit_id") is not None:
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='weight_unit_id 与 weight_unit_override_id 只能设置其一',
+            )
+        if self_id is not None and int(ref_id) == int(self_id):
+            raise LocalizedHTTPException(status_code=400, message='自定义单位不能引用自身')
+        ref = (
+            db.query(EntityUnitOverride)
+            .filter(
+                EntityUnitOverride.id == ref_id,
+                EntityUnitOverride.is_active.is_(True),
+            )
+            .first()
+        )
+        if ref is None:
+            raise LocalizedHTTPException(
+                status_code=400, message='引用的自定义单位 {ref_id} 不存在', ref_id=ref_id
+            )
+        if ref.entity_type != biz_type or ref.entity_id != biz_id:
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='只能引用同一实体（{biz_type}/{biz_id}）的自定义单位',
+                biz_type=biz_type, biz_id=biz_id,
+            )
+        # 环检测：沿 weight_unit_override_id 链回溯，若回到 self_id（update 场景）则成环
+        seen = {int(ref_id)}
+        cursor = ref
+        depth = 0
+        while cursor is not None and depth < 32:
+            nxt = getattr(cursor, "weight_unit_override_id", None)
+            if nxt is None:
+                return
+            if self_id is not None and int(nxt) == int(self_id):
+                raise LocalizedHTTPException(
+                    status_code=400, message='自定义单位存在循环引用'
+                )
+            if int(nxt) in seen:
+                raise LocalizedHTTPException(
+                    status_code=400, message='自定义单位存在循环引用'
+                )
+            seen.add(int(nxt))
+            cursor = (
+                db.query(EntityUnitOverride)
+                .filter(
+                    EntityUnitOverride.id == nxt,
+                    EntityUnitOverride.is_active.is_(True),
+                )
+                .first()
+            )
+            depth += 1
 
     def apply(self, db: Session, proposal) -> "ApplyResult":
         """apply 后按业务实体重算价格记录，保证既有记录换算跟随最新覆盖。"""

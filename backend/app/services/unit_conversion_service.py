@@ -37,24 +37,25 @@ def _get_piece_weight_kg(
     if not entity_type or not entity_id:
         return default_kg
     try:
-        # 1. 优先查 entity_unit_overrides
+        # 1. 优先查 entity_unit_overrides（含嵌套自定义单位链）
         override = service.get_entity_override(entity_type, entity_id, count_unit_abbr)
-        if override is not None and override.weight_per_unit is not None and override.weight_unit_id is not None:
-            from app.services.lookup_cache import unit_by_id
-            weight_unit = unit_by_id(service.db, override.weight_unit_id)
+        if override is not None:
+            amount, weight_unit = service.resolve_override_amount(
+                override, entity_type, entity_id
+            )
             kg_unit = service.get_unit_by_abbr("kg")
-            if weight_unit is not None and kg_unit is not None:
+            if amount is not None and weight_unit is not None and kg_unit is not None:
                 wp_kg: Optional[Decimal] = None
                 if weight_unit.unit_type == "volume":
                     # 体积语义的每单位量（如 1瓶=500mL）：经实体密度折算为 kg
                     mass = service.convert_volume_to_mass(
-                        override.weight_per_unit, weight_unit, entity_type, entity_id
+                        amount, weight_unit, entity_type, entity_id
                     )
                     if mass is not None:
                         mass_value, mass_unit = mass
                         wp_kg = service.convert_si(mass_value, mass_unit, kg_unit)
                 elif weight_unit.si_factor is not None:
-                    wp_kg = service.convert_si(override.weight_per_unit, weight_unit, kg_unit)
+                    wp_kg = service.convert_si(amount, weight_unit, kg_unit)
                 if wp_kg is not None and wp_kg > 0:
                     return wp_kg
 
@@ -319,6 +320,82 @@ class UnitConversionService:
         return None
 
     # ------------------------------------------------------------------ #
+    #  自定义单位链解析（含嵌套）
+    # ------------------------------------------------------------------ #
+
+    MAX_OVERRIDE_CHAIN_DEPTH = 8
+
+    def resolve_override_amount(
+        self,
+        override: EntityUnitOverride,
+        entity_type: str,
+        entity_id: int,
+        _depth: int = 0,
+        _seen: Optional[set] = None,
+    ) -> Tuple[Optional[Decimal], Optional[Unit]]:
+        """把一条实体单位覆盖解析成 (单个自定义单位对应的数量, 全局单位)。
+
+        语义：1 个自定义单位 = conversion_factor(默认 1) × weight_per_unit × weight_unit。
+        weight_unit 取 weight_unit_override_id（同一实体的另一个自定义单位，递归解析）
+        或 weight_unit_id（全局质量/体积单位），都为空时按克处理。
+
+        - 嵌套时每层都乘该层的 conversion_factor 与 weight_per_unit（后者缺省按 1，
+          这样「换算系数 12 + 单位 盒」与「单个重量 12 + 单位 盒」等价）。
+        - 循环引用/超过 MAX_OVERRIDE_CHAIN_DEPTH/引用悬空 → 返回 (None, None)，
+          调用方按"无法换算"处理（不臆估）。
+        """
+        if override is None or _depth > self.MAX_OVERRIDE_CHAIN_DEPTH:
+            return (None, None)
+        if _seen is None:
+            _seen = set()
+        if override.id is not None and override.id in _seen:
+            return (None, None)
+        if override.id is not None:
+            _seen.add(override.id)
+
+        factor = override.conversion_factor or Decimal("1")
+        ref_id = getattr(override, "weight_unit_override_id", None)
+        if ref_id:
+            ref = (
+                self.db.query(EntityUnitOverride)
+                .filter(
+                    EntityUnitOverride.id == ref_id,
+                    EntityUnitOverride.entity_type == override.entity_type,
+                    EntityUnitOverride.entity_id == override.entity_id,
+                    EntityUnitOverride.is_active.is_(True),
+                )
+                .first()
+            )
+            if ref is not None and ref.id != override.id:
+                sub_amount, sub_unit = self.resolve_override_amount(
+                    ref, entity_type, entity_id, _depth + 1, _seen
+                )
+                if sub_amount is not None and sub_unit is not None:
+                    weight = (
+                        override.weight_per_unit
+                        if override.weight_per_unit is not None
+                        else Decimal("1")
+                    )
+                    return (factor * weight * sub_amount, sub_unit)
+            # 引用悬空/不可解析：若本行另有 weight_per_unit 则退化为全局单位路径
+            if override.weight_per_unit is None:
+                return (None, None)
+
+        if override.weight_per_unit is None:
+            return (None, None)
+
+        from app.services.lookup_cache import unit_by_id
+
+        weight_unit = (
+            unit_by_id(self.db, override.weight_unit_id)
+            if override.weight_unit_id
+            else self.get_unit_by_abbr("g")
+        )
+        if weight_unit is None:
+            return (None, None)
+        return (factor * override.weight_per_unit, weight_unit)
+
+    # ------------------------------------------------------------------ #
     #  统一换算入口
     # ------------------------------------------------------------------ #
 
@@ -355,33 +432,30 @@ class UnitConversionService:
             return (value, "si_factor")
 
         # 2. 实体覆盖单位换算
-        #    处理自定义包装单位（如"盒(12个)"）到全局单位（如"g"）的换算
+        #    处理自定义包装单位（如"盒(12个)"）到全局单位（如"g"）的换算；
+        #    含嵌套（weight_unit_override_id 指向同一实体的另一个自定义单位）
         if entity_type and entity_id:
             override = self.get_entity_override(
                 entity_type, entity_id, from_unit_abbr
             )
-            if override is not None and override.weight_per_unit is not None:
-                if override.weight_unit_id:
-                    from app.services.lookup_cache import unit_by_id
-                    weight_unit = unit_by_id(self.db, override.weight_unit_id)
-                else:
-                    # weight_unit_id 未设置时默认为 g
-                    weight_unit = self.get_unit_by_abbr("g")
-                # value 个自定义单位 -> value × conversion_factor 个基础单位
-                # -> value × conversion_factor × weight_per_unit（weight_unit 计）
-                base_count = value * (override.conversion_factor or Decimal("1"))
-                total_weight = base_count * override.weight_per_unit
-                if to_unit and weight_unit:
-                    if weight_unit.id == to_unit.id:
+            if override is not None:
+                unit_amount, weight_unit = self.resolve_override_amount(
+                    override, entity_type, entity_id
+                )
+                if unit_amount is not None and weight_unit is not None:
+                    # value 个自定义单位 -> value × (conversion_factor × weight_per_unit)（weight_unit 计）
+                    total_weight = value * unit_amount
+                    if to_unit:
+                        if weight_unit.id == to_unit.id:
+                            return (total_weight, "entity_override")
+                        # weight_unit -> to_unit（同类型 si_factor；跨类型经密度桥接）
+                        final = self._convert_override_weight(
+                            total_weight, weight_unit, to_unit, entity_type, entity_id
+                        )
+                        if final is not None:
+                            return (final, "entity_override")
+                    else:
                         return (total_weight, "entity_override")
-                    # weight_unit -> to_unit（同类型 si_factor；跨类型经密度桥接）
-                    final = self._convert_override_weight(
-                        total_weight, weight_unit, to_unit, entity_type, entity_id
-                    )
-                    if final is not None:
-                        return (final, "entity_override")
-                elif not to_unit:
-                    return (total_weight, "entity_override")
 
         # from_unit 或 to_unit 不在全局单位表中且无实体覆盖
         if not from_unit or not to_unit:
@@ -485,6 +559,7 @@ class UnitConversionService:
                 "conversion_factor": override.conversion_factor,
                 "weight_per_unit": override.weight_per_unit,
                 "weight_unit_id": override.weight_unit_id,
+                "weight_unit_override_id": override.weight_unit_override_id,
                 "is_default": override.is_default,
                 "source": entity_type,
             }
@@ -527,6 +602,7 @@ class UnitConversionService:
                             "conversion_factor": override.conversion_factor,
                             "weight_per_unit": override.weight_per_unit,
                             "weight_unit_id": override.weight_unit_id,
+                            "weight_unit_override_id": override.weight_unit_override_id,
                             "is_default": override.is_default,
                             "source": "ingredient",
                         }

@@ -338,12 +338,13 @@ def test_serialize_entity_unit_override():
         id=1, entity_type="ingredient", entity_id=5,
         unit_name="盒(12个)", base_unit_id=10,
         conversion_factor=Decimal("12"), weight_per_unit=Decimal("55"),
-        weight_unit_id=2, is_default=False, source="manual",
+        weight_unit_id=2, weight_unit_override_id=7, is_default=False, source="manual",
         created_at=datetime(2026, 6, 15, 10, 0, tzinfo=timezone.utc),
         updated_at=datetime(2026, 6, 15, 10, 0, tzinfo=timezone.utc),
     )
     out = serialize_entity_unit_override(
         euo, entity_name="鸡蛋", base_unit_name="个", weight_unit_name="g",
+        weight_unit_override_name="箱",
     )
     assert out["unit_name"] == "盒(12个)"
     assert out["conversion_factor"] == 12.0
@@ -351,8 +352,27 @@ def test_serialize_entity_unit_override():
     assert out["entity_name"] == "鸡蛋"
     assert out["base_unit_name"] == "个"
     assert out["weight_unit_name"] == "g"
+    # 嵌套引用：id 导出、名字冗余（导入会重排行 id，按名字回填）
+    assert out["weight_unit_override_id"] == 7
+    assert out["weight_unit_override_name"] == "箱"
     assert out["is_default"] is False
     assert out["source"] == "manual"
+
+
+def test_serialize_entity_unit_override_without_nesting_field():
+    """老对象/无该属性的调用方不应崩（getattr 兜底 None）。"""
+    euo = SimpleNamespace(
+        id=2, entity_type="product", entity_id=9,
+        unit_name="桶", base_unit_id=None,
+        conversion_factor=None, weight_per_unit=Decimal("5000"),
+        weight_unit_id=5, is_default=True, source="manual",
+        created_at=None, updated_at=None,
+    )
+    out = serialize_entity_unit_override(
+        euo, entity_name="食用油", base_unit_name=None, weight_unit_name="mL",
+    )
+    assert out["weight_unit_override_id"] is None
+    assert out["weight_unit_override_name"] is None
 
 
 def test_serialize_user_place():

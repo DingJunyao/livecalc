@@ -302,11 +302,17 @@ class ExportImporter(Importer):
         self.result.stats["entity_densities"] = imported
 
     def _import_entity_unit_overrides(self, collection):
-        """导入实体单位覆盖（按 entity_type+entity_id+unit_name+is_active 去重）。"""
+        """导入实体单位覆盖（按 entity_type+entity_id+unit_name+is_active 去重）。
+
+        嵌套引用（weight_unit_override_id → 同一实体的另一个自定义单位）在导出里
+        附带 weight_unit_override_name，因为导入会重排行 id；故分两遍：
+        1) 先插入所有行（不写引用），2) 再按 (entity_type, new_entity_id, 名字) 回填引用。
+        """
         data = self._load_json(collection, "entity_unit_overrides.json")
         if not data:
             return
         imported = 0
+        pending_refs = []  # [(new_override_obj, entity_type, new_entity_id, ref_name)]
         for item in data:
             entity_type = item.get("entity_type", "")
             old_entity_id = item.get("entity_id")
@@ -329,21 +335,36 @@ class ExportImporter(Importer):
                 EntityUnitOverride.unit_name == unit_name,
                 EntityUnitOverride.is_active.is_(True),
             ).first()
-            if existing:
-                continue
-            self.db.add(EntityUnitOverride(
-                entity_type=entity_type,
-                entity_id=new_entity_id,
-                unit_name=unit_name,
-                base_unit_id=self.mapping.units.get(item.get("base_unit_id")),
-                conversion_factor=item.get("conversion_factor"),
-                weight_per_unit=item.get("weight_per_unit"),
-                weight_unit_id=self.mapping.units.get(item.get("weight_unit_id")),
-                is_default=item.get("is_default", False),
-                source=item.get("source", "import"),
-                is_active=True,
-            ))
-            imported += 1
+            row = existing
+            if row is None:
+                row = EntityUnitOverride(
+                    entity_type=entity_type,
+                    entity_id=new_entity_id,
+                    unit_name=unit_name,
+                    base_unit_id=self.mapping.units.get(item.get("base_unit_id")),
+                    conversion_factor=item.get("conversion_factor"),
+                    weight_per_unit=item.get("weight_per_unit"),
+                    weight_unit_id=self.mapping.units.get(item.get("weight_unit_id")),
+                    is_default=item.get("is_default", False),
+                    source=item.get("source", "import"),
+                    is_active=True,
+                )
+                self.db.add(row)
+                imported += 1
+            ref_name = (item.get("weight_unit_override_name") or "").strip()
+            if ref_name:
+                pending_refs.append((row, entity_type, new_entity_id, ref_name))
+        self.db.flush()
+        for row, entity_type, new_entity_id, ref_name in pending_refs:
+            ref = self.db.query(EntityUnitOverride).filter(
+                EntityUnitOverride.entity_type == entity_type,
+                EntityUnitOverride.entity_id == new_entity_id,
+                EntityUnitOverride.unit_name == ref_name,
+                EntityUnitOverride.is_active.is_(True),
+                EntityUnitOverride.id != row.id,
+            ).first()
+            if ref is not None:
+                row.weight_unit_override_id = ref.id
         self.result.stats["entity_unit_overrides"] = imported
 
     def _import_nutritions(self, collection):

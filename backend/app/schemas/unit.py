@@ -53,11 +53,17 @@ class UnitResponse(UnitBase):
 # ============ 实体单位覆盖 Schemas ============
 
 class EntityUnitOverrideBase(BaseModel):
-    """实体单位覆盖基础模式"""
+    """实体单位覆盖基础模式
+
+    语义：1 个自定义单位 = conversion_factor(默认 1) × weight_per_unit × weight_unit。
+    weight_unit 取 weight_unit_id（全局质量/体积单位）或 weight_unit_override_id
+    （同一实体的另一个自定义单位，嵌套）之一；都为空时按克处理。
+    """
     unit_name: str
     conversion_factor: Optional[Decimal] = None
     weight_per_unit: Optional[Decimal] = None
     weight_unit_id: Optional[int] = None
+    weight_unit_override_id: Optional[int] = None
     is_default: bool | None = False
 
 
@@ -72,6 +78,7 @@ class EntityUnitOverrideUpdate(BaseModel):
     conversion_factor: Optional[Decimal] = None
     weight_per_unit: Optional[Decimal] = None
     weight_unit_id: Optional[int] = None
+    weight_unit_override_id: Optional[int] = None
     is_default: Optional[bool] = None
 
 
