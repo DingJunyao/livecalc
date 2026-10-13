@@ -152,7 +152,7 @@
           <v-form v-else @submit.prevent="saveBasicInfo">
             <v-text-field
               v-model="basicEditForm.name"
-              :label="t('products.productName')"
+              :label="t('products.nameRequired')"
               variant="outlined"
               density="compact"
               required
@@ -164,7 +164,7 @@
               :items="ingredients"
               :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              :label="t('products.linkedIngredient')"
+              :label="t('products.linkedIngredientRequired')"
               variant="outlined"
               density="compact"
               required
