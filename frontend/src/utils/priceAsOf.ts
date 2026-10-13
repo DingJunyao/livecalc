@@ -177,3 +177,25 @@ export function buildWeightedAsOfDailySeries(
   }
   return out
 }
+
+/**
+ * 图表价格记录的「回退全量」判断。
+ *
+ * 趋势图按 as-of 口径绘制（每商品最近一次价向前携带，全部超期时放开），
+ * 所以「所选区间内没有新记录」并不等于「没有价格可画」：只要拿到区间之前
+ * 最近一次记录作为携带起点，序列就能一直覆盖到区间末尾。
+ * 而按区间取数（start_date）恰好把这些起点记录挡在区间之外，
+ * 因此区间命中 0 条、且累积池还是空的时候，必须回退到「全量」请求，
+ * 否则「近一个月没有更新」的实体（商品/原料）图表会空白。
+ *
+ * @param windowStart 本次请求的区间起点；undefined/null 表示「全部」，无需回退
+ * @param windowHits 本次区间请求命中的记录条数
+ * @param loadedCount 累积池中已有的记录条数
+ */
+export function shouldLoadFullPriceHistory(params: {
+  windowStart?: Date | null
+  windowHits: number
+  loadedCount: number
+}): boolean {
+  return !!params.windowStart && params.windowHits === 0 && params.loadedCount === 0
+}
