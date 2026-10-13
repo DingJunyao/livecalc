@@ -23,12 +23,12 @@ def _get_or_create_unit(db, name: str, unit_type: str = "mass", si_factor: float
     return u
 
 
-def _build(db, p2_days_ago: int, p2_weight: int = 50):
+def _build(db, p2_days_ago: int, p2_weight: int = 50, p1_days_ago: float = 2, p3_days_ago: float = 0):
     """原料 + 3 商品：
 
-    P1：2 天前，同日两条 1.10 / 1.30 → 当日均价 1.20
+    P1：p1_days_ago 天前，同日两条 1.10 / 1.30 → 当日均价 1.20
     P2：p2_days_ago 天前，4.00（权重 p2_weight）
-    P3：今天（1 小时前），0.80
+    P3：p3_days_ago 天前，0.80
     """
     from app.models.nutrition import Ingredient
     from app.models.product_entity import Product
@@ -50,10 +50,10 @@ def _build(db, p2_days_ago: int, p2_weight: int = 50):
     jin = _get_or_create_unit(db, "斤", "mass", 0.5)
     now = datetime.utcnow()
     plan = [
-        (p1, 1.10, now - timedelta(days=2, hours=2)),
-        (p1, 1.30, now - timedelta(days=2, hours=1)),
+        (p1, 1.10, now - timedelta(days=p1_days_ago, hours=2)),
+        (p1, 1.30, now - timedelta(days=p1_days_ago, hours=1)),
         (p2, 4.00, now - timedelta(days=p2_days_ago)),
-        (p3, 0.80, now - timedelta(hours=1)),
+        (p3, 0.80, now - timedelta(days=p3_days_ago, hours=1)),
     ]
     for prod, price, recorded_at in plan:
         db.add(ProductRecord(
@@ -109,6 +109,7 @@ def test_latest_price_excludes_stale_product(as_admin):
         assert {p["name"] for p in data["participants"]} == {"综合价P1", "综合价P3"}
         stale = next(e for e in data["excluded"] if e["name"] == "综合价P2")
         assert stale["reason"] == "stale"
+        assert data["stale_relaxed"] is False
     finally:
         db = TestingSessionLocal()
         try:
@@ -164,6 +165,34 @@ def test_latest_price_excludes_zero_weight_product(as_admin):
             e["name"] == "综合价P2" and e["reason"] == "weight_zero"
             for e in data["excluded"]
         )
+        assert data["stale_relaxed"] is False
+    finally:
+        db = TestingSessionLocal()
+        try:
+            if ing_id and pids:
+                _cleanup(db, ing_id, pids)
+        finally:
+            db.close()
+
+
+def test_latest_price_relaxes_when_all_products_stale(as_admin):
+    """全部商品都超过 30 天 → 放开上限（宁可显示旧价格，也不能没有价格）。"""
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    ing_id = pids = None
+    try:
+        ing_id, pids = _build(db, p2_days_ago=90, p1_days_ago=60, p3_days_ago=70)
+    finally:
+        db.close()
+
+    try:
+        data = _get_latest_price(ing_id)
+        # 放开后三个商品都参与：(1.20 + 4.00 + 0.80) / 3 = 2.00
+        assert data["average_price"] == 2.0
+        assert data["stale_relaxed"] is True
+        assert {p["name"] for p in data["participants"]} == {"综合价P1", "综合价P2", "综合价P3"}
+        assert data["excluded"] == []
+        assert data["latest_date"] is not None
     finally:
         db = TestingSessionLocal()
         try:

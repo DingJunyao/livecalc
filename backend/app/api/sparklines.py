@@ -230,7 +230,8 @@ def _ingredients_sparklines_batched(
         否则久未记录的商品会在图上整段消失，综合价退化成单品价
       - 每日综合价 = 各商品当日有效价按权重（用户覆盖 > price_weight > 50）加权
     参与上限：商品最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS 天不再参与当日综合价
-    （与综合最新价的 excluded[reason="stale"] 同一规则，保证卡片与图表对得上）。
+    （与综合最新价的 excluded[reason="stale"] 同一规则，保证卡片与图表对得上）；
+    当日全部商品都超期时放开上限（宁可显示旧价格，也不能没有价格）。
     返回按本地日历日、从窗口起点到今天的一格一天序列。
     """
     from app.services.ingredient_price_service import INGREDIENT_PRICE_STALE_DAYS
@@ -278,7 +279,8 @@ def _ingredients_sparklines_batched(
         series: List[float] = []
         cur = max(first_day, window_start)
         while cur <= today:
-            num = den = 0.0
+            num = den = 0.0          # 30 天内（新鲜）
+            num_all = den_all = 0.0  # 全部（当日全部超期时的放开兜底）
             for pid, state in per_pid_steps.items():
                 ordered, idx, value, expires_on = state
                 while idx < len(ordered) and ordered[idx][0] <= cur:
@@ -288,10 +290,14 @@ def _ingredients_sparklines_batched(
                 w = pw.get(pid, 50)
                 if value is None or w <= 0:
                     continue
+                num_all += value * w
+                den_all += w
                 if cur > expires_on:
                     continue
                 num += value * w
                 den += w
+            if den <= 0:
+                num, den = num_all, den_all
             if den > 0:
                 series.append(round(num / den, 2))
             cur += timedelta(days=1)

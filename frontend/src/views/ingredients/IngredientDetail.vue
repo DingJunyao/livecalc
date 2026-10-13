@@ -251,6 +251,9 @@
           <div v-if="latestPriceDate" class="text-caption text-medium-emphasis mt-2">
             {{ formatToLocalDate(latestPriceDate) }}
           </div>
+          <div v-if="latestPriceRelaxed" class="text-caption text-medium-emphasis mt-1">
+            {{ t('ingredients.staleRelaxed') }}
+          </div>
           <!-- 加权来源明细（透明追溯） -->
           <v-expansion-panels v-if="latestPriceParticipants.length" variant="accordion" class="mt-2">
             <v-expansion-panel>
@@ -2125,6 +2128,8 @@ const latestPriceDate = ref<string | null>(null)
 const loadingLatestPrice = ref(false)
 const latestPriceParticipants = ref<any[]>([])
 const latestPriceExcluded = ref<any[]>([])
+// 全部商品都超期 30 天时后端放开上限（按最近一次已知价计算）
+const latestPriceRelaxed = ref(false)
 // 原料下各商品生效权重（覆盖>全局>50），供价格趋势加权 avg 用
 const productWeights = ref<Map<number, number>>(new Map())
 
@@ -3439,11 +3444,13 @@ const loadLatestPrice = async () => {
     latestPriceDate.value = response.latest_date
     latestPriceParticipants.value = response.participants || []
     latestPriceExcluded.value = response.excluded || []
+    latestPriceRelaxed.value = !!response.stale_relaxed
   } catch (e) {
     latestPrice.value = null
     latestPriceDate.value = null
     latestPriceParticipants.value = []
     latestPriceExcluded.value = []
+    latestPriceRelaxed.value = false
   } finally {
     loadingLatestPrice.value = false
   }

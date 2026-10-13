@@ -149,6 +149,8 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
   const participants: any[] = []
   const excluded: any[] = []
   const participatingPrices: number[] = []
+  // 先收集每个商品的候选（fresh = 30 天内有价），再决定参与集合
+  const candidates: any[] = []
   let latestRec: any = null
   let countUnitId: number | null = null
   let anyMass = false
@@ -176,10 +178,7 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
     }
     // 近 30 天没有价格的商品不参与综合价（与云端 excluded[reason=stale] 同规则）
     const latestTs = Date.parse(latest.recorded_at || '')
-    if (Number.isFinite(latestTs) && Date.now() - latestTs > PRICE_STALE_DAYS * 86400000) {
-      excluded.push({ product_id: p.id, name: p.name, reason: 'stale' })
-      continue
-    }
+    const isStale = Number.isFinite(latestTs) && Date.now() - latestTs > PRICE_STALE_DAYS * 86400000
 
     const normalized = dayRecords.map((r: any) =>
       normalizeRecordToJin(r, units, overrides, densities, 'ingredient', id))
@@ -201,17 +200,39 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
     }
 
     const unitPrice = prices.reduce((a: number, b: number) => a + b, 0) / prices.length
-    participants.push({
+    candidates.push({
+      isStale,
       product_id: p.id,
       name: p.name,
       weight: Number(weight),
       weight_source: override ? 'override' : 'global',
       unit_price: Math.round(unitPrice * 10000) / 10000,
+      unit_price_raw: unitPrice,
       record_count: dayRecords.length,
+      latest,
     })
-    participatingPrices.push(unitPrice)
-    if (!latestRec || (latest.recorded_at || '') > (latestRec.recorded_at || '')) {
-      latestRec = latest
+  }
+
+  // 30 天参与上限；全部商品都超期时放开（宁可显示旧价格，也不能没有价格）
+  const freshCandidates = candidates.filter((c: any) => !c.isStale)
+  const chosen = freshCandidates.length > 0 ? freshCandidates : candidates
+  for (const c of chosen) {
+    participants.push({
+      product_id: c.product_id,
+      name: c.name,
+      weight: c.weight,
+      weight_source: c.weight_source,
+      unit_price: c.unit_price,
+      record_count: c.record_count,
+    })
+    participatingPrices.push(c.unit_price_raw)
+    if (!latestRec || (c.latest.recorded_at || '') > (latestRec.recorded_at || '')) {
+      latestRec = c.latest
+    }
+  }
+  for (const c of candidates) {
+    if (!chosen.includes(c)) {
+      excluded.push({ product_id: c.product_id, name: c.name, reason: 'stale' })
     }
   }
 
@@ -236,6 +257,7 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
     participants,
     excluded,
     mode: participants.length === 1 ? 'single' : 'weighted',
+    stale_relaxed: freshCandidates.length === 0 && candidates.length > 0,
   }
 }
 
