@@ -63,3 +63,4 @@
 - **HTTPS**：容器仅 HTTP，TLS 由外层终结；容器内证书（Caddy/certbot）另开一期。
 - **既有后端 bug（与容器化无关）**：[main.py:302](../backend/app/main.py#L302) `register_all` 报 `name 'Session' is not defined`，提议审核框架未注册（try/except 兜住不崩），点火测试时暴露，需另行排查。
 - **构建网络注意**：Docker Hub 国内不稳，需给 Docker Desktop 配代理或 registry mirror；本地已有基础镜像后用 `DOCKER_BUILDKIT=0 docker build --pull=false` 避免联网核对 manifest（buildkit 与经典 builder 的 FROM 行为差异：buildkit 总联网 load metadata，经典 builder 按序构建所有 stage 直到目标）。
+- **依赖源重试已内置**：Dockerfile 里 `npm ci` 带 `--fetch-retries=5`（20s~120s 退避、单次 600s 超时）、`pip install` 带 `--retries 5 --timeout 60`。起因是 2026-10-13 v0.5.1 的镜像发布：`build (aio)`/`build (local)`/`build (frontend)` 三个 job 全在 `frontend-builder 4/7 RUN npm ci` 处 `npm error code ECONNRESET（errno -104）` exit 152 失败（后端 job 正常，说明与代码无关，纯瞬时网络）。这里刻意不用 `RUN --mount=type=cache`（npm 缓存挂载）：那要求 BuildKit，会破坏上面记录的经典 builder 用法。
