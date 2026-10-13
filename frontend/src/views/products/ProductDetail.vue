@@ -411,9 +411,8 @@
                     </v-chip>
                   </template>
                   <v-list-item-title class="text-body-2">
-                    <span v-if="unit.conversion_factor">1{{ unit.unit_name }} = {{ formatNumber(unit.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 }) }}</span>
-                    <span v-if="unit.weight_per_unit" class="ms-2">
-                      <v-icon size="x-small">{{ isVolumeOverride(unit) ? 'mdi-cup-water' : 'mdi-weight' }}</v-icon>
+                    <span v-if="overrideWeightDisplay(unit)">
+                      <v-icon size="x-small">{{ hasVolumeLeaf(unit) ? 'mdi-cup-water' : 'mdi-weight' }}</v-icon>
                       {{ overrideWeightDisplay(unit) }}
                     </span>
                     <v-chip v-if="(unit as any)._pending" size="x-small" color="info" variant="tonal" class="ms-1">{{ t('products.pending') }}</v-chip>
@@ -884,7 +883,13 @@
           <v-card-title class="d-flex align-center pa-4">
             <span class="text-h6">{{ unitForm.id ? t('products.editUnit') : t('products.addUnitTitle') }}</span>
             <v-spacer />
-            <v-btn color="primary" variant="text" :loading="savingUnit" @click="saveEntityUnit">{{ t('products.save') }}</v-btn>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              size="small"
+              :aria-label="t('common.close')"
+              @click="showUnitDialog = false"
+            />
           </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveEntityUnit">
@@ -910,7 +915,7 @@
                 <v-btn value="volume">{{ t('products.weightKindVolume') }}</v-btn>
               </v-btn-toggle>
               <v-text-field
-                v-model.number="unitForm.conversion_factor"
+                v-model="unitForm.conversion_factor"
                 :label="t('products.conversionFactor')"
                 variant="outlined"
                 type="number"
@@ -919,11 +924,21 @@
                 class="mb-3"
               />
               <v-text-field
-                v-model.number="unitForm.weight_per_unit"
+                v-model="unitForm.weight_per_unit"
                 :label="unitForm.weight_kind === 'volume' ? t('products.volumePerUnit') : t('products.weightPerUnit')"
                 variant="outlined"
                 type="number"
                 :hint="unitForm.weight_kind === 'volume' ? t('products.volumeHint') : t('products.weightHint')"
+                persistent-hint
+                class="mb-3"
+              />
+              <v-select
+                v-model="unitForm.weight_unit"
+                :items="unitWeightUnitOptions"
+                :label="t('products.unitWeightUnitLabel')"
+                variant="outlined"
+                clearable
+                :hint="t('products.unitWeightUnitHint')"
                 persistent-hint
                 class="mb-3"
               />
@@ -944,7 +959,7 @@
               />
             </v-form>
           </v-card-text>
-          <v-card-actions class="d-none d-md-flex">
+          <v-card-actions class="pa-4 pt-0">
             <v-spacer />
             <v-btn @click="showUnitDialog = false">{{ t('products.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingUnit" @click="saveEntityUnit">{{ t('products.save') }}</v-btn>
@@ -958,7 +973,13 @@
           <v-card-title class="d-flex align-center pa-4">
             <span class="text-h6">{{ densityForm.id ? t('products.editDensity') : t('products.setDensityTitle') }}</span>
             <v-spacer />
-            <v-btn color="primary" variant="text" :loading="savingDensity" @click="saveDensity">{{ t('products.save') }}</v-btn>
+            <v-btn
+              icon="mdi-close"
+              variant="text"
+              size="small"
+              :aria-label="t('common.close')"
+              @click="showDensityDialog = false"
+            />
           </v-card-title>
           <v-card-text>
             <v-form @submit.prevent="saveDensity">
@@ -1014,7 +1035,7 @@
               </div>
             </v-form>
           </v-card-text>
-          <v-card-actions class="d-none d-md-flex">
+          <v-card-actions class="pa-4 pt-0">
             <v-spacer />
             <v-btn @click="showDensityDialog = false">{{ t('products.cancel') }}</v-btn>
             <v-btn color="primary" :loading="savingDensity" @click="saveDensity">{{ t('products.save') }}</v-btn>
@@ -1063,7 +1084,13 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ editingPriceRecord ? t('products.editPriceRecord') : t('products.addPriceRecord') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingPrice" @click="savePriceRecord">{{ t('products.save') }}</v-btn>
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            size="small"
+            :aria-label="t('common.close')"
+            @click="showAddPriceDialog = false"
+          />
         </v-card-title>
         <v-card-text>
           <v-form @submit.prevent="savePriceRecord">
@@ -1131,7 +1158,7 @@
             </v-row>
           </v-form>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions class="pa-4 pt-0">
           <v-spacer />
           <v-btn @click="showAddPriceDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingPrice" @click="savePriceRecord">{{ t('products.save') }}</v-btn>
@@ -1160,8 +1187,13 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('products.specifyNewIngredientName') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="splitting" @click="confirmSplitWithNewName">{{ t('products.confirm') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="showSplitRenameDialog = false" />
+          <v-btn
+            icon="mdi-close"
+            variant="text"
+            size="small"
+            :aria-label="t('common.close')"
+            @click="showSplitRenameDialog = false"
+          />
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 mb-3">{{ splitRenameMessage }}</p>
@@ -1173,7 +1205,7 @@
             @keyup.enter="confirmSplitWithNewName"
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions class="pa-4 pt-0">
           <v-spacer />
           <v-btn @click="showSplitRenameDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn color="primary" :loading="splitting" @click="confirmSplitWithNewName">{{ t('products.confirm') }}</v-btn>
@@ -1189,14 +1221,12 @@
           <span class="text-h6">{{ t('products.mergeIntoProduct') }}</span>
           <v-spacer />
           <v-btn
-            color="warning"
+            icon="mdi-close"
             variant="text"
-            :disabled="!selectedMergeTarget"
-            :loading="merging"
-            @click="doMerge"
-          >
-            {{ t('products.confirmMerge') }}
-          </v-btn>
+            size="small"
+            :aria-label="t('common.close')"
+            @click="showMergeDialog = false"
+          />
         </v-card-title>
         <v-card-text>
           <p class="text-body-2 mb-3">
@@ -1244,7 +1274,7 @@
           </ul>
           <p class="text-body-2 mt-2 text-error">{{ t('products.irreversible') }}</p>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions class="pa-4 pt-0">
           <v-spacer />
           <v-btn @click="showMergeDialog = false">{{ t('products.cancel') }}</v-btn>
           <v-btn
@@ -1407,6 +1437,7 @@ const pendingUnitItems = computed(() => {
         conversion_factor: pl.conversion_factor != null ? Number(pl.conversion_factor) : null,
         weight_per_unit: pl.weight_per_unit != null ? Number(pl.weight_per_unit) : null,
         weight_unit_id: pl.weight_unit_id ?? null,
+        weight_unit_override_id: pl.weight_unit_override_id ?? null,
         is_default: pl.is_default ?? false,
         source: pl.source ?? null,
         _pending: true,
@@ -1864,13 +1895,19 @@ const unitForm = ref<{
   weight_per_unit: number | null
   is_default: boolean
   weight_kind: 'mass' | 'volume'
+  weight_unit: string
+  weight_unit_id: number | null
+  weight_unit_override_id: number | null
 }>({
   id: null,
   unit_name: '',
   conversion_factor: null,
   weight_per_unit: null,
   is_default: false,
-  weight_kind: 'mass'
+  weight_kind: 'mass',
+  weight_unit: '',
+  weight_unit_id: null,
+  weight_unit_override_id: null
 })
 const densityForm = ref<{
   id: number | null
@@ -1959,11 +1996,13 @@ const effectiveDensityKgM3 = computed(() => {
 })
 const weightUnitTypeById = ref<Map<number, string>>(new Map())
 const weightUnitIds = ref<{ mass: number | null; volume: number | null }>({ mass: null, volume: null })
-const ensureWeightUnits = async () => {
-  if (weightUnitIds.value.mass && weightUnitIds.value.volume) return
+const globalWeightUnits = ref<UnitInfo[]>([])
+const loadGlobalUnits = async () => {
+  if (globalWeightUnits.value.length > 0) return
   try {
     const res = await api.get('/units/', { params: { limit: 100 } })
     const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
+    globalWeightUnits.value = arr
     const map = new Map<number, string>()
     arr.forEach((x: any) => map.set(x.id, x.unit_type))
     weightUnitTypeById.value = map
@@ -1974,32 +2013,138 @@ const ensureWeightUnits = async () => {
     console.error('Failed to load units for weight kind', e)
   }
 }
-const isVolumeOverride = (u: EntityUnitOverride) =>
-  u.weight_unit_id != null && weightUnitTypeById.value.get(u.weight_unit_id) === 'volume'
+const ensureWeightUnits = loadGlobalUnits
+
+// ---------- 嵌套自定义单位（1箱 = 12 盒，盒 = 220 mL）----------
+const MAX_WEIGHT_UNIT_DEPTH = 8
+
+// 跟随 weight_unit_override_id 链解析「叶子单位」；visited 防环，depth 兜底
+const resolveWeightChain = (startId: number | null | undefined, chain: string[] = [], depth = 0): { leafId: number | null; leafName: string | null; leafType: string | null } | null => {
+  if (depth > MAX_WEIGHT_UNIT_DEPTH) return null
+  const id = startId ?? null
+  if (id == null) return { leafId: null, leafName: null, leafType: 'mass' }
+  const row = mergedEntityUnits.value.find(u => u.id === id)
+  if (!row) return null
+  if (chain.includes(row.unit_name)) return null
+  if (row.weight_unit_override_id != null) {
+    return resolveWeightChain(row.weight_unit_override_id, [...chain, row.unit_name], depth + 1)
+  }
+  if (row.weight_unit_id != null) {
+    return {
+      leafId: row.weight_unit_id,
+      leafName: row.unit_name,
+      leafType: weightUnitTypeById.value.get(row.weight_unit_id) ?? 'mass',
+    }
+  }
+  return { leafId: null, leafName: row.unit_name, leafType: 'mass' }
+}
+const hasWeightLeaf = (u: EntityUnitOverride) =>
+  u.weight_per_unit != null || u.weight_unit_override_id != null
+const hasVolumeLeaf = (u: EntityUnitOverride) =>
+  hasWeightLeaf(u) && resolveWeightChain(u.id)?.leafType === 'volume'
 
 const overrideWeightDisplay = (u: EntityUnitOverride): string => {
-  if (u.weight_per_unit == null) return ''
-  const amount = formatQuantity(u.weight_per_unit, localeStore.effectiveFormatLocale)
-  if (!isVolumeOverride(u)) return `${amount}g`
-  const d = effectiveDensityKgM3.value ?? 1000
-  const grams = Number(u.weight_per_unit) * d / 1000
-  return t('products.unitVolumeDisplay', {
-    volume: amount,
-    grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
-  })
+  if (!hasWeightLeaf(u)) return ''
+  const amount = u.weight_per_unit != null
+    ? formatQuantity(u.weight_per_unit, localeStore.effectiveFormatLocale)
+    : ''
+  const chain = resolveWeightChain(u.id)
+  const head = `1${u.unit_name} = `
+  if (u.weight_unit_override_id != null) {
+    const refUnit = mergedEntityUnits.value.find(x => x.id === u.weight_unit_override_id)
+    const refName = refUnit?.unit_name ?? ''
+    let text = u.conversion_factor
+      ? `${head}${formatNumber(u.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })} ${refName}`
+      : `${head}${amount}${chain?.leafType === 'volume' ? ' mL' : ' g'}`
+    const refLeaf = refUnit ? resolveWeightChain(refUnit.id) : null
+    if (chain?.leafType === 'volume' && refLeaf?.leafType !== 'volume' && amount) {
+      text += t('products.unitVolumeOnlyDisplay', { volume: amount })
+    }
+    return text
+  }
+  if (chain?.leafType === 'volume') {
+    const d = effectiveDensityKgM3.value ?? 1000
+    const grams = Number(u.weight_per_unit) * d / 1000
+    return `${head}${t('products.unitVolumeDisplay', {
+      volume: amount,
+      grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+    })}`
+  }
+  return `${head}${amount} g`
 }
 
 // 单位对话框：体积语义下的密度折算提示
 const volumePreviewText = computed(() => {
   if (unitForm.value.weight_kind !== 'volume') return ''
   const wpu = unitForm.value.weight_per_unit
-  if (!wpu || wpu <= 0) return t('products.volumeDensityHintEmpty')
+  if (!wpu || Number(wpu) <= 0) return t('products.volumeDensityHintEmpty')
   const d = effectiveDensityKgM3.value ?? 1000
-  const grams = wpu * d / 1000
+  const grams = Number(wpu) * d / 1000
   return t('products.volumeDensityHint', {
     density: formatNumber(d / 1000, localeStore.effectiveFormatLocale, { maximumFractionDigits: 3 }),
     grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
   })
+})
+
+// 单位选择：'u:<unit_id>' 全局单位 / 'o:<override_id>' 同实体自定义单位 / '' 默认 g
+const unitSelectLabel = (unit: UnitInfo) => {
+  const name = unit.name || unit.abbreviation || ''
+  if (unit.abbreviation && unit.abbreviation !== name) return `${name} (${unit.abbreviation})`
+  return name
+}
+const unitChainReaches = (candidateId: number, targetId: number | null): boolean => {
+  if (targetId == null) return false
+  let cursor: number | null = candidateId
+  const visited = new Set<number>()
+  for (let depth = 0; depth <= MAX_WEIGHT_UNIT_DEPTH; depth += 1) {
+    if (cursor == null || visited.has(cursor)) return false
+    if (cursor === targetId) return true
+    visited.add(cursor)
+    const row = mergedEntityUnits.value.find(u => u.id === cursor)
+    if (!row || row.weight_unit_override_id == null) return false
+    cursor = row.weight_unit_override_id
+  }
+  return false
+}
+const unitWeightUnitOptions = computed(() => {
+  const globals = globalWeightUnits.value.filter(u => u.unit_type === 'mass' || u.unit_type === 'volume')
+  const options: { title: string; value: string }[] = globals.map(u => ({
+    title: unitSelectLabel(u),
+    value: `u:${u.id}`,
+  }))
+  const currentId = unitForm.value.id
+  const custom = mergedEntityUnits.value.filter(u =>
+    !(u as any)._pending &&
+    u.id !== currentId &&
+    !unitChainReaches(u.id, currentId),
+  )
+  for (const u of custom) {
+    options.push({ title: `${u.unit_name}${t('products.unitCustomUnitSuffix')}`, value: `o:${u.id}` })
+  }
+  if (currentId != null) {
+    const wuId = unitForm.value.weight_unit_id
+    if (wuId != null && !options.some(o => o.value === `u:${wuId}`)) {
+      options.push({ title: `#${wuId}`, value: `u:${wuId}` })
+    }
+    const ovId = unitForm.value.weight_unit_override_id
+    if (ovId != null && !options.some(o => o.value === `o:${ovId}`)) {
+      const row = mergedEntityUnits.value.find(u => u.id === ovId)
+      options.push({ title: `${row?.unit_name ?? `#${ovId}`}${t('products.unitCustomUnitSuffix')}`, value: `o:${ovId}` })
+    }
+  }
+  return options
+})
+const applyWeightUnitSelection = (value: unknown) => {
+  const raw = value == null ? '' : String(value)
+  unitForm.value.weight_unit_id = raw.startsWith('u:') ? Number(raw.slice(2)) : null
+  unitForm.value.weight_unit_override_id = raw.startsWith('o:') ? Number(raw.slice(2)) : null
+  unitForm.value.weight_kind = raw.startsWith('u:') && weightUnitTypeById.value.get(Number(raw.slice(2))) === 'volume'
+    ? 'volume'
+    : 'mass'
+}
+
+watch(() => unitForm.value.weight_unit, (value) => {
+  applyWeightUnitSelection(value)
 })
 
 // 常见液体密度预设（g/cm³），点击填入当前输入单位
@@ -2017,8 +2162,20 @@ const applyDensityPreset = (value: number) => {
 // 打开单位对话框（支持传入 EntityUnitOverride 或 unit_name 字符串）
 const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
   await ensureWeightUnits()
+  const descendsFromSelf = (rowId: number) => {
+    if (typeof unit === 'string' || !unit) return false
+    return unitChainReaches(unit.id, rowId)
+  }
+  const kindOfCustomRef = (refId: number): 'mass' | 'volume' => {
+    if (descendsFromSelf(refId)) return 'mass'
+    return resolveWeightChain(refId)?.leafType === 'volume' ? 'volume' : 'mass'
+  }
   let kind: 'mass' | 'volume' = 'mass'
-  if (typeof unit !== 'string' && unit?.weight_unit_id != null) {
+  if (typeof unit !== 'string' && unit?.weight_unit_override_id != null) {
+    const refId = unit.weight_unit_override_id
+    const row = mergedEntityUnits.value.find(u => u.id === refId)
+    kind = row ? kindOfCustomRef(row.id) : 'mass'
+  } else if (typeof unit !== 'string' && unit?.weight_unit_id != null) {
     kind = weightUnitTypeById.value.get(unit.weight_unit_id) === 'volume' ? 'volume' : 'mass'
   }
   if (typeof unit === 'string') {
@@ -2028,16 +2185,29 @@ const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
       conversion_factor: null,
       weight_per_unit: 100,
       is_default: false,
-      weight_kind: kind
+      weight_kind: kind,
+      weight_unit: weightUnitIds.value.mass != null ? `u:${weightUnitIds.value.mass}` : '',
+      weight_unit_id: weightUnitIds.value.mass,
+      weight_unit_override_id: null,
     }
   } else if (unit) {
+    const overrideRef = unit.weight_unit_override_id ?? null
+    const globalRef = overrideRef == null ? (unit.weight_unit_id ?? null) : null
+    const overrideRow = overrideRef != null ? mergedEntityUnits.value.find(u => u.id === overrideRef) : null
     unitForm.value = {
       id: unit.id,
       unit_name: unit.unit_name,
       conversion_factor: unit.conversion_factor,
       weight_per_unit: unit.weight_per_unit,
       is_default: unit.is_default,
-      weight_kind: kind
+      weight_kind: kind,
+      weight_unit: overrideRef != null ? `o:${overrideRef}` : (globalRef != null ? `u:${globalRef}` : ''),
+      weight_unit_id: globalRef,
+      weight_unit_override_id: overrideRef,
+    }
+    if (overrideRef != null) {
+      // 自定义单位做重量单位时，量类型跟随叶子单位
+      unitForm.value.weight_kind = overrideRow ? kindOfCustomRef(overrideRow.id) : 'mass'
     }
   } else {
     unitForm.value = {
@@ -2046,7 +2216,10 @@ const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
       conversion_factor: null,
       weight_per_unit: null,
       is_default: false,
-      weight_kind: 'mass'
+      weight_kind: 'mass',
+      weight_unit: weightUnitIds.value.mass != null ? `u:${weightUnitIds.value.mass}` : '',
+      weight_unit_id: weightUnitIds.value.mass,
+      weight_unit_override_id: null,
     }
   }
   showUnitDialog.value = true
@@ -2073,24 +2246,27 @@ const saveEntityUnit = async () => {
     showMessage(t('products.unitNameRequired'), 'error')
     return
   }
-  // 每单位量类型：质量(g) / 体积(mL)，体积折算质量时经实体密度
-  let weight_unit_id: number | null = null
-  if (unitForm.value.weight_kind === 'volume') {
-    if (!weightUnitIds.value.volume) {
-      showMessage(t('products.weightUnitIdsMissing'), 'error')
-      return
-    }
-    weight_unit_id = weightUnitIds.value.volume
-  } else {
-    weight_unit_id = weightUnitIds.value.mass
+  // 重量单位：'u:<id>' 全局质量/体积单位，'o:<id>' 同实体自定义单位（重量单位类型由单位选择决定）
+  // 换算系数可选：留空/0 一律发 null（后端按 1 处理）
+  const cfRaw = Number(unitForm.value.conversion_factor)
+  const conversionFactor = unitForm.value.conversion_factor != null && String(unitForm.value.conversion_factor).trim() !== '' && isFinite(cfRaw) && cfRaw > 0
+    ? cfRaw
+    : null
+  // 重量单位：全局单位 (weight_unit_id) 与同实体自定义单位 (weight_unit_override_id) 互斥
+  const weightUnitOverrideId = unitForm.value.weight_unit_override_id
+  const weightUnitId = weightUnitOverrideId != null ? null : unitForm.value.weight_unit_id
+  if (weightUnitOverrideId != null && weightUnitOverrideId === unitForm.value.id) {
+    showMessage(t('products.unitWeightUnitSelf'), 'error')
+    return
   }
   savingUnit.value = true
   try {
     const payload = {
       unit_name: unitForm.value.unit_name,
-      conversion_factor: unitForm.value.conversion_factor,
+      conversion_factor: conversionFactor,
       weight_per_unit: unitForm.value.weight_per_unit,
-      weight_unit_id,
+      weight_unit_id: weightUnitId,
+      weight_unit_override_id: weightUnitOverrideId,
       is_default: unitForm.value.is_default
     }
     if (unitForm.value.id) {

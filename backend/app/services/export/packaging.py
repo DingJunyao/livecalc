@@ -351,6 +351,8 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
         if o.weight_unit_id:
             unit_override_unit_ids.add(o.weight_unit_id)
     unit_override_unit_names = _unit_name_map(db, unit_override_unit_ids or None)
+    # 嵌套引用（同一实体的另一个自定义单位）按名字冗余导出，导入时 id 会重排
+    override_id_to_name = {o.id: o.unit_name for o in unit_overrides}
 
     unit_overrides_payload = _safe_build(
         "entity_unit_overrides",
@@ -361,6 +363,7 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
                 else prod_id_to_name.get(o.entity_id),
                 base_unit_name=unit_override_unit_names.get(o.base_unit_id),
                 weight_unit_name=unit_override_unit_names.get(o.weight_unit_id),
+                weight_unit_override_name=override_id_to_name.get(o.weight_unit_override_id),
             )
             for o in unit_overrides
         ],

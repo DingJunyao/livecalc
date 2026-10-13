@@ -1,6 +1,6 @@
 // Units handler — CRUD for units and unit conversions.
 
-import { getAll, getById, addOne, putOne, getByIndex } from '../database'
+import { getAll, getById, addOne, putOne, getByIndex, deleteOne } from '../database'
 import { localError } from '../../../utils/localErrors'
 
 export async function listUnits(_params: Record<string, string>, query?: any): Promise<any> {
@@ -75,7 +75,8 @@ export async function listUnitConversions(params: Record<string, string>): Promi
 export async function listEntityUnits(params: Record<string, string>): Promise<any> {
   const { entityType, entityId } = params
   const all = await getByIndex('entity_unit_overrides', 'by_entity', [entityType, parseInt(entityId)])
-  return all
+  // 与云端一致：只返回启用中的覆盖（软删 is_active=false 的不返回）
+  return all.filter((o: any) => o?.is_active !== false)
 }
 
 export async function createEntityUnit(_params: Record<string, string>, data?: any): Promise<any> {
@@ -106,8 +107,8 @@ export async function getEntityUnmappedUnits(params: Record<string, string>): Pr
 // ---- Entity Densities ----
 export async function getEntityDensity(params: Record<string, string>): Promise<any> {
   const { entityType, entityId } = params
-  const all = await getByIndex('entity_densities', 'by_entity', [entityType, parseInt(entityId)])
-  return all.length > 0 ? all[0] : null
+  // 与云端契约对齐：返回列表（消费方 ProductDetail / IngredientDetail 期望数组）
+  return await getByIndex('entity_densities', 'by_entity', [entityType, parseInt(entityId)])
 }
 
 export async function createEntityDensity(_params: Record<string, string>, data?: any): Promise<any> {

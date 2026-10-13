@@ -10,6 +10,7 @@ export interface UnitInfo {
 }
 
 export interface EntityOverride {
+  id?: number
   entity_type: string
   entity_id: number
   unit_name?: string | null
@@ -18,6 +19,11 @@ export interface EntityOverride {
   weight_per_unit: number | null
   weight_unit_id: number | null
   weight_unit_name?: string | null
+  /** 指向同一实体的另一条自定义单位覆盖（嵌套；解析为全局质量/体积单位） */
+  weight_unit_override_id?: number | null
+  /** 嵌套引用的单位名（云端导出冗余字段；id 会重排，名字优先解析） */
+  weight_unit_override_name?: string | null
+  is_active?: boolean | number | null
 }
 
 export interface DensityInfo {
@@ -111,28 +117,31 @@ export function convert(input: ConvertInput): ConvertResult {
   // 计数单位回退：查实体单位覆盖中的 weight_per_unit
   if (fromUnit.unit_type === 'count') {
     const override = findOverride(entity_type, entity_id, overrides, fromUnit.name)
-    if (override?.weight_per_unit != null) {
-      // Resolve the weight unit: prefer name match over ID, because cloud-exported
-      // override records carry cloud DB unit IDs that may not align with local seed IDs
-      // (e.g. cloud 克=3 but local 斤=3). weight_unit_name is always authoritative.
-      const weightUnit = resolveWeightUnit(override, units)
-      if (weightUnit && toUnit.si_factor != null && weightUnit.si_factor != null) {
-        // 体积语义覆盖（如 1瓶=500mL）且目标为体积：直接 si 换算，无需密度
-        if (weightUnit.unit_type === 'volume' && isVolumeType(toUnit.unit_type)) {
-          return { value: value * override.weight_per_unit * weightUnit.si_factor / toUnit.si_factor, to_unit_id }
-        }
-        const gramsPerUnit = resolveOverrideGramsPerUnit(override, units, densities, entity_type, entity_id)
-        if (gramsPerUnit != null && gramsPerUnit > 0) {
-          if (isMassType(toUnit.unit_type)) {
-            // count → mass: value × 每单位克数 → kg → 目标单位
-            return { value: value * gramsPerUnit / 1000 / toUnit.si_factor, to_unit_id }
+    // weight_unit_override_id 为嵌套引用时，本行可以只给 weight_per_unit 的系数
+    if (override && (override.weight_per_unit != null || override.weight_unit_override_id != null)) {
+      const resolved = resolveOverrideAmount(override, units, overrides)
+      if (resolved) {
+        const weightUnit = resolved.unit
+        if (weightUnit.si_factor != null && toUnit.si_factor != null) {
+          // 体积语义覆盖（如 1瓶=500mL）且目标为体积：直接 si 换算，无需密度
+          if (weightUnit.unit_type === 'volume' && isVolumeType(toUnit.unit_type)) {
+            return { value: value * resolved.amount * weightUnit.si_factor / toUnit.si_factor!, to_unit_id }
           }
-          if (isVolumeType(toUnit.unit_type)) {
-            // count → volume: 质量 via 覆盖，再经密度桥接
-            const density = findDensity(override.weight_unit_id, to_unit_id, entity_type, entity_id, units, overrides, densities)
-            if (density != null) {
-              const liters = value * gramsPerUnit / 1000 / density
-              return { value: liters / toUnit.si_factor, to_unit_id }
+          const gramsPerUnit = resolveOverrideGramsPerUnit(
+            override, units, densities, entity_type, entity_id, overrides,
+          )
+          if (gramsPerUnit != null && gramsPerUnit > 0) {
+            if (isMassType(toUnit.unit_type)) {
+              // count → mass: value × 每单位克数 → kg → 目标单位
+              return { value: value * gramsPerUnit / 1000 / toUnit.si_factor, to_unit_id }
+            }
+            if (isVolumeType(toUnit.unit_type)) {
+              // count → volume: 质量 via 覆盖，再经密度桥接
+              const density = findDensity(weightUnit.id, to_unit_id, entity_type, entity_id, units, overrides, densities)
+              if (density != null) {
+                const liters = value * gramsPerUnit / 1000 / density
+                return { value: liters / toUnit.si_factor, to_unit_id }
+              }
             }
           }
         }
@@ -167,13 +176,124 @@ function findEntityDensityKgM3(
   return null
 }
 
+/** 自定义单位链解析结果：1 个自定义单位 = amount × unit（全局质量/体积单位）。 */
+export interface OverrideAmount {
+  amount: number
+  unit: UnitInfo
+}
+
+/** 嵌套自定义单位链最大深度（与后端 MAX_OVERRIDE_CHAIN_DEPTH 一致）。 */
+export const MAX_OVERRIDE_CHAIN_DEPTH = 8
+
+/**
+ * 把一条实体单位覆盖解析为「1 个自定义单位对应多少 weight_unit」。
+ *
+ * 语义（与后端 UnitConversionService.resolve_override_amount 对齐）：
+ *   1 个自定义单位 = conversion_factor(默认 1) × weight_per_unit × weight_unit
+ * - weight_unit_override_id 指向同一实体的另一条自定义单位覆盖 → 递归解析，
+ *   每层都乘该层的 conversion_factor ?? 1 与 weight_per_unit ?? 1；
+ *   引用优先按 weight_unit_override_name 解析，再按 id；
+ * - weight_unit_id 指向全局质量/体积单位 → 链的终点；
+ * - 两者都为空 → 与后端一致按「克」兜底（record 里存在 weight_per_unit 有值
+ *   但 weight_unit_id 为空的历史行，云端按 g 解释，本地必须同口径）。
+ * - 循环引用/超过深度上限/引用悬空且本行无 weight_per_unit → null（不臆估）。
+ *
+ * 为兼容存量数据：未使用 weight_unit_override_id 的覆盖保持旧口径
+ * （只乘 weight_per_unit，不乘 conversion_factor）。
+ */
+export function resolveOverrideAmount(
+  override: EntityOverride | null | undefined,
+  units: UnitInfo[],
+  overrides?: EntityOverride[],
+  _depth: number = 0,
+  _seen: Set<number> = new Set(),
+): OverrideAmount | null {
+  if (!override || _depth > MAX_OVERRIDE_CHAIN_DEPTH) return null
+  if (override.id != null) {
+    if (_seen.has(override.id)) return null
+    _seen.add(override.id)
+  }
+
+  const nestedId = override.weight_unit_override_id
+  const nestedName = override.weight_unit_override_name
+  const hasNested = (nestedId != null && nestedId !== ('' as any)) || !!nestedName
+  const factor = override.conversion_factor ?? 1
+
+  if (hasNested) {
+    const ref = findNestedOverride(override, overrides)
+    // 自引用也视作环
+    if (ref && ref.id !== override.id) {
+      const sub = resolveOverrideAmount(ref, units, overrides, _depth + 1, _seen)
+      if (sub) {
+        const weightPerUnit = override.weight_per_unit ?? 1
+        const amount = factor * weightPerUnit * sub.amount
+        if (!Number.isFinite(amount) || amount <= 0) return null
+        return { amount, unit: sub.unit }
+      }
+    }
+    // 引用悬空/不可解析：若本行另有 weight_per_unit 则退化为全局单位路径
+    if (override.weight_per_unit == null) return null
+  }
+
+  if (override.weight_per_unit == null) return null
+
+  // 与后端对齐：weight_unit_id 缺失时按克处理（unit_by_id(None) → g）
+  const weightUnit = resolveWeightUnit(override, units) ?? findGlobalGramUnit(units)
+  if (!weightUnit || weightUnit.si_factor == null) return null
+
+  // conversion_factor 的乘入口径：
+  // - 嵌套链上的每一跳都要乘（与后端一致，链内被引用的行即使自身不再嵌套也算一跳）；
+  // - 纯旧数据（既无嵌套、也不是链的一环）保持既有口径不变（不乘 conversion_factor）。
+  const applyFactor = hasNested || _depth > 0
+  const amount = (applyFactor ? factor : 1) * Number(override.weight_per_unit)
+  if (!Number.isFinite(amount) || amount <= 0) return null
+  return { amount, unit: weightUnit }
+}
+
+/**
+ * 找嵌套引用的另一条覆盖（须同一实体、active、非自身）。
+ *
+ * 优先按 `weight_unit_override_name` 解析：云端导出记录的 id 会被重排
+ * （本地 id 自增 / 导入时 id 可能不与引用对齐），名字是权威信息；
+ * 名字缺失时再按 id 回退（本地新建的嵌套引用通常只有 id）。
+ */
+function findNestedOverride(
+  base: EntityOverride,
+  overrides?: EntityOverride[],
+): EntityOverride | null {
+  if (!overrides) return null
+  const candidates = overrides.filter(o => o !== base
+    && o.id !== base.id
+    && o.entity_type === base.entity_type
+    && o.entity_id === base.entity_id
+    && (o.is_active === undefined || o.is_active === true || o.is_active === 1))
+  if (candidates.length === 0) return null
+
+  const name = base.weight_unit_override_name
+  if (name) {
+    const byName = candidates.find(o => o.unit_name === name || (o as any).name === name)
+    if (byName) return byName
+  }
+
+  const id = base.weight_unit_override_id
+  if (id == null) return null
+  return candidates.find(o => o.id === id) ?? null
+}
+
+/** 全局克单位（与后端 get_unit_by_abbr("g") 兜底一致）。 */
+function findGlobalGramUnit(units: UnitInfo[]): UnitInfo | undefined {
+  return units.find(u => u.abbreviation === 'g')
+    ?? units.find(u => u.name === '克')
+    ?? units.find(u => u.unit_type === 'mass' && u.si_factor === 0.001)
+}
+
 /**
  * 解析实体覆盖的"每单位量"（折算为克）。
  * - 体积语义覆盖（weight_unit 为 mL/L，如 1瓶=500mL）：经实体密度折算，
  *   无密度记录时按水密度 1 g/mL 兜底（与后端 get_density 链一致）。
  * - 质量语义覆盖：按 si_factor 折 g。
  * - weight_unit 优先按 name/abbreviation 解析（云端导出记录的 id 与本地
- *   seed 不对齐），再按 id 回退。
+ *   seed 不对齐），再按 id 回退；支持 weight_unit_override_id 嵌套链。
  * 返回 null 表示无法折算。
  */
 export function resolveOverrideGramsPerUnit(
@@ -182,22 +302,20 @@ export function resolveOverrideGramsPerUnit(
   densities?: DensityInfo[],
   entityType?: string,
   entityId?: number,
+  overrides?: EntityOverride[],
 ): number | null {
-  if (override.weight_per_unit == null) return null
-  const wpu = Number(override.weight_per_unit)
-  if (!Number.isFinite(wpu) || wpu <= 0) return null
-  let wu: UnitInfo | undefined
-  if (override.weight_unit_name) {
-    wu = units.find(u => u.name === override.weight_unit_name || u.abbreviation === override.weight_unit_name)
+  const resolved = resolveOverrideAmount(override, units, overrides)
+  if (!resolved) return null
+  const { amount, unit } = resolved
+  if (!Number.isFinite(amount) || amount <= 0) return null
+  const type = entityType ?? override.entity_type
+  const id = entityId ?? override.entity_id
+  if (unit.unit_type === 'volume') {
+    // amount × si_factor = L；L × kg/m³ = kg；kg → g 恰好等于 L × kg/m³ × 1000 / 1000
+    return amount * unit.si_factor! * (findEntityDensityKgM3(densities, type, id) ?? 1000)
   }
-  if (!wu) wu = units.find(u => u.id === override.weight_unit_id)
-  if (!wu || wu.si_factor == null) return null
-  if (wu.unit_type === 'volume') {
-    // wpu × si_factor = L；L × kg/m³ = kg；kg → g 恰好等于 L × kg/m³ × 1000 / 1000
-    return wpu * wu.si_factor * (findEntityDensityKgM3(densities, entityType, entityId) ?? 1000)
-  }
-  if (wu.unit_type === 'mass') {
-    return wpu * wu.si_factor * 1000
+  if (unit.unit_type === 'mass') {
+    return amount * unit.si_factor! * 1000
   }
   return null
 }

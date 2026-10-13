@@ -119,14 +119,14 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ editingGroup ? t('admin.blacklist.editGroup') : t('admin.blacklist.createGroup') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveGroup">{{ t('actions.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="editDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-text-field v-model="form.name" :label="t('admin.blacklist.groupName')" variant="outlined" density="compact" />
           <v-text-field v-model.number="form.display_order" :label="t('admin.blacklist.order')" type="number" variant="outlined" density="compact" />
           <v-switch v-if="editingGroup" v-model="form.is_active" :label="t('admin.blacklist.enabled')" density="compact" hide-details />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="editDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveGroup">{{ t('actions.save') }}</v-btn>
@@ -140,7 +140,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('admin.blacklist.addIngredientsTo', { name: selectedGroupForAdd?.name ?? '' }) }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveIngredients">{{ t('admin.blacklist.confirmAdd') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="addIngredientsDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-autocomplete
@@ -158,7 +158,7 @@
             @update:search="searchAllIngredients"
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="addIngredientsDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveIngredients">{{ t('admin.blacklist.confirmAdd') }}</v-btn>

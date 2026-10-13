@@ -156,6 +156,8 @@ export interface EntityUnitOverride {
   conversion_factor: number | null
   weight_per_unit: number | null
   weight_unit_id: number | null
+  /** 单个重量的单位是同一实体的另一个自定义单位（嵌套，如 1箱 = 12 盒） */
+  weight_unit_override_id: number | null
   is_default: boolean
   source: string | null
 }

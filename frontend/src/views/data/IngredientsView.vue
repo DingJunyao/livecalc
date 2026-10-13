@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" density="comfortable" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
@@ -211,7 +211,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('ingredients.addTitle') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="showAddDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-form>
@@ -248,7 +248,7 @@
             />
           </v-form>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn @click="showAddDialog = false">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>

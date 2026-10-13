@@ -1890,45 +1890,29 @@ async def calculate_recipe_nutrition(
                         ratio = Decimal("1.0")
             else:
                 # 没有设置 piece_weight，尝试查询 entity_unit_overrides 自定义单位表
+                # （含嵌套：1箱 = 12 盒 = 12 × 220 mL；重量单位可为质量或体积）
                 entity_override = db.query(EntityUnitOverride).filter(
                     EntityUnitOverride.entity_type == "ingredient",
                     EntityUnitOverride.entity_id == ingredient.id,
                     EntityUnitOverride.unit_name == recipe_ingredient.unit.abbreviation,
-                    EntityUnitOverride.weight_per_unit.isnot(None),
-                    EntityUnitOverride.weight_unit_id.isnot(None),
                     EntityUnitOverride.is_active.is_(True),
                 ).first()
-                if entity_override and entity_override.weight_per_unit:
-                    # 使用自定义单位中维护的每件标准重量（如 1 颗=0.2g）
-                    weight_unit = db.query(Unit).filter(Unit.id == entity_override.weight_unit_id).first()
-                    if weight_unit and weight_unit.unit_type == "volume":
-                        # 体积语义的每单位量（如 1瓶=500mL）：经实体密度折算为克
-                        ucs = UnitConversionService(db)
-                        grams_result = ucs.convert(
-                            Decimal(str(entity_override.weight_per_unit)),
-                            weight_unit.abbreviation, "g",
-                            entity_type="ingredient", entity_id=ingredient.id,
-                        )
-                        if grams_result is not None and grams_result[0] > 0:
-                            total_weight = quantity * grams_result[0]
-                            ratio = total_weight / reference_amount
-                        else:
-                            ratio = Decimal("0")
-                    elif weight_unit:
-                        converted_weight, converted_unit = convert_to_standard(
-                            Decimal(str(entity_override.weight_per_unit)),
-                            weight_unit.abbreviation
-                        )
-                        total_weight = quantity * converted_weight
-                        if converted_unit.lower() == reference_unit.lower():
-                            ratio = total_weight / reference_amount
-                        else:
-                            # 单位不一致，尝试通过 Unit 类型判断
-                            weight_unit_obj = db.query(Unit).filter(Unit.abbreviation == converted_unit).first()
-                            if weight_unit_obj and weight_unit_obj.unit_type == "mass":
-                                ratio = total_weight / reference_amount
-                            else:
-                                ratio = Decimal("0")
+                # 语义保持：没有可解析的覆盖时 ratio=0（不落回 1个=100g 的臆估）
+                ucs = UnitConversionService(db)
+                unit_amount, weight_unit = (None, None)
+                if entity_override is not None:
+                    unit_amount, weight_unit = ucs.resolve_override_amount(
+                        entity_override, "ingredient", ingredient.id
+                    )
+                if unit_amount is not None and weight_unit is not None:
+                    # 1 个自定义单位 = unit_amount（weight_unit 计），折算到克（体积经密度）
+                    grams_result = ucs.convert(
+                        unit_amount, weight_unit.abbreviation, "g",
+                        entity_type="ingredient", entity_id=ingredient.id,
+                    )
+                    if grams_result is not None and grams_result[0] > 0:
+                        total_weight = quantity * grams_result[0]
+                        ratio = total_weight / reference_amount
                     else:
                         ratio = Decimal("0")
                 else:

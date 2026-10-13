@@ -103,10 +103,7 @@
           <v-icon class="me-2">{{ isEditing ? 'mdi-pencil' : 'mdi-plus' }}</v-icon>
           <span class="text-h6">{{ isEditing ? t('admin.users.editTitle') : t('admin.users.create') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveUser">
-            {{ isEditing ? t('actions.save') : t('admin.users.create') }}
-          </v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="formDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" :aria-label="t('common.close')" @click="formDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
@@ -169,7 +166,7 @@
           </v-form>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4 d-none d-md-flex">
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="tonal" @click="formDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveUser">
@@ -186,10 +183,7 @@
           <v-icon class="me-2">mdi-lock-reset</v-icon>
           <span>{{ t('admin.users.resetPasswordTitle', { name: resetUsername }) }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="resetting" @click="submitResetPassword">
-            {{ t('admin.users.confirmReset') }}
-          </v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="resetDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" :aria-label="t('common.close')" @click="resetDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
@@ -217,7 +211,7 @@
           </v-form>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4 d-none d-md-flex">
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="tonal" @click="resetDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="resetting" @click="submitResetPassword">

@@ -22,6 +22,9 @@ class EntityUnitOverride(Base):
     conversion_factor = Column(Numeric(15, 10))  # 换算系数，如 12（一盒12个）
     weight_per_unit = Column(Numeric(10, 3))  # 单位重量，如 55（一个55g）
     weight_unit_id = Column(Integer, ForeignKey("units.id"))  # 指向质量单位
+    # 单个重量的单位是「同一实体的另一个自定义单位」（嵌套：1箱 = 12 盒 = 12 × 220 mL）。
+    # 故意不加 DB 级自引用外键：软删 + 导出导入换 id 时应用层校验（执行器/换算服务）更稳。
+    weight_unit_override_id = Column(Integer, index=True)  # 指向 entity_unit_overrides.id（同实体）
     is_default = Column(Boolean, default=False)  # 是否为该实体的默认单位
     source = Column(String(20), default="manual")  # import / manual / agent
     is_active = Column(Boolean, default=True, nullable=False, index=True,

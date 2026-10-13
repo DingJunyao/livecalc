@@ -53,7 +53,38 @@ class ProductExecutor(CrudExecutorBase):
     def apply(self, db: Session, proposal) -> ApplyResult:
         if proposal.action == "delete":
             return self._apply_delete(db, proposal)
-        return super().apply(db, proposal)
+        result = super().apply(db, proposal)
+        if proposal.action == "update":
+            self._sync_record_names(db, proposal, result)
+        return result
+
+    def _sync_record_names(self, db: Session, proposal, result: ApplyResult) -> None:
+        """商品改名时同步其价格记录的 product_name 快照列。
+
+        product_records.product_name 是写入时快照（NOT NULL），价格列表/详情/历史/
+        商家价格都直接读它；不同步的话改名后价格信息里仍是旧名。
+        只记录"改名前后确实不同"的行，供 revert 逐行还原（通常为空或很小）。
+        """
+        new_name = (proposal.payload or {}).get("name")
+        eid = proposal.entity_id
+        if not new_name or eid is None:
+            return
+        rows = (
+            db.query(ProductRecord.id, ProductRecord.product_name)
+            .filter(ProductRecord.product_id == eid)
+            .all()
+        )
+        restore = {
+            str(row.id): row.product_name
+            for row in rows
+            if row.product_name != new_name
+        }
+        if not restore:
+            return
+        db.query(ProductRecord).filter(
+            ProductRecord.id.in_([int(i) for i in restore])
+        ).update({ProductRecord.product_name: new_name}, synchronize_session=False)
+        result.revert_payload["record_name_restore"] = restore
 
     def _apply_delete(self, db: Session, proposal) -> ApplyResult:
         eid = proposal.entity_id
@@ -106,7 +137,17 @@ class ProductExecutor(CrudExecutorBase):
 
     def revert(self, db: Session, proposal) -> None:
         if proposal.action != "delete":
-            return super().revert(db, proposal)
+            super().revert(db, proposal)
+            # 还原改名同步过的价格记录名（逐行旧值）
+            restore = (proposal.revert_payload or {}).get("record_name_restore") or {}
+            for record_id, old_name in restore.items():
+                db.query(ProductRecord).filter(
+                    ProductRecord.id == int(record_id)
+                ).update(
+                    {ProductRecord.product_name: old_name},
+                    synchronize_session=False,
+                )
+            return
         rp = proposal.revert_payload or {}
         eid = proposal.entity_id
         obj = db.query(Product).get(eid) if eid else None
