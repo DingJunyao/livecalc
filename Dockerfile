@@ -21,7 +21,15 @@ WORKDIR /build
 
 # 先拷依赖描述、锁版本安装（利用 docker 层缓存）
 COPY frontend/package.json frontend/package-lock.json ./
-RUN npm ci
+# 加大 npm 抓包重试与超时：CI/国内网络偶发 ECONNRESET（errno -104）会让 npm ci 直接失败，
+# 默认只重试 2 次、单次 10s 超时不够用。这里刻意不用 RUN --mount=type=cache：
+# 那会要求 BuildKit，而 agent_doc/FEATURE_容器化部署.md 记录了
+# `DOCKER_BUILDKIT=0 docker build` 的经典 builder 用法（国内拉不到 manifest 时用）。
+RUN npm ci --no-audit --no-fund \
+    --fetch-retries=5 \
+    --fetch-retry-mintimeout=20000 \
+    --fetch-retry-maxtimeout=120000 \
+    --fetch-timeout=600000
 
 # 应用身份与版本统一来源（前端 Vite 构建时读取）
 COPY app-info.json /app-info.json
@@ -75,8 +83,9 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # 装依赖：requirements 已含 psycopg2-binary + pymysql，换库只改 DATABASE_URL
+# 与 npm 同理：PyPI 偶发断连会让构建失败，加大重试次数与单次超时（经典 builder 同样有效）
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --retries 5 --timeout 60 -r requirements.txt
 
 # 拷应用代码
 COPY app-info.json ./
