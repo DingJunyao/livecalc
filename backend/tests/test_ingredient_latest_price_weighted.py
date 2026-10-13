@@ -2,8 +2,8 @@
 
 覆盖 GET /api/v1/nutrition/ingredients/{id}/latest-price：
   - 各商品的最近有记录日各自独立（同日多条记录取当日均价）
-  - 最近有记录日超过 24 小时的商品仍参与加权（旧口径下会被整段排除）
-  - price_weight=0 的商品被排除并出现在 excluded
+  - 最近一次价格超过 30 天（INGREDIENT_PRICE_STALE_DAYS）的商品被排除（reason=stale）
+  - price_weight=0 的商品被排除（reason=weight_zero）
 """
 from datetime import datetime, timedelta
 
@@ -23,11 +23,11 @@ def _get_or_create_unit(db, name: str, unit_type: str = "mass", si_factor: float
     return u
 
 
-def _build(db, p2_weight: int = 50):
-    """原料 + 3 商品（等权重时综合价 = (1.20 + 4.00 + 0.80) / 3 = 2.00）。
+def _build(db, p2_days_ago: int, p2_weight: int = 50):
+    """原料 + 3 商品：
 
     P1：2 天前，同日两条 1.10 / 1.30 → 当日均价 1.20
-    P2：60 天前，4.00
+    P2：p2_days_ago 天前，4.00（权重 p2_weight）
     P3：今天（1 小时前），0.80
     """
     from app.models.nutrition import Ingredient
@@ -52,7 +52,7 @@ def _build(db, p2_weight: int = 50):
     plan = [
         (p1, 1.10, now - timedelta(days=2, hours=2)),
         (p1, 1.30, now - timedelta(days=2, hours=1)),
-        (p2, 4.00, now - timedelta(days=60)),
+        (p2, 4.00, now - timedelta(days=p2_days_ago)),
         (p3, 0.80, now - timedelta(hours=1)),
     ]
     for prod, price, recorded_at in plan:
@@ -81,29 +81,58 @@ def _cleanup(db, ing_id, pids):
     db.commit()
 
 
-def test_latest_price_includes_products_with_stale_records(as_admin):
+def _get_latest_price(ing_id: int):
     from starlette.testclient import TestClient
     from app.main import app
 
+    client = TestClient(app)
+    r = client.get(f"/api/v1/nutrition/ingredients/{ing_id}/latest-price")
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_latest_price_excludes_stale_product(as_admin):
+    """60 天前的价格不再参与综合价（否则会长期主导，且与图表对不上）。"""
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     ing_id = pids = None
     try:
-        ing_id, pids = _build(db)
+        ing_id, pids = _build(db, p2_days_ago=60)
     finally:
         db.close()
 
-    client = TestClient(app)
     try:
-        r = client.get(f"/api/v1/nutrition/ingredients/{ing_id}/latest-price")
-        assert r.status_code == 200
-        data = r.json()
-        # 三个商品都参与：60 天前的记录不再被 24 小时窗口排掉
-        assert data["average_price"] == 2.0
+        data = _get_latest_price(ing_id)
+        # (1.20 + 0.80) / 2 = 1.00
+        assert data["average_price"] == 1.0
         assert data["mode"] == "weighted"
+        assert {p["name"] for p in data["participants"]} == {"综合价P1", "综合价P3"}
+        stale = next(e for e in data["excluded"] if e["name"] == "综合价P2")
+        assert stale["reason"] == "stale"
+    finally:
+        db = TestingSessionLocal()
+        try:
+            if ing_id and pids:
+                _cleanup(db, ing_id, pids)
+        finally:
+            db.close()
+
+
+def test_latest_price_includes_recent_product(as_admin):
+    """29 天前（< 30 天上限）的记录仍参与加权。"""
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    ing_id = pids = None
+    try:
+        ing_id, pids = _build(db, p2_days_ago=29)
+    finally:
+        db.close()
+
+    try:
+        data = _get_latest_price(ing_id)
+        # (1.20 + 4.00 + 0.80) / 3 = 2.00
+        assert data["average_price"] == 2.0
         assert len(data["participants"]) == 3
-        assert {p["name"] for p in data["participants"]} == {"综合价P1", "综合价P2", "综合价P3"}
-        # 商品内同日多条取均价
         p1 = next(p for p in data["participants"] if p["name"] == "综合价P1")
         assert p1["unit_price"] == 1.2
         assert p1["record_count"] == 2
@@ -118,22 +147,16 @@ def test_latest_price_includes_products_with_stale_records(as_admin):
 
 
 def test_latest_price_excludes_zero_weight_product(as_admin):
-    from starlette.testclient import TestClient
-    from app.main import app
-
     Base.metadata.create_all(bind=engine)
     db = TestingSessionLocal()
     ing_id = pids = None
     try:
-        ing_id, pids = _build(db, p2_weight=0)
+        ing_id, pids = _build(db, p2_days_ago=2, p2_weight=0)
     finally:
         db.close()
 
-    client = TestClient(app)
     try:
-        r = client.get(f"/api/v1/nutrition/ingredients/{ing_id}/latest-price")
-        assert r.status_code == 200
-        data = r.json()
+        data = _get_latest_price(ing_id)
         # 权重 0 排除 P2（4.00）→ (1.20 + 0.80) / 2 = 1.00
         assert data["average_price"] == 1.0
         assert {p["name"] for p in data["participants"]} == {"综合价P1", "综合价P3"}

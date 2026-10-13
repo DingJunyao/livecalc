@@ -3,7 +3,7 @@
 import { getAll, getById, putOne, getByIndex, getDb, paginate } from '../database'
 import { calcNRV } from '../business/nutritionAggregator'
 import { normalizeRecordToJin, MERCHANT_PRICE_STALE_MS, sortMerchantPrices } from '../business/priceNormalize'
-import { toLocalDayKey } from '@/utils/priceAsOf'
+import { PRICE_STALE_DAYS, toLocalDayKey } from '@/utils/priceAsOf'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
 import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
@@ -172,6 +172,12 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
     const weight = override?.weight ?? p.price_weight ?? 50
     if (!(weight > 0)) {
       excluded.push({ product_id: p.id, name: p.name, reason: 'weight_zero' })
+      continue
+    }
+    // 近 30 天没有价格的商品不参与综合价（与云端 excluded[reason=stale] 同规则）
+    const latestTs = Date.parse(latest.recorded_at || '')
+    if (Number.isFinite(latestTs) && Date.now() - latestTs > PRICE_STALE_DAYS * 86400000) {
+      excluded.push({ product_id: p.id, name: p.name, reason: 'stale' })
       continue
     }
 

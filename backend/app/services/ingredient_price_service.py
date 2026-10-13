@@ -8,6 +8,12 @@
 记录查询复用 recipe_service._get_price_records_*，本服务只负责聚合。
 
 权重读取优先级：用户覆盖(is_active) → Product.price_weight → 兜底 50。
+
+参与上限：商品最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS 天不再参与
+「原料综合价」（综合最新价 / 原料 sparkline），超期商品进 excluded（reason="stale"）。
+30 天与商家价（MERCHANT_PRICE_STALE_DAYS）、菜谱价格提示的陈旧口径保持一致；
+菜谱成本仍按「最近一次已知价」计算（成本语义），两者口径差异见
+FEATURE_商品加权价格机制.md 补遗。
 """
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -17,6 +23,9 @@ from sqlalchemy.orm import Session
 
 from app.models.user_product_weight_override import UserProductWeightOverride
 from app.utils.date_range_utils import local_date_range_to_utc_range, utc_datetime_to_local_date
+
+
+INGREDIENT_PRICE_STALE_DAYS = 30
 
 
 def _product_unit_price(records: Sequence) -> Optional[Decimal]:
@@ -54,7 +63,9 @@ def _aggregate_weighted(product_records: dict) -> dict:
           "unit_price": Optional[float],     # 加权单价（None = 无可用记录）
           "mode": "weighted"|"single"|"none",
           "participants": [{product_id, name, weight, unit_price, record_count, weight_source}],
-          "excluded": [{product_id, name, reason}],  # reason ∈ {weight_zero, no_record}
+          "excluded": [{product_id, name, reason}],
+          # reason ∈ {weight_zero, no_record, stale}；调用方可经 meta["exclude_reason"]
+          # 指定业务原因（如 stale = 超期未更新），缺省按无记录处理
         }
     """
     participants = []
@@ -67,7 +78,11 @@ def _aggregate_weighted(product_records: dict) -> dict:
             continue
         intra = _product_unit_price(records)
         if intra is None:
-            excluded.append({"product_id": pid, "name": name, "reason": "no_record"})
+            excluded.append({
+                "product_id": pid,
+                "name": name,
+                "reason": meta.get("exclude_reason") or "no_record",
+            })
             continue
         participants.append({
             "product_id": pid,

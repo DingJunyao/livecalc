@@ -935,8 +935,10 @@ async def get_ingredient_latest_price(
 
     - **ingredient_id**: 食材ID
 
-    口径（与菜谱成本、原料价格趋势图一致）：每个商品取各自「最近有记录日」的
-    均价 → 商品间按 price_weight（用户覆盖 > 全局 > 50）加权，权重 0 的商品排除。
+    口径（与原料价格趋势图、原料 sparkline 一致）：每个商品取各自「最近有记录日」的
+    均价 → 商品间按 price_weight（用户覆盖 > 全局 > 50）加权；
+    权重 0 或最近一次价格超过 INGREDIENT_PRICE_STALE_DAYS（30）天的商品排除
+    （excluded 里给出原因，前端展示「超期未更新」）。
     旧口径只取全局最近 24 小时内的记录，会把其他商品整段排除，
     使综合价退化成「最新被记录的那个商品的价格」。
     结果按目标单位（当前用户质量偏好，fallback 斤）折算。
@@ -945,7 +947,7 @@ async def get_ingredient_latest_price(
     region_id = resolve_region_param(db, current_user, region_id)
     try:
         from app.services.unit_conversion_service import UnitConversionService
-        from datetime import datetime
+        from datetime import datetime, timedelta
 
         # 查询原料及其默认单位
         ingredient = db.query(Ingredient).filter(
@@ -969,9 +971,13 @@ async def get_ingredient_latest_price(
         # 每个商品取各自「最近有记录日」的全部记录（与菜谱成本同口径）。
         # 旧逻辑先取全局最近 24 小时窗口，只有窗口为空才回退到全局最新一天，
         # 结果其他商品整段不参与加权——综合价退化成单品价（胡萝卜案例差 3 倍）。
-        from app.services.ingredient_price_service import _collect_recent_records
+        from app.services.ingredient_price_service import (
+            INGREDIENT_PRICE_STALE_DAYS,
+            _collect_recent_records,
+        )
 
         now = datetime.utcnow()
+        stale_cutoff = now - timedelta(days=INGREDIENT_PRICE_STALE_DAYS)
         product_records_raw = {
             p.id: _collect_recent_records(db, p.id, now, tz=tz, region_id=region_id)
             for p in products
@@ -1019,6 +1025,15 @@ async def get_ingredient_latest_price(
             else:
                 w = p.price_weight if p.price_weight is not None else 50
                 src = "global"
+            meta = {"product_id": p.id, "name": p.name, "weight_source": src}
+
+            # 近 30 天没有价格的商品不参与综合价（与商家价/菜谱价 30 天陈旧口径一致）：
+            # 否则一次很久以前的高价会长期主导综合价，且与图表（只加载区间内记录）对不上。
+            latest_at = max((r.recorded_at for r in recs), default=None)
+            if latest_at is not None and latest_at < stale_cutoff:
+                product_records[p.id] = ([], w, {**meta, "exclude_reason": "stale"})
+                continue
+
             pseudo = []
             for r in recs:
                 if r.price is None or r.original_quantity is None or float(r.original_quantity) <= 0:
@@ -1044,7 +1059,7 @@ async def get_ingredient_latest_price(
                 prev_at = participant_dates.get(p.id)
                 if prev_at is None or r.recorded_at > prev_at:
                     participant_dates[p.id] = r.recorded_at
-            product_records[p.id] = (pseudo, w, {"product_id": p.id, "name": p.name, "weight_source": src})
+            product_records[p.id] = (pseudo, w, meta)
 
         weighted = _aggregate_weighted(product_records)
 

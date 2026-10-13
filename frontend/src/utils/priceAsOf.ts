@@ -33,9 +33,15 @@ export interface AsOfOptions {
   startDay?: string | null
   /** 序列结束日（YYYY-MM-DD）；默认今天 */
   endDay?: string | null
+  /**
+   * 参与上限（天）：商品最近一次价格超过 N 天不再参与当日综合价。
+   * 与后端 INGREDIENT_PRICE_STALE_DAYS / 商家价 30 天陈旧口径一致；<=0 表示不限。
+   */
+  staleDays?: number | null
 }
 
 const DEFAULT_WEIGHT = 50
+export const PRICE_STALE_DAYS = 30
 
 /** 本地日 key（YYYY-MM-DD）：与日期展示口径一致，跨时区稳定。 */
 export function toLocalDayKey(value: string | number | Date): string | null {
@@ -88,7 +94,15 @@ export function buildWeightedAsOfDailySeries(
   if (byProduct.size === 0) return []
 
   // 2) 每商品：日升序阶梯（日 → 当日均价）+ 游标
-  type Step = { days: string[]; values: number[]; next: number; current: number; weight: number }
+  type Step = {
+    days: string[]
+    values: number[]
+    next: number
+    current: number
+    weight: number
+    /** 超过该日的价格视为过期（不再参与） */
+    expiresOn: string | null
+  }
   const steps: Step[] = []
   let firstDay: string | null = null
   for (const [pid, dayMap] of byProduct) {
@@ -100,7 +114,9 @@ export function buildWeightedAsOfDailySeries(
     const numericPid = pid === '' ? null : Number(pid)
     const weight = weightOf(numericPid)
     if (!(weight > 0)) continue
-    steps.push({ days, values, next: 0, current: -1, weight })
+    const staleDays = opts.staleDays ?? PRICE_STALE_DAYS
+    const expiresOn = staleDays != null && staleDays > 0 ? addDays(days[days.length - 1], staleDays) : null
+    steps.push({ days, values, next: 0, current: -1, weight, expiresOn })
     if (firstDay === null || days[0] < firstDay) firstDay = days[0]
   }
   if (firstDay === null || steps.length === 0) return []
@@ -121,6 +137,7 @@ export function buildWeightedAsOfDailySeries(
         step.next += 1
       }
       if (step.current < 0) continue
+      if (step.expiresOn !== null && cur > step.expiresOn) continue
       const value = step.values[step.current]
       num += value * step.weight
       den += step.weight
