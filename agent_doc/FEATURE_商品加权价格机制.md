@@ -1,161 +1,237 @@
-# 商品加权价格机制
+# 价格计算逻辑：原料综合价 与 菜谱成本（当前实现）
 
-> 日期：2026-07-07
-> 设计稿：[docs/superpowers/specs/2026-07-06-product-weighted-price-design.md](../docs/superpowers/specs/202607-06-product-weighted-price-design.md)
-> 实现计划：[docs/superpowers/plans/2026-07-06-product-weighted-price.md](../docs/superpowers/plans/2026-07-06-product-weighted-price.md)
+> 最后更新：2026-10-13　适用：web 前端 + 后端 + 本地（离线）模式 + 移动端
+> 本文描述**现在实际在跑的逻辑**。历史设计与两次「调口径」的过程见文末「§10 变更历史」。
+> 代码入口：[ingredient_price_service.py](../backend/app/services/ingredient_price_service.py)、
+> [priceAsOf.ts](../frontend/src/utils/priceAsOf.ts)
 
-## 背景与问题
+**一句话规则**：一个原料下面的多个商品，各自取「自己最近一次的价格」，再按权重做加权平均，就是这个原料的价格。
+超过 **30 天**没更新的商品默认不算进平均；**但如果所有商品都超过 30 天，就全都算进来**——宁可显示旧价格，也不能没有价格。
 
-一个原料常挂多个商品，价格差别悬殊（有机 vs 普通、不同品牌）。原系统把「商品价」聚合为「原料价」时两套逻辑互相打架且各有偏置：
+---
 
-1. **原料最新价**（[nutrition.py:get_ingredient_latest_price](../backend/app/api/nutrition.py#L864)）：把原料下所有商品、最近一天的所有价格记录**按记录数简单平均** → 记录多的商品被无形放大。
-2. **菜谱成本**（[recipe_service.py:calculate_recipe_cost](../backend/app/services/recipe_service.py#L719) 等 5 变体）：遍历商品**取第一个有记录的商品** → 选中哪个全看查询顺序，价格悬殊时成本飘忽。
+## 1. 三个真实例子（先看例子，再看规则）
 
-## 方案：商品级两层加权平均
+### 例 1：胡萝卜 —— 3 个商品，2 个新鲜、1 个超期
 
-- **第一层（商品内）**：每个商品当日有效记录的均价 → 该商品代表单价
-- **第二层（商品间）**：按商品权重加权平均 `Σ(pᵢ×wᵢ)/Σwᵢ`（仅 w>0 且当日有记录的商品）
+| 商品 | 最近一次记录 | 折算单价 | 权重 | 是否参与 | 原因 |
+| --- | --- | --- | --- | --- | --- |
+| 胡萝卜 | 2026-10-10 | 1.18 元/斤 | 50 | ✅ 参与 | 最近记录 3 天内，新鲜 |
+| 泥胡萝卜 | 2026-10-12 | 0.788 元/斤（2.33 元 ÷ 1.478 kg） | 50 | ✅ 参与 | 最近记录 1 天内，新鲜 |
+| 水果胡萝卜 | 2026-08-15 | 5.58 元/斤 | 50 | ❌ 排除（超期） | 最近记录已 59 天前 |
 
-记录数从此不再影响原料价，只有商品权重说了算。
+计算：(1.18 × 50 + 0.788 × 50) ÷ (50 + 50) = **0.98 元/斤**
 
-## 决策摘要
+页面上这三处数字是同一个口径，能对得上：
 
-| 维度 | 结论 |
-|---|---|
-| 权重作用域 | 全局默认 + 用户私有覆盖 |
-| 数值表达 | 0-100 整数，默认 50（对齐 ingredient_hierarchy.strength） |
-| 生效范围 | 价格计算链路：原料最新价、菜谱成本、sparkline |
-| 全局权重写权限 | 仅管理员（普通用户连提议都不开） |
-| 用户覆盖写权限 | 所有用户（个人偏好，不走审核） |
-| 与 default_product_id | 统一为权重机制；字段保留不动（死字段，价格计算只认权重） |
+- 综合最新价：**0.98 元/斤**
+- 区间 **0.79 ~ 1.18 元/斤**、商品数 **2**（= 参与加权的那两个商品的价格范围，平均值必然落在区间内）
+- 价格趋势图的「加权平均」线尾点：**0.98 元/斤**
 
-## 数据模型
+展开「加权明细」可以看到参与者（胡萝卜、泥胡萝卜）和被排除者（水果胡萝卜：超期未更新）。
 
-- [products.price_weight](../backend/app/models/product_entity.py)：`INTEGER NOT NULL DEFAULT 50`，CHECK 0-100（SQL 层）
-- 新表 [user_product_weight_overrides](../backend/app/models/user_product_weight_override.py)：`(user_id, product_id, weight)` + AuditMixin 软删，`UNIQUE(user_id, product_id)`
-- 权重读取优先级：用户覆盖(is_active) → Product.price_weight → 兜底 50（封装在 `_resolve_weight`）
-- 迁移：[alembic 20260707_0001](../backend/alembic/versions/20260707_0001_product_price_weight.py) + 四套 SQL（[sqlite](../backend/scripts/sql/20260707_product_price_weight_sqlite.sql) / mysql / postgres，PostGIS 与普通 PG 同）+ 开发库直接补（备份 `livecalc.db.bak_20260707_weight`），现有商品回填 50
+### 例 2：玉米 —— 2 个商品都超期（触发「放开」）
 
-## 统一服务 [ingredient_price_service.py](../backend/app/services/ingredient_price_service.py)
+| 商品 | 最近一次记录 | 折算单价 | 权重 | 是否参与 |
+| --- | --- | --- | --- | --- |
+| 玉米 | 2026-06-13 | 4.667 元/斤 | 50 | ✅ 参与（超期但放开） |
+| 水果玉米 | 2026-07-29 | 16.667 元/斤 | 50 | ✅ 参与（超期但放开） |
 
-- `_product_unit_price(records)`：商品内均价（standard_quantity 为 0/None 时按 price 兜底）
-- `_aggregate_weighted(product_records)`：纯聚合（无 db），返回 `{unit_price, mode, participants, excluded}`，mode ∈ weighted/single/none
-- `_resolve_weight(db, user_id, product)`：权重优先级
-- `get_weighted_ingredient_price(db, ingredient_id, *, as_of_date, user_id, target_unit_abbr, mode)`：编排，mode ∈ as_of（成本语义，当天+前向填充）/ recent（最新价语义，最近有记录日）
-- `resolve_direct_weighted_for_cost(...)`：成本场景 helper，返回 `(unit_price_decimal, participants, std_unit_id)`
+计算：(4.667 + 16.667) ÷ 2 = **10.67 元/斤**，页面额外提示
+「商品价格均超过 30 天未更新，按各自最近一次已知价计算」。
 
-## 改造点
+**为什么不显示空白？** 严格按「30 天内才算」执行，这个原料会没有任何价格可用；而「原料完全没有价格」比「用旧价格」更有害
+（菜谱成本会整条断掉）。所以规则是成对设计的：**先按 30 天过滤，过滤后一个都不剩就取消过滤**。
 
-| 场景 | 现状 | 改造 |
-|---|---|---|
-| [原料最新价](../backend/app/api/nutrition.py#L864) | 记录级简单平均 | 保留逐条折算到目标单位、聚合换 `_aggregate_weighted`，响应加 `participants/excluded/mode`（target 口径，方案 B） |
-| [菜谱成本 calculate_recipe_cost](../backend/app/services/recipe_service.py#L719) | 取第一个有记录商品 | 调 `resolve_direct_weighted_for_cost`（standard 口径），加权无价走原回退链；878 单价重算段加 `unit_price is None` 防对占位记录重算 |
-| 菜谱成本 as_of / range_as_of | 同上 | 同模式（as_of 加权优先+失败回退；range_as_of 加权分支算 min/max/avg 再 continue） |
-| 菜谱成本 trend | 调 as_of 循环 | 自动受益（as_of 已改） |
-| [sparklines 原料](../backend/app/api/sparklines.py) | 记录级日均 | `_daily_avg_for_product_ids` 加 `ingredient_id/user_id` 参数，商品级加权（用户覆盖优先于全局） |
+### 例 3：菜谱成本用的是同一个价格
 
-**单位口径差异**（关键）：统一服务编排返回「元/standard_unit」（成本口径）；latest-price 要「元/目标单位（如斤）」。故 latest-price 不直接用编排，而是自己逐条折算到目标单位后调 `_aggregate_weighted`（target 口径，精确）。成本场景用编排（standard 口径，配合 recipe 用量转换段）。
+菜谱成本 = Σ(每个原料的综合价 × 该原料用量)（含单位换算与份数）。
+所以胡萝卜那道菜今天按 0.98 元/斤 一档算，玉米那道菜按 10.67 元/斤 一档算。
+**不会再出现「原料页显示 0.79、成本却按 2.52 算」这种对不上的情况。**
 
-## 权限固化
+---
 
-- 全局 `price_weight`：仅管理员可写。[update_product](../backend/app/api/products_entity.py#L369) 对普通用户 payload 的 `price_weight` 一律剔除（连审核提议都不开）。`ProductExecutor` 吃 CrudExecutorBase setattr，管理员 `apply_as_admin` 直写生效。
-- 用户覆盖：仿 [user_preferences](../backend/app/api/user_preferences.py) 样板，独立端点 `GET/PUT/DELETE /products/{id}/my-weight`（[product_weight.py](../backend/app/api/product_weight.py)），不走审核。
+## 2. 名词表
 
-## 前端
-
-- [ProductDetail 基本信息](../frontend/src/views/products/ProductDetail.vue)：`basicEditForm` 加 `priceWeight/myWeight/globalWeightReadOnly`，管理员可改全局、普通用户只读全局、所有人可设「我的覆盖」；`saveBasicInfo` 分流写入
-- [IngredientDetail 商品编辑对话框](../frontend/src/views/ingredients/IngredientDetail.vue)：`productForm` 同构，`openEditProductDialog` 拉取生效权重、`saveProduct` 编辑分支分流
-- 原料详情最新价区：可折叠「加权明细」（参与商品/权重/当日单价/来源 + 被排除项及原因），透明追溯
-- API client：[productWeight.ts](../frontend/src/api/productWeight.ts)（`getProductMyWeight/setProductMyWeight/deleteProductMyWeight`）
-
-## 测试
-
-[test_ingredient_price_service.py](../backend/tests/services/test_ingredient_price_service.py) **15 个全过**：
-- 8 纯聚合（基础加权、比例加权、权重0排除、无记录排除+归一、单商品退化、全空 None、**记录数偏置修正**、0 数量兜底）
-- 3 权重解析（覆盖>全局>50）
-- 2 集成（as_of 加权、用户覆盖排除，in-memory SQLite 不碰开发库）
-- 2 e2e（管理员全局权重 0 排除、不同用户不同加权价）
-
-前端 `npm run build` 通过（ProductDetail 58.18 kB、IngredientDetail 90.61 kB）。
-
-## 遗留与未覆盖
-
-- **range_trend 批量趋势函数未改**（[calculate_recipe_cost_range_trend](../backend/app/services/recipe_service.py#L1166)）：它是性能优化批量版（单商品 `price_source_cache` + 二分查找逐天），改成多商品加权需重写整个批量算法、风险高。遗留影响：菜谱 sparkline（[sparklines.py:81](../backend/api/sparklines.py#L81) 调 range_trend）和菜谱成本区间趋势（[recipes.py:1417](../backend/app/api/recipes.py#L1417)）暂仍是「单商品」口径，与详情页（加权）不一致。建议后续单独设计批量加权算法。
-- **菜谱成本 breakdown 的 `weighted_participants` 字段未加**：cost/as_of 改造时聚焦加权计算，cost_breakdown.append 未补 `weighted_participants` 字段，故菜谱成本明细 tooltip 暂不展示加权来源（原料详情最新价区的加权明细已展示）。
-- `default_product_id` 字段保留不动（前后端均无业务消费，死字段），价格计算只认权重。
-
-## 环境备注
-
-- **subagent 不可用**：本环境 subagent 底层模型配置坏（两次「模型不存在」API 错误），subagent-driven-development 回退为 inline 执行。
-- **venv 在项目根**（`d:\code\livecalc\.venv`，非 `backend/.venv` 后者是空壳）：后端命令在 backend 目录用 `../.venv\Scripts\python.exe`。
-- 开发库走「直接补」惯例（不走 alembic，参见 CLAUDE.md），操作前已备份。
-
-## 补遗（2026-10-12）：综合价口径统一为「每商品最近价 as-of 加权」
-
-**问题**（用户反馈）：原料「胡萝卜」下三个商品（胡萝卜 / 泥胡萝卜 / 水果胡萝卜），综合最新价与价格趋势图只
-反映最新被记录的那一个商品（泥胡萝卜 ¥0.79/斤），而菜谱成本对同一原料算的是 ¥2.52/斤（三商品加权），差 3.2 倍。
-
-**根因**：`GET /nutrition/ingredients/{id}/latest-price` 仍保留最初实现的「先取全局最近 24 小时滚动窗口、
-窗口为空才回退到全局最新一天」的记录挑选逻辑——只要有任一商品在窗口内被记录，其余商品整段不参与加权，
-综合价退化成单品价。设计意图的实现（`ingredient_price_service._collect_recent_records` + `mode="recent"`：
-每商品各自「最近有记录日」）当时已写好，但**全仓库零调用**（死代码）。前端趋势图同理：按自然日分桶、
-只让「当天有记录的商品」参与加权，没有把其他商品的最近价向前携带。
-
-**统一后的口径（三处一致）**：
-
-1. 每个商品的价格 = 该商品「最近有记录日」的均价（同日多条取均价）；
-2. 该价格一直有效到下一次记录（as-of 向前携带，价格在两次记录之间视为不变）；
-3. 每日 / 每次综合价 = 各商品当日有效价按权重（用户覆盖 > price_weight > 50）加权，权重 0 排除。
-
-| 消费点 | 改动 |
+| 名词 | 含义 |
 | --- | --- |
-| `/nutrition/ingredients/{id}/latest-price` | 24h 窗口 → `_collect_recent_records`（每商品最近有记录日）；`participants/excluded/mode` 完整返回；`latest_date` 取参与者最新记录时间；商品查询补 `is_active` |
-| `/sparklines/ingredients` | 逐日 as-of 加权；窗口前最近一次记录作为携带起点（新增 `_fetch_carry_forward_seeds`）；序列 = 窗口起点 → 今天，一格一天 |
-| 原料详情趋势图 avg 线（`IngredientDetail.vue`） | 复用新增共享工具 `frontend/src/utils/priceAsOf.ts` 的 `buildWeightedAsOfDailySeries`；min/max/count 改为「参与加权的商品价区间 / 商品数」（`PriceTrendChart` 新增 `countLabel`，卡片「记录数」→「商品数」，l10n 三语 `charts.productCount`） |
-| 本地模式 | `handlers/nutrition.getLatestPrice`（原「全部历史记录平均」→ 每商品最近价加权）、`handlers/sparklines.getIngredientSparklines`（as-of 加权） |
+| 原料（Ingredient） | 菜谱里写的食材，如「胡萝卜」 |
+| 商品（Product） | 某个原料在现实中的具体商品：原料「胡萝卜」下可能有「胡萝卜 / 泥胡萝卜 / 水果胡萝卜」 |
+| 价格记录（ProductRecord） | 一次记价：金额 + 数量 + 单位 + 商家 + 记录时间 |
+| 权重（price_weight） | 0~100 整数，默认 50；**只作用于「平均值」**（区间/记录数不受权重影响）；0 = 不参与 |
+| 最近有记录日 | 某商品最后一次有记录的那个**用户本地自然日**；同一天记多条，取当天均价 |
+| 参与上限 | `INGREDIENT_PRICE_STALE_DAYS = 30`（天）：超过该天数的商品默认不参与综合价 |
+| 放开（relaxed） | 参与集合里所有商品都超期时的兜底：取消上限，按各自最近一次已知价计算 |
+| 标准量（standard_quantity） | 记录入库时归一化到「克」的数量，用来把「元/斤、元/个、元/瓶」统一到同一把尺子 |
 
-**顺带修复**：
+---
 
-- `_fetch_recent_records` 漏选 `standard_unit_id`（c55206a1 体积语义重构引入）：`_unit_price_per_jin → record_standard_grams`
-  取该列时 AttributeError，被端点 try/except 吞成 500 → `/sparklines/products|ingredients` 整体不可用（前端静默无迷你图）。
-- `_collect_recent_records`、`_price_timeline_index` 未过滤 `ProductRecord.is_active`：已软删的价格记录仍在参与成本 / 趋势的日聚合。
+## 3. 计算规则（5 步）
 
-**移动端**：app 复用同一批端点（原料最新价 / 迷你图），零改动自动对齐；`Sparkline` painter 已处理等值（全平）序列。
+### 步骤 0：先把「能用的记录」筛出来
 
-**验证**：后端新增 [test_ingredient_latest_price_weighted.py](../backend/tests/test_ingredient_latest_price_weighted.py)
-（三商品等权 2.00 / 60 天前记录仍参与 / 权重 0 排除）与
-[test_ingredient_sparkline_asof.py](../backend/tests/test_ingredient_sparkline_asof.py)
-（窗口前价格继续携带、序列长度 = days+1、商品 sparkline 500 回归）共 4 用例通过；前端新增
-[priceAsOf.test.ts](../frontend/src/utils/priceAsOf.test.ts) 5 用例（`npm run test:utils` 13/13）；
-vite build、check:i18n 通过；胡萝卜实测综合价 ¥0.79 → ¥2.52（与菜谱成本一致）。
+- 只看**未删除**的记录：软删（`is_active=False`）的记录在列表、成本、趋势里一律不参与
+- **地区过滤**：按当前用户的地区范围（商家地区落在范围内；未设置地区的商家在任何范围下都算；开启地区过滤时商家为空的记录不算）
+- **商品过滤**：只算该原料下**未停用**的商品
+- **时间锚点**：按**用户本地日**划分「哪一天」，不受服务器时区影响；成本场景用「要计算的那一天」，展示场景用「现在」
 
-### 补遗修订（2026-10-13）：参与上限 30 天，卡片与图表必须同集合
+### 步骤 1：商品内 —— 每个商品先算出一个价格
 
-**用户反馈**：综合最新价显示 2.52（含 8 周前水果胡萝卜 5.58/斤），而趋势图加权平均 0.98、
-区间 0.79~1.18（图表数据按区间加载，看不到区间外的水果胡萝卜），卡片上的平均值甚至落在
-自己显示的区间之外——卡片与图表完全对不上。
+取该商品**最近有记录日**当天的全部记录，逐条折成单价后取算术平均：
 
-**规则补充**：参与综合价（综合最新价 / 原料 sparkline / 趋势图 avg 线 / 本地模式）的商品，
-其最近一次价格必须落在 `INGREDIENT_PRICE_STALE_DAYS = 30` 天内；超期商品进入
-`excluded`（`reason="stale"`，前端文案「超期未更新（>30 天）」）。30 天与商家价
-（`MERCHANT_PRICE_STALE_DAYS`）和菜谱价格提示的陈旧口径一致。
+- 单价 = 金额（按**记录当时**的汇率快照折算到用户币种）÷ 标准量
+- 同一天有多条 → 取这几条的算术平均
+- 效果：每个商品只贡献**一个**代表价，**记的条数多不会让它的分量变重**（这是早期版本的坑，见 §7）
 
-**配套改动**：
+### 步骤 2：30 天参与上限
 
-- 卡片右侧「区间 / 商品数」改为直接取接口 `participants`（原来从图表尾点推导，
-  图表数据按区间加载时会与接口的参与者集合不一致，平均值可能落在区间外）。
-- 前端图表取数窗口不足 30 天（周视图）时自动放宽到 30 天（`PRICE_STALE_DAYS`），
-  显示范围仍由 `PriceTrendChart` 按所选区间切片。
-- `buildWeightedAsOfDailySeries` 增加 `staleDays`（默认 30）：每个商品的携带价在
-  「最近记录日 + 30 天」后过期。
+把每个商品的「最近一次记录时间」和当前时间（成本场景 = 计算的那一天）比较：
 
-**全部超期时放开（2026-10-13 追加）**：仅当参与集合里所有商品都超过 30 天时，上限自动放开，
-按各自最近一次已知价计算（响应 `stale_relaxed=True`）。例：原料 120「玉米」两个商品的最新记录
-分别是 6-13 / 7-29，放开后仍有 10.67 元/斤，不再显示为空；卡片提示「商品价格均超过 30 天未更新，
-按各自最近一次已知价计算」。菜谱成本（`mode="as_of"`）同步套用同一「上限 + 全部超期放开」规则
-（统一在 `get_weighted_ingredient_price` 内处理），成本与综合价不再有口径差异。
+- ≤ 30 天 → 参与
+- \> 30 天 → **不参与**，出现在响应的 `excluded` 里，原因 `stale`，前端显示「超期未更新（>30 天）」
 
-**验证**：胡萝卜实测综合最新价 0.98（参与者：胡萝卜 1.18 + 泥胡萝卜 0.788；excluded：水果胡萝卜
-stale），sparkline 尾值 0.98 与卡片一致；后端用例改为 3 个（60 天 → stale 排除 / 29 天仍参与 /
-权重 0 排除）+ sparkline 过期用例，目标集 26/27（1 失败为存量 i18n 文案断言）；前端
-`priceAsOf.test.ts` 6/6、vite build、check:i18n 通过。
+为什么是 30 天：与站内既有口径一致——商家价的 `MERCHANT_PRICE_STALE_DAYS`、菜谱食材「价格超期」提示都是 30 天。
+
+### 步骤 3：全部超期 → 放开
+
+如果按步骤 2 过滤后**一个参与者都不剩**，就取消上限，把该原料下所有有记录的商品（按各自最近一次已知价）都算进来。
+响应里 `stale_relaxed = true`，前端在价格下方提示「商品价格均超过 30 天未更新，按各自最近一次已知价计算」。
+
+### 步骤 4：商品间 —— 按权重加权平均
+
+```
+综合价 = Σ(商品代表价 × 商品权重) ÷ Σ(商品权重)      ← 只累加参与的商品
+```
+
+- 权重 0 的商品被排除（`excluded.reason = weight_zero`）
+- 完全没有记录的商品被排除（`excluded.reason = no_record`）
+- 只 1 个商品参与 → `mode = "single"`；多个 → `"weighted"`；一个都没有 → `"none"`（走外部回退链，见 §8）
+
+### 步骤 5：单位与币种
+
+| 场景 | 输出口径 |
+| --- | --- |
+| 原料综合最新价 / 原料迷你图 / 原料趋势图 | **元 / 用户质量偏好单位**（默认「斤」） |
+| 菜谱成本内部 | **元 / 克**（再乘以菜谱用量的克数折算） |
+
+- 体积记录（mL/L）按实体密度折克：商品自身密度 > 关联原料密度 > 水 1 g/mL
+- 计数记录（个/袋/瓶…）按实体单位覆盖里的「每单位克重」折克（商品覆盖 > 原料覆盖）
+- 多币种：用**记录当时**的汇率快照折算，不用今天的汇率改写历史价格
+
+---
+
+## 4. 权重怎么定（谁能改、改哪层）
+
+读取优先级（高 → 低）：
+
+1. **我的覆盖**：`user_product_weight_overrides`（每人一份，不审核，立即生效）
+2. **全局权重**：`products.price_weight`（**仅管理员**可改；普通用户走提议审核，甚至不开放）
+3. **兜底 50**
+
+使用位置：
+
+- 原料详情页「商品」行 → 编辑商品对话框：管理员可改全局权重，所有人可开「我的覆盖」开关 + 滑杆
+- 商品详情页「基本信息」：同样两层
+- 网页版入口：`GET/PUT/DELETE /api/v1/products/{id}/my-weight`（我的覆盖）
+
+**想彻底排除某个商品**：把它的权重设成 0（比「等它自己过期」可控），排除原因会显示在加权明细里。
+
+---
+
+## 5. 谁在用这套规则（一览表）
+
+| 消费方 | 接口 / 模块 | 是否「每商品最近价加权」 | 是否 30 天上限 | 单位 |
+| --- | --- | --- | --- | --- |
+| 原料综合最新价（卡片） | `GET /nutrition/ingredients/{id}/latest-price`（含 batch） | ✅ | ✅（超期放开） | 元/斤 |
+| 原料迷你图（列表行尾） | `GET /sparklines/ingredients` | ✅ 逐日 as-of 加权 | ✅（超期放开，逐日判断） | 元/斤 |
+| 原料价格趋势图 avg 线 | 前端 [priceAsOf.ts](../frontend/src/utils/priceAsOf.ts)（数据来自 `GET /products?ingredient_id=`） | ✅ 逐日 as-of 加权 | ✅（超期放开） | 元/用户质量单位 |
+| 菜谱成本（当前） | `GET /recipes/{id}/cost` → `resolve_direct_weighted_for_cost` → `get_weighted_ingredient_price(mode="as_of")` | ✅ | ✅（超期放开） | 元/克 → 用量折算 |
+| 菜谱成本区间 / 逐日趋势 | `calculate_recipe_cost_range_trend` 等同链路（`_direct_cost_range_ppg`） | ✅ | ✅ | 元/克 |
+| 本地（离线）模式 | [handlers/nutrition.ts](../frontend/src/api/local/handlers/nutrition.ts)、[handlers/sparklines.ts](../frontend/src/api/local/handlers/sparklines.ts)、[business/costCalculator.ts](../frontend/src/api/local/business/costCalculator.ts) | ✅ | ✅（超期放开） | 元/斤 |
+| 移动端 app | 复用上面同一批接口，无独立算法 | ✅ | ✅ | 元/斤 |
+| 商品级迷你图 | `GET /sparklines/products` | ➖ 单商品，按日均价 + 无记录日沿用前值 | ➖ 不适用 | 元/斤 |
+| 商家价格对比列表 | `GET /nutrition/ingredients/{id}/latest-price-by-merchant` | 每个商家取各自商品最新价加权 | ➖ **不过滤**：>30 天仅灰显、排到最后、不参与「最低价」标记 | 元/斤 |
+
+---
+
+## 6. 常见疑问 FAQ
+
+**Q1：胡萝卜为什么显示 0.98，而不是水果胡萝卜的 5.58？**
+水果胡萝卜最近一次记录是 8 月中旬（>30 天），按规则不参与；剩下两个商品等权 → 0.98。想看它的影响，给它记一笔新价，或把它的权重改成 0 明确排除。
+
+**Q2：卡片上的「区间 0.79 ~ 1.18、商品数 2」是什么？**
+就是**参与加权的那几个商品的价格范围与个数**，和综合价同源（同一个接口的 `participants`），所以平均值一定落在区间内。
+
+**Q3：为什么图表以前是 0.98、卡片是 2.52？现在还会吗？**
+不会。以前两处算法不同（图表只加载所选区间内的记录、卡片把每商品最近价无限期携带），现在两边都是「每商品最近价 → 30 天上限 → 加权」，图表在短区间（周）也会多取 30 天数据以保证参与者一致。
+
+**Q4：所有商品都超期时为什么还有价格？**
+放开兜底：先按 30 天过滤，如果过滤后没人了就不过滤，用各自最近一次已知价，并在页面提示。这样原料永远有价格可用（玉米案例 = 10.67 元/斤）。
+
+**Q5：菜谱成本为什么跟着变了？**
+成本用的是同一套价格。之前成本没有 30 天上限（会一直用很久以前的高价），现在同样「30 天上限 + 全部超期放开」，所以含陈旧商品的菜谱成本会变化。
+
+**Q6：我怎么让某个商品别参与？**
+三选一：①把它的权重设 0（最直接）；②给它记一笔新价；③不管它，等它 30 天后自动退出（前提是还有别的商品新鲜）。
+
+**Q7：价格按哪一天算？**
+按**用户本地日**。比如北京时间 10 月 12 日 01:00 记为 10 月 12 日；UTC 存储不会让日期漂到前一天。
+
+**Q8：删掉的价格记录还会被算吗？**
+不会。软删记录在综合价、成本、趋势、迷你图里都不参与（这一条曾经有漏，已修）。
+
+---
+
+## 7. 与旧实现的差异（三个坑）
+
+| 旧行为 | 造成的现象 | 现在 |
+| --- | --- | --- |
+| 原料综合价 = **名下所有记录简单平均** | 记价记录多的商品被无形放大（记录数偏置） | 先商品内取最近有记录日均价，再商品间按**权重**加权 |
+| 综合最新价先取**全局最近 24 小时**窗口，为空才回退到全局最新一天 | 只要有一个商品今天记过价，其余商品整段不参与 → 综合价退化成「最新被记录的那个商品的价格」（胡萝卜实测 0.79 vs 成本 2.52，差 3 倍） | 每个商品各自取「最近有记录日」，全部商品一起参与 |
+| 每个商品最近价**无限期向前携带**，且卡片区间/商品数从图表尾点推导 | 8 周前的水果胡萝卜（5.58）长期主导综合价；卡片平均值落在自己显示的区间外；与图表对不上 | 加 **30 天参与上限**（全部超期放开）；卡片区间/商品数改取接口的参与者；图表限额取数 |
+
+---
+
+## 8. 已知边界与限制
+
+- **原料一点记录都没有**：综合价返回空（页面显示「暂无」）。成本侧按降级链依次尝试：层级关系回退（FALLBACK 优先，其次可替代 SUBSTITUTABLE）→ 名称匹配 → 制作菜谱（半成品）→ 包含关系的子食材聚合（本地模式同链路，回退里另含 CONTAINS）；都失败则该原料不计价。**不会凭空造一个价格。**
+- **计数/体积单位依赖实体覆盖数据**：缺少「每单位克重」或密度时，成本与综合最新价会跳过该记录（按无价处理，进而可能走上面的降级链）；而图表这类按「标准量折克」的路径只能用兜底值近似（历史上默认「1 个 ≈ 100g」），可能出现偏差。建议给这类商品补一条单位覆盖，或直接按质量记价。
+- **趋势图早段**：区间起点之前的「携带价」依赖把取数窗口放宽到 30 天；超过 30 天的旧价不会出现在图里（规则使然）。
+- **商家价格对比列表**是另一条线：它不过滤超期商家，只是灰显 + 排后 + 不参与最低价比较（用于「哪家便宜」的对比场景）。
+- 权重只作用于平均值：区间（min/max）与「商品数」不受权重影响；权重 0 的商品会从区间里一起消失（因为不参与）。
+
+---
+
+## 9. 代码位置与测试
+
+| 关注点 | 位置 |
+| --- | --- |
+| 参与上限 + 放开规则（唯一实现） | `backend/app/services/ingredient_price_service.py`：`apply_stale_participation`、`INGREDIENT_PRICE_STALE_DAYS = 30` |
+| 商品内/商品间两层聚合 | 同文件：`_product_unit_price`、`_aggregate_weighted` |
+| 成本口径编排 | 同文件：`get_weighted_ingredient_price`（`mode="as_of"`）、`resolve_direct_weighted_for_cost` |
+| 原料综合最新价接口 | `backend/app/api/nutrition.py`：`get_ingredient_latest_price`（返回 `participants / excluded / mode / stale_relaxed`） |
+| 原料迷你图 | `backend/app/api/sparklines.py`：`_ingredients_sparklines_batched`、`_fetch_carry_forward_seeds` |
+| 前端趋势图 as-of 序列 | `frontend/src/utils/priceAsOf.ts`：`buildWeightedAsOfDailySeries`（`staleDays` 默认 30、`PRICE_STALE_DAYS`） |
+| 权重读写 | `backend/app/api/product_weight.py`、`backend/app/api/products_entity.py`、`backend/app/models/user_product_weight_override.py` |
+| 标准量/去标识汇总 | `backend/app/services/price_aggregator.py`（`record_standard_grams`、`recompute_product_standard_quantities`） |
+
+测试（都是可直接跑的）：
+
+- `backend/tests/test_ingredient_latest_price_weighted.py`：三商品等权 / 60 天→stale 排除 / 29 天→仍参与 / 权重 0 排除 / **全部超期→放开**
+- `backend/tests/test_ingredient_sparkline_asof.py`：窗口前价格携带、30 天过期、全部超期不出现空档、`/sparklines/products` 回归
+- `backend/tests/services/test_ingredient_price_service.py`：两层聚合纯函数 + **成本口径的 stale 排除与放开**
+- `frontend/src/utils/priceAsOf.test.ts`（`npm run test:utils`）：携带、同日多条、权重 0、30 天过期、全部过期放开、区间截断
+
+---
+
+## 10. 变更历史
+
+| 时间 | 变更 | 提交 |
+| --- | --- | --- |
+| 2026-07-06 | 初版：商品级两层加权（先商品内均价、再商品间按权重），修正「记录数偏置」 | `13d82d03` 系列 |
+| 2026-10-12 | 口径统一：综合最新价去掉「最近 24 小时窗口」，改为每个商品各自「最近有记录日」；前端趋势图与迷你图改 as-of 加权；顺带修 `/sparklines/*` 漏选 `standard_unit_id` 导致的 500、软删记录仍参与成本/趋势 | `ac9b400a`（feat merge `5a18f9b9`） |
+| 2026-10-13 | 加 **30 天参与上限**，卡片区间/商品数改取接口参与者，周视图取数放宽到 30 天 | `bfd6cf6c`（merge `0d082163`） |
+| 2026-10-13 | 补 **全部超期放开** 并同步到菜谱成本与本地模式；修 `as_of_date` 时区导致的成本 500 | `6425aa4f`（merge `69c05bb0`） |
+
+历史设计稿：[docs/superpowers/specs/2026-07-06-product-weighted-price-design.md](../docs/superpowers/specs/2026-07-06-product-weighted-price-design.md)；
+相关修复记录：[BUGFIX_加权价格体验修补.md](BUGFIX_加权价格体验修补.md)、[PERF_价格计算与图表查询性能优化.md](PERF_价格计算与图表查询性能优化.md)
