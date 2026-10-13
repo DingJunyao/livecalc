@@ -498,13 +498,15 @@ function findCostCountGrams(ingredientId: number, recipeUnit: any, input: CostIn
     ? candidates.find((o: any) => o.unit_name === unitName || o.name === unitName) ?? candidates[0]
     : candidates[0]
 
-  if (!matched || matched.weight_per_unit == null) return null
+  if (!matched) return null
+  if (matched.weight_per_unit == null && matched.weight_unit_override_id == null) return null
   return resolveOverrideGramsPerUnit(
     matched as EntityOverride,
     (input.units as unknown) as UnitInfo[],
     input.densities,
     'ingredient',
     ingredientId,
+    candidates as EntityOverride[],
   )
 }
 

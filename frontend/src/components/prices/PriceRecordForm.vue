@@ -10,14 +10,7 @@
         <v-btn icon="mdi-arrow-left" variant="text" @click="close" />
         <span class="text-h6 ms-2">{{ isEdit ? t('prices.editRecord') : t('prices.addRecord') }}</span>
         <v-spacer />
-        <v-btn
-          color="primary"
-          variant="text"
-          :loading="saving"
-          @click="save"
-        >
-          {{ t('prices.save') }}
-        </v-btn>
+        <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="close" />
       </v-card-title>
 
       <v-card-text class="pa-4">
@@ -120,8 +113,8 @@
         </v-form>
       </v-card-text>
 
-      <!-- 桌面端底部操作按钮 -->
-      <v-card-actions class="pa-4 pt-0 d-none d-md-flex">
+      <!-- 底部操作按钮（所有屏幕尺寸） -->
+      <v-card-actions class="pa-4 pt-0">
         <v-spacer />
         <v-btn variant="text" @click="close">{{ t('prices.cancel') }}</v-btn>
         <v-btn
@@ -147,12 +140,16 @@ import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
 import { fallbackPriceUnitValues, localizedUnitLabel } from '@/utils/localDisplay'
+import { loadEntityUnitOptions } from '@/utils/entityUnits'
+import type { UnitOption } from '@/utils/entityUnits'
 
 const { t } = useI18n()
 
 interface Props {
   modelValue: boolean
   record?: PriceRecord
+  /** 可选：已知的商品 id，用于合并该商品（及其关联原料）的自定义单位。 */
+  productId?: number | null
 }
 
 interface Emits {
@@ -184,21 +181,58 @@ const formRef = ref()
 // 单位选项（从 API 动态加载）
 const units = ref<Array<{ title: string; value: string }>>([])
 
+// 可用于加载自定义单位的商品 id（props 显式传入，或记录自带 product_id）
+const effectiveProductId = computed<number | null>(() => {
+  const explicit = props.productId
+  if (typeof explicit === 'number' && explicit > 0) return explicit
+  const fromRecord = (props.record as any)?.product_id
+  return typeof fromRecord === 'number' && fromRecord > 0 ? fromRecord : null
+})
+
+// 全局单位基准：实体自定义单位每次都从这份基准重建，避免上一个商品的单位残留
+let baseUnitsPromise: Promise<UnitOption[]> | null = null
+const ensureBaseUnits = (): Promise<UnitOption[]> => {
+  if (!baseUnitsPromise) {
+    baseUnitsPromise = (async () => {
+      let base: UnitOption[]
+      try {
+        const res = await api.get('/units/', { params: { limit: 100 } })
+        const unitList = res.items || res || []
+        base = unitList.map((u: any) => ({
+          title: localizedUnitLabel(u.abbreviation),
+          value: u.abbreviation,
+        }))
+        if (base.length === 0) {
+          base = fallbackPriceUnitValues().map((value) => ({
+            title: localizedUnitLabel(value),
+            value,
+          }))
+        }
+      } catch (e) {
+        base = fallbackPriceUnitValues().map((value) => ({
+          title: localizedUnitLabel(value),
+          value,
+        }))
+      }
+      return base
+    })()
+  }
+  return baseUnitsPromise
+}
+
 // 加载全局单位列表
 const loadUnits = async () => {
-  try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
-    const unitList = res.items || res || []
-    units.value = unitList.map((u: any) => ({
-      title: localizedUnitLabel(u.abbreviation),
-      value: u.abbreviation,
-    }))
-  } catch (e) {
-    units.value = fallbackPriceUnitValues().map((value) => ({
-      title: localizedUnitLabel(value),
-      value,
-    }))
-  }
+  units.value = [...(await ensureBaseUnits())]
+}
+
+// 加载实体自定义单位（商品自身 + 关联原料回退；每次从全局基准重建）
+let entityUnitsSequence = 0
+const loadEntityUnits = async (productId: number | null) => {
+  const sequence = ++entityUnitsSequence
+  const base = await ensureBaseUnits()
+  const options = await loadEntityUnitOptions('product', productId, { baseOptions: base })
+  if (sequence !== entityUnitsSequence) return
+  units.value = options
 }
 
 const loadMerchants = async () => {
@@ -225,6 +259,11 @@ onMounted(() => {
   loadMerchants()
   loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
 })
+
+// 有商品 id 时合并该商品（及关联原料）的自定义单位；无商品 id 时回到全局单位
+watch(effectiveProductId, (productId) => {
+  loadEntityUnits(productId)
+}, { immediate: true })
 
 const saving = ref(false)
 

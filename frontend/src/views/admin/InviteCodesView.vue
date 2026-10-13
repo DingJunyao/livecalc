@@ -137,8 +137,7 @@
           <v-icon class="me-2">mdi-ticket-outline</v-icon>
           <span class="text-h6">{{ t('admin.inviteCodes.create') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="creating" @click="createInviteCode">{{ t('admin.inviteCodes.create') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="createDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" :aria-label="t('common.close')" @click="createDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
@@ -189,7 +188,7 @@
           </v-form>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4 d-none d-md-flex">
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="tonal" @click="createDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="creating" @click="createInviteCode">{{ t('admin.inviteCodes.create') }}</v-btn>
@@ -204,8 +203,7 @@
           <v-icon class="me-2">mdi-pencil</v-icon>
           <span class="text-h6">{{ t('admin.inviteCodes.editTitle') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="updating" @click="updateInviteCode">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" @click="editDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" class="ms-1" :aria-label="t('common.close')" @click="editDialog = false" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-6">
@@ -243,7 +241,7 @@
           </v-form>
         </v-card-text>
         <v-divider />
-        <v-card-actions class="pa-4 d-none d-md-flex">
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn variant="tonal" @click="editDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="updating" @click="updateInviteCode">{{ t('actions.save') }}</v-btn>

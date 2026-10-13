@@ -165,13 +165,7 @@
           <v-icon start color="primary">mdi-plus-circle-outline</v-icon>
           {{ t('recipes.createTitle') }}
           <v-spacer />
-          <v-btn
-            color="primary"
-            variant="text"
-            :loading="creating"
-            :disabled="!createForm.name || !createForm.category"
-            @click="handleCreate"
-          >{{ t('recipes.create') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="closeCreateDialog" />
         </v-card-title>
         <v-divider />
         <v-card-text class="pt-4">
@@ -224,7 +218,7 @@
           >{{ createError }}</v-alert>
         </v-card-text>
 
-        <v-card-actions class="pa-4 d-none d-md-flex">
+        <v-card-actions class="pa-4">
           <v-spacer />
           <v-btn
             variant="text"

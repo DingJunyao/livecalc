@@ -339,8 +339,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.editAccount') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingAccount" @click="saveAccount">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="accountDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="accountDialog = false" />
         </v-card-title>
         <v-card-text>
           <div class="d-flex flex-column align-center mb-3">
@@ -428,7 +427,7 @@
             {{ t('profile.changePassword') }}
           </v-btn>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" :disabled="savingAccount" @click="accountDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingAccount" @click="saveAccount">{{ t('actions.save') }}</v-btn>
@@ -442,8 +441,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.editRegion') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingRegion" @click="saveRegion">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="regionDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="regionDialog = false" />
         </v-card-title>
         <v-card-text>
           <div class="text-caption text-medium-emphasis mb-2">{{ t('profile.regionSelectionHint') }}</div>
@@ -465,7 +463,7 @@
               @update:model-value="onRegionChange(3)" />
           </div>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" :disabled="savingRegion" @click="regionDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingRegion" @click="saveRegion">{{ t('actions.save') }}</v-btn>
@@ -479,8 +477,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.changePassword') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingPassword" @click="saveChangePassword">{{ t('profile.changePassword') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="changePasswordDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="changePasswordDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-text-field
@@ -510,7 +507,7 @@
             :error-messages="changePasswordErrors.confirmPassword"
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" :disabled="savingPassword" @click="changePasswordDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingPassword" @click="saveChangePassword">{{ t('profile.changePassword') }}</v-btn>
@@ -524,8 +521,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.locale.title') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingLocale" @click="saveLocale">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="localeDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="localeDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-select
@@ -548,7 +544,7 @@
             density="compact"
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" :disabled="savingLocale" @click="localeDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingLocale" @click="saveLocale">{{ t('actions.save') }}</v-btn>
@@ -571,8 +567,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.nutritionPreferences') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingNutrition" @click="saveNutrition">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="nutritionDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="nutritionDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
@@ -648,7 +643,7 @@
             </v-col>
           </v-row>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="nutritionDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingNutrition" @click="saveNutrition">
@@ -664,8 +659,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.unitPreferences') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="savingUnitPrefs" @click="saveUnitPrefs">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="unitPrefsDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="unitPrefsDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
@@ -714,7 +708,7 @@
             clearable
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="unitPrefsDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="savingUnitPrefs" @click="saveUnitPrefs">{{ t('actions.save') }}</v-btn>
@@ -766,8 +760,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.defaultCurrency') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" @click="saveCurrency">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="currencyDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="currencyDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
@@ -793,7 +786,7 @@
             </template>
           </v-autocomplete>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="currencyDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" @click="saveCurrency">{{ t('actions.save') }}</v-btn>
@@ -807,8 +800,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.defaultScope') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" @click="saveScope">{{ t('actions.save') }}</v-btn>
-          <v-btn icon="mdi-close" variant="text" size="small" @click="scopeDialog = false" />
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="scopeDialog = false" />
         </v-card-title>
         <v-card-text>
           <p class="text-caption text-medium-emphasis mb-4">
@@ -824,7 +816,7 @@
             density="compact"
           />
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="scopeDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" @click="saveScope">{{ t('actions.save') }}</v-btn>

@@ -55,9 +55,10 @@ export function resolveWeightGrams(
   densities?: DensityInfo[],
   entityType?: string,
   entityId?: number,
+  overrides?: EntityOverride[],
 ): number | null {
   if (!override) return null
-  return resolveOverrideGramsPerUnit(override, units, densities, entityType, entityId)
+  return resolveOverrideGramsPerUnit(override, units, densities, entityType, entityId, overrides)
 }
 
 /**
@@ -96,7 +97,7 @@ export function normalizeRecordToJin(
     const override = overrides.find(
       o => o.entity_type === entityType && o.entity_id === entityId,
     )
-    const gramsPerUnit = resolveWeightGrams(override, units, densities, entityType, entityId)
+    const gramsPerUnit = resolveWeightGrams(override, units, densities, entityType, entityId, overrides)
     if (gramsPerUnit != null && gramsPerUnit > 0) {
       return {
         pricePerJin: rawUnitPrice / gramsPerUnit * JIN_GRAMS,

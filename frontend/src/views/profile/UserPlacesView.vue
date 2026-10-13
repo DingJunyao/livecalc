@@ -78,7 +78,7 @@
           <v-btn icon="mdi-arrow-left" variant="text" @click="addDialog = false" />
           <span class="text-h6 ms-2">{{ editingItem ? t('places.editTitle') : t('places.addTitle') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('actions.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="addDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-form>
@@ -116,7 +116,7 @@
             <MapPicker v-model="pickerCoords" :show-switcher="true" />
           </v-form>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn @click="addDialog = false">{{ t('actions.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('actions.save') }}</v-btn>

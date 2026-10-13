@@ -4,8 +4,7 @@
       <v-card-title class="d-flex align-center pa-4">
         <span class="text-h6">{{ t('prices.recordPrice') }}{{ displayProductName ? ' - ' + displayProductName : '' }}</span>
         <v-spacer />
-        <v-btn color="primary" variant="text" :loading="saving" :disabled="!formValid" @click="save">{{ t('prices.add') }}</v-btn>
-        <v-btn icon="mdi-close" variant="text" size="small" @click="close" />
+        <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="close" />
       </v-card-title>
       <v-card-text>
         <v-form ref="formRef" v-model="formValid">
@@ -118,7 +117,7 @@
       <v-alert v-if="saveError" type="error" variant="tonal" class="mx-4 mb-2" closable @click:close="saveError = ''">
         {{ saveError }}
       </v-alert>
-      <v-card-actions class="d-none d-md-flex">
+      <v-card-actions>
         <v-spacer />
         <v-btn @click="close">{{ t('prices.cancel') }}</v-btn>
         <v-btn color="primary" :loading="saving" :disabled="!formValid" @click="save">{{ t('prices.add') }}</v-btn>
@@ -136,6 +135,8 @@ import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
+import { loadEntityUnitOptions, loadGlobalUnitOptions } from '@/utils/entityUnits'
+import type { UnitOption } from '@/utils/entityUnits'
 import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 
 const { t } = useI18n()
@@ -195,7 +196,7 @@ const form = ref({
 })
 
 // 单位选项（从 API 动态加载）
-const unitOptions = ref<{ title: string; value: string }[]>([])
+const unitOptions = ref<UnitOption[]>([])
 
 // 基本单位列表（API 加载失败时的回退）
 const FALLBACK_UNITS = computed(() => [
@@ -209,38 +210,35 @@ const FALLBACK_UNITS = computed(() => [
   { title: t('prices.units.piece'), value: CHINESE_PIECE_NAME },
 ])
 
-// 加载全局单位列表
-const loadUnits = async () => {
-  try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
-    const units = res.items || res || []
-    unitOptions.value = units.map((u: any) => ({
-      title: `${u.name} (${u.abbreviation})`,
-      value: u.abbreviation,
-    }))
-  } catch (e) {
-    // 回退到基本单位列表
-    unitOptions.value = [...FALLBACK_UNITS.value]
+// 当前对话框对应的商品（列表模式取所选商品，否则取 props.productId）
+const currentProductId = computed<number | null>(() => {
+  if (props.products && props.products.length > 0) return selectedProductId.value
+  return props.productId ?? null
+})
+
+// 全局单位基准：每次重建实体单位列表都从这份基准出发，
+// 避免切换商品后残留上一个商品的自定义单位
+let baseUnitsPromise: Promise<UnitOption[]> | null = null
+const ensureBaseUnits = (): Promise<UnitOption[]> => {
+  if (!baseUnitsPromise) {
+    baseUnitsPromise = loadGlobalUnitOptions(FALLBACK_UNITS.value)
   }
+  return baseUnitsPromise
 }
 
-// 加载实体自定义单位（商品选择后追加）
-const loadEntityUnits = async (productId: number) => {
-  try {
-    const res = await api.get(`/entities/product/${productId}/units`)
-    const entityUnits = (res.items || res || []).map((eu: any) => ({
-      title: eu.unit_name,
-      value: eu.unit_name,
-    }))
-    // 追加到全局单位列表前面（实体单位优先），避免重复
-    const existingValues = new Set(unitOptions.value.map(u => u.value))
-    const newOptions = entityUnits.filter((u: { title: string; value: string }) => !existingValues.has(u.value))
-    if (newOptions.length > 0) {
-      unitOptions.value = [...newOptions, ...unitOptions.value]
-    }
-  } catch (e) {
-    // 实体单位加载失败不影响全局单位
-  }
+// 加载全局单位列表
+const loadUnits = async () => {
+  unitOptions.value = [...(await ensureBaseUnits())]
+}
+
+// 加载实体自定义单位（商品自身 + 关联原料回退；每次从全局基准重建）
+let entityUnitsSequence = 0
+const loadEntityUnits = async (productId: number | null) => {
+  const sequence = ++entityUnitsSequence
+  const base = await ensureBaseUnits()
+  const options = await loadEntityUnitOptions('product', productId, { baseOptions: base })
+  if (sequence !== entityUnitsSequence) return
+  unitOptions.value = options
 }
 
 const priceRules = [(v: number | null) => v !== null && v > 0 || t('prices.validPrice')]
@@ -310,10 +308,8 @@ watch(() => props.modelValue, (val) => {
     loadMerchants()
     loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
     loadUnits().then(() => {
-      // 非列表模式下，直接加载 props.productId 对应的实体单位
-      if (!props.products?.length && props.productId) {
-        loadEntityUnits(props.productId)
-      }
+      // 列表模式下由 selectedProductId 变化触发；此处覆盖直接 props.productId 的场景
+      loadEntityUnits(currentProductId.value)
     })
   }
 })
@@ -322,11 +318,10 @@ watch(show, (val) => {
   emit('update:modelValue', val)
 })
 
-// 监听商品选择，加载实体自定义单位
-watch(selectedProductId, (newId) => {
-  if (newId) {
-    loadEntityUnits(newId)
-  }
+// 监听商品选择，重建实体自定义单位（清空商品时回到全局单位）
+watch(currentProductId, (newId) => {
+  if (!show.value) return
+  loadEntityUnits(newId)
 })
 
 const close = () => {

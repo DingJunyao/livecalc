@@ -334,7 +334,7 @@
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ editingItem ? t('merchants.editTitle') : t('merchants.addTitle') }}</span>
           <v-spacer />
-          <v-btn color="primary" variant="text" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>
+          <v-btn icon="mdi-close" variant="text" size="small" :aria-label="t('common.close')" @click="addDialog = false" />
         </v-card-title>
         <v-card-text>
           <v-form>
@@ -393,7 +393,7 @@
             </div>
           </v-form>
         </v-card-text>
-        <v-card-actions class="d-none d-md-flex">
+        <v-card-actions>
           <v-spacer />
           <v-btn @click="addDialog = false">{{ t('prices.cancel') }}</v-btn>
           <v-btn color="primary" :loading="saving" @click="saveItem">{{ t('prices.save') }}</v-btn>

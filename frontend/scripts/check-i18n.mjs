@@ -93,6 +93,9 @@ function toRelativePath(file) {
 }
 
 function isIgnoredSource(relativePath) {
+  // 测试文件的用例名/断言消息不是用户可见文案，不需要走 i18n 键
+  // （仓库约定测试名用中文，扫描会误报）
+  if (/\.(test|spec)\.[cm]?[jt]sx?$/.test(relativePath)) return true
   if (relativePath.startsWith('src/utils/')) {
     const firstSegment = relativePath.slice('src/utils/'.length).split('/')[0]
     if (firstSegment.startsWith('map')) return true
