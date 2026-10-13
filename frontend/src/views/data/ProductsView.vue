@@ -216,7 +216,7 @@
           <v-form>
             <v-text-field
               v-model="form.name"
-              :label="t('products.productName')"
+              :label="t('products.nameRequired')"
               variant="outlined"
               required
               class="mb-4"
@@ -228,7 +228,7 @@
               :items="ingredients"
               :item-title="(item: any) => item.display_name || item.name"
               item-value="id"
-              :label="t('products.linkedIngredient')"
+              :label="t('products.linkedIngredientRequired')"
               variant="outlined"
               required
               :loading="loadingIngredients"
