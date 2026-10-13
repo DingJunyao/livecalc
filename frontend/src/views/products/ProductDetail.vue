@@ -2440,7 +2440,9 @@ const chartData = computed(() => {
     recordCountByDay.set(day, (recordCountByDay.get(day) ?? 0) + 1)
   }
 
-  return buildWeightedAsOfDailySeries(points, () => 50).map((d) => ({
+  // 单商品视图「按商品」区间会退化成均价线：区间改按「记录」口径 as-of 携带，
+  // 与「最新价格」卡片的区间（最近一次记录日的记录价区间）一致
+  return buildWeightedAsOfDailySeries(points, () => 50, { bandFromRecords: true }).map((d) => ({
     date: d.date,
     min: d.min,
     max: d.max,
