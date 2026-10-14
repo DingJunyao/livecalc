@@ -1214,34 +1214,32 @@
                 <v-btn value="mass">{{ t('ingredients.weightKindMass') }}</v-btn>
                 <v-btn value="volume">{{ t('ingredients.weightKindVolume') }}</v-btn>
               </v-btn-toggle>
-              <v-text-field
-                v-model="unitForm.conversion_factor"
-                :label="t('ingredients.conversionFactor')"
-                variant="outlined"
-                type="number"
-                :hint="t('ingredients.conversionHint')"
-                persistent-hint
-                class="mb-3"
-              />
-              <v-text-field
-                v-model="unitForm.weight_per_unit"
-                :label="unitForm.weight_kind === 'volume' ? t('ingredients.volumePerUnit') : t('ingredients.weightPerUnit')"
-                variant="outlined"
-                type="number"
-                :hint="unitForm.weight_kind === 'volume' ? t('ingredients.volumeHint') : t('ingredients.weightHint')"
-                persistent-hint
-                class="mb-3"
-              />
-              <v-select
-                v-model="unitForm.weight_unit"
-                :items="unitWeightUnitOptions"
-                :label="t('ingredients.unitWeightUnitLabel')"
-                variant="outlined"
-                clearable
-                :hint="t('ingredients.unitWeightUnitHint')"
-                persistent-hint
-                class="mb-3"
-              />
+              <v-row dense class="mb-0">
+                <v-col cols="5" class="py-0">
+                  <v-text-field
+                    v-model="unitForm.weight_per_unit"
+                    :label="t('ingredients.unitWeightValueLabel')"
+                    variant="outlined"
+                    density="comfortable"
+                    type="number"
+                    :hint="unitForm.weight_kind === 'volume' ? t('ingredients.volumeHint') : t('ingredients.weightHint')"
+                    persistent-hint
+                  />
+                </v-col>
+                <v-col cols="7" class="py-0">
+                  <v-select
+                    v-model="unitForm.weight_unit"
+                    :items="unitWeightUnitOptions"
+                    :label="t('ingredients.unitWeightUnitLabel')"
+                    variant="outlined"
+                    density="comfortable"
+                    clearable
+                    :hint="t('ingredients.unitWeightUnitHint')"
+                    persistent-hint
+                  />
+                </v-col>
+              </v-row>
+              <div class="mb-3" />
               <v-alert
                 v-if="volumePreviewText"
                 density="compact"
@@ -1938,6 +1936,7 @@ import { usePendingProposals } from '@/composables/usePendingProposals'
 import { formatNumber, formatQuantity } from '@/utils/format'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
 import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
+import { formatUnitOptionLabel, normalizeWeightPerUnitForEdit } from '@/utils/entityUnits'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -2762,7 +2761,6 @@ const savingDensity = ref(false)
 const unitForm = ref<{
   id: number | null
   unit_name: string
-  conversion_factor: number | null
   weight_per_unit: number | null
   is_default: boolean
   weight_kind: 'mass' | 'volume'
@@ -2772,7 +2770,6 @@ const unitForm = ref<{
 }>({
   id: null,
   unit_name: '',
-  conversion_factor: null,
   weight_per_unit: null,
   is_default: false,
   weight_kind: 'mass',
@@ -2912,18 +2909,30 @@ const hasWeightLeaf = (u: EntityUnitOverride) =>
 const hasVolumeLeaf = (u: EntityUnitOverride) =>
   hasWeightLeaf(u) && resolveWeightChain(u.id)?.leafType === 'volume'
 
+// 把叶子单位的数量换算成显示用的数值（1 单位 = factor × weight_per_unit × leaf）
+// 旧数据里 factor 可能不是 1，列表显示必须继续把它乘进去（不改变存储语义）。
+const chainDisplayAmount = (factor: number, row: EntityUnitOverride, chain: { leafId: number | null } | null): number => {
+  const base = row.weight_per_unit != null ? Number(row.weight_per_unit) * factor : 0
+  if (chain?.leafId == null) return base
+  const globalUnit = globalWeightUnits.value.find(u => u.id === chain.leafId)
+  const si = globalUnit?.si_factor
+  if (si == null || !isFinite(Number(si)) || Number(si) === 0) return base
+  return base * Number(si)
+}
+
 const overrideWeightDisplay = (u: EntityUnitOverride): string => {
   if (!hasWeightLeaf(u)) return ''
   const amount = u.weight_per_unit != null
     ? formatQuantity(u.weight_per_unit, localeStore.effectiveFormatLocale)
     : ''
   const chain = resolveWeightChain(u.id)
+  const factor = u.conversion_factor != null ? Number(u.conversion_factor) : 1
   const head = `1${u.unit_name} = `
   if (u.weight_unit_override_id != null) {
     const refUnit = mergedEntityUnits.value.find(x => x.id === u.weight_unit_override_id)
-    const refName = refUnit?.unit_name ?? ''
-    let text = u.conversion_factor
-      ? `${head}${formatNumber(u.conversion_factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })} ${refName}`
+    // 旧数据换算系数 ≠ 1：继续按「系数 × 单个重量 × 引用单位」显示，不丢乘数
+    let text = factor !== 1
+      ? `${head}${formatNumber(factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })} × ${amount || '1'} ${refUnit?.unit_name ?? `#${u.weight_unit_override_id}`}`
       : `${head}${amount}${chain?.leafType === 'volume' ? ' mL' : ' g'}`
     const refLeaf = refUnit ? resolveWeightChain(refUnit.id) : null
     if (chain?.leafType === 'volume' && refLeaf?.leafType !== 'volume' && amount) {
@@ -2933,13 +2942,13 @@ const overrideWeightDisplay = (u: EntityUnitOverride): string => {
   }
   if (chain?.leafType === 'volume') {
     const d = effectiveDensityKgM3.value ?? 1000
-    const grams = Number(u.weight_per_unit) * d / 1000
+    const grams = chainDisplayAmount(factor, u, chain) * d / 1000
     return `${head}${t('ingredients.unitVolumeDisplay', {
       volume: amount,
       grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
     })}`
   }
-  return `${head}${amount} g`
+  return `${head}${formatQuantity(chainDisplayAmount(factor, u, chain), localeStore.effectiveFormatLocale)} g`
 }
 
 // 单位对话框：体积语义下的密度折算提示
@@ -2956,6 +2965,7 @@ const volumePreviewText = computed(() => {
 })
 
 // 单位选择：'u:<unit_id>' 全局单位 / 'o:<override_id>' 同实体自定义单位 / '' 默认 g
+// 原料没有父实体，因此这里不合并任何继承项（保持原行为）。
 const unitSelectLabel = (unit: Unit) => {
   const name = unit.name || unit.abbreviation || ''
   if (unit.abbreviation && unit.abbreviation !== name) return `${name} (${unit.abbreviation})`
@@ -2988,7 +2998,10 @@ const unitWeightUnitOptions = computed(() => {
     !unitChainReaches(u.id, currentId),
   )
   for (const u of custom) {
-    options.push({ title: `${u.unit_name}${t('ingredients.unitCustomUnitSuffix')}`, value: `o:${u.id}` })
+    options.push({
+      title: formatUnitOptionLabel(u.unit_name, u.id, t('ingredients.unitCustomUnitSuffix')),
+      value: `o:${u.id}`,
+    })
   }
   if (currentId != null) {
     const wuId = unitForm.value.weight_unit_id
@@ -2998,7 +3011,10 @@ const unitWeightUnitOptions = computed(() => {
     const ovId = unitForm.value.weight_unit_override_id
     if (ovId != null && !options.some(o => o.value === `o:${ovId}`)) {
       const row = mergedEntityUnits.value.find(u => u.id === ovId)
-      options.push({ title: `${row?.unit_name ?? `#${ovId}`}${t('ingredients.unitCustomUnitSuffix')}`, value: `o:${ovId}` })
+      options.push({
+        title: formatUnitOptionLabel(row?.unit_name, ovId, t('ingredients.unitCustomUnitSuffix')),
+        value: `o:${ovId}`,
+      })
     }
   }
   return options
@@ -3007,9 +3023,18 @@ const applyWeightUnitSelection = (value: unknown) => {
   const raw = value == null ? '' : String(value)
   unitForm.value.weight_unit_id = raw.startsWith('u:') ? Number(raw.slice(2)) : null
   unitForm.value.weight_unit_override_id = raw.startsWith('o:') ? Number(raw.slice(2)) : null
-  unitForm.value.weight_kind = raw.startsWith('u:') && weightUnitTypeById.value.get(Number(raw.slice(2))) === 'volume'
-    ? 'volume'
-    : 'mass'
+  if (raw.startsWith('u:')) {
+    unitForm.value.weight_kind = weightUnitTypeById.value.get(Number(raw.slice(2))) === 'volume'
+      ? 'volume'
+      : 'mass'
+  } else if (raw.startsWith('o:')) {
+    // 自定义单位做「单位」时，量类型跟随它的叶子单位
+    unitForm.value.weight_kind = resolveWeightChain(Number(raw.slice(2)))?.leafType === 'volume'
+      ? 'volume'
+      : 'mass'
+  } else {
+    unitForm.value.weight_kind = unitForm.value.weight_kind === 'volume' ? 'volume' : 'mass'
+  }
 }
 
 watch(() => unitForm.value.weight_unit, (value) => {
@@ -3031,58 +3056,10 @@ const applyDensityPreset = (value: number) => {
 // 打开单位对话框（支持传入 EntityUnitOverride 或 unit_name 字符串）
 const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
   await ensureWeightUnits()
-  const descendsFromSelf = (rowId: number) => {
-    if (typeof unit === 'string' || !unit) return false
-    return unitChainReaches(unit.id, rowId)
-  }
-  const kindOfCustomRef = (refId: number): 'mass' | 'volume' => {
-    if (descendsFromSelf(refId)) return 'mass'
-    return resolveWeightChain(refId)?.leafType === 'volume' ? 'volume' : 'mass'
-  }
-  let kind: 'mass' | 'volume' = 'mass'
-  if (typeof unit !== 'string' && unit?.weight_unit_override_id != null) {
-    const refId = unit.weight_unit_override_id
-    const row = mergedEntityUnits.value.find(u => u.id === refId)
-    kind = row ? kindOfCustomRef(row.id) : 'mass'
-  } else if (typeof unit !== 'string' && unit?.weight_unit_id != null) {
-    kind = weightUnitTypeById.value.get(unit.weight_unit_id) === 'volume' ? 'volume' : 'mass'
-  }
-  if (typeof unit === 'string') {
-    unitForm.value = {
-      id: null,
-      unit_name: unit,
-      conversion_factor: null,
-      weight_per_unit: 100,
-      is_default: false,
-      weight_kind: kind,
-      weight_unit: weightUnitIds.value.mass != null ? `u:${weightUnitIds.value.mass}` : '',
-      weight_unit_id: weightUnitIds.value.mass,
-      weight_unit_override_id: null,
-    }
-  } else if (unit) {
-    const overrideRef = unit.weight_unit_override_id ?? null
-    const globalRef = overrideRef == null ? (unit.weight_unit_id ?? null) : null
-    const overrideRow = overrideRef != null ? mergedEntityUnits.value.find(u => u.id === overrideRef) : null
-    unitForm.value = {
-      id: unit.id,
-      unit_name: unit.unit_name,
-      conversion_factor: unit.conversion_factor,
-      weight_per_unit: unit.weight_per_unit,
-      is_default: unit.is_default,
-      weight_kind: kind,
-      weight_unit: overrideRef != null ? `o:${overrideRef}` : (globalRef != null ? `u:${globalRef}` : ''),
-      weight_unit_id: globalRef,
-      weight_unit_override_id: overrideRef,
-    }
-    if (overrideRef != null) {
-      // 自定义单位做重量单位时，量类型跟随叶子单位
-      unitForm.value.weight_kind = overrideRow ? kindOfCustomRef(overrideRow.id) : 'mass'
-    }
-  } else {
+  if (!unit) {
     unitForm.value = {
       id: null,
       unit_name: '',
-      conversion_factor: null,
       weight_per_unit: null,
       is_default: false,
       weight_kind: 'mass',
@@ -3090,6 +3067,34 @@ const openUnitDialog = async (unit?: EntityUnitOverride | string) => {
       weight_unit_id: weightUnitIds.value.mass,
       weight_unit_override_id: null,
     }
+  } else if (typeof unit === 'string') {
+    // 未映射单位快速添加：默认按「1 单位 = 100 g」
+    unitForm.value = {
+      id: null,
+      unit_name: unit,
+      weight_per_unit: 100,
+      is_default: false,
+      weight_kind: 'mass',
+      weight_unit: weightUnitIds.value.mass != null ? `u:${weightUnitIds.value.mass}` : '',
+      weight_unit_id: weightUnitIds.value.mass,
+      weight_unit_override_id: null,
+    }
+  } else {
+    const overrideRef = unit.weight_unit_override_id ?? null
+    const globalRef = overrideRef == null ? (unit.weight_unit_id ?? null) : null
+    unitForm.value = {
+      id: unit.id,
+      unit_name: unit.unit_name,
+      // 旧行 factor ≠ 1 时把系数折进「量」，避免保存（固定发 factor=1）丢重量
+      weight_per_unit: normalizeWeightPerUnitForEdit(unit),
+      is_default: unit.is_default,
+      weight_kind: 'mass',
+      weight_unit: overrideRef != null ? `o:${overrideRef}` : (globalRef != null ? `u:${globalRef}` : ''),
+      weight_unit_id: globalRef,
+      weight_unit_override_id: overrideRef,
+    }
+    // 量类型跟随所选单位（全局体积单位或自定义单位的叶子单位）
+    applyWeightUnitSelection(unitForm.value.weight_unit)
   }
   showUnitDialog.value = true
 }
@@ -3115,13 +3120,8 @@ const saveEntityUnit = async () => {
     showMessage(t('ingredients.unitNameRequired'), 'error')
     return
   }
-  // 重量单位：'u:<id>' 全局质量/体积单位，'o:<id>' 同实体自定义单位（重量单位类型由单位选择决定）
-  // 换算系数可选：留空/0 一律发 null（后端按 1 处理）
-  const cfRaw = Number(unitForm.value.conversion_factor)
-  const conversionFactor = unitForm.value.conversion_factor != null && String(unitForm.value.conversion_factor).trim() !== '' && isFinite(cfRaw) && cfRaw > 0
-    ? cfRaw
-    : null
-  // 重量单位：全局单位 (weight_unit_id) 与同实体自定义单位 (weight_unit_override_id) 互斥
+  // 单位选择：'u:<id>' 全局质量/体积单位，'o:<id>' 同实体自定义单位，两者互斥
+  // （后端要求 weight_unit_id 与 weight_unit_override_id 只能给一个）
   const weightUnitOverrideId = unitForm.value.weight_unit_override_id
   const weightUnitId = weightUnitOverrideId != null ? null : unitForm.value.weight_unit_id
   if (weightUnitOverrideId != null && weightUnitOverrideId === unitForm.value.id) {
@@ -3132,7 +3132,9 @@ const saveEntityUnit = async () => {
   try {
     const payload = {
       unit_name: unitForm.value.unit_name,
-      conversion_factor: conversionFactor,
+      // 换算系数已从界面移除：语义由「量 + 单位」表达（1盒 = 12 个 → 量 12、单位 个），
+      // 固定写 1 以填满 DB 列；旧数据的非 1 系数仅在列表显示时继续乘算。
+      conversion_factor: 1,
       weight_per_unit: unitForm.value.weight_per_unit,
       weight_unit_id: weightUnitId,
       weight_unit_override_id: weightUnitOverrideId,
