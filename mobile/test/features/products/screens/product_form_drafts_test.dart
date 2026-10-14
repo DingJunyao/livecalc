@@ -128,6 +128,14 @@ class _FakeEntityRepository extends EntityRepository {
           'unit_type': 'mass',
           'si_factor': 0.001,
         },
+        // 全局单位表里本来就有计数单位「颗」（name == abbreviation）
+        {
+          'id': 49,
+          'name': '颗',
+          'abbreviation': '颗',
+          'unit_type': 'count',
+          'si_factor': 1,
+        },
       ];
 
   @override
@@ -493,6 +501,30 @@ void main() {
     await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
     await tester.pumpAndSettle();
     expect(find.text('盒 (from ingredient)'), findsOneWidget);
+  });
+
+  testWidgets('全局单位与原料自定义单位同名时，下拉只保留实体那一条', (tester) async {
+    // 用户实测：包菜原料自定义了「颗 = 500 克」，而全局单位表里也有「颗」，
+    // 下拉同时出现「颗 (颗)」和「颗 (from ingredient)」——应该合并成一条
+    final entityRepo = _FakeEntityRepository()
+      ..ingredient5Units = const [
+        EntityUnit(id: 31, unitName: '颗', weightPerUnit: 500, weightUnitId: 1),
+      ];
+    final persister = _RecordingPersister();
+    await _pumpForm(tester, persister: persister, entityRepository: entityRepo);
+    await tester.enterText(find.byType(TextFormField).first, 'Milk');
+    await _selectIngredient(tester);
+
+    await _tapDraftTile(tester, 'Custom units');
+    await tester.tap(find.byTooltip('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('颗 (from ingredient)'), findsOneWidget);
+    expect(find.text('颗 (颗)'), findsNothing);
+    // 其它全局单位不受影响
+    expect(find.text('gram (g)'), findsOneWidget);
   });
 
   testWidgets('换绑原料后，引用失效的商品自定义单位被移除并提示', (tester) async {

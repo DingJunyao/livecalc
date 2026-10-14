@@ -770,10 +770,17 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   /// + 继承自关联原料的自定义单位（同名时本实体的覆盖优先）。
   ///
   /// 选项值带来源前缀（`u:` 全局 / `e:` 自定义），避免两张表的 id 撞车时
-  /// 把自定义单位去重掉。
+  /// 把自定义单位去重掉；另外**与实体自定义单位同名的全局单位不再列出**——
+  /// 全局单位表里本来就有「颗」「个」「盒」这类计数单位，实体又定义了自己的
+  /// 定义（如 1颗 = 500 克）时，同一个名字出现两条会让用户无法分辨
+  /// （实体覆盖优先，与后端 `get_entity_override` 的优先级链一致）。
   List<DropdownMenuItem<String>> _weightUnitItems() {
     final l10n = AppLocalizations.of(context);
     final excluded = _excludedOverrideIds();
+    final entityNames = <String>{
+      for (final unit in widget.units)
+        if (unit.unitName.trim().isNotEmpty) unit.unitName.trim(),
+    };
     final values = <String>{};
     final items = <DropdownMenuItem<String>>[
       DropdownMenuItem<String>(
@@ -782,6 +789,7 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
       ),
     ];
     for (final option in widget.globalUnitOptions) {
+      if (entityNames.contains(option.name.trim())) continue;
       if (!values.add('u:${option.id}')) continue;
       items.add(_item('u:${option.id}', '${option.name} (${option.abbreviation})'));
     }
