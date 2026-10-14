@@ -141,6 +141,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import { formatNumber, formatQuantity } from '@/utils/format'
+import { withoutShadowedGlobals } from '@/utils/unitOptions'
 import { useLocaleStore } from '@/stores/locale'
 import {
   draftChainReaches,
@@ -250,7 +251,13 @@ function close() {
 
 const unitOptions = computed(() => {
   const options: { title: string; value: string }[] = []
-  for (const unit of globalWeightUnits.value) {
+  // 全局单位里与草稿/继承单位同名的（如全局「颗」vs 原料自定义「颗 = 500 克」）
+  // 不再列出：实体覆盖优先，避免下拉出现两条同名项
+  const globals = withoutShadowedGlobals(globalWeightUnits.value, [
+    ...props.units,
+    ...ingredientUnits.value,
+  ])
+  for (const unit of globals) {
     const name = unit.name || unit.abbreviation || ''
     const label = unit.abbreviation && unit.abbreviation !== name
       ? `${name} (${unit.abbreviation})`
