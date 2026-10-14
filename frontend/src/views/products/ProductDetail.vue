@@ -13,6 +13,7 @@
       <CalcContextMenu />
       <!-- 桌面端：按钮平铺 -->
       <template v-if="isDesktop">
+        <FavoriteButton :active="favoriteIds.has(productId)" @toggle="onToggleDetailFavorite" />
         <v-btn icon="mdi-tag-plus" variant="text" @click="openQuickPriceDialog" />
         <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="loadData" />
       </template>
@@ -22,6 +23,12 @@
           <v-btn icon="mdi-dots-vertical" variant="text" v-bind="menuProps" :loading="loading" />
         </template>
         <v-list density="compact" nav>
+          <v-list-item
+            :prepend-icon="favoriteIds.has(productId) ? 'mdi-heart' : 'mdi-heart-outline'"
+            :base-color="favoriteIds.has(productId) ? 'error' : undefined"
+            :title="favoriteIds.has(productId) ? t('favorites.unfavorite') : t('favorites.favorite')"
+            @click="onToggleDetailFavorite"
+          />
           <v-list-item prepend-icon="mdi-tag-plus" :title="t('products.addPriceRecord')" @click="openQuickPriceDialog" />
           <v-list-item prepend-icon="mdi-refresh" :title="t('products.retry')" @click="loadData" />
         </v-list>
@@ -1300,6 +1307,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
 import { getErrorMessage } from '@/utils/errorHandler'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import BarcodeField from '@/components/common/BarcodeField.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, toLocalDayKey, type AsOfPricePoint } from '@/utils/priceAsOf'
@@ -1396,6 +1405,20 @@ const route = useRoute()
 const router = useRouter()
 
 const productId = computed(() => Number(route.params.id))
+
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('product')
+
+const onToggleDetailFavorite = async () => {
+  const id = productId.value
+  if (!id) return
+  const wasFav = favoriteIds.value.has(id)
+  try {
+    await toggleFavoriteRaw(id)
+    showMessage(wasFav ? t('favorites.unfavorited') : t('favorites.favorited'), wasFav ? 'info' : 'success')
+  } catch (e: any) {
+    showMessage(getErrorMessage(e, wasFav ? t('favorites.unfavoriteFailed') : t('favorites.favoriteFailed')), 'error')
+  }
+}
 
 const product = ref<Product | null>(null)
 const pendingProposal = ref<{ id: number; action: string; payload: Record<string, any> } | null>(null)
@@ -3568,6 +3591,7 @@ watch(pricePage, loadPriceRecords)
 onMounted(() => {
   loadData()
   loadMerchants()
+  loadFavorites()
   loadCurrencies().then((list) => { priceCurrencies.value = list }).catch(() => {})
 })
 </script>

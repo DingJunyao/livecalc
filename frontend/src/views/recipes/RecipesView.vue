@@ -94,6 +94,12 @@
               variant="tonal"
               class="ms-1"
             >{{ t('recipes.pendingChanges') }}</v-chip>
+            <FavoriteButton
+              :active="favoriteIds.has(recipe.id)"
+              size="x-small"
+              class="ms-1"
+              @toggle="onToggleFavorite(recipe.id)"
+            />
           </div>
 
           <v-card-text class="text-center pa-2">
@@ -263,6 +269,9 @@ import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 import { useI18n } from 'vue-i18n'
+import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 
 const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { smAndDown, mdAndDown, md, lgAndUp } = useDisplay()
@@ -413,6 +422,12 @@ const recipeFilters = computed<FilterConfig[]>(() => [
     maxWidth: '280px',
   },
   {
+    key: 'favorites_only',
+    label: t('favorites.onlyFavorites'),
+    type: 'toggle',
+    minWidth: '140px',
+  },
+  {
     key: 'special_conditions',
     label: t('recipes.specialConditions'),
     type: 'multicheck',
@@ -425,6 +440,21 @@ const recipeFilters = computed<FilterConfig[]>(() => [
 ])
 
 const requestFilters = ref<Record<string, any>>({})
+
+const { notify } = useGlobalSnackbar()
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('recipe')
+const favoritesOnly = computed(() => requestFilters.value.favorites_only === true)
+
+const onToggleFavorite = async (id: number) => {
+  const wasFav = favoriteIds.value.has(id)
+  try {
+    await toggleFavoriteRaw(id)
+    notify(wasFav ? t('favorites.unfavorited') : t('favorites.favorited'), wasFav ? 'info' : 'success')
+    if (favoritesOnly.value) loadRecipes()
+  } catch (e: any) {
+    notify(getErrorMessage(e, wasFav ? t('favorites.unfavoriteFailed') : t('favorites.favoriteFailed')), 'error')
+  }
+}
 
 const onFilterChange = (filterState: Record<string, any>) => {
   currentPage.value = 1
@@ -526,6 +556,11 @@ const loadRecipes = async () => {
         params[cond] = 'true'
       }
     }
+    // 收藏参数（主列表页默认置顶收藏）
+    params.favorites_first = 'true'
+    if (requestFilters.value.favorites_only === true) {
+      params.favorites_only = 'true'
+    }
 
     const response = await api.get('/recipes', { params })
     if (requestSequence !== loadRecipesSequence) return
@@ -626,6 +661,7 @@ onMounted(() => {
   loadRecipes()
   loadIngredients()
   loadPendingProposals()
+  loadFavorites()
   window.addEventListener('app-refresh', loadRecipes)
 })
 

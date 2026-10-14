@@ -77,6 +77,10 @@
               >
                 <SparklineBackground :data="item.sparkline_data" color="secondary" height="36" />
               </div>
+              <FavoriteButton
+                :active="favoriteIds.has(item.id)"
+                @toggle="onToggleFavorite(item.id)"
+              />
               <v-btn
                 icon="mdi-tag-plus"
                 size="small"
@@ -138,6 +142,10 @@
             <v-divider />
             <v-card-actions style="position: relative; z-index: 1">
               <v-spacer />
+              <FavoriteButton
+                :active="favoriteIds.has(item.id)"
+                @toggle="onToggleFavorite(item.id)"
+              />
               <v-btn
                 icon="mdi-tag-plus"
                 size="small"
@@ -313,6 +321,9 @@ import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/currency'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
+import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import EntityDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog.vue'
 import EntityDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
@@ -452,6 +463,12 @@ const ingredientFilters = computed<FilterConfig[]>(() => [
     maxWidth: '240px',
   },
   {
+    key: 'favorites_only',
+    label: t('favorites.onlyFavorites'),
+    type: 'toggle',
+    minWidth: '140px',
+  },
+  {
     key: 'special_conditions',
     label: t('ingredients.filterSpecialConditions'),
     type: 'multicheck',
@@ -467,6 +484,21 @@ const ingredientFilters = computed<FilterConfig[]>(() => [
     minWidth: '180px',
   },
 ])
+
+const { notify } = useGlobalSnackbar()
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('ingredient')
+const favoritesOnly = computed(() => requestFilters.value.favorites_only === true)
+
+const onToggleFavorite = async (id: number) => {
+  const wasFav = favoriteIds.value.has(id)
+  try {
+    await toggleFavoriteRaw(id)
+    notify(wasFav ? t('favorites.unfavorited') : t('favorites.favorited'), wasFav ? 'info' : 'success')
+    if (favoritesOnly.value) loadIngredients()
+  } catch (e: any) {
+    notify(getErrorMessage(e, wasFav ? t('favorites.unfavoriteFailed') : t('favorites.favoriteFailed')), 'error')
+  }
+}
 
 const onFilterChange = (filterState: Record<string, any>) => {
   currentPage.value = 1
@@ -590,6 +622,11 @@ const loadIngredients = async () => {
         params[cond] = 'true'
       }
     }
+    // 收藏参数（主列表页默认置顶收藏）
+    params.favorites_first = 'true'
+    if (requestFilters.value.favorites_only === true) {
+      params.favorites_only = 'true'
+    }
 
     const response = await api.get('/ingredients', { params })
     if (requestSequence !== loadIngredientsSequence) return
@@ -662,6 +699,7 @@ onMounted(() => {
   loadOptions()
   loadCategories()
   loadPendingProposals()
+  loadFavorites()
   window.addEventListener('app-refresh', loadIngredients)
 })
 
