@@ -113,6 +113,23 @@ weight_unit_override_id：
 但能稳定抓出「未声明标识符」这类会直接抛 `ReferenceError` 的问题（含本次修掉的这一处）。
 **结论：改完前端除了 `npm run build`，还要跑一次 `npx tsc --noEmit`（忽略 `*.vue` 相关噪音），并把其中真实错误清掉。**
 
+### BUGFIX（用户实测）：新增商品/原料时单位下拉「没有数据」
+
+用户反馈：新增商品/原料时进单位编辑，「单位」下拉是空的（没有数据）；而详情页里加单位正常、移动端正常。
+
+**根因**：[EntityDraftUnitsDialog.vue](../frontend/src/components/entities/EntityDraftUnitsDialog.vue) 用
+`loadedFor = ref<number | null>(null)` 当「已加载哪个原料」的哨兵，判定是 `if (loadedFor.value === ingredientId) return`。
+新增商品未选原料 / 新增原料时 `props.ingredientId` 就是 `null` → `null === null` → **第一次打开就直接 return**，
+`/units/` 根本没请求，`globalUnits` 恒为空。详情页正常是因为它根本不走这个组件（数据来自 provider）；
+移动端正常是因为移动端的判定用的是独立布尔 `_draftUnitsLoaded`（没有把 null 当哨兵）。
+
+**修复**：把「是否已加载」与「加载的是哪个原料」分成两个状态
+（`globalUnitsLoaded` 布尔 + `loadedIngredientId`），加载失败不置位 → 下次打开自动重试；
+`ingredientId` 变化时重置。
+
+**经验**：①用「可为 null 的业务值」当缓存哨兵时，`null` 往往就是合法取值——哨兵要用独立布尔或 `undefined` 并写注释；
+②「详情页正常、新增页不正常」并不总意味着新增页取数口径不同，也可能是共用组件的初始化路径不同（本例：详情页根本不用该组件）。
+
 ## 6. 经验
 
 1. 「商品创建成功」与「附加数据保存成功」是两个失败域：附加数据失败必须逐条提示，不能回滚/报整单失败，
@@ -126,6 +143,8 @@ weight_unit_override_id：
 5. 「新增 X」类表单里的附加数据编辑器必须**实体中立**（`entityType` 参数化）：
    商品/原料两份需求只差端点与文案，复制一份代码会在下一次改口径时漏掉一半。
 6. 前端「构建通过」不等于「能跑」：Vite 只转译，`vue-tsc` 在本仓不可用，务必用 `npx tsc --noEmit` 兜底。
+7. 「详情页正常、新增页不正常」要先确认两边是否真的走同一组件/同一初始化路径，再怀疑取数口径；
+   缓存哨兵不要用可为 null 的业务值充当（null 常是合法取值，`null === null` 会误判「已加载」）。
 
 ## 7. 分支
 
