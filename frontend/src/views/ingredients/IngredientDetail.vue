@@ -1968,6 +1968,7 @@ import { buildDailySparklineSeries } from '@/utils/sparkline'
 import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
 import { formatUnitOptionLabel, normalizeWeightPerUnitForEdit } from '@/utils/entityUnits'
 import { overrideAmounts } from '@/utils/unitFactor'
+import { withoutShadowedGlobals } from '@/utils/unitOptions'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -3069,7 +3070,12 @@ const unitChainReaches = (candidateId: number, targetId: number | null): boolean
   return false
 }
 const unitWeightUnitOptions = computed(() => {
-  const globals = globalWeightUnits.value.filter(u => u.unit_type === 'mass' || u.unit_type === 'volume')
+  // 全局单位里与实体自定义单位同名的（如全局「颗」vs 原料自定义「颗 = 500 克」）
+  // 不再列出：实体覆盖优先，避免下拉出现两条同名项
+  const globals = withoutShadowedGlobals(
+    globalWeightUnits.value.filter(u => u.unit_type === 'mass' || u.unit_type === 'volume'),
+    mergedEntityUnits.value,
+  )
   const options: { title: string; value: string }[] = globals.map(u => ({
     title: unitSelectLabel(u),
     value: `u:${u.id}`,
