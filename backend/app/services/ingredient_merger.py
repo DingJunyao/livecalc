@@ -92,6 +92,15 @@ class IngredientMerger:
             # 2. 更新商品价格记录中的食材引用
             updated_products_count = self._update_product_ingredients(source_ingredient_ids, target_ingredient_id)
 
+            # 2.5 删除源食材的收藏（口径对齐商家合并：不搬迁，避免同一用户
+            #     同时收藏源与目标时撞唯一约束；回滚由提案执行器的快照恢复）
+            from app.models.user_favorite import UserFavorite
+
+            self.db.query(UserFavorite).filter(
+                UserFavorite.entity_type == "ingredient",
+                UserFavorite.entity_id.in_(source_ingredient_ids),
+            ).delete(synchronize_session=False)
+
             # 3. 更新营养数据映射
             updated_mappings_count = self._update_nutrition_mappings(source_ingredient_ids, target_ingredient_id)
 
