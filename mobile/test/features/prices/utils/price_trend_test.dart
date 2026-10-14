@@ -114,4 +114,77 @@ void main() {
     expect(points.single.minCost, closeTo(20.0, 0.001));
     expect(points.single.maxCost, closeTo(20.0, 0.001));
   });
+
+  test('needsFullPriceHistory：池为空或池里最早记录晚于区间起点时要回退全量', () {
+    // 区间内一条都没有（数据整体陈旧）
+    expect(
+      needsFullPriceHistory(windowStartDay: '2026-10-01', windowRecords: const []),
+      isTrue,
+    );
+    // 区间内只有今天一条新记录、更早记录被 start_date 挡在区间外（用户实测场景②）
+    expect(
+      needsFullPriceHistory(
+        windowStartDay: '2026-10-01',
+        windowRecords: [record(recordedAt: '2026-10-14T11:00:00+08:00')],
+      ),
+      isTrue,
+    );
+    // 池里有不晚于区间起点的记录 → 已有 as-of 携带起点，不回退
+    expect(
+      needsFullPriceHistory(
+        windowStartDay: '2026-10-01',
+        windowRecords: [
+          record(id: 1, recordedAt: '2026-09-20T11:00:00+08:00'),
+          record(id: 2, recordedAt: '2026-10-14T11:00:00+08:00'),
+        ],
+      ),
+      isFalse,
+    );
+    // 「全部」区间没有起点 → 不回退
+    expect(
+      needsFullPriceHistory(windowStartDay: '', windowRecords: const []),
+      isFalse,
+    );
+  });
+
+  test('只有一次记录且只有一个记录日时向前补齐成平线（backfillSparse）', () {
+    // 只有今天一条记录：不补齐时只剩一个点（图表看起来空白）
+    final single = buildPriceTrendPoints(
+      [record(price: '5.00', recordedAt: '2026-10-14T11:00:00+08:00')],
+      useStandardQuantity: true,
+      startDay: '2026-10-10',
+      endDay: '2026-10-14',
+    );
+    expect(single, hasLength(1));
+
+    final filled = buildPriceTrendPoints(
+      [record(price: '5.00', recordedAt: '2026-10-14T11:00:00+08:00')],
+      useStandardQuantity: true,
+      startDay: '2026-10-10',
+      endDay: '2026-10-14',
+      backfillSparse: true,
+    );
+    expect(
+      filled.map((p) => p.date).toList(),
+      ['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14'],
+    );
+    expect(filled.every((p) => (p.avgCost - 5.0).abs() < 1e-9), isTrue);
+  });
+
+  test('有两个记录日时不做向前补齐（不凭空编造趋势）', () {
+    final points = buildPriceTrendPoints(
+      [
+        record(id: 1, price: '10.00', recordedAt: '2026-10-12T11:00:00+08:00'),
+        record(id: 2, price: '20.00', recordedAt: '2026-10-14T11:00:00+08:00'),
+      ],
+      useStandardQuantity: true,
+      startDay: '2026-10-08',
+      endDay: '2026-10-14',
+      backfillSparse: true,
+    );
+
+    expect(points.first.date, '2026-10-12');
+    expect(points.map((p) => p.date).toList(),
+        ['2026-10-12', '2026-10-13', '2026-10-14']);
+  });
 }

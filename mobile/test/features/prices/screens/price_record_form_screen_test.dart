@@ -160,6 +160,8 @@ void main() {
     Future<List<String>> Function(int productId, int? ingredientId)?
         unitNamesLoader,
     Future<List<String>> Function()? globalUnitNamesLoader,
+    Future<String?> Function(int productId, int? ingredientId)?
+        defaultUnitLoader,
     EntityUnitsRequest? entityUnitsRequest,
     double viewportHeight = 1400,
     String? merchantCurrency,
@@ -191,6 +193,7 @@ void main() {
             scanner: scanner,
             unitNamesLoader: unitNamesLoader,
             globalUnitNamesLoader: globalUnitNamesLoader,
+            defaultUnitLoader: defaultUnitLoader,
             entityUnitsRequest: entityUnitsRequest,
           ),
         ),
@@ -417,6 +420,90 @@ void main() {
     expect(repo.lastRecordedAt, isNotNull);
     // 保存成功 → pop 回宿主
     expect(find.byType(PriceRecordFormScreen), findsNothing);
+  });
+
+  testWidgets('选中商品后单位下拉切到该商品的默认单位', (tester) async {
+    // 用户反馈：给商品/原料设了「默认单位」，维护价格选商品时下拉不会切过去
+    final repo = _FakePriceRepository();
+    final requested = <List<int?>>[];
+
+    await pumpForm(
+      tester,
+      priceRepo: repo,
+      productRepo: _FakeProductRepository(const [Product(id: 7, name: '番茄')]),
+      globalUnitNamesLoader: () async => const ['斤', '个'],
+      unitNamesLoader: (productId, ingredientId) async => const [],
+      defaultUnitLoader: (productId, ingredientId) async {
+        requested.add([productId, ingredientId]);
+        return '箱';
+      },
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '番茄'));
+    await tester.pumpAndSettle();
+
+    expect(requested, [
+      [7, null],
+    ]);
+    // 单位下拉当前值已切到默认单位「箱」
+    expect(find.text('箱'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(repo.createCount, 1);
+    expect(repo.lastUnit, '箱');
+  });
+
+  testWidgets('带着商品进入表单（商品详情/列表记价）时也套用默认单位', (tester) async {
+    final repo = _FakePriceRepository();
+    final product = Product.fromJson({
+      'id': 42,
+      'name': '食用油',
+      'ingredient_id': 7,
+    });
+
+    await pumpForm(
+      tester,
+      priceRepo: repo,
+      prefill: PriceRecordFormPrefill(product: product, lockProduct: true),
+      globalUnitNamesLoader: () async => const ['斤', '个'],
+      unitNamesLoader: (productId, ingredientId) async => const [],
+      defaultUnitLoader: (productId, ingredientId) async =>
+          productId == 42 ? '桶' : null,
+    );
+
+    expect(find.text('桶'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '9');
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(repo.lastUnit, '桶');
+  });
+
+  testWidgets('商品没有默认单位时保持原单位（不因读取结果改用户选择）', (tester) async {
+    final repo = _FakePriceRepository();
+
+    await pumpForm(
+      tester,
+      priceRepo: repo,
+      productRepo: _FakeProductRepository(const [Product(id: 7, name: '番茄')]),
+      globalUnitNamesLoader: () async => const ['斤', '个'],
+      unitNamesLoader: (productId, ingredientId) async => const [],
+      defaultUnitLoader: (productId, ingredientId) async => null,
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '番茄'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(repo.lastUnit, '斤');
   });
 
   testWidgets('不选商品直接输新名字，保存携带 productName', (tester) async {

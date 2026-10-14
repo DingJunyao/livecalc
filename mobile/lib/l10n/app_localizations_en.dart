@@ -1356,6 +1356,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ingredientConditionNoPrice => 'No maintained price';
 
   @override
+  String get ingredientConditionNoRecentPrice =>
+      'No product priced in the last month';
+
+  @override
+  String get productConditionNoRecentPrice => 'No price in the last month';
+
+  @override
   String get ingredientConditionNoNutrition => 'No nutrition data configured';
 
   @override

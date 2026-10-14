@@ -64,6 +64,53 @@ Future<List<String>> loadEntityUnitNames({
   return names;
 }
 
+/// 实体「默认单位」名（`entity_unit_overrides.is_default`）；没有默认单位时 null。
+///
+/// 维护价格选中商品时用它把单位下拉切到该商品的默认单位。优先级与单位解析链
+/// 一致：**商品自身覆盖 > 商品关联原料的覆盖**；每层只取第一条 is_default 的启用行。
+/// 读取失败返回 null（调用方保持原单位，绝不因网络抖动改用户的选择）。
+Future<String?> loadEntityDefaultUnitName({
+  required String entityType,
+  required int entityId,
+  int? ingredientId,
+  ApiClient? client,
+  EntityUnitsRequest? request,
+}) async {
+  final fetch = request ?? _apiGet(client);
+
+  Future<String?> defaultOf(String type, int id) async {
+    final path = '/entities/$type/$id/units';
+    final Object? data;
+    try {
+      data = await fetch(path);
+    } catch (error, stackTrace) {
+      log(
+        'loadEntityDefaultUnitName: GET $path 失败',
+        name: 'entity_unit_names',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+    for (final row in _rowsOf(data)) {
+      if (_isInactive(row)) continue;
+      if (row is! Map || row['is_default'] != true) continue;
+      final name = _unitNameOf(row);
+      if (name.isNotEmpty) return name;
+    }
+    return null;
+  }
+
+  final owned = await defaultOf(entityType, entityId);
+  if (owned != null) return owned;
+  if (entityType != 'product') return null;
+
+  final linkedIngredientId =
+      ingredientId ?? await _fetchIngredientId(fetch, entityId);
+  if (linkedIngredientId == null) return null;
+  return defaultOf('ingredient', linkedIngredientId);
+}
+
 /// 全局单位缩写（价格下拉的「基准列表」，与 web `loadGlobalUnitOptions` 同源）。
 ///
 /// 移动端此前把全局基准硬编码成十来个常量，单位管理里新增或早已存在的全局单位

@@ -1326,6 +1326,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ingredientConditionNoPrice => '没有维护过价格';
 
   @override
+  String get ingredientConditionNoRecentPrice => '近一个月所有商品均未维护过价格';
+
+  @override
+  String get productConditionNoRecentPrice => '近一个月未维护过价格';
+
+  @override
   String get ingredientConditionNoNutrition => '未配置营养成分';
 
   @override

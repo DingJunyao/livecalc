@@ -22,6 +22,7 @@ import '../providers/ingredient_provider.dart';
 
 const _specialConditions = <String>[
   'no_price',
+  'no_recent_price',
   'no_nutrition',
   'single_price',
   'single_merchant',
@@ -563,6 +564,7 @@ class _IngredientFilterSheetState
   String _conditionLabel(String value, AppLocalizations l10n) =>
       switch (value) {
         'no_price' => l10n.ingredientConditionNoPrice,
+        'no_recent_price' => l10n.ingredientConditionNoRecentPrice,
         'no_nutrition' => l10n.ingredientConditionNoNutrition,
         'single_price' => l10n.ingredientConditionSinglePrice,
         'single_merchant' => l10n.ingredientConditionSingleMerchant,

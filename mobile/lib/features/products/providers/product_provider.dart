@@ -659,9 +659,14 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         page: 1,
         pageSize: 500,
       );
-      // 区间内一条记录都没有（数据整体陈旧，全部超过 30 天参与上限）：回退全量
-      // 取数，让 as-of 序列拿到最近一次价作为携带起点，图表才不会空白
-      if (startDate.isNotEmpty && result.records.isEmpty) {
+      // 区间内一条记录都没有（数据整体陈旧），或区间里只有今天一条新记录、更早的
+      // 记录被 start_date 挡在区间外（池里最早的记录晚于区间起点）→ 都回退全量，
+      // 让 as-of 序列拿到携带起点，图表才不会只剩一个点/空白
+      if (startDate.isNotEmpty &&
+          needsFullPriceHistory(
+            windowStartDay: startDate,
+            windowRecords: result.records,
+          )) {
         result = await _priceRepo.getRecords(
           productId: productId,
           page: 1,
@@ -673,6 +678,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
           result.records,
           useStandardQuantity: true,
           startDay: startDate.isEmpty ? null : startDate,
+          backfillSparse: true,
         ),
         loadingChart: false,
       );

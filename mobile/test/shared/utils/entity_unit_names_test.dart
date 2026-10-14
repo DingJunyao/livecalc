@@ -239,6 +239,112 @@ void main() {
     });
   });
 
+  group('loadEntityDefaultUnitName', () {
+    test('商品自身的默认单位优先于关联原料的默认单位', () async {
+      final fake = _FakeRequest({
+        '/entities/product/42/units': [
+          {'unit_name': '桶', 'is_default': false},
+          {'unit_name': '箱', 'is_default': true},
+        ],
+        '/entities/ingredient/7/units': [
+          {'unit_name': '盒', 'is_default': true},
+        ],
+      });
+
+      final name = await loadEntityDefaultUnitName(
+        entityType: 'product',
+        entityId: 42,
+        ingredientId: 7,
+        request: fake.call,
+      );
+
+      expect(name, '箱');
+      // 商品自己有默认单位时不再查原料
+      expect(fake.calls, ['/entities/product/42/units']);
+    });
+
+    test('商品没有默认单位时回退到关联原料的默认单位', () async {
+      final fake = _FakeRequest({
+        '/entities/product/42/units': [
+          {'unit_name': '桶', 'is_default': false},
+        ],
+        '/entities/ingredient/7/units': [
+          {'unit_name': '盒', 'is_default': true},
+        ],
+      });
+
+      final name = await loadEntityDefaultUnitName(
+        entityType: 'product',
+        entityId: 42,
+        ingredientId: 7,
+        request: fake.call,
+      );
+
+      expect(name, '盒');
+      expect(fake.calls, [
+        '/entities/product/42/units',
+        '/entities/ingredient/7/units',
+      ]);
+    });
+
+    test('只认严格的 is_default=true，跳过停用行与空名字行', () async {
+      final fake = _FakeRequest({
+        '/entities/product/42/units': [
+          {'unit_name': '停用默认', 'is_default': true, 'is_active': false},
+          {'unit_name': '宽松真值', 'is_default': 1},
+          {'unit_name': '缺字段'},
+          {'unit_name': '  ', 'is_default': true},
+          {'name': '袋', 'is_default': true},
+        ],
+      });
+
+      final name = await loadEntityDefaultUnitName(
+        entityType: 'product',
+        entityId: 42,
+        request: fake.call,
+      );
+
+      expect(name, '袋');
+    });
+
+    test('没有默认单位 → null（调用方保持原单位）', () async {
+      final fake = _FakeRequest({
+        '/entities/product/42/units': [
+          {'unit_name': '桶', 'is_default': false},
+        ],
+        '/entities/ingredient/7/units': [
+          {'unit_name': '盒'},
+        ],
+      });
+
+      expect(
+        await loadEntityDefaultUnitName(
+          entityType: 'product',
+          entityId: 42,
+          ingredientId: 7,
+          request: fake.call,
+        ),
+        isNull,
+      );
+    });
+
+    test('请求失败 → null，不抛（不能因网络抖动改用户已选单位）', () async {
+      final fake = _FakeRequest(
+        const {},
+        failures: {'/entities/product/42/units'},
+      );
+
+      expect(
+        await loadEntityDefaultUnitName(
+          entityType: 'product',
+          entityId: 42,
+          request: fake.call,
+        ),
+        isNull,
+      );
+    });
+  });
+
   group('mergePriceUnitOptions', () {
     test('自定义单位排在全局单位前，且按名称去重', () {
       final merged = mergePriceUnitOptions(

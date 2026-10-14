@@ -2598,6 +2598,18 @@ abstract class AppLocalizations {
   /// **'没有维护过价格'**
   String get ingredientConditionNoPrice;
 
+  /// No description provided for @ingredientConditionNoRecentPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'近一个月所有商品均未维护过价格'**
+  String get ingredientConditionNoRecentPrice;
+
+  /// No description provided for @productConditionNoRecentPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'近一个月未维护过价格'**
+  String get productConditionNoRecentPrice;
+
   /// No description provided for @ingredientConditionNoNutrition.
   ///
   /// In zh, this message translates to:

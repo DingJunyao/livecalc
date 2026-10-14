@@ -17,12 +17,14 @@ import '../models/price_record.dart';
 ///
 /// [startDay] / [endDay] 为本地日历日（YYYY-MM-DD）：startDay 截断序列起点
 /// （配合回退全量取数时，只画所选区间），endDay 默认今天。
+/// [backfillSparse]：整段只有一个记录日时按最早已知价向前补齐（见函数内注释）。
 List<CostHistoryPoint> buildPriceTrendPoints(
   List<PriceRecord> records, {
   bool useStandardQuantity = false,
   String? startDay,
   String? endDay,
   int staleDays = _priceStaleDays,
+  bool backfillSparse = false,
 }) {
   // 1) 按商品 + 本地日聚合当日均价
   final byProduct = <String, Map<String, List<double>>>{};
@@ -54,10 +56,22 @@ List<CostHistoryPoint> buildPriceTrendPoints(
   }
   if (firstDay == null || steps.isEmpty) return [];
 
+  // 整段只有「一个记录日」→ 允许把最早已知价向前补齐到 startDay（仅在调用方开启
+  // backfillSparse 时）：单点序列连不成线，图表看起来是空白。有 ≥2 个记录日时
+  // 一律不补写，不会凭空编造趋势。
+  var backfill = false;
+  if (backfillSparse) {
+    final recordDays = <String>{};
+    for (final step in steps) {
+      recordDays.addAll(step.days);
+    }
+    backfill = recordDays.length < 2;
+  }
+
   // 3) 逐日推进：每个商品取「截至当日的最新价」
   final lastDay = endDay ?? _dayKey(DateTime.now());
   final out = <CostHistoryPoint>[];
-  var cur = (startDay != null && startDay.compareTo(firstDay) > 0)
+  var cur = (startDay != null && (backfill || startDay.compareTo(firstDay) > 0))
       ? startDay
       : firstDay;
   while (cur.compareTo(lastDay) <= 0) {
@@ -75,8 +89,10 @@ List<CostHistoryPoint> buildPriceTrendPoints(
         step.current = step.next;
         step.next += 1;
       }
-      if (step.current < 0) continue;
-      final value = step.values[step.current];
+      if (step.current < 0 && !backfill) continue;
+      // 向前补齐时：还没有记录的日子用该商品的最早已知价
+      final value =
+          step.current < 0 ? step.values.first : step.values[step.current];
       // all：全部商品（当日全部过期时的放开兜底）
       numAll += value;
       denAll += 1;
@@ -106,6 +122,30 @@ List<CostHistoryPoint> buildPriceTrendPoints(
   return out;
 }
 
+/// 区间请求结果是否需要回退「全量」取数。
+///
+/// as-of 序列需要「区间起点之前最近一次记录」作为携带起点，而按区间取数
+/// （start_date）恰好把它挡在区间外。区间里也可能**只有今天**一条新记录
+/// （陈旧实体今天刚补价），这时区间命中数不为 0，但池里最早的记录晚于区间起点
+/// → 序列只剩一个点、图表看起来空白。因此判据是「池里有没有不晚于区间起点的记录」：
+///   - 池为空 → 需要回退（数据整体陈旧）；
+///   - 池非空但最早记录日 > 区间起点 → 需要回退（缺携带起点）。
+bool needsFullPriceHistory({
+  required String windowStartDay,
+  required List<PriceRecord> windowRecords,
+}) {
+  if (windowStartDay.isEmpty) return false;
+  var earliest = '';
+  for (final record in windowRecords) {
+    final dt = DateTime.tryParse(record.recordedAt)?.toLocal();
+    if (dt == null) continue;
+    final day = localDayKey(dt);
+    if (earliest.isEmpty || day.compareTo(earliest) < 0) earliest = day;
+  }
+  if (earliest.isEmpty) return true;
+  return earliest.compareTo(windowStartDay) > 0;
+}
+
 /// 参与综合价的时限（天）：与 Web 端 PRICE_STALE_DAYS / 后端
 /// INGREDIENT_PRICE_STALE_DAYS 一致。
 const int _priceStaleDays = 30;
@@ -128,6 +168,9 @@ class _ProductStep {
 String _dayKey(DateTime dt) => '${dt.year.toString().padLeft(4, '0')}-'
     '${dt.month.toString().padLeft(2, '0')}-'
     '${dt.day.toString().padLeft(2, '0')}';
+
+/// 本地日历日 key（YYYY-MM-DD）；供跨模块判断「记录日 vs 区间起点」复用。
+String localDayKey(DateTime dt) => _dayKey(dt);
 
 String _addDays(String day, int delta) {
   final d = DateTime.parse('${day}T00:00:00');

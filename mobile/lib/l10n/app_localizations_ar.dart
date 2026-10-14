@@ -1352,6 +1352,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientConditionNoPrice => 'لا يوجد سعر مُصان';
 
   @override
+  String get ingredientConditionNoRecentPrice =>
+      'لم يُسجَّل سعر لأي منتج خلال الشهر الماضي';
+
+  @override
+  String get productConditionNoRecentPrice => 'لا يوجد سعر خلال الشهر الماضي';
+
+  @override
   String get ingredientConditionNoNutrition => 'لا توجد بيانات تغذية مُعدة';
 
   @override

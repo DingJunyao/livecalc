@@ -51,6 +51,10 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
   /// 测试注入：全局单位基准加载器（缺省走 GET /units/，失败回退常量）。
   final Future<List<String>> Function()? globalUnitNamesLoader;
 
+  /// 测试注入：实体「默认单位」加载器（缺省走 /entities/... 的 is_default 行）。
+  final Future<String?> Function(int productId, int? ingredientId)?
+      defaultUnitLoader;
+
   /// 测试注入：实体单位请求缝，供缺省 [loadEntityUnitNames] 使用（不走真实网络）。
   final EntityUnitsRequest? entityUnitsRequest;
 
@@ -62,6 +66,7 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
     this.scanner,
     this.unitNamesLoader,
     this.globalUnitNamesLoader,
+    this.defaultUnitLoader,
     this.entityUnitsRequest,
   });
 
@@ -144,6 +149,9 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     final prefillProduct = widget.prefill?.product;
     if (prefillProduct != null) {
       _loadCustomUnits(prefillProduct.id, prefillProduct.ingredientId);
+      // 带着商品进入（商品详情/列表的「记价」、原料页指定商品）同样是「新增记录」，
+      // 同样套用该商品的默认单位（编辑既有记录走 /prices/record/edit，不在此列）。
+      _applyEntityDefaultUnit(prefillProduct.id, prefillProduct.ingredientId);
     }
   }
 
@@ -234,6 +242,23 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     });
     _loadCustomUnits(p.id, p.ingredientId);
     _ensureGlobalUnits();
+    _applyEntityDefaultUnit(p.id, p.ingredientId);
+  }
+
+  /// 选中商品后把单位下拉切到该商品（或其关联原料）的「默认单位」
+  /// （单位编辑里的「设为默认」）。没有默认单位 / 读取失败时保持原值。
+  Future<void> _applyEntityDefaultUnit(int productId, int? ingredientId) async {
+    final unit = await (widget.defaultUnitLoader?.call(productId, ingredientId) ??
+        loadEntityDefaultUnitName(
+          entityType: 'product',
+          entityId: productId,
+          ingredientId: ingredientId,
+          request: widget.entityUnitsRequest,
+        ));
+    if (!mounted || unit == null || unit.isEmpty) return;
+    // 期间可能又换了商品：只在本商品仍是当前选中时落地
+    if (_selectedProduct?.id != productId) return;
+    setState(() => _unit = unit);
   }
 
   /// 价格单位下拉的「基准列表」：全局单位（GET /units/，与 web 同源），

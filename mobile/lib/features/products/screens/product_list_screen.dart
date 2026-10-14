@@ -24,6 +24,7 @@ import '../../../shared/widgets/directional_icons.dart';
 
 const _productConditions = <String>[
   'no_price',
+  'no_recent_price',
   'single_price',
   'single_merchant',
 ];
@@ -623,6 +624,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
   String _conditionLabel(String value, AppLocalizations l10n) =>
       switch (value) {
         'no_price' => l10n.ingredientConditionNoPrice,
+        'no_recent_price' => l10n.productConditionNoRecentPrice,
         'single_price' => l10n.ingredientConditionSinglePrice,
         'single_merchant' => l10n.ingredientConditionSingleMerchant,
         _ => value,

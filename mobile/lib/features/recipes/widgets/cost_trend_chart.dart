@@ -213,7 +213,12 @@ class _Chart extends StatelessWidget {
   }
 
   void _handleTouch(Offset local, Size size) {
-    if (points.length < 2) return;
+    if (points.isEmpty) return;
+    // 只有一个数据点时没有横向插值可言，直接选中它（tooltip 仍能看到日期与价格）
+    if (points.length == 1) {
+      onTouch(0);
+      return;
+    }
     const plotLeft = 44.0;
     final plotW = size.width - plotLeft - 8;
     final dx = plotW / (points.length - 1);
@@ -286,7 +291,7 @@ class _TrendPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.length < 2) return;
+    if (points.isEmpty) return;
     const plotLeft = 44.0;
     const plotTop = 8.0;
     final plotRight = size.width - 8;
@@ -325,6 +330,25 @@ class _TrendPainter extends CustomPainter {
           ? formatMoney(v, userCurrency)
           : formatMoney(v.round(), userCurrency);
       _text(canvas, label, Offset(2, y - 7), gridColor, 9);
+    }
+
+    // 只有一个数据点（实体只有一次价格记录、所选区间也拿不到更早的携带起点）：
+    // 折线与区间带都无从画起，但至少要把这个点画出来，否则整张图是空白。
+    if (points.length < 2) {
+      final centerX = (plotLeft + plotRight) / 2;
+      canvas.drawCircle(
+        Offset(centerX, yAt(points.first.avgCost)),
+        4,
+        Paint()..color = color,
+      );
+      _text(
+        canvas,
+        _formatDate(points.first.date, short: true),
+        Offset(centerX - 12, plotBottom + 6),
+        gridColor,
+        9,
+      );
+      return;
     }
 
     // min/max 区间带
