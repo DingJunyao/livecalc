@@ -50,6 +50,7 @@
         <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" />
         <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" />
         <v-list-item prepend-icon="mdi-store" :title="t('nav.merchants')" to="/data/merchants" />
+        <v-list-item prepend-icon="mdi-heart" :title="t('nav.favorites')" to="/favorites" />
         <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? t('nav.settings') : t('nav.profile')" to="/profile" />
         <v-divider v-if="userStore.user?.is_admin && !isLocalMode" class="my-2" />
         <v-list-item
@@ -150,6 +151,7 @@
         <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" @click="closeDrawer" />
         <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" @click="closeDrawer" />
         <v-list-item prepend-icon="mdi-store" :title="t('nav.merchants')" to="/data/merchants" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-heart" :title="t('nav.favorites')" to="/favorites" @click="closeDrawer" />
         <v-list-item :prepend-icon="isLocalMode ? 'mdi-cog' : 'mdi-account'" :title="isLocalMode ? t('nav.settings') : t('nav.profile')" to="/profile" @click="closeDrawer" />
         <v-divider v-if="userStore.user?.is_admin && !isLocalMode" class="my-2" />
         <v-list-item
