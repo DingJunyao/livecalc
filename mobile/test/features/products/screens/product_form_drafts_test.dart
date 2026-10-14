@@ -527,6 +527,56 @@ void main() {
     expect(find.text('gram (g)'), findsOneWidget);
   });
 
+  testWidgets('新增态换关联原料后，引用旧原料单位的草稿单位被去掉并提示', (tester) async {
+    // 用户实测：新增商品时选「包菜」，加了一个引用包菜独有单位「哈」的草稿单位；
+    // 再把关联原料换成别的原料后，这条单位既没被去掉也没有提示
+    final entityRepo = _FakeEntityRepository()
+      ..ingredient5Units = const [
+        EntityUnit(id: 77, unitName: '哈', weightPerUnit: 200, weightUnitId: 1),
+      ]
+      ..ingredient6Units = const [];
+    final persister = _RecordingPersister();
+    await _pumpForm(tester, persister: persister, entityRepository: entityRepo);
+    await tester.enterText(find.byType(TextFormField).first, 'Milk');
+    await _selectIngredient(tester); // 关联原料 = Milk powder(5)
+
+    // 加一条引用原料独有单位「哈」的草稿单位：箱 = 12 哈
+    await _tapDraftTile(tester, 'Custom units');
+    await tester.tap(find.byTooltip('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('哈 (from ingredient)'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Unit name *'), '箱');
+    await tester.enterText(find.widgetWithText(TextField, 'Amount'), '12');
+    await tester.tap(find.text('Save unit'));
+    await tester.pumpAndSettle();
+    await _closeDraftFlow(tester);
+
+    // 换成 Cheese(6)：新原料没有「哈」→ 草稿单位被去掉并提示
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search and select a linked ingredient *'),
+      'Cheese',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(of: find.byType(ListTile), matching: find.text('Cheese'))
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('箱'), findsOneWidget);
+
+    // 草稿列表里已没有这条单位（草稿全空时不会触发落库，故直接看界面）
+    await _tapDraftTile(tester, 'Custom units');
+    expect(find.byType(EntityUnitsDraftScreen), findsOneWidget); // 确认确实进了草稿页
+    expect(find.text('No custom units'), findsOneWidget);
+    expect(find.text('箱'), findsNothing);
+  });
+
   testWidgets('换绑原料后，引用失效的商品自定义单位被移除并提示', (tester) async {
     final entityRepo = _FakeEntityRepository()
       ..productUnits = const [

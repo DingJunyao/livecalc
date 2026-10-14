@@ -587,6 +587,43 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
+  /// 新增态换绑关联原料后清理草稿单位：
+  /// 引用链在「本批草稿 + 新原料」里解析不了的行（引用的是旧原料独有的单位）直接丢弃，
+  /// 并提示用户 —— 草稿还没落库，本地删除没有服务端副作用。
+  /// 编辑态不在这里处理：那时是服务端数据，必须等保存落地后才能删。
+  Future<void> _pruneDraftUnitsAfterIngredientChange(int? ingredientId) async {
+    if (_draftUnits.isEmpty) return;
+    if (ingredientId == null) return;
+    List<EntityUnit> ingredientUnits;
+    try {
+      ingredientUnits =
+          await _entityRepository.listUnits('ingredient', ingredientId);
+    } catch (error, stackTrace) {
+      // 读取失败不动数据（宁可留着悬空引用，也不误删用户刚填的草稿）
+      log('ProductFormScreen: 换原料后加载原料单位失败',
+          name: 'product_form', error: error, stackTrace: stackTrace);
+      return;
+    }
+    final brokenIds = unresolvableUnitIds(
+      _draftUnits,
+      {for (final unit in ingredientUnits) unit.id},
+    );
+    if (brokenIds.isEmpty) return;
+    final removed = [
+      for (final unit in _draftUnits)
+        if (brokenIds.contains(unit.id)) unit.unitName,
+    ];
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() {
+      _draftUnits.removeWhere((unit) => brokenIds.contains(unit.id));
+    });
+    messenger.showSnackBar(
+      SnackBar(content: Text(l10n.productDanglingUnitsRemoved(removed.join(', ')))),
+    );
+  }
+
   /// 换绑关联原料后清理商品自定义单位：
   /// 引用链在「本商品 + 新原料」里解析不了的单位（引用的是旧原料的单位）会被
   /// 删除并提示用户；普通用户的删除走待审。失败只留痕，不阻塞保存流程。
@@ -704,6 +741,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           _selectedIngredient = ingredient;
           _searching = false;
         });
+        // 新增态：换原料后草稿单位里引用「原料独有单位」的行会悬空，去掉并告知
+        // （草稿只在本地，删了没有服务端副作用；编辑态的清理在保存时做）
+        unawaited(_pruneDraftUnitsAfterIngredientChange(ingredient.id));
       },
       optionsViewBuilder: (ctx, onSelected, options) {
         return Align(
