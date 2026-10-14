@@ -1213,6 +1213,8 @@
     "blacklistGroupExists": "A group with this name already exists",
     "blacklistGroupIngredientNotFound": "This ingredient is not in the group",
     "blacklistGroupNotFound": "Blacklist group was not found",
+    "favoriteEntityNotFound": "Favorite target not found",
+    "favoriteUnsupportedType": "Unsupported favorite type: {type}",
     "fdcIdRequired": "fdc_id is required",
     "hierarchyRelationNotFound": "Hierarchy relation for parent {parentId} and child {childId} was not found",
     "imageKeysRequired": "keys is required",

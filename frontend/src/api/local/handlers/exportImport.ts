@@ -34,6 +34,7 @@ const EXPORT_STORES = [
   'blacklist_subscriptions',
   'user_places',
   'merchant_favorites',
+  'user_favorites',
   'meal_recommendations',
   'system_config',
   'recipe_cost_history',
@@ -62,6 +63,8 @@ const FILE_STORE_MAP: Record<string, string> = {
   'user_places.json': 'user_places',
   'blacklist_groups.json': 'blacklist_groups',
   'merchant_favorites.json': 'merchant_favorites',
+  'user_favorites.json': 'user_favorites',
+  'user_merchant_favorites.json': 'merchant_favorites',
   'product_weight_overrides.json': 'product_weight_overrides',
 }
 
@@ -374,6 +377,17 @@ export async function uploadImport(
             n.unit_id = resolveLocalUnitId(n.unit_id, n.unit_name) ?? resolveLocalUnitId(n.standard_unit_id, n.unit_name)
             n.standard_unit_id = resolveLocalUnitId(n.standard_unit_id, n.standard_unit_name)
             n.original_unit_id = resolveLocalUnitId(n.original_unit_id, n.original_unit_name)
+          }
+
+          // 收藏：本地 store 依赖 entity_key 索引（云端导出无该字段）
+          if (storeName === 'user_favorites') {
+            n.entity_type = n.entity_type || n.type
+            if (n.entity_id != null && n.entity_type) {
+              n.entity_key = n.entity_key || `${n.entity_type}:${n.entity_id}`
+            }
+            if (!n.created_at) {
+              n.created_at = new Date().toISOString()
+            }
           }
 
           return n

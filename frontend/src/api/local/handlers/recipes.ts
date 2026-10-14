@@ -109,6 +109,17 @@ export async function listRecipes(_params: Record<string, string>, query?: any):
   const ingredientIds = parseIdList(query?.ingredient_ids)
   const hasUnpriced = isTruthy(query?.has_unpriced_ingredient)
   const hasUnnourished = isTruthy(query?.has_unnourished_ingredient)
+  const favoritesOnly = isTruthy(query?.favorites_only)
+  const favoritesFirst = isTruthy(query?.favorites_first)
+  let favoriteIdSet: Set<number> | null = null
+  if (favoritesOnly || favoritesFirst) {
+    const favRows = await getAll('user_favorites')
+    favoriteIdSet = new Set(
+      favRows
+        .filter((f: any) => f.entity_type === 'recipe' && f.entity_id != null)
+        .map((f: any) => f.entity_id),
+    )
+  }
 
   // ingredient_ids filter and special conditions need recipe_ingredients lookup
   const needRecipeIngredients = ingredientIds.length > 0 || hasUnpriced || hasUnnourished
@@ -155,7 +166,18 @@ export async function listRecipes(_params: Record<string, string>, query?: any):
     return true
   })
 
+  if (favoritesOnly && favoriteIdSet) {
+    filtered.splice(0, filtered.length, ...filtered.filter((r: any) => favoriteIdSet!.has(r.id)))
+  }
+
   filtered.sort((a: any, b: any) => ((b.created_at || '') > (a.created_at || '') ? 1 : -1))
+
+  if (favoritesFirst && favoriteIdSet && favoriteIdSet.size > 0) {
+    const favs = filtered.filter((r: any) => favoriteIdSet!.has(r.id))
+    const rest = filtered.filter((r: any) => !favoriteIdSet!.has(r.id))
+    filtered.splice(0, filtered.length, ...favs, ...rest)
+  }
+
   const { skip, limit: pageSize, page, page_size } = resolvePagination(query)
   return { items: filtered.slice(skip, skip + pageSize).map(withImageUrls), total: filtered.length, page, page_size }
 }

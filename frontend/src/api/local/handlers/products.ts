@@ -53,6 +53,17 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
   const singlePrice = isTruthy(query?.single_price)
   const singleMerchant = isTruthy(query?.single_merchant)
   const noRecentPrice = isTruthy(query?.no_recent_price)
+  const favoritesOnly = isTruthy(query?.favorites_only)
+  const favoritesFirst = isTruthy(query?.favorites_first)
+  let favoriteIdSet: Set<number> | null = null
+  if (favoritesOnly || favoritesFirst) {
+    const favRows = await getAll('user_favorites')
+    favoriteIdSet = new Set(
+      favRows
+        .filter((f: any) => f.entity_type === 'product' && f.entity_id != null)
+        .map((f: any) => f.entity_id),
+    )
+  }
   const sortBy = query?.sort_by
 
   const needStats = noPrice || singlePrice || singleMerchant || noRecentPrice || sortBy === 'price_records'
@@ -102,6 +113,10 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
     return true
   })
 
+  if (favoritesOnly && favoriteIdSet) {
+    filtered = filtered.filter((p: any) => favoriteIdSet!.has(p.id))
+  }
+
   if (sortBy === 'price_records' && stats) {
     filtered.sort(
       (a, b) =>
@@ -112,6 +127,12 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
     filtered.sort((a, b) => ((b.updated_at || '') > (a.updated_at || '') ? 1 : -1))
   } else {
     filtered.sort((a, b) => ((b.created_at || '') > (a.created_at || '') ? 1 : -1))
+  }
+
+  if (favoritesFirst && favoriteIdSet && favoriteIdSet.size > 0) {
+    const favs = filtered.filter((p: any) => favoriteIdSet!.has(p.id))
+    const rest = filtered.filter((p: any) => !favoriteIdSet!.has(p.id))
+    filtered = [...favs, ...rest]
   }
 
   const { skip, limit: pageSize, page, page_size } = resolvePagination(query)

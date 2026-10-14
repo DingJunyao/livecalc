@@ -1213,6 +1213,8 @@
     "blacklistGroupExists": "分组名已存在",
     "blacklistGroupIngredientNotFound": "该原料不在分组中",
     "blacklistGroupNotFound": "分组不存在",
+    "favoriteEntityNotFound": "收藏对象不存在或已删除",
+    "favoriteUnsupportedType": "不支持的收藏类型：{type}",
     "fdcIdRequired": "请提供 fdc_id",
     "hierarchyRelationNotFound": "未找到父原料 {parentId} 与子原料 {childId} 的层级关系",
     "imageKeysRequired": "请提供 keys",

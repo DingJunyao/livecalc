@@ -150,6 +150,7 @@ import * as units from './handlers/units'
 import * as products from './handlers/products'
 import * as ingredients from './handlers/ingredients'
 import * as merchants from './handlers/merchants'
+import * as favorites from './handlers/favorites'
 import * as nutrition from './handlers/nutrition'
 import * as hierarchy from './handlers/hierarchy'
 import * as blacklist from './handlers/blacklist'
@@ -239,6 +240,11 @@ addRoute('/merchants/:id/prices', { get: merchants.getMerchantPrices })
 addRoute('/merchants/:id/product-prices', { get: merchants.getMerchantProductPrices })
 addRoute('/merchants/:id/product-orders', { post: merchants.saveProductOrders })
 addRoute('/merchants', { get: merchants.listMerchants, post: merchants.createMerchant })
+
+// ---- Favorites（原料/商品/菜谱；商家收藏沿用 /merchants/:id/favorite）----
+addRoute('/favorites', { get: favorites.listAll })
+addRoute('/favorites/:type', { get: favorites.listByType })
+addRoute('/favorites/:type/:id', { post: favorites.addFavorite, delete: favorites.removeFavorite })
 
 // ---- Currencies & Exchange Rates ----
 addRoute('/currencies', { get: currencies.localGetCurrencies })
