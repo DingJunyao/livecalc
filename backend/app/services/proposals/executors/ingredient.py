@@ -118,6 +118,8 @@ class IngredientExecutor(CrudExecutorBase):
         return super().apply(db, proposal)
 
     def _apply_merge(self, db, proposal) -> ApplyResult:
+        from app.models.user_favorite import UserFavorite
+
         source_ids: List[int] = list(proposal.payload["source_ids"])
         target_id: int = proposal.payload["target_id"]
 
@@ -184,6 +186,12 @@ class IngredientExecutor(CrudExecutorBase):
                 {"id": s.id, "is_merged": s.is_merged, "merged_into_id": s.merged_into_id,
                  "aliases": s.aliases, "name": s.name, "is_active": s.is_active}
                 for s in db.query(Ingredient).filter(Ingredient.id.in_(source_ids)).all()
+            ],
+            "favorites": [
+                {"id": f.id, "user_id": f.user_id, "entity_id": f.entity_id}
+                for f in db.query(UserFavorite)
+                    .filter(UserFavorite.entity_type == "ingredient",
+                            UserFavorite.entity_id.in_(source_ids)).all()
             ],
         }
 
@@ -297,10 +305,26 @@ class IngredientExecutor(CrudExecutorBase):
         super().revert(db, proposal)
 
     def _revert_merge(self, db, proposal) -> None:
+        from app.models.user_favorite import UserFavorite
+
         snap = proposal.snapshot or {}
         rp = proposal.revert_payload or {}
         source_ids = rp.get("source_ids", [])
         target_id = rp.get("target_id")
+
+        # 0. 还原源食材收藏（合并时被删，按快照恢复；已存在则跳过）
+        for item in snap.get("favorites", []):
+            existing = db.query(UserFavorite).filter(
+                UserFavorite.user_id == item["user_id"],
+                UserFavorite.entity_type == "ingredient",
+                UserFavorite.entity_id == item["entity_id"],
+            ).first()
+            if existing is None:
+                db.add(UserFavorite(
+                    user_id=item["user_id"],
+                    entity_type="ingredient",
+                    entity_id=item["entity_id"],
+                ))
 
         # 1. 还原 recipe_ingredients：被改 ingredient_id 的恢复，被删的重新插入
         ri_cols = {c.name for c in RecipeIngredient.__table__.columns}

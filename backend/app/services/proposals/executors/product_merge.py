@@ -23,20 +23,27 @@ class ProductMergeExecutor(ProposalExecutor):
     def build_snapshot(self, db, proposal) -> dict:
         from app.models.product_entity import Product
         from app.models.product import ProductRecord
+        from app.models.user_favorite import UserFavorite
         eid = proposal.entity_id
         target_id = (proposal.payload or {}).get("target_product_id")
         src = db.query(Product).get(eid) if eid else None
         tgt = db.query(Product).get(target_id) if target_id else None
         pr_cnt = 0
+        fav_cnt = 0
         if eid:
             pr_cnt = db.query(ProductRecord).filter(
                 ProductRecord.product_id == eid,
                 ProductRecord.is_active == True,
             ).count()
+            fav_cnt = db.query(UserFavorite).filter(
+                UserFavorite.entity_type == "product",
+                UserFavorite.entity_id == eid,
+            ).count()
         return {
             "source_name": src.name if src else "?",
             "target_name": tgt.name if tgt else "?",
             "affected_records_count": pr_cnt,
+            "affected_favorites_count": fav_cnt,
         }
 
     def validate(self, db, proposal) -> None:
@@ -67,20 +74,27 @@ class ProductMergeExecutor(ProposalExecutor):
     def preview(self, db, proposal) -> dict:
         from app.models.product_entity import Product
         from app.models.product import ProductRecord
+        from app.models.user_favorite import UserFavorite
         eid = proposal.entity_id
         target_id = (proposal.payload or {}).get("target_product_id")
         src = db.query(Product).get(eid) if eid else None
         tgt = db.query(Product).get(target_id) if target_id else None
         pr_cnt = 0
+        fav_cnt = 0
         if eid:
             pr_cnt = db.query(ProductRecord).filter(
                 ProductRecord.product_id == eid,
                 ProductRecord.is_active == True,
             ).count()
+            fav_cnt = db.query(UserFavorite).filter(
+                UserFavorite.entity_type == "product",
+                UserFavorite.entity_id == eid,
+            ).count()
         return {
             "source": src.name if src else "?",
             "target": tgt.name if tgt else "?",
             "affected_price_records": pr_cnt,
+            "affected_favorites": fav_cnt,
             "note": "价格记录将迁移到目标商品，源商品将被软删除",
         }
 
@@ -125,6 +139,21 @@ class ProductMergeExecutor(ProposalExecutor):
                 synchronize_session=False,
             )
 
+        # 删除源商品收藏（口径对齐商家合并：不搬迁，回滚按快照恢复）
+        from app.models.user_favorite import UserFavorite
+
+        fav_rows = db.query(UserFavorite).filter(
+            UserFavorite.entity_type == "product",
+            UserFavorite.entity_id == eid,
+        ).all()
+        snapshot["favorites"] = [
+            {"id": f.id, "user_id": f.user_id, "entity_id": f.entity_id} for f in fav_rows
+        ]
+        if fav_rows:
+            db.query(UserFavorite).filter(
+                UserFavorite.id.in_([f.id for f in fav_rows])
+            ).delete(synchronize_session=False)
+
         # 软删源商品
         src.is_active = False
 
@@ -158,3 +187,19 @@ class ProductMergeExecutor(ProposalExecutor):
             src = db.query(Product).get(source_id)
             if src:
                 src.is_active = snap.get("source_is_active", True)
+
+        # 恢复源商品收藏（合并时被删，按快照恢复；已存在则跳过）
+        from app.models.user_favorite import UserFavorite
+
+        for item in snap.get("favorites", []):
+            existing = db.query(UserFavorite).filter(
+                UserFavorite.user_id == item["user_id"],
+                UserFavorite.entity_type == "product",
+                UserFavorite.entity_id == item["entity_id"],
+            ).first()
+            if existing is None:
+                db.add(UserFavorite(
+                    user_id=item["user_id"],
+                    entity_type="product",
+                    entity_id=item["entity_id"],
+                ))

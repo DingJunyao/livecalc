@@ -273,13 +273,7 @@
                 <v-divider />
                 <v-card-actions>
                   <v-spacer />
-                  <v-btn
-                    :icon="favoriteIds.has(item.id) ? 'mdi-heart' : 'mdi-heart-outline'"
-                    size="small"
-                    variant="text"
-                    :color="favoriteIds.has(item.id) ? 'error' : undefined"
-                    @click.stop="toggleFavorite(item.id)"
-                  />
+                  <FavoriteButton :active="favoriteIds.has(item.id)" @toggle="toggleFavorite(item.id)" />
                   <v-btn icon="mdi-pencil" size="small" variant="text" color="primary" @click.stop="openEditDialog(item)" />
                   <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click.stop="deleteItem(item.id)" />
                 </v-card-actions>
@@ -423,6 +417,8 @@ import { loadCurrencies } from '@/utils/currency'
 import type { Currency } from '@/types'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { useMapConfig } from '@/composables/useMapConfig'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -485,7 +481,7 @@ const allCoordinates = ref<{ latitude: number; longitude: number }[]>([])
 const currentPlaceId = ref<number | null>(null)
 const PLACES_STORAGE_KEY = 'merchants_map_current_place_id'
 // 收藏的商家 id 集合（共享池下「我的收藏」由 user_merchant_favorites 表达）
-const favoriteIds = ref<Set<number>>(new Set())
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('merchant')
 const saving = ref(false)
 const currencies = ref<Currency[]>([])
 const form = ref<{
@@ -643,40 +639,19 @@ const loadMerchants = async () => {
   }
 }
 
-// 加载当前用户收藏的商家 id 集合（共享池下「我的收藏」）
-const loadFavorites = async () => {
-  try {
-    const favs: Merchant[] = await api.get('/merchants/favorites')
-    favoriteIds.value = new Set((Array.isArray(favs) ? favs : []).map(m => m.id))
-  } catch (e: any) {
-    console.error('Failed to load favorites', e)
-  }
-}
+// 加载当前用户收藏的商家 id 集合：由 useFavorites 提供（见上方 loadFavorites）
 
 // 收藏 / 取消收藏商家（共享池任意商家均可收藏）
 const toggleFavorite = async (id: number) => {
   const wasFav = favoriteIds.value.has(id)
-  // 乐观更新
-  const next = new Set(favoriteIds.value)
-  if (wasFav) next.delete(id); else next.add(id)
-  favoriteIds.value = next
   try {
-    if (wasFav) {
-      await api.delete(`/merchants/${id}/favorite`)
-      notify(t('merchants.unfavorited'), 'info')
-    } else {
-      await api.post(`/merchants/${id}/favorite`)
-      notify(t('merchants.favorited'), 'success')
-    }
+    await toggleFavoriteRaw(id)
+    notify(wasFav ? t('merchants.unfavorited') : t('merchants.favorited'), wasFav ? 'info' : 'success')
     // 若当前处于「仅看收藏」视图，移除后需重新加载列表
     if (favoritesOnly.value) {
       loadMerchants()
     }
   } catch (e: any) {
-    // 回滚
-    favoriteIds.value = wasFav
-      ? new Set([...favoriteIds.value, id])
-      : (() => { const r = new Set(favoriteIds.value); r.delete(id); return r })()
     notify(getErrorMessage(e, wasFav ? t('merchants.unfavoriteFailed') : t('merchants.favoriteFailed')), 'error')
   }
 }

@@ -367,6 +367,8 @@ async def get_recipes(
     # 默认始终过滤用户黑名单原料的菜谱（用户无需手动开关）
     exclude_blacklist_ingredients: bool = Query(True, description="排除含当前用户黑名单原料的菜谱"),
     include_cost: bool = Query(False, description="是否包含成本和营养信息（列表页默认不计算，通过 batch-cost 懒加载）"),
+    favorites_only: bool = Query(False, description="仅返回当前用户收藏的菜谱"),
+    favorites_first: bool = Query(False, description="收藏的菜谱排在最前（默认关闭）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
@@ -403,6 +405,21 @@ async def get_recipes(
                 excluded_ids = {r[0] for r in blacklisted_recipe_ids}
                 if excluded_ids:
                     all_recipes_query = all_recipes_query.filter(~Recipe.id.in_(excluded_ids))
+
+        # 收藏参数（仅主列表页传 true；其它消费方不传，行为不变）
+        fav_subq = None
+        fav_case = None
+        if favorites_only or favorites_first:
+            from sqlalchemy import case, select
+
+            from app.models.user_favorite import UserFavorite
+
+            fav_subq = select(UserFavorite.entity_id).where(
+                UserFavorite.user_id == current_user.id,
+                UserFavorite.entity_type == "recipe",
+            )
+            if favorites_first:
+                fav_case = case((Recipe.id.in_(fav_subq), 0), else_=1)
 
         # 应用标签过滤（如果指定了标签）
         if tag:
@@ -441,9 +458,12 @@ async def get_recipes(
         all_recipes_query = _apply_recipe_special_conditions(
             all_recipes_query, has_unpriced_ingredient, has_unnourished_ingredient
         )
+        if favorites_only:
+            all_recipes_query = all_recipes_query.filter(Recipe.id.in_(fav_subq))
 
         total = all_recipes_query.count()
-        recipes = all_recipes_query.order_by(Recipe.created_at.desc()).offset(skip).limit(limit).all()
+        order_prefix = [fav_case] if fav_case is not None else []
+        recipes = all_recipes_query.order_by(*order_prefix, Recipe.created_at.desc()).offset(skip).limit(limit).all()
         page = skip // limit + 1
 
         # 手动构造响应对象列表

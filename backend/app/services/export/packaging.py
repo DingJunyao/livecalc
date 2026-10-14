@@ -30,6 +30,8 @@ from app.models.product_ingredient_link import ProductIngredientLink
 from app.models.product import ProductRecord
 from app.models.merchant import Merchant
 from app.models.user_place import UserPlace
+from app.models.user_favorite import UserFavorite
+from app.models.user_merchant_favorite import UserMerchantFavorite
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
 from app.models.user_ingredient_blacklist import UserIngredientBlacklist
 from app.models.blacklist_group_subscription import BlacklistGroupSubscription
@@ -448,6 +450,45 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
         "user_places", lambda: [S.serialize_user_place(p) for p in places]
     )
 
+    # ---- 收藏（原料/商品/菜谱 + 商家）----
+    # 收藏引用的实体可能不在导出集内（如收藏了他人菜谱），名字单独按 id 解析；
+    # 导入会重排行 id，故必须带名字供兜底解析。
+    favorite_rows = _query(UserFavorite, es.favorite_ids)
+    merchant_favorite_rows = _query(UserMerchantFavorite, es.merchant_favorite_ids)
+
+    def _build_favorites():
+        fav_ing_ids = {f.entity_id for f in favorite_rows if f.entity_type == "ingredient"}
+        fav_prod_ids = {f.entity_id for f in favorite_rows if f.entity_type == "product"}
+        fav_recipe_ids = {f.entity_id for f in favorite_rows if f.entity_type == "recipe"}
+        name_maps = {
+            "ingredient": _ingredient_name_map(db, fav_ing_ids) if fav_ing_ids else {},
+            "product": {
+                p.id: p.name for p in db.query(Product).filter(Product.id.in_(fav_prod_ids)).all()
+            } if fav_prod_ids else {},
+            "recipe": {
+                r.id: r.name for r in db.query(Recipe).filter(Recipe.id.in_(fav_recipe_ids)).all()
+            } if fav_recipe_ids else {},
+        }
+        return [
+            S.serialize_user_favorite(f, name_maps.get(f.entity_type, {}).get(f.entity_id))
+            for f in favorite_rows
+        ]
+
+    favorites_payload = _safe_build("user_favorites", _build_favorites)
+
+    mf_merchant_ids = {f.merchant_id for f in merchant_favorite_rows}
+    mf_name_map = {
+        m.id: m.name
+        for m in db.query(Merchant).filter(Merchant.id.in_(mf_merchant_ids)).all()
+    } if mf_merchant_ids else {}
+    merchant_favorite_payload = _safe_build(
+        "user_merchant_favorites",
+        lambda: [
+            S.serialize_merchant_favorite(f, mf_name_map.get(f.merchant_id))
+            for f in merchant_favorite_rows
+        ],
+    )
+
     # ---- 黑名单 ----
     # 黑名单分组（full 全量；mine 只导出用户已订阅的分组）
     if scope == "full":
@@ -534,7 +575,7 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             "extended": ["unit_conversions", "ingredient_categories", "ingredient_hierarchy",
                          "entity_densities", "entity_unit_overrides", "products",
                          "product_barcodes", "product_ingredient_links", "price_records",
-                         "merchants", "user_places",
+                         "merchants", "user_places", "user_favorites", "user_merchant_favorites",
                          "blacklist_groups", "user_ingredient_blacklist",
                          "blacklist_group_subscriptions"],
         },
@@ -554,6 +595,8 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             "price_records": len(records_payload),
             "merchants": len(merchants_payload),
             "user_places": len(places_payload),
+            "user_favorites": len(favorites_payload),
+            "user_merchant_favorites": len(merchant_favorite_payload),
             "blacklist_groups": len(bl_groups_payload),
             "user_ingredient_blacklist": len(bl_entries_payload),
             "blacklist_group_subscriptions": len(bl_subs_payload),
@@ -588,6 +631,8 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             zf.writestr("price_records.json", json.dumps(records_payload, ensure_ascii=False, indent=2))
             zf.writestr("merchants.json", json.dumps(merchants_payload, ensure_ascii=False, indent=2))
             zf.writestr("user_places.json", json.dumps(places_payload, ensure_ascii=False, indent=2))
+            zf.writestr("user_favorites.json", json.dumps(favorites_payload, ensure_ascii=False, indent=2))
+            zf.writestr("user_merchant_favorites.json", json.dumps(merchant_favorite_payload, ensure_ascii=False, indent=2))
             zf.writestr("blacklist_groups.json", json.dumps(bl_groups_payload, ensure_ascii=False, indent=2))
             zf.writestr("user_ingredient_blacklist.json", json.dumps(bl_entries_payload, ensure_ascii=False, indent=2))
             zf.writestr("blacklist_group_subscriptions.json", json.dumps(bl_subs_payload, ensure_ascii=False, indent=2))

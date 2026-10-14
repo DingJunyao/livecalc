@@ -87,6 +87,7 @@
               >
                 <SparklineBackground :data="item.sparkline_data" color="primary" height="36" />
               </div>
+              <FavoriteButton :active="favoriteIds.has(item.id)" @toggle="onToggleFavorite(item.id)" />
               <v-btn icon="mdi-tag-plus" size="small" variant="text" @click.prevent="openPriceDialog(item)" />
               <v-btn :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" size="small" variant="text" />
             </template>
@@ -149,6 +150,7 @@
             <v-divider />
             <v-card-actions style="position: relative; z-index: 1">
               <v-spacer />
+              <FavoriteButton :active="favoriteIds.has(item.id)" @toggle="onToggleFavorite(item.id)" />
               <v-btn icon="mdi-tag-plus" size="small" variant="text" @click.prevent="openPriceDialog(item)" />
             </v-card-actions>
           </v-card>
@@ -357,6 +359,8 @@ import ProductDraftNutritionDialog from '@/components/entities/EntityDraftNutrit
 import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
 import { reconcileUnitsAfterIngredientChange } from '@/utils/entityDraftPlan'
 import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 
 const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
@@ -552,6 +556,12 @@ const productFilters = computed<FilterConfig[]>(() => [
     maxWidth: '200px',
   },
   {
+    key: 'favorites_only',
+    label: t('favorites.onlyFavorites'),
+    type: 'toggle',
+    minWidth: '140px',
+  },
+  {
     key: 'special_conditions',
     label: t('products.filterSpecialConditions'),
     type: 'multicheck',
@@ -564,6 +574,20 @@ const productFilters = computed<FilterConfig[]>(() => [
     minWidth: '180px',
   },
 ])
+
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('product')
+const favoritesOnly = computed(() => requestFilters.value.favorites_only === true)
+
+const onToggleFavorite = async (id: number) => {
+  const wasFav = favoriteIds.value.has(id)
+  try {
+    await toggleFavoriteRaw(id)
+    notify(wasFav ? t('favorites.unfavorited') : t('favorites.favorited'), wasFav ? 'info' : 'success')
+    if (favoritesOnly.value) loadProducts()
+  } catch (e: any) {
+    notify(getErrorMessage(e, wasFav ? t('favorites.unfavoriteFailed') : t('favorites.favoriteFailed')), 'error')
+  }
+}
 
 const onFilterChange = (filterState: Record<string, any>) => {
   currentPage.value = 1
@@ -779,6 +803,11 @@ const loadProducts = async () => {
         params[cond] = 'true'
       }
     }
+    // 收藏参数（主列表页默认置顶收藏）
+    params.favorites_first = 'true'
+    if (requestFilters.value.favorites_only === true) {
+      params.favorites_only = 'true'
+    }
 
     const response = await api.get('/products/entity', { params })
     if (requestSequence !== loadProductsSequence) return
@@ -887,6 +916,7 @@ onMounted(() => {
   loadCategories()
   loadBrands()
   loadPendingProposals()
+  loadFavorites()
   window.addEventListener('app-refresh', loadProducts)
 })
 

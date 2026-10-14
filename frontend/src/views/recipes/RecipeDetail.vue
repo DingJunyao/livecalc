@@ -15,6 +15,7 @@
       <CalcContextMenu />
       <!-- 桌面端：按钮平铺 -->
       <template v-if="isDesktop">
+        <FavoriteButton :active="favoriteIds.has(recipeId)" @toggle="onToggleDetailFavorite" />
         <v-btn
           v-if="canPublish"
           icon="mdi-cloud-upload-outline"
@@ -60,6 +61,12 @@
           <v-btn icon="mdi-dots-vertical" variant="text" v-bind="menuProps" :loading="anyLoading" />
         </template>
         <v-list density="compact" nav>
+          <v-list-item
+            :prepend-icon="favoriteIds.has(recipeId) ? 'mdi-heart' : 'mdi-heart-outline'"
+            :base-color="favoriteIds.has(recipeId) ? 'error' : undefined"
+            :title="favoriteIds.has(recipeId) ? t('favorites.unfavorite') : t('favorites.favorite')"
+            @click="onToggleDetailFavorite"
+          />
           <v-list-item
             v-if="canPublish"
             prepend-icon="mdi-cloud-upload-outline"
@@ -523,6 +530,8 @@ import { getErrorMessage } from '@/utils/errorHandler'
 import { resolveImageUrl } from '@/utils/image'
 import { useUserStore } from '@/stores/user'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
+import { useFavorites } from '@/composables/useFavorites'
+import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
@@ -629,6 +638,19 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 const { notify } = useGlobalSnackbar()
+const { ids: favoriteIds, load: loadFavorites, toggle: toggleFavoriteRaw } = useFavorites('recipe')
+
+const onToggleDetailFavorite = async () => {
+  const id = recipeId.value
+  if (!id) return
+  const wasFav = favoriteIds.value.has(id)
+  try {
+    await toggleFavoriteRaw(id)
+    notify(wasFav ? t('favorites.unfavorited') : t('favorites.favorited'), wasFav ? 'info' : 'success')
+  } catch (e: any) {
+    notify(getErrorMessage(e, wasFav ? t('favorites.unfavoriteFailed') : t('favorites.favoriteFailed')), 'error')
+  }
+}
 const { currency: userCurrency } = useUserCurrency()
 
 const recipeId = computed(() => {
@@ -1352,7 +1374,7 @@ watch(() => route.params.id, () => {
 })
 
 
-onMounted(() => { loadData(); loadProposalStatus() })
+onMounted(() => { loadData(); loadProposalStatus(); loadFavorites() })
 </script>
 
 <style scoped>

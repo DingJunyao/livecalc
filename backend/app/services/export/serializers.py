@@ -487,3 +487,28 @@ def serialize_user_place(up: Any) -> dict:
         "is_default": bool(up.is_default),
         "sort_order": up.sort_order,
     }
+
+
+def serialize_user_favorite(fav: Any, entity_name: Optional[str]) -> dict:
+    """UserFavorite → user_favorites.json 元素。
+
+    entity_name 由调用方按类型解析冗余注入：导入会重排实体 id，
+    优先按名字兜底解析（见 importer 的 _import_user_favorites）。
+    """
+    return {
+        "id": fav.id,
+        "entity_type": fav.entity_type,
+        "entity_id": fav.entity_id,
+        "entity_name": entity_name,
+        "created_at": to_iso(fav.created_at),
+    }
+
+
+def serialize_merchant_favorite(fav: Any, merchant_name: Optional[str]) -> dict:
+    """UserMerchantFavorite → user_merchant_favorites.json 元素。"""
+    return {
+        "id": fav.id,
+        "merchant_id": fav.merchant_id,
+        "merchant_name": merchant_name,
+        "created_at": to_iso(fav.created_at),
+    }

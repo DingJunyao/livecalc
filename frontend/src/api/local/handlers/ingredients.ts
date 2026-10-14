@@ -19,6 +19,17 @@ export async function listIngredients(_params: Record<string, string>, query?: a
   const catSet = categoryIds.length ? new Set(categoryIds) : null
 
   const noNutrition = isTruthy(query?.no_nutrition)
+  const favoritesOnly = isTruthy(query?.favorites_only)
+  const favoritesFirst = isTruthy(query?.favorites_first)
+  let favoriteIdSet: Set<number> | null = null
+  if (favoritesOnly || favoritesFirst) {
+    const favRows = await getAll('user_favorites')
+    favoriteIdSet = new Set(
+      favRows
+        .filter((f: any) => f.entity_type === 'ingredient' && f.entity_id != null)
+        .map((f: any) => f.entity_id),
+    )
+  }
   const noPrice = isTruthy(query?.no_price)
   const singlePrice = isTruthy(query?.single_price)
   const singleMerchant = isTruthy(query?.single_merchant)
@@ -93,6 +104,10 @@ export async function listIngredients(_params: Record<string, string>, query?: a
     return true
   })
 
+  if (favoritesOnly && favoriteIdSet) {
+    filtered = filtered.filter((i: any) => favoriteIdSet!.has(i.id))
+  }
+
   if (sortBy === 'price_records') {
     filtered.sort(
       (a, b) =>
@@ -103,6 +118,12 @@ export async function listIngredients(_params: Record<string, string>, query?: a
     filtered.sort((a, b) => (a.name || '').localeCompare(b.name || ''))
   } else {
     filtered.sort((a, b) => ((b.created_at || '') > (a.created_at || '') ? 1 : -1))
+  }
+
+  if (favoritesFirst && favoriteIdSet && favoriteIdSet.size > 0) {
+    const favs = filtered.filter((i: any) => favoriteIdSet!.has(i.id))
+    const rest = filtered.filter((i: any) => !favoriteIdSet!.has(i.id))
+    filtered = [...favs, ...rest]
   }
 
   const { skip, limit: pageSize, page, page_size } = resolvePagination(query)

@@ -735,6 +735,8 @@ async def get_ingredients(
     no_recipe: bool = Query(False, description="筛选无相关菜谱的原料"),
     no_product: bool = Query(False, description="筛选无下属商品的原料"),
     no_recent_price: bool = Query(False, description="筛选近一个月所有商品均未维护过价格的原料"),
+    favorites_only: bool = Query(False, description="仅返回当前用户收藏的原料"),
+    favorites_first: bool = Query(False, description="收藏的原料排在最前（默认关闭）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -746,6 +748,21 @@ async def get_ingredients(
         from sqlalchemy import func
 
         recent_cutoff = _recent_price_cutoff(tz) if no_recent_price else None
+
+        # 收藏参数（仅主列表页传 true；其它消费方不传，行为不变）
+        fav_subq = None
+        fav_case = None
+        if favorites_only or favorites_first:
+            from sqlalchemy import case, select
+
+            from app.models.user_favorite import UserFavorite
+
+            fav_subq = select(UserFavorite.entity_id).where(
+                UserFavorite.user_id == current_user.id,
+                UserFavorite.entity_type == "ingredient",
+            )
+            if favorites_first:
+                fav_case = case((Ingredient.id.in_(fav_subq), 0), else_=1)
 
         # 合并 category_id（单值）和 category_ids（逗号分隔多值）
         _category_filter_ids: list[int] = []
@@ -807,9 +824,13 @@ async def get_ingredients(
                 query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
                 no_product, no_recent_price, recent_cutoff
             )
+            if favorites_only:
+                query = query.filter(Ingredient.id.in_(fav_subq))
 
-            # 按价格记录数量降序排列
+            # 按价格记录数量降序排列（收藏置顶）
+            order_prefix = [fav_case] if fav_case is not None else []
             ingredients = query.order_by(
+                *order_prefix,
                 subquery.c.record_count.desc(),  # 按记录数量降序排列
                 Ingredient.id  # 按ID确保排序稳定性
             ).offset(skip).limit(limit).all()
@@ -836,6 +857,8 @@ async def get_ingredients(
                 total_query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
                 no_product, no_recent_price, recent_cutoff
             )
+            if favorites_only:
+                total_query = total_query.filter(Ingredient.id.in_(fav_subq))
 
             total = total_query.count()
         else:
@@ -861,12 +884,15 @@ async def get_ingredients(
                 query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
                 no_product, no_recent_price, recent_cutoff
             )
+            if favorites_only:
+                query = query.filter(Ingredient.id.in_(fav_subq))
 
-            # 按指定字段排序
+            # 按指定字段排序（收藏置顶）
+            order_prefix = [fav_case] if fav_case is not None else []
             if sort_by == "name":
-                query = query.order_by(Ingredient.name)
+                query = query.order_by(*order_prefix, Ingredient.name)
             elif sort_by == "created_at":
-                query = query.order_by(Ingredient.created_at.desc())
+                query = query.order_by(*order_prefix, Ingredient.created_at.desc())
 
             # 获取总数
             total = query.count()
