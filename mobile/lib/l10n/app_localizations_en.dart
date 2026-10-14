@@ -1572,17 +1572,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get productDraftSavedTogether =>
-      'Fill in here; everything is saved together when you save the product';
-
-  @override
-  String productDraftExtrasSaved(int units, int nutrients) {
-    return 'Product saved with $units custom unit(s) and $nutrients nutrient(s)';
+  String productDraftSavedTogether(Object target) {
+    return 'Fill in here; everything is saved together when you save the $target';
   }
 
   @override
-  String get productDraftExtrasPending =>
-      'Product saved; custom units/nutrition were submitted for review';
+  String get productDraftTargetProduct => 'product';
+
+  @override
+  String get productDraftTargetIngredient => 'ingredient';
+
+  @override
+  String productDraftExtrasSaved(Object target, int units, int nutrients) {
+    return '$target saved with $units custom unit(s) and $nutrients nutrient(s)';
+  }
+
+  @override
+  String productDraftExtrasPending(Object target) {
+    return '$target saved; custom units/nutrition were submitted for review';
+  }
 
   @override
   String productDraftUnitCycle(Object names) {

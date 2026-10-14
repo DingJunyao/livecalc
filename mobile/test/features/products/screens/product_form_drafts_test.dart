@@ -8,11 +8,11 @@ import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
-import 'package:com_a4ding_livecalc/features/products/services/product_draft_persist.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/models/entity_unit.dart';
 import 'package:com_a4ding_livecalc/shared/models/nutrition.dart';
 import 'package:com_a4ding_livecalc/shared/screens/entity_units_draft_screen.dart';
+import 'package:com_a4ding_livecalc/shared/services/entity_draft_persist.dart';
 
 class _FakeProductRepository extends ProductRepository {
   @override
@@ -45,6 +45,15 @@ class _FakeIngredientRepository extends IngredientRepository {
       total: 1,
     );
   }
+
+  /// 「新建同名原料」路径会先建原料（id 故意与商品不同，用于断言落库层级）。
+  @override
+  Future<Ingredient> createIngredient({
+    required String name,
+    int? categoryId,
+    List<String> aliases = const [],
+  }) async =>
+      Ingredient(id: 7, name: name);
 }
 
 class _FakeEntityRepository extends EntityRepository {
@@ -71,23 +80,26 @@ class _FakeEntityRepository extends EntityRepository {
       const [];
 }
 
-class _RecordingPersister extends ProductDraftPersister {
-  int? productId;
+class _RecordingPersister extends EntityDraftPersister {
+  String? entityType;
+  int? entityId;
   List<EntityUnit> units = const [];
   List<NutrientEntry> nutrients = const [];
 
   _RecordingPersister() : super(isAdmin: true);
 
   @override
-  Future<ProductDraftPersistResult> persist({
-    required int productId,
+  Future<EntityDraftPersistResult> persist({
+    required String entityType,
+    required int entityId,
     List<EntityUnit> units = const [],
     List<NutrientEntry> nutrients = const [],
   }) async {
-    this.productId = productId;
+    this.entityType = entityType;
+    this.entityId = entityId;
     this.units = units;
     this.nutrients = nutrients;
-    return ProductDraftPersistResult(
+    return EntityDraftPersistResult(
       unitsCreated: units.length,
       nutrientsSaved: nutrients.length,
     );
@@ -195,7 +207,8 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Save'));
     await tester.pumpAndSettle();
 
-    expect(persister.productId, 42);
+    expect(persister.entityType, 'product');
+    expect(persister.entityId, 42);
     expect(persister.units.map((unit) => unit.unitName).toList(), ['box']);
     expect(persister.units.first.weightPerUnit, 200);
   });
@@ -229,8 +242,40 @@ void main() {
     await tester.tap(find.widgetWithText(TextButton, 'Save'));
     await tester.pumpAndSettle();
 
-    expect(persister.productId, 42);
+    expect(persister.entityType, 'product');
+    expect(persister.entityId, 42);
     expect(persister.nutrients.length, 1);
     expect(persister.nutrients.first.value, 10);
+  });
+
+  testWidgets('勾选「新建同名原料」时草稿仍写商品层级（不写新建的原料）', (tester) async {
+    final persister = _RecordingPersister();
+    await _pumpForm(tester, persister: persister);
+    await tester.enterText(find.byType(TextFormField).first, 'Milk');
+
+    // 打开「新建同名原料」，此时不选关联原料
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+
+    await _tapDraftTile(tester, 'Custom units');
+    await tester.tap(find.byTooltip('Add'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Unit name *'),
+      'box',
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'Amount'), '200');
+    await tester.tap(find.text('Save unit'));
+    await tester.pumpAndSettle();
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    // 原料被创建为 id=7，但草稿落库目标是 product / 42
+    expect(persister.entityType, 'product');
+    expect(persister.entityId, 42);
+    expect(persister.units.length, 1);
   });
 }

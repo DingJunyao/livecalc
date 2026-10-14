@@ -1535,15 +1535,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get productDraftSavedTogether => '在这里填写，保存商品时一并保存';
-
-  @override
-  String productDraftExtrasSaved(int units, int nutrients) {
-    return '商品已保存，并一并保存 $units 个自定义单位、$nutrients 项营养信息';
+  String productDraftSavedTogether(Object target) {
+    return '在这里填写，保存$target时一并保存';
   }
 
   @override
-  String get productDraftExtrasPending => '商品已保存；单位/营养信息已提交，待管理员审核';
+  String get productDraftTargetProduct => '商品';
+
+  @override
+  String get productDraftTargetIngredient => '原料';
+
+  @override
+  String productDraftExtrasSaved(Object target, int units, int nutrients) {
+    return '$target已保存，并一并保存 $units 个自定义单位、$nutrients 项营养信息';
+  }
+
+  @override
+  String productDraftExtrasPending(Object target) {
+    return '$target已保存；单位/营养信息已提交，待管理员审核';
+  }
 
   @override
   String productDraftUnitCycle(Object names) {

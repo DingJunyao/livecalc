@@ -1564,17 +1564,25 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get productDraftSavedTogether =>
-      'املأ هنا، وسيُحفظ كل شيء مع المنتج عند الحفظ';
-
-  @override
-  String productDraftExtrasSaved(int units, int nutrients) {
-    return 'تم حفظ المنتج مع $units وحدة مخصصة و$nutrients عنصرًا غذائيًا';
+  String productDraftSavedTogether(Object target) {
+    return 'املأ هنا، وسيُحفظ كل شيء مع $target عند الحفظ';
   }
 
   @override
-  String get productDraftExtrasPending =>
-      'تم حفظ المنتج؛ وأُرسلت الوحدات/المعلومات الغذائية للمراجعة';
+  String get productDraftTargetProduct => 'المنتج';
+
+  @override
+  String get productDraftTargetIngredient => 'المكوّن';
+
+  @override
+  String productDraftExtrasSaved(Object target, int units, int nutrients) {
+    return 'تم حفظ $target مع $units وحدة مخصصة و$nutrients عنصرًا غذائيًا';
+  }
+
+  @override
+  String productDraftExtrasPending(Object target) {
+    return 'تم حفظ $target؛ وأُرسلت الوحدات/المعلومات الغذائية للمراجعة';
+  }
 
   @override
   String productDraftUnitCycle(Object names) {

@@ -17,6 +17,8 @@ class EntityUnitsDraftScreen extends StatefulWidget {
   final List<EntityUnit> inheritedUnits;
   final List<GlobalUnitOption> globalUnitOptions;
   final double effectiveDensityKgM3;
+  /// 实体名（商品/原料），只用于「保存 XX 时一并保存」这句提示。
+  final String target;
   final ValueChanged<List<EntityUnit>> onChanged;
 
   const EntityUnitsDraftScreen({
@@ -25,6 +27,7 @@ class EntityUnitsDraftScreen extends StatefulWidget {
     this.inheritedUnits = const [],
     this.globalUnitOptions = const [],
     this.effectiveDensityKgM3 = 1000,
+    this.target = '',
     required this.onChanged,
   });
 
@@ -110,7 +113,8 @@ class _EntityUnitsDraftScreenState extends State<EntityUnitsDraftScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(l10n.productDraftSavedTogether, style: secondaryStyle),
+          Text(l10n.productDraftSavedTogether(widget.target),
+              style: secondaryStyle),
           const SizedBox(height: 12),
           if (_units.isEmpty)
             Text(l10n.entityUnitsNoCustomUnits, style: secondaryStyle)

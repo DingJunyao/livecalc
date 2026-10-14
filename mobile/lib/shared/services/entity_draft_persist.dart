@@ -1,32 +1,32 @@
-import '../../../shared/models/entity_unit.dart';
-import '../../../shared/models/nutrition.dart';
-import '../../../shared/utils/draft_units.dart';
-import '../../entities/repositories/entity_repository.dart';
-import '../../nutrition/repositories/nutrition_repository.dart';
+import '../../features/entities/repositories/entity_repository.dart';
+import '../../features/nutrition/repositories/nutrition_repository.dart';
+import '../models/entity_unit.dart';
+import '../models/nutrition.dart';
+import '../utils/draft_units.dart';
 
 /// 一条附加数据的保存失败/跳过原因（文案由调用方按 l10n 组合）。
-class ProductDraftIssue {
+class EntityDraftIssue {
   /// cycle（引用成环）/ refMissing（被引用单位没落库）/ unit / nutrition
   final String kind;
   final List<String> names;
   final String detail;
 
-  const ProductDraftIssue({
+  const EntityDraftIssue({
     required this.kind,
     this.names = const [],
     this.detail = '',
   });
 }
 
-class ProductDraftPersistResult {
+class EntityDraftPersistResult {
   final int unitsCreated;
   final int unitsPending;
   final bool nutritionSaved;
   final bool nutritionPending;
   final int nutrientsSaved;
-  final List<ProductDraftIssue> issues;
+  final List<EntityDraftIssue> issues;
 
-  const ProductDraftPersistResult({
+  const EntityDraftPersistResult({
     this.unitsCreated = 0,
     this.unitsPending = 0,
     this.nutritionSaved = false,
@@ -39,23 +39,28 @@ class ProductDraftPersistResult {
   bool get hasPending => unitsPending > 0 || nutritionPending;
 }
 
-/// 把「新增商品」时填好的自定义单位 / 营养信息草稿写入刚创建的商品。
+/// 把「新增商品/原料」时填好的自定义单位 / 营养信息草稿写入刚创建的实体。
 ///
-/// 失败不抛出：商品已经创建成功，附加数据失败要让用户看到具体哪一项失败。
-class ProductDraftPersister {
+/// [entityType] 为 `product` 或 `ingredient`：
+///   - 单位：`POST /entities/{entityType}/{id}/units`
+///   - 营养：`POST /nutrition/{products|ingredients}/{id}/nutrition`
+///
+/// 失败不抛出：实体已经创建成功，附加数据失败要让用户看到具体哪一项失败。
+class EntityDraftPersister {
   final EntityRepository entityRepository;
   final NutritionRepository nutritionRepository;
   final bool isAdmin;
 
-  ProductDraftPersister({
+  EntityDraftPersister({
     EntityRepository? entityRepository,
     NutritionRepository? nutritionRepository,
     this.isAdmin = true,
   })  : entityRepository = entityRepository ?? EntityRepository(),
         nutritionRepository = nutritionRepository ?? NutritionRepository();
 
-  Future<ProductDraftPersistResult> persist({
-    required int productId,
+  Future<EntityDraftPersistResult> persist({
+    required String entityType,
+    required int entityId,
     List<EntityUnit> units = const [],
     List<NutrientEntry> nutrients = const [],
   }) async {
@@ -64,12 +69,12 @@ class ProductDraftPersister {
     var nutritionSaved = false;
     var nutritionPending = false;
     var nutrientsSaved = 0;
-    final issues = <ProductDraftIssue>[];
+    final issues = <EntityDraftIssue>[];
 
     final createdByDraftId = <int, int>{};
     final plan = planDraftUnitWrites(units);
     if (plan.cycles.isNotEmpty) {
-      issues.add(ProductDraftIssue(
+      issues.add(EntityDraftIssue(
         kind: 'cycle',
         names: [for (final unit in plan.cycles) unit.unitName],
       ));
@@ -82,7 +87,7 @@ class ProductDraftPersister {
         if (refIsDraft && !createdByDraftId.containsKey(ref)) {
           // 被引用的草稿单位没落库（失败或待审），引用它的单位无 id 可用
           unitsPending++;
-          issues.add(ProductDraftIssue(
+          issues.add(EntityDraftIssue(
             kind: 'refMissing',
             names: [unit.unitName],
           ));
@@ -90,15 +95,14 @@ class ProductDraftPersister {
         }
         try {
           final result = await entityRepository.createUnit(
-            'product',
-            productId,
+            entityType,
+            entityId,
             unitName: unit.unitName,
             // 换算系数已从界面移除：语义由「量 + 单位」表达，固定写 1
             conversionFactor: 1,
             weightPerUnit: unit.weightPerUnit,
             weightUnitId: ref != null ? null : unit.weightUnitId,
-            weightUnitOverrideId:
-                refIsDraft ? createdByDraftId[ref] : ref,
+            weightUnitOverrideId: refIsDraft ? createdByDraftId[ref] : ref,
             isDefault: unit.isDefault,
             isAdmin: isAdmin,
           );
@@ -111,7 +115,7 @@ class ProductDraftPersister {
             unitsPending++;
           }
         } on Exception catch (error) {
-          issues.add(ProductDraftIssue(
+          issues.add(EntityDraftIssue(
             kind: 'unit',
             names: [unit.unitName],
             detail: error.toString(),
@@ -126,8 +130,9 @@ class ProductDraftPersister {
     ];
     if (entries.isNotEmpty) {
       try {
-        final review =
-            await nutritionRepository.saveProductNutrition(productId, entries);
+        final review = entityType == 'ingredient'
+            ? await nutritionRepository.saveIngredientNutrition(entityId, entries)
+            : await nutritionRepository.saveProductNutrition(entityId, entries);
         if (review.pending) {
           nutritionPending = true;
         } else {
@@ -135,14 +140,14 @@ class ProductDraftPersister {
           nutrientsSaved = entries.length;
         }
       } on Exception catch (error) {
-        issues.add(ProductDraftIssue(
+        issues.add(EntityDraftIssue(
           kind: 'nutrition',
           detail: error.toString(),
         ));
       }
     }
 
-    return ProductDraftPersistResult(
+    return EntityDraftPersistResult(
       unitsCreated: unitsCreated,
       unitsPending: unitsPending,
       nutritionSaved: nutritionSaved,

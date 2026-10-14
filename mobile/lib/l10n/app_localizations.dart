@@ -3003,20 +3003,32 @@ abstract class AppLocalizations {
   /// No description provided for @productDraftSavedTogether.
   ///
   /// In zh, this message translates to:
-  /// **'在这里填写，保存商品时一并保存'**
-  String get productDraftSavedTogether;
+  /// **'在这里填写，保存{target}时一并保存'**
+  String productDraftSavedTogether(Object target);
+
+  /// No description provided for @productDraftTargetProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get productDraftTargetProduct;
+
+  /// No description provided for @productDraftTargetIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get productDraftTargetIngredient;
 
   /// No description provided for @productDraftExtrasSaved.
   ///
   /// In zh, this message translates to:
-  /// **'商品已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息'**
-  String productDraftExtrasSaved(int units, int nutrients);
+  /// **'{target}已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息'**
+  String productDraftExtrasSaved(Object target, int units, int nutrients);
 
   /// No description provided for @productDraftExtrasPending.
   ///
   /// In zh, this message translates to:
-  /// **'商品已保存；单位/营养信息已提交，待管理员审核'**
-  String get productDraftExtrasPending;
+  /// **'{target}已保存；单位/营养信息已提交，待管理员审核'**
+  String productDraftExtrasPending(Object target);
 
   /// No description provided for @productDraftUnitCycle.
   ///

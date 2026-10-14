@@ -7,6 +7,7 @@ import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/nutrition.dart';
 import '../../../shared/screens/entity_units_draft_screen.dart';
 import '../../../shared/screens/nutrition_edit_screen.dart';
+import '../../../shared/services/entity_draft_persist.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../ingredients/models/ingredient.dart';
@@ -14,7 +15,6 @@ import '../../ingredients/repositories/ingredient_repository.dart';
 import '../../prices/providers/price_provider.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
-import '../services/product_draft_persist.dart';
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -55,7 +55,7 @@ class ProductFormScreen extends ConsumerStatefulWidget {
   /// 测试注入：单位/密度参照数据来源（缺省走真实接口）。
   final EntityRepository? entityRepository;
   /// 测试注入：草稿落库器（缺省按 isAdmin 现场构造）。
-  final ProductDraftPersister? draftPersister;
+  final EntityDraftPersister? draftPersister;
   final bool isAdmin;
   final ProductFormPrefill? prefill;
   final Future<String?> Function(BuildContext context)? scanner;
@@ -470,6 +470,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           inheritedUnits: _inheritedUnits,
           globalUnitOptions: _globalUnitOptions,
           effectiveDensityKgM3: _draftDensityKgM3,
+          target: AppLocalizations.of(context).productDraftTargetProduct,
           onChanged: (units) {
             if (!mounted) return;
             setState(() {
@@ -504,11 +505,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   }
 
   /// 商品创建成功后把草稿一并落库，并按结果提示（失败不阻塞商品已保存的事实）。
+  ///
+  /// 即使勾选了「新建同名原料」，附加数据也写**商品层级**（原料只用于关联与引用）。
   Future<void> _persistDrafts(int productId) async {
     final persister = widget.draftPersister ??
-        ProductDraftPersister(isAdmin: widget.isAdmin);
+        EntityDraftPersister(isAdmin: widget.isAdmin);
     final result = await persister.persist(
-      productId: productId,
+      entityType: 'product',
+      entityId: productId,
       units: _draftUnits,
       nutrients: _draftNutrients,
     );
@@ -516,7 +520,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _notifyDraftResult(result);
   }
 
-  void _notifyDraftResult(ProductDraftPersistResult result) {
+  void _notifyDraftResult(EntityDraftPersistResult result) {
     final l10n = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     for (final issue in result.issues) {
@@ -543,6 +547,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       messenger.showSnackBar(
         SnackBar(
           content: Text(l10n.productDraftExtrasSaved(
+            l10n.productDraftTargetProduct,
             result.unitsCreated,
             result.nutrientsSaved,
           )),
@@ -550,7 +555,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       );
     } else if (result.hasPending) {
       messenger.showSnackBar(
-        SnackBar(content: Text(l10n.productDraftExtrasPending)),
+        SnackBar(
+          content:
+              Text(l10n.productDraftExtrasPending(l10n.productDraftTargetProduct)),
+        ),
       );
     }
   }
@@ -779,7 +787,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                                   ? l10n.productDraftUnitsButton
                                   : l10n.productDraftUnitsButtonCount(
                                       _draftUnits.length)),
-                              subtitle: Text(l10n.productDraftSavedTogether),
+                              subtitle: Text(
+                                  l10n.productDraftSavedTogether(
+                                      l10n.productDraftTargetProduct)),
                               trailing: _loadingDraftUnits
                                   ? const SizedBox(
                                       width: 18,

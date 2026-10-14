@@ -1148,11 +1148,20 @@
       }
     }
   },
-  "productDraftSavedTogether": "在这里填写，保存商品时一并保存",
-  "@productDraftSavedTogether": {},
-  "productDraftExtrasSaved": "商品已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息",
+  "productDraftSavedTogether": "在这里填写，保存{target}时一并保存",
+  "@productDraftSavedTogether": {
+    "placeholders": {
+      "target": {}
+    }
+  },
+  "productDraftTargetProduct": "商品",
+  "@productDraftTargetProduct": {},
+  "productDraftTargetIngredient": "原料",
+  "@productDraftTargetIngredient": {},
+  "productDraftExtrasSaved": "{target}已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息",
   "@productDraftExtrasSaved": {
     "placeholders": {
+      "target": {},
       "units": {
         "type": "int"
       },
@@ -1161,8 +1170,12 @@
       }
     }
   },
-  "productDraftExtrasPending": "商品已保存；单位/营养信息已提交，待管理员审核",
-  "@productDraftExtrasPending": {},
+  "productDraftExtrasPending": "{target}已保存；单位/营养信息已提交，待管理员审核",
+  "@productDraftExtrasPending": {
+    "placeholders": {
+      "target": {}
+    }
+  },
   "productDraftUnitCycle": "自定义单位存在循环引用，未保存：{names}",
   "@productDraftUnitCycle": {
     "placeholders": {

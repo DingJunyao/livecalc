@@ -1148,11 +1148,20 @@
       }
     }
   },
-  "productDraftSavedTogether": "Fill in here; everything is saved together when you save the product",
-  "@productDraftSavedTogether": {},
-  "productDraftExtrasSaved": "Product saved with {units} custom unit(s) and {nutrients} nutrient(s)",
+  "productDraftSavedTogether": "Fill in here; everything is saved together when you save the {target}",
+  "@productDraftSavedTogether": {
+    "placeholders": {
+      "target": {}
+    }
+  },
+  "productDraftTargetProduct": "product",
+  "@productDraftTargetProduct": {},
+  "productDraftTargetIngredient": "ingredient",
+  "@productDraftTargetIngredient": {},
+  "productDraftExtrasSaved": "{target} saved with {units} custom unit(s) and {nutrients} nutrient(s)",
   "@productDraftExtrasSaved": {
     "placeholders": {
+      "target": {},
       "units": {
         "type": "int"
       },
@@ -1161,8 +1170,12 @@
       }
     }
   },
-  "productDraftExtrasPending": "Product saved; custom units/nutrition were submitted for review",
-  "@productDraftExtrasPending": {},
+  "productDraftExtrasPending": "{target} saved; custom units/nutrition were submitted for review",
+  "@productDraftExtrasPending": {
+    "placeholders": {
+      "target": {}
+    }
+  },
   "productDraftUnitCycle": "Custom units contain a circular reference and were not saved: {names}",
   "@productDraftUnitCycle": {
     "placeholders": {
