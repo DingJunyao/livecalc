@@ -172,7 +172,10 @@ const globalUnits = ref<any[]>([])
 const ingredientUnits = ref<any[]>([])
 const densityKgM3 = ref<number | null>(null)
 const loading = ref(false)
-const loadedFor = ref<number | null>(null)
+// 「是否已加载」必须与「加载的是哪个原料」分开记：新增商品时 ingredientId 就是 null，
+// 用它当 sentinel 会把「null === null」误判成已加载 → 下拉永远没有数据。
+const globalUnitsLoaded = ref(false)
+const loadedIngredientId = ref<number | null>(null)
 
 const editorOpen = ref(false)
 const editorError = ref('')
@@ -201,15 +204,14 @@ watch(
 watch(
   () => props.ingredientId,
   () => {
-    loadedFor.value = null
+    globalUnitsLoaded.value = false
     if (props.modelValue) void ensureLoaded()
   },
 )
 
 async function ensureLoaded() {
   const ingredientId = props.ingredientId ?? null
-  if (loadedFor.value === ingredientId) return
-  loadedFor.value = ingredientId
+  if (globalUnitsLoaded.value && loadedIngredientId.value === ingredientId) return
   loading.value = true
   try {
     const [unitsResponse, inheritedResponse, densityResponse] = await Promise.all([
@@ -230,6 +232,8 @@ async function ensureLoaded() {
     densityKgM3.value = densityRows.length > 0 && densityRows[0]?.density != null
       ? Number(densityRows[0].density)
       : null
+    globalUnitsLoaded.value = true
+    loadedIngredientId.value = ingredientId
   } finally {
     loading.value = false
   }
