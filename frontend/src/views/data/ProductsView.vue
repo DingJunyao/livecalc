@@ -355,6 +355,7 @@ import { lookupBarcode } from '@/utils/barcodeLookup'
 import ProductDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog.vue'
 import ProductDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
 import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
+import { unresolvableUnitIds } from '@/utils/entityDraftPlan'
 import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
 
 const { t } = useI18n()
@@ -621,9 +622,43 @@ watch(ingredientSearch, (newVal) => {
   }, 300)
 })
 
+/**
+ * 换原料后清理草稿单位：引用链在「本批草稿 + 新原料」里解析不了的行直接丢弃。
+ * 读取失败不动数据（宁可留着悬空引用，也不误删用户刚填的草稿）。
+ */
+const pruneDraftUnitsForIngredient = async (ingredientId: number) => {
+  if (!draftUnits.value.length) return
+  let ingredientUnits: any[] = []
+  try {
+    const res: any = await api.get(`/entities/ingredient/${ingredientId}/units`)
+    ingredientUnits = Array.isArray(res) ? res : res?.items || []
+  } catch {
+    return
+  }
+  const broken = unresolvableUnitIds(
+    draftUnits.value,
+    new Set(ingredientUnits.map((unit: any) => Number(unit.id))),
+  )
+  if (broken.size === 0) return
+  const removed = draftUnits.value
+    .filter(unit => broken.has(unit.id))
+    .map(unit => unit.unit_name)
+  draftUnits.value = draftUnits.value.filter(unit => !broken.has(unit.id))
+  showMessage(
+    t('products.danglingUnitsRemoved', { names: removed.join(', ') }),
+    'warning',
+  )
+}
+
 // 监听选中的原料对象，同步 ingredient_id 到表单
 watch(selectedIngredient, (newIngredient) => {
+  const previousId = form.value.ingredient_id
   form.value.ingredient_id = newIngredient?.id || null
+  // 新增态换原料：草稿单位里引用「旧原料独有单位」的行会悬空，去掉并提示
+  // （草稿只在本地，删了没有服务端副作用；清空选择时不动，避免误删）
+  if (newIngredient?.id && newIngredient.id !== previousId) {
+    pruneDraftUnitsForIngredient(newIngredient.id)
+  }
 }, { immediate: true })
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
