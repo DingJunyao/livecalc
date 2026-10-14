@@ -186,6 +186,48 @@ def test_nested_cross_entity_reference_ignored(db, units):
     assert float(result[0]) == pytest.approx(300.0)
 
 
+def test_product_inherits_ingredient_unit(db, units):
+    """继承：原料定义「盒 = 220 mL」，该原料下商品的「箱 = 12 盒」应能引用它。"""
+    from app.models.product_entity import Product
+
+    ing = _ingredient(db, "食用油")
+    box = _override(db, "ingredient", ing.id, "盒", weight=220, weight_unit_id=units["mL"].id)
+    product = Product(name="某品牌食用油 5L", ingredient_id=ing.id, is_active=True)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    _override(db, "product", product.id, "箱", weight=12, weight_unit_override_id=box.id)
+
+    result = UnitConversionService(db).convert(
+        Decimal("1"), "箱", "mL", entity_type="product", entity_id=product.id
+    )
+    assert result is not None
+    assert float(result[0]) == pytest.approx(2640.0)
+
+
+def test_product_reference_to_other_ingredient_ignored(db, units):
+    """继承只限「自己所属的原料」：引用别的原料的覆盖 → 悬空，退化成本行全局单位路径。"""
+    from app.models.product_entity import Product
+
+    mine = _ingredient(db, "我的原料")
+    other = _ingredient(db, "别人的原料")
+    other_box = _override(db, "ingredient", other.id, "盒", weight=220, weight_unit_id=units["mL"].id)
+    product = Product(name="我的商品", ingredient_id=mine.id, is_active=True)
+    db.add(product)
+    db.commit()
+    db.refresh(product)
+    _override(
+        db, "product", product.id, "箱",
+        weight=300, weight_unit_id=units["g"].id, weight_unit_override_id=other_box.id,
+    )
+
+    result = UnitConversionService(db).convert(
+        Decimal("1"), "箱", "g", entity_type="product", entity_id=product.id
+    )
+    assert result is not None
+    assert float(result[0]) == pytest.approx(300.0)
+
+
 def test_recipe_nutrition_nested_chain(db, units):
     """菜谱营养：1箱 = 12 盒 = 2640 mL、密度 1.03 → 2719.2 g，
     54 kcal/100g × 27.192 = 1468.4 kcal（rewrite 后的 recipe_service 分支）。"""

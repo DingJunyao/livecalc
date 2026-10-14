@@ -325,6 +325,38 @@ class UnitConversionService:
 
     MAX_OVERRIDE_CHAIN_DEPTH = 8
 
+    def _find_referenced_override(
+        self, override: EntityUnitOverride, ref_id: int
+    ) -> Optional[EntityUnitOverride]:
+        """按 id 找嵌套引用指向的覆盖行，并校验它属于允许的实体。
+
+        允许两种归属：
+        - 同实体（商品引用商品的另一条、原料引用原料的另一条）；
+        - 商品引用**其关联原料**的覆盖（继承：原料的「盒」可以被商品的「箱」引用）。
+        其他情况（他人实体/无关原料）一律视为悬空引用，交由调用方退化为全局单位路径。
+        """
+        ref = (
+            self.db.query(EntityUnitOverride)
+            .filter(
+                EntityUnitOverride.id == ref_id,
+                EntityUnitOverride.is_active.is_(True),
+            )
+            .first()
+        )
+        if ref is None:
+            return None
+        if (
+            ref.entity_type == override.entity_type
+            and ref.entity_id == override.entity_id
+        ):
+            return ref
+        if override.entity_type == "product" and ref.entity_type == "ingredient":
+            from app.services.lookup_cache import product_ingredient_id
+
+            if ref.entity_id == product_ingredient_id(self.db, override.entity_id):
+                return ref
+        return None
+
     def resolve_override_amount(
         self,
         override: EntityUnitOverride,
@@ -336,9 +368,11 @@ class UnitConversionService:
         """把一条实体单位覆盖解析成 (单个自定义单位对应的数量, 全局单位)。
 
         语义：1 个自定义单位 = conversion_factor(默认 1) × weight_per_unit × weight_unit。
-        weight_unit 取 weight_unit_override_id（同一实体的另一个自定义单位，递归解析）
-        或 weight_unit_id（全局质量/体积单位），都为空时按克处理。
+        weight_unit 取 weight_unit_override_id（同实体或所属原料的另一个自定义单位，
+        递归解析）或 weight_unit_id（全局质量/体积单位），都为空时按克处理。
 
+        - 商品的覆盖可以引用**其关联原料**的覆盖（继承：原料定义了「盒」，商品的
+          「箱」就能写成 12 盒）；原料内的同名覆盖优先（除非商品自己另有一条）。
         - 嵌套时每层都乘该层的 conversion_factor 与 weight_per_unit（后者缺省按 1，
           这样「换算系数 12 + 单位 盒」与「单个重量 12 + 单位 盒」等价）。
         - 循环引用/超过 MAX_OVERRIDE_CHAIN_DEPTH/引用悬空 → 返回 (None, None)，
@@ -356,16 +390,7 @@ class UnitConversionService:
         factor = override.conversion_factor or Decimal("1")
         ref_id = getattr(override, "weight_unit_override_id", None)
         if ref_id:
-            ref = (
-                self.db.query(EntityUnitOverride)
-                .filter(
-                    EntityUnitOverride.id == ref_id,
-                    EntityUnitOverride.entity_type == override.entity_type,
-                    EntityUnitOverride.entity_id == override.entity_id,
-                    EntityUnitOverride.is_active.is_(True),
-                )
-                .first()
-            )
+            ref = self._find_referenced_override(override, ref_id)
             if ref is not None and ref.id != override.id:
                 sub_amount, sub_unit = self.resolve_override_amount(
                     ref, entity_type, entity_id, _depth + 1, _seen

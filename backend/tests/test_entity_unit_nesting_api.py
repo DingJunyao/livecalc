@@ -71,6 +71,51 @@ def test_admin_create_nested_override(db_session, as_admin):
     assert carton_row["weight_unit_override_id"] == box_id
 
 
+def _product(db_session, ingredient_id, name="继承测试商品"):
+    from app.models.product_entity import Product
+    p = Product(name=name, ingredient_id=ingredient_id, is_active=True)
+    db_session.add(p)
+    db_session.commit()
+    db_session.refresh(p)
+    return p.id
+
+
+def test_product_can_reference_its_ingredient_unit(db_session, as_admin):
+    """继承：商品的自定义单位可以引用其关联原料的自定义单位。"""
+    ing_id = _ingredient(db_session, "继承测试原料")
+    ml_id = _unit(db_session, "mL")
+    box = client.post(
+        f"/api/v1/entities/ingredient/{ing_id}/units",
+        json={"unit_name": "盒", "weight_per_unit": 220, "weight_unit_id": ml_id},
+    ).json()
+    product_id = _product(db_session, ing_id)
+
+    resp = client.post(
+        f"/api/v1/entities/product/{product_id}/units",
+        json={"unit_name": "箱", "weight_per_unit": 12, "weight_unit_override_id": box["id"]},
+    )
+    assert resp.status_code == 201, resp.text
+    assert resp.json()["weight_unit_override_id"] == box["id"]
+
+
+def test_product_reject_other_ingredient_unit(db_session, as_admin):
+    """继承只限自己所属的原料：引用别的原料的覆盖仍应 400。"""
+    mine = _ingredient(db_session, "我的原料X")
+    other = _ingredient(db_session, "别人的原料Y")
+    other_box = client.post(
+        f"/api/v1/entities/ingredient/{other}/units",
+        json={"unit_name": "盒", "weight_per_unit": 220},
+    ).json()
+    product_id = _product(db_session, mine, "我的商品X")
+
+    resp = client.post(
+        f"/api/v1/entities/product/{product_id}/units",
+        json={"unit_name": "箱", "weight_per_unit": 12, "weight_unit_override_id": other_box["id"]},
+    )
+    assert resp.status_code == 400
+    assert "关联原料" in resp.text
+
+
 def test_reject_both_weight_units(db_session, as_admin):
     ing_id = _ingredient(db_session)
     ml_id = _unit(db_session, "mL")
