@@ -5,8 +5,8 @@ import {
   draftUnitAmounts,
   nextDraftUnitId,
   planDraftUnitWrites,
-  type ProductDraftUnit,
-} from './productDraftPlan.ts'
+  type EntityDraftUnit,
+} from './entityDraftPlan.ts'
 
 // 夹具用真实量级的 si_factor（质量基准 kg：g=0.001；体积基准 L：mL=0.001），
 // 写成 1 会让「1 个 = 200 g」这类系统性错误被掩盖。
@@ -15,7 +15,7 @@ const GLOBAL_KG = { id: 2, unit_type: 'mass', si_factor: 1, name: 'kg', abbrevia
 const GLOBAL_ML = { id: 3, unit_type: 'volume', si_factor: 0.001, name: 'mL', abbreviation: 'mL' }
 const GLOBALS = [GLOBAL_G, GLOBAL_KG, GLOBAL_ML]
 
-function draft(partial: Partial<ProductDraftUnit> & { id: number; unit_name: string }): ProductDraftUnit {
+function draft(partial: Partial<EntityDraftUnit> & { id: number; unit_name: string }): EntityDraftUnit {
   return {
     weight_per_unit: null,
     is_default: false,

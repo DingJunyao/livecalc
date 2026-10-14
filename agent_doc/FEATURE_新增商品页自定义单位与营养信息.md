@@ -79,7 +79,41 @@ weight_unit_override_id：
 - 存量用例适配：`product_form_screen_test.dart` 的别名用例在表单变长后需要 `ensureVisible` 再点，
   否则 ListView 外层滚动位置变化会让点击落空（非功能回归）。
 
-## 5. 经验
+## 5. 补充（同日第二轮）：原料也支持，且明确落库层级
+
+用户追加两点：
+
+1. **新增商品时勾选「新建同名原料」→ 附加数据仍写商品层级**（原料只用于关联与引用）。
+   实现上本来就是写商品（`persistEntityDrafts('product', response.id, …)`），
+   本轮补了一条移动端用例断言：新建原料得到 id=7，但落库目标是 `product` / 42。
+2. **新增原料同样支持这两个入口**（界面与新增商品一致），数据写**原料层级**：
+   - web：[IngredientsView.vue](../frontend/src/views/data/IngredientsView.vue) 的「添加原料」对话框（`POST /ingredients` → `persistEntityDrafts('ingredient', id, …)`）；
+   - 移动端：[ingredient_form_screen.dart](../mobile/lib/features/ingredients/screens/ingredient_form_screen.dart)（`createIngredient` → `EntityDraftPersister.persist(entityType: 'ingredient', …)`）。
+   原料没有「关联原料」这一层，所以单位草稿页只传全局单位（`inheritedUnits` 为空）。
+   营养草稿页同样传 `allowUsda: false`（原料也还没 id）。
+
+为了让两端共用一套代码，本轮把草稿工具「实体中立化」：
+
+| 旧 | 新 |
+| --- | --- |
+| `frontend/src/utils/productDraftPlan.ts` | [entityDraftPlan.ts](../frontend/src/utils/entityDraftPlan.ts)（类型 `EntityDraftUnit` / `EntityDraftNutrient`） |
+| `frontend/src/utils/productDrafts.ts` | [entityDrafts.ts](../frontend/src/utils/entityDrafts.ts)（`persistEntityDrafts(entityType, entityId, …)`，营养端点按类型选 products/ingredients） |
+| `frontend/src/components/products/ProductDraft*Dialog.vue` | `frontend/src/components/entities/EntityDraft*Dialog.vue`（新增 `target` prop） |
+| `mobile/.../products/services/product_draft_persist.dart` | [mobile/lib/shared/services/entity_draft_persist.dart](../mobile/lib/shared/services/entity_draft_persist.dart)（`persist({required String entityType, …})`） |
+
+文案里「商品」改为 `{target}` 占位（web `common.entityProduct/entityIngredient`；移动端
+`productDraftTargetProduct/productDraftTargetIngredient`），三语同步并重新生成 l10n。
+
+### 踩坑：`vite build` 不做类型检查
+
+第一轮把 `productDrafts.ts` 里的 `const failedDraftIds = new Set<number>()` 删掉时漏删了 3 处引用
+（`failedDraftIds.add(...)`），`npm run build`、`check:i18n`、单测全绿 —— 因为 Vite/esbuild 只转译不做类型检查，
+而 `vue-tsc@1.8` 与本仓 TypeScript 5 不兼容（`Search string not found: "/supportedTSExtensions = .*(?=;)/"`）。
+本轮改用 `npx tsc --noEmit -p tsconfig.json` 兜底：它只报 `*.vue` 无法解析等 137 条存量噪音，
+但能稳定抓出「未声明标识符」这类会直接抛 `ReferenceError` 的问题（含本次修掉的这一处）。
+**结论：改完前端除了 `npm run build`，还要跑一次 `npx tsc --noEmit`（忽略 `*.vue` 相关噪音），并把其中真实错误清掉。**
+
+## 6. 经验
 
 1. 「商品创建成功」与「附加数据保存成功」是两个失败域：附加数据失败必须逐条提示，不能回滚/报整单失败，
    否则用户会以为商品没建成而重复创建。
@@ -89,6 +123,10 @@ weight_unit_override_id：
    要显式跳过并提示，不能静默丢数据。
 4. 直写服务端的侧路（此处是 USDA 匹配）必须提供开关：草稿态实体 id 还不存在，任何直写都会打到错误的 id 上。
 
-## 6. 分支
+5. 「新增 X」类表单里的附加数据编辑器必须**实体中立**（`entityType` 参数化）：
+   商品/原料两份需求只差端点与文案，复制一份代码会在下一次改口径时漏掉一半。
+6. 前端「构建通过」不等于「能跑」：Vite 只转译，`vue-tsc` 在本仓不可用，务必用 `npx tsc --noEmit` 兜底。
+
+## 7. 分支
 
 Web 改动属于 master（先提交 master，再 merge 到 feat/mobile-app）；移动端改动属于 feat/mobile-app。

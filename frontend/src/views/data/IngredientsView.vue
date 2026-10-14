@@ -246,6 +246,32 @@
               clearable
               :placeholder="t('ingredients.categoryPlaceholder')"
             />
+            <!-- 自定义单位 / 营养信息：在新增原料时先填好，保存原料时一并保存 -->
+            <div class="d-flex flex-wrap ga-2 mt-4">
+              <v-btn
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-ruler"
+                @click="showDraftUnitsDialog = true"
+              >
+                {{ draftUnits.length > 0
+                  ? t('products.draftUnitsButtonCount', { count: draftUnits.length })
+                  : t('products.draftUnitsButton') }}
+              </v-btn>
+              <v-btn
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-food-apple-outline"
+                @click="showDraftNutritionDialog = true"
+              >
+                {{ draftNutrientCount > 0
+                  ? t('products.draftNutritionButtonCount', { count: draftNutrientCount })
+                  : t('products.draftNutritionButton') }}
+              </v-btn>
+            </div>
+            <div class="text-caption text-medium-emphasis mt-2">
+              {{ t('products.draftSavedTogether', { target: t('common.entityIngredient') }) }}
+            </div>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -255,6 +281,18 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- 新增原料时的自定义单位 / 营养信息草稿编辑（保存原料时才落库） -->
+    <EntityDraftUnitsDialog
+      v-model="showDraftUnitsDialog"
+      v-model:units="draftUnits"
+      :target="t('common.entityIngredient')"
+    />
+    <EntityDraftNutritionDialog
+      v-model="showDraftNutritionDialog"
+      v-model:nutrients="draftNutrients"
+      :target="t('common.entityIngredient')"
+    />
   </v-container>
 </template>
 
@@ -276,6 +314,10 @@ import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/currency'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
+import EntityDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog.vue'
+import EntityDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
+import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
+import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
 
 const { t } = useI18n()
 const localeStore = useLocaleStore()
@@ -349,6 +391,32 @@ const form = ref({
   category_id: null as number | null,
   aliases: [] as string[],
 })
+
+// 新增原料时的「自定义单位 / 营养信息」草稿：原料创建成功后才落库（原料层级）
+const showDraftUnitsDialog = ref(false)
+const showDraftNutritionDialog = ref(false)
+const draftUnits = ref<EntityDraftUnit[]>([])
+const draftNutrients = ref<EntityDraftNutrient[]>([])
+const draftNutrientCount = computed(() =>
+  draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
+)
+
+function resetDrafts() {
+  showDraftUnitsDialog.value = false
+  showDraftNutritionDialog.value = false
+  draftUnits.value = []
+  draftNutrients.value = []
+}
+
+/** 本页只有一个 snackbar：有失败/跳过时优先展示它，否则展示保存结果。 */
+function notifyDraftNotices(notices: { text: string; color: string }[]) {
+  if (notices.length === 0) return
+  const notice = notices.find(item => item.color === 'error' || item.color === 'warning')
+    ?? notices[notices.length - 1]
+  snackbarText.value = notice.text
+  snackbarColor.value = notice.color
+  showSnackbar.value = true
+}
 
 // 分页相关（从 URL 查询参数初始化）
 const currentPage = ref(Number(route.query.page) || 1)
@@ -569,6 +637,8 @@ const saveItem = async () => {
     }
 
     const response = await api.post('/ingredients', payload)
+    // 原料已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并写**原料层级**
+    const draftResult = await persistEntityDrafts('ingredient', response.id, draftUnits.value, draftNutrients.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false
@@ -577,6 +647,8 @@ const saveItem = async () => {
       category_id: null,
       aliases: [],
     }
+    resetDrafts()
+    notifyDraftNotices(buildDraftNotices(t, draftResult, t('common.entityIngredient')))
   } catch (e: any) {
     console.error('Failed to save ingredient', e)
   } finally {

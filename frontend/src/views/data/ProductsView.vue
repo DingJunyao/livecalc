@@ -304,7 +304,7 @@
               </v-btn>
             </div>
             <div class="text-caption text-medium-emphasis mt-2">
-              {{ t('products.draftSavedTogether') }}
+              {{ t('products.draftSavedTogether', { target: t('common.entityProduct') }) }}
             </div>
           </v-form>
         </v-card-text>
@@ -321,10 +321,12 @@
       v-model="showDraftUnitsDialog"
       v-model:units="draftUnits"
       :ingredient-id="form.ingredient_id"
+      :target="t('common.entityProduct')"
     />
     <ProductDraftNutritionDialog
       v-model="showDraftNutritionDialog"
       v-model:nutrients="draftNutrients"
+      :target="t('common.entityProduct')"
     />
   </v-container>
 </template>
@@ -350,10 +352,10 @@ import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { lookupBarcode } from '@/utils/barcodeLookup'
-import ProductDraftUnitsDialog from '@/components/products/ProductDraftUnitsDialog.vue'
-import ProductDraftNutritionDialog from '@/components/products/ProductDraftNutritionDialog.vue'
-import { buildDraftNotices, persistProductDrafts } from '@/utils/productDrafts'
-import type { ProductDraftNutrient, ProductDraftUnit } from '@/utils/productDraftPlan'
+import ProductDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog.vue'
+import ProductDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
+import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
+import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
 
 const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
@@ -433,8 +435,8 @@ const form = ref({
 // 新增商品时的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
 const showDraftUnitsDialog = ref(false)
 const showDraftNutritionDialog = ref(false)
-const draftUnits = ref<ProductDraftUnit[]>([])
-const draftNutrients = ref<ProductDraftNutrient[]>([])
+const draftUnits = ref<EntityDraftUnit[]>([])
+const draftNutrients = ref<EntityDraftNutrient[]>([])
 const draftNutrientCount = computed(() =>
   draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
 )
@@ -743,8 +745,9 @@ const saveItem = async () => {
   saving.value = true
   try {
     const response = await api.post('/products/entity', form.value)
-    // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库
-    const draftResult = await persistProductDrafts(response.id, draftUnits.value, draftNutrients.value)
+    // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库。
+    // 注意：即使勾选了「新建同名原料」，附加数据也写**商品层级**（原料只用于关联与引用）。
+    const draftResult = await persistEntityDrafts('product', response.id, draftUnits.value, draftNutrients.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false
@@ -753,7 +756,7 @@ const saveItem = async () => {
     selectedIngredient.value = null
     ingredientSearch.value = ''
     resetDrafts()
-    for (const notice of buildDraftNotices(t, draftResult)) notify(notice.text, notice.color)
+    for (const notice of buildDraftNotices(t, draftResult, t('common.entityProduct'))) notify(notice.text, notice.color)
     if (returnTo.value) {
       sessionStorage.setItem('barcode-price-return', JSON.stringify(response))
       router.push(returnTo.value)
