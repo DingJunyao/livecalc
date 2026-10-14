@@ -147,6 +147,8 @@ def list_products(
     single_price: bool = Query(False, description="筛选仅有一条价格记录的商品"),
     single_merchant: bool = Query(False, description="筛选仅有一家商家有其价格记录的商品"),
     no_recent_price: bool = Query(False, description="筛选近一个月未维护过价格的商品"),
+    favorites_only: bool = Query(False, description="仅返回当前用户收藏的商品"),
+    favorites_first: bool = Query(False, description="收藏的商品排在最前（默认关闭）"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     tz: str = Depends(get_timezone),
@@ -159,6 +161,21 @@ def list_products(
     from sqlalchemy import func
 
     recent_cutoff = _recent_price_cutoff(tz) if no_recent_price else None
+
+    # 收藏参数（仅主列表页传 true；其它消费方不传，行为不变）
+    fav_subq = None
+    fav_case = None
+    if favorites_only or favorites_first:
+        from sqlalchemy import case, select
+
+        from app.models.user_favorite import UserFavorite
+
+        fav_subq = select(UserFavorite.entity_id).where(
+            UserFavorite.user_id == current_user.id,
+            UserFavorite.entity_type == "product",
+        )
+        if favorites_first:
+            fav_case = case((Product.id.in_(fav_subq), 0), else_=1)
 
     pending_search_ids = (
         find_product_ids_with_pending_names(db, search, current_user)
@@ -224,11 +241,14 @@ def list_products(
         query = _apply_product_special_conditions(
             query, no_price, single_price, single_merchant, no_recent_price, recent_cutoff
         )
+        if favorites_only:
+            query = query.filter(Product.id.in_(fav_subq))
 
         total = query.count()
 
-        # 按价格记录数量排序，然后按商品创建时间排序以确保一致性
-        products = query.order_by(desc(subquery.c.record_count), desc(Product.created_at)).offset(skip).limit(limit).all()
+        # 按价格记录数量排序（收藏置顶），然后按商品创建时间排序以确保一致性
+        order_prefix = [fav_case] if fav_case is not None else []
+        products = query.order_by(*order_prefix, desc(subquery.c.record_count), desc(Product.created_at)).offset(skip).limit(limit).all()
     else:
         # 使用原有逻辑
         query = db.query(Product).options(
@@ -276,14 +296,17 @@ def list_products(
         query = _apply_product_special_conditions(
             query, no_price, single_price, single_merchant, no_recent_price, recent_cutoff
         )
+        if favorites_only:
+            query = query.filter(Product.id.in_(fav_subq))
 
         total = query.count()
 
-        # 按时间排序
+        # 按时间排序（收藏置顶）
+        order_prefix = [fav_case] if fav_case is not None else []
         if sort_by == "updated_at":
-            products = query.order_by(desc(Product.updated_at)).offset(skip).limit(limit).all()
+            products = query.order_by(*order_prefix, desc(Product.updated_at)).offset(skip).limit(limit).all()
         else:  # 默认按创建时间排序
-            products = query.order_by(desc(Product.created_at)).offset(skip).limit(limit).all()
+            products = query.order_by(*order_prefix, desc(Product.created_at)).offset(skip).limit(limit).all()
     page = skip // limit + 1
 
     display_overrides = build_product_display_overrides(
