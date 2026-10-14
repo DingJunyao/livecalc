@@ -2683,6 +2683,23 @@ const chartPricePoints = computed<AsOfPricePoint[]>(() => {
   return points
 })
 
+// 当前图表区间（用于编辑/删除后刷新 + 计算 as-of 序列起点）
+const currentChartFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month')
+
+// 图表区间起点（本地日）；「全部」为 undefined。传给 as-of 序列用于：
+//   ① 截断序列起点；② 只有一个记录日时按最早已知价向前补齐（避免单点空白图）。
+const chartRangeStartDay = computed<string | undefined>(() => {
+  const startDateMap: Record<string, Date | undefined> = {
+    week: daysAgo(7),
+    month: daysAgo(30),
+    quarter: daysAgo(90),
+    year: daysAgo(365),
+    all: undefined,
+  }
+  const start = startDateMap[currentChartFilter.value]
+  return start ? (toLocalDayKey(start) ?? undefined) : undefined
+})
+
 // 图表数据：逐日 as-of（每个商品的最近一次价向前携带；全部超期时放开），
 // 与原料详情、后端迷你图同口径——所选区间内没有新记录时也要画出最近一次
 // 已知价，否则「近一个月没有更新」会被显示成「暂无价格历史数据」。
@@ -2700,7 +2717,11 @@ const chartData = computed(() => {
 
   // 单商品视图「按商品」区间会退化成均价线：区间改按「记录」口径 as-of 携带，
   // 与「最新价格」卡片的区间（最近一次记录日的记录价区间）一致
-  return buildWeightedAsOfDailySeries(points, () => 50, { bandFromRecords: true }).map((d) => ({
+  return buildWeightedAsOfDailySeries(points, () => 50, {
+    bandFromRecords: true,
+    startDay: chartRangeStartDay.value,
+    backfillSparse: true,
+  }).map((d) => ({
     date: d.date,
     min: d.min,
     max: d.max,
@@ -2910,6 +2931,18 @@ const fetchChartPriceRecords = async (start?: Date): Promise<number> => {
   return items.length
 }
 
+// 累积池中最早的价格记录日（YYYY-MM-DD）；池为空时 null。
+// 用于判断池里是否已含「不晚于区间起点」的 as-of 携带起点。
+const chartPoolStartDay = computed<string | null>(() => {
+  let earliest: string | null = null
+  for (const record of chartPriceRecords.value) {
+    const day = record?.recorded_at ? toLocalDayKey(record.recorded_at) : null
+    if (!day) continue
+    if (earliest === null || day < earliest) earliest = day
+  }
+  return earliest
+})
+
 // 加载图表价格记录（按时间区间累积）
 // startDate 为空表示「全部」；「全部」请求放宽超时到 30s，规避前端 10s 上限
 const loadChartPriceRecords = async (startDate?: Date) => {
@@ -2932,14 +2965,13 @@ const loadChartPriceRecords = async (startDate?: Date) => {
 
   loadingChartPrices.value = true
   try {
-    const windowHits = await fetchChartPriceRecords(startDate)
-    // 区间内一条记录都没有，且累积池也是空的：说明所有记录都早于该区间
-    // （商品「近一个月没有更新」的场景）。回退全量，让 as-of 序列拿到最近
-    // 一次价作为携带起点，图表才不会空白。
+    await fetchChartPriceRecords(startDate)
+    // 区间请求返回后，只要池里没有「不晚于区间起点」的记录，就说明缺少 as-of 携带
+    // 起点（数据整体陈旧，或区间内只有今天一条新记录、更早记录被 start_date 挡掉）
+    // → 回退全量，否则序列只剩一个点，图表看起来是空的。
     if (shouldLoadFullPriceHistory({
       windowStart: startDate,
-      windowHits,
-      loadedCount: chartPriceRecords.value.length,
+      poolStartDay: chartPoolStartDay.value,
     })) {
       await fetchChartPriceRecords(undefined)
     }
@@ -2949,9 +2981,6 @@ const loadChartPriceRecords = async (startDate?: Date) => {
     loadingChartPrices.value = false
   }
 }
-
-// 当前图表区间（用于编辑/删除后刷新）
-const currentChartFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month')
 
 // 图表区间切换：按时间区间发起请求
 const onPriceTrendFilterChange = (filter: 'week' | 'month' | 'quarter' | 'year' | 'all') => {
