@@ -101,9 +101,12 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
     def _validate_weight_unit_override(
         db: Session, payload: dict, biz_type: str, biz_id: int, self_id: Optional[int]
     ) -> None:
-        """weight_unit_override_id（若提供）须指向同一实体的另一个活跃自定义单位，且不能成环。
+        """weight_unit_override_id（若提供）须指向同一实体（或商品的关联原料）的另一个
+        活跃自定义单位，且不能成环。
 
         嵌套语义：1箱 = 12 盒，盒自身再定义 220 mL。
+        继承语义：原料定义的「盒」可以被该原料下商品的「箱」引用（除非商品自己有同名覆盖，
+        那是另一条行、不冲突）。
         """
         ref_id = payload.get("weight_unit_override_id")
         if ref_id is None:
@@ -127,10 +130,16 @@ class EntityUnitOverrideExecutor(CrudExecutorBase):
             raise LocalizedHTTPException(
                 status_code=400, message='引用的自定义单位 {ref_id} 不存在', ref_id=ref_id
             )
-        if ref.entity_type != biz_type or ref.entity_id != biz_id:
+        same_entity = ref.entity_type == biz_type and ref.entity_id == biz_id
+        inherited = False
+        if not same_entity and biz_type == "product" and ref.entity_type == "ingredient":
+            from app.services.lookup_cache import product_ingredient_id
+
+            inherited = ref.entity_id == product_ingredient_id(db, biz_id)
+        if not same_entity and not inherited:
             raise LocalizedHTTPException(
                 status_code=400,
-                message='只能引用同一实体（{biz_type}/{biz_id}）的自定义单位',
+                message='只能引用同一实体（{biz_type}/{biz_id}）或其关联原料的自定义单位',
                 biz_type=biz_type, biz_id=biz_id,
             )
         # 环检测：沿 weight_unit_override_id 链回溯，若回到 self_id（update 场景）则成环

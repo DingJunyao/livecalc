@@ -38,6 +38,92 @@ function toEntityOptions(rows: any[]): UnitOption[] {
   return options
 }
 
+/** 自定义单位下拉项的最小行结构（/entities/.../units 与视图内状态通用）。 */
+export interface UnitRowLike {
+  id?: number | null
+  unit_name?: string | null
+  weight_per_unit?: number | null
+  weight_unit_id?: number | null
+  weight_unit_override_id?: number | null
+  conversion_factor?: number | null
+  source?: string | null
+}
+
+/**
+ * 合并「本实体自定义单位行」与「可继承的自定义单位行」（商品 → 关联原料）。
+ *
+ * 与 fetchEntityUnitOptions 同一口径：本实体的行在前，按 id 与名称双重去重，
+ * 因此**同名时本实体的单位胜出**，不会出现两个「盒」；
+ * 同时避免两个实体主键空间重叠时误把原料的行当成自己的行。
+ */
+export function dedupeUnitRows<T extends { id?: number | null; unit_name?: string | null }>(
+  ownRows: T[],
+  inheritedRows: T[],
+): T[] {
+  const result: T[] = []
+  const seenIds = new Set<number>()
+  const seenNames = new Set<string>()
+  for (const row of ownRows) {
+    const id = row?.id ?? null
+    if (id != null) {
+      if (seenIds.has(id)) continue
+      seenIds.add(id)
+    }
+    const name = String(row?.unit_name ?? '').trim()
+    if (name) {
+      if (seenNames.has(name)) continue
+      seenNames.add(name)
+    }
+    result.push(row)
+  }
+  for (const row of inheritedRows) {
+    const id = row?.id ?? null
+    if (id == null || seenIds.has(id)) continue
+    const name = String(row?.unit_name ?? '').trim()
+    if (name && seenNames.has(name)) continue
+    seenIds.add(id)
+    if (name) seenNames.add(name)
+    result.push(row)
+  }
+  return result
+}
+
+/**
+ * 单位下拉项标题：`名称（自定义单位）` / 商品的继承项 `名称（继承自原料）`。
+ * 名字为空时退化为 `#id`（复现原有兜底，避免出现空标题项）。
+ */
+export function formatUnitOptionLabel(
+  unitName: string | null | undefined,
+  unitId: number | null | undefined,
+  suffix: string,
+): string {
+  const name = String(unitName ?? '').trim()
+  return name ? `${name}${suffix}` : `#${unitId ?? ''}`
+}
+
+/**
+ * 单位对话框里「量」输入框的初始值。
+ *
+ * 旧数据的换算系数可能不是 1（语义：1 单位 = factor × weight_per_unit × 单位）。
+ * 新界面已移除换算系数、保存时固定发 1，因此编辑旧行时必须先把 factor 折进量，
+ * 否则保存会把总重量悄悄缩小 factor 倍。
+ *
+ * 只有「引用另一条自定义单位（嵌套）」且 factor ≠ 1 时才需要折算：此时
+ * weight_per_unit 就是嵌套单位的个数，factor × 个数 语义完全等价。
+ * 引用全局单位（g/mL）的行是 D 类旧数据（单位本身参与克/毫升换算），
+ * 保持原样以免改变既有显示。
+ */
+export function normalizeWeightPerUnitForEdit(row: UnitRowLike): number | null {
+  const raw = row?.weight_per_unit
+  const value = raw == null ? null : Number(raw)
+  if (row?.weight_unit_override_id == null) return value
+  const factor = row.conversion_factor != null ? Number(row.conversion_factor) : 1
+  if (!isFinite(factor) || factor === 1) return value
+  if (value == null || !isFinite(value)) return value
+  const normalized = value * factor
+  return isFinite(normalized) ? normalized : value
+}
+
 /** 按 value 去重（保留先出现的项）。 */
 export function dedupeUnitOptions(options: UnitOption[]): UnitOption[] {
   const seen = new Set<string>()

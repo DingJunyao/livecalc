@@ -280,10 +280,10 @@ function findNestedOverride(
   return candidates.find(o => o.id === id) ?? null
 }
 
-/** 全局克单位（与后端 get_unit_by_abbr("g") 兜底一致）。 */
+/** 全局克单位（与后端 get_unit_by_abbr("g") 兜底一致）。
+ *  按缩写/单位类型找，不用中文名匹配（源码里出现中文字面量会被 check-i18n sources 拦下）。 */
 function findGlobalGramUnit(units: UnitInfo[]): UnitInfo | undefined {
   return units.find(u => u.abbreviation === 'g')
-    ?? units.find(u => u.name === '克')
     ?? units.find(u => u.unit_type === 'mass' && u.si_factor === 0.001)
 }
 
