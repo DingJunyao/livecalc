@@ -2936,7 +2936,7 @@ const globalWeightUnits = ref<Unit[]>([])
 const loadGlobalUnits = async () => {
   if (globalWeightUnits.value.length > 0) return
   try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
+    const res = await api.get('/units/', { params: { limit: 500 } })
     const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
     globalWeightUnits.value = arr
     const map = new Map<number, string>()
@@ -3070,10 +3070,10 @@ const unitChainReaches = (candidateId: number, targetId: number | null): boolean
   return false
 }
 const unitWeightUnitOptions = computed(() => {
-  // 全局单位里与实体自定义单位同名的（如全局「颗」vs 原料自定义「颗 = 500 克」）
-  // 不再列出：实体覆盖优先，避免下拉出现两条同名项
+  // 单位下拉列出**全部启用单位**（计数单位「个/颗/盒」也能作为嵌套引用，
+  // 与移动端、新增原料对话框同口径）；只把与实体自定义单位同名的全局项藏掉
   const globals = withoutShadowedGlobals(
-    globalWeightUnits.value.filter(u => u.unit_type === 'mass' || u.unit_type === 'volume'),
+    globalWeightUnits.value,
     mergedEntityUnits.value,
   )
   const options: { title: string; value: string }[] = globals.map(u => ({

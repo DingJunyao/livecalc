@@ -33,7 +33,7 @@ const entityContext = computed<{ type: string; id: number } | null>(() => {
 
 onMounted(async () => {
   try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
+    const res = await api.get('/units/', { params: { limit: 500 } })
     const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
     unitAbbrById.value = new Map(arr.map((x: any) => [x.id, x.abbreviation]))
   } catch {

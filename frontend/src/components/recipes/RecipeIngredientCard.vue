@@ -591,7 +591,7 @@ const onSelectIngredient = (row: IngredientEditRow, name: string) => {
 // 加载单位列表
 const loadUnits = async () => {
   try {
-    const res = await api.get('/units/')
+    const res = await api.get('/units/', { params: { limit: 500 } })
     const items: any[] = Array.isArray(res) ? res : (res?.items || [])
     const map: Record<string, number> = {}
     unitRows.value = items.map((u: any) => ({

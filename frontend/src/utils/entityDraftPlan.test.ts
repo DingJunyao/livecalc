@@ -5,6 +5,7 @@ import {
   draftUnitAmounts,
   nextDraftUnitId,
   planDraftUnitWrites,
+  reconcileUnitsAfterIngredientChange,
   unresolvableUnitIds,
   type EntityDraftUnit,
 } from './entityDraftPlan.ts'
@@ -118,6 +119,81 @@ test('draftUnitAmounts 引用断裂时不臆估（返回 null）', () => {
   // 没有量也没有引用 → 后端视为不可折算
   const empty = draft({ id: -2, unit_name: '袋' })
   assert.equal(draftUnitAmounts(empty, [empty], [], GLOBALS, 1000), null)
+})
+
+test('reconcileUnitsAfterIngredientChange 引用换成全局同名单位（不删行）', () => {
+  // 用户场景：商品单位「箱」引用原料包菜的「颗」(31)；换原料后 31 不存在，
+  // 但全局单位里本来就有「颗」(49) → 改指向，保留这条自定义单位
+  const units = [
+    { id: 900, unit_name: '箱', weight_per_unit: 12, weight_unit_override_id: 31 },
+  ]
+  const result = reconcileUnitsAfterIngredientChange({
+    units,
+    targetIngredientUnits: [],
+    globalUnits: [{ id: 49, unit_name: '颗' }],
+    missingRefNames: { 31: '颗' },
+  })
+  assert.deepEqual(result.removed, [])
+  assert.deepEqual(result.retargeted, [
+    { id: 900, unit_name: '箱', weight_unit_id: 49, weight_unit_override_id: null },
+  ])
+})
+
+test('reconcileUnitsAfterIngredientChange 优先改指向新原料的同名单位', () => {
+  const units = [{ id: 900, unit_name: '箱', weight_unit_override_id: 31 }]
+  const result = reconcileUnitsAfterIngredientChange({
+    units,
+    targetIngredientUnits: [{ id: 88, unit_name: '颗' }],
+    globalUnits: [{ id: 49, unit_name: '颗' }],
+    missingRefNames: { 31: '颗' },
+  })
+  assert.deepEqual(result.retargeted, [
+    { id: 900, unit_name: '箱', weight_unit_id: null, weight_unit_override_id: 88 },
+  ])
+  assert.deepEqual(result.removed, [])
+})
+
+test('reconcileUnitsAfterIngredientChange 没有同名单位才移除（含下游）', () => {
+  const units = [
+    { id: 900, unit_name: '箱', weight_unit_override_id: 31 },
+    { id: 901, unit_name: '大箱', weight_unit_override_id: 900 },
+    { id: 902, unit_name: '个', weight_unit_id: 18 }, // 指向全局单位，不受影响
+  ]
+  const result = reconcileUnitsAfterIngredientChange({
+    units,
+    targetIngredientUnits: [],
+    globalUnits: [{ id: 18, unit_name: '个' }],
+    missingRefNames: { 31: '哈' },
+  })
+  assert.deepEqual(result.retargeted, [])
+  assert.deepEqual(result.removed.sort((a, b) => a - b), [900, 901])
+})
+
+test('reconcileUnitsAfterIngredientChange 拿不到旧单位名字时不猜（移除）', () => {
+  const units = [{ id: 900, unit_name: '箱', weight_unit_override_id: 31 }]
+  const result = reconcileUnitsAfterIngredientChange({
+    units,
+    targetIngredientUnits: [],
+    globalUnits: [{ id: 49, unit_name: '颗' }],
+    missingRefNames: {},
+  })
+  assert.deepEqual(result.retargeted, [])
+  assert.deepEqual(result.removed, [900])
+})
+
+test('reconcileUnitsAfterIngredientChange 引用仍然有效时什么都不动', () => {
+  const units = [
+    { id: 900, unit_name: '箱', weight_unit_override_id: 88 },
+    { id: 901, unit_name: '个', weight_unit_id: 18 },
+  ]
+  const result = reconcileUnitsAfterIngredientChange({
+    units,
+    targetIngredientUnits: [{ id: 88, unit_name: '颗' }],
+    globalUnits: [{ id: 18, unit_name: '个' }],
+    missingRefNames: {},
+  })
+  assert.deepEqual(result.retargeted, [])
+  assert.deepEqual(result.removed, [])
 })
 
 test('unresolvableUnitIds 找出引用失效（含下游）的单位', () => {

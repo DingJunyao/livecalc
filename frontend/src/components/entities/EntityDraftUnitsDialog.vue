@@ -216,7 +216,7 @@ async function ensureLoaded() {
   loading.value = true
   try {
     const [unitsResponse, inheritedResponse, densityResponse] = await Promise.all([
-      api.get('/units/', { params: { limit: 200 } }).catch(() => []),
+      api.get('/units/', { params: { limit: 500 } }).catch(() => []),
       ingredientId
         ? api.get(`/entities/ingredient/${ingredientId}/units`).catch(() => [])
         : Promise.resolve([]),
