@@ -1924,6 +1924,7 @@ import { formatNumber, formatQuantity } from '@/utils/format'
 import { buildDailySparklineSeries } from '@/utils/sparkline'
 import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, PRICE_STALE_DAYS, type AsOfPricePoint } from '@/utils/priceAsOf'
 import { formatUnitOptionLabel, normalizeWeightPerUnitForEdit } from '@/utils/entityUnits'
+import { overrideAmounts } from '@/utils/unitFactor'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -2908,16 +2909,13 @@ const hasWeightLeaf = (u: EntityUnitOverride) =>
 const hasVolumeLeaf = (u: EntityUnitOverride) =>
   hasWeightLeaf(u) && resolveWeightChain(u.id)?.leafType === 'volume'
 
-// 把叶子单位的数量换算成显示用的数值（1 单位 = factor × weight_per_unit × leaf）
-// 旧数据里 factor 可能不是 1，列表显示必须继续把它乘进去（不改变存储语义）。
-const chainDisplayAmount = (factor: number, row: EntityUnitOverride, chain: { leafId: number | null } | null): number => {
-  const base = row.weight_per_unit != null ? Number(row.weight_per_unit) * factor : 0
-  if (chain?.leafId == null) return base
-  const globalUnit = globalWeightUnits.value.find(u => u.id === chain.leafId)
-  const si = globalUnit?.si_factor
-  if (si == null || !isFinite(Number(si)) || Number(si) === 0) return base
-  return base * Number(si)
-}
+// 把一条覆盖行折算成 g / mL。
+// si_factor 的语义（质量→kg、体积→L）与全部换算规则集中在 @/utils/unitFactor，
+// 并有单测覆盖：曾经这里直接乘 si_factor，导致「1 个 = 200 g」显示成「0.2 g」。
+const globalUnitsById = computed(() => new Map(globalWeightUnits.value.map(u => [u.id, u])))
+const unitRowsById = computed(() => new Map(mergedEntityUnits.value.map(u => [u.id, u])))
+const rowAmounts = (row: EntityUnitOverride) =>
+  overrideAmounts(row, unitRowsById.value, globalUnitsById.value, effectiveDensityKgM3.value ?? 1000)
 
 const overrideWeightDisplay = (u: EntityUnitOverride): string => {
   if (!hasWeightLeaf(u)) return ''
@@ -2926,28 +2924,34 @@ const overrideWeightDisplay = (u: EntityUnitOverride): string => {
     : ''
   const chain = resolveWeightChain(u.id)
   const factor = u.conversion_factor != null ? Number(u.conversion_factor) : 1
+  const amounts = rowAmounts(u)
   const head = `1${u.unit_name} = `
   if (u.weight_unit_override_id != null) {
     const refUnit = mergedEntityUnits.value.find(x => x.id === u.weight_unit_override_id)
-    // 旧数据换算系数 ≠ 1：继续按「系数 × 单个重量 × 引用单位」显示，不丢乘数
-    let text = factor !== 1
-      ? `${head}${formatNumber(factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })} × ${amount || '1'} ${refUnit?.unit_name ?? `#${u.weight_unit_override_id}`}`
-      : `${head}${amount}${chain?.leafType === 'volume' ? ' mL' : ' g'}`
-    const refLeaf = refUnit ? resolveWeightChain(refUnit.id) : null
-    if (chain?.leafType === 'volume' && refLeaf?.leafType !== 'volume' && amount) {
-      text += t('ingredients.unitVolumeOnlyDisplay', { volume: amount })
+    const refName = refUnit?.unit_name ?? `#${u.weight_unit_override_id}`
+    // 这里的「量」是引用单位的个数（如 12 盒），不是克/毫升，所以单位名要写引用单位。
+    // 旧数据换算系数 ≠ 1：继续按「系数 × 个数 × 引用单位」显示，不丢乘数。
+    const amountText = factor !== 1
+      ? `${formatNumber(factor, localeStore.effectiveFormatLocale, { maximumFractionDigits: 6 })} × ${amount || '1'} ${refName}`
+      : `${amount || '1'} ${refName}`
+    if (chain?.leafType === 'volume' && amounts?.grams != null) {
+      return `${head}${amountText}${t('ingredients.unitChainVolumeDisplay', {
+        grams: formatNumber(amounts.grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+      })}`
     }
-    return text
+    return `${head}${amountText}`
   }
-  if (chain?.leafType === 'volume') {
-    const d = effectiveDensityKgM3.value ?? 1000
-    const grams = chainDisplayAmount(factor, u, chain) * d / 1000
+  if (amounts == null) {
+    // 无法折算（引用断裂/缺 si_factor 等）：保持原样显示，不臆估
+    return `${head}${amount}${chain?.leafType === 'volume' ? ' mL' : ' g'}`
+  }
+  if (amounts.milliliters != null) {
     return `${head}${t('ingredients.unitVolumeDisplay', {
-      volume: amount,
-      grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
+      volume: formatQuantity(amounts.milliliters, localeStore.effectiveFormatLocale),
+      grams: formatNumber(amounts.grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
     })}`
   }
-  return `${head}${formatQuantity(chainDisplayAmount(factor, u, chain), localeStore.effectiveFormatLocale)} g`
+  return `${head}${formatQuantity(amounts.grams, localeStore.effectiveFormatLocale)} g`
 }
 
 // 单位对话框：体积语义下的密度折算提示
@@ -2956,7 +2960,18 @@ const volumePreviewText = computed(() => {
   const wpu = unitForm.value.weight_per_unit
   if (!wpu || Number(wpu) <= 0) return t('ingredients.volumeDensityHintEmpty')
   const d = effectiveDensityKgM3.value ?? 1000
-  const grams = Number(wpu) * d / 1000
+  // 量与所选的「单位」有关：全局单位 si_factor 是 L 基准（mL=0.001、L=1），
+  // 自定义单位取它链上叶子单位的 si_factor。克数 = 量 × si(L) × 密度(kg/m³)。
+  const leafSi = (() => {
+    const overrideId = unitForm.value.weight_unit_override_id
+    const unitId = overrideId != null
+      ? resolveWeightChain(overrideId)?.leafId ?? null
+      : unitForm.value.weight_unit_id
+    if (unitId == null) return 1
+    const si = Number(globalWeightUnits.value.find(u => u.id === unitId)?.si_factor)
+    return isFinite(si) && si !== 0 ? si : 1
+  })()
+  const grams = Number(wpu) * leafSi * d
   return t('ingredients.volumeDensityHint', {
     density: formatNumber(d / 1000, localeStore.effectiveFormatLocale, { maximumFractionDigits: 3 }),
     grams: formatNumber(grams, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }),
