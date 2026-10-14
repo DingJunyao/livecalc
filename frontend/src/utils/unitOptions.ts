@@ -14,6 +14,22 @@ function unitNameOf(row: NamedUnit | null | undefined): string {
 }
 
 /**
+ * 行集合里第一条「设为默认」（`is_default === true`）的单位名；没有则返回 null。
+ *
+ * 维护价格时「选中商品 → 单位下拉切到该商品默认单位」用它取默认值。
+ * 只认严格 true：后端返回的可能是 null/缺失，不能让宽松真值把非默认项当默认。
+ */
+export function pickDefaultUnitName(rows: Array<NamedUnit & { is_default?: boolean | null }> | null | undefined): string | null {
+  if (!Array.isArray(rows)) return null
+  for (const row of rows) {
+    if (row?.is_default !== true) continue
+    const name = unitNameOf(row)
+    if (name) return name
+  }
+  return null
+}
+
+/**
  * 全局单位里与**实体自定义单位同名**的项不再列出。
  *
  * 全局单位表里本来就有「颗 / 个 / 盒 / 把」这类计数单位，实体（商品、或商品的

@@ -402,7 +402,7 @@ import { lookupBarcode } from '@/utils/barcodeLookup'
 import { loadCurrencies } from '@/utils/currency'
 import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 import { formatQuantity } from '@/utils/format'
-import { loadEntityUnitOptions, loadGlobalUnitOptions } from '@/utils/entityUnits'
+import { loadEntityUnitOptions, loadGlobalUnitOptions, fetchEntityDefaultUnitName } from '@/utils/entityUnits'
 import type { UnitOption } from '@/utils/entityUnits'
 import { useLocaleStore } from '@/stores/locale'
 
@@ -601,6 +601,10 @@ const productSearch = ref('')
 const productSuggestions = ref<ProductSuggestion[]>([])
 const productLoading = ref(false)
 const selectedProduct = ref<ProductSuggestion | null>(null)
+
+// 选中商品后是否把单位下拉切到该商品（或其关联原料）的「默认单位」：
+// 新增/扫码进入时为 true；编辑既有记录、再次记录时为 false（沿用记录里的单位）。
+const applyEntityDefaultUnitOnSelect = ref(true)
 
 function normalizeProductSearch(value: any): string {
   if (typeof value === 'string') return value
@@ -852,10 +856,24 @@ watch(productSearch, (newSearch) => {
 })
 
 // 监听选中的商品对象，同步 product_id 到表单
-watch(selectedProduct, (newProduct) => {
+watch(selectedProduct, async (newProduct, oldProduct) => {
   form.value.product_id = newProduct?.id || null
   // 商品选择后重建单位列表（商品自定义单位 + 关联原料回退 + 全局单位）
-  loadEntityUnits(newProduct?.id ?? null, newProduct?.ingredient_id ?? null)
+  const productId = newProduct?.id ?? null
+  loadEntityUnits(productId, newProduct?.ingredient_id ?? null)
+
+  // 只有「用户真正换了另一个商品」才套用该商品的默认单位：
+  // 编辑既有记录 / 再次记录走预填分支（applyEntityDefaultUnitOnSelect=false），
+  // 不清掉记录里原有的单位。
+  const changed = productId !== (oldProduct?.id ?? null)
+  if (!productId || !changed || !applyEntityDefaultUnitOnSelect.value) return
+  const defaultUnit = await fetchEntityDefaultUnitName(
+    'product', productId, newProduct?.ingredient_id ?? null,
+  )
+  // 期间可能又换商品 / 关掉对话框：仅当它仍是当前选中商品才落地
+  if (defaultUnit && form.value.product_id === productId) {
+    form.value.original_unit = defaultUnit
+  }
 }, { immediate: true })
 
 const formatPrice = (price: any) => (parseFloat(price) || 0).toFixed(2)
@@ -883,6 +901,8 @@ const saveSessionMemory = () => {
 const openAddDialog = () => {
   isEditing.value = false
   editingId.value = null
+  // 新增：选中商品后套用该商品的默认单位
+  applyEntityDefaultUnitOnSelect.value = true
 
   // 加载会话记忆
   const sessionMemory = loadSessionMemory()
@@ -910,6 +930,8 @@ const openAddDialog = () => {
 const openRecordAgainDialog = (record: PriceRecord) => {
   isEditing.value = false
   editingId.value = null
+  // 再次记录：沿用该记录原有的单位，不套用商品默认单位
+  applyEntityDefaultUnitOnSelect.value = false
   form.value = {
     product_id: record.product_id,
     product_name: record.product_name,
@@ -931,6 +953,8 @@ const openRecordAgainDialog = (record: PriceRecord) => {
 const openEditDialog = (record: PriceRecord) => {
   isEditing.value = true
   editingId.value = record.id
+  // 编辑既有记录：保留记录里的单位，不套用商品默认单位
+  applyEntityDefaultUnitOnSelect.value = false
   form.value = {
     product_id: record.product_id,
     product_name: record.product_name,
@@ -953,6 +977,7 @@ const closeDialog = () => {
   showDialog.value = false
   formRef.value?.reset()
   selectedProduct.value = null
+  applyEntityDefaultUnitOnSelect.value = true
 }
 
 const consumeReturnedProduct = async () => {

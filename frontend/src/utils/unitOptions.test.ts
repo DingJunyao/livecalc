@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { withoutShadowedGlobals } from './unitOptions.ts'
+import { pickDefaultUnitName, withoutShadowedGlobals } from './unitOptions.ts'
 
 const GRAM = { id: 3, name: '克', abbreviation: 'g' }
 const GRAIN = { id: 49, name: '颗', abbreviation: '颗' }
@@ -45,5 +45,31 @@ test('withoutShadowedGlobals 全局行缺名字时保留（不误删）', () => 
       unit => unit.id,
     ),
     [1],
+  )
+})
+
+test('pickDefaultUnitName 取第一条 is_default=true 的单位名', () => {
+  assert.equal(
+    pickDefaultUnitName([
+      { unit_name: '盒', is_default: false },
+      { unit_name: '箱', is_default: true },
+      { unit_name: '袋', is_default: true },
+    ]),
+    '箱',
+  )
+  // name 兜底 + 两侧空白
+  assert.equal(pickDefaultUnitName([{ name: ' 桶 ', is_default: true }]), '桶')
+})
+
+test('pickDefaultUnitName 没有默认单位 / 空数据时返回 null', () => {
+  assert.equal(pickDefaultUnitName([{ unit_name: '盒', is_default: false }]), null)
+  // 宽松真值不算默认（后端可能给 null / 缺字段）
+  assert.equal(pickDefaultUnitName([{ unit_name: '盒' }, { unit_name: '箱', is_default: null }]), null)
+  assert.equal(pickDefaultUnitName([]), null)
+  assert.equal(pickDefaultUnitName(null), null)
+  // 默认行名字为空时继续找下一条
+  assert.equal(
+    pickDefaultUnitName([{ unit_name: '  ', is_default: true }, { unit_name: '袋', is_default: true }]),
+    '袋',
   )
 })

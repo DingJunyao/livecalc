@@ -12,6 +12,7 @@
 // api/local/proxy.ts 注册，统一走 @/api 客户端即可。
 
 import { api } from '@/api'
+import { pickDefaultUnitName } from './unitOptions'
 
 export interface UnitOption {
   title: string
@@ -177,6 +178,40 @@ async function requestEntityUnits(
     // 自定义单位加载失败不影响全局单位
     return []
   }
+}
+
+/** 请求某实体的自定义单位原始行（只看启用行，保留 is_default）；失败返回空数组。 */
+async function requestEntityUnitRows(
+  entityType: EntityUnitEntityType,
+  entityId: number,
+): Promise<any[]> {
+  try {
+    const res = await api.get(`/entities/${entityType}/${entityId}/units`)
+    return normalizeRows(res).filter((row: any) => row && row.is_active !== false)
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 实体默认单位名（维护价格时「选中商品 → 单位下拉切换到默认单位」的数据源）。
+ *
+ * 优先级与单位解析链一致：**商品自身覆盖 > 商品关联原料的覆盖**；
+ * 每层只在标记了 is_default 的行里取第一条。都没有时返回 null（调用方保留原单位）。
+ * 默认值的纯函数提取在 `unitOptions.ts` 的 `pickDefaultUnitName`（可单测）。
+ */
+export async function fetchEntityDefaultUnitName(
+  entityType: EntityUnitEntityType,
+  entityId: number | null | undefined,
+  ingredientId?: number | null,
+): Promise<string | null> {
+  if (!entityId) return null
+  const owned = pickDefaultUnitName(await requestEntityUnitRows(entityType, entityId))
+  if (owned) return owned
+  if (entityType !== 'product') return null
+  const linkedIngredientId = ingredientId ?? (await fetchLinkedIngredientId(entityId))
+  if (!linkedIngredientId) return null
+  return pickDefaultUnitName(await requestEntityUnitRows('ingredient', linkedIngredientId))
 }
 
 /** 商品未直接带 ingredient_id 时，回查商品实体补上（用于原料回退）。 */
