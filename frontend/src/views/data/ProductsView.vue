@@ -355,7 +355,7 @@ import { lookupBarcode } from '@/utils/barcodeLookup'
 import ProductDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog.vue'
 import ProductDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
 import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
-import { unresolvableUnitIds } from '@/utils/entityDraftPlan'
+import { reconcileUnitsAfterIngredientChange } from '@/utils/entityDraftPlan'
 import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
 
 const { t } = useI18n()
@@ -623,41 +623,116 @@ watch(ingredientSearch, (newVal) => {
 })
 
 /**
- * 换原料后清理草稿单位：引用链在「本批草稿 + 新原料」里解析不了的行直接丢弃。
- * 读取失败不动数据（宁可留着悬空引用，也不误删用户刚填的草稿）。
+ * 换原料后调和草稿单位：引用在新原料里不存在时，先按名字改指向同名单位
+ * （新原料同名优先，其次全局同名），实在没有才丢弃。
+ * 读取失败不动数据（宁可留着悬空引用，也不误改用户刚填的草稿）。
  */
-const pruneDraftUnitsForIngredient = async (ingredientId: number) => {
+const reconcileDraftUnitsForIngredient = async (
+  newIngredientId: number,
+  previousIngredientId: number | null,
+) => {
   if (!draftUnits.value.length) return
-  let ingredientUnits: any[] = []
+  const rowsOf = (data: any): any[] =>
+    Array.isArray(data) ? data : (data?.items ?? [])
+  let targetRows: any[] = []
+  let globalRows: any[] = []
+  const missingRefNames: Record<number, string> = {}
   try {
-    const res: any = await api.get(`/entities/ingredient/${ingredientId}/units`)
-    ingredientUnits = Array.isArray(res) ? res : res?.items || []
+    const [targetResponse, globalsResponse] = await Promise.all([
+      api.get(`/entities/ingredient/${newIngredientId}/units`),
+      api.get('/units/', { params: { limit: 500 } }).catch(() => []),
+    ])
+    targetRows = rowsOf(targetResponse)
+    globalRows = rowsOf(globalsResponse)
+    if (previousIngredientId && previousIngredientId !== newIngredientId) {
+      try {
+        const previousResponse: any = await api.get(
+          `/entities/ingredient/${previousIngredientId}/units`,
+        )
+        for (const row of rowsOf(previousResponse)) {
+          missingRefNames[Number(row.id)] = String(row.unit_name ?? '').trim()
+        }
+      } catch {
+        // 拿不到名字就只能移除（不猜）
+      }
+    }
   } catch {
     return
   }
-  const broken = unresolvableUnitIds(
-    draftUnits.value,
-    new Set(ingredientUnits.map((unit: any) => Number(unit.id))),
-  )
-  if (broken.size === 0) return
-  const removed = draftUnits.value
-    .filter(unit => broken.has(unit.id))
-    .map(unit => unit.unit_name)
-  draftUnits.value = draftUnits.value.filter(unit => !broken.has(unit.id))
-  notify(
-    t('products.danglingUnitsRemoved', { names: removed.join(', ') }),
-    'warning',
-  )
+
+  const reconcile = reconcileUnitsAfterIngredientChange({
+    units: draftUnits.value.map(unit => ({
+      id: unit.id,
+      unit_name: unit.unit_name,
+      weight_unit_id: unit.weight_unit_id ?? null,
+      weight_unit_override_id: unit.weight_unit_override_id ?? null,
+    })),
+    targetIngredientUnits: targetRows.map(row => ({
+      id: Number(row.id),
+      unit_name: String(row.unit_name ?? ''),
+    })),
+    globalUnits: globalRows
+      .filter(row => row && row.is_active !== false)
+      .map(row => ({
+        id: Number(row.id),
+        unit_name: String(row.unit_name ?? row.name ?? '').trim(),
+      })),
+    missingRefNames,
+  })
+  if (reconcile.retargeted.length === 0 && reconcile.removed.length === 0) return
+
+  const retargetById = new Map(reconcile.retargeted.map(row => [row.id, row]))
+  const removedIds = new Set(reconcile.removed)
+  // 移除后原行已不在列表里，先快照名字用于提示
+  const nameById = new Map(draftUnits.value.map(unit => [unit.id, unit.unit_name]))
+  draftUnits.value = draftUnits.value
+    .filter(unit => !removedIds.has(unit.id))
+    .map(unit => {
+      const next = retargetById.get(unit.id)
+      return next
+        ? {
+            ...unit,
+            weight_unit_id: next.weight_unit_id,
+            weight_unit_override_id: next.weight_unit_override_id,
+          }
+        : unit
+    })
+
+  const notices: string[] = []
+  if (reconcile.retargeted.length > 0) {
+    notices.push(t('products.danglingUnitsRetargeted', {
+      names: reconcile.retargeted.map(row => row.unit_name).join(', '),
+    }))
+  }
+  const removedNames = reconcile.removed
+    .map(unitId => nameById.get(unitId) ?? '')
+    .filter(name => name !== '')
+  if (removedNames.length > 0) {
+    notices.push(t('products.danglingUnitsRemoved', { names: removedNames.join(', ') }))
+  }
+  if (notices.length > 0) notify(notices.join(' · '), 'warning')
 }
+
+/**
+ * 最近一次**选中**的原料 id：草稿单位里的引用指向它。
+ *
+ * 不能直接用 `form.ingredient_id` / `selectedIngredient`：在搜索框里打字时模型可能先被
+ * 清空（用户往往只是想重打），等选中新原料时就读不到「原来引用的是哪个原料的单位」，
+ * 于是无从按名字改指向、只能误删。
+ */
+const lastSelectedIngredientId = ref<number | null>(null)
 
 // 监听选中的原料对象，同步 ingredient_id 到表单
 watch(selectedIngredient, (newIngredient) => {
-  const previousId = form.value.ingredient_id
+  const previousId = lastSelectedIngredientId.value
   form.value.ingredient_id = newIngredient?.id || null
-  // 新增态换原料：草稿单位里引用「旧原料独有单位」的行会悬空，去掉并提示
-  // （草稿只在本地，删了没有服务端副作用；清空选择时不动，避免误删）
-  if (newIngredient?.id && newIngredient.id !== previousId) {
-    pruneDraftUnitsForIngredient(newIngredient.id)
+  // 新增态换原料：草稿单位里引用「旧原料独有单位」的行先改指向同名单位，没有才丢弃
+  // （草稿只在本地，改没有服务端副作用；清空选择时不动，避免误改）
+  if (newIngredient?.id) {
+    if (newIngredient.id !== previousId) {
+      reconcileDraftUnitsForIngredient(newIngredient.id, previousId)
+    }
+    lastSelectedIngredientId.value = newIngredient.id
   }
 }, { immediate: true })
 

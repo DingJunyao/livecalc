@@ -136,6 +136,113 @@ export function unresolvableUnitIds(
   return broken
 }
 
+/** 参与「换原料后调和」的单位行（只需要引用字段）。 */
+export interface UnitRefRow {
+  id: number
+  unit_name: string
+  weight_unit_id?: number | null
+  weight_unit_override_id?: number | null
+}
+
+export interface UnitRefCandidate {
+  id: number
+  unit_name: string
+}
+
+export interface IngredientChangeReconcile {
+  /** 引用改成指向「同名的其它单位」的行（新原料的覆盖优先，其次全局单位） */
+  retargeted: {
+    id: number
+    unit_name: string
+    weight_unit_id: number | null
+    weight_unit_override_id: number | null
+  }[]
+  /** 找不到同名单位、只能移除的行 id（含引用链被带断的下游行） */
+  removed: number[]
+}
+
+/**
+ * 换绑关联原料后调和自定义单位。
+ *
+ * 商品的单位覆盖可以引用**关联原料**的自定义单位（`weight_unit_override_id`）。
+ * 换成另一个原料后，原来的引用就指向了「新原料里不存在的 id」。此时不要直接删：
+ * 那个单位往往只是**换了归属**（例如「颗」在全局单位表里本来就有），
+ * 按名字依次找 ①新原料里的同名单位 ②全局单位里的同名单位，
+ * 找到就**改指向**（保留这条自定义单位），只有真的没有同名单位才移除。
+ *
+ * 改指向之后仍解析不了的行（引用链断掉、自引用）才进入 [removed]，
+ * 下游依赖被移除行的单位会一起移除（与 [unresolvableUnitIds] 同口径）。
+ */
+export function reconcileUnitsAfterIngredientChange(params: {
+  units: UnitRefRow[]
+  /** 新原料已有的自定义单位（按名字匹配，优先） */
+  targetIngredientUnits: UnitRefCandidate[]
+  /** 启用中的全局单位（按名字匹配，兜底） */
+  globalUnits: UnitRefCandidate[]
+  /** 失效引用 id → 单位名（来自旧原料的单位列表；查不到名字的行只能移除） */
+  missingRefNames?: Record<number, string>
+}): IngredientChangeReconcile {
+  const units = params.units || []
+  const ownIds = new Set(units.map(unit => unit.id))
+  const targetByName = new Map<string, number>()
+  for (const row of params.targetIngredientUnits || []) {
+    const name = String(row?.unit_name ?? '').trim()
+    if (name && !targetByName.has(name)) targetByName.set(name, row.id)
+  }
+  const targetIds = new Set((params.targetIngredientUnits || []).map(row => row.id))
+  const globalByName = new Map<string, number>()
+  for (const row of params.globalUnits || []) {
+    const name = String(row?.unit_name ?? '').trim()
+    if (name && !globalByName.has(name)) globalByName.set(name, row.id)
+  }
+  const missingRefNames = params.missingRefNames || {}
+
+  // 先算出「改指向」后的引用，再用同一套判定挑出真正要移除的行
+  const rewritten = new Map<number, Pick<UnitRefRow, 'weight_unit_id' | 'weight_unit_override_id'>>()
+  const retargeted: IngredientChangeReconcile['retargeted'] = []
+  for (const unit of units) {
+    const ref = unit.weight_unit_override_id
+    if (ref == null) continue
+    if (ownIds.has(ref) || targetIds.has(ref)) continue
+    const name = String(missingRefNames[ref] ?? '').trim()
+    if (!name) continue
+    const targetId = targetByName.get(name)
+    if (targetId != null) {
+      rewritten.set(unit.id, { weight_unit_id: null, weight_unit_override_id: targetId })
+      retargeted.push({
+        id: unit.id,
+        unit_name: unit.unit_name,
+        weight_unit_id: null,
+        weight_unit_override_id: targetId,
+      })
+      continue
+    }
+    const globalId = globalByName.get(name)
+    if (globalId != null) {
+      rewritten.set(unit.id, { weight_unit_id: globalId, weight_unit_override_id: null })
+      retargeted.push({
+        id: unit.id,
+        unit_name: unit.unit_name,
+        weight_unit_id: globalId,
+        weight_unit_override_id: null,
+      })
+    }
+  }
+
+  const effective: UnitRefRow[] = units.map(unit => {
+    const next = rewritten.get(unit.id)
+    return next ? { ...unit, ...next } : unit
+  })
+  const broken = unresolvableUnitIds(
+    effective as EntityDraftUnit[],
+    new Set([...targetIds].filter(id => !ownIds.has(id))),
+  )
+  return {
+    retargeted: retargeted.filter(row => !broken.has(row.id)),
+    removed: [...broken],
+  }
+}
+
 /**
  * 计算「1 个该草稿单位」折多少克/毫升；无法折算时返回 null（不臆估）。
  * [inheritedUnits] 为关联原料已有的自定义单位行（正数 id），[globals] 为全局单位。

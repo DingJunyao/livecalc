@@ -1848,7 +1848,7 @@ import type { EntityUnitOverride, EntityDensity, UnmappedUnitItem } from '@/type
 import { dedupeUnitRows, formatUnitOptionLabel, normalizeWeightPerUnitForEdit, type UnitRowLike } from '@/utils/entityUnits'
 import { overrideAmounts } from '@/utils/unitFactor'
 import { withoutShadowedGlobals } from '@/utils/unitOptions'
-import { removeUnitsDanglingAfterIngredientChange } from '@/utils/entityDrafts'
+import { reconcileUnitsAfterIngredientChange } from '@/utils/entityDrafts'
 const entityUnits = ref<EntityUnitOverride[]>([])
 // 关联原料的自定义单位：商品单位的嵌套引用可以指向它们（1箱 = 12 盒）
 const ingredientUnitRows = ref<EntityUnitOverride[]>([])
@@ -1874,7 +1874,7 @@ const ingredientUnitsRequest = (ingredientId: number): Promise<EntityUnitOverrid
 const loadPriceNormalizeData = async () => {
   try {
     const [u, ov, ingDensity] = await Promise.all([
-      api.get('/units/'),
+      api.get('/units/', { params: { limit: 500 } }),
       // 覆盖表按 ingredient 维护；商品页用其 ingredient_id 查找
       product.value?.ingredient_id
         ? ingredientUnitsRequest(product.value.ingredient_id)
@@ -2041,7 +2041,9 @@ const globalWeightUnits = ref<UnitInfo[]>([])
 const loadGlobalUnits = async () => {
   if (globalWeightUnits.value.length > 0) return
   try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
+    // limit 放大到 500：单位下拉要列出**全部启用单位**（与移动端/价格页同口径，
+    // 否则会出现「web 13 条、移动端 54 条」这种同页不同量的差异）
+    const res = await api.get('/units/', { params: { limit: 500 } })
     const arr: any[] = Array.isArray(res) ? res : (res?.items || [])
     globalWeightUnits.value = arr
     const map = new Map<number, string>()
@@ -2187,10 +2189,10 @@ const unitChainReaches = (candidateId: number, targetId: number | null): boolean
   return false
 }
 const unitWeightUnitOptions = computed(() => {
-  // 全局单位里与实体自定义单位同名的（如全局「颗」vs 原料自定义「颗 = 500 克」）
-  // 不再列出：实体覆盖优先，避免下拉出现两条同名项
+  // 单位下拉列出**全部启用单位**（计数单位「个/颗/盒」也能作为嵌套引用，
+  // 与移动端、新增商品对话框同口径）；只把与实体自定义单位同名的全局项藏掉
   const globals = withoutShadowedGlobals(
-    globalWeightUnits.value.filter(u => u.unit_type === 'mass' || u.unit_type === 'volume'),
+    globalWeightUnits.value,
     unitDialogRows.value,
   )
   const options: { title: string; value: string }[] = globals.map(u => ({
@@ -3110,12 +3112,13 @@ const saveBasicInfo = async () => {
     }
     const response = await api.put(`/products/entity/${productId.value}`, payload)
     // 换绑了关联原料且变更已落地（管理员直写）→ 商品自定义单位里引用旧原料单位的行
-    // 会悬空，移除并告知用户。普通用户的换绑走待审（可能被驳回），此时不动数据。
+    // 会失效：先按名字改指向同名单位（新原料同名优先，其次全局同名），实在没有才移除。
+    // 普通用户的换绑走待审（可能被驳回），此时不动数据。
     //
-    // 注意：本页 snackbar 是单槽位（后一条覆盖前一条），清理提示若在这里直接弹，
+    // 注意：本页 snackbar 是单槽位（后一条覆盖前一条），提示若在这里直接弹，
     // 会被下面的「商品信息已保存」覆盖掉 → 用户反馈「删了但没有提示」。
-    // 所以这里只收集结果，合并到最后那条消息里一起弹。
-    let danglingNotice: string | null = null
+    // 所以这里收集结果，和成功提示合并成一条。
+    const adjustmentNotices: string[] = []
     const previousIngredientId = product.value?.ingredient_id ?? null
     const nextIngredientId = Number(basicEditForm.value.ingredient_id)
     if (
@@ -3123,15 +3126,23 @@ const saveBasicInfo = async () => {
       && previousIngredientId != null
       && nextIngredientId !== Number(previousIngredientId)
     ) {
-      const { removed, pending } = await removeUnitsDanglingAfterIngredientChange(
+      const { retargeted, removed, pending } = await reconcileUnitsAfterIngredientChange(
         productId.value,
         nextIngredientId,
+        previousIngredientId,
       )
+      if (retargeted.length > 0) {
+        adjustmentNotices.push(
+          t('products.danglingUnitsRetargeted', { names: retargeted.join(', ') }),
+        )
+      }
       if (removed.length > 0) {
         const names = removed.join(', ')
-        danglingNotice = pending
-          ? t('products.danglingUnitsRemovePending', { names })
-          : t('products.basicInfoSavedDanglingUnitsRemoved', { names })
+        adjustmentNotices.push(
+          pending
+            ? t('products.danglingUnitsRemovePending', { names })
+            : t('products.danglingUnitsRemoved', { names }),
+        )
       }
     }
     // 我的权重覆盖：开关开 → set；关 → delete（用回全局）
@@ -3147,10 +3158,10 @@ const saveBasicInfo = async () => {
       editingBasicInfo.value = false
       selectedIngredient.value = null
       ingredientSearch.value = ''
-      // 有单位被清理时合并成一条警示（含「已保存」信息），避免被成功提示覆盖
+      // 有单位被改指向/移除时合并成一条警示（含「已保存」信息），避免被成功提示覆盖
       showMessage(
-        danglingNotice ?? t('products.basicInfoSaved'),
-        danglingNotice ? 'warning' : 'success',
+        [t('products.basicInfoSaved'), ...adjustmentNotices].join(' · '),
+        adjustmentNotices.length > 0 ? 'warning' : 'success',
       )
     } else {
       editingBasicInfo.value = false

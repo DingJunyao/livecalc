@@ -10,7 +10,7 @@
 import { api } from '@/api'
 import {
   planDraftUnitWrites,
-  unresolvableUnitIds,
+  reconcileUnitsAfterIngredientChange as reconcileUnitRefs,
   type EntityDraftNutrient,
   type EntityDraftUnit,
 } from '@/utils/entityDraftPlan'
@@ -142,50 +142,123 @@ export async function persistEntityDrafts(
   return result
 }
 
+/** 响应体 → 行列表（`List` 或 `{items: [...]}`，其余当空）。 */
+function asRows(data: any): any[] {
+  if (Array.isArray(data)) return data
+  if (data && Array.isArray(data.items)) return data.items
+  return []
+}
+
+/** 全局单位行 → { id, unit_name }（全局单位用 `name` 字段）。 */
+function globalUnitCandidates(rows: any[]): { id: number; unit_name: string }[] {
+  return rows
+    .filter(row => row && row.is_active !== false)
+    .map(row => ({
+      id: Number(row.id),
+      unit_name: String(row.unit_name ?? row.name ?? '').trim(),
+    }))
+    .filter(row => Number.isFinite(row.id) && row.unit_name !== '')
+}
+
 /**
- * 换绑关联原料后的清理：商品自定义单位里引用「旧原料单位」的行会悬空。
+ * 换绑关联原料后**调和**商品自定义单位（先改指向，实在没有同名单位才移除）。
  *
- * 返回被移除的单位名，以及是否走了待审（普通用户的删除是提议）。
- * 单条删除失败不阻断其余清理、也不抛出 —— 保存流程不能因此失败。
+ * 商品的单位覆盖可以引用关联原料的自定义单位；换原料后这些引用会指向
+ * 「新原料里不存在的 id」。按名字依次找 ①新原料的同名单位 ②全局同名单位，
+ * 找到就改指向（只更新两个引用字段，不动换算量），找不到才删除。
+ *
+ * 读取失败时什么都不动；单条写失败不阻断其余、也不抛出（保存流程不能因此失败）。
  */
-export async function removeUnitsDanglingAfterIngredientChange(
+export async function reconcileUnitsAfterIngredientChange(
   productId: number,
   targetIngredientId: number,
-): Promise<{ removed: string[]; pending: boolean }> {
-  let units: any[] = []
-  let ingredientUnits: any[] = []
+  previousIngredientId?: number | null,
+): Promise<{ retargeted: string[]; removed: string[]; pending: boolean }> {
+  let unitRows: any[] = []
+  let targetRows: any[] = []
+  let globalRows: any[] = []
   try {
-    const [unitsResponse, ingredientResponse] = await Promise.all([
+    const [unitsResponse, targetResponse, globalsResponse] = await Promise.all([
       api.get(`/entities/product/${productId}/units`),
       api.get(`/entities/ingredient/${targetIngredientId}/units`),
+      api.get('/units/', { params: { limit: 500 } }).catch(() => []),
     ])
-    units = Array.isArray(unitsResponse) ? unitsResponse : unitsResponse?.items || []
-    ingredientUnits = Array.isArray(ingredientResponse)
-      ? ingredientResponse
-      : ingredientResponse?.items || []
+    unitRows = asRows(unitsResponse)
+    targetRows = asRows(targetResponse)
+    globalRows = asRows(globalsResponse)
   } catch {
-    // 读取失败时不动任何数据（宁可留着悬空引用，也不误删）
-    return { removed: [], pending: false }
+    // 读取失败时不动任何数据（宁可留着悬空引用，也不误改）
+    return { retargeted: [], removed: [], pending: false }
   }
 
-  const available = new Set<number>(ingredientUnits.map((unit: any) => Number(unit.id)))
-  const broken = unresolvableUnitIds(units as EntityDraftUnit[], available)
-  if (broken.size === 0) return { removed: [], pending: false }
-
-  const removed: string[] = []
-  let pending = false
-  for (const unit of units) {
-    const unitId = Number(unit?.id)
-    if (!broken.has(unitId)) continue
-    removed.push(String(unit?.unit_name ?? unit?.name ?? ''))
+  // 旧引用 id → 名字：只有拿到旧原料的单位表才知道「原来引用的是谁」
+  const missingRefNames: Record<number, string> = {}
+  if (previousIngredientId && previousIngredientId !== targetIngredientId) {
     try {
-      const response: any = await api.delete(`/entities/product/${productId}/units/${unitId}`)
-      if (response?.status === 'pending' || !!response?.proposal_id) pending = true
+      const previousResponse: any = await api.get(
+        `/entities/ingredient/${previousIngredientId}/units`,
+      )
+      for (const row of asRows(previousResponse)) {
+        missingRefNames[Number(row.id)] = String(row.unit_name ?? '').trim()
+      }
     } catch {
-      // 单条失败不阻断其余清理
+      // 拿不到名字就只能移除（不猜）
     }
   }
-  return { removed, pending }
+
+  const reconcile = reconcileUnitRefs({
+    units: unitRows.map(row => ({
+      id: Number(row.id),
+      unit_name: String(row.unit_name ?? ''),
+      weight_unit_id: row.weight_unit_id ?? null,
+      weight_unit_override_id: row.weight_unit_override_id ?? null,
+    })),
+    targetIngredientUnits: targetRows.map(row => ({
+      id: Number(row.id),
+      unit_name: String(row.unit_name ?? ''),
+    })),
+    globalUnits: globalUnitCandidates(globalRows),
+    missingRefNames,
+  })
+  if (reconcile.retargeted.length === 0 && reconcile.removed.length === 0) {
+    return { retargeted: [], removed: [], pending: false }
+  }
+
+  let pending = false
+  for (const row of reconcile.retargeted) {
+    try {
+      const response: any = await api.put(
+        `/entities/product/${productId}/units/${row.id}`,
+        {
+          weight_unit_id: row.weight_unit_id,
+          weight_unit_override_id: row.weight_unit_override_id,
+        },
+      )
+      if (response?.status === 'pending' || response?.proposal_id) pending = true
+    } catch {
+      // 单条失败不阻断其余
+    }
+  }
+
+  const nameById = new Map(unitRows.map(row => [Number(row.id), String(row.unit_name ?? '')]))
+  const removedNames: string[] = []
+  for (const unitId of reconcile.removed) {
+    removedNames.push(nameById.get(unitId) ?? '')
+    try {
+      const response: any = await api.delete(
+        `/entities/product/${productId}/units/${unitId}`,
+      )
+      if (response?.status === 'pending' || response?.proposal_id) pending = true
+    } catch {
+      // 单条失败不阻断其余
+    }
+  }
+
+  return {
+    retargeted: reconcile.retargeted.map(row => row.unit_name),
+    removed: removedNames.filter(name => name !== ''),
+    pending,
+  }
 }
 
 /**

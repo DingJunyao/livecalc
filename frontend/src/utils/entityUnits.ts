@@ -150,11 +150,14 @@ export function mergeUnitOptions(
 /** 拉取全局单位（标题「名称 (缩写)」）；失败或为空时回退到给定列表。 */
 export async function loadGlobalUnitOptions(fallback: UnitOption[] = []): Promise<UnitOption[]> {
   try {
-    const res = await api.get('/units/', { params: { limit: 100 } })
-    const options = normalizeRows(res).map((u: any) => ({
-      title: `${u.name} (${u.abbreviation})`,
-      value: u.abbreviation,
-    }))
+    // limit 放大到 500 且只取启用项：与移动端价格下拉同口径（同一份基准列表）
+    const res = await api.get('/units/', { params: { limit: 500 } })
+    const options = normalizeRows(res)
+      .filter((u: any) => u?.is_active !== false)
+      .map((u: any) => ({
+        title: `${u.name} (${u.abbreviation})`,
+        value: u.abbreviation,
+      }))
     const deduped = dedupeUnitOptions(options)
     return deduped.length > 0 ? deduped : [...fallback]
   } catch {

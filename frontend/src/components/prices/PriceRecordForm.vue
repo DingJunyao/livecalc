@@ -196,7 +196,7 @@ const ensureBaseUnits = (): Promise<UnitOption[]> => {
     baseUnitsPromise = (async () => {
       let base: UnitOption[]
       try {
-        const res = await api.get('/units/', { params: { limit: 100 } })
+        const res = await api.get('/units/', { params: { limit: 500 } })
         const unitList = res.items || res || []
         base = unitList.map((u: any) => ({
           title: localizedUnitLabel(u.abbreviation),
