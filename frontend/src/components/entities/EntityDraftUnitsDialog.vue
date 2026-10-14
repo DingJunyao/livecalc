@@ -188,9 +188,8 @@ const editorForm = ref<{
   weight_unit: string
 }>({ id: null, unit_name: '', weight_per_unit: null, is_default: false, weight_unit: '' })
 
-const globalWeightUnits = computed(() =>
-  globalUnits.value.filter((unit: any) => unit.unit_type === 'mass' || unit.unit_type === 'volume'),
-)
+// 单位下拉列出**全部启用单位**（原来这里只留 mass+volume，于是「颗」这类计数单位
+// 既选不到、改指向到它时还会因为选项里没有这个值而显示成原始串 "u:49"、列表退化成 g）。
 const density = computed(() => {
   const value = densityKgM3.value
   return value != null && value > 0 ? value : 1000
@@ -253,7 +252,7 @@ const unitOptions = computed(() => {
   const options: { title: string; value: string }[] = []
   // 全局单位里与草稿/继承单位同名的（如全局「颗」vs 原料自定义「颗 = 500 克」）
   // 不再列出：实体覆盖优先，避免下拉出现两条同名项
-  const globals = withoutShadowedGlobals(globalWeightUnits.value, [
+  const globals = withoutShadowedGlobals(globalUnits.value, [
     ...props.units,
     ...ingredientUnits.value,
   ])
@@ -280,6 +279,19 @@ const unitOptions = computed(() => {
       title: `${row.unit_name}${t('products.unitInheritedUnitSuffix')}`,
       value: `i:${row.id}`,
     })
+  }
+  // 当前值即使不在候选里也要能回显：Vuetify 的 v-select 找不到匹配项时会直接
+  // 把原始值画出来（用户实测看到过 "u:49" 这种内部串）
+  const current = editorForm.value.weight_unit
+  if (current && !options.some(option => option.value === current)) {
+    const [kind, rawId] = current.split(':')
+    const id = Number(rawId)
+    const title = kind === 'u'
+      ? globalUnitLabel(id)
+      : kind === 'd'
+        ? `${props.units.find(item => item.id === id)?.unit_name ?? ''}${t('products.unitCustomUnitSuffix')}`
+        : `${ingredientUnits.value.find((item: any) => Number(item.id) === id)?.unit_name ?? ''}${t('products.unitInheritedUnitSuffix')}`
+    options.push({ title: title || current, value: current })
   }
   return options
 })
@@ -397,6 +409,16 @@ function refLabel(refId: number): string {
   return row ? `${row.unit_name}${t('products.unitInheritedUnitSuffix')}` : `#${refId}`
 }
 
+/** 全局单位 id → 展示标签（`名称 (缩写)`）。 */
+function globalUnitLabel(unitId: number | null | undefined): string {
+  if (unitId == null) return ''
+  const row = globalUnits.value.find((item: any) => Number(item.id) === Number(unitId))
+  if (!row) return `#${unitId}`
+  const name = String(row.name ?? '')
+  const abbreviation = String(row.abbreviation ?? '')
+  return abbreviation && abbreviation !== name ? `${name} (${abbreviation})` : name
+}
+
 function unitLine(unit: EntityDraftUnit): string {
   const amounts = draftUnitAmounts(unit, props.units, ingredientUnits.value, globalUnits.value, density.value)
   const head = `1${unit.unit_name} = `
@@ -415,7 +437,11 @@ function unitLine(unit: EntityDraftUnit): string {
     return text
   }
   if (amounts == null) {
-    return unit.weight_per_unit != null ? `${head}${amountText} g` : ''
+    // 折算不出来（例如引用计数单位「颗」）时显示**真正引用的单位名**，
+    // 不能硬写成克 —— 否则用户看到「1箱 = 12 g」，以为单位被改成了 g
+    if (unit.weight_per_unit == null) return ''
+    const label = unit.weight_unit_id != null ? globalUnitLabel(unit.weight_unit_id) : 'g'
+    return `${head}${amountText} ${label}`
   }
   if (amounts.milliliters != null) {
     return `${head}${t('products.unitVolumeDisplay', {

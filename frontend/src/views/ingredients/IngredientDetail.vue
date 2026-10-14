@@ -2983,6 +2983,14 @@ const hasVolumeLeaf = (u: EntityUnitOverride) =>
 // si_factor 的语义（质量→kg、体积→L）与全部换算规则集中在 @/utils/unitFactor，
 // 并有单测覆盖：曾经这里直接乘 si_factor，导致「1 个 = 200 g」显示成「0.2 g」。
 const globalUnitsById = computed(() => new Map(globalWeightUnits.value.map(u => [u.id, u])))
+/** 全局单位 id → 展示标签（`名称 (缩写)`），找不到时退回 `#id`。 */
+const globalUnitLabelOf = (unitId: number): string => {
+  const row: any = globalUnitsById.value.get(Number(unitId))
+  if (!row) return `#${unitId}`
+  const name = String(row.name ?? '')
+  const abbreviation = String(row.abbreviation ?? '')
+  return abbreviation && abbreviation !== name ? `${name} (${abbreviation})` : name
+}
 const unitRowsById = computed(() => new Map(mergedEntityUnits.value.map(u => [u.id, u])))
 const rowAmounts = (row: EntityUnitOverride) =>
   overrideAmounts(row, unitRowsById.value, globalUnitsById.value, effectiveDensityKgM3.value ?? 1000)
@@ -3012,8 +3020,17 @@ const overrideWeightDisplay = (u: EntityUnitOverride): string => {
     return `${head}${amountText}`
   }
   if (amounts == null) {
-    // 无法折算（引用断裂/缺 si_factor 等）：保持原样显示，不臆估
-    return `${head}${amount}${chain?.leafType === 'volume' ? ' mL' : ' g'}`
+    // 无法折算（引用计数单位「颗」、引用断裂、缺 si_factor 等）：显示**真正引用的
+    // 单位名**，不要臆估成克 —— 否则用户看到「1箱 = 12 g」以为单位被改成了 g
+    const globalRow = u.weight_unit_id != null
+      ? globalUnitsById.value.get(Number(u.weight_unit_id))
+      : null
+    const label = globalRow
+      ? (globalRow.abbreviation && globalRow.abbreviation !== globalRow.name
+          ? `${globalRow.name} (${globalRow.abbreviation})`
+          : String(globalRow.name ?? ''))
+      : (chain?.leafType === 'volume' ? 'mL' : 'g')
+    return `${head}${amount} ${label}`.trim()
   }
   if (amounts.milliliters != null) {
     return `${head}${t('ingredients.unitVolumeDisplay', {
@@ -3095,7 +3112,7 @@ const unitWeightUnitOptions = computed(() => {
   if (currentId != null) {
     const wuId = unitForm.value.weight_unit_id
     if (wuId != null && !options.some(o => o.value === `u:${wuId}`)) {
-      options.push({ title: `#${wuId}`, value: `u:${wuId}` })
+      options.push({ title: globalUnitLabelOf(wuId), value: `u:${wuId}` })
     }
     const ovId = unitForm.value.weight_unit_override_id
     if (ovId != null && !options.some(o => o.value === `o:${ovId}`)) {
