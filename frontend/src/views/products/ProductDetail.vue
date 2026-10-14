@@ -1847,6 +1847,7 @@ const openEditPriceDialog = (record: PriceRecord) => {
 import type { EntityUnitOverride, EntityDensity, UnmappedUnitItem } from '@/types'
 import { dedupeUnitRows, formatUnitOptionLabel, normalizeWeightPerUnitForEdit, type UnitRowLike } from '@/utils/entityUnits'
 import { overrideAmounts } from '@/utils/unitFactor'
+import { removeUnitsDanglingAfterIngredientChange } from '@/utils/entityDrafts'
 const entityUnits = ref<EntityUnitOverride[]>([])
 // 关联原料的自定义单位：商品单位的嵌套引用可以指向它们（1箱 = 12 盒）
 const ingredientUnitRows = ref<EntityUnitOverride[]>([])
@@ -3102,6 +3103,29 @@ const saveBasicInfo = async () => {
       payload.price_weight = basicEditForm.value.priceWeight
     }
     const response = await api.put(`/products/entity/${productId.value}`, payload)
+    // 换绑了关联原料且变更已落地（管理员直写）→ 商品自定义单位里引用旧原料单位的行
+    // 会悬空，移除并告知用户。普通用户的换绑走待审（可能被驳回），此时不动数据。
+    const previousIngredientId = product.value?.ingredient_id ?? null
+    const nextIngredientId = Number(basicEditForm.value.ingredient_id)
+    if (
+      userStore.user?.is_admin
+      && previousIngredientId != null
+      && nextIngredientId !== Number(previousIngredientId)
+    ) {
+      const { removed, pending } = await removeUnitsDanglingAfterIngredientChange(
+        productId.value,
+        nextIngredientId,
+      )
+      if (removed.length > 0) {
+        const names = removed.join(', ')
+        showMessage(
+          pending
+            ? t('products.danglingUnitsRemovePending', { names })
+            : t('products.danglingUnitsRemoved', { names }),
+          pending ? 'info' : 'warning',
+        )
+      }
+    }
     // 我的权重覆盖：开关开 → set；关 → delete（用回全局）
     if (basicEditForm.value.myWeightEnabled) {
       await setProductMyWeight(productId.value, basicEditForm.value.myWeight).catch(() => {})

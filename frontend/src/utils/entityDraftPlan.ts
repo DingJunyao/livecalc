@@ -101,6 +101,42 @@ export function draftChainReaches(
 }
 
 /**
+ * 找出引用链无法解析的单位 id。
+ *
+ * 「无法解析」指：`weight_unit_override_id` 指向的行既不在 [units] 里、
+ * 也不在 [availableExternalIds]（如目标原料已有的自定义单位）里；或链上依赖的
+ * 单位本身已失效；或自引用。返回值包含依赖失效单位的下游单位
+ * （用于「换绑关联原料后清理悬空单位」）。
+ */
+export function unresolvableUnitIds(
+  units: EntityDraftUnit[],
+  availableExternalIds: Set<number>,
+): Set<number> {
+  const ownIds = new Set((units || []).map(unit => unit.id))
+  const broken = new Set<number>()
+  let changed = true
+  while (changed) {
+    changed = false
+    for (const unit of units || []) {
+      if (broken.has(unit.id)) continue
+      const ref = unit.weight_unit_override_id
+      if (ref == null) continue
+      if (ref === unit.id) {
+        broken.add(unit.id)
+        changed = true
+        continue
+      }
+      const resolvable = availableExternalIds.has(ref) || (ownIds.has(ref) && !broken.has(ref))
+      if (!resolvable) {
+        broken.add(unit.id)
+        changed = true
+      }
+    }
+  }
+  return broken
+}
+
+/**
  * 计算「1 个该草稿单位」折多少克/毫升；无法折算时返回 null（不臆估）。
  * [inheritedUnits] 为关联原料已有的自定义单位行（正数 id），[globals] 为全局单位。
  */
