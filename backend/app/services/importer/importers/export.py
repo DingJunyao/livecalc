@@ -13,6 +13,8 @@ from app.models.ingredient_hierarchy import IngredientHierarchy
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
 from app.models.blacklist_group_subscription import BlacklistGroupSubscription
 from app.models.merchant import Merchant
+from app.models.user_favorite import UserFavorite
+from app.models.user_merchant_favorite import UserMerchantFavorite
 from app.models.user_ingredient_blacklist import UserIngredientBlacklist
 from app.models.user_place import UserPlace
 from app.models.nutrition import Ingredient
@@ -90,6 +92,8 @@ class ExportImporter(Importer):
             self._import_merchants(collection)
             cb("导入常用地点", 0, 0, "正在导入常用地点…")
             self._import_user_places(collection)
+            cb("导入收藏", 0, 0, "正在导入收藏…")
+            self._import_user_favorites(collection)
             self._import_price_records(collection, cb)
             cb("导入黑名单分组", 0, 0, "正在导入黑名单分组…")
             self._import_blacklist_groups(collection)
@@ -682,6 +686,82 @@ class ExportImporter(Importer):
             ))
             imported += 1
         self.result.stats["user_places"] = imported
+
+    def _import_user_favorites(self, collection):
+        """导入收藏（原料/商品/菜谱 + 商家）。
+
+        实体会被重排行 id，故以 mapping 为主、导出附带的名字为兜底解析；
+        解析不到的行跳过（按类型计数）。归属导入用户；已存在则跳过（幂等）。
+        """
+        imported = 0
+        data = self._load_json(collection, "user_favorites.json")
+        for item in data or []:
+            entity_type = item.get("entity_type", "")
+            old_id = item.get("entity_id")
+            name = (item.get("entity_name") or "").strip()
+            new_id = None
+            if entity_type == "ingredient":
+                new_id = self.mapping.ingredients.get(old_id)
+                if not new_id and name:
+                    row = self.db.query(Ingredient).filter(
+                        Ingredient.name == name, Ingredient.is_active.is_(True)
+                    ).first()
+                    new_id = row.id if row else None
+            elif entity_type == "product":
+                new_id = self.mapping.products.get(old_id)
+                if not new_id and name:
+                    row = self.db.query(Product).filter(
+                        Product.name == name, Product.is_active.is_(True)
+                    ).first()
+                    new_id = row.id if row else None
+            elif entity_type == "recipe":
+                new_id = self.mapping.recipes.get(old_id)
+                if not new_id and name:
+                    row = self.db.query(Recipe).filter(
+                        Recipe.name == name, Recipe.is_active.is_(True)
+                    ).first()
+                    new_id = row.id if row else None
+            else:
+                self._skip("user_favorites_unsupported_type", 1)
+                continue
+            if not new_id:
+                self._skip("user_favorites_missing_entity", 1)
+                continue
+            exists = self.db.query(UserFavorite).filter(
+                UserFavorite.user_id == self.user_id,
+                UserFavorite.entity_type == entity_type,
+                UserFavorite.entity_id == new_id,
+            ).first()
+            if exists:
+                continue
+            self.db.add(UserFavorite(
+                user_id=self.user_id, entity_type=entity_type, entity_id=new_id,
+            ))
+            imported += 1
+        self.result.stats["user_favorites"] = imported
+
+        imported_m = 0
+        data_m = self._load_json(collection, "user_merchant_favorites.json")
+        for item in data_m or []:
+            old_id = item.get("merchant_id")
+            new_id = self.mapping.merchants.get(old_id)
+            if not new_id:
+                name = (item.get("merchant_name") or "").strip()
+                if name:
+                    merchant = self._match_merchant_by_name(name)
+                    new_id = merchant.id if merchant else None
+            if not new_id:
+                self._skip("user_merchant_favorites_missing_merchant", 1)
+                continue
+            exists = self.db.query(UserMerchantFavorite).filter(
+                UserMerchantFavorite.user_id == self.user_id,
+                UserMerchantFavorite.merchant_id == new_id,
+            ).first()
+            if exists:
+                continue
+            self.db.add(UserMerchantFavorite(user_id=self.user_id, merchant_id=new_id))
+            imported_m += 1
+        self.result.stats["user_merchant_favorites"] = imported_m
 
     def _match_blacklist_group_by_name(self, name: str) -> Optional[BlacklistGroup]:
         """按名字查找黑名单分组（含软删，便于导入时去重与复活）。"""

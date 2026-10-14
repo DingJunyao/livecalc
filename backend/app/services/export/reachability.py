@@ -21,6 +21,8 @@ from app.models.product_ingredient_link import ProductIngredientLink
 from app.models.product import ProductRecord
 from app.models.merchant import Merchant
 from app.models.user_place import UserPlace
+from app.models.user_favorite import UserFavorite
+from app.models.user_merchant_favorite import UserMerchantFavorite
 
 
 @dataclass
@@ -42,6 +44,8 @@ class ExportSet:
     price_record_ids: set = field(default_factory=set)
     merchant_ids: set = field(default_factory=set)
     user_place_ids: set = field(default_factory=set)
+    favorite_ids: set = field(default_factory=set)
+    merchant_favorite_ids: set = field(default_factory=set)
 
 
 def collect_full_set(db: Session) -> ExportSet:
@@ -85,6 +89,8 @@ def collect_full_set(db: Session) -> ExportSet:
     es.price_record_ids = {r.id for r in db.query(ProductRecord).all()}
     es.merchant_ids = {m.id for m in db.query(Merchant).all()}
     es.user_place_ids = {f.id for f in db.query(UserPlace).all()}
+    es.favorite_ids = {f.id for f in db.query(UserFavorite).all()}
+    es.merchant_favorite_ids = {f.id for f in db.query(UserMerchantFavorite).all()}
     return es
 
 
@@ -213,6 +219,14 @@ def collect_mine_set(db: Session, user_id: int) -> ExportSet:
     es.merchant_ids = merchant_ids | my_merchant_ids
     es.user_place_ids = {
         f.id for f in db.query(UserPlace).filter(UserPlace.user_id == user_id).all()
+    }
+    # 我的收藏（原料/商品/菜谱 + 商家；导入归属导入者）
+    es.favorite_ids = {
+        f.id for f in db.query(UserFavorite).filter(UserFavorite.user_id == user_id).all()
+    }
+    es.merchant_favorite_ids = {
+        f.id for f in db.query(UserMerchantFavorite)
+        .filter(UserMerchantFavorite.user_id == user_id).all()
     }
 
     # 7) 由 ingredient_ids / unit_ids 派生：密度、层级、换算、分类（闭包已含 category）
