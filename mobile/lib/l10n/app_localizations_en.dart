@@ -805,15 +805,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get unitsWeightKind => 'Amount type';
-
-  @override
-  String get unitsWeightKindMass => 'Mass (g)';
-
-  @override
-  String get unitsWeightKindVolume => 'Volume (mL)';
-
-  @override
   String get unitsVolumeLabel => 'Volume per unit (mL)';
 
   @override

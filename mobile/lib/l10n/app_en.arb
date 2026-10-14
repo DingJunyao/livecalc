@@ -561,12 +561,6 @@
       "weight": {}
     }
   },
-  "unitsWeightKind": "Amount type",
-  "@unitsWeightKind": {},
-  "unitsWeightKindMass": "Mass (g)",
-  "@unitsWeightKindMass": {},
-  "unitsWeightKindVolume": "Volume (mL)",
-  "@unitsWeightKindVolume": {},
   "unitsVolumeLabel": "Volume per unit (mL)",
   "@unitsVolumeLabel": {},
   "unitsVolumeDetail": "{volume} mL (≈{grams} g)",

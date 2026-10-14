@@ -561,12 +561,6 @@
       "weight": {}
     }
   },
-  "unitsWeightKind": "每单位量类型",
-  "@unitsWeightKind": {},
-  "unitsWeightKindMass": "质量 (g)",
-  "@unitsWeightKindMass": {},
-  "unitsWeightKindVolume": "体积 (mL)",
-  "@unitsWeightKindVolume": {},
   "unitsVolumeLabel": "单位容量 (mL)",
   "@unitsVolumeLabel": {},
   "unitsVolumeDetail": "{volume} mL（≈{grams} g）",

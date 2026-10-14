@@ -1607,24 +1607,6 @@ abstract class AppLocalizations {
   /// **'{weight} g / 个'**
   String unitsWeightDetail(Object weight);
 
-  /// No description provided for @unitsWeightKind.
-  ///
-  /// In zh, this message translates to:
-  /// **'每单位量类型'**
-  String get unitsWeightKind;
-
-  /// No description provided for @unitsWeightKindMass.
-  ///
-  /// In zh, this message translates to:
-  /// **'质量 (g)'**
-  String get unitsWeightKindMass;
-
-  /// No description provided for @unitsWeightKindVolume.
-  ///
-  /// In zh, this message translates to:
-  /// **'体积 (mL)'**
-  String get unitsWeightKindVolume;
-
   /// No description provided for @unitsVolumeLabel.
   ///
   /// In zh, this message translates to:

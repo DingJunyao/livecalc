@@ -788,15 +788,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get unitsWeightKind => '每单位量类型';
-
-  @override
-  String get unitsWeightKindMass => '质量 (g)';
-
-  @override
-  String get unitsWeightKindVolume => '体积 (mL)';
-
-  @override
   String get unitsVolumeLabel => '单位容量 (mL)';
 
   @override

@@ -804,15 +804,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get unitsWeightKind => 'نوع الكمية لكل وحدة';
-
-  @override
-  String get unitsWeightKindMass => 'كتلة (g)';
-
-  @override
-  String get unitsWeightKindVolume => 'حجم (mL)';
-
-  @override
   String get unitsVolumeLabel => 'الحجم لكل وحدة (mL)';
 
   @override

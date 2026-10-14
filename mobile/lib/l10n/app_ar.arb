@@ -561,12 +561,6 @@
       "weight": {}
     }
   },
-  "unitsWeightKind": "نوع الكمية لكل وحدة",
-  "@unitsWeightKind": {},
-  "unitsWeightKindMass": "كتلة (g)",
-  "@unitsWeightKindMass": {},
-  "unitsWeightKindVolume": "حجم (mL)",
-  "@unitsWeightKindVolume": {},
   "unitsVolumeLabel": "الحجم لكل وحدة (mL)",
   "@unitsVolumeLabel": {},
   "unitsVolumeDetail": "{volume} mL (≈{grams} g)",
