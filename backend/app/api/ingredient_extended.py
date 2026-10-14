@@ -8,6 +8,7 @@ from decimal import Decimal
 from app.core.database import get_db
 from app.core.i18n import api_message
 from app.core.security import get_current_user, get_current_admin_user
+from app.api.deps import get_timezone
 from app.services.unit_conversion_service import UnitConversionService
 from app.services.ingredient_matcher import IngredientMatcher
 from app.utils.database_helpers import json_text_contains
@@ -21,8 +22,21 @@ from app.core.exceptions import LocalizedHTTPException
 router = APIRouter()
 
 
-def _apply_ingredient_special_conditions(query, no_nutrition, no_price, single_price, single_merchant, no_recipe, no_product):
-    """Apply special condition filters to an Ingredient query."""
+def _recent_price_cutoff(tz: str):
+    """「近一个月维护过价格」的 UTC 起点（与商品列表/图表 30 天口径同一实现）。"""
+    from app.services.ingredient_price_service import recent_price_cutoff_utc
+    return recent_price_cutoff_utc(tz)
+
+
+def _apply_ingredient_special_conditions(
+    query, no_nutrition, no_price, single_price, single_merchant,
+    no_recipe, no_product, no_recent_price=False, recent_cutoff=None,
+):
+    """Apply special condition filters to an Ingredient query.
+
+    no_recent_price：该原料**所有商品**近一个月（30 天，按用户本地日口径）
+    都没有维护过价格。没有任何商品的原料同样命中（确实都没维护过）。
+    """
     from app.models.nutrition_data import NutritionData
     from app.models.product_entity import Product
     from app.models.product import ProductRecord
@@ -47,6 +61,17 @@ def _apply_ingredient_special_conditions(query, no_nutrition, no_price, single_p
                 Product.ingredient_id == Ingredient.id,
                 Product.is_active == True,
                 ProductRecord.product_id == Product.id
+            )
+        )
+
+    if no_recent_price and recent_cutoff is not None:
+        query = query.filter(
+            ~exists().where(
+                Product.ingredient_id == Ingredient.id,
+                Product.is_active == True,
+                ProductRecord.product_id == Product.id,
+                ProductRecord.is_active == True,  # noqa: E712
+                ProductRecord.recorded_at >= recent_cutoff,
             )
         )
 
@@ -709,14 +734,18 @@ async def get_ingredients(
     single_merchant: bool = Query(False, description="筛选仅有一家商家有其价格记录的原料"),
     no_recipe: bool = Query(False, description="筛选无相关菜谱的原料"),
     no_product: bool = Query(False, description="筛选无下属商品的原料"),
+    no_recent_price: bool = Query(False, description="筛选近一个月所有商品均未维护过价格的原料"),
     db: Session = Depends(get_db),
-    current_user = Depends(get_current_user)
+    current_user = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
 ):
     """获取食材列表（分页）"""
     try:
         from app.models.product_entity import Product
         from app.models.product import ProductRecord
         from sqlalchemy import func
+
+        recent_cutoff = _recent_price_cutoff(tz) if no_recent_price else None
 
         # 合并 category_id（单值）和 category_ids（逗号分隔多值）
         _category_filter_ids: list[int] = []
@@ -775,7 +804,8 @@ async def get_ingredients(
 
             # 应用特殊条件过滤
             query = _apply_ingredient_special_conditions(
-                query, no_nutrition, no_price, single_price, single_merchant, no_recipe, no_product
+                query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
+                no_product, no_recent_price, recent_cutoff
             )
 
             # 按价格记录数量降序排列
@@ -803,7 +833,8 @@ async def get_ingredients(
 
             # 应用特殊条件过滤
             total_query = _apply_ingredient_special_conditions(
-                total_query, no_nutrition, no_price, single_price, single_merchant, no_recipe, no_product
+                total_query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
+                no_product, no_recent_price, recent_cutoff
             )
 
             total = total_query.count()
@@ -827,7 +858,8 @@ async def get_ingredients(
 
             # 应用特殊条件过滤
             query = _apply_ingredient_special_conditions(
-                query, no_nutrition, no_price, single_price, single_merchant, no_recipe, no_product
+                query, no_nutrition, no_price, single_price, single_merchant, no_recipe,
+                no_product, no_recent_price, recent_cutoff
             )
 
             # 按指定字段排序

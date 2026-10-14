@@ -10,6 +10,8 @@ import {
   isTruthy,
   listIncludes,
   buildProductRecordStats,
+  productIdsWithRecentPrice,
+  recentPriceCutoffMs,
 } from './_filter'
 import { getBarcodeConfig, resolveExternalBarcode } from './barcodeServices'
 import { buildRegionFilter, filterRecordsByRegion } from '../business/regionSubtree'
@@ -50,11 +52,15 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
   const noPrice = isTruthy(query?.no_price)
   const singlePrice = isTruthy(query?.single_price)
   const singleMerchant = isTruthy(query?.single_merchant)
+  const noRecentPrice = isTruthy(query?.no_recent_price)
   const sortBy = query?.sort_by
 
-  const needStats = noPrice || singlePrice || singleMerchant || sortBy === 'price_records'
+  const needStats = noPrice || singlePrice || singleMerchant || noRecentPrice || sortBy === 'price_records'
   const needIngredients = !!lower || ingredientCategoryIds.length > 0
   const stats = needStats ? await buildProductRecordStats() : null
+  const recentProductIds = noRecentPrice
+    ? productIdsWithRecentPrice(stats!, recentPriceCutoffMs())
+    : null
 
   const ingredientById = new Map<number, any>()
   if (needIngredients) {
@@ -90,6 +96,7 @@ export async function listEntity(_params: Record<string, string>, query?: any): 
     if (categoryIngredientIds && !categoryIngredientIds.has(p.ingredient_id)) return false
     if (brandSet && !(p.brand && brandSet.has(p.brand))) return false
     if (noPrice && (stats!.recordCountByProduct.get(p.id) ?? 0) > 0) return false
+    if (noRecentPrice && recentProductIds!.has(p.id)) return false
     if (singlePrice && (stats!.recordCountByProduct.get(p.id) ?? 0) !== 1) return false
     if (singleMerchant && (stats!.merchantCountByProduct.get(p.id) ?? 0) !== 1) return false
     return true

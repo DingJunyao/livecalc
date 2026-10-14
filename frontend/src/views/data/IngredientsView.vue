@@ -458,6 +458,7 @@ const ingredientFilters = computed<FilterConfig[]>(() => [
     items: [
       { value: 'no_nutrition', title: t('ingredients.noNutrition') },
       { value: 'no_price', title: t('ingredients.noPrice') },
+      { value: 'no_recent_price', title: t('ingredients.noRecentPrice') },
       { value: 'single_price', title: t('ingredients.singlePrice') },
       { value: 'single_merchant', title: t('ingredients.singleMerchant') },
       { value: 'no_recipe', title: t('ingredients.noRecipe') },

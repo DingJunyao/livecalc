@@ -557,6 +557,7 @@ const productFilters = computed<FilterConfig[]>(() => [
     type: 'multicheck',
     items: [
       { value: 'no_price', title: t('products.noPrice') },
+      { value: 'no_recent_price', title: t('products.noRecentPrice') },
       { value: 'single_price', title: t('products.singlePrice') },
       { value: 'single_merchant', title: t('products.singleMerchant') },
     ],
