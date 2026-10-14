@@ -70,6 +70,37 @@ Finder get ingredientField => find.widgetWithText(
     TextField, 'Search and select a linked ingredient *');
 
 void main() {
+  testWidgets('duplicate composition text keeps the pending search future',
+      (tester) async {
+    final repo = _LatencyIngredientRepository(
+      _milkLikeIngredients,
+      latency: const Duration(milliseconds: 20),
+    );
+    await pumpApp(tester, await buildScreen(tester, repo));
+    await tester.tap(ingredientField);
+    await tester.pump();
+
+    final milk = _milkLikeIngredients[0].name;
+    tester.testTextInput.updateEditingValue(TextEditingValue(
+      text: milk,
+      selection: TextSelection.collapsed(offset: milk.length),
+      composing: TextRange(start: 0, end: milk.length),
+    ));
+    await tester.pump(const Duration(milliseconds: 30));
+
+    // IME finalization keeps the same text but clears the composing range.
+    // A second optionsBuilder call with the same text must not restart the
+    // search, otherwise the first (applicable) call is cancelled.
+    tester.testTextInput.updateEditingValue(TextEditingValue(
+      text: milk,
+      selection: TextSelection.collapsed(offset: milk.length),
+      composing: TextRange.empty,
+    ));
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.widgetWithText(ListTile, milk), findsWidgets);
+  });
+
   testWidgets('IME composition queries are debounced to the final keyword',
       (tester) async {
     final repo = _LatencyIngredientRepository(

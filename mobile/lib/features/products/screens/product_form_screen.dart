@@ -76,6 +76,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   Timer? _ingredientSearchDebounce;
   Completer<List<Ingredient>>? _ingredientSearchCompleter;
   int _ingredientSearchSeq = 0;
+  String? _ingredientSearchQuery;
   List<String> _aliases = const [];
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
@@ -179,6 +180,18 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   /// 避免中间拼音触发请求风暴并与最终中文结果竞争。
   Future<List<Ingredient>> _searchIngredients(String query) {
     final q = query.trim();
+    // RawAutocomplete invokes optionsBuilder again when IME finalizes a
+    // composition even though the text is unchanged. Reuse the in-flight
+    // search instead of restarting it: a restarted future would be discarded
+    // by the second call (shouldUpdateOptions is false), which left the
+    // dropdown empty after the spinner stopped.
+    if (q.isNotEmpty &&
+        _ingredientSearchQuery == q &&
+        _ingredientSearchCompleter != null &&
+        !_ingredientSearchCompleter!.isCompleted) {
+      return _ingredientSearchCompleter!.future;
+    }
+
     final seq = ++_ingredientSearchSeq;
     _cancelPendingIngredientSearch();
 
@@ -189,6 +202,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final completer = Completer<List<Ingredient>>();
     _ingredientSearchCompleter = completer;
+    _ingredientSearchQuery = q;
     if (mounted) setState(() => _searching = true);
     _ingredientSearchDebounce = Timer(const Duration(milliseconds: 300),
         () async {
@@ -219,6 +233,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
     final completer = _ingredientSearchCompleter;
     _ingredientSearchCompleter = null;
+    _ingredientSearchQuery = null;
     if (completer != null && !completer.isCompleted) {
       completer.complete(const <Ingredient>[]);
     }
@@ -230,6 +245,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   ) {
     if (_ingredientSearchCompleter != completer) return;
     _ingredientSearchCompleter = null;
+    _ingredientSearchQuery = null;
     if (!completer.isCompleted) completer.complete(result);
   }
 
@@ -418,6 +434,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         if (query.isEmpty ||
             (_selectedIngredient != null &&
                 _selectedIngredient!.name == query)) {
+          _cancelPendingIngredientSearch();
           if (_searching) setState(() => _searching = false);
           return const <Ingredient>[];
         }

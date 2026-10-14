@@ -574,13 +574,22 @@ class _IngredientDetailScreenState
     Timer? searchDebounce;
     Completer<List<Ingredient>>? pendingSearch;
     int searchSeq = 0;
+    String? activeQuery;
 
     Future<List<Ingredient>> searchIngredients(String query) {
       final q = query.trim();
+      if (q.isNotEmpty &&
+          activeQuery == q &&
+          pendingSearch != null &&
+          !pendingSearch!.isCompleted) {
+        return pendingSearch!.future;
+      }
+
       final seq = ++searchSeq;
       searchDebounce?.cancel();
       final completer = pendingSearch;
       pendingSearch = null;
+      activeQuery = null;
       if (completer != null && !completer.isCompleted) {
         completer.complete(const <Ingredient>[]);
       }
@@ -588,6 +597,7 @@ class _IngredientDetailScreenState
 
       final nextCompleter = Completer<List<Ingredient>>();
       pendingSearch = nextCompleter;
+      activeQuery = q;
       searchDebounce = Timer(const Duration(milliseconds: 300), () async {
         try {
           final page = await repository.search(search: q, limit: 20);
@@ -596,11 +606,13 @@ class _IngredientDetailScreenState
               : const <Ingredient>[];
           if (pendingSearch == nextCompleter && !nextCompleter.isCompleted) {
             pendingSearch = null;
+            activeQuery = null;
             nextCompleter.complete(result);
           }
         } catch (_) {
           if (pendingSearch == nextCompleter && !nextCompleter.isCompleted) {
             pendingSearch = null;
+            activeQuery = null;
             nextCompleter.complete(const <Ingredient>[]);
           }
         }
@@ -614,6 +626,7 @@ class _IngredientDetailScreenState
       searchDebounce = null;
       final completer = pendingSearch;
       pendingSearch = null;
+      activeQuery = null;
       if (completer != null && !completer.isCompleted) {
         completer.complete(const <Ingredient>[]);
       }

@@ -3,8 +3,11 @@
     "java.configuration.updateBuildConfiguration": "interactive",
     "cmake.sourceDirectory": "D:/code/live_calc/mobile/linux",
     "dart.offline": true,
+    // Flutter Windows 桌面构建需要 ATL：VS 2022 Community 的 v143 默认工具集 14.38.33130 未装 ATL，
+    // 固定使用同一 VS 安装内带 ATL 的 14.44.35207（否则 flutter_secure_storage_windows 报 C1083 atlstr.h）
     "dart.env": {
         "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
-        "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn"
+        "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn",
+        "VCToolsVersion": "14.44.35207"
     }
 }

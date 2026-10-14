@@ -24,6 +24,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
   Timer? _searchDebounce;
   Completer<List<Ingredient>>? _pendingSearch;
   int _searchSeq = 0;
+  String? _searchQuery;
 
   bool _loading = true;
   String? _error;
@@ -93,12 +94,20 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
 
   Future<List<Ingredient>> _searchIngredients(String query) {
     final q = query.trim();
+    if (q.isNotEmpty &&
+        _searchQuery == q &&
+        _pendingSearch != null &&
+        !_pendingSearch!.isCompleted) {
+      return _pendingSearch!.future;
+    }
+
     final seq = ++_searchSeq;
     _cancelPendingSearch();
 
     if (q.isEmpty) return Future.value(const <Ingredient>[]);
     final completer = Completer<List<Ingredient>>();
     _pendingSearch = completer;
+    _searchQuery = q;
     _searchDebounce = Timer(const Duration(milliseconds: 300), () async {
       try {
         final page = await _ingredientRepository.search(search: q, limit: 20);
@@ -119,6 +128,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
 
     final completer = _pendingSearch;
     _pendingSearch = null;
+    _searchQuery = null;
     if (completer != null && !completer.isCompleted) {
       completer.complete(const <Ingredient>[]);
     }
@@ -130,6 +140,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
   ) {
     if (_pendingSearch != completer) return;
     _pendingSearch = null;
+    _searchQuery = null;
     if (!completer.isCompleted) completer.complete(result);
   }
 
