@@ -50,6 +50,12 @@ export interface AsOfOptions {
    * avg / count 语义不受影响。
    */
   bandFromRecords?: boolean
+  /**
+   * 整段只有「一个记录日」（单点序列连不成线、图表看起来是空的）时，把每个商品的
+   * 最早已知价向前补到 startDay，让图表至少是一条平线（宁可显示已知价，也不能空白）。
+   * 有 ≥2 个记录日时不做任何补写 —— 不会凭空编造趋势。
+   */
+  backfillSparse?: boolean
 }
 
 const DEFAULT_WEIGHT = 50
@@ -133,6 +139,14 @@ export function buildWeightedAsOfDailySeries(
   }
   if (firstDay === null || steps.length === 0) return []
 
+  // 「只有一个记录日」→ 允许把最早已知价向前补齐（仅在调用方开启 backfillSparse 时）
+  let backfillSparse = false
+  if (opts.backfillSparse) {
+    const recordDays = new Set<string>()
+    for (const step of steps) for (const day of step.days) recordDays.add(day)
+    backfillSparse = recordDays.size < 2
+  }
+
   // 记录口径区间：所有有效记录按本地日聚合（不看权重/超期），as-of 携带
   const bandDays: string[] = []
   const bandValues: Array<{ min: number; max: number }> = []
@@ -159,7 +173,7 @@ export function buildWeightedAsOfDailySeries(
 
   // 3) 逐日推进：每个商品取「截至当日的最新价」
   const endDay = opts.endDay ?? (toLocalDayKey(new Date()) as string)
-  let cur = opts.startDay && opts.startDay > firstDay ? opts.startDay : firstDay
+  let cur = opts.startDay && (backfillSparse || opts.startDay > firstDay) ? opts.startDay : firstDay
   const out: AsOfDayPoint[] = []
   let bandNext = 0
   while (cur <= endDay) {
@@ -179,8 +193,9 @@ export function buildWeightedAsOfDailySeries(
         step.current = step.next
         step.next += 1
       }
-      if (step.current < 0) continue
-      const value = step.values[step.current]
+      // 全段只有一个记录日时：还没有记录的日子用该商品的最早已知价（向前补齐）
+      if (step.current < 0 && !backfillSparse) continue
+      const value = step.current < 0 ? step.values[0] : step.values[step.current]
       numAll += value * step.weight
       denAll += step.weight
       countAll += 1
@@ -226,18 +241,26 @@ export function buildWeightedAsOfDailySeries(
  * 趋势图按 as-of 口径绘制（每商品最近一次价向前携带，全部超期时放开），
  * 所以「所选区间内没有新记录」并不等于「没有价格可画」：只要拿到区间之前
  * 最近一次记录作为携带起点，序列就能一直覆盖到区间末尾。
- * 而按区间取数（start_date）恰好把这些起点记录挡在区间之外，
- * 因此区间命中 0 条、且累积池还是空的时候，必须回退到「全量」请求，
- * 否则「近一个月没有更新」的实体（商品/原料）图表会空白。
+ * 而按区间取数（start_date）恰好把这些起点记录挡在区间之外，所以：
  *
- * @param windowStart 本次请求的区间起点；undefined/null 表示「全部」，无需回退
- * @param windowHits 本次区间请求命中的记录条数
- * @param loadedCount 累积池中已有的记录条数
+ *   累积池里**没有**任何「不晚于区间起点」的记录时，必须回退「全量」请求。
+ *
+ * 这一条同时覆盖两种用户实测场景：
+ *   ① 区间内一条记录都没有（数据整体陈旧）→ 池为空 → 回退；
+ *   ② 区间内**只有今天**一条新记录、更早的记录都在区间外（陈旧实体今天刚补价）
+ *      → 池里最早的记录晚于区间起点 → 回退；否则 as-of 序列只剩今天一个点，
+ *      图表看起来是空的（切到更宽区间才把旧记录补上）。
+ *
+ * @param windowStart  本次请求的区间起点；undefined/null 表示「全部」，无需回退
+ * @param poolStartDay 累积池中最早的价格记录日（YYYY-MM-DD）；池为空传 null/undefined
  */
 export function shouldLoadFullPriceHistory(params: {
   windowStart?: Date | null
-  windowHits: number
-  loadedCount: number
+  poolStartDay?: string | null
 }): boolean {
-  return !!params.windowStart && params.windowHits === 0 && params.loadedCount === 0
+  if (!params.windowStart) return false
+  const windowDay = toLocalDayKey(params.windowStart)
+  if (!windowDay) return false
+  if (!params.poolStartDay) return true
+  return params.poolStartDay > windowDay
 }

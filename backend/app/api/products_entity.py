@@ -40,14 +40,36 @@ from app.core.exceptions import LocalizedHTTPException
 router = APIRouter(tags=["products_entity"])
 
 
-def _apply_product_special_conditions(query, no_price, single_price, single_merchant):
-    """Apply special condition filters to a Product query."""
+def _recent_price_cutoff(tz: str):
+    """「近一个月维护过价格」的 UTC 起点（与图表 30 天口径同一实现）。"""
+    from app.services.ingredient_price_service import recent_price_cutoff_utc
+    return recent_price_cutoff_utc(tz)
+
+
+def _apply_product_special_conditions(
+    query, no_price, single_price, single_merchant,
+    no_recent_price=False, recent_cutoff=None,
+):
+    """Apply special condition filters to a Product query.
+
+    no_recent_price：近一个月（30 天，按用户本地日口径）没有维护过价格。
+    从未维护过价格的商品同样命中（确实是「近一个月未维护过」）。
+    """
     from app.models.product import ProductRecord
     from sqlalchemy import exists, select
 
     if no_price:
         query = query.filter(
             ~exists().where(ProductRecord.product_id == Product.id)
+        )
+
+    if no_recent_price and recent_cutoff is not None:
+        query = query.filter(
+            ~exists().where(
+                ProductRecord.product_id == Product.id,
+                ProductRecord.is_active == True,  # noqa: E712
+                ProductRecord.recorded_at >= recent_cutoff,
+            )
         )
 
     if single_price:
@@ -124,8 +146,10 @@ def list_products(
     no_price: bool = Query(False, description="筛选没有维护过价格的商品"),
     single_price: bool = Query(False, description="筛选仅有一条价格记录的商品"),
     single_merchant: bool = Query(False, description="筛选仅有一家商家有其价格记录的商品"),
+    no_recent_price: bool = Query(False, description="筛选近一个月未维护过价格的商品"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
 ):
     """获取商品列表（分页）
 
@@ -133,6 +157,8 @@ def list_products(
     例如：搜索"西"可以找到商品"番茄"（如果其关联食材有别名"西红柿"）
     """
     from sqlalchemy import func
+
+    recent_cutoff = _recent_price_cutoff(tz) if no_recent_price else None
 
     pending_search_ids = (
         find_product_ids_with_pending_names(db, search, current_user)
@@ -195,7 +221,9 @@ def list_products(
                 query = query.filter(Product.brand.in_(brand_list))
 
         # 应用特殊条件过滤
-        query = _apply_product_special_conditions(query, no_price, single_price, single_merchant)
+        query = _apply_product_special_conditions(
+            query, no_price, single_price, single_merchant, no_recent_price, recent_cutoff
+        )
 
         total = query.count()
 
@@ -245,7 +273,9 @@ def list_products(
                 query = query.filter(Product.brand.in_(brand_list))
 
         # 应用特殊条件过滤
-        query = _apply_product_special_conditions(query, no_price, single_price, single_merchant)
+        query = _apply_product_special_conditions(
+            query, no_price, single_price, single_merchant, no_recent_price, recent_cutoff
+        )
 
         total = query.count()
 

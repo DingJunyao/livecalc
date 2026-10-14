@@ -110,26 +110,47 @@ test('无有效点时返回空序列', () => {
 
 test('区间内无记录且池为空时回退全量（保证 as-of 序列有携带起点）', () => {
   const windowStart = new Date('2026-09-13T00:00:00')
-  // 区间一条没命中、池也是空的（数据整体陈旧）→ 回退全量
-  assert.equal(
-    shouldLoadFullPriceHistory({ windowStart, windowHits: 0, loadedCount: 0 }),
-    true,
-  )
-  // 区间命中了记录 → 不回退
-  assert.equal(
-    shouldLoadFullPriceHistory({ windowStart, windowHits: 3, loadedCount: 3 }),
-    false,
-  )
-  // 池里已有记录（切过更宽的区间）→ 不回退
-  assert.equal(
-    shouldLoadFullPriceHistory({ windowStart, windowHits: 0, loadedCount: 5 }),
-    false,
-  )
+  // 池为空（数据整体陈旧）→ 回退全量
+  assert.equal(shouldLoadFullPriceHistory({ windowStart, poolStartDay: null }), true)
+  // 池里最早记录晚于区间起点：区间内只有今天的新记录、更早记录被 start_date 挡掉 → 回退
+  assert.equal(shouldLoadFullPriceHistory({ windowStart, poolStartDay: '2026-10-14' }), true)
+  // 池里已有不晚于区间起点的记录（携带起点）→ 不回退
+  assert.equal(shouldLoadFullPriceHistory({ windowStart, poolStartDay: '2026-09-13' }), false)
+  assert.equal(shouldLoadFullPriceHistory({ windowStart, poolStartDay: '2026-08-01' }), false)
   // 「全部」请求本身没有区间起点 → 不回退
-  assert.equal(
-    shouldLoadFullPriceHistory({ windowStart: undefined, windowHits: 0, loadedCount: 0 }),
-    false,
+  assert.equal(shouldLoadFullPriceHistory({ windowStart: undefined, poolStartDay: null }), false)
+})
+
+test('全段只有一个记录日时按最早已知价向前补齐（backfillSparse）', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [{ product_id: 1, date: '2026-10-12T09:00:00+08:00', value: 10 }],
+    () => 50,
+    { startDay: '2026-10-08', endDay: END, backfillSparse: true },
   )
+  assert.deepEqual(series.map((d) => d.date), [
+    '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12',
+  ])
+  assert.ok(series.every((d) => d.avg === 10))
+  // 不开启补齐时仍是单点（图表会看起来空白）
+  const single = buildWeightedAsOfDailySeries(
+    [{ product_id: 1, date: '2026-10-12T09:00:00+08:00', value: 10 }],
+    () => 50,
+    { startDay: '2026-10-08', endDay: END },
+  )
+  assert.equal(single.length, 1)
+})
+
+test('有两个记录日时不做向前补齐（不凭空编造趋势）', () => {
+  const series = buildWeightedAsOfDailySeries(
+    [
+      { product_id: 1, date: '2026-10-10T09:00:00+08:00', value: 10 },
+      { product_id: 1, date: '2026-10-12T09:00:00+08:00', value: 20 },
+    ],
+    () => 50,
+    { startDay: '2026-10-05', endDay: END, backfillSparse: true },
+  )
+  assert.equal(series[0].date, '2026-10-10')
+  assert.deepEqual(series.map((d) => d.avg), [10, 10, 20])
 })
 
 test('bandFromRecords：区间按记录口径 as-of 携带（单商品多商家）', () => {

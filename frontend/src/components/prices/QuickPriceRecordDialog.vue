@@ -135,7 +135,7 @@ import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
 import { loadCurrencies } from '@/utils/currency'
-import { loadEntityUnitOptions, loadGlobalUnitOptions } from '@/utils/entityUnits'
+import { loadEntityUnitOptions, loadGlobalUnitOptions, fetchEntityDefaultUnitName } from '@/utils/entityUnits'
 import type { UnitOption } from '@/utils/entityUnits'
 import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 
@@ -241,6 +241,18 @@ const loadEntityUnits = async (productId: number | null) => {
   unitOptions.value = options
 }
 
+// 选中商品（或带着商品打开对话框）后，把单位切到该商品（或其关联原料）的默认单位。
+// 读取失败 / 没有默认单位时保持 resetForm 预填的值。
+let defaultUnitSequence = 0
+const applyEntityDefaultUnit = async (productId: number | null) => {
+  if (!productId) return
+  const sequence = ++defaultUnitSequence
+  const unit = await fetchEntityDefaultUnitName('product', productId)
+  if (sequence !== defaultUnitSequence) return
+  if (currentProductId.value !== productId) return   // 期间又换了商品
+  if (unit) form.value.original_unit = unit
+}
+
 const priceRules = [(v: number | null) => v !== null && v > 0 || t('prices.validPrice')]
 const quantityRules = [(v: number | null) => v !== null && v > 0 || t('prices.validQuantity')]
 const unitRules = [(v: string) => !!v || t('prices.chooseUnit')]
@@ -310,6 +322,7 @@ watch(() => props.modelValue, (val) => {
     loadUnits().then(() => {
       // 列表模式下由 selectedProductId 变化触发；此处覆盖直接 props.productId 的场景
       loadEntityUnits(currentProductId.value)
+      applyEntityDefaultUnit(currentProductId.value)
     })
   }
 })
@@ -318,10 +331,11 @@ watch(show, (val) => {
   emit('update:modelValue', val)
 })
 
-// 监听商品选择，重建实体自定义单位（清空商品时回到全局单位）
+// 监听商品选择，重建实体自定义单位（清空商品时回到全局单位）并套用默认单位
 watch(currentProductId, (newId) => {
   if (!show.value) return
   loadEntityUnits(newId)
+  applyEntityDefaultUnit(newId)
 })
 
 const close = () => {

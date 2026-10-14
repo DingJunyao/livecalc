@@ -8,6 +8,8 @@ import {
   buildProductRecordStats,
   ingredientsWithTrustedNutrition,
   recipeIngredientIdSet,
+  productIdsWithRecentPrice,
+  recentPriceCutoffMs,
 } from './_filter'
 import { localError } from '../../../utils/localErrors'
 
@@ -22,24 +24,34 @@ export async function listIngredients(_params: Record<string, string>, query?: a
   const singleMerchant = isTruthy(query?.single_merchant)
   const noRecipe = isTruthy(query?.no_recipe)
   const noProduct = isTruthy(query?.no_product)
+  const noRecentPrice = isTruthy(query?.no_recent_price)
   const sortBy = query?.sort_by
 
   // Products/records are needed for search-by-product-name, the price-related
   // special conditions, and price_records sort.
   const needProducts =
-    !!lower || noPrice || singlePrice || singleMerchant || noProduct || sortBy === 'price_records'
+    !!lower || noPrice || singlePrice || singleMerchant || noProduct || noRecentPrice ||
+    sortBy === 'price_records'
   const stats = needProducts ? await buildProductRecordStats() : null
 
   // ingredient_id -> active products (and derived price/merchant counts)
   const productsByIngredient = new Map<number, any[]>()
   const recordCountByIngredient = new Map<number, number>()
   const merchantCountByIngredient = new Map<number, number>()
+  // 「近一个月内所有商品都没维护过价格」= 该原料没有任何商品命中「近月维护过」
+  const ingredientsWithRecentPrice = new Set<number>()
   if (stats) {
+    const recentProductIds = noRecentPrice
+      ? productIdsWithRecentPrice(stats, recentPriceCutoffMs())
+      : null
     for (const p of stats.products) {
       if (p.is_active === false) continue
       const arr = productsByIngredient.get(p.ingredient_id)
       if (arr) arr.push(p)
       else productsByIngredient.set(p.ingredient_id, [p])
+      if (recentProductIds && recentProductIds.has(p.id)) {
+        ingredientsWithRecentPrice.add(p.ingredient_id)
+      }
     }
     for (const [ingId, prods] of productsByIngredient) {
       let count = 0
@@ -74,6 +86,7 @@ export async function listIngredients(_params: Record<string, string>, query?: a
     if (noNutrition && trustedNutrition!.has(i.id)) return false
     if (noProduct && productsByIngredient.has(i.id)) return false
     if (noPrice && (recordCountByIngredient.get(i.id) ?? 0) > 0) return false
+    if (noRecentPrice && ingredientsWithRecentPrice.has(i.id)) return false
     if (singlePrice && (recordCountByIngredient.get(i.id) ?? 0) !== 1) return false
     if (singleMerchant && (merchantCountByIngredient.get(i.id) ?? 0) !== 1) return false
     if (noRecipe && recipeIngIds!.has(i.id)) return false

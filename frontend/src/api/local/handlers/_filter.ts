@@ -108,6 +108,36 @@ export async function recipeIngredientIdSet(): Promise<Set<number>> {
   return new Set(all.map((ri: any) => ri.ingredient_id).filter((id: any) => id != null))
 }
 
+/** 「近一个月未维护过价格」的截止时刻：本地今天 00:00 往前 30 天（与后端同口径）。 */
+export function recentPriceCutoffMs(now: Date = new Date(), days = 30): number {
+  const d = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  d.setDate(d.getDate() - days)
+  return d.getTime()
+}
+
+/** 记录集合里是否存在不早于 cutoff 的有效（未软删）价格记录。 */
+function hasRecordAtOrAfter(records: any[] | undefined, cutoffMs: number): boolean {
+  if (!records) return false
+  for (const r of records) {
+    if (r?.is_active === false) continue
+    const t = Date.parse(r?.recorded_at ?? '')
+    if (Number.isFinite(t) && t >= cutoffMs) return true
+  }
+  return false
+}
+
+/** 近一个月内维护过价格的商品 id 集合（商品/原料列表的特殊条件共用）。 */
+export function productIdsWithRecentPrice(
+  stats: ProductRecordStats,
+  cutoffMs: number,
+): Set<number> {
+  const ids = new Set<number>()
+  for (const [pid, records] of stats.recordsByProduct) {
+    if (hasRecordAtOrAfter(records, cutoffMs)) ids.add(pid)
+  }
+  return ids
+}
+
 /**
  * Ingredient ids that have at least one active product but no price records on
  * any of them. Used by the recipe special condition for unpriced ingredients.

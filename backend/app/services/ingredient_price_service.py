@@ -28,6 +28,19 @@ from app.utils.date_range_utils import local_date_range_to_utc_range, utc_dateti
 INGREDIENT_PRICE_STALE_DAYS = 30
 
 
+def recent_price_cutoff_utc(tz: str = "UTC", days: int = INGREDIENT_PRICE_STALE_DAYS) -> datetime:
+    """「近 N 天维护过价格」判定用的 UTC 起点（按用户本地日口径）。
+
+    与图表 / 综合价的 30 天参与上限同一口径：把「用户本地今天 − N 天」这一本地日
+    的 00:00 换成 UTC，``recorded_at >= 该值`` 即视为「近一个月内维护过价格」。
+    列表页的「近一个月未维护过价格」特殊条件用它，避免直接用 utcnow() 造成
+    跨时区时判定日偏移一天。
+    """
+    local_today = utc_datetime_to_local_date(datetime.now(timezone.utc), tz)
+    start, _ = local_date_range_to_utc_range(local_today - timedelta(days=days), local_today, tz)
+    return start
+
+
 def _product_unit_price(records: Sequence) -> Optional[Decimal]:
     """商品内均价：当日有效记录的 price / standard_quantity 平均。
 

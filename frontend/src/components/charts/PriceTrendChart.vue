@@ -206,6 +206,13 @@ function updateChart() {
   const minValue = Math.min(...data.map(d => d.min))
   const base = Math.min(0, minValue - 0.1)
 
+  // 只有一个数据点（实体只有一次价格记录、区间又拿不到更早的携带起点）时：
+  // time 轴的 dataMin/dataMax 是同一时刻 → 点被压在轴边缘、几乎看不出图表。
+  // 左右各撑开半天，让唯一的数据点落在中间并显示日期刻度。
+  const singlePoint = data.length === 1
+  const singleTs = singlePoint ? toTimestamp(data[0].date) : 0
+  const HALF_DAY_MS = 12 * 60 * 60 * 1000
+
   const option: EChartsOption = {
     tooltip: {
       trigger: 'axis',
@@ -253,8 +260,8 @@ function updateChart() {
     xAxis: {
       type: 'time',
       // 按真实日期时间分布：记录点之间的距离随天数变化，而非等距排列
-      min: 'dataMin',
-      max: 'dataMax',
+      min: singlePoint ? singleTs - HALF_DAY_MS : 'dataMin',
+      max: singlePoint ? singleTs + HALF_DAY_MS : 'dataMax',
       axisLabel: {
         hideOverlap: true,
         formatter: (value: number) => {
