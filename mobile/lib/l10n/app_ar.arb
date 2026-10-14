@@ -1128,6 +1128,66 @@
   "@productCreateIngredientFailed": {},
   "productCreated": "تم إنشاء المنتج",
   "@productCreated": {},
+  "productDraftUnitsButton": "وحدات مخصصة",
+  "@productDraftUnitsButton": {},
+  "productDraftUnitsButtonCount": "وحدات مخصصة ({count})",
+  "@productDraftUnitsButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftNutritionButton": "المعلومات الغذائية",
+  "@productDraftNutritionButton": {},
+  "productDraftNutritionButtonCount": "المعلومات الغذائية ({count})",
+  "@productDraftNutritionButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftSavedTogether": "املأ هنا، وسيُحفظ كل شيء مع المنتج عند الحفظ",
+  "@productDraftSavedTogether": {},
+  "productDraftExtrasSaved": "تم حفظ المنتج مع {units} وحدة مخصصة و{nutrients} عنصرًا غذائيًا",
+  "@productDraftExtrasSaved": {
+    "placeholders": {
+      "units": {
+        "type": "int"
+      },
+      "nutrients": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftExtrasPending": "تم حفظ المنتج؛ وأُرسلت الوحدات/المعلومات الغذائية للمراجعة",
+  "@productDraftExtrasPending": {},
+  "productDraftUnitCycle": "تحتوي الوحدات المخصصة على مرجع دائري ولم تُحفظ: {names}",
+  "@productDraftUnitCycle": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitRefMissing": "الوحدة المخصصة المرجعية لم تُحفظ (قد تكون قيد المراجعة)، وتم تخطيها: {names}",
+  "@productDraftUnitRefMissing": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitFailed": "فشل حفظ الوحدة المخصصة \"{name}\": {detail}",
+  "@productDraftUnitFailed": {
+    "placeholders": {
+      "name": {},
+      "detail": {}
+    }
+  },
+  "productDraftNutritionFailed": "فشل حفظ المعلومات الغذائية: {detail}",
+  "@productDraftNutritionFailed": {
+    "placeholders": {
+      "detail": {}
+    }
+  },
   "productDetailTitle": "تفاصيل المنتج",
   "@productDetailTitle": {},
   "productPendingName": "الاسم",

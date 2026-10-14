@@ -118,7 +118,7 @@ class EntityUnitsCard extends StatelessWidget {
     // 覆盖底部导航，编辑时不误触；保存成功后页面 pop(true)，provider 已回调里重拉列表。
     await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (ctx) => _UnitEditPage(
+        builder: (ctx) => EntityUnitEditPage(
           unit: unit,
           initialName: prefillName,
           units: _allUnits,
@@ -267,7 +267,7 @@ class EntityUnitsCard extends StatelessWidget {
                 for (final unit in units)
                   _UnitRow(
                     unit: unit,
-                    detail: _unitDetailLine(
+                    detail: entityUnitDetailLine(
                       context,
                       unit,
                       _allUnits,
@@ -649,8 +649,9 @@ _ResolvedUnit? _resolveUnit(
   return walk(unit, <int>{unit.id}, 0);
 }
 
-/// 单位行副标题；无可展示的换算信息时返回 null。
-String? _unitDetailLine(
+/// 单位行副标题（公开，供「新增商品」的单位草稿列表复用同一套换算口径）；
+/// 无可展示的换算信息时返回 null。
+String? entityUnitDetailLine(
   BuildContext context,
   EntityUnit unit,
   List<EntityUnit> units,
@@ -683,9 +684,9 @@ double _positiveOrOne(double? value) {
   return value;
 }
 
-// ---------- 单位编辑页（整页，非对话框） ----------
+// ---------- 单位编辑页（整页，非对话框；公开以便「新增商品」草稿复用） ----------
 
-class _UnitEditPage extends ConsumerStatefulWidget {
+class EntityUnitEditPage extends ConsumerStatefulWidget {
   final EntityUnit? unit;
   final String? initialName;
   final List<EntityUnit> units;
@@ -695,7 +696,8 @@ class _UnitEditPage extends ConsumerStatefulWidget {
   final double effectiveDensityKgM3;
   final Future<Object?> Function(UnitWriteInput input) onSave;
 
-  const _UnitEditPage({
+  const EntityUnitEditPage({
+    super.key,
     this.unit,
     this.initialName,
     required this.units,
@@ -706,10 +708,10 @@ class _UnitEditPage extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<_UnitEditPage> createState() => _UnitEditPageState();
+  ConsumerState<EntityUnitEditPage> createState() => _EntityUnitEditPageState();
 }
 
-class _UnitEditPageState extends ConsumerState<_UnitEditPage> {
+class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   late final TextEditingController _name;
   late final TextEditingController _weight;
   int? _weightUnitId;

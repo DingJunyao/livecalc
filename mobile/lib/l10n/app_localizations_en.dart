@@ -1556,6 +1556,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get productCreated => 'Product created';
 
   @override
+  String get productDraftUnitsButton => 'Custom units';
+
+  @override
+  String productDraftUnitsButtonCount(int count) {
+    return 'Custom units ($count)';
+  }
+
+  @override
+  String get productDraftNutritionButton => 'Nutrition';
+
+  @override
+  String productDraftNutritionButtonCount(int count) {
+    return 'Nutrition ($count)';
+  }
+
+  @override
+  String get productDraftSavedTogether =>
+      'Fill in here; everything is saved together when you save the product';
+
+  @override
+  String productDraftExtrasSaved(int units, int nutrients) {
+    return 'Product saved with $units custom unit(s) and $nutrients nutrient(s)';
+  }
+
+  @override
+  String get productDraftExtrasPending =>
+      'Product saved; custom units/nutrition were submitted for review';
+
+  @override
+  String productDraftUnitCycle(Object names) {
+    return 'Custom units contain a circular reference and were not saved: $names';
+  }
+
+  @override
+  String productDraftUnitRefMissing(Object names) {
+    return 'Referenced custom unit was not saved (possibly pending review); skipped: $names';
+  }
+
+  @override
+  String productDraftUnitFailed(Object name, Object detail) {
+    return 'Failed to save custom unit \"$name\": $detail';
+  }
+
+  @override
+  String productDraftNutritionFailed(Object detail) {
+    return 'Failed to save nutrition: $detail';
+  }
+
+  @override
   String get productDetailTitle => 'Product details';
 
   @override

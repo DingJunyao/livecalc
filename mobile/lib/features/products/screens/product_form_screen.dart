@@ -3,12 +3,18 @@ import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/models/entity_unit.dart';
+import '../../../shared/models/nutrition.dart';
+import '../../../shared/screens/entity_units_draft_screen.dart';
+import '../../../shared/screens/nutrition_edit_screen.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
+import '../../entities/repositories/entity_repository.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/repositories/ingredient_repository.dart';
 import '../../prices/providers/price_provider.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
+import '../services/product_draft_persist.dart';
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -46,6 +52,10 @@ class ProductFormScreen extends ConsumerStatefulWidget {
   final Product? product;
   final ProductRepository? repository;
   final IngredientRepository? ingredientRepository;
+  /// 测试注入：单位/密度参照数据来源（缺省走真实接口）。
+  final EntityRepository? entityRepository;
+  /// 测试注入：草稿落库器（缺省按 isAdmin 现场构造）。
+  final ProductDraftPersister? draftPersister;
   final bool isAdmin;
   final ProductFormPrefill? prefill;
   final Future<String?> Function(BuildContext context)? scanner;
@@ -56,6 +66,8 @@ class ProductFormScreen extends ConsumerStatefulWidget {
     this.product,
     this.repository,
     this.ingredientRepository,
+    this.entityRepository,
+    this.draftPersister,
     this.isAdmin = false,
     this.prefill,
     this.scanner,
@@ -68,6 +80,7 @@ class ProductFormScreen extends ConsumerStatefulWidget {
 class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   late final ProductRepository _productRepository;
   late final IngredientRepository _ingredientRepository;
+  late final EntityRepository _entityRepository;
   late final TextEditingController _nameController;
   late final TextEditingController _brandController;
   late final TextEditingController _barcodeController;
@@ -93,7 +106,22 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   /// 表单载入时的商品名（用于判断保存时是否真的改名 → 决定要不要刷新价格列表）
   String _initialName = '';
 
+  // 新增商品时先填好的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
+  final List<EntityUnit> _draftUnits = [];
+  List<NutrientEntry> _draftNutrients = const [];
+  // 单位草稿的参照数据（全局单位、关联原料的单位与密度），进入草稿页前懒加载
+  List<GlobalUnitOption> _globalUnitOptions = const [];
+  List<EntityUnit> _inheritedUnits = const [];
+  double _draftDensityKgM3 = 1000;
+  bool _loadingDraftUnits = false;
+  bool _draftUnitsLoaded = false;
+  int? _draftReferenceIngredientId;
+
   bool get _isEdit => widget.product != null;
+
+  int get _draftNutrientCount => _draftNutrients
+      .where((entry) => entry.label.trim().isNotEmpty && entry.value > 0)
+      .length;
 
   @override
   void initState() {
@@ -101,6 +129,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _productRepository = widget.repository ?? ProductRepository();
     _ingredientRepository =
         widget.ingredientRepository ?? IngredientRepository();
+    _entityRepository = widget.entityRepository ?? EntityRepository();
     final initialProduct = widget.product?.mergedWithPending();
     _nameController = TextEditingController(
       text: widget.prefill?.name ?? initialProduct?.name,
@@ -334,6 +363,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       }
       if (!mounted) return;
       if (!_isEdit) {
+        // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库
+        if (_draftUnits.isNotEmpty || _draftNutrients.isNotEmpty) {
+          await _persistDrafts(createdProduct!.id);
+          if (!mounted) return;
+        }
         Navigator.of(context).pop(
           ProductFormResult(
             saved: true,
@@ -375,6 +409,149 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           _error = l10n.commonSaveFailedRetry;
         });
       }
+    }
+  }
+
+  // ---------- 新增商品时的自定义单位 / 营养信息草稿 ----------
+
+  /// 打开自定义单位草稿页前准备参照数据：全局单位（现拉，失败回退空）+ 关联原料
+  /// 的单位与密度（用于继承引用与体积折算）。同一原料只加载一次。
+  Future<void> _ensureDraftUnitReference() async {
+    final ingredientId = _selectedIngredient?.id;
+    if (_draftUnitsLoaded && _draftReferenceIngredientId == ingredientId) return;
+    if (mounted) setState(() => _loadingDraftUnits = true);
+    var globals = <GlobalUnitOption>[];
+    var inherited = <EntityUnit>[];
+    var density = 1000.0;
+    try {
+      // listGlobalUnits 返回原始 Map（其它调用方只需要类型语义），这里转成下拉用的模型
+      final rows = await _entityRepository.listGlobalUnits();
+      globals = [for (final row in rows) GlobalUnitOption.fromJson(row)];
+    } catch (error, stackTrace) {
+      log('ProductFormScreen: 全局单位加载失败',
+          name: 'product_form', error: error, stackTrace: stackTrace);
+    }
+    if (ingredientId != null) {
+      try {
+        inherited = await _entityRepository.listUnits('ingredient', ingredientId);
+      } catch (error, stackTrace) {
+        log('ProductFormScreen: 关联原料单位加载失败',
+            name: 'product_form', error: error, stackTrace: stackTrace);
+      }
+      try {
+        final densities =
+            await _entityRepository.listDensities('ingredient', ingredientId);
+        if (densities.isNotEmpty && densities.first.density > 0) {
+          density = densities.first.density;
+        }
+      } catch (error, stackTrace) {
+        log('ProductFormScreen: 关联原料密度加载失败',
+            name: 'product_form', error: error, stackTrace: stackTrace);
+      }
+    }
+    if (!mounted) return;
+    setState(() {
+      _globalUnitOptions = globals;
+      _inheritedUnits = inherited;
+      _draftDensityKgM3 = density;
+      _draftUnitsLoaded = true;
+      _draftReferenceIngredientId = ingredientId;
+      _loadingDraftUnits = false;
+    });
+  }
+
+  Future<void> _openDraftUnits() async {
+    await _ensureDraftUnitReference();
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (ctx) => EntityUnitsDraftScreen(
+          initialUnits: _draftUnits,
+          inheritedUnits: _inheritedUnits,
+          globalUnitOptions: _globalUnitOptions,
+          effectiveDensityKgM3: _draftDensityKgM3,
+          onChanged: (units) {
+            if (!mounted) return;
+            setState(() {
+              _draftUnits
+                ..clear()
+                ..addAll(units);
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  /// 打开营养草稿页：USDA 匹配直写服务端，商品还不存在时必须关掉；
+  /// 保存动作只把结果收进草稿（onSave 返回 null → 页面照常返回）。
+  Future<void> _openDraftNutrition() async {
+    await Navigator.of(context).push<NutritionEditResult>(
+      MaterialPageRoute(
+        builder: (ctx) => NutritionEditScreen(
+          entityType: 'product',
+          entityId: 0,
+          initialNutrients: _draftNutrients,
+          allowUsda: false,
+          onSave: (entries) async {
+            _draftNutrients = entries;
+            return null;
+          },
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
+  /// 商品创建成功后把草稿一并落库，并按结果提示（失败不阻塞商品已保存的事实）。
+  Future<void> _persistDrafts(int productId) async {
+    final persister = widget.draftPersister ??
+        ProductDraftPersister(isAdmin: widget.isAdmin);
+    final result = await persister.persist(
+      productId: productId,
+      units: _draftUnits,
+      nutrients: _draftNutrients,
+    );
+    if (!mounted) return;
+    _notifyDraftResult(result);
+  }
+
+  void _notifyDraftResult(ProductDraftPersistResult result) {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    for (final issue in result.issues) {
+      final String text;
+      switch (issue.kind) {
+        case 'cycle':
+          text = l10n.productDraftUnitCycle(issue.names.join(', '));
+          break;
+        case 'refMissing':
+          text = l10n.productDraftUnitRefMissing(issue.names.join(', '));
+          break;
+        case 'unit':
+          text = l10n.productDraftUnitFailed(
+            issue.names.isEmpty ? '' : issue.names.first,
+            issue.detail,
+          );
+          break;
+        default:
+          text = l10n.productDraftNutritionFailed(issue.detail);
+      }
+      messenger.showSnackBar(SnackBar(content: Text(text)));
+    }
+    if (result.hasExtras) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(l10n.productDraftExtrasSaved(
+            result.unitsCreated,
+            result.nutrientsSaved,
+          )),
+        ),
+      );
+    } else if (result.hasPending) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.productDraftExtrasPending)),
+      );
     }
   }
 
@@ -589,6 +766,44 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                       initialTags: _aliases,
                       onTagsChanged: (aliases) => _aliases = aliases,
                     ),
+                    if (!_isEdit) ...[
+                      const SizedBox(height: 16),
+                      // 自定义单位 / 营养信息：在这里先填好，保存商品时一并保存
+                      Card(
+                        margin: EdgeInsets.zero,
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.straighten),
+                              title: Text(_draftUnits.isEmpty
+                                  ? l10n.productDraftUnitsButton
+                                  : l10n.productDraftUnitsButtonCount(
+                                      _draftUnits.length)),
+                              subtitle: Text(l10n.productDraftSavedTogether),
+                              trailing: _loadingDraftUnits
+                                  ? const SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2),
+                                    )
+                                  : const Icon(Icons.chevron_right),
+                              onTap: _saving ? null : _openDraftUnits,
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.food_bank_outlined),
+                              title: Text(_draftNutrientCount == 0
+                                  ? l10n.productDraftNutritionButton
+                                  : l10n.productDraftNutritionButtonCount(
+                                      _draftNutrientCount)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: _saving ? null : _openDraftNutrition,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     if (_isEdit) ...[
                       const SizedBox(height: 16),
                       AliasTagsField(

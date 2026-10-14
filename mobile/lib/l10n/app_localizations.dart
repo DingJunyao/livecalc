@@ -2976,6 +2976,72 @@ abstract class AppLocalizations {
   /// **'已创建商品'**
   String get productCreated;
 
+  /// No description provided for @productDraftUnitsButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位'**
+  String get productDraftUnitsButton;
+
+  /// No description provided for @productDraftUnitsButtonCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位（{count}）'**
+  String productDraftUnitsButtonCount(int count);
+
+  /// No description provided for @productDraftNutritionButton.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养信息'**
+  String get productDraftNutritionButton;
+
+  /// No description provided for @productDraftNutritionButtonCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养信息（{count}）'**
+  String productDraftNutritionButtonCount(int count);
+
+  /// No description provided for @productDraftSavedTogether.
+  ///
+  /// In zh, this message translates to:
+  /// **'在这里填写，保存商品时一并保存'**
+  String get productDraftSavedTogether;
+
+  /// No description provided for @productDraftExtrasSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息'**
+  String productDraftExtrasSaved(int units, int nutrients);
+
+  /// No description provided for @productDraftExtrasPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品已保存；单位/营养信息已提交，待管理员审核'**
+  String get productDraftExtrasPending;
+
+  /// No description provided for @productDraftUnitCycle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位存在循环引用，未保存：{names}'**
+  String productDraftUnitCycle(Object names);
+
+  /// No description provided for @productDraftUnitRefMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'被引用的自定义单位未保存（可能待审核），已跳过：{names}'**
+  String productDraftUnitRefMissing(Object names);
+
+  /// No description provided for @productDraftUnitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义单位「{name}」保存失败：{detail}'**
+  String productDraftUnitFailed(Object name, Object detail);
+
+  /// No description provided for @productDraftNutritionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养信息保存失败：{detail}'**
+  String productDraftNutritionFailed(Object detail);
+
   /// No description provided for @productDetailTitle.
   ///
   /// In zh, this message translates to:

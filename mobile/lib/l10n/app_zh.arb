@@ -1128,6 +1128,66 @@
   "@productCreateIngredientFailed": {},
   "productCreated": "已创建商品",
   "@productCreated": {},
+  "productDraftUnitsButton": "自定义单位",
+  "@productDraftUnitsButton": {},
+  "productDraftUnitsButtonCount": "自定义单位（{count}）",
+  "@productDraftUnitsButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftNutritionButton": "营养信息",
+  "@productDraftNutritionButton": {},
+  "productDraftNutritionButtonCount": "营养信息（{count}）",
+  "@productDraftNutritionButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftSavedTogether": "在这里填写，保存商品时一并保存",
+  "@productDraftSavedTogether": {},
+  "productDraftExtrasSaved": "商品已保存，并一并保存 {units} 个自定义单位、{nutrients} 项营养信息",
+  "@productDraftExtrasSaved": {
+    "placeholders": {
+      "units": {
+        "type": "int"
+      },
+      "nutrients": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftExtrasPending": "商品已保存；单位/营养信息已提交，待管理员审核",
+  "@productDraftExtrasPending": {},
+  "productDraftUnitCycle": "自定义单位存在循环引用，未保存：{names}",
+  "@productDraftUnitCycle": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitRefMissing": "被引用的自定义单位未保存（可能待审核），已跳过：{names}",
+  "@productDraftUnitRefMissing": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitFailed": "自定义单位「{name}」保存失败：{detail}",
+  "@productDraftUnitFailed": {
+    "placeholders": {
+      "name": {},
+      "detail": {}
+    }
+  },
+  "productDraftNutritionFailed": "营养信息保存失败：{detail}",
+  "@productDraftNutritionFailed": {
+    "placeholders": {
+      "detail": {}
+    }
+  },
   "productDetailTitle": "商品详情",
   "@productDetailTitle": {},
   "productPendingName": "名称",

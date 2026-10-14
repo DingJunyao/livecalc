@@ -1128,6 +1128,66 @@
   "@productCreateIngredientFailed": {},
   "productCreated": "Product created",
   "@productCreated": {},
+  "productDraftUnitsButton": "Custom units",
+  "@productDraftUnitsButton": {},
+  "productDraftUnitsButtonCount": "Custom units ({count})",
+  "@productDraftUnitsButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftNutritionButton": "Nutrition",
+  "@productDraftNutritionButton": {},
+  "productDraftNutritionButtonCount": "Nutrition ({count})",
+  "@productDraftNutritionButtonCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftSavedTogether": "Fill in here; everything is saved together when you save the product",
+  "@productDraftSavedTogether": {},
+  "productDraftExtrasSaved": "Product saved with {units} custom unit(s) and {nutrients} nutrient(s)",
+  "@productDraftExtrasSaved": {
+    "placeholders": {
+      "units": {
+        "type": "int"
+      },
+      "nutrients": {
+        "type": "int"
+      }
+    }
+  },
+  "productDraftExtrasPending": "Product saved; custom units/nutrition were submitted for review",
+  "@productDraftExtrasPending": {},
+  "productDraftUnitCycle": "Custom units contain a circular reference and were not saved: {names}",
+  "@productDraftUnitCycle": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitRefMissing": "Referenced custom unit was not saved (possibly pending review); skipped: {names}",
+  "@productDraftUnitRefMissing": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDraftUnitFailed": "Failed to save custom unit \"{name}\": {detail}",
+  "@productDraftUnitFailed": {
+    "placeholders": {
+      "name": {},
+      "detail": {}
+    }
+  },
+  "productDraftNutritionFailed": "Failed to save nutrition: {detail}",
+  "@productDraftNutritionFailed": {
+    "placeholders": {
+      "detail": {}
+    }
+  },
   "productDetailTitle": "Product details",
   "@productDetailTitle": {},
   "productPendingName": "Name",

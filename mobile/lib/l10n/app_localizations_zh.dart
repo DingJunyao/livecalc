@@ -1519,6 +1519,53 @@ class AppLocalizationsZh extends AppLocalizations {
   String get productCreated => '已创建商品';
 
   @override
+  String get productDraftUnitsButton => '自定义单位';
+
+  @override
+  String productDraftUnitsButtonCount(int count) {
+    return '自定义单位（$count）';
+  }
+
+  @override
+  String get productDraftNutritionButton => '营养信息';
+
+  @override
+  String productDraftNutritionButtonCount(int count) {
+    return '营养信息（$count）';
+  }
+
+  @override
+  String get productDraftSavedTogether => '在这里填写，保存商品时一并保存';
+
+  @override
+  String productDraftExtrasSaved(int units, int nutrients) {
+    return '商品已保存，并一并保存 $units 个自定义单位、$nutrients 项营养信息';
+  }
+
+  @override
+  String get productDraftExtrasPending => '商品已保存；单位/营养信息已提交，待管理员审核';
+
+  @override
+  String productDraftUnitCycle(Object names) {
+    return '自定义单位存在循环引用，未保存：$names';
+  }
+
+  @override
+  String productDraftUnitRefMissing(Object names) {
+    return '被引用的自定义单位未保存（可能待审核），已跳过：$names';
+  }
+
+  @override
+  String productDraftUnitFailed(Object name, Object detail) {
+    return '自定义单位「$name」保存失败：$detail';
+  }
+
+  @override
+  String productDraftNutritionFailed(Object detail) {
+    return '营养信息保存失败：$detail';
+  }
+
+  @override
   String get productDetailTitle => '商品详情';
 
   @override

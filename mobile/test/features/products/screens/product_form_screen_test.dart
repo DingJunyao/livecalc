@@ -183,16 +183,18 @@ void main() {
     );
     await tester.drag(find.byType(ListView), const Offset(0, -320));
     await tester.pump();
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Aliases'),
-      '面包粉, 高粉',
+    // 表单新增了「自定义单位 / 营养信息」区块，列表更长：先滚到别名输入可见再点
+    final aliasesField = find.widgetWithText(TextField, 'Aliases');
+    await tester.ensureVisible(aliasesField);
+    await tester.pumpAndSettle();
+    await tester.enterText(aliasesField, '面包粉, 高粉');
+    final addAliasButton = find.descendant(
+      of: find.byType(AliasTagsField),
+      matching: find.byIcon(Icons.add),
     );
-    await tester.tap(
-      find.descendant(
-        of: find.byType(AliasTagsField),
-        matching: find.byIcon(Icons.add),
-      ),
-    );
+    await tester.ensureVisible(addAliasButton);
+    await tester.pumpAndSettle();
+    await tester.tap(addAliasButton);
     await tester.pump();
     await tester.ensureVisible(find.text('Save'));
     await tester.tap(find.text('Save'));

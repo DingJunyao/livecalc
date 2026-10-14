@@ -1548,6 +1548,55 @@ class AppLocalizationsAr extends AppLocalizations {
   String get productCreated => 'تم إنشاء المنتج';
 
   @override
+  String get productDraftUnitsButton => 'وحدات مخصصة';
+
+  @override
+  String productDraftUnitsButtonCount(int count) {
+    return 'وحدات مخصصة ($count)';
+  }
+
+  @override
+  String get productDraftNutritionButton => 'المعلومات الغذائية';
+
+  @override
+  String productDraftNutritionButtonCount(int count) {
+    return 'المعلومات الغذائية ($count)';
+  }
+
+  @override
+  String get productDraftSavedTogether =>
+      'املأ هنا، وسيُحفظ كل شيء مع المنتج عند الحفظ';
+
+  @override
+  String productDraftExtrasSaved(int units, int nutrients) {
+    return 'تم حفظ المنتج مع $units وحدة مخصصة و$nutrients عنصرًا غذائيًا';
+  }
+
+  @override
+  String get productDraftExtrasPending =>
+      'تم حفظ المنتج؛ وأُرسلت الوحدات/المعلومات الغذائية للمراجعة';
+
+  @override
+  String productDraftUnitCycle(Object names) {
+    return 'تحتوي الوحدات المخصصة على مرجع دائري ولم تُحفظ: $names';
+  }
+
+  @override
+  String productDraftUnitRefMissing(Object names) {
+    return 'الوحدة المخصصة المرجعية لم تُحفظ (قد تكون قيد المراجعة)، وتم تخطيها: $names';
+  }
+
+  @override
+  String productDraftUnitFailed(Object name, Object detail) {
+    return 'فشل حفظ الوحدة المخصصة \"$name\": $detail';
+  }
+
+  @override
+  String productDraftNutritionFailed(Object detail) {
+    return 'فشل حفظ المعلومات الغذائية: $detail';
+  }
+
+  @override
   String get productDetailTitle => 'تفاصيل المنتج';
 
   @override

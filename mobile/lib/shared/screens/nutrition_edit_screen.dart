@@ -52,6 +52,8 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
   final NutritionInfo? nutrition;
   final List<NutrientEntry> initialNutrients;
   final bool allowClear;
+  /// 是否允许切到 USDA 匹配：USDA 匹配直接写服务端，草稿（商品还没创建）时必须关掉。
+  final bool allowUsda;
   final Future<void> Function()? onRefresh;
   final Future<Object?> Function(List<NutrientEntry>)? onSave;
   final Future<Object?> Function()? onClear;
@@ -65,6 +67,7 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
     this.nutrition,
     this.initialNutrients = const [],
     this.allowClear = false,
+    this.allowUsda = true,
     this.onRefresh,
     this.onSave,
     this.onClear,
@@ -318,16 +321,17 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
       ),
       body: Column(
         children: [
-          SegmentedButton<bool>(
-            segments: [
-              ButtonSegment(
-                  value: false, label: Text(l10n.nutritionManualEdit)),
-              const ButtonSegment(value: true, label: Text('USDA')),
-            ],
-            selected: {_usdaMode},
-            onSelectionChanged: (values) =>
-                setState(() => _usdaMode = values.first),
-          ),
+          if (widget.allowUsda)
+            SegmentedButton<bool>(
+              segments: [
+                ButtonSegment(
+                    value: false, label: Text(l10n.nutritionManualEdit)),
+                const ButtonSegment(value: true, label: Text('USDA')),
+              ],
+              selected: {_usdaMode},
+              onSelectionChanged: (values) =>
+                  setState(() => _usdaMode = values.first),
+            ),
           Expanded(
             child: _usdaMode ? _buildUsdaPane(theme) : _buildManualPane(theme),
           ),
