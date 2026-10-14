@@ -10,6 +10,7 @@
 import { api } from '@/api'
 import {
   planDraftUnitWrites,
+  unresolvableUnitIds,
   type EntityDraftNutrient,
   type EntityDraftUnit,
 } from '@/utils/entityDraftPlan'
@@ -139,6 +140,52 @@ export async function persistEntityDrafts(
   }
 
   return result
+}
+
+/**
+ * 换绑关联原料后的清理：商品自定义单位里引用「旧原料单位」的行会悬空。
+ *
+ * 返回被移除的单位名，以及是否走了待审（普通用户的删除是提议）。
+ * 单条删除失败不阻断其余清理、也不抛出 —— 保存流程不能因此失败。
+ */
+export async function removeUnitsDanglingAfterIngredientChange(
+  productId: number,
+  targetIngredientId: number,
+): Promise<{ removed: string[]; pending: boolean }> {
+  let units: any[] = []
+  let ingredientUnits: any[] = []
+  try {
+    const [unitsResponse, ingredientResponse] = await Promise.all([
+      api.get(`/entities/product/${productId}/units`),
+      api.get(`/entities/ingredient/${targetIngredientId}/units`),
+    ])
+    units = Array.isArray(unitsResponse) ? unitsResponse : unitsResponse?.items || []
+    ingredientUnits = Array.isArray(ingredientResponse)
+      ? ingredientResponse
+      : ingredientResponse?.items || []
+  } catch {
+    // 读取失败时不动任何数据（宁可留着悬空引用，也不误删）
+    return { removed: [], pending: false }
+  }
+
+  const available = new Set<number>(ingredientUnits.map((unit: any) => Number(unit.id)))
+  const broken = unresolvableUnitIds(units as EntityDraftUnit[], available)
+  if (broken.size === 0) return { removed: [], pending: false }
+
+  const removed: string[] = []
+  let pending = false
+  for (const unit of units) {
+    const unitId = Number(unit?.id)
+    if (!broken.has(unitId)) continue
+    removed.push(String(unit?.unit_name ?? unit?.name ?? ''))
+    try {
+      const response: any = await api.delete(`/entities/product/${productId}/units/${unitId}`)
+      if (response?.status === 'pending' || !!response?.proposal_id) pending = true
+    } catch {
+      // 单条失败不阻断其余清理
+    }
+  }
+  return { removed, pending }
 }
 
 /**

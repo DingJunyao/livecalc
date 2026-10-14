@@ -130,7 +130,54 @@ weight_unit_override_id：
 **经验**：①用「可为 null 的业务值」当缓存哨兵时，`null` 往往就是合法取值——哨兵要用独立布尔或 `undefined` 并写注释；
 ②「详情页正常、新增页不正常」并不总意味着新增页取数口径不同，也可能是共用组件的初始化路径不同（本例：详情页根本不用该组件）。
 
-## 6. 经验
+## 6. 第三轮：移动端下拉丢继承单位 + 换绑原料清理悬空单位
+
+### BUGFIX：移动端「添加/修改单位」下拉里没有关联原料的自定义单位
+
+用户反馈：移动端新增商品页，进入添加/修改单位，「单位」下拉只有全局单位，带不出关联原料层面的自定义单位
+（全局单位正常，所以不是整个下拉坏掉）。
+
+**根因**：`EntityUnitEditPage._weightUnitItems()` 把两类来源塞进**同一个 `Set<int>`** 去重：
+
+```dart
+final values = <int?>{};
+for (final option in widget.globalUnitOptions) { if (!values.add(option.id)) continue; ... }  // 全局单位先加入
+for (final unit in widget.units) { if (excluded.contains(unit.id) || !values.add(unit.id)) continue; ... } // 撞车 → 静默丢弃
+```
+
+全局单位表（`/units/`）与实体单位覆盖表（`entity_unit_overrides`）是**两张表，id 空间重叠**（都从 1 开始）。
+只要原料自定义单位的 id 撞上任意一个全局单位 id（几乎必然），它就被 `continue` 掉，下拉里彻底消失。
+web 之所以没事：它的选项值本来就带前缀（`u:` 全局 / `d:` 草稿 / `i:` 继承），天然不会撞车。
+
+**修复**：移动端选项值改带来源前缀 —— `''` 默认克、`u:<全局单位 id>`、`e:<本实体或继承的自定义单位 id>`；
+`_weightUnit` 保存这个字符串，`_selectedGlobalUnitId` / `_selectedOverrideUnitId` 负责解析回 id
+（`_selectedIsVolume` / `_selectedSiFactor` / 保存/自引用校验都改走解析）。
+回归用例：让假仓库的原料单位 id 与全局单位 id 相同（都 = 1），断言继承项仍出现在下拉里。
+
+同一个 `EntityUnitsCard`（详情页）走同一个编辑页，所以详情页的同类隐患一并修好。
+
+### BUGFIX：继承单位加载失败会被缓存，本轮表单不再重试
+
+`ProductFormScreen._ensureDraftUnitReference()` 原来在 `catch` 之后照样置 `_draftUnitsLoaded = true`
+并缓存原料 id：一次网络抖动/鉴权竞态就会让**本轮表单**再也带不出关联原料的单位（用户感知就是「下拉里没有继承项」）。
+改为「必要数据都成功才缓存」：`_draftUnitsLoaded = globalsLoaded && inheritedLoaded`，失败项下次打开自动重试。
+回归用例：假仓库第一次 `listUnits('ingredient', …)` 抛异常、之后成功 —— 第一次打开无继承项、第二次出现。
+
+### 新功能：换绑关联原料时清理引用失效的商品自定义单位（两端）
+
+商品自定义单位可以引用**关联原料**的单位（`weight_unit_override_id` 指向原料的单位行）。
+一旦把商品的关联原料换成另一个原料，这些引用就可能悬空（旧原料的单位 id 在新原料里不存在）。
+
+- 判定：`unresolvableUnitIds(units, availableExternalIds)`
+  （web [entityDraftPlan.ts](../frontend/src/utils/entityDraftPlan.ts) / 移动端 [draft_units.dart](../mobile/lib/shared/utils/draft_units.dart)）：
+  引用既不在本商品自己的单位里、也不在目标原料的单位里 → 失效；**依赖失效单位的下游单位一并判失效**；
+  自引用也算失效；指向全局单位（`weight_unit_id`）的行不受影响。
+- 动作：逐条 `DELETE /entities/product/{id}/units/{unitId}`，把被移除的单位名告诉用户
+  （普通用户的删除走待审 → 文案区分「已移除」/「已提交移除申请，待审核」）。
+- **只在变更真正落地时执行**：管理员直写才清理；普通用户换绑走待审（可能被驳回），此时不动任何数据。
+- 读取失败时不动数据（宁可留着悬空引用，也不误删）；单条删除失败不阻断其余清理，也不让保存失败。
+
+## 7. 经验
 
 1. 「商品创建成功」与「附加数据保存成功」是两个失败域：附加数据失败必须逐条提示，不能回滚/报整单失败，
    否则用户会以为商品没建成而重复创建。
@@ -145,7 +192,14 @@ weight_unit_override_id：
 6. 前端「构建通过」不等于「能跑」：Vite 只转译，`vue-tsc` 在本仓不可用，务必用 `npx tsc --noEmit` 兜底。
 7. 「详情页正常、新增页不正常」要先确认两边是否真的走同一组件/同一初始化路径，再怀疑取数口径；
    缓存哨兵不要用可为 null 的业务值充当（null 常是合法取值，`null === null` 会误判「已加载」）。
+8. **两张表的 id 不能放进同一个去重集合**：全局单位 id 与实体单位覆盖 id 空间重叠，
+   用 `Set<int>` 去重时后加入的一方会被静默丢弃（下拉里「就是没有那几项」，且没有任何报错）。
+   选项值必须带来源前缀（web `u:`/`d:`/`i:`，移动端 `u:`/`e:`）——这也是 web 一直没这个 bug 的原因。
+9. 「加载失败」与「加载成功但为空」必须区分：把失败也当成已完成缓存，会让一次网络抖动永久污染当前会话
+   （用户只看到「没有数据」，日志里才有线索）。
+10. 引用型数据的清理要**先确认变更已落地**再执行（审批/待审场景下不能提前删），
+    并且读取失败时不动数据、单条失败不阻断其余 —— 清理永远是「尽力而为 + 明确告知」。
 
-## 7. 分支
+## 8. 分支
 
 Web 改动属于 master（先提交 master，再 merge 到 feat/mobile-app）；移动端改动属于 feat/mobile-app。

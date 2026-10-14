@@ -1820,6 +1820,8 @@
     "draftUnitRefMissing": "الوحدة المخصصة المرجعية لم تُحفظ (قد تكون قيد المراجعة)، وتم تخطيها: {names}",
     "draftUnitFailed": "فشل حفظ الوحدة المخصصة \"{name}\": {detail}",
     "draftNutritionFailed": "فشل حفظ المعلومات الغذائية: {detail}",
+    "danglingUnitsRemoved": "تمت إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد: {names}",
+    "danglingUnitsRemovePending": "تم إرسال طلب إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد (قيد المراجعة): {names}",
     "deleteUnit": "حذف الوحدة",
     "deleteNutrient": "حذف العنصر الغذائي"
   },

@@ -5,6 +5,7 @@ import {
   draftUnitAmounts,
   nextDraftUnitId,
   planDraftUnitWrites,
+  unresolvableUnitIds,
   type EntityDraftUnit,
 } from './entityDraftPlan.ts'
 
@@ -117,4 +118,36 @@ test('draftUnitAmounts 引用断裂时不臆估（返回 null）', () => {
   // 没有量也没有引用 → 后端视为不可折算
   const empty = draft({ id: -2, unit_name: '袋' })
   assert.equal(draftUnitAmounts(empty, [empty], [], GLOBALS, 1000), null)
+})
+
+test('unresolvableUnitIds 找出引用失效（含下游）的单位', () => {
+  const own = [
+    { id: 9, unit_name: '箱', weight_per_unit: 12, is_default: false, weight_unit_id: null, weight_unit_override_id: 77 },
+    { id: 10, unit_name: '个', weight_per_unit: 200, is_default: false, weight_unit_id: 1, weight_unit_override_id: null },
+  ]
+  // 新原料只提供 78，没有 77 → 「箱」失效；指向全局单位的「个」不受影响
+  assert.deepEqual([...unresolvableUnitIds(own, new Set([78]))], [9])
+})
+
+test('unresolvableUnitIds 引用在目标原料里存在则可解析', () => {
+  const own = [
+    { id: 9, unit_name: '箱', weight_per_unit: 12, is_default: false, weight_unit_id: null, weight_unit_override_id: 77 },
+  ]
+  assert.equal(unresolvableUnitIds(own, new Set([77])).size, 0)
+})
+
+test('unresolvableUnitIds 级联：依赖失效单位的下游同样失效', () => {
+  const own = [
+    { id: 9, unit_name: '盒', weight_per_unit: 200, is_default: false, weight_unit_id: null, weight_unit_override_id: 77 },
+    { id: 10, unit_name: '箱', weight_per_unit: 12, is_default: false, weight_unit_id: null, weight_unit_override_id: 9 },
+  ]
+  assert.deepEqual([...unresolvableUnitIds(own, new Set([78]))].sort((a, b) => a - b), [9, 10])
+})
+
+test('unresolvableUnitIds 自引用与悬空引用都算失效', () => {
+  const own = [
+    { id: 9, unit_name: '自引用', weight_per_unit: null, is_default: false, weight_unit_id: null, weight_unit_override_id: 9 },
+    { id: 10, unit_name: '悬空', weight_per_unit: null, is_default: false, weight_unit_id: null, weight_unit_override_id: 999 },
+  ]
+  assert.deepEqual([...unresolvableUnitIds(own, new Set())].sort((a, b) => a - b), [9, 10])
 })
