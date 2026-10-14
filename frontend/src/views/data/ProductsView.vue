@@ -280,6 +280,32 @@
               :hint="t('products.aliasesHint')"
               persistent-hint
             />
+            <!-- 自定义单位 / 营养信息：在新增商品时先填好，保存商品时一并保存 -->
+            <div class="d-flex flex-wrap ga-2 mt-4">
+              <v-btn
+                variant="tonal"
+                color="primary"
+                prepend-icon="mdi-ruler"
+                @click="showDraftUnitsDialog = true"
+              >
+                {{ draftUnits.length > 0
+                  ? t('products.draftUnitsButtonCount', { count: draftUnits.length })
+                  : t('products.draftUnitsButton') }}
+              </v-btn>
+              <v-btn
+                variant="tonal"
+                color="success"
+                prepend-icon="mdi-food-apple-outline"
+                @click="showDraftNutritionDialog = true"
+              >
+                {{ draftNutrientCount > 0
+                  ? t('products.draftNutritionButtonCount', { count: draftNutrientCount })
+                  : t('products.draftNutritionButton') }}
+              </v-btn>
+            </div>
+            <div class="text-caption text-medium-emphasis mt-2">
+              {{ t('products.draftSavedTogether') }}
+            </div>
           </v-form>
         </v-card-text>
         <v-card-actions>
@@ -289,6 +315,17 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+
+    <!-- 新增商品时的自定义单位 / 营养信息草稿编辑（保存商品时才落库） -->
+    <ProductDraftUnitsDialog
+      v-model="showDraftUnitsDialog"
+      v-model:units="draftUnits"
+      :ingredient-id="form.ingredient_id"
+    />
+    <ProductDraftNutritionDialog
+      v-model="showDraftNutritionDialog"
+      v-model:nutrients="draftNutrients"
+    />
   </v-container>
 </template>
 
@@ -313,6 +350,10 @@ import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { usePendingProposals } from '@/composables/usePendingProposals'
 import { lookupBarcode } from '@/utils/barcodeLookup'
+import ProductDraftUnitsDialog from '@/components/products/ProductDraftUnitsDialog.vue'
+import ProductDraftNutritionDialog from '@/components/products/ProductDraftNutritionDialog.vue'
+import { buildDraftNotices, persistProductDrafts } from '@/utils/productDrafts'
+import type { ProductDraftNutrient, ProductDraftUnit } from '@/utils/productDraftPlan'
 
 const { t } = useI18n()
 const { notify } = useGlobalSnackbar()
@@ -388,6 +429,22 @@ const form = ref({
   aliases: [] as string[],
   ingredient_id: null as number | null
 })
+
+// 新增商品时的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
+const showDraftUnitsDialog = ref(false)
+const showDraftNutritionDialog = ref(false)
+const draftUnits = ref<ProductDraftUnit[]>([])
+const draftNutrients = ref<ProductDraftNutrient[]>([])
+const draftNutrientCount = computed(() =>
+  draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
+)
+
+function resetDrafts() {
+  showDraftUnitsDialog.value = false
+  showDraftNutritionDialog.value = false
+  draftUnits.value = []
+  draftNutrients.value = []
+}
 
 const queryValue = (key: string) => {
   const value = route.query[key]
@@ -686,6 +743,8 @@ const saveItem = async () => {
   saving.value = true
   try {
     const response = await api.post('/products/entity', form.value)
+    // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库
+    const draftResult = await persistProductDrafts(response.id, draftUnits.value, draftNutrients.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false
@@ -693,6 +752,8 @@ const saveItem = async () => {
     form.value = { name: '', brand: '', barcode: '', aliases: [], ingredient_id: null }
     selectedIngredient.value = null
     ingredientSearch.value = ''
+    resetDrafts()
+    for (const notice of buildDraftNotices(t, draftResult)) notify(notice.text, notice.color)
     if (returnTo.value) {
       sessionStorage.setItem('barcode-price-return', JSON.stringify(response))
       router.push(returnTo.value)
