@@ -229,7 +229,27 @@ web 之所以没事：它的选项值本来就带前缀（`u:` 全局 / `d:` 草
 
 编辑态仍然是**保存时**清理（那是服务端数据，用户可能取消编辑，不能提前删）。
 
-## 9. 经验
+## 9. 第六轮：web 端「删了却没有任何提示」
+
+用户实测：web 端换原料后单位被清理了，但**一条提示都没有**。两个独立原因：
+
+1. **草稿态（新增商品）**：[ProductsView.vue](../frontend/src/views/data/ProductsView.vue) 里
+   根本**没有 `showMessage`** 这个函数（该文件用的是 `const { notify } = useGlobalSnackbar()`），
+   清理提示那一行会抛 `ReferenceError` —— 单位已经先被过滤掉了，提示永远出不来。
+   改成 `notify(text, 'warning')`。
+2. **落库态（编辑商品）**：[ProductDetail.vue](../frontend/src/views/products/ProductDetail.vue) 的
+   snackbar 是**单槽位**（`snackbar.value = {...}`，后一条覆盖前一条），清理提示紧接着就被
+   `products.basicInfoSaved`（保存成功）覆盖 → 用户只看到「保存成功」。
+   改成：清理结果先收集到 `danglingNotice`，最后**合并成一条**警示
+   （`basicInfoSavedDanglingUnitsRemoved`，含「已保存」+「已移除哪些单位」），
+   没有清理时才弹普通的成功提示。
+
+**为什么没被拦住**：`.vue` 文件在本仓**没有任何工具兜底** —— `vite build` 只转译不做类型检查，
+`npx tsc --noEmit` 对 `.vue` 一律报「Cannot find module …」（连文件内容都不看），
+仓库又没有 ESLint 配置（`frontend/package.json` 无 lint 脚本、依赖里没有 eslint）。
+**结论：在 `.vue` 里新增任何标识符引用前，先在文件里确认它已定义/已导入；改完尽量实机点一遍。**
+
+## 10. 经验
 
 1. 「商品创建成功」与「附加数据保存成功」是两个失败域：附加数据失败必须逐条提示，不能回滚/报整单失败，
    否则用户会以为商品没建成而重复创建。
@@ -259,7 +279,13 @@ web 之所以没事：它的选项值本来就带前缀（`u:` 全局 / `d:` 草
     草稿态可以在交互当下同步处理（无服务端副作用），落库态必须等保存落地后再动。
 13. 挂在「输入/选择」上的破坏性动作要分清**用户意图**：文本变化常只是重打，不代表改变选择；
     只在「确实选中了另一个目标」时触发，才能既不漏、又不误删。
+14. **单槽位 snackbar（`snackbar.value = {...}`）里连续两条消息，后一条会把前一条吃掉** ——
+    「操作成功」+「顺带清理了什么」这类复合结果必须合并成一条，或者改成队列；
+    否则用户只看到成功、看不到副作用。
+15. `.vue` 在本仓是**工具盲区**：build 不查类型、`tsc` 跳过 `.vue`、没有 ESLint。
+    在 `.vue` 里新增引用（尤其是与相邻文件命名相近的 `showMessage` / `notify`）必须人工确认定义，
+    并尽量实机验证一次。
 
-## 10. 分支
+## 11. 分支
 
 Web 改动属于 master（先提交 master，再 merge 到 feat/mobile-app）；移动端改动属于 feat/mobile-app。

@@ -3111,6 +3111,11 @@ const saveBasicInfo = async () => {
     const response = await api.put(`/products/entity/${productId.value}`, payload)
     // 换绑了关联原料且变更已落地（管理员直写）→ 商品自定义单位里引用旧原料单位的行
     // 会悬空，移除并告知用户。普通用户的换绑走待审（可能被驳回），此时不动数据。
+    //
+    // 注意：本页 snackbar 是单槽位（后一条覆盖前一条），清理提示若在这里直接弹，
+    // 会被下面的「商品信息已保存」覆盖掉 → 用户反馈「删了但没有提示」。
+    // 所以这里只收集结果，合并到最后那条消息里一起弹。
+    let danglingNotice: string | null = null
     const previousIngredientId = product.value?.ingredient_id ?? null
     const nextIngredientId = Number(basicEditForm.value.ingredient_id)
     if (
@@ -3124,12 +3129,9 @@ const saveBasicInfo = async () => {
       )
       if (removed.length > 0) {
         const names = removed.join(', ')
-        showMessage(
-          pending
-            ? t('products.danglingUnitsRemovePending', { names })
-            : t('products.danglingUnitsRemoved', { names }),
-          pending ? 'info' : 'warning',
-        )
+        danglingNotice = pending
+          ? t('products.danglingUnitsRemovePending', { names })
+          : t('products.basicInfoSavedDanglingUnitsRemoved', { names })
       }
     }
     // 我的权重覆盖：开关开 → set；关 → delete（用回全局）
@@ -3145,7 +3147,11 @@ const saveBasicInfo = async () => {
       editingBasicInfo.value = false
       selectedIngredient.value = null
       ingredientSearch.value = ''
-      showMessage(t('products.basicInfoSaved'), 'success')
+      // 有单位被清理时合并成一条警示（含「已保存」信息），避免被成功提示覆盖
+      showMessage(
+        danglingNotice ?? t('products.basicInfoSaved'),
+        danglingNotice ? 'warning' : 'success',
+      )
     } else {
       editingBasicInfo.value = false
       showMessage(t('products.proposalSubmitted'), 'info')
