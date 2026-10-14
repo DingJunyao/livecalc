@@ -2,7 +2,7 @@
   <v-dialog :model-value="modelValue" max-width="520" @update:model-value="onToggle">
     <v-card>
       <v-card-title class="d-flex align-center pa-4">
-        <span class="text-h6">{{ t('products.draftUnitsDialogTitle') }}</span>
+        <span class="text-h6">{{ t('products.draftUnitsDialogTitle', { target }) }}</span>
         <v-spacer />
         <v-btn
           icon="mdi-close"
@@ -14,7 +14,7 @@
       </v-card-title>
       <v-card-text>
         <div class="text-caption text-medium-emphasis mb-3">
-          {{ t('products.draftSavedTogether') }}
+          {{ t('products.draftSavedTogether', { target }) }}
         </div>
         <div v-if="loading" class="text-center py-4">
           <v-progress-circular indeterminate color="primary" size="24" />
@@ -146,21 +146,23 @@ import {
   draftChainReaches,
   draftUnitAmounts,
   nextDraftUnitId,
-  type ProductDraftUnit,
-} from '@/utils/productDraftPlan'
+  type EntityDraftUnit,
+} from '@/utils/entityDraftPlan'
 
-// 新增商品对话框里的「自定义单位」草稿编辑器：只改内存里的草稿数组，
-// 商品保存成功后再由 productDrafts.persistProductDrafts 按依赖顺序落库。
+// 新增商品/原料对话框里的「自定义单位」草稿编辑器：只改内存里的草稿数组，
+// 实体保存成功后再由 entityDrafts.persistEntityDrafts 按依赖顺序落库。
 const props = defineProps<{
   modelValue: boolean
-  units: ProductDraftUnit[]
-  /** 关联原料 id：可继承原料已有的自定义单位（如「盒」定义在原料上） */
+  units: EntityDraftUnit[]
+  /** 关联原料 id：可继承原料已有的自定义单位（如「盒」定义在原料上）；原料自身传空 */
   ingredientId?: number | null
+  /** 实体名（商品/原料），只用于文案 */
+  target: string
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'update:units', value: ProductDraftUnit[]): void
+  (e: 'update:units', value: EntityDraftUnit[]): void
 }>()
 
 const { t } = useI18n()
@@ -271,7 +273,7 @@ const unitOptions = computed(() => {
   return options
 })
 
-function openEditor(unit?: ProductDraftUnit) {
+function openEditor(unit?: EntityDraftUnit) {
   editorError.value = ''
   if (unit) {
     editorForm.value = {
@@ -349,7 +351,7 @@ function saveEditor() {
   const amount = editorForm.value.weight_per_unit == null || editorForm.value.weight_per_unit === ''
     ? null
     : Number(editorForm.value.weight_per_unit)
-  const next: ProductDraftUnit = {
+  const next: EntityDraftUnit = {
     id: editorForm.value.id ?? nextDraftUnitId(props.units),
     unit_name: name,
     weight_per_unit: amount != null && isFinite(amount) && amount > 0 ? amount : null,
@@ -384,7 +386,7 @@ function refLabel(refId: number): string {
   return row ? `${row.unit_name}${t('products.unitInheritedUnitSuffix')}` : `#${refId}`
 }
 
-function unitLine(unit: ProductDraftUnit): string {
+function unitLine(unit: EntityDraftUnit): string {
   const amounts = draftUnitAmounts(unit, props.units, ingredientUnits.value, globalUnits.value, density.value)
   const head = `1${unit.unit_name} = `
   const amountText = unit.weight_per_unit != null

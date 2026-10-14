@@ -1,8 +1,8 @@
-// 新增商品对话框的「自定义单位」草稿：纯函数部分（无网络依赖，可直接被 node --test 跑）。
+// 新增商品/原料对话框的「自定义单位」草稿：纯函数部分（无网络依赖，可直接被 node --test 跑）。
 //
-// 为什么需要草稿：新增商品时商品还不存在（没有 id），而单位覆盖必须挂在商品 id 上
-// （POST /entities/product/{id}/units）。所以先在本地用**负数 id** 表示草稿单位，
-// 等商品创建成功后再按依赖顺序落库（见 productDrafts.ts）。
+// 为什么需要草稿：新增时实体（商品或原料）还不存在（没有 id），而单位覆盖必须挂在实体 id 上
+// （POST /entities/{type}/{id}/units）。所以先在本地用**负数 id** 表示草稿单位，
+// 等实体创建成功后再按依赖顺序落库（见 entityDrafts.ts）。
 //
 // 引用两种「每单位量」：
 //   - 负数的 weight_unit_override_id → 同一批草稿里的另一条（嵌套，1箱 = 12 盒）；
@@ -14,7 +14,7 @@
 import { overrideAmounts, type UnitAmounts } from './unitFactor.ts'
 
 /** 待保存的自定义单位草稿。 */
-export interface ProductDraftUnit {
+export interface EntityDraftUnit {
   /** 草稿内部 id（恒为负数）。 */
   id: number
   unit_name: string
@@ -26,7 +26,7 @@ export interface ProductDraftUnit {
 }
 
 /** 待保存的营养素草稿。 */
-export interface ProductDraftNutrient {
+export interface EntityDraftNutrient {
   key: string
   name: string
   value: number | null
@@ -35,13 +35,13 @@ export interface ProductDraftNutrient {
 
 /** 落库计划：批内互不依赖，批与批之间按顺序创建即可满足嵌套引用。 */
 export interface DraftUnitPlan {
-  batches: ProductDraftUnit[][]
+  batches: EntityDraftUnit[][]
   /** 无法落库的草稿（引用成环）。 */
-  cycles: ProductDraftUnit[]
+  cycles: EntityDraftUnit[]
 }
 
 /** 生成不与既有草稿冲突的负数 id。 */
-export function nextDraftUnitId(units: ProductDraftUnit[]): number {
+export function nextDraftUnitId(units: EntityDraftUnit[]): number {
   let min = 0
   for (const unit of units) {
     if (unit.id < min) min = unit.id
@@ -50,16 +50,16 @@ export function nextDraftUnitId(units: ProductDraftUnit[]): number {
 }
 
 /** 按依赖关系分批：一批内的单位只引用「更早批次」或正数（原料）引用。 */
-export function planDraftUnitWrites(units: ProductDraftUnit[]): DraftUnitPlan {
-  const batches: ProductDraftUnit[][] = []
+export function planDraftUnitWrites(units: EntityDraftUnit[]): DraftUnitPlan {
+  const batches: EntityDraftUnit[][] = []
   const done = new Set<number>()
   let remaining = [...(units || [])]
   let progressed = true
 
   while (remaining.length > 0 && progressed) {
     progressed = false
-    const batch: ProductDraftUnit[] = []
-    const postponed: ProductDraftUnit[] = []
+    const batch: EntityDraftUnit[] = []
+    const postponed: EntityDraftUnit[] = []
     for (const unit of remaining) {
       const ref = unit.weight_unit_override_id
       if (ref != null && ref < 0 && !done.has(ref)) postponed.push(unit)
@@ -81,7 +81,7 @@ export function planDraftUnitWrites(units: ProductDraftUnit[]): DraftUnitPlan {
  * 与后端环检测口径一致（visited + 深度上限 8），用于把会成环的候选从下拉里剔除。
  */
 export function draftChainReaches(
-  units: ProductDraftUnit[],
+  units: EntityDraftUnit[],
   candidateId: number,
   targetId: number | null,
 ): boolean {
@@ -105,8 +105,8 @@ export function draftChainReaches(
  * [inheritedUnits] 为关联原料已有的自定义单位行（正数 id），[globals] 为全局单位。
  */
 export function draftUnitAmounts(
-  unit: ProductDraftUnit,
-  units: ProductDraftUnit[],
+  unit: EntityDraftUnit,
+  units: EntityDraftUnit[],
   inheritedUnits: any[],
   globals: any[],
   densityKgM3: number | null,

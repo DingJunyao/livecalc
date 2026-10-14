@@ -2,7 +2,7 @@
   <v-dialog :model-value="modelValue" max-width="600" @update:model-value="onToggle">
     <v-card>
       <v-card-title class="d-flex align-center pa-4">
-        <span class="text-h6">{{ t('products.draftNutritionDialogTitle') }}</span>
+        <span class="text-h6">{{ t('products.draftNutritionDialogTitle', { target }) }}</span>
         <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
         <v-spacer />
         <v-btn
@@ -15,7 +15,7 @@
       </v-card-title>
       <v-card-text>
         <div class="text-caption text-medium-emphasis mb-3">
-          {{ t('products.draftSavedTogether') }}
+          {{ t('products.draftSavedTogether', { target }) }}
         </div>
         <div v-if="rows.length === 0" class="text-body-2 text-medium-emphasis">
           {{ t('products.noNutritionData') }}
@@ -83,18 +83,20 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { useUserUnits } from '@/composables/useUserUnits'
-import type { ProductDraftNutrient } from '@/utils/productDraftPlan'
+import type { EntityDraftNutrient } from '@/utils/entityDraftPlan'
 
-// 新增商品对话框里的「营养信息」草稿编辑器：只维护本地数组，
-// 商品保存成功后再由 productDrafts.persistProductDrafts 一次性写入。
+// 新增商品/原料对话框里的「营养信息」草稿编辑器：只维护本地数组，
+// 实体保存成功后再由 entityDrafts.persistEntityDrafts 一次性写入。
 const props = defineProps<{
   modelValue: boolean
-  nutrients: ProductDraftNutrient[]
+  nutrients: EntityDraftNutrient[]
+  /** 实体名（商品/原料），只用于文案 */
+  target: string
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
-  (e: 'update:nutrients', value: ProductDraftNutrient[]): void
+  (e: 'update:nutrients', value: EntityDraftNutrient[]): void
 }>()
 
 const { t } = useI18n()
@@ -114,7 +116,7 @@ const defs = computed(() => buildNutrientDefinitions(energyUnit.value))
 
 const DEFAULT_UNITS = ['g', 'mg', 'μg', 'kcal', 'kJ', 'IU']
 
-function toRow(nutrient: ProductDraftNutrient): DraftRow {
+function toRow(nutrient: EntityDraftNutrient): DraftRow {
   const def = defs.value.find(item => item.key === nutrient.key || item.label === nutrient.name)
   return {
     key: nutrient.key,
