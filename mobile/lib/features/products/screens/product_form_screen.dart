@@ -8,6 +8,7 @@ import '../../../shared/models/nutrition.dart';
 import '../../../shared/screens/entity_units_draft_screen.dart';
 import '../../../shared/screens/nutrition_edit_screen.dart';
 import '../../../shared/services/entity_draft_persist.dart';
+import '../../../shared/utils/draft_units.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../ingredients/models/ingredient.dart';
@@ -105,6 +106,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   int _globalWeight = 50;
   /// 表单载入时的商品名（用于判断保存时是否真的改名 → 决定要不要刷新价格列表）
   String _initialName = '';
+  /// 表单载入时的关联原料 id：保存时对比判断是否换绑原料（触发引用清理）
+  int? _initialIngredientId;
 
   // 新增商品时先填好的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
   final List<EntityUnit> _draftUnits = [];
@@ -143,6 +146,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _ingredientSearchController = TextEditingController();
     _selectedIngredient = widget.fixedIngredient;
     _initialName = _nameController.text.trim();
+    _initialIngredientId = initialProduct?.ingredientId ?? widget.fixedIngredient?.id;
 
     if (_isEdit) {
       _loading = true;
@@ -186,6 +190,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                 name: product.ingredientName ?? '',
               );
         _ingredientSearchController.text = _selectedIngredient?.name ?? '';
+        _initialIngredientId = product.ingredientId;
         if (myWeight != null) {
           _myWeightEnabled = myWeight.source == 'override';
           _myWeight = myWeight.overrideWeight ?? myWeight.globalWeight;
@@ -341,6 +346,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       Product? createdProduct;
       ProductMutationResult? result;
       if (_isEdit) {
+        final ingredientChanged =
+            _selectedIngredient!.id != _initialIngredientId;
         result = await _productRepository.updateProduct(
           widget.product!.id,
           isAdmin: widget.isAdmin,
@@ -351,6 +358,16 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           aliases: _aliases,
           tags: _tags,
         );
+        if (!mounted) return;
+        // 只有变更真正落地（管理员直写）才清理：普通用户的换绑走待审，可能被驳回
+        if (ingredientChanged && !result.pending) {
+          // 换了关联原料：商品自定义单位里引用「旧原料单位」的行会悬空，移除并告知用户
+          await _removeUnitsDanglingAfterIngredientChange(
+            widget.product!.id,
+            _selectedIngredient!.id,
+          );
+          if (!mounted) return;
+        }
       } else {
         createdProduct = await _productRepository.createProduct(
           name: name,
@@ -416,6 +433,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
 
   /// 打开自定义单位草稿页前准备参照数据：全局单位（现拉，失败回退空）+ 关联原料
   /// 的单位与密度（用于继承引用与体积折算）。同一原料只加载一次。
+  ///
+  /// 只有全部必要数据都加载成功才缓存；失败的部分下次打开重试——
+  /// 否则一次网络抖动会让本轮表单永远带不出关联原料的自定义单位。
   Future<void> _ensureDraftUnitReference() async {
     final ingredientId = _selectedIngredient?.id;
     if (_draftUnitsLoaded && _draftReferenceIngredientId == ingredientId) return;
@@ -423,10 +443,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     var globals = <GlobalUnitOption>[];
     var inherited = <EntityUnit>[];
     var density = 1000.0;
+    var globalsLoaded = false;
+    var inheritedLoaded = ingredientId == null;
     try {
       // listGlobalUnits 返回原始 Map（其它调用方只需要类型语义），这里转成下拉用的模型
       final rows = await _entityRepository.listGlobalUnits();
       globals = [for (final row in rows) GlobalUnitOption.fromJson(row)];
+      globalsLoaded = true;
     } catch (error, stackTrace) {
       log('ProductFormScreen: 全局单位加载失败',
           name: 'product_form', error: error, stackTrace: stackTrace);
@@ -434,6 +457,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     if (ingredientId != null) {
       try {
         inherited = await _entityRepository.listUnits('ingredient', ingredientId);
+        inheritedLoaded = true;
       } catch (error, stackTrace) {
         log('ProductFormScreen: 关联原料单位加载失败',
             name: 'product_form', error: error, stackTrace: stackTrace);
@@ -454,7 +478,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       _globalUnitOptions = globals;
       _inheritedUnits = inherited;
       _draftDensityKgM3 = density;
-      _draftUnitsLoaded = true;
+      _draftUnitsLoaded = globalsLoaded && inheritedLoaded;
       _draftReferenceIngredientId = ingredientId;
       _loadingDraftUnits = false;
     });
@@ -561,6 +585,54 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         ),
       );
     }
+  }
+
+  /// 换绑关联原料后清理商品自定义单位：
+  /// 引用链在「本商品 + 新原料」里解析不了的单位（引用的是旧原料的单位）会被
+  /// 删除并提示用户；普通用户的删除走待审。失败只留痕，不阻塞保存流程。
+  Future<void> _removeUnitsDanglingAfterIngredientChange(
+    int productId,
+    int targetIngredientId,
+  ) async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    List<EntityUnit> units;
+    List<EntityUnit> ingredientUnits;
+    try {
+      units = await _entityRepository.listUnits('product', productId);
+      ingredientUnits =
+          await _entityRepository.listUnits('ingredient', targetIngredientId);
+    } catch (error, stackTrace) {
+      log('ProductFormScreen: 切换原料后加载商品单位失败',
+          name: 'product_form', error: error, stackTrace: stackTrace);
+      return;
+    }
+    final available = {for (final unit in ingredientUnits) unit.id};
+    final brokenIds = unresolvableUnitIds(units, available);
+    if (brokenIds.isEmpty) return;
+    final removed = <String>[];
+    var pending = false;
+    for (final unit in units) {
+      if (!brokenIds.contains(unit.id)) continue;
+      removed.add(unit.unitName);
+      try {
+        final deleteResult =
+            await _entityRepository.deleteUnit('product', productId, unit.id);
+        if (deleteResult.pending) pending = true;
+      } catch (error, stackTrace) {
+        log('ProductFormScreen: 移除引用失效的自定义单位失败',
+            name: 'product_form', error: error, stackTrace: stackTrace);
+      }
+    }
+    if (!mounted || removed.isEmpty) return;
+    final names = removed.join(', ');
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(pending
+            ? l10n.productDanglingUnitsRemovePending(names)
+            : l10n.productDanglingUnitsRemoved(names)),
+      ),
+    );
   }
 
   /// 改名成功后刷新价格记录列表（商品名快照列已被后端改写）。

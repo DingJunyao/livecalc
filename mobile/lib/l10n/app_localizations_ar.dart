@@ -1605,6 +1605,16 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRemoved(Object names) {
+    return 'تمت إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد: $names';
+  }
+
+  @override
+  String productDanglingUnitsRemovePending(Object names) {
+    return 'تم إرسال طلب إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد (قيد المراجعة): $names';
+  }
+
+  @override
   String get productDetailTitle => 'تفاصيل المنتج';
 
   @override

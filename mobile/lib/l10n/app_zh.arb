@@ -1201,6 +1201,18 @@
       "detail": {}
     }
   },
+  "productDanglingUnitsRemoved": "以下自定义单位引用的单位在新原料中不存在，已移除：{names}",
+  "@productDanglingUnitsRemoved": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDanglingUnitsRemovePending": "以下自定义单位引用的单位在新原料中不存在，已提交移除申请，待审核：{names}",
+  "@productDanglingUnitsRemovePending": {
+    "placeholders": {
+      "names": {}
+    }
+  },
   "productDetailTitle": "商品详情",
   "@productDetailTitle": {},
   "productPendingName": "名称",

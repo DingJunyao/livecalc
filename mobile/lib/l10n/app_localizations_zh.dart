@@ -1576,6 +1576,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRemoved(Object names) {
+    return '以下自定义单位引用的单位在新原料中不存在，已移除：$names';
+  }
+
+  @override
+  String productDanglingUnitsRemovePending(Object names) {
+    return '以下自定义单位引用的单位在新原料中不存在，已提交移除申请，待审核：$names';
+  }
+
+  @override
   String get productDetailTitle => '商品详情';
 
   @override

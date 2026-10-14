@@ -96,3 +96,37 @@ List<EntityUnit> removeDraftUnit(List<EntityUnit> units, int unitId) {
             : unit,
   ];
 }
+
+/// 找出引用链无法解析的单位。
+///
+/// 「无法解析」指：[weightUnitOverrideId] 指向的行不在 [units] 里、也不在
+/// [availableExternalIds]（如目标原料已有的自定义单位）里；或链上依赖的单位
+/// 本身已失效；或自引用。返回这些单位的 id 集合（含依赖它们的下游单位）。
+Set<int> unresolvableUnitIds(
+  List<EntityUnit> units,
+  Set<int> availableExternalIds,
+) {
+  final ownIds = {for (final unit in units) unit.id};
+  final broken = <int>{};
+  var changed = true;
+  while (changed) {
+    changed = false;
+    for (final unit in units) {
+      if (broken.contains(unit.id)) continue;
+      final ref = unit.weightUnitOverrideId;
+      if (ref == null) continue;
+      if (ref == unit.id) {
+        broken.add(unit.id);
+        changed = true;
+        continue;
+      }
+      final resolvable = availableExternalIds.contains(ref) ||
+          (ownIds.contains(ref) && !broken.contains(ref));
+      if (!resolvable) {
+        broken.add(unit.id);
+        changed = true;
+      }
+    }
+  }
+  return broken;
+}

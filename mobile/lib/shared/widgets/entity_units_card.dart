@@ -714,10 +714,22 @@ class EntityUnitEditPage extends ConsumerStatefulWidget {
 class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   late final TextEditingController _name;
   late final TextEditingController _weight;
-  int? _weightUnitId;
-  int? _weightUnitOverrideId;
+
+  /// 下拉选中的「单位」值，带来源前缀：
+  /// `''` = 默认（克）、`u:<全局单位 id>`、`e:<本实体/继承的自定义单位 id>`。
+  ///
+  /// 必须带前缀：全局单位表与实体单位覆盖表是两张表，id 空间重叠，
+  /// 若直接用 int 去重，撞车的自定义单位会被静默丢弃（表现为「下拉里没有
+  /// 关联原料的自定义单位」，而全局单位照常显示）。
+  String _weightUnit = '';
   bool _isDefault = false;
   bool _saving = false;
+
+  int? get _selectedGlobalUnitId =>
+      _weightUnit.startsWith('u:') ? int.tryParse(_weightUnit.substring(2)) : null;
+
+  int? get _selectedOverrideUnitId =>
+      _weightUnit.startsWith('e:') ? int.tryParse(_weightUnit.substring(2)) : null;
 
   @override
   void initState() {
@@ -737,9 +749,9 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
     _isDefault = unit?.isDefault ?? false;
     // 优先回填嵌套引用（weight_unit_override_id），其次全局单位
     if (unit?.weightUnitOverrideId != null) {
-      _weightUnitOverrideId = unit!.weightUnitOverrideId;
+      _weightUnit = 'e:${unit!.weightUnitOverrideId}';
     } else if (unit?.weightUnitId != null) {
-      _weightUnitId = unit!.weightUnitId;
+      _weightUnit = 'u:${unit!.weightUnitId}';
     }
   }
 
@@ -756,45 +768,48 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
 
   /// 下拉可选项：默认（克）+ 全局质量/体积单位 + 本实体其它自定义单位
   /// + 继承自关联原料的自定义单位（同名时本实体的覆盖优先）。
-  List<DropdownMenuItem<int?>> _weightUnitItems() {
+  ///
+  /// 选项值带来源前缀（`u:` 全局 / `e:` 自定义），避免两张表的 id 撞车时
+  /// 把自定义单位去重掉。
+  List<DropdownMenuItem<String>> _weightUnitItems() {
     final l10n = AppLocalizations.of(context);
     final excluded = _excludedOverrideIds();
-    final values = <int?>{};
-    final items = <DropdownMenuItem<int?>>[
-      DropdownMenuItem<int?>(
-        value: null,
+    final values = <String>{};
+    final items = <DropdownMenuItem<String>>[
+      DropdownMenuItem<String>(
+        value: '',
         child: Text(l10n.unitsWeightUnitDefault),
       ),
     ];
     for (final option in widget.globalUnitOptions) {
-      if (!values.add(option.id)) continue;
-      items.add(_item(option.id, '${option.name} (${option.abbreviation})'));
+      if (!values.add('u:${option.id}')) continue;
+      items.add(_item('u:${option.id}', '${option.name} (${option.abbreviation})'));
     }
     for (final unit in widget.units) {
-      if (excluded.contains(unit.id) || !values.add(unit.id)) continue;
+      if (excluded.contains(unit.id) || !values.add('e:${unit.id}')) continue;
       items.add(_item(
-        unit.id,
+        'e:${unit.id}',
         widget.inheritedUnitIds.contains(unit.id)
             ? l10n.unitsCustomUnitInherited(unit.unitName)
             : l10n.unitsCustomUnitOption(unit.unitName),
       ));
     }
     // 当前值即使被环保护排除也要能回显（否则下拉会退回到「默认」）
-    final current = _weightUnitId ?? _weightUnitOverrideId;
-    if (current != null && !values.contains(current)) {
-      final unit = _unitById(current);
+    if (_weightUnit.isNotEmpty && !values.contains(_weightUnit)) {
+      final unitId = _selectedOverrideUnitId;
+      final unit = unitId == null ? null : _unitById(unitId);
       items.add(_item(
-        current,
+        _weightUnit,
         unit == null
-            ? '$current'
+            ? _weightUnit
             : l10n.unitsCustomUnitOption(unit.unitName),
       ));
     }
     return items;
   }
 
-  DropdownMenuItem<int?> _item(int value, String label) {
-    return DropdownMenuItem<int?>(
+  DropdownMenuItem<String> _item(String value, String label) {
+    return DropdownMenuItem<String>(
       value: value,
       child: Text(label, overflow: TextOverflow.ellipsis),
     );
@@ -841,7 +856,7 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   }
 
   bool get _selectedIsVolume {
-    final globalId = _weightUnitId;
+    final globalId = _selectedGlobalUnitId;
     if (globalId == null) return false;
     for (final option in widget.globalUnitOptions) {
       if (option.id == globalId) return option.isVolume;
@@ -853,7 +868,7 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   /// （mL = 0.001、L = 1，见 unit_conversion_service.py:180），**不是** mL→g；
   /// 只有体积提示 [_volumeHint] 用它，质量路径不经过这里。
   double get _selectedSiFactor {
-    final globalId = _weightUnitId;
+    final globalId = _selectedGlobalUnitId;
     if (globalId == null) return 1;
     for (final option in widget.globalUnitOptions) {
       if (option.id == globalId) return option.siFactor;
@@ -874,21 +889,8 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
     );
   }
 
-  void _selectWeightUnit(int? value) {
-    setState(() {
-      if (value == null) {
-        _weightUnitId = null;
-        _weightUnitOverrideId = null;
-        return;
-      }
-      if (widget.globalUnitOptions.any((option) => option.id == value)) {
-        _weightUnitId = value;
-        _weightUnitOverrideId = null;
-      } else {
-        _weightUnitOverrideId = value;
-        _weightUnitId = null;
-      }
-    });
+  void _selectWeightUnit(String? value) {
+    setState(() => _weightUnit = value ?? '');
   }
 
   Future<void> _save() async {
@@ -901,7 +903,9 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
       );
       return;
     }
-    if (widget.unit != null && _weightUnitOverrideId == widget.unit!.id) {
+    final weightUnitId = _selectedGlobalUnitId;
+    final weightUnitOverrideId = _selectedOverrideUnitId;
+    if (widget.unit != null && weightUnitOverrideId == widget.unit!.id) {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.unitsSelfReference)),
       );
@@ -912,8 +916,8 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
       // 换算系数已从表单移除：语义上恒为 1（存 1，避免再出现"要不要填系数"的困惑）
       conversionFactor: 1,
       weightPerUnit: _blankOrZeroToNull(_weight.text),
-      weightUnitId: _weightUnitId,
-      weightUnitOverrideId: _weightUnitOverrideId,
+      weightUnitId: weightUnitId,
+      weightUnitOverrideId: weightUnitOverrideId,
       isDefault: _isDefault,
     );
     setState(() => _saving = true);
@@ -1012,9 +1016,9 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
                           horizontal: 12, vertical: 16),
                     ),
                     child: DropdownButtonHideUnderline(
-                      child: DropdownButton<int?>(
+                      child: DropdownButton<String>(
                         key: const Key('unit-weight-unit-dropdown'),
-                        value: _weightUnitId ?? _weightUnitOverrideId,
+                        value: _weightUnit,
                         isExpanded: true,
                         isDense: true,
                         items: _weightUnitItems(),

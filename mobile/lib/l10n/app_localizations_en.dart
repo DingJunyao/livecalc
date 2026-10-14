@@ -1613,6 +1613,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRemoved(Object names) {
+    return 'Removed custom unit(s) referencing units missing from the new ingredient: $names';
+  }
+
+  @override
+  String productDanglingUnitsRemovePending(Object names) {
+    return 'Submitted removal of custom unit(s) referencing units missing from the new ingredient (pending review): $names';
+  }
+
+  @override
   String get productDetailTitle => 'Product details';
 
   @override

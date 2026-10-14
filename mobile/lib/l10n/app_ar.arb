@@ -1201,6 +1201,18 @@
       "detail": {}
     }
   },
+  "productDanglingUnitsRemoved": "تمت إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد: {names}",
+  "@productDanglingUnitsRemoved": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDanglingUnitsRemovePending": "تم إرسال طلب إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد (قيد المراجعة): {names}",
+  "@productDanglingUnitsRemovePending": {
+    "placeholders": {
+      "names": {}
+    }
+  },
   "productDetailTitle": "تفاصيل المنتج",
   "@productDetailTitle": {},
   "productPendingName": "الاسم",

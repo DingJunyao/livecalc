@@ -1201,6 +1201,18 @@
       "detail": {}
     }
   },
+  "productDanglingUnitsRemoved": "Removed custom unit(s) referencing units missing from the new ingredient: {names}",
+  "@productDanglingUnitsRemoved": {
+    "placeholders": {
+      "names": {}
+    }
+  },
+  "productDanglingUnitsRemovePending": "Submitted removal of custom unit(s) referencing units missing from the new ingredient (pending review): {names}",
+  "@productDanglingUnitsRemovePending": {
+    "placeholders": {
+      "names": {}
+    }
+  },
   "productDetailTitle": "Product details",
   "@productDetailTitle": {},
   "productPendingName": "Name",

@@ -90,4 +90,36 @@ void main() {
     expect(next.first.weightPerUnit, 12);
     expect(next.first.conversionFactor, 1);
   });
+
+  test('unresolvableUnitIds 找出引用失效（含下游）的单位', () {
+    final own = [
+      _draft(id: 9, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 77),
+      _draft(id: 10, name: '个', weightPerUnit: 200, weightUnitId: 1),
+    ];
+    // 新原料只提供 78，没有 77 → 「箱」失效；全局单位（weightUnitId=1）不受影响
+    expect(unresolvableUnitIds(own, {78}), {9});
+  });
+
+  test('unresolvableUnitIds 引用在目标原料里存在则可解析', () {
+    final own = [
+      _draft(id: 9, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 77),
+    ];
+    expect(unresolvableUnitIds(own, {77}), isEmpty);
+  });
+
+  test('unresolvableUnitIds 级联：依赖失效单位的下游同样失效', () {
+    final own = [
+      _draft(id: 9, name: '盒', weightPerUnit: 200, weightUnitOverrideId: 77),
+      _draft(id: 10, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 9),
+    ];
+    expect(unresolvableUnitIds(own, {78}).toSet(), {9, 10});
+  });
+
+  test('unresolvableUnitIds 自引用与悬空引用都算失效', () {
+    final own = [
+      _draft(id: 9, name: '自引用', weightUnitOverrideId: 9),
+      _draft(id: 10, name: '悬空', weightUnitOverrideId: 999),
+    ];
+    expect(unresolvableUnitIds(own, const {}), {9, 10});
+  });
 }

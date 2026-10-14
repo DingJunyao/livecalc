@@ -3054,6 +3054,18 @@ abstract class AppLocalizations {
   /// **'营养信息保存失败：{detail}'**
   String productDraftNutritionFailed(Object detail);
 
+  /// No description provided for @productDanglingUnitsRemoved.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下自定义单位引用的单位在新原料中不存在，已移除：{names}'**
+  String productDanglingUnitsRemoved(Object names);
+
+  /// No description provided for @productDanglingUnitsRemovePending.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下自定义单位引用的单位在新原料中不存在，已提交移除申请，待审核：{names}'**
+  String productDanglingUnitsRemovePending(Object names);
+
   /// No description provided for @productDetailTitle.
   ///
   /// In zh, this message translates to:
