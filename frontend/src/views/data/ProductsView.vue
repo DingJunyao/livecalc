@@ -644,7 +644,7 @@ const pruneDraftUnitsForIngredient = async (ingredientId: number) => {
     .filter(unit => broken.has(unit.id))
     .map(unit => unit.unit_name)
   draftUnits.value = draftUnits.value.filter(unit => !broken.has(unit.id))
-  showMessage(
+  notify(
     t('products.danglingUnitsRemoved', { names: removed.join(', ') }),
     'warning',
   )

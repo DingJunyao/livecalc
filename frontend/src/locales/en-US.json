@@ -1821,6 +1821,7 @@
     "draftUnitFailed": "Failed to save custom unit \"{name}\": {detail}",
     "draftNutritionFailed": "Failed to save nutrition: {detail}",
     "danglingUnitsRemoved": "Removed custom unit(s) referencing units missing from the new ingredient: {names}",
+    "basicInfoSavedDanglingUnitsRemoved": "Product info saved; removed custom unit(s) referencing units missing from the new ingredient: {names}",
     "danglingUnitsRemovePending": "Submitted removal of custom unit(s) referencing units missing from the new ingredient (pending review): {names}",
     "deleteUnit": "Delete unit",
     "deleteNutrient": "Delete nutrient"
