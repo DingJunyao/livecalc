@@ -122,4 +122,83 @@ void main() {
     ];
     expect(unresolvableUnitIds(own, const {}), {9, 10});
   });
+
+  test('reconcileUnitsAfterIngredientChange 引用换成全局同名单位（不删行）', () {
+    // 用户实测场景：商品单位「箱」引用原料包菜的「颗」(31)；换原料后 31 不存在，
+    // 但全局单位里本来就有「颗」(49) → 改指向，保留这条自定义单位
+    final units = [
+      _draft(id: 900, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 31),
+    ];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: units,
+      targetIngredientIdsByName: const {},
+      globalIdsByName: const {'颗': 49},
+      missingRefNames: const {31: '颗'},
+    );
+    expect(result.removed, isEmpty);
+    expect(result.retargeted.length, 1);
+    expect(result.retargeted.first.weightUnitId, 49);
+    expect(result.retargeted.first.weightUnitOverrideId, isNull);
+    expect(result.units.single.unitName, '箱');
+  });
+
+  test('reconcileUnitsAfterIngredientChange 优先改指向新原料的同名单位', () {
+    final units = [
+      _draft(id: 900, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 31),
+    ];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: units,
+      targetIngredientIdsByName: const {'颗': 88},
+      globalIdsByName: const {'颗': 49},
+      missingRefNames: const {31: '颗'},
+    );
+    expect(result.retargeted.single.weightUnitOverrideId, 88);
+    expect(result.retargeted.single.weightUnitId, isNull);
+    expect(result.removed, isEmpty);
+  });
+
+  test('reconcileUnitsAfterIngredientChange 没有同名单位才移除（含下游）', () {
+    final units = [
+      _draft(id: 900, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 31),
+      _draft(id: 901, name: '大箱', weightPerUnit: 6, weightUnitOverrideId: 900),
+      _draft(id: 902, name: '个', weightPerUnit: 200, weightUnitId: 18),
+    ];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: units,
+      targetIngredientIdsByName: const {},
+      globalIdsByName: const {'个': 18},
+      missingRefNames: const {31: '哈'},
+    );
+    expect(result.retargeted, isEmpty);
+    expect(result.removed.map((unit) => unit.id).toList()..sort(), [900, 901]);
+    expect(result.units.map((unit) => unit.id).toList(), [902]);
+  });
+
+  test('reconcileUnitsAfterIngredientChange 拿不到旧单位名字时不猜（移除）', () {
+    final units = [
+      _draft(id: 900, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 31),
+    ];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: units,
+      targetIngredientIdsByName: const {},
+      globalIdsByName: const {'颗': 49},
+    );
+    expect(result.retargeted, isEmpty);
+    expect(result.removed.single.id, 900);
+  });
+
+  test('reconcileUnitsAfterIngredientChange 引用仍有效时什么都不动', () {
+    final units = [
+      _draft(id: 900, name: '箱', weightPerUnit: 12, weightUnitOverrideId: 88),
+      _draft(id: 901, name: '个', weightPerUnit: 200, weightUnitId: 18),
+    ];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: units,
+      targetIngredientIdsByName: const {'颗': 88},
+      globalIdsByName: const {'个': 18},
+    );
+    expect(result.retargeted, isEmpty);
+    expect(result.removed, isEmpty);
+    expect(result.units.length, 2);
+  });
 }

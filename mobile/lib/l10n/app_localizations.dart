@@ -3054,6 +3054,12 @@ abstract class AppLocalizations {
   /// **'营养信息保存失败：{detail}'**
   String productDraftNutritionFailed(Object detail);
 
+  /// No description provided for @productDanglingUnitsRetargeted.
+  ///
+  /// In zh, this message translates to:
+  /// **'以下自定义单位引用的单位在新原料中不存在，已改用同名单位：{names}'**
+  String productDanglingUnitsRetargeted(Object names);
+
   /// No description provided for @productDanglingUnitsRemoved.
   ///
   /// In zh, this message translates to:

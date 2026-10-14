@@ -1605,6 +1605,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRetargeted(Object names) {
+    return 'كانت هذه الوحدات المخصصة تشير إلى وحدات غير موجودة في المكوّن الجديد، وأصبحت الآن تشير إلى الوحدة التي تحمل الاسم نفسه: $names';
+  }
+
+  @override
   String productDanglingUnitsRemoved(Object names) {
     return 'تمت إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد: $names';
   }

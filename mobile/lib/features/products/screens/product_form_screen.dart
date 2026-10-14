@@ -106,8 +106,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   int _globalWeight = 50;
   /// 表单载入时的商品名（用于判断保存时是否真的改名 → 决定要不要刷新价格列表）
   String _initialName = '';
-  /// 表单载入时的关联原料 id：保存时对比判断是否换绑原料（触发引用清理）
+  /// 表单载入时的关联原料 id：保存时对比判断是否换绑原料（触发引用调和）
   int? _initialIngredientId;
+  /// 最近一次**选中**的关联原料 id：草稿单位里的引用指向它。
+  ///
+  /// 不能直接用 `_selectedIngredient?.id`：在搜索框里打字时 `onChanged` 会先把选中
+  /// 清空（用户往往只是想重打），等 `onSelected` 触发时已经读不到「原来引用的是哪个
+  /// 原料的单位」，于是无从按名字改指向、只能误删。
+  int? _lastSelectedIngredientId;
 
   // 新增商品时先填好的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
   final List<EntityUnit> _draftUnits = [];
@@ -147,6 +153,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _selectedIngredient = widget.fixedIngredient;
     _initialName = _nameController.text.trim();
     _initialIngredientId = initialProduct?.ingredientId ?? widget.fixedIngredient?.id;
+    _lastSelectedIngredientId = _initialIngredientId;
 
     if (_isEdit) {
       _loading = true;
@@ -191,6 +198,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
               );
         _ingredientSearchController.text = _selectedIngredient?.name ?? '';
         _initialIngredientId = product.ingredientId;
+        _lastSelectedIngredientId = product.ingredientId;
         if (myWeight != null) {
           _myWeightEnabled = myWeight.source == 'override';
           _myWeight = myWeight.overrideWeight ?? myWeight.globalWeight;
@@ -359,12 +367,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           tags: _tags,
         );
         if (!mounted) return;
-        // 只有变更真正落地（管理员直写）才清理：普通用户的换绑走待审，可能被驳回
+        // 只有变更真正落地（管理员直写）才调和：普通用户的换绑走待审，可能被驳回
         if (ingredientChanged && !result.pending) {
-          // 换了关联原料：商品自定义单位里引用「旧原料单位」的行会悬空，移除并告知用户
-          await _removeUnitsDanglingAfterIngredientChange(
+          // 换了关联原料：商品自定义单位里引用「旧原料单位」的行先改指向同名单位
+          // （新原料同名 > 全局同名），实在没有同名单位才移除，并告知用户
+          await _reconcileUnitsAfterIngredientChange(
             widget.product!.id,
             _selectedIngredient!.id,
+            _initialIngredientId,
           );
           if (!mounted) return;
         }
@@ -587,88 +597,176 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     }
   }
 
-  /// 新增态换绑关联原料后清理草稿单位：
-  /// 引用链在「本批草稿 + 新原料」里解析不了的行（引用的是旧原料独有的单位）直接丢弃，
-  /// 并提示用户 —— 草稿还没落库，本地删除没有服务端副作用。
-  /// 编辑态不在这里处理：那时是服务端数据，必须等保存落地后才能删。
-  Future<void> _pruneDraftUnitsAfterIngredientChange(int? ingredientId) async {
+  /// 新增态换绑关联原料后调和草稿单位：引用的单位在新原料里不存在时，
+  /// 先按名字改指向「新原料的同名单位 / 全局同名单位」，实在没有同名单位才丢弃，
+  /// 并提示用户 —— 草稿还没落库，本地改动没有服务端副作用。
+  /// 编辑态不在这里处理：那时是服务端数据，必须等保存落地后才能动。
+  Future<void> _reconcileDraftUnitsForIngredient(
+    int newIngredientId,
+    int? previousIngredientId,
+  ) async {
     if (_draftUnits.isEmpty) return;
-    if (ingredientId == null) return;
-    List<EntityUnit> ingredientUnits;
+    List<EntityUnit> targetUnits;
+    List<GlobalUnitOption> globals;
+    var missingRefNames = <int, String>{};
     try {
-      ingredientUnits =
-          await _entityRepository.listUnits('ingredient', ingredientId);
+      targetUnits =
+          await _entityRepository.listUnits('ingredient', newIngredientId);
+      final rows = await _entityRepository.listGlobalUnits();
+      globals = [for (final row in rows) GlobalUnitOption.fromJson(row)];
+      missingRefNames = await _unitNamesOfIngredient(previousIngredientId);
     } catch (error, stackTrace) {
-      // 读取失败不动数据（宁可留着悬空引用，也不误删用户刚填的草稿）
-      log('ProductFormScreen: 换原料后加载原料单位失败',
+      // 读取失败不动数据（宁可留着悬空引用，也不误改用户刚填的草稿）
+      log('ProductFormScreen: 换原料后加载单位参照失败',
           name: 'product_form', error: error, stackTrace: stackTrace);
       return;
     }
-    final brokenIds = unresolvableUnitIds(
-      _draftUnits,
-      {for (final unit in ingredientUnits) unit.id},
+    final result = reconcileUnitsAfterIngredientChange(
+      units: _draftUnits,
+      targetIngredientIdsByName: _unitIdsByName(targetUnits),
+      globalIdsByName: _globalIdsByName(globals),
+      missingRefNames: missingRefNames,
     );
-    if (brokenIds.isEmpty) return;
-    final removed = [
-      for (final unit in _draftUnits)
-        if (brokenIds.contains(unit.id)) unit.unitName,
-    ];
+    if (result.retargeted.isEmpty && result.removed.isEmpty) return;
     if (!mounted) return;
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
     setState(() {
-      _draftUnits.removeWhere((unit) => brokenIds.contains(unit.id));
+      _draftUnits
+        ..clear()
+        ..addAll(result.units);
     });
-    messenger.showSnackBar(
-      SnackBar(content: Text(l10n.productDanglingUnitsRemoved(removed.join(', ')))),
+    _notifyIngredientChangeReconcile(result.retargeted, result.removed);
+  }
+
+  /// 旧原料的单位 id → 名字（用于给悬空引用找同名单位）。失败返回空表。
+  Future<Map<int, String>> _unitNamesOfIngredient(int? ingredientId) async {
+    if (ingredientId == null) return {};
+    try {
+      final units = await _entityRepository.listUnits('ingredient', ingredientId);
+      return {for (final unit in units) unit.id: unit.unitName};
+    } catch (error, stackTrace) {
+      log('ProductFormScreen: 加载旧原料单位失败',
+          name: 'product_form', error: error, stackTrace: stackTrace);
+      return {};
+    }
+  }
+
+  Map<String, int> _unitIdsByName(List<EntityUnit> units) {
+    final map = <String, int>{};
+    for (final unit in units) {
+      final name = unit.unitName.trim();
+      if (name.isNotEmpty) map.putIfAbsent(name, () => unit.id);
+    }
+    return map;
+  }
+
+  Map<String, int> _globalIdsByName(List<GlobalUnitOption> globals) {
+    final map = <String, int>{};
+    for (final option in globals) {
+      final name = option.name.trim();
+      if (name.isNotEmpty) map.putIfAbsent(name, () => option.id);
+    }
+    return map;
+  }
+
+  void _notifyIngredientChangeReconcile(
+    List<EntityUnit> retargeted,
+    List<EntityUnit> removed,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    final parts = <String>[];
+    if (retargeted.isNotEmpty) {
+      parts.add(l10n.productDanglingUnitsRetargeted(
+        retargeted.map((unit) => unit.unitName).join(', '),
+      ));
+    }
+    if (removed.isNotEmpty) {
+      parts.add(l10n.productDanglingUnitsRemoved(
+        removed.map((unit) => unit.unitName).join(', '),
+      ));
+    }
+    if (parts.isEmpty) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(parts.join(' · '))),
     );
   }
 
-  /// 换绑关联原料后清理商品自定义单位：
-  /// 引用链在「本商品 + 新原料」里解析不了的单位（引用的是旧原料的单位）会被
-  /// 删除并提示用户；普通用户的删除走待审。失败只留痕，不阻塞保存流程。
-  Future<void> _removeUnitsDanglingAfterIngredientChange(
+  /// 换绑关联原料后调和商品自定义单位：引用在新原料里不存在时先改指向同名单位
+  /// （新原料的同名单位优先，其次全局同名单位），实在没有才删除；普通用户的
+  /// 删除/修改走待审。失败只留痕，不阻塞保存流程。
+  Future<void> _reconcileUnitsAfterIngredientChange(
     int productId,
     int targetIngredientId,
+    int? previousIngredientId,
   ) async {
-    final l10n = AppLocalizations.of(context);
-    final messenger = ScaffoldMessenger.of(context);
-    List<EntityUnit> units;
-    List<EntityUnit> ingredientUnits;
+    List<EntityUnit> productUnits;
+    List<EntityUnit> targetUnits;
+    List<GlobalUnitOption> globals;
+    var missingRefNames = <int, String>{};
     try {
-      units = await _entityRepository.listUnits('product', productId);
-      ingredientUnits =
+      productUnits = await _entityRepository.listUnits('product', productId);
+      targetUnits =
           await _entityRepository.listUnits('ingredient', targetIngredientId);
+      final rows = await _entityRepository.listGlobalUnits();
+      globals = [for (final row in rows) GlobalUnitOption.fromJson(row)];
+      if (previousIngredientId != null &&
+          previousIngredientId != targetIngredientId) {
+        missingRefNames = await _unitNamesOfIngredient(previousIngredientId);
+      }
     } catch (error, stackTrace) {
-      log('ProductFormScreen: 切换原料后加载商品单位失败',
+      log('ProductFormScreen: 换原料后加载商品单位失败',
           name: 'product_form', error: error, stackTrace: stackTrace);
       return;
     }
-    final available = {for (final unit in ingredientUnits) unit.id};
-    final brokenIds = unresolvableUnitIds(units, available);
-    if (brokenIds.isEmpty) return;
-    final removed = <String>[];
+    final result = reconcileUnitsAfterIngredientChange(
+      units: productUnits,
+      targetIngredientIdsByName: _unitIdsByName(targetUnits),
+      globalIdsByName: _globalIdsByName(globals),
+      missingRefNames: missingRefNames,
+    );
+    if (result.retargeted.isEmpty && result.removed.isEmpty) return;
     var pending = false;
-    for (final unit in units) {
-      if (!brokenIds.contains(unit.id)) continue;
-      removed.add(unit.unitName);
+    for (final unit in result.retargeted) {
       try {
-        final deleteResult =
+        final write = await _entityRepository.updateUnit(
+          'product',
+          productId,
+          unit.id,
+          weightUnitId: unit.weightUnitId,
+          weightUnitOverrideId: unit.weightUnitOverrideId,
+        );
+        if (write.pending) pending = true;
+      } catch (error, stackTrace) {
+        log('ProductFormScreen: 改指向自定义单位失败',
+            name: 'product_form', error: error, stackTrace: stackTrace);
+      }
+    }
+    for (final unit in result.removed) {
+      try {
+        final write =
             await _entityRepository.deleteUnit('product', productId, unit.id);
-        if (deleteResult.pending) pending = true;
+        if (write.pending) pending = true;
       } catch (error, stackTrace) {
         log('ProductFormScreen: 移除引用失效的自定义单位失败',
             name: 'product_form', error: error, stackTrace: stackTrace);
       }
     }
-    if (!mounted || removed.isEmpty) return;
-    final names = removed.join(', ');
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(pending
-            ? l10n.productDanglingUnitsRemovePending(names)
-            : l10n.productDanglingUnitsRemoved(names)),
-      ),
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context);
+    final parts = <String>[];
+    if (result.retargeted.isNotEmpty) {
+      parts.add(l10n.productDanglingUnitsRetargeted(
+        result.retargeted.map((unit) => unit.unitName).join(', '),
+      ));
+    }
+    if (result.removed.isNotEmpty) {
+      final names = result.removed.map((unit) => unit.unitName).join(', ');
+      parts.add(pending
+          ? l10n.productDanglingUnitsRemovePending(names)
+          : l10n.productDanglingUnitsRemoved(names));
+    }
+    if (parts.isEmpty) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(parts.join(' · '))),
     );
   }
 
@@ -736,14 +834,19 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       },
       displayStringForOption: (ingredient) => ingredient.name,
       onSelected: (ingredient) {
+        final previousIngredientId = _lastSelectedIngredientId;
+        _lastSelectedIngredientId = ingredient.id;
         _ingredientSearchController.text = ingredient.name;
         setState(() {
           _selectedIngredient = ingredient;
           _searching = false;
         });
-        // 新增态：换原料后草稿单位里引用「原料独有单位」的行会悬空，去掉并告知
-        // （草稿只在本地，删了没有服务端副作用；编辑态的清理在保存时做）
-        unawaited(_pruneDraftUnitsAfterIngredientChange(ingredient.id));
+        // 新增态：换原料后草稿里引用「旧原料独有单位」的行要先改指向同名单位，
+        // 没有同名单位才去掉（草稿只在本地，改没有服务端副作用；编辑态在保存时做）
+        unawaited(_reconcileDraftUnitsForIngredient(
+          ingredient.id,
+          previousIngredientId,
+        ));
       },
       optionsViewBuilder: (ctx, onSelected, options) {
         return Align(

@@ -1201,6 +1201,12 @@
       "detail": {}
     }
   },
+  "productDanglingUnitsRetargeted": "كانت هذه الوحدات المخصصة تشير إلى وحدات غير موجودة في المكوّن الجديد، وأصبحت الآن تشير إلى الوحدة التي تحمل الاسم نفسه: {names}",
+  "@productDanglingUnitsRetargeted": {
+    "placeholders": {
+      "names": {}
+    }
+  },
   "productDanglingUnitsRemoved": "تمت إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد: {names}",
   "@productDanglingUnitsRemoved": {
     "placeholders": {

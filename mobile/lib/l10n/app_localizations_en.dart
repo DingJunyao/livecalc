@@ -1613,6 +1613,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRetargeted(Object names) {
+    return 'These custom units referenced units missing from the new ingredient and now point to the same-named unit: $names';
+  }
+
+  @override
   String productDanglingUnitsRemoved(Object names) {
     return 'Removed custom unit(s) referencing units missing from the new ingredient: $names';
   }

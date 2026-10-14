@@ -164,9 +164,13 @@ class EntityRepository {
   }
 
   /// 全局单位表（原始 Map），用于解析 weight_unit_id 的类型语义（质量/体积）。
+  ///
+  /// limit 取 500：单位下拉要列出**全部启用单位**，与 web（商品/原料详情、
+  /// 新增对话框、价格页）同口径 —— 各端 limit 不一致会出现「web 13 条、
+  /// 移动端 54 条」这种同一份数据的显示数量差异。
   Future<List<Map<String, dynamic>>> listGlobalUnits() async {
     final response =
-        await _client.dio.get('/units/', queryParameters: {'limit': 100});
+        await _client.dio.get('/units/', queryParameters: {'limit': 500});
     final data = response.data;
     final list = (data is List) ? data : (data['items'] as List?) ?? const [];
     return list

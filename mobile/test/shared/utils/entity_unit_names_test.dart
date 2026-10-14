@@ -215,7 +215,7 @@ void main() {
   group('loadGlobalUnitNames', () {
     test('取 abbreviation（缺省 name），去重去空', () async {
       final fake = _FakeRequest({
-        '/units/?limit=200': [
+        '/units/?limit=500': [
           {'abbreviation': '斤', 'name': '斤'},
           {'abbreviation': 'mL', 'name': '毫升'},
           {'abbreviation': 'mL', 'name': '毫升'},
@@ -232,7 +232,7 @@ void main() {
     test('请求失败 → 空列表（调用方回退硬编码常量），不抛', () async {
       final fake = _FakeRequest(
         const {},
-        failures: {'/units/?limit=200'},
+        failures: {'/units/?limit=500'},
       );
 
       expect(await loadGlobalUnitNames(request: fake.call), isEmpty);

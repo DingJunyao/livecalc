@@ -97,6 +97,102 @@ List<EntityUnit> removeDraftUnit(List<EntityUnit> units, int unitId) {
   ];
 }
 
+/// 换原料后「调和」的结果。
+class IngredientChangeReconcile {
+  const IngredientChangeReconcile({
+    required this.units,
+    required this.retargeted,
+    required this.removed,
+  });
+
+  /// 调和后的完整列表（改指向的行已改写、要移除的行已去掉）
+  final List<EntityUnit> units;
+  /// 引用改指向「同名单位」的行（编辑态需要写回服务端）
+  final List<EntityUnit> retargeted;
+  /// 找不到同名单位、只能移除的行
+  final List<EntityUnit> removed;
+}
+
+/// 换绑关联原料后调和自定义单位。
+///
+/// 商品的单位覆盖可以引用**关联原料**的自定义单位（`weight_unit_override_id`）。
+/// 换成另一个原料后，原来的引用就指向了「新原料里不存在的 id」。此时不要直接删：
+/// 那个单位往往只是**换了归属**（例如「颗」在全局单位表里本来就有），
+/// 按名字依次找 ①新原料里的同名单位 ②全局单位里的同名单位，找到就**改指向**
+/// （保留这条自定义单位），只有真的没有同名单位才移除（含引用链被带断的下游行）。
+IngredientChangeReconcile reconcileUnitsAfterIngredientChange({
+  required List<EntityUnit> units,
+  required Map<String, int> targetIngredientIdsByName,
+  required Map<String, int> globalIdsByName,
+  Map<int, String> missingRefNames = const {},
+}) {
+  final ownIds = {for (final unit in units) unit.id};
+  final targetIds = targetIngredientIdsByName.values.toSet();
+  final rewritten = <int, EntityUnit>{};
+  final retargeted = <EntityUnit>[];
+
+  for (final unit in units) {
+    final ref = unit.weightUnitOverrideId;
+    if (ref == null) continue;
+    if (ownIds.contains(ref) || targetIds.contains(ref)) continue;
+    final name = (missingRefNames[ref] ?? '').trim();
+    if (name.isEmpty) continue;
+    final targetId = targetIngredientIdsByName[name];
+    if (targetId != null) {
+      final next = _withRef(unit, weightUnitId: null, overrideId: targetId);
+      rewritten[unit.id] = next;
+      retargeted.add(next);
+      continue;
+    }
+    final globalId = globalIdsByName[name];
+    if (globalId != null) {
+      final next = _withRef(unit, weightUnitId: globalId, overrideId: null);
+      rewritten[unit.id] = next;
+      retargeted.add(next);
+    }
+  }
+
+  final effective = [
+    for (final unit in units) rewritten[unit.id] ?? unit,
+  ];
+  final brokenIds = unresolvableUnitIds(
+    effective,
+    targetIds.difference(ownIds),
+  );
+  return IngredientChangeReconcile(
+    units: [
+      for (final unit in effective)
+        if (!brokenIds.contains(unit.id)) unit,
+    ],
+    retargeted: [
+      for (final unit in retargeted)
+        if (!brokenIds.contains(unit.id)) unit,
+    ],
+    removed: [
+      for (final unit in effective)
+        if (brokenIds.contains(unit.id)) unit,
+    ],
+  );
+}
+
+/// 复制一条单位并换掉它的「单位」引用。
+EntityUnit _withRef(
+  EntityUnit unit, {
+  required int? weightUnitId,
+  required int? overrideId,
+}) {
+  return EntityUnit(
+    id: unit.id,
+    unitName: unit.unitName,
+    conversionFactor: unit.conversionFactor,
+    weightPerUnit: unit.weightPerUnit,
+    isDefault: unit.isDefault,
+    source: unit.source,
+    weightUnitId: weightUnitId,
+    weightUnitOverrideId: overrideId,
+  );
+}
+
 /// 找出引用链无法解析的单位。
 ///
 /// 「无法解析」指：[weightUnitOverrideId] 指向的行不在 [units] 里、也不在

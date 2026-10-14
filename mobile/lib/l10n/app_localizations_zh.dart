@@ -1576,6 +1576,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String productDanglingUnitsRetargeted(Object names) {
+    return '以下自定义单位引用的单位在新原料中不存在，已改用同名单位：$names';
+  }
+
+  @override
   String productDanglingUnitsRemoved(Object names) {
     return '以下自定义单位引用的单位在新原料中不存在，已移除：$names';
   }

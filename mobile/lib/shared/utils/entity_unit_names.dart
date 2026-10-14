@@ -74,7 +74,7 @@ Future<List<String>> loadGlobalUnitNames({
   EntityUnitsRequest? request,
 }) async {
   final fetch = request ?? _apiGet(client);
-  const path = '/units/?limit=200';
+  const path = '/units/?limit=500';
   final Object? data;
   try {
     data = await fetch(path);

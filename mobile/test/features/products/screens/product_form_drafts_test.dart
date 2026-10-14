@@ -163,6 +163,31 @@ class _FakeEntityRepository extends EntityRepository {
     return const EntityWriteResult<void>(value: null, pending: false);
   }
 
+  /// 记录改指向（编辑态调和会 PUT 引用字段）
+  final List<({int id, int? weightUnitId, int? weightUnitOverrideId})>
+      updatedUnits = [];
+
+  @override
+  Future<EntityWriteResult<EntityUnit>> updateUnit(
+    String entityType,
+    int entityId,
+    int unitId, {
+    String? unitName,
+    double? conversionFactor,
+    double? weightPerUnit,
+    Object? weightUnitId,
+    Object? weightUnitOverrideId,
+    bool? isDefault,
+    bool isAdmin = true,
+  }) async {
+    updatedUnits.add((
+      id: unitId,
+      weightUnitId: weightUnitId as int?,
+      weightUnitOverrideId: weightUnitOverrideId as int?,
+    ));
+    return const EntityWriteResult<EntityUnit>(value: null, pending: false);
+  }
+
   @override
   Future<List<EntityDensity>> listDensities(
     String entityType,
@@ -575,6 +600,99 @@ void main() {
     expect(find.byType(EntityUnitsDraftScreen), findsOneWidget); // 确认确实进了草稿页
     expect(find.text('No custom units'), findsOneWidget);
     expect(find.text('箱'), findsNothing);
+  });
+
+  testWidgets('新增态换原料后，引用改指向同名全局单位（单位不丢）', (tester) async {
+    // 用户实测：引用的是「颗」，全局单位表里本来也有「颗」→ 换原料后不该被清掉
+    final entityRepo = _FakeEntityRepository()
+      ..ingredient5Units = const [
+        EntityUnit(id: 77, unitName: '颗', weightPerUnit: 500, weightUnitId: 1),
+      ]
+      ..ingredient6Units = const [];
+    final persister = _RecordingPersister();
+    await _pumpForm(tester, persister: persister, entityRepository: entityRepo);
+    await tester.enterText(find.byType(TextFormField).first, 'Milk');
+    await _selectIngredient(tester);
+
+    await _tapDraftTile(tester, 'Custom units');
+    await tester.tap(find.byTooltip('Add'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('颗 (from ingredient)'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Unit name *'), '箱');
+    await tester.enterText(find.widgetWithText(TextField, 'Amount'), '12');
+    await tester.tap(find.text('Save unit'));
+    await tester.pumpAndSettle();
+    await _closeDraftFlow(tester);
+
+    // 换成 Cheese(6)：新原料没有「颗」，全局单位里有 → 改指向，保留这条单位
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Search and select a linked ingredient *'),
+      'Cheese',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(of: find.byType(ListTile), matching: find.text('Cheese'))
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    // 提示说的是「已改用同名单位」，不是「已移除」
+    expect(find.textContaining('箱'), findsOneWidget);
+    expect(find.textContaining('same-named unit'), findsOneWidget);
+
+    // 落库时仍带这条单位，引用改成全局「颗」(49)、不再引用原料覆盖
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+    expect(persister.units.single.unitName, '箱');
+    expect(persister.units.single.weightUnitId, 49);
+    expect(persister.units.single.weightUnitOverrideId, isNull);
+  });
+
+  testWidgets('编辑态换原料后，失效引用改指向同名全局单位（不删除）', (tester) async {
+    final entityRepo = _FakeEntityRepository()
+      ..productUnits = const [
+        EntityUnit(id: 9, unitName: '箱', weightPerUnit: 12, weightUnitOverrideId: 77),
+      ]
+      ..ingredient5Units = const [
+        EntityUnit(id: 77, unitName: '颗', weightPerUnit: 500, weightUnitId: 1),
+      ]
+      ..ingredient6Units = const [];
+    final persister = _RecordingPersister();
+    final productRepo = _FakeProductRepository();
+    await _pumpEditForm(
+      tester,
+      persister: persister,
+      entityRepository: entityRepo,
+      productRepository: productRepo,
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Linked ingredient'),
+      'Cheese',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find
+          .descendant(of: find.byType(ListTile), matching: find.text('Cheese'))
+          .first,
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(productRepo.updatedIngredientId, 6);
+    expect(entityRepo.deletedUnitIds, isEmpty);
+    expect(entityRepo.updatedUnits.length, 1);
+    expect(entityRepo.updatedUnits.single.id, 9);
+    expect(entityRepo.updatedUnits.single.weightUnitId, 49);
+    expect(entityRepo.updatedUnits.single.weightUnitOverrideId, isNull);
   });
 
   testWidgets('换绑原料后，引用失效的商品自定义单位被移除并提示', (tester) async {
