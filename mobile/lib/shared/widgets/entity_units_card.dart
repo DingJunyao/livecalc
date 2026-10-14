@@ -550,6 +550,24 @@ class _ResolvedUnit {
   });
 }
 
+/// 每 1 个全局质量/体积单位的克数。
+///
+/// 注意：后端 `/units/` 的 `si_factor` 基准是 **SI 基本单位**，不是克/mL——
+/// - 质量：换算到 **kg**（克 = 0.001、斤 = 0.5、100g = 0.1、kg = 1），
+///   见 `backend/app/main.py:57`「si_factor 以 kg 为基准，100g = 0.1kg」，
+///   故 1 个质量单位 = `si_factor × 1000` 克（200 g 就是 200 g，不是 0.2 g）。
+/// - 体积：换算到 **L**（mL = 0.001、L = 1），见
+///   `unit_conversion_service.py:180`「体积 si_factor 换算到 SI 基本单位 L（不是 m³）」，
+///   故 1 个体积单位 = `si_factor`(L) × 0.001(m³/L) × 密度(kg/m³) × 1000(g/kg)
+///   = `si_factor × 密度` 克（220 mL / 1030 kg/m³ → 226.6 g）。
+///
+/// 不要"化简"回 `si_factor / 1000`，那会让显示值小 1000 倍。
+double _gramsPerGlobalWeightUnit(GlobalUnitOption option, double densityKgM3) {
+  return option.isVolume
+      ? option.siFactor * densityKgM3
+      : option.siFactor * 1000.0;
+}
+
 /// 解析 [unit] 的「1 单位 = 量 × 重量单位」：
 /// 沿 weight_unit_override_id 链递归（visited + 深度上限 [unitChainDepthCap]），
 /// 终点是全局质量/体积单位（体积经密度折算），或未设置（按克）。
@@ -578,9 +596,8 @@ _ResolvedUnit? _resolveUnit(
     if (weightUnitId != null) {
       final option = byGlobalId[weightUnitId];
       if (option == null) return null;
-      final perWeightUnit = option.isVolume
-          ? option.siFactor * densityKgM3 / 1000.0
-          : option.siFactor;
+      // si_factor 基准见 [_gramsPerGlobalWeightUnit]（质量→kg、体积→L）。
+      final perWeightUnit = _gramsPerGlobalWeightUnit(option, densityKgM3);
       return perWeightUnit * value * factor;
     }
     if (refId == null) return value * factor;
@@ -599,9 +616,8 @@ _ResolvedUnit? _resolveUnit(
       final option = byGlobalId[weightUnitId];
       if (option == null) return null;
       return _ResolvedUnit(
-        gramsPerWeightUnit: option.isVolume
-            ? option.siFactor * densityKgM3 / 1000.0
-            : option.siFactor,
+        // si_factor 基准见 [_gramsPerGlobalWeightUnit]（质量→kg、体积→L）。
+        gramsPerWeightUnit: _gramsPerGlobalWeightUnit(option, densityKgM3),
         isVolume: option.isVolume,
         weightUnitLabel:
             option.abbreviation.isEmpty ? option.name : option.abbreviation,
@@ -831,6 +847,9 @@ class _UnitEditPageState extends ConsumerState<_UnitEditPage> {
     return false;
   }
 
+  /// 选中的全局单位的原始 `si_factor`。体积语义下它是「换算到 L」的系数
+  /// （mL = 0.001、L = 1，见 unit_conversion_service.py:180），**不是** mL→g；
+  /// 只有体积提示 [_volumeHint] 用它，质量路径不经过这里。
   double get _selectedSiFactor {
     final globalId = _weightUnitId;
     if (globalId == null) return 1;
@@ -843,7 +862,10 @@ class _UnitEditPageState extends ConsumerState<_UnitEditPage> {
   String _volumeHint(AppLocalizations l10n) {
     final value = _parseLocalizedNumber(_weight.text);
     if (value == null || value <= 0) return l10n.unitsVolumeDensityHintEmpty;
-    final grams = value * _selectedSiFactor * _density / 1000.0;
+    // 1 个体积单位 = si_factor(L) × 0.001(m³/L) × 密度(kg/m³) × 1000(g/kg)
+    //               = value × si_factor × 密度
+    // 这里不能再除 1000：0.001 与 1000 正好抵消（220 mL / 1030 → 226.6 g）。
+    final grams = value * _selectedSiFactor * _density;
     return l10n.unitsVolumeDensityHint(
       formatQuantity(_density / 1000),
       formatQuantity(grams),
