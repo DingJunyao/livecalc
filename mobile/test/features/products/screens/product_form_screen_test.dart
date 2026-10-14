@@ -9,6 +9,8 @@ import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/nutrition/models/usda_models.dart';
+import 'package:com_a4ding_livecalc/features/prices/providers/price_provider.dart';
+import 'package:com_a4ding_livecalc/features/prices/repositories/price_repository.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/alias_tags_field.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
@@ -98,6 +100,18 @@ class _ScanLookupRepository extends ProductRepository {
   @override
   Future<BarcodeLookupResult> lookupBarcode(String barcode) {
     return completer.future;
+  }
+}
+
+/// 记录 loadRecords 调用次数（改名后应恰好刷新一次）。
+class _FakePriceListNotifier extends PriceListNotifier {
+  _FakePriceListNotifier() : super(PriceRepository());
+
+  int loadRecordsCalls = 0;
+
+  @override
+  Future<void> loadRecords({bool loadMore = false}) async {
+    loadRecordsCalls++;
   }
 }
 
@@ -370,5 +384,109 @@ void main() {
 
     expect(repo.lastSetMyWeight, isNull);
     expect(repo.deleteMyWeightCalls, 1);
+  });
+
+  testWidgets('编辑商品改名后刷新价格列表（恰好一次 loadRecords）', (tester) async {
+    await useTallViewport(tester);
+    final repo = _FakeProductRepository(const Product(
+      id: 12,
+      name: '低筋粉',
+      ingredientId: 8,
+      ingredientName: '面粉',
+    ));
+    final priceList = _FakePriceListNotifier();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        priceListProvider.overrideWith((ref) => priceList),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProductFormScreen(
+          product: const Product(id: 12, name: '低筋粉'),
+          repository: repo,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '高筋粉',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastName, '高筋粉');
+    expect(priceList.loadRecordsCalls, 1);
+  });
+
+  testWidgets('编辑商品未改名不刷新价格列表', (tester) async {
+    await useTallViewport(tester);
+    final repo = _FakeProductRepository(const Product(
+      id: 12,
+      name: '低筋粉',
+      ingredientId: 8,
+      ingredientName: '面粉',
+    ));
+    final priceList = _FakePriceListNotifier();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        priceListProvider.overrideWith((ref) => priceList),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProductFormScreen(
+          product: const Product(id: 12, name: '低筋粉'),
+          repository: repo,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // 只改品牌，名字保持原样
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Brand'),
+      '新品牌',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastName, '低筋粉');
+    expect(priceList.loadRecordsCalls, 0);
+  });
+
+  testWidgets('新增商品保存不刷新价格列表', (tester) async {
+    await useTallViewport(tester);
+    final repo = _FakeProductRepository(const Product(id: 0, name: ''));
+    final priceList = _FakePriceListNotifier();
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        priceListProvider.overrideWith((ref) => priceList),
+      ],
+      child: MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ProductFormScreen(
+          fixedIngredient: const Ingredient(id: 8, name: '面粉'),
+          repository: repo,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '高筋粉',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastCreatedName, '高筋粉');
+    expect(priceList.loadRecordsCalls, 0);
   });
 }

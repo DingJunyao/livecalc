@@ -266,6 +266,8 @@ class ProductDetailPageState {
   final bool loadingNutrition;
   final bool savingNutrition;
   final List<EntityUnit> units;
+  /// 关联原料的自定义单位：本商品没同名覆盖时继承使用（「箱 = 12 盒」里的盒）
+  final List<EntityUnit> inheritedUnits;
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
   /// 可作为「重量单位」的全局质量/体积单位（单位表单下拉用）
@@ -295,6 +297,7 @@ class ProductDetailPageState {
     this.loadingNutrition = false,
     this.savingNutrition = false,
     this.units = const [],
+    this.inheritedUnits = const [],
     this.unmappedUnits = const [],
     this.densities = const [],
     this.globalUnitOptions = const [],
@@ -323,6 +326,7 @@ class ProductDetailPageState {
     bool? loadingNutrition,
     bool? savingNutrition,
     List<EntityUnit>? units,
+    List<EntityUnit>? inheritedUnits,
     List<UnmappedUnit>? unmappedUnits,
     List<EntityDensity>? densities,
     List<GlobalUnitOption>? globalUnitOptions,
@@ -355,6 +359,7 @@ class ProductDetailPageState {
       loadingNutrition: loadingNutrition ?? this.loadingNutrition,
       savingNutrition: savingNutrition ?? this.savingNutrition,
       units: units ?? this.units,
+      inheritedUnits: inheritedUnits ?? this.inheritedUnits,
       unmappedUnits: unmappedUnits ?? this.unmappedUnits,
       densities: densities ?? this.densities,
       globalUnitOptions: globalUnitOptions ?? this.globalUnitOptions,
@@ -793,11 +798,13 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     try {
       await _ensureGlobalUnits();
       final units = await _entityRepo.listUnits('product', productId);
+      final inherited = await _loadInheritedUnits();
       final unmapped =
           await _entityRepo.listUnmappedUnits('product', productId);
       final densities = await _entityRepo.listDensities('product', productId);
       state = state.copyWith(
         units: units,
+        inheritedUnits: inherited,
         unmappedUnits: unmapped,
         densities: densities,
         globalUnitOptions: _weightUnitOptions,
@@ -807,6 +814,17 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       );
     } on Exception {
       state = state.copyWith(loadingUnits: false);
+    }
+  }
+
+  /// 关联原料的自定义单位（继承用）：本商品没有同名覆盖时可在下拉里选用。
+  Future<List<EntityUnit>> _loadInheritedUnits() async {
+    final ingredientId = state.product?.ingredientId;
+    if (ingredientId == null) return const [];
+    try {
+      return await _entityRepo.listUnits('ingredient', ingredientId);
+    } on Exception {
+      return const [];
     }
   }
 

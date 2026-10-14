@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,17 +9,43 @@ import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/widgets/numeric_keypad.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../shared/utils/entity_unit_names.dart';
 import '../../../l10n/app_localizations.dart';
 
+/// 快速填写每行单位菜单的兜底列表（全局单位拉取失败时使用）。
+const quickFillFallbackUnits = <String>['个', '斤', '克', '千克', '升', '毫升', '包', '瓶', '袋', '箱'];
+
 class QuickFillScreen extends ConsumerStatefulWidget {
-  const QuickFillScreen({super.key});
+  const QuickFillScreen({
+    super.key,
+    this.priceRepository,
+    this.merchantRepository,
+    this.unitNamesLoader,
+    this.globalUnitNamesLoader,
+    this.merchantsLoader,
+  });
+
+  /// 测试注入，缺省用真实 repository。
+  final PriceRepository? priceRepository;
+  final MerchantRepository? merchantRepository;
+
+  /// 测试注入：某商品（含关联原料）的自定义单位名加载器。
+  final Future<List<String>> Function(int productId, int? ingredientId)?
+      unitNamesLoader;
+
+  /// 测试注入：全局单位基准加载器（缺省走 GET /units/，失败回退常量列表）。
+  final Future<List<String>> Function()? globalUnitNamesLoader;
+
+  /// 测试注入：商家列表加载器（缺省走 GET /merchants）。
+  final Future<List<Map<String, dynamic>>> Function()? merchantsLoader;
 
   @override
   ConsumerState<QuickFillScreen> createState() => _QuickFillScreenState();
 }
 
 class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
-  final _repo = PriceRepository();
+  late final PriceRepository _repo;
+  late final MerchantRepository _merchantRepo;
   int? _selectedMerchantId;
   String _currency = 'CNY';
   String _currencySymbol = '¥';
@@ -26,14 +55,26 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   final List<_PriceRow> _rows = [];
   bool _loading = false;
 
+  /// 每行商品的自定义单位缓存（key = productId）。
+  /// 行数即商家历史商品数，网络请求不阻塞 UI，到达后 setState 让菜单可见。
+  final Map<int, List<String>> _customUnitsByProduct = {};
+  /// 已发起过自定义单位请求的商品 id（避免重复请求）。
+  final Set<int> _unitsRequested = {};
+  /// 全局单位基准（GET /units/）；为空时回退 [quickFillFallbackUnits]。
+  List<String> _globalUnits = const [];
+  bool _globalUnitsLoading = false;
+
   // Merchant search / selection
   List<Map<String, dynamic>> _merchants = [];
 
   @override
   void initState() {
     super.initState();
+    _repo = widget.priceRepository ?? PriceRepository();
+    _merchantRepo = widget.merchantRepository ?? MerchantRepository();
     _loadMerchants();
     _loadCurrencies();
+    _ensureGlobalUnits();
   }
 
   @override
@@ -47,15 +88,28 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
 
   Future<void> _loadMerchants() async {
     try {
-      final resp = await _repo.client.dio.get('/merchants');
-      // 响应可能是 List 或 {items, total, ...} 对象，统一取 items 列表
-      final list = (resp.data is List)
-          ? resp.data as List<dynamic>
-          : (resp.data['items'] as List<dynamic>);
-      setState(() {
-        _merchants = list.cast<Map<String, dynamic>>();
-      });
-    } catch (_) {}
+      final custom = widget.merchantsLoader;
+      final List<Map<String, dynamic>> list;
+      if (custom != null) {
+        list = await custom();
+      } else {
+        final resp = await _repo.client.dio.get('/merchants');
+        // 响应可能是 List 或 {items, total, ...} 对象，统一取 items 列表
+        final raw = (resp.data is List)
+            ? resp.data as List<dynamic>
+            : (resp.data['items'] as List<dynamic>);
+        list = raw.cast<Map<String, dynamic>>();
+      }
+      if (!mounted) return;
+      setState(() => _merchants = list);
+    } catch (error, stackTrace) {
+      log(
+        'QuickFillScreen: 商家列表加载失败',
+        name: 'quick_fill',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
   }
 
   void _selectMerchant(Map<String, dynamic> merchant) {
@@ -89,12 +143,12 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     try {
       // 对齐 web 端：用 /merchants/{id}/product-prices（limit 200）获取全部商品，
       // 而非 /products 分页 20 条记录去重（商品多时会截断）。
-      final merchantRepo = MerchantRepository();
-      final page = await merchantRepo.getProductPrices(
+      final page = await _merchantRepo.getProductPrices(
         _selectedMerchantId!,
         skip: 0,
         limit: 200,
       );
+      if (!mounted) return;
       setState(() {
         _rows.clear();
         for (final p in page.items) {
@@ -106,9 +160,95 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
         }
         _loading = false;
       });
-    } catch (_) {
-      setState(() => _loading = false);
+      // 行重建后预取各行商品（及其关联原料）的自定义单位；
+      // 不 await —— 菜单打开时能看到就已足够，加载失败回退常量列表。
+      unawaited(_preloadCustomUnits());
+    } catch (error, stackTrace) {
+      log(
+        'QuickFillScreen: 商家历史商品加载失败',
+        name: 'quick_fill',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// 全局单位基准（GET /units/，与 web 同源），失败回退 [quickFillFallbackUnits]。
+  Future<void> _ensureGlobalUnits() async {
+    if (_globalUnits.isNotEmpty || _globalUnitsLoading) return;
+    _globalUnitsLoading = true;
+    try {
+      final names = await (widget.globalUnitNamesLoader?.call() ??
+          loadGlobalUnitNames());
+      if (names.isNotEmpty && mounted) {
+        setState(() => _globalUnits = names);
+      }
+    } catch (error, stackTrace) {
+      log(
+        'QuickFillScreen: 全局单位加载失败，回退常量列表',
+        name: 'quick_fill',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _globalUnitsLoading = false;
+    }
+  }
+
+  /// 按 productId 预取自定义单位（缓存在 [_customUnitsByProduct]）。
+  ///
+  /// 每个商品一次 `loadEntityUnitNames`（商品自身 + 关联原料，最多 3 个请求），
+  /// 并发限制在 4 路以内，避免商家历史商品多时打出请求风暴。
+  Future<void> _preloadCustomUnits() async {
+    final pending = <int>[];
+    for (final row in _rows) {
+      final id = row.productId;
+      if (id != null && !_unitsRequested.contains(id)) {
+        _unitsRequested.add(id);
+        pending.add(id);
+      }
+    }
+    if (pending.isEmpty) return;
+
+    var next = 0;
+    Future<void> worker() async {
+      while (next < pending.length) {
+        final id = pending[next++];
+        var names = const <String>[];
+        try {
+          names = await (widget.unitNamesLoader?.call(id, null) ??
+              loadEntityUnitNames(entityType: 'product', entityId: id));
+        } catch (error, stackTrace) {
+          // 单个商品失败只影响它自己的菜单（回退常量列表），不打扰用户。
+          log(
+            'QuickFillScreen: 商品 $id 自定义单位加载失败',
+            name: 'quick_fill',
+            error: error,
+            stackTrace: stackTrace,
+          );
+          names = const [];
+        }
+        if (!mounted) return;
+        _customUnitsByProduct[id] = names;
+      }
+    }
+
+    final workers = pending.length < 4 ? pending.length : 4;
+    await Future.wait(List.generate(workers, (_) => worker()));
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// 某行单位菜单的选项：该商品自定义单位在前 → 全局单位 → 兜底常量，
+  /// 并保证当前 [row.unit] 一定在列表里。
+  List<String> _unitOptionsFor(_PriceRow row) {
+    final productId = row.productId;
+    final custom = productId == null
+        ? const <String>[]
+        : (_customUnitsByProduct[productId] ?? const <String>[]);
+    final base = _globalUnits.isNotEmpty ? _globalUnits : quickFillFallbackUnits;
+    return mergePriceUnitOptions(custom, base, current: row.unit);
   }
 
   /// 记录本次导入商品顺序（POST /merchants/{id}/product-orders）。
@@ -357,6 +497,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                   return _PriceRowWidget(
                                     row: _rows[i],
                                     currencySymbol: _currencySymbol,
+                                    unitOptions: _unitOptionsFor(_rows[i]),
+                                    onUnitChanged: (u) => setState(
+                                        () => _rows[i].unit = u),
                                     onShowKeypad: () => _showKeypad(_rows[i]),
                                   );
                                 },
@@ -404,11 +547,15 @@ class _PriceRow {
 class _PriceRowWidget extends StatelessWidget {
   final _PriceRow row;
   final String currencySymbol;
+  final List<String> unitOptions;
+  final ValueChanged<String> onUnitChanged;
   final VoidCallback onShowKeypad;
 
   const _PriceRowWidget({
     required this.row,
     required this.currencySymbol,
+    required this.unitOptions,
+    required this.onUnitChanged,
     required this.onShowKeypad,
   });
 
@@ -461,11 +608,12 @@ class _PriceRowWidget extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                onSelected: (u) => row.unit = u,
-                itemBuilder: (_) => '个,斤,克,千克,升,毫升,包,瓶,袋,箱'
-                    .split(',')
-                    .map((u) => PopupMenuItem(value: u, child: Text(u)))
-                    .toList(),
+                key: Key('quick-fill-unit-${row.productId ?? row.nameController.text}'),
+                onSelected: onUnitChanged,
+                itemBuilder: (_) => [
+                  for (final u in unitOptions)
+                    PopupMenuItem(value: u, child: Text(u)),
+                ],
                 child: Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

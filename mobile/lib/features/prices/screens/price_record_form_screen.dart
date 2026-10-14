@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -47,6 +48,12 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
   final Future<List<String>> Function(int productId, int? ingredientId)?
       unitNamesLoader;
 
+  /// 测试注入：全局单位基准加载器（缺省走 GET /units/，失败回退常量）。
+  final Future<List<String>> Function()? globalUnitNamesLoader;
+
+  /// 测试注入：实体单位请求缝，供缺省 [loadEntityUnitNames] 使用（不走真实网络）。
+  final EntityUnitsRequest? entityUnitsRequest;
+
   const PriceRecordFormScreen({
     super.key,
     this.priceRepository,
@@ -54,6 +61,8 @@ class PriceRecordFormScreen extends ConsumerStatefulWidget {
     this.prefill,
     this.scanner,
     this.unitNamesLoader,
+    this.globalUnitNamesLoader,
+    this.entityUnitsRequest,
   });
 
   @override
@@ -75,6 +84,9 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   String _unit = '斤';
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
+  /// 全局单位基准（GET /units/）；为空时回退 [priceRecordUnits] 常量
+  List<String> _globalUnits = const [];
+  bool _globalUnitsLoading = false;
   /// 已按其加载过自定义单位的商品 id，避免重复请求
   int? _unitsLoadedForProductId;
   int _unitsSeq = 0;
@@ -128,6 +140,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     // 构建阶段内写 provider 会抛异常，微任务延后（对齐 price_list_screen 惯例）
     Future.microtask(() => ref.read(merchantListProvider.notifier).load());
     _loadCurrencies();
+    _ensureGlobalUnits();
     final prefillProduct = widget.prefill?.product;
     if (prefillProduct != null) {
       _loadCustomUnits(prefillProduct.id, prefillProduct.ingredientId);
@@ -220,6 +233,37 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
       _searchResults = const [];
     });
     _loadCustomUnits(p.id, p.ingredientId);
+    _ensureGlobalUnits();
+  }
+
+  /// 价格单位下拉的「基准列表」：全局单位（GET /units/，与 web 同源），
+  /// 拉不到时回退 [priceRecordUnits] 常量。
+  ///
+  /// 之前只用常量，导致单位管理里存在、但不在常量里的全局单位
+  /// （把/条/块/mL/桶…）在移动端下拉里根本选不到。
+  List<String> get _baseUnits =>
+      _globalUnits.isNotEmpty ? _globalUnits : priceRecordUnits;
+
+  Future<void> _ensureGlobalUnits() async {
+    if (_globalUnits.isNotEmpty || _globalUnitsLoading) return;
+    _globalUnitsLoading = true;
+    try {
+      final names = await (widget.globalUnitNamesLoader?.call() ??
+          loadGlobalUnitNames(request: widget.entityUnitsRequest));
+      if (names.isNotEmpty && mounted) {
+        setState(() => _globalUnits = names);
+      }
+    } catch (error, stackTrace) {
+      // 全局单位拉取失败只影响「多出来的可选项」，回退常量即可，不打扰用户。
+      log(
+        'PriceRecordFormScreen: 全局单位加载失败，回退常量列表',
+        name: 'price_record_form',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    } finally {
+      _globalUnitsLoading = false;
+    }
   }
 
   /// 选中商品后拉取「商品 + 关联原料」的自定义单位，并到价格单位下拉最前。
@@ -234,6 +278,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           entityType: 'product',
           entityId: productId,
           ingredientId: ingredientId,
+          request: widget.entityUnitsRequest,
         ));
     if (!mounted || seq != _unitsSeq) return;
     setState(() {
@@ -629,7 +674,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                       items: [
                         for (final u in mergePriceUnitOptions(
                           _customUnits,
-                          priceRecordUnits,
+                          _baseUnits,
                           current: _unit,
                         ))
                           DropdownMenuItem(value: u, child: Text(u)),

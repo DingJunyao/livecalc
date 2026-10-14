@@ -589,6 +589,14 @@
   "@unitsWeightValueLabel": {},
   "unitsWeightUnitLabel": "Unit",
   "@unitsWeightUnitLabel": {},
+  "unitsWeightUnitDefault": "Default (g)",
+  "@unitsWeightUnitDefault": {},
+  "unitsCustomUnitInherited": "{name} (from ingredient)",
+  "@unitsCustomUnitInherited": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "unitsCustomUnitOption": "{name} (custom unit)",
   "@unitsCustomUnitOption": {
     "placeholders": {

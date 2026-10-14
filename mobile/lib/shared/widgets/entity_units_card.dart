@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/i18n/app_formatters.dart';
 import '../../features/entities/repositories/entity_repository.dart';
+import '../../features/profile/providers/save_button_position_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
+import 'save_action_button.dart';
 
 /// 单位数值上限（换算链解析深度），与后端环检测口径一致的客户端保护。
 const int unitChainDepthCap = 8;
@@ -46,6 +49,9 @@ class EntityUnitsCard extends StatelessWidget {
   final int entityId;
   final String? entityName;
   final List<EntityUnit> units;
+  /// 关联原料的自定义单位（仅商品有）：本商品没覆盖时继承使用，
+  /// 用于「箱 = 12 盒」这类引用（盒 定义在原料上）与下拉选项。
+  final List<EntityUnit> inheritedUnits;
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
   final List<GlobalUnitOption> globalUnitOptions;
@@ -65,6 +71,7 @@ class EntityUnitsCard extends StatelessWidget {
     required this.entityId,
     this.entityName,
     required this.units,
+    this.inheritedUnits = const [],
     required this.unmappedUnits,
     required this.densities,
     this.globalUnitOptions = const [],
@@ -91,36 +98,51 @@ class EntityUnitsCard extends StatelessWidget {
     return null;
   }
 
-  Future<void> _openUnitDialog(
+  /// 参与换算链解析与下拉选项的完整单位表：本实体的覆盖优先，
+  /// 其次是继承自关联原料的覆盖（同名时本实体的覆盖胜出）。
+  List<EntityUnit> get _allUnits {
+    final ownNames = {for (final unit in units) unit.unitName};
+    return [
+      ...units,
+      for (final unit in inheritedUnits)
+        if (!ownNames.contains(unit.unitName)) unit,
+    ];
+  }
+
+  Future<void> _openUnitPage(
     BuildContext context, {
     EntityUnit? unit,
     String? prefillName,
   }) async {
-    // 保存成功后对话框自行关闭并由 provider 重新拉取列表，这里只负责打开。
-    await showDialog<bool>(
-      context: context,
-      builder: (ctx) => _UnitDialog(
-        unit: unit,
-        initialName: prefillName,
-        units: units,
-        globalUnitOptions: globalUnitOptions,
-        effectiveDensityKgM3: _effectiveDensity,
-        onSave: (input) => unit == null
-            ? onAddUnit(input)
-            : onEditUnit(unit.id, input),
+    // 单位编辑是整页（与价格记录编辑一致的体验，不再用对话框）：
+    // 覆盖底部导航，编辑时不误触；保存成功后页面 pop(true)，provider 已回调里重拉列表。
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (ctx) => _UnitEditPage(
+          unit: unit,
+          initialName: prefillName,
+          units: _allUnits,
+          inheritedUnitIds: {for (final unit in inheritedUnits) unit.id},
+          globalUnitOptions: globalUnitOptions,
+          effectiveDensityKgM3: _effectiveDensity,
+          onSave: (input) => unit == null
+              ? onAddUnit(input)
+              : onEditUnit(unit.id, input),
+        ),
       ),
     );
   }
 
-  Future<void> _openDensityDialog(
+  Future<void> _openDensityPage(
     BuildContext context, {
     EntityDensity? density,
   }) async {
-    await showDialog<bool>(
-      context: context,
-      builder: (ctx) => _DensityDialog(
-        density: density,
-        onSave: onAddDensity,
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (ctx) => _DensityEditPage(
+          density: density,
+          onSave: onAddDensity,
+        ),
       ),
     );
   }
@@ -212,7 +234,7 @@ class EntityUnitsCard extends StatelessWidget {
                   IconButton(
                     tooltip: l10n.commonAdd,
                     visualDensity: VisualDensity.compact,
-                    onPressed: () => _openUnitDialog(context),
+                    onPressed: () => _openUnitPage(context),
                     icon: const Icon(Icons.add),
                   ),
                 ],
@@ -233,7 +255,7 @@ class EntityUnitsCard extends StatelessWidget {
                           avatar: const Icon(Icons.add, size: 14),
                           label: Text(l10n.unitsUnmappedUsage(
                               unit.unitName, formatNumber(unit.usageCount))),
-                          onPressed: () => _openUnitDialog(
+                          onPressed: () => _openUnitPage(
                             context,
                             prefillName: unit.unitName,
                           ),
@@ -248,13 +270,13 @@ class EntityUnitsCard extends StatelessWidget {
                     detail: _unitDetailLine(
                       context,
                       unit,
-                      units,
+                      _allUnits,
                       globalUnitOptions,
                       _effectiveDensity,
                     ),
                     onEdit: unit.isPending
                         ? null
-                        : () => _openUnitDialog(context, unit: unit),
+                        : () => _openUnitPage(context, unit: unit),
                     onDelete: unit.isPending
                         ? null
                         : () => _confirmDeleteUnit(context, unit),
@@ -275,7 +297,7 @@ class EntityUnitsCard extends StatelessWidget {
                     IconButton(
                       tooltip: l10n.commonAdd,
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _openDensityDialog(context),
+                      onPressed: () => _openDensityPage(context),
                       icon: const Icon(Icons.add),
                     ),
                 ],
@@ -313,7 +335,7 @@ class EntityUnitsCard extends StatelessWidget {
                           tooltip: l10n.commonEdit,
                           visualDensity: VisualDensity.compact,
                           onPressed: () =>
-                              _openDensityDialog(context, density: density),
+                              _openDensityPage(context, density: density),
                           icon: const Icon(Icons.edit_outlined),
                         ),
                         IconButton(
@@ -645,32 +667,34 @@ double _positiveOrOne(double? value) {
   return value;
 }
 
-// ---------- 单位对话框 ----------
+// ---------- 单位编辑页（整页，非对话框） ----------
 
-class _UnitDialog extends StatefulWidget {
+class _UnitEditPage extends ConsumerStatefulWidget {
   final EntityUnit? unit;
   final String? initialName;
   final List<EntityUnit> units;
+  /// 其中哪些是「继承自关联原料」的单位（下拉里标注出来）。
+  final Set<int> inheritedUnitIds;
   final List<GlobalUnitOption> globalUnitOptions;
   final double effectiveDensityKgM3;
   final Future<Object?> Function(UnitWriteInput input) onSave;
 
-  const _UnitDialog({
+  const _UnitEditPage({
     this.unit,
     this.initialName,
     required this.units,
+    this.inheritedUnitIds = const {},
     required this.globalUnitOptions,
     required this.effectiveDensityKgM3,
     required this.onSave,
   });
 
   @override
-  State<_UnitDialog> createState() => _UnitDialogState();
+  ConsumerState<_UnitEditPage> createState() => _UnitEditPageState();
 }
 
-class _UnitDialogState extends State<_UnitDialog> {
+class _UnitEditPageState extends ConsumerState<_UnitEditPage> {
   late final TextEditingController _name;
-  late final TextEditingController _conversion;
   late final TextEditingController _weight;
   int? _weightUnitId;
   int? _weightUnitOverrideId;
@@ -682,15 +706,15 @@ class _UnitDialogState extends State<_UnitDialog> {
     super.initState();
     final unit = widget.unit;
     _name = TextEditingController(text: unit?.unitName ?? widget.initialName ?? '');
-    _conversion = TextEditingController(
-      text: unit?.conversionFactor == null
-          ? ''
-          : formatQuantity(unit!.conversionFactor!),
-    );
+    // 换算系数已从表单移除：打开时把「系数 × 量」合并进「量」，
+    // 保存时系数恒为 1，语义不变（老数据里 系数12 + 空量 会显示成 量=12）。
+    final storedFactor = _positiveOrOne(unit?.conversionFactor);
+    final storedWeight = unit?.weightPerUnit;
+    final hasAmount = storedWeight != null || (unit != null && storedFactor != 1);
     _weight = TextEditingController(
-      text: unit?.weightPerUnit == null
+      text: !hasAmount
           ? ''
-          : formatQuantity(unit!.weightPerUnit!),
+          : formatQuantity(_positiveOrOne(storedWeight) * storedFactor),
     );
     _isDefault = unit?.isDefault ?? false;
     // 优先回填嵌套引用（weight_unit_override_id），其次全局单位
@@ -704,7 +728,6 @@ class _UnitDialogState extends State<_UnitDialog> {
   @override
   void dispose() {
     _name.dispose();
-    _conversion.dispose();
     _weight.dispose();
     super.dispose();
   }
@@ -713,7 +736,8 @@ class _UnitDialogState extends State<_UnitDialog> {
       ? 1000
       : widget.effectiveDensityKgM3;
 
-  /// 下拉可选项：默认（按克）+ 全局质量/体积单位 + 本实体其它自定义单位。
+  /// 下拉可选项：默认（克）+ 全局质量/体积单位 + 本实体其它自定义单位
+  /// + 继承自关联原料的自定义单位（同名时本实体的覆盖优先）。
   List<DropdownMenuItem<int?>> _weightUnitItems() {
     final l10n = AppLocalizations.of(context);
     final excluded = _excludedOverrideIds();
@@ -721,7 +745,7 @@ class _UnitDialogState extends State<_UnitDialog> {
     final items = <DropdownMenuItem<int?>>[
       DropdownMenuItem<int?>(
         value: null,
-        child: Text('${l10n.unitsWeightLabel} · ${l10n.unitsDefault} (g)'),
+        child: Text(l10n.unitsWeightUnitDefault),
       ),
     ];
     for (final option in widget.globalUnitOptions) {
@@ -730,7 +754,12 @@ class _UnitDialogState extends State<_UnitDialog> {
     }
     for (final unit in widget.units) {
       if (excluded.contains(unit.id) || !values.add(unit.id)) continue;
-      items.add(_item(unit.id, l10n.unitsCustomUnitOption(unit.unitName)));
+      items.add(_item(
+        unit.id,
+        widget.inheritedUnitIds.contains(unit.id)
+            ? l10n.unitsCustomUnitInherited(unit.unitName)
+            : l10n.unitsCustomUnitOption(unit.unitName),
+      ));
     }
     // 当前值即使被环保护排除也要能回显（否则下拉会退回到「默认」）
     final current = _weightUnitId ?? _weightUnitOverrideId;
@@ -856,7 +885,8 @@ class _UnitDialogState extends State<_UnitDialog> {
     }
     final input = UnitWriteInput(
       unitName: name,
-      conversionFactor: _blankOrZeroToNull(_conversion.text),
+      // 换算系数已从表单移除：语义上恒为 1（存 1，避免再出现"要不要填系数"的困惑）
+      conversionFactor: 1,
       weightPerUnit: _blankOrZeroToNull(_weight.text),
       weightUnitId: _weightUnitId,
       weightUnitOverrideId: _weightUnitOverrideId,
@@ -892,102 +922,103 @@ class _UnitDialogState extends State<_UnitDialog> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final isEditing = widget.unit != null;
-    return AlertDialog(
-      title: Text(isEditing ? l10n.unitsEditTitle : l10n.unitsAddTitle),
-      content: SizedBox(
-        width: 360,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
+    final savePosition = ref.watch(saveButtonPositionProvider);
+    final saveLabel = l10n.unitsSave;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? l10n.unitsEditTitle : l10n.unitsAddTitle),
+        actions: [
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: saveLabel,
+            busy: _saving,
+          ),
+        ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: saveLabel,
+        busy: _saving,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _name,
+            decoration: InputDecoration(
+              labelText: l10n.unitsNameLabel,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          // 「量」+「单位」必须等高：量 用 TextField 的默认高度（56），
+          // 单位 用 InputDecorator 时补同样的内容边距，二者外框对齐。
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              TextField(
-                controller: _name,
-                decoration: InputDecoration(
-                  labelText: l10n.unitsNameLabel,
-                  border: const OutlineInputBorder(),
+              Expanded(
+                child: SizedBox(
+                  height: 56,
+                  child: TextField(
+                    controller: _weight,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      labelText: l10n.unitsWeightValueLabel,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _conversion,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: l10n.unitsConversionLabel,
-                  hintText: '1',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _weight,
-                      keyboardType:
-                          const TextInputType.numberWithOptions(decimal: true),
-                      onChanged: (_) => setState(() {}),
-                      decoration: InputDecoration(
-                        labelText: l10n.unitsWeightValueLabel,
-                        border: const OutlineInputBorder(),
+              const SizedBox(width: 8),
+              Expanded(
+                child: SizedBox(
+                  height: 56,
+                  child: InputDecorator(
+                    decoration: InputDecoration(
+                      labelText: l10n.unitsWeightUnitLabel,
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 16),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<int?>(
+                        key: const Key('unit-weight-unit-dropdown'),
+                        value: _weightUnitId ?? _weightUnitOverrideId,
+                        isExpanded: true,
+                        isDense: true,
+                        items: _weightUnitItems(),
+                        onChanged: _saving ? null : _selectWeightUnit,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: InputDecorator(
-                      decoration: InputDecoration(
-                        labelText: l10n.unitsWeightUnitLabel,
-                        border: const OutlineInputBorder(),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 4),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<int?>(
-                          key: const Key('unit-weight-unit-dropdown'),
-                          value: _weightUnitId ?? _weightUnitOverrideId,
-                          isExpanded: true,
-                          isDense: true,
-                          items: _weightUnitItems(),
-                          onChanged: _saving ? null : _selectWeightUnit,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (_selectedIsVolume) ...[
-                const SizedBox(height: 8),
-                Text(
-                  _volumeHint(l10n),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline),
                 ),
-              ],
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.unitsSetDefault),
-                value: _isDefault,
-                onChanged: _saving
-                    ? null
-                    : (value) => setState(() => _isDefault = value),
               ),
             ],
           ),
-        ),
+          if (_selectedIsVolume) ...[
+            const SizedBox(height: 8),
+            Text(
+              _volumeHint(l10n),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+          ],
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l10n.unitsSetDefault),
+            value: _isDefault,
+            onChanged:
+                _saving ? null : (value) => setState(() => _isDefault = value),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(l10n.unitsSave),
-        ),
-      ],
     );
   }
 }
@@ -1028,19 +1059,19 @@ double? _parseLocalizedNumber(String raw) {
   return double.tryParse(text);
 }
 
-// ---------- 密度对话框 ----------
+// ---------- 密度编辑页（整页，非对话框） ----------
 
-class _DensityDialog extends StatefulWidget {
+class _DensityEditPage extends ConsumerStatefulWidget {
   final EntityDensity? density;
   final Future<Object?> Function(DensityWriteInput input) onSave;
 
-  const _DensityDialog({this.density, required this.onSave});
+  const _DensityEditPage({this.density, required this.onSave});
 
   @override
-  State<_DensityDialog> createState() => _DensityDialogState();
+  ConsumerState<_DensityEditPage> createState() => _DensityEditPageState();
 }
 
-class _DensityDialogState extends State<_DensityDialog> {
+class _DensityEditPageState extends ConsumerState<_DensityEditPage> {
   late final TextEditingController _density;
   late final TextEditingController _condition;
   bool _saving = false;
@@ -1113,68 +1144,70 @@ class _DensityDialogState extends State<_DensityDialog> {
       (label: l10n.unitsPresetSoySauce, value: 1150),
       (label: l10n.unitsPresetHoney, value: 1420),
     ];
-    return AlertDialog(
-      title: Text(isEditing ? l10n.unitsEditTitle : l10n.densityAddTitle),
-      content: SizedBox(
-        width: 360,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+    final savePosition = ref.watch(saveButtonPositionProvider);
+    final saveLabel = l10n.densitySave;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(isEditing ? l10n.unitsEditTitle : l10n.densityAddTitle),
+        actions: [
+          ...saveAppBarActions(
+            position: savePosition,
+            onSave: _saving ? null : _save,
+            label: saveLabel,
+            busy: _saving,
+          ),
+        ],
+      ),
+      bottomNavigationBar: saveBottomBar(
+        context: context,
+        position: savePosition,
+        onSave: _saving ? null : _save,
+        label: saveLabel,
+        busy: _saving,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          TextField(
+            controller: _density,
+            keyboardType:
+                const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              labelText: l10n.densityLabel,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _condition,
+            decoration: InputDecoration(
+              labelText: l10n.densityConditionLabel,
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l10n.unitsDensityPresets,
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: theme.colorScheme.outline),
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              TextField(
-                controller: _density,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: l10n.densityLabel,
-                  border: const OutlineInputBorder(),
+              for (final preset in presets)
+                ActionChip(
+                  label: Text('${preset.label} ${formatQuantity(preset.value)}'),
+                  onPressed: _saving
+                      ? null
+                      : () => setState(
+                          () => _density.text = formatQuantity(preset.value)),
                 ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _condition,
-                decoration: InputDecoration(
-                  labelText: l10n.densityConditionLabel,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.unitsDensityPresets,
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: [
-                  for (final preset in presets)
-                    ActionChip(
-                      label: Text(
-                          '${preset.label} ${formatQuantity(preset.value)}'),
-                      onPressed: _saving
-                          ? null
-                          : () => setState(() =>
-                              _density.text = formatQuantity(preset.value)),
-                    ),
-                ],
-              ),
             ],
           ),
-        ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: Text(l10n.densitySave),
-        ),
-      ],
     );
   }
 }

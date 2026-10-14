@@ -1652,14 +1652,26 @@ abstract class AppLocalizations {
   /// No description provided for @unitsWeightValueLabel.
   ///
   /// In zh, this message translates to:
-  /// **'单个重量'**
+  /// **'量'**
   String get unitsWeightValueLabel;
 
   /// No description provided for @unitsWeightUnitLabel.
   ///
   /// In zh, this message translates to:
-  /// **'重量单位'**
+  /// **'单位'**
   String get unitsWeightUnitLabel;
+
+  /// No description provided for @unitsWeightUnitDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认（克）'**
+  String get unitsWeightUnitDefault;
+
+  /// No description provided for @unitsCustomUnitInherited.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name}（继承自原料）'**
+  String unitsCustomUnitInherited(Object name);
 
   /// No description provided for @unitsCustomUnitOption.
   ///

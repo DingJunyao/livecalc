@@ -13,6 +13,7 @@ import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+import 'package:com_a4ding_livecalc/shared/utils/entity_unit_names.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
 
 class _FakePriceRepository extends PriceRepository {
@@ -158,6 +159,8 @@ void main() {
     Future<String?> Function(BuildContext)? scanner,
     Future<List<String>> Function(int productId, int? ingredientId)?
         unitNamesLoader,
+    Future<List<String>> Function()? globalUnitNamesLoader,
+    EntityUnitsRequest? entityUnitsRequest,
     double viewportHeight = 1400,
     String? merchantCurrency,
   }) async {
@@ -187,6 +190,8 @@ void main() {
             prefill: prefill,
             scanner: scanner,
             unitNamesLoader: unitNamesLoader,
+            globalUnitNamesLoader: globalUnitNamesLoader,
+            entityUnitsRequest: entityUnitsRequest,
           ),
         ),
       ),
@@ -242,6 +247,74 @@ void main() {
     await tester.tap(unitField);
     await tester.pumpAndSettle();
     expect(find.text('桶'), findsOneWidget);
+  });
+
+  testWidgets('选中商品后，原料级自定义单位经真实 loadEntityUnitNames 进入下拉', (tester) async {
+    // 端到端（无网络）：走 widget 内的真实 loadEntityUnitNames + 假请求缝，
+    // 证明「自定义单位挂在关联原料上」时下拉里也能选到。
+    final product = Product.fromJson({
+      'id': 42,
+      'name': '食用油',
+      'ingredient_id': 7,
+    });
+    final requested = <String>[];
+
+    await pumpForm(
+      tester,
+      productRepo: _FakeProductRepository([product]),
+      entityUnitsRequest: (path) async {
+        requested.add(path);
+        return switch (path) {
+          '/entities/product/42/units' => const <Object?>[
+              {'unit_name': '商品自有单位', 'is_active': false},
+            ],
+          '/entities/ingredient/7/units' => const <Object?>[
+              {'name': '桶'},
+            ],
+          _ => const <Object?>[],
+        };
+      },
+    );
+
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '食用油');
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ListTile, '食用油'));
+    await tester.pumpAndSettle();
+
+    expect(requested, contains('/entities/product/42/units'));
+    expect(requested, contains('/entities/ingredient/7/units'));
+
+    final unitField = find.ancestor(
+      of: find.text('单位'),
+      matching: find.byType(DropdownButtonFormField<String>),
+    );
+    await tester.ensureVisible(unitField);
+    await tester.pumpAndSettle();
+    await tester.tap(unitField);
+    await tester.pumpAndSettle();
+
+    expect(find.text('桶'), findsOneWidget);
+    // is_active=false 的商品自有单位不出现
+    expect(find.text('商品自有单位'), findsNothing);
+  });
+
+  testWidgets('全局单位接口作为下拉基准：不在硬编码常量里的单位可选', (tester) async {
+    await pumpForm(
+      tester,
+      globalUnitNamesLoader: () async => const ['斤', '把', 'mL'],
+    );
+
+    final unitField = find.ancestor(
+      of: find.text('单位'),
+      matching: find.byType(DropdownButtonFormField<String>),
+    );
+    await tester.ensureVisible(unitField);
+    await tester.pumpAndSettle();
+    await tester.tap(unitField);
+    await tester.pumpAndSettle();
+
+    expect(find.text('把'), findsOneWidget);
+    expect(find.text('mL'), findsOneWidget);
   });
 
   testWidgets('渲染全部字段', (tester) async {

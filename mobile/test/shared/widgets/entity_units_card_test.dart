@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/core/i18n/app_formatters.dart';
 import 'package:com_a4ding_livecalc/core/i18n/locale_settings.dart';
@@ -27,6 +28,7 @@ const _globalUnits = <GlobalUnitOption>[
 Future<void> _pumpCard(
   WidgetTester tester, {
   required List<EntityUnit> units,
+  List<EntityUnit> inheritedUnits = const [],
   List<EntityDensity> densities = const [],
   List<UnmappedUnit> unmappedUnits = const [],
   double? effectiveDensityKgM3,
@@ -36,25 +38,28 @@ Future<void> _pumpCard(
   Future<Object?> Function(DensityWriteInput input)? onAddDensity,
   Future<Object?> Function(int unitId)? onDeleteUnit,
 }) async {
-  await tester.pumpWidget(MaterialApp(
-    locale: locale,
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: Scaffold(
-      body: SingleChildScrollView(
-        child: EntityUnitsCard(
-          entityType: 'ingredient',
-          entityId: 5,
-          units: units,
-          unmappedUnits: unmappedUnits,
-          densities: densities,
-          globalUnitOptions: _globalUnits,
-          effectiveDensityKgM3: effectiveDensityKgM3,
-          onAddUnit: onAddUnit ?? (_) async => null,
-          onEditUnit: onEditUnit ?? (_, __) async => null,
-          onDeleteUnit: onDeleteUnit ?? (_) async => null,
-          onAddDensity: onAddDensity ?? (_) async => null,
-          onDeleteDensity: (_) async => null,
+  await tester.pumpWidget(ProviderScope(
+    child: MaterialApp(
+      locale: locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: EntityUnitsCard(
+            entityType: 'ingredient',
+            entityId: 5,
+            units: units,
+            inheritedUnits: inheritedUnits,
+            unmappedUnits: unmappedUnits,
+            densities: densities,
+            globalUnitOptions: _globalUnits,
+            effectiveDensityKgM3: effectiveDensityKgM3,
+            onAddUnit: onAddUnit ?? (_) async => null,
+            onEditUnit: onEditUnit ?? (_, __) async => null,
+            onDeleteUnit: onDeleteUnit ?? (_) async => null,
+            onAddDensity: onAddDensity ?? (_) async => null,
+            onDeleteDensity: (_) async => null,
+          ),
         ),
       ),
     ),
@@ -62,13 +67,14 @@ Future<void> _pumpCard(
   await tester.pump();
 }
 
-Future<void> _openAddDialog(WidgetTester tester) async {
+/// 打开「添加单位」整页（不是对话框）。
+Future<void> _openAddPage(WidgetTester tester) async {
   await tester.tap(find.byTooltip('添加').first);
   await tester.pumpAndSettle();
 }
 
 void main() {
-  testWidgets('custom units live on the card and open a dialog to add',
+  testWidgets('custom units live on the card and open a full page to add',
       (tester) async {
     UnitWriteInput? saved;
     await _pumpCard(
@@ -80,21 +86,22 @@ void main() {
       },
     );
 
-    // 不再跳转整页：卡片内直接出现标题 + 右上角添加按钮
+    // 卡片内直接出现标题 + 右上角添加按钮
     expect(find.text('单位与密度'), findsOneWidget);
     expect(find.byType(AppBar), findsNothing);
     expect(find.text('完成'), findsNothing);
 
-    await _openAddDialog(tester);
-    expect(find.byType(AlertDialog), findsOneWidget);
-    expect(find.text('添加单位'), findsOneWidget);
+    await _openAddPage(tester);
+    // 整页（AppBar 标题 + 无对话框）
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.widgetWithText(AppBar, '添加单位'), findsOneWidget);
 
     await tester.enterText(
       find.widgetWithText(TextField, '单位名称 *'),
       '碗',
     );
     await tester.enterText(
-      find.widgetWithText(TextField, '单个重量'),
+      find.widgetWithText(TextField, '量'),
       '250',
     );
     await tester.tap(find.text('保存单位'));
@@ -103,11 +110,12 @@ void main() {
     expect(saved, isNotNull);
     expect(saved!.unitName, '碗');
     expect(saved!.weightPerUnit, 250);
-    // 换算系数留空 = 1（发送 null）
-    expect(saved!.conversionFactor, isNull);
+    // 换算系数已从表单移除：恒发 1
+    expect(saved!.conversionFactor, 1);
     expect(saved!.weightUnitId, isNull);
     expect(saved!.weightUnitOverrideId, isNull);
-    expect(find.byType(AlertDialog), findsNothing);
+    // 保存成功后整页关闭，回到卡片
+    expect(find.widgetWithText(AppBar, '添加单位'), findsNothing);
   });
 
   testWidgets('weight unit dropdown offers default, global units and other '
@@ -171,8 +179,9 @@ void main() {
     expect(editedId, 12);
     expect(saved!.weightUnitOverrideId, 11);
     expect(saved!.weightUnitId, isNull);
-    expect(saved!.conversionFactor, 12);
-    expect(saved!.weightPerUnit, isNull);
+    // 打开时把「系数 × 量」合并进「量」= 12，保存时系数恒为 1
+    expect(saved!.conversionFactor, 1);
+    expect(saved!.weightPerUnit, 12);
   });
 
   testWidgets('editing pre-fills a global weight unit', (tester) async {
@@ -186,8 +195,7 @@ void main() {
     expect(find.text('毫升 (mL)'), findsOneWidget);
   });
 
-  testWidgets('conversion factor blank or zero saves as null (defaults to 1)',
-      (tester) async {
+  testWidgets('conversion factor is gone: always saves 1', (tester) async {
     UnitWriteInput? saved;
     await _pumpCard(
       tester,
@@ -197,17 +205,15 @@ void main() {
         return null;
       },
     );
-    await _openAddDialog(tester);
+    await _openAddPage(tester);
     await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '把');
-    await tester.enterText(
-      find.widgetWithText(TextField, '换算系数（1单位 = ? 个）'),
-      '0',
-    );
-    await tester.enterText(find.widgetWithText(TextField, '单个重量'), '300');
+    // 换算系数字段不应存在
+    expect(find.widgetWithText(TextField, '换算系数（1单位 = ? 个）'), findsNothing);
+    await tester.enterText(find.widgetWithText(TextField, '量'), '300');
     await tester.tap(find.text('保存单位'));
     await tester.pumpAndSettle();
 
-    expect(saved!.conversionFactor, isNull);
+    expect(saved!.conversionFactor, 1);
     expect(saved!.weightPerUnit, 300);
   });
 
@@ -330,10 +336,9 @@ void main() {
         return null;
       },
     );
-    await _openAddDialog(tester);
+    await _openAddPage(tester);
     await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '箱');
-    await tester.enterText(
-        find.widgetWithText(TextField, '换算系数（1单位 = ? 个）'), '12');
+    await tester.enterText(find.widgetWithText(TextField, '量'), '12');
     await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('盒（自定义单位）').last);
@@ -343,7 +348,8 @@ void main() {
 
     expect(saved!.weightUnitOverrideId, 11);
     expect(saved!.weightUnitId, isNull);
-    expect(saved!.conversionFactor, 12);
+    expect(saved!.conversionFactor, 1);
+    expect(saved!.weightPerUnit, 12);
   });
 
   testWidgets('volume global unit shows the density conversion hint',
@@ -353,9 +359,9 @@ void main() {
       units: const [],
       effectiveDensityKgM3: 1030,
     );
-    await _openAddDialog(tester);
+    await _openAddPage(tester);
     await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '瓶');
-    await tester.enterText(find.widgetWithText(TextField, '单个重量'), '220');
+    await tester.enterText(find.widgetWithText(TextField, '量'), '220');
     await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('毫升 (mL)').last);
@@ -460,5 +466,67 @@ void main() {
     expect(find.textContaining('12'), findsNothing);
     expect(find.textContaining('2.5'), findsNothing);
     expect(find.textContaining('250'), findsNothing);
+  });
+
+  testWidgets('inherited units (from the linked ingredient) are selectable '
+      'and resolve in the chain', (tester) async {
+    UnitWriteInput? saved;
+    // 原料定义的「盒 = 220 mL」被商品继承；商品的「箱 = 12 盒」引用它
+    const ingredientBox = EntityUnit(
+        id: 21, unitName: '盒', weightUnitId: 5, weightPerUnit: 220);
+    final ownUnits = <EntityUnit>[
+      const EntityUnit(
+        id: 22,
+        unitName: '箱',
+        weightPerUnit: 12,
+        weightUnitOverrideId: 21,
+      ),
+    ];
+    await _pumpCard(
+      tester,
+      units: ownUnits,
+      inheritedUnits: const [ingredientBox],
+      effectiveDensityKgM3: 1030,
+      onAddUnit: (input) async {
+        saved = input;
+        return null;
+      },
+    );
+
+    // 列表里「箱」的链能解析到继承来的「盒」（220mL × 1030 × 12）
+    final boxedGrams = formatQuantity(12 * 220 * 1030 / 1000);
+    expect(find.text('1 箱 = 12 盒（≈ $boxedGrams g）'), findsOneWidget);
+
+    // 新增单位时下拉里能看到继承来的单位（带「继承自原料」标注）
+    await _openAddPage(tester);
+    await tester.enterText(find.widgetWithText(TextField, '单位名称 *'), '托盘');
+    await tester.tap(find.byKey(const Key('unit-weight-unit-dropdown')));
+    await tester.pumpAndSettle();
+    expect(find.text('盒（继承自原料）'), findsWidgets);
+    await tester.tap(find.text('盒（继承自原料）').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('保存单位'));
+    await tester.pumpAndSettle();
+
+    expect(saved!.weightUnitOverrideId, 21);
+    expect(saved!.weightUnitId, isNull);
+  });
+
+  testWidgets('own unit wins over the inherited one with the same name',
+      (tester) async {
+    final ownUnits = <EntityUnit>[
+      const EntityUnit(id: 31, unitName: '盒', weightPerUnit: 300),
+    ];
+    await _pumpCard(
+      tester,
+      units: ownUnits,
+      inheritedUnits: const [
+        EntityUnit(id: 32, unitName: '盒', weightPerUnit: 220),
+      ],
+    );
+
+    // 同名时只展示商品自己的那条（300 g，而不是原料的 220 g）
+    expect(find.text('1 盒 = 300 g'), findsOneWidget);
+    expect(find.text('1 盒 = 220 g'), findsNothing);
   });
 }

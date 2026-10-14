@@ -585,10 +585,18 @@
   },
   "unitsVolumeDensityHintEmpty": "填写每单位体积后显示折算重量",
   "@unitsVolumeDensityHintEmpty": {},
-  "unitsWeightValueLabel": "单个重量",
+  "unitsWeightValueLabel": "量",
   "@unitsWeightValueLabel": {},
-  "unitsWeightUnitLabel": "重量单位",
+  "unitsWeightUnitLabel": "单位",
   "@unitsWeightUnitLabel": {},
+  "unitsWeightUnitDefault": "默认（克）",
+  "@unitsWeightUnitDefault": {},
+  "unitsCustomUnitInherited": "{name}（继承自原料）",
+  "@unitsCustomUnitInherited": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "unitsCustomUnitOption": "{name}（自定义单位）",
   "@unitsCustomUnitOption": {
     "placeholders": {

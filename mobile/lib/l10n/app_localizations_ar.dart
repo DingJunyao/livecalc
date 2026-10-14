@@ -836,6 +836,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get unitsWeightUnitLabel => 'الوحدة';
 
   @override
+  String get unitsWeightUnitDefault => 'افتراضي (غم)';
+
+  @override
+  String unitsCustomUnitInherited(Object name) {
+    return '$name (من المكوّن)';
+  }
+
+  @override
   String unitsCustomUnitOption(Object name) {
     return '$name (وحدة مخصصة)';
   }

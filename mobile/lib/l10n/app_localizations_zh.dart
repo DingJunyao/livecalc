@@ -813,10 +813,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unitsVolumeDensityHintEmpty => '填写每单位体积后显示折算重量';
 
   @override
-  String get unitsWeightValueLabel => '单个重量';
+  String get unitsWeightValueLabel => '量';
 
   @override
-  String get unitsWeightUnitLabel => '重量单位';
+  String get unitsWeightUnitLabel => '单位';
+
+  @override
+  String get unitsWeightUnitDefault => '默认（克）';
+
+  @override
+  String unitsCustomUnitInherited(Object name) {
+    return '$name（继承自原料）';
+  }
 
   @override
   String unitsCustomUnitOption(Object name) {

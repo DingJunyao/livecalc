@@ -589,6 +589,14 @@
   "@unitsWeightValueLabel": {},
   "unitsWeightUnitLabel": "الوحدة",
   "@unitsWeightUnitLabel": {},
+  "unitsWeightUnitDefault": "افتراضي (غم)",
+  "@unitsWeightUnitDefault": {},
+  "unitsCustomUnitInherited": "{name} (من المكوّن)",
+  "@unitsCustomUnitInherited": {
+    "placeholders": {
+      "name": {}
+    }
+  },
   "unitsCustomUnitOption": "{name} (وحدة مخصصة)",
   "@unitsCustomUnitOption": {
     "placeholders": {

@@ -92,10 +92,18 @@ class PriceRecordEditScreen extends ConsumerStatefulWidget {
   /// 测试注入，缺省用真实 repository。
   final PriceRepository? priceRepository;
 
+  /// 测试注入：全局单位名加载器（缺省走 /units/）。
+  final Future<List<String>> Function()? globalUnitNamesLoader;
+
+  /// 测试注入：实体自定义单位名加载器（缺省走 /entities/...）。
+  final Future<List<String>> Function(int productId)? unitNamesLoader;
+
   const PriceRecordEditScreen({
     super.key,
     required this.arguments,
     this.priceRepository,
+    this.globalUnitNamesLoader,
+    this.unitNamesLoader,
   });
 
   @override
@@ -114,6 +122,8 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   int? _productId;
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
+  /// 全局单位基准（服务端 /units/ 现拉；失败时回退硬编码常量）
+  List<String> _baseUnits = const [];
   int _unitsSeq = 0;
   late bool _isPurchase;
   late DateTime _recordedAt;
@@ -156,9 +166,22 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     _currency = initialCurrency;
     _currencySymbol = currencySymbol(_currency);
     _loadCurrencies();
+    _loadGlobalUnits();
     if (_productId != null) {
       _loadCustomUnits(_productId!);
     }
+  }
+
+  /// 拉全局单位表作为下拉基准（与 web / 新增页同口径）。
+  /// 硬编码常量只作兜底：它缺 桶/把/条/块/颗 以及大写 mL 等，
+  /// 曾导致用这些单位记下的价格记录在编辑页里选不回来。
+  Future<void> _loadGlobalUnits() async {
+    final names = await (widget.globalUnitNamesLoader?.call() ??
+        loadGlobalUnitNames());
+    if (!mounted) return;
+    setState(() {
+      _baseUnits = mergePriceUnitOptions(names, priceRecordUnits);
+    });
   }
 
   /// 拉取「商品 + 关联原料」的自定义单位，并到价格单位下拉最前。
@@ -166,10 +189,11 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   /// 否则 DropdownButton 会因为初始值不在 items 中而断言失败。
   Future<void> _loadCustomUnits(int productId) async {
     final seq = ++_unitsSeq;
-    final names = await loadEntityUnitNames(
-      entityType: 'product',
-      entityId: productId,
-    );
+    final names = await (widget.unitNamesLoader?.call(productId) ??
+        loadEntityUnitNames(
+          entityType: 'product',
+          entityId: productId,
+        ));
     if (!mounted || seq != _unitsSeq) return;
     setState(() => _customUnits = names);
   }
@@ -504,7 +528,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       items: [
                         for (final unit in mergePriceUnitOptions(
                           _customUnits,
-                          priceRecordUnits,
+                          _baseUnits.isEmpty ? priceRecordUnits : _baseUnits,
                           current: _unit,
                         ))
                           DropdownMenuItem(value: unit, child: Text(unit)),

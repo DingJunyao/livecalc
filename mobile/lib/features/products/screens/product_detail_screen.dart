@@ -241,6 +241,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               entityId: widget.id,
               entityName: product.name,
               units: state.units,
+              inheritedUnits: state.inheritedUnits,
               unmappedUnits: state.unmappedUnits,
               densities: state.densities,
               globalUnitOptions: state.globalUnitOptions,

@@ -602,6 +602,8 @@ void main() {
           initialPrice: 6.88,
         ),
         priceRepository: _OfflinePriceRepository(),
+        // 不联网：全局单位基准由注入的空列表回退到硬编码常量
+        globalUnitNamesLoader: () async => const [],
       ),
       size: const Size(900, 1600),
     );
@@ -619,6 +621,8 @@ void main() {
           initialPrice: 6.88,
         ),
         priceRepository: _OfflinePriceRepository(),
+        // 不联网：全局单位基准由注入的空列表回退到硬编码常量
+        globalUnitNamesLoader: () async => const [],
       ),
       size: const Size(900, 1600),
     );
@@ -671,6 +675,8 @@ void main() {
           initialPrice: 6.88,
         ),
         priceRepository: _OfflinePriceRepository(),
+        // 不联网：全局单位基准由注入的空列表回退到硬编码常量
+        globalUnitNamesLoader: () async => const [],
       ),
       size: const Size(900, 1600),
     );

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../../ingredients/models/ingredient.dart';
 import '../../ingredients/repositories/ingredient_repository.dart';
+import '../../prices/providers/price_provider.dart';
 import '../models/product.dart';
 import '../repositories/product_repository.dart';
 import '../../../shared/widgets/barcode_scanner_sheet.dart';
@@ -87,6 +89,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   bool _myWeightEnabled = false;
   int _myWeight = 50;
   int _globalWeight = 50;
+  /// 表单载入时的商品名（用于判断保存时是否真的改名 → 决定要不要刷新价格列表）
+  String _initialName = '';
 
   bool get _isEdit => widget.product != null;
 
@@ -108,6 +112,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     );
     _ingredientSearchController = TextEditingController();
     _selectedIngredient = widget.fixedIngredient;
+    _initialName = _nameController.text.trim();
 
     if (_isEdit) {
       _loading = true;
@@ -139,6 +144,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       if (!mounted) return;
       setState(() {
         _nameController.text = product.name;
+        _initialName = product.name.trim();
         _brandController.text = product.brand ?? '';
         _barcodeController.text = product.barcode ?? '';
         _aliases = List.of(product.aliases);
@@ -335,6 +341,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         }
       } catch (_) {}
       if (!mounted) return;
+      // 商品改名后后端会同步改写 product_records.product_name（快照列），
+      // 但价格记录列表的客户端状态仍是旧的 → 必须主动重拉，否则要下拉刷新才更新。
+      if (name != _initialName) _refreshPriceListAfterRename();
+      if (!mounted) return;
       Navigator.of(context).pop(
         ProductFormResult(
           saved: true,
@@ -350,6 +360,34 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         });
       }
     }
+  }
+
+  /// 改名成功后刷新价格记录列表（商品名快照列已被后端改写）。
+  ///
+  /// 不 await：列表刷新不该阻塞表单返回；失败只写日志（[loadRecords] 自身已把
+  /// API 错误收进 state.error，这里兜底非 Exception 的意外）。
+  void _refreshPriceListAfterRename() {
+    if (!mounted) return;
+    try {
+      unawaited(
+        ref.read(priceListProvider.notifier).loadRecords().catchError(
+          (Object error, StackTrace stackTrace) {
+            _logPriceListRefreshFailure(error, stackTrace);
+          },
+        ),
+      );
+    } catch (error, stackTrace) {
+      _logPriceListRefreshFailure(error, stackTrace);
+    }
+  }
+
+  void _logPriceListRefreshFailure(Object error, StackTrace stackTrace) {
+    log(
+      'ProductFormScreen: 改名后刷新价格列表失败',
+      name: 'product_form',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   Widget _buildIngredientField() {

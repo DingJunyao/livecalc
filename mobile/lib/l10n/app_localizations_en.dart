@@ -837,6 +837,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unitsWeightUnitLabel => 'Unit';
 
   @override
+  String get unitsWeightUnitDefault => 'Default (g)';
+
+  @override
+  String unitsCustomUnitInherited(Object name) {
+    return '$name (from ingredient)';
+  }
+
+  @override
   String unitsCustomUnitOption(Object name) {
     return '$name (custom unit)';
   }
