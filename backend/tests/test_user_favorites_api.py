@@ -11,6 +11,17 @@ from sqlalchemy.exc import IntegrityError
 
 from conftest import FakeUser, TestingSessionLocal, engine
 from app.core.database import Base
+from app.main import app
+from app.api.deps import get_timezone
+
+
+@pytest.fixture(autouse=True)
+def _ensure_timezone_override():
+    """模块级时区覆盖会被其他测试文件 clear() 掉（如 test_shared_data），
+    这里每条用例前重装，保证组合执行顺序下行为一致。"""
+    app.dependency_overrides[get_timezone] = lambda: "UTC"
+    yield
+    app.dependency_overrides[get_timezone] = lambda: "UTC"
 
 _PRIMARY = ("ingredient", "product", "recipe")
 
