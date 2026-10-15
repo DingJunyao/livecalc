@@ -1,11 +1,15 @@
 <template>
-  <v-container>
-    <div class="d-flex align-center ga-2 mb-4">
-      <h1 class="text-h6">{{ t('favorites.title') }}</h1>
-      <v-spacer />
+  <!-- 顶部导航栏 - 与其他页面统一的固定导航 -->
+  <v-app-bar elevation="0" color="background" density="comfortable" fixed>
+    <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
+    <v-app-bar-title class="text-h6">{{ t('favorites.title') }}</v-app-bar-title>
+    <template #append>
+      <CalcContextMenu />
       <v-btn icon="mdi-refresh" variant="text" :loading="loading" @click="load" />
-    </div>
+    </template>
+  </v-app-bar>
 
+  <v-container>
     <v-tabs v-model="activeTab" density="comfortable" class="mb-2">
       <v-tab value="ingredients">
         {{ t('favorites.tabIngredients') }}
@@ -135,13 +139,16 @@ import { api } from '@/api'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { useLatestPrices } from '@/composables/useLatestPrices'
 import { getErrorMessage } from '@/utils/errorHandler'
+import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import FavoriteIngredientCard from '@/components/favorites/FavoriteIngredientCard.vue'
 import FavoriteProductCard from '@/components/favorites/FavoriteProductCard.vue'
 import FavoriteRecipeCard from '@/components/favorites/FavoriteRecipeCard.vue'
 import FavoriteMerchantCard from '@/components/favorites/FavoriteMerchantCard.vue'
 
 const { t } = useI18n()
-const { smAndDown } = useDisplay()
+const { smAndDown, isDesktop } = useDisplay()
+const { toggleSidebar } = useMobileDrawerControl()
 const { notify } = useGlobalSnackbar()
 
 const tabs = ['ingredients', 'products', 'recipes', 'merchants'] as const
