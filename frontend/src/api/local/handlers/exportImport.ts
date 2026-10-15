@@ -36,6 +36,7 @@ const EXPORT_STORES = [
   'merchant_favorites',
   'user_favorites',
   'meal_recommendations',
+  'meal_plans',
   'system_config',
   'recipe_cost_history',
   'product_weight_overrides',

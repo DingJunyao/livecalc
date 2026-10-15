@@ -939,7 +939,8 @@
     "settings": "الإعدادات",
     "admin": "الإدارة",
     "logout": "تسجيل الخروج",
-    "theme": "المظهر"
+    "theme": "المظهر",
+    "plans": "الحاسبة"
   },
   "routes": {
     "login": "تسجيل الدخول",
@@ -977,7 +978,8 @@
     "adminProposals": "مراجعة الاقتراحات",
     "adminEmailConfig": "إعدادات البريد",
     "adminImagesUnused": "الصور غير المستخدمة",
-    "adminStorage": "تخزين الصور"
+    "adminStorage": "تخزين الصور",
+    "plans": "الحاسبة"
   },
   "detailTypes": {
     "recipe": "وصفة",
@@ -1885,6 +1887,43 @@
     "tabProducts": "المنتجات",
     "tabRecipes": "الوصفات",
     "tabMerchants": "المتاجر"
+  },
+  "plans": {
+    "title": "الحاسبة",
+    "newPlan": "خطة جديدة",
+    "kindMeal": "وجبة",
+    "kindDay": "يوم",
+    "itemCount": "{count} عناصر",
+    "edit": "تحرير",
+    "setToday": "تعيين لليوم",
+    "setTodayDone": "تم تعيين «{name}» كتوصية اليوم",
+    "setTodayFailed": "فشل التعيين لليوم",
+    "empty": "لا توجد خطط بعد",
+    "planName": "اسم الخطة",
+    "planKind": "نوع الخطة",
+    "addRecipe": "إضافة وصفة (بحث)",
+    "addIngredient": "إضافة مكوّن (بحث)",
+    "addProduct": "إضافة منتج (بحث)",
+    "noItems": "لا عناصر بعد — أضف من البحث أعلاه",
+    "servings": "الحصص",
+    "quantity": "الكمية",
+    "totals": "الإجمالي مقابل الهدف",
+    "totalCost": "التكلفة",
+    "calories": "السعرات",
+    "protein": "البروتين",
+    "fat": "الدهون",
+    "target": "الهدف",
+    "costTrend": "اتجاه التكلفة (بالأسعار التاريخية)",
+    "days": "يوم",
+    "groupOther": "أخرى",
+    "loadFailed": "فشل تحميل الخطط",
+    "saveFailed": "فشل الحفظ",
+    "saved": "تم الحفظ",
+    "deleted": "تم حذف الخطة",
+    "deleteFailed": "فشل الحذف",
+    "typeRecipe": "وصفة",
+    "typeIngredient": "مكوّن",
+    "typeProduct": "منتج"
   },
   "ingredients": {
     "title": "إدارة المكونات",

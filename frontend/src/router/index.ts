@@ -108,6 +108,12 @@ const router = createRouter({
           meta: { detailTypeKey: 'detailTypes.merchant' },
         },
         {
+          path: 'plans',
+          name: 'plans',
+          component: () => import('@/views/plans/PlansView.vue'),
+          meta: { titleKey: 'routes.plans' },
+        },
+        {
           path: 'favorites',
           name: 'favorites',
           component: () => import('@/views/favorites/FavoritesView.vue'),

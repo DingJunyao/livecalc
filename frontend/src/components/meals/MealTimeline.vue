@@ -26,6 +26,7 @@
           :recommendation="rec"
           :is-refreshing="refreshLoading[rec.meal_type] || false"
           @refresh="(mt: string, recipeId?: number) => $emit('refresh', mt, recipeId)"
+          @take-to-planner="(mt: string) => $emit('takeToPlanner', mt)"
         />
       </div>
     </div>
@@ -50,6 +51,7 @@ defineProps<{
 
 defineEmits<{
   refresh: [mealType: string, recipeId?: number]
+  takeToPlanner: [mealType: string]
 }>()
 
 function mealLabel(type: string) {

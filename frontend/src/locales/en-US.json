@@ -939,7 +939,8 @@
     "settings": "Settings",
     "admin": "Admin",
     "logout": "Sign out",
-    "theme": "Theme"
+    "theme": "Theme",
+    "plans": "Planner"
   },
   "routes": {
     "login": "Sign in",
@@ -977,7 +978,8 @@
     "adminProposals": "Proposal review",
     "adminEmailConfig": "Email settings",
     "adminImagesUnused": "Unused images",
-    "adminStorage": "Image storage"
+    "adminStorage": "Image storage",
+    "plans": "Planner"
   },
   "detailTypes": {
     "recipe": "Recipe",
@@ -1885,6 +1887,43 @@
     "tabProducts": "Products",
     "tabRecipes": "Recipes",
     "tabMerchants": "Merchants"
+  },
+  "plans": {
+    "title": "Planner",
+    "newPlan": "New plan",
+    "kindMeal": "Meal",
+    "kindDay": "Day",
+    "itemCount": "{count} items",
+    "edit": "Edit",
+    "setToday": "Set as today",
+    "setTodayDone": "\"{name}\" set as today's recommendation",
+    "setTodayFailed": "Failed to set as today",
+    "empty": "No plans yet",
+    "planName": "Plan name",
+    "planKind": "Plan type",
+    "addRecipe": "Add recipe (search)",
+    "addIngredient": "Add ingredient (search)",
+    "addProduct": "Add product (search)",
+    "noItems": "No items yet — add via the search above",
+    "servings": "Servings",
+    "quantity": "Quantity",
+    "totals": "Totals vs targets",
+    "totalCost": "Cost",
+    "calories": "Calories",
+    "protein": "Protein",
+    "fat": "Fat",
+    "target": "Target",
+    "costTrend": "Cost trend (historical prices)",
+    "days": "d",
+    "groupOther": "Other",
+    "loadFailed": "Failed to load plans",
+    "saveFailed": "Failed to save",
+    "saved": "Saved",
+    "deleted": "Plan deleted",
+    "deleteFailed": "Failed to delete",
+    "typeRecipe": "Recipe",
+    "typeIngredient": "Ingredient",
+    "typeProduct": "Product"
   },
   "ingredients": {
     "title": "Ingredients",

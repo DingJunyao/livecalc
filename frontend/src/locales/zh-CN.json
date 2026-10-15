@@ -939,7 +939,8 @@
     "settings": "设置",
     "admin": "后台管理",
     "logout": "退出登录",
-    "theme": "外观主题"
+    "theme": "外观主题",
+    "plans": "试算"
   },
   "routes": {
     "login": "登录",
@@ -977,7 +978,8 @@
     "adminProposals": "提议审核台",
     "adminEmailConfig": "邮件配置",
     "adminImagesUnused": "未使用图片清理",
-    "adminStorage": "图片存储"
+    "adminStorage": "图片存储",
+    "plans": "试算"
   },
   "detailTypes": {
     "recipe": "菜谱",
@@ -1885,6 +1887,43 @@
     "tabProducts": "商品",
     "tabRecipes": "菜谱",
     "tabMerchants": "商家"
+  },
+  "plans": {
+    "title": "试算",
+    "newPlan": "新建方案",
+    "kindMeal": "一顿",
+    "kindDay": "一日",
+    "itemCount": "{count} 项",
+    "edit": "编辑",
+    "setToday": "设为今日",
+    "setTodayDone": "已将「{name}」设为今日推荐",
+    "setTodayFailed": "设为今日失败",
+    "empty": "还没有试算方案",
+    "planName": "方案名称",
+    "planKind": "方案类型",
+    "addRecipe": "添加菜谱（搜索）",
+    "addIngredient": "添加原料（搜索）",
+    "addProduct": "添加商品（搜索）",
+    "noItems": "还没有条目，用上方搜索添加",
+    "servings": "份量",
+    "quantity": "数量",
+    "totals": "合计 vs 目标",
+    "totalCost": "成本",
+    "calories": "热量",
+    "protein": "蛋白质",
+    "fat": "脂肪",
+    "target": "目标",
+    "costTrend": "成本走势（历史价格折算）",
+    "days": "天",
+    "groupOther": "其他",
+    "loadFailed": "加载方案失败",
+    "saveFailed": "保存失败",
+    "saved": "已保存",
+    "deleted": "方案已删除",
+    "deleteFailed": "删除失败",
+    "typeRecipe": "菜谱",
+    "typeIngredient": "原料",
+    "typeProduct": "商品"
   },
   "ingredients": {
     "title": "原料管理",
