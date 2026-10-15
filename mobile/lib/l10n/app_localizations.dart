@@ -3642,6 +3642,72 @@ abstract class AppLocalizations {
   /// **'暂无推荐，点击刷新按钮生成今日推荐'**
   String get homeEmpty;
 
+  /// No description provided for @mealsAiGenerated.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 生成'**
+  String get mealsAiGenerated;
+
+  /// No description provided for @mealsChangeMeal.
+  ///
+  /// In zh, this message translates to:
+  /// **'换整餐'**
+  String get mealsChangeMeal;
+
+  /// No description provided for @mealsChangeDish.
+  ///
+  /// In zh, this message translates to:
+  /// **'换这道'**
+  String get mealsChangeDish;
+
+  /// No description provided for @mealsRoleStaple.
+  ///
+  /// In zh, this message translates to:
+  /// **'主食'**
+  String get mealsRoleStaple;
+
+  /// No description provided for @mealsRoleMain.
+  ///
+  /// In zh, this message translates to:
+  /// **'主菜'**
+  String get mealsRoleMain;
+
+  /// No description provided for @mealsRoleSide.
+  ///
+  /// In zh, this message translates to:
+  /// **'配菜'**
+  String get mealsRoleSide;
+
+  /// No description provided for @mealsRoleSoup.
+  ///
+  /// In zh, this message translates to:
+  /// **'汤'**
+  String get mealsRoleSoup;
+
+  /// No description provided for @mealsRoleDrink.
+  ///
+  /// In zh, this message translates to:
+  /// **'饮品'**
+  String get mealsRoleDrink;
+
+  /// No description provided for @mealsPreferenceChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'偏好：'**
+  String get mealsPreferenceChip;
+
+  /// No description provided for @mealsPreferencePlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'一句话偏好（如：想吃清淡的）'**
+  String get mealsPreferencePlaceholder;
+
+  /// No description provided for @mealsApplyPreference.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用'**
+  String get mealsApplyPreference;
+
   /// No description provided for @homeSwapAll.
   ///
   /// In zh, this message translates to:

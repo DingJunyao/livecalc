@@ -1931,6 +1931,40 @@ class AppLocalizationsEn extends AppLocalizations {
       'No recommendations yet. Tap refresh to generate today\'s recommendations.';
 
   @override
+  String get mealsAiGenerated => 'AI generated';
+
+  @override
+  String get mealsChangeMeal => 'Change meal';
+
+  @override
+  String get mealsChangeDish => 'Swap dish';
+
+  @override
+  String get mealsRoleStaple => 'Staple';
+
+  @override
+  String get mealsRoleMain => 'Main';
+
+  @override
+  String get mealsRoleSide => 'Side';
+
+  @override
+  String get mealsRoleSoup => 'Soup';
+
+  @override
+  String get mealsRoleDrink => 'Drink';
+
+  @override
+  String get mealsPreferenceChip => 'Preference: ';
+
+  @override
+  String get mealsPreferencePlaceholder =>
+      'One-line preference (e.g. something light)';
+
+  @override
+  String get mealsApplyPreference => 'Apply';
+
+  @override
   String get homeSwapAll => 'Swap all';
 
   @override

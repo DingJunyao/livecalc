@@ -17,10 +17,18 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final _preferenceController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(homeProvider.notifier).loadToday());
+  }
+
+  @override
+  void dispose() {
+    _preferenceController.dispose();
+    super.dispose();
   }
 
   @override
@@ -66,6 +74,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       recArea = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 一句话偏好输入（随生成/换菜提交）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+            child: TextField(
+              controller: _preferenceController,
+              decoration: InputDecoration(
+                labelText: l10n.mealsPreferencePlaceholder,
+                prefixIcon: const Icon(Icons.chat_bubble_outline),
+                suffixIcon: Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: TextButton(
+                    onPressed: state.preferenceInput.isEmpty
+                        ? null
+                        : () async {
+                            FocusScope.of(context).unfocus();
+                            final current = state.recommendation!.meals
+                                .firstWhere((m) => m.isCurrentMeal,
+                                    orElse: () => state.recommendation!.meals.first);
+                            await ref
+                                .read(homeProvider.notifier)
+                                .refreshMeal(current.mealType);
+                          },
+                    child: Text(l10n.mealsApplyPreference),
+                  ),
+                ),
+                border: const OutlineInputBorder(),
+                isDense: true,
+              ),
+              onChanged: (v) =>
+                  ref.read(homeProvider.notifier).setPreference(v),
+            ),
+          ),
           ...state.recommendation!.meals.map((meal) => Padding(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -75,6 +115,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onTap: meal.recipeId != null
                       ? () => context.push('/recipes/${meal.recipeId}')
                       : null,
+                  onSwapDish: (recipeId) => ref
+                      .read(homeProvider.notifier)
+                      .refreshMeal(meal.mealType, recipeId: recipeId),
                   onRefresh: () => ref
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType),

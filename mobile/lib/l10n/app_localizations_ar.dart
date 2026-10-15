@@ -1921,6 +1921,39 @@ class AppLocalizationsAr extends AppLocalizations {
       'لا توجد توصيات بعد. انقر زر التحديث لإنشاء توصيات اليوم.';
 
   @override
+  String get mealsAiGenerated => 'مُنشأ بالذكاء الاصطناعي';
+
+  @override
+  String get mealsChangeMeal => 'تغيير الوجبة';
+
+  @override
+  String get mealsChangeDish => 'تبديل الطبق';
+
+  @override
+  String get mealsRoleStaple => 'نشويات';
+
+  @override
+  String get mealsRoleMain => 'طبق رئيسي';
+
+  @override
+  String get mealsRoleSide => 'طبق جانبي';
+
+  @override
+  String get mealsRoleSoup => 'حساء';
+
+  @override
+  String get mealsRoleDrink => 'مشروب';
+
+  @override
+  String get mealsPreferenceChip => 'التفضيل: ';
+
+  @override
+  String get mealsPreferencePlaceholder => 'تفضيل من سطر واحد (مثل: شيء خفيف)';
+
+  @override
+  String get mealsApplyPreference => 'تطبيق';
+
+  @override
   String get homeSwapAll => 'تبديل الكل';
 
   @override

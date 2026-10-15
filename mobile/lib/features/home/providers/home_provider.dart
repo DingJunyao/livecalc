@@ -25,6 +25,8 @@ class HomeState {
   final HomeErrorCode? error;
   final Map<String, bool> refreshLoading;
   final HomeErrorCode? lastError;
+  /// 一句话偏好输入（随生成/换菜提交）
+  final String preferenceInput;
 
   const HomeState({
     this.recommendation,
@@ -33,6 +35,7 @@ class HomeState {
     this.error,
     this.refreshLoading = const {},
     this.lastError,
+    this.preferenceInput = '',
   });
 
   HomeState copyWith({
@@ -43,6 +46,7 @@ class HomeState {
     Map<String, bool>? refreshLoading,
     HomeErrorCode? lastError,
     bool clearLastError = false,
+    String? preferenceInput,
   }) {
     return HomeState(
       recommendation: recommendation ?? this.recommendation,
@@ -51,6 +55,7 @@ class HomeState {
       error: error ?? this.error,
       refreshLoading: refreshLoading ?? this.refreshLoading,
       lastError: clearLastError ? null : (lastError ?? this.lastError),
+      preferenceInput: preferenceInput ?? this.preferenceInput,
     );
   }
 }
@@ -102,7 +107,9 @@ class HomeNotifier extends StateNotifier<HomeState> {
     try {
       var rec = await _repository.getTodayRecommendation();
       if (rec.status == 'not_generated') {
-        rec = await _repository.triggerGenerate();
+        rec = await _repository.triggerGenerate(
+          preference: state.preferenceInput.isEmpty ? null : state.preferenceInput,
+        );
       }
       if (rec.status == 'generating') {
         state = state.copyWith(loading: false, generating: true);
@@ -117,14 +124,19 @@ class HomeNotifier extends StateNotifier<HomeState> {
     }
   }
 
-  /// Refresh a single meal — matches the web "换一个" button.
-  Future<void> refreshMeal(String mealType) async {
+  /// Refresh a single meal (whole-meal rebuild) or swap one dish
+  /// ([recipeId] given) — matches the web 换整餐 / 换这道 buttons.
+  Future<void> refreshMeal(String mealType, {int? recipeId}) async {
     state = state.copyWith(
       refreshLoading: {...state.refreshLoading, mealType: true},
       clearLastError: true,
     );
     try {
-      await _repository.refreshMeal(mealType);
+      await _repository.refreshMeal(
+        mealType,
+        recipeId: recipeId,
+        preference: state.preferenceInput.isEmpty ? null : state.preferenceInput,
+      );
       await _pollRefreshMeal(mealType);
     } on DioException catch (e) {
       state = state.copyWith(
@@ -139,6 +151,10 @@ class HomeNotifier extends StateNotifier<HomeState> {
         lastError: HomeErrorCode.mealSwapFailed,
       );
     }
+  }
+
+  void setPreference(String value) {
+    state = state.copyWith(preferenceInput: value);
   }
 
   Future<void> _pollRefreshMeal(String mealType) async {
@@ -173,9 +189,11 @@ class HomeNotifier extends StateNotifier<HomeState> {
       clearLastError: true,
     );
     try {
+      final preference =
+          state.preferenceInput.isEmpty ? null : state.preferenceInput;
       for (final mt in mealTypes) {
         try {
-          await _repository.refreshMeal(mt);
+          await _repository.refreshMeal(mt, preference: preference);
         } on DioException catch (e) {
           if (e.response?.statusCode == 429) {
             state = state.copyWith(lastError: HomeErrorCode.swapAllTooMany);

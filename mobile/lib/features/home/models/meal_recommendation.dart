@@ -1,3 +1,43 @@
+/// 套餐中的一道菜（多道菜推荐，与云端 RecommendedDish 同构）。
+class RecommendedDish {
+  final int recipeId;
+  final String name;
+  final String? category;
+  final double? estimatedCost;
+  final String? currency;
+  final String? imageUrl;
+  final double? calories;
+  final String role; // staple / main / side / soup / drink
+  final String? reason;
+
+  const RecommendedDish({
+    required this.recipeId,
+    required this.name,
+    this.category,
+    this.estimatedCost,
+    this.currency,
+    this.imageUrl,
+    this.calories,
+    this.role = 'main',
+    this.reason,
+  });
+
+  factory RecommendedDish.fromJson(Map<String, dynamic> json) {
+    final nutrition = json['nutrition_per_serving'] as Map<String, dynamic>?;
+    return RecommendedDish(
+      recipeId: json['id'] as int,
+      name: json['name'] as String? ?? '',
+      category: json['category'] as String?,
+      estimatedCost: (json['cost_estimate'] as num?)?.toDouble(),
+      currency: json['currency'] as String?,
+      imageUrl: (json['image_urls'] as List<dynamic>?)?.firstOrNull?.toString(),
+      calories: (nutrition?['calories'] as num?)?.toDouble(),
+      role: json['role'] as String? ?? 'main',
+      reason: json['reason'] as String?,
+    );
+  }
+}
+
 class MealRecommendation {
   final String mealType; // breakfast, lunch, dinner
   final int? recipeId;
@@ -9,6 +49,11 @@ class MealRecommendation {
   final double? carbsG;
   final double? fatG;
   final bool isCurrentMeal;
+  /// 多道菜套餐（新）；[recipeId]/[recipeName] 为 staple（无则首道）菜的兼容别名。
+  final List<RecommendedDish> dishes;
+  final String? source; // rule / system_ai / user_ai / plan
+  final String? reason;
+  final String? preference;
 
   const MealRecommendation({
     required this.mealType,
@@ -21,7 +66,13 @@ class MealRecommendation {
     this.carbsG,
     this.fatG,
     this.isCurrentMeal = false,
+    this.dishes = const [],
+    this.source,
+    this.reason,
+    this.preference,
   });
+
+  bool get isAiSource => source == 'system_ai' || source == 'user_ai';
 
   factory MealRecommendation.fromJson(Map<String, dynamic> json) {
     final recipe = json['recipe'] as Map<String, dynamic>?;
@@ -38,6 +89,14 @@ class MealRecommendation {
       carbsG: (nutrition?['carbs_g'] as num?)?.toDouble(),
       fatG: (nutrition?['fat_g'] as num?)?.toDouble(),
       isCurrentMeal: json['is_current_meal'] as bool? ?? false,
+      dishes: (json['dishes'] as List<dynamic>?)
+              ?.map((e) =>
+                  RecommendedDish.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      source: json['source'] as String?,
+      reason: json['reason'] as String?,
+      preference: json['preference'] as String?,
     );
   }
 }

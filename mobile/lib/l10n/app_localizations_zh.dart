@@ -1882,6 +1882,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeEmpty => '暂无推荐，点击刷新按钮生成今日推荐';
 
   @override
+  String get mealsAiGenerated => 'AI 生成';
+
+  @override
+  String get mealsChangeMeal => '换整餐';
+
+  @override
+  String get mealsChangeDish => '换这道';
+
+  @override
+  String get mealsRoleStaple => '主食';
+
+  @override
+  String get mealsRoleMain => '主菜';
+
+  @override
+  String get mealsRoleSide => '配菜';
+
+  @override
+  String get mealsRoleSoup => '汤';
+
+  @override
+  String get mealsRoleDrink => '饮品';
+
+  @override
+  String get mealsPreferenceChip => '偏好：';
+
+  @override
+  String get mealsPreferencePlaceholder => '一句话偏好（如：想吃清淡的）';
+
+  @override
+  String get mealsApplyPreference => '应用';
+
+  @override
   String get homeSwapAll => '换一换';
 
   @override

@@ -14,15 +14,28 @@ class HomeRepository {
     return DailyRecommendation.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<DailyRecommendation> triggerGenerate() async {
-    final response = await _client.dio.post('/meals/recommendations/generate');
+  Future<DailyRecommendation> triggerGenerate({String? preference}) async {
+    final response = await _client.dio.post(
+      '/meals/recommendations/generate',
+      data: preference != null && preference.isNotEmpty
+          ? {'preference': preference}
+          : null,
+    );
     return DailyRecommendation.fromJson(response.data as Map<String, dynamic>);
   }
 
-  Future<DailyRecommendation> refreshMeal(String mealType) async {
+  Future<DailyRecommendation> refreshMeal(
+    String mealType, {
+    int? recipeId,
+    String? preference,
+  }) async {
     final response = await _client.dio.post(
       '/meals/recommendations/refresh',
-      data: {'meal_type': mealType},
+      data: {
+        'meal_type': mealType,
+        'recipe_id': recipeId,
+        'preference': preference,
+      },
     );
     return DailyRecommendation.fromJson(response.data as Map<String, dynamic>);
   }
