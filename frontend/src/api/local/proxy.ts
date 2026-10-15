@@ -151,6 +151,7 @@ import * as products from './handlers/products'
 import * as ingredients from './handlers/ingredients'
 import * as merchants from './handlers/merchants'
 import * as favorites from './handlers/favorites'
+import * as mealPlans from './handlers/mealPlans'
 import * as nutrition from './handlers/nutrition'
 import * as hierarchy from './handlers/hierarchy'
 import * as blacklist from './handlers/blacklist'
@@ -241,6 +242,12 @@ addRoute('/merchants/:id/product-prices', { get: merchants.getMerchantProductPri
 addRoute('/merchants/:id/product-orders', { post: merchants.saveProductOrders })
 addRoute('/merchants', { get: merchants.listMerchants, post: merchants.createMerchant })
 
+// ---- Meal plans（试算方案）----
+addRoute('/meal-plans/evaluate', { post: mealPlans.evaluate })
+addRoute('/meal-plans/:id/cost-trend', { get: mealPlans.costTrend })
+addRoute('/meal-plans/:id', { get: mealPlans.getPlan, put: mealPlans.updatePlan, delete: mealPlans.deletePlan })
+addRoute('/meal-plans', { get: mealPlans.listPlans, post: mealPlans.createPlan })
+
 // ---- Favorites（原料/商品/菜谱；商家收藏沿用 /merchants/:id/favorite）----
 addRoute('/favorites', { get: favorites.listAll })
 addRoute('/favorites/:type', { get: favorites.listByType })
@@ -323,6 +330,7 @@ addRoute('/recipes/:id/images/:filename', { delete: recipes.deleteImage })
 // ---- Meals ----
 addRoute('/meals/recommendations/generate', { post: meals.generate })
 addRoute('/meals/recommendations/refresh', { post: meals.refresh })
+addRoute('/meals/recommendations/set-plan', { post: mealPlans.setPlan })
 addRoute('/meals/recommendations', { get: meals.getRecommendations })
 
 // ---- Proposals (local mode: always empty) ----

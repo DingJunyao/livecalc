@@ -26,6 +26,9 @@ class DailyRecommendation(Base):
     preference = Column(String(200), nullable=True)  # 生成时的一句话偏好快照
     source = Column(String(20), nullable=False, default="rule")  # rule|system_ai|user_ai|plan
     refresh_count = Column(Integer, nullable=False, default=0)
+    # source='plan' 时回链的试算方案
+    plan_id = Column(Integer, ForeignKey("meal_plans.id"), nullable=True)
+    plan = relationship("MealPlan")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # 关系

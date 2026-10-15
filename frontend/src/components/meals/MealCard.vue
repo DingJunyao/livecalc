@@ -121,6 +121,15 @@
       </v-card-text>
 
       <v-card-actions class="pt-0">
+        <v-btn
+          size="small"
+          variant="text"
+          @click.stop="onTakeToPlanner"
+          :title="t('plans.takeToPlanner')"
+        >
+          <v-icon start size="18">mdi-clipboard-text-outline</v-icon>
+          {{ t('plans.takeToPlanner') }}
+        </v-btn>
         <v-spacer />
         <v-btn
           size="small"
@@ -233,6 +242,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   refresh: [mealType: string, recipeId?: number]
+  takeToPlanner: [mealType: string]
 }>()
 
 const dishes = computed<RecommendedDish[]>(() => props.recommendation.dishes || [])
@@ -369,6 +379,10 @@ function goToRecipes() {
 
 function onRefreshMeal() {
   emit('refresh', props.recommendation.meal_type, undefined)
+}
+
+function onTakeToPlanner() {
+  emit('takeToPlanner', props.recommendation.meal_type)
 }
 
 function onChangeDish(dish: RecommendedDish) {

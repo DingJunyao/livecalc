@@ -361,6 +361,36 @@ async function buildResponse(rows: any[]): Promise<any> {
       }
     }
     const staple = dishBriefs.find(d => d.role === 'staple')
+    // 方案来源餐：渲染方案视图
+    let planView: any = null
+    if (row.source === 'plan' && row.plan_id != null) {
+      const plan = await getById('meal_plans', row.plan_id)
+      if (plan && plan.is_active !== false) {
+        const planItems = []
+        for (const it of plan.items || []) {
+          let name: string | null = null
+          const store =
+            it.item_type === 'recipe' ? 'recipes'
+            : it.item_type === 'ingredient' ? 'ingredients' : 'products'
+          const entity = it.recipe_id != null
+            ? await getById('recipes', it.recipe_id)
+            : it.ingredient_id != null ? await getById('ingredients', it.ingredient_id)
+            : it.product_id != null ? await getById('products', it.product_id)
+            : null
+          name = entity?.name || null
+          const { cost } = await evaluateItem(it)
+          planItems.push({
+            item_type: it.item_type, name, group: it.group,
+            servings: it.servings ?? null, quantity: it.quantity ?? null,
+            unit: null, cost,
+          })
+        }
+        planView = {
+          id: plan.id, name: plan.name, kind: plan.kind, note: plan.note,
+          items: planItems,
+        }
+      }
+    }
     recommendations.push({
       meal_type: row.meal_type,
       recipe: staple || dishBriefs[0] || null,
@@ -368,6 +398,7 @@ async function buildResponse(rows: any[]): Promise<any> {
       source: row.source || 'rule',
       reason: row.reason || null,
       preference: row.preference || null,
+      plan: planView,
       is_current_meal: row.meal_type === currentMeal,
     })
   }

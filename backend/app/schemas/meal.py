@@ -47,6 +47,7 @@ class MealRecommendationItem(BaseModel):
     source: Optional[str] = None  # rule | system_ai | user_ai | plan
     reason: Optional[str] = None
     preference: Optional[str] = None
+    plan: Optional[dict] = None  # source='plan' 时的方案视图
     is_current_meal: bool = False
 
 

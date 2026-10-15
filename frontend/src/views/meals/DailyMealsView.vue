@@ -95,6 +95,7 @@
         :recommendations="store.recommendations"
         :refresh-loading="store.refreshLoading"
         @refresh="handleRefresh"
+        @take-to-planner="handleTakeToPlanner"
       />
     </template>
 
@@ -173,6 +174,27 @@ const formattedDate = computed(() => {
 
 function goToProfile() {
   router.push('/profile')
+}
+
+function handleTakeToPlanner(mealType: string) {
+  const meal = store.recommendations.find(r => r.meal_type === mealType)
+  if (!meal) return
+  const dishes = meal.dishes?.length
+    ? meal.dishes
+    : (meal.recipe ? [{ id: meal.recipe.id, name: meal.recipe.name, role: 'staple' }] : [])
+  const draft = {
+    name: `${t('meals.' + mealType)} · ${new Date().toLocaleDateString()}`,
+    items: dishes.map((d, idx) => ({
+      group: mealType,
+      item_type: 'recipe',
+      recipe_id: d.id,
+      servings: 1,
+      sort_order: idx,
+      name: d.name,
+    })),
+  }
+  sessionStorage.setItem('planDraft', JSON.stringify(draft))
+  router.push('/plans')
 }
 
 async function handleRefresh(mealType: string, recipeId?: number) {
