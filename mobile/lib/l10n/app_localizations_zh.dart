@@ -518,7 +518,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get navMore => '更多';
 
   @override
-  String get navFavorites => '我的收藏';
+  String get navFavorites => '收藏';
 
   @override
   String get aliasAddHelper => '输入后点击 + 添加';

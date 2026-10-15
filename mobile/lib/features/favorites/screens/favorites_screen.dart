@@ -344,6 +344,20 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
               child: const Icon(Icons.store, size: 20),
             ),
             title: item.name,
+            titleBadge: item.isOpen
+                ? null
+                : Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 1),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(l10n.merchantClosed,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: Colors.orange.shade800,
+                            fontWeight: FontWeight.w600)),
+                  ),
             subtitleWidget: Text(
               item.address ?? l10n.merchantNoAddress,
               maxLines: 1,
@@ -460,6 +474,9 @@ class _FavoriteTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onToggleFavorite;
 
+  /// 标题行末尾的徽标（如商家的「已关闭」），可选。
+  final Widget? titleBadge;
+
   const _FavoriteTile({
     required this.leading,
     required this.title,
@@ -468,6 +485,7 @@ class _FavoriteTile extends StatelessWidget {
     required this.onToggleFavorite,
     this.sparkline,
     this.sparklineColor,
+    this.titleBadge,
   });
 
   @override
@@ -489,12 +507,22 @@ class _FavoriteTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: theme.textTheme.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: theme.textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (titleBadge != null) ...[
+                          const SizedBox(width: 6),
+                          titleBadge!,
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     subtitleWidget,

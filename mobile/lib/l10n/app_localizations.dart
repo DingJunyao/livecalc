@@ -1117,7 +1117,7 @@ abstract class AppLocalizations {
   /// No description provided for @navFavorites.
   ///
   /// In zh, this message translates to:
-  /// **'我的收藏'**
+  /// **'收藏'**
   String get navFavorites;
 
   /// No description provided for @aliasAddHelper.
