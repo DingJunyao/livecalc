@@ -74,3 +74,36 @@
 5. 共用列表端点的排序/过滤**必须参数化**（默认 false），只由主列表页开启；分页正确性要求**服务端**实现（客户端排序只能排当前页）。
 6. 聚合端点若直出 ORM 对象（无 response_model）会踩序列化问题；用 `MerchantResponse.model_validate(m)` 转换后再返回，并补「收藏了商家」的测试覆盖（空列表时测不出来）。
 7. 编辑 CRLF 混合行尾的 `.vue` 文件（本仓 `RecipesView.vue` / `RecipeDetail.vue`）会被工具统一为全 CRLF，diff 偏大但内容无损——提交时留意即可。
+
+## 修复轮（2026-10-15，用户实机反馈）
+
+用户反馈三条：①商品/原料列表点心形会连带跳进详情；②「我的收藏」页过于简陋；③移动端未实现三类收藏与统一收藏页。
+
+**① 心形连带跳转（根因）**：商品/原料的卡片与列表项都是 `:to` 链接（Vuetify 渲染为 `<a>`），`FavoriteButton` 只写了 `@click.stop` —— `stopPropagation` 只拦 JS 冒泡，**拦不住锚点的默认导航**；本仓既有按钮（`mdi-tag-plus` 等）一律用 `@click.prevent` 正是这个原因。修复：`FavoriteButton` 改 `@click.stop.prevent`（一处修复覆盖三类列表与详情）。
+
+**② 「我的收藏」页对齐列表页观感**：不再用精简的 `/favorites` 聚合数据直出文本列表，改为：
+- 数据：复用三个列表端点的 `favorites_only=true`（payload 与列表页完全同型），商家用 `/merchants/favorites`；
+- 富化（与列表页同源）：`useLatestPrices`（原料 `/nutrition/ingredients/{id}/latest-price`、商品 `/products/entity/{id}/latest-price`）、`/sparklines/{products|ingredients}`、`POST /recipes/batch-cost`；
+- 渲染：新增 4 个按类型卡片组件 `frontend/src/components/favorites/Favorite{Product,Ingredient,Recipe,Merchant}Card.vue`，桌面网格 `cols=12 sm=6 md=4 lg=3 xl=2` + 移动端列表项（与各自列表页一致），含头像/图片、名称、品牌/分类/地址、最新价、迷你图、成本·热量、心形与跳转；
+- 聚合 `/favorites` 端点保留（移动端与未来功能可用），web 不再消费。
+
+**③ 移动端实现（feat/mobile-app）**：
+- `mobile/lib/shared/repositories/favorites_repository.dart`：多态收藏仓库（`fetchIds(type)` / `add` / `remove`）。
+- 三个 provider（ingredient/product/recipe）新增 `favoritesOnly`、`favoriteIds`、`loadFavorites()`、`toggleFavorite()`（乐观更新 + `previous` 回滚），列表请求固定带 `favorites_first=true`；recipe 的 `loadRecipes` 重建 state 时同步携带新字段。
+- 三个 repository 的 `search`/`getRecipes` 增加 `favoritesOnly`/`favoritesFirst` 参数（透传 `favorites_only`/`favorites_first`）。
+- 三个列表屏：条目卡片加心形按钮；筛选面板加「仅看我的收藏」开关（`SwitchListTile`，进入 `_hasActive`/清除逻辑）；`initState` 加载收藏集合。三个详情屏：app bar 加心形（本地 `_isFavorite` 状态 + 失败回滚 + 提示）。
+- 新增 `features/favorites/screens/favorites_screen.dart`：四类 tab（原料/商品带最新价与迷你图、菜谱带成本·热量与缩略图、商家带地址），取消收藏即从列表移除，下拉刷新。
+- `app_router.dart`：新增 `/favorites` 路由 + `_favoritesTab`（桌面侧栏与移动「更多」弹出菜单都加入）；「更多」菜单由单行 4 项 `Row(Expanded)` 改为每行 4 项的 `Wrap`（5 项时自动换行）。
+- 顺手修复：`merchant_provider.toggleFavorite` 的无效回滚（`copyWith(favoriteIds: state.favoriteIds)` 把乐观值赋回自己）→ 改为保存 `previous` 回滚。
+- i18n：ARB 三语各加 12 键（`navFavorites`、`favoritesAdd/Remove/Removed/AddFailed/RemoveFailed/OnlyFilter/Empty`、`favoritesTab*`）并 `flutter gen-l10n`。
+
+**测试与验证**：
+- web：`npm run build` ✓、`check:i18n` ✓、`check:i18n:sources` 2081、`npx tsc --noEmit` 与基线错误集归一化后完全一致；
+- 移动端：`flutter analyze` 0 error（仅 1 条未触碰文件的 `onReorder` deprecation info）、`flutter test` **665 通过 / 6 存量失败**（apple_map×3、locale_preferences×2、my_proposals×1 = 基线）；11 处测试假仓库（`_Fake*Repository` / `_ListRepository`）签名随接口补参同步（`favoritesOnly`/`favoritesFirst`）。
+- 实机 GUI 验证仍待服务启动后由用户点验（桌面心形不跳转、收藏页四 tab 观感、移动端更多菜单入口与三类心形）。
+
+**经验**：
+1. `@click.stop` 防不住「链接型容器」（`v-card :to` / `v-list-item :to`）的默认导航 —— 子按钮必须 `.prevent`；
+2. 聚合页要复用**列表端点**（完整字段）而不是另造精简接口，否则页面必然简陋；富化接口（最新价/迷你图/成本）与列表页保持同源；
+3. 给 repository 方法加参数会让所有测试 fake 的 override 失效 —— 改签名时要同步搜 `test/` 下的假实现；
+4. Dart `StateNotifier` 重建 state（`state = XxxState(...)`）时必须把新字段一并带上，否则会被静默重置。
