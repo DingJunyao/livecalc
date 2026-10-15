@@ -20,6 +20,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi import Depends
 from app.api import auth, products, merchants, nutrition, recipes, reports, admin, invite_codes
 from app.api import favorites  # 收藏 API（原料/商品/菜谱）
+from app.api import ai_settings  # 用户级 AI 设置（BYOK/方法选择）
 from app.api.deps import get_session_currency_override
 from app.api import ingredient_extended  # 新增的食材扩展API
 from app.api import products_entity  # 商品实体 API
@@ -791,6 +792,7 @@ app.add_middleware(
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["认证"])
 app.include_router(merchants.router, prefix="/api/v1/merchants", dependencies=[Depends(get_session_currency_override)], tags=["商家"])
 app.include_router(favorites.router, prefix="/api/v1/favorites", dependencies=[Depends(get_session_currency_override)], tags=["收藏"])
+app.include_router(ai_settings.router, prefix="/api/v1/profile/ai-settings", tags=["AI 设置"])
 app.include_router(places.router, prefix="/api/v1/places", tags=["常用地点"])
 app.include_router(nutrition.router, prefix="/api/v1/nutrition", dependencies=[Depends(get_session_currency_override)], tags=["营养"])
 app.include_router(recipes.router, prefix="/api/v1/recipes", dependencies=[Depends(get_session_currency_override)], tags=["菜谱"])

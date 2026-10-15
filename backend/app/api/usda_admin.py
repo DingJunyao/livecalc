@@ -39,6 +39,16 @@ DEFAULT_TRANSLATION_CONFIG = {
         "aliyun": {"enabled": False, "access_key_id": "", "access_key_secret": ""},
         "deepl": {"enabled": False, "auth_key": ""},
     }},
+    # 餐食推荐（AI 组合层）与 AI 使用策略（全局；用户级见 user_ai_settings）
+    "meal_plan": {"provider": "claude_code", "timeout_seconds": 120},
+    "ai_policy": {
+        "default_method": "system_ai",
+        "allow_user_choice": True,
+        "allow_byok": True,
+        "allow_custom_base_url": False,
+        "daily_ai_limit": 20,
+        "show_ai_badge": True,
+    },
 }
 
 
@@ -51,6 +61,11 @@ def _merge_default_config(stored: dict) -> dict:
         stored_providers = (stored.get(region) or {}).get("providers") or {}
         for key, value in stored_providers.items():
             merged[region]["providers"][key] = value
+    # 未知/后续新增的顶层区块（如 meal_plan / ai_policy）按存储值保留，
+    # 避免 PUT 回写时被默认合并丢掉。
+    for key, value in stored.items():
+        if key not in merged:
+            merged[key] = value
     return merged
 
 
