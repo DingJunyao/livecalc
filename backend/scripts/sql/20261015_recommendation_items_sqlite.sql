@@ -28,8 +28,37 @@ INSERT INTO daily_recommendation_items (recommendation_id, recipe_id, sort_order
     SELECT id, recipe_id, 0, 'staple' FROM daily_recommendations
     WHERE recipe_id IS NOT NULL;
 
--- 4) 删除父表 recipe_id（SQLite 3.35+ 支持 DROP COLUMN）
-ALTER TABLE daily_recommendations DROP COLUMN recipe_id;
+-- 4) 删除父表 recipe_id
+-- 注意：recipe_id 是表级外键约束（FOREIGN KEY(recipe_id) REFERENCES recipes），
+-- SQLite 的 DROP COLUMN 移不掉该约束子句（报 unknown column "recipe_id" in
+-- foreign key definition），必须用标准 12 步重建法；若你已踩过该错，
+-- 改执行 20261015_recommendation_items_sqlite_repair.sql（续行脚本）。
+PRAGMA foreign_keys=OFF;
+BEGIN;
+
+CREATE TABLE daily_recommendations_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    date DATE NOT NULL,
+    meal_type VARCHAR(20) NOT NULL,
+    reason TEXT NULL,
+    preference VARCHAR(200) NULL,
+    source VARCHAR(20) NOT NULL DEFAULT 'rule',
+    refresh_count INTEGER NOT NULL DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT uq_user_date_meal UNIQUE (user_id, date, meal_type)
+);
+
+INSERT INTO daily_recommendations_new
+    (id, user_id, date, meal_type, reason, preference, source, refresh_count, created_at)
+SELECT id, user_id, date, meal_type, reason, preference, source, refresh_count, created_at
+FROM daily_recommendations;
+
+DROP TABLE daily_recommendations;
+ALTER TABLE daily_recommendations_new RENAME TO daily_recommendations;
+
+COMMIT;
+PRAGMA foreign_keys=ON;
 
 -- 5) AI 策略层
 CREATE TABLE IF NOT EXISTS user_ai_settings (
