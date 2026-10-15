@@ -85,8 +85,20 @@ void main() {
   test('新建默认行包含五项核心营养素', () {
     expect(kDefaultNutrientLabels,
         ['能量', '蛋白质', '脂肪', '碳水化合物', '钠']);
-    expect(kDefaultNutrientUnits['能量'], 'kJ');
+    expect(kDefaultNutrientUnits.containsKey('能量'), isFalse,
+        reason: '能量不写死，走 defaultNutrientUnit 随偏好');
     expect(kDefaultNutrientUnits['钠'], 'mg');
     expect(kDefaultNutrientUnits['蛋白质'], 'g');
+  });
+
+  test('能量默认单位跟随用户能量单位偏好，缺省 kcal', () {
+    expect(defaultNutrientUnit('能量', energyUnit: 'kJ'), 'kJ');
+    expect(defaultNutrientUnit('能量', energyUnit: 'kj'), 'kJ');
+    expect(defaultNutrientUnit('能量', energyUnit: 'kcal'), 'kcal');
+    expect(defaultNutrientUnit('能量', energyUnit: null), 'kcal');
+    expect(defaultNutrientUnit('能量', energyUnit: 'garbage'), 'kcal');
+    // 其余营养素不受偏好影响
+    expect(defaultNutrientUnit('钠', energyUnit: 'kJ'), 'mg');
+    expect(defaultNutrientUnit('蛋白质'), 'g');
   });
 }

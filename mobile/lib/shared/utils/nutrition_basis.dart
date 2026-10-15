@@ -11,7 +11,7 @@
 const double kDefaultNutritionBasisAmount = 100;
 const String kDefaultNutritionBasisUnit = 'g';
 
-/// 新建营养时预填的营养素（营养成分表常见五项）与其默认单位。
+/// 新建营养时预填的营养素（营养成分表常见五项）。
 const List<String> kDefaultNutrientLabels = [
   '能量',
   '蛋白质',
@@ -19,13 +19,30 @@ const List<String> kDefaultNutrientLabels = [
   '碳水化合物',
   '钠',
 ];
+
+/// 预填行的固定默认单位（**能量不在其中** —— 它跟随用户能量单位偏好，
+/// 见 [defaultNutrientUnit]）。
 const Map<String, String> kDefaultNutrientUnits = {
-  '能量': 'kJ',
   '蛋白质': 'g',
   '脂肪': 'g',
   '碳水化合物': 'g',
   '钠': 'mg',
 };
+
+/// 能量单位偏好归一化：只认 kJ（大小写不敏感），其余（null/未知）回退 kcal
+/// —— 与两端 useUserUnits / authProvider.unitPreferences 的回退一致。
+String normalizeEnergyUnit(String? raw) =>
+    (raw ?? '').trim().toLowerCase() == 'kj' ? 'kJ' : 'kcal';
+
+/// 新建默认行的单位：能量跟随用户能量单位偏好（kcal | kJ，缺省 kcal），
+/// 钠 mg，其余 g。返回值一定在对应营养素的可选单位列表里
+/// （能量的可选单位是 ['kcal', 'kJ']）。
+String defaultNutrientUnit(String label, {String? energyUnit}) {
+  if (label == '能量') {
+    return normalizeEnergyUnit(energyUnit);
+  }
+  return kDefaultNutrientUnits[label] ?? 'g';
+}
 
 /// 营养基准（「每 X 单位」）。
 class NutritionBasis {

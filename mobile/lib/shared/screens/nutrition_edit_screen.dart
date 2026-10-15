@@ -11,6 +11,7 @@ import '../utils/nutrition_basis.dart';
 import '../widgets/directional_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/save_action_button.dart';
+import '../../features/auth/providers/auth_provider.dart';
 import '../../features/profile/providers/save_button_position_provider.dart';
 
 class NutritionEditResult {
@@ -114,11 +115,17 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     _rows.addAll([
       for (final nutrient in initialNutrients) _NutritionEditRow.from(nutrient),
     ]);
-    // 没有任何营养数据：预填营养成分表常见五项（能量 kJ / 蛋白质 / 脂肪 /
-    // 碳水化合物 / 钠 mg）。用户只是点进来看看的话，保存时不会写任何数据。
+    // 没有任何营养数据：预填营养成分表常见五项（能量随用户能量单位偏好、
+    // 蛋白质 / 脂肪 / 碳水化合物 g、钠 mg）。用户只是点进来看看的话，
+    // 保存时不会写任何数据。
     if (_rows.isEmpty) {
+      final energyUnit = ref
+          .read(authProvider)
+          .user
+          ?.unitPreferences
+          ?.energyUnit;
       for (final label in kDefaultNutrientLabels) {
-        final unit = kDefaultNutrientUnits[label] ?? 'g';
+        final unit = defaultNutrientUnit(label, energyUnit: energyUnit);
         _rows.add(_NutritionEditRow(
           label: label,
           unit: unit,

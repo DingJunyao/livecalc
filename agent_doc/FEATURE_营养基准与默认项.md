@@ -7,7 +7,7 @@
 ## 需求（用户三条）
 
 1. 移动端：添加价格时扫一部分条码没反应（**另见 [BUGFIX_移动端扫码无反应.md](BUGFIX_移动端扫码无反应.md)**）。
-2. 新建原料/商品添加营养时，默认带出**能量 / 蛋白质 / 脂肪 / 碳水化合物 / 钠**；能量默认单位 **kJ**（用户可改）、钠默认 **mg**；**只点开没填则不记录**。
+2. 新建原料/商品添加营养时，默认带出**能量 / 蛋白质 / 脂肪 / 碳水化合物 / 钠**；钠默认 **mg**；**只点开没填则不记录**。（能量默认单位最初按需求原文写死 kJ，**同日用户追加改为跟随用户的能量单位偏好** —— kcal | kJ，缺省 kcal，与两端 `useUserUnits` / `authProvider.unitPreferences` 的回退一致。）
 3. 填写营养时能改「剂量」的基准（一直是每 100 g），可换成别的量/单位，**也能从自定义单位里选**；是否需要每个营养素各带基准 —— 用户自己也在犹豫，本轮按**整表一个基准**做。
 
 ## 数据模型（后端）
@@ -41,7 +41,7 @@
 
 **web**（`7168d590` 之后的 `a53f194d`）：
 
-- `utils/nutritionBasis.ts`（纯函数 + 10 例单测）：`buildDefaultNutrientRows`（五项默认行，能量 kJ / 钠 mg）、`resolvableBasisUnitNames`（**与后端 `resolve_override_amount` 同口径**：跟随嵌套引用、最多 8 层、悬空引用只看本行 `weight_per_unit`、引用的全局单位必须是质量/体积）、`buildBasisUnitOptions` / `withCurrentBasisUnit`（自定义单位在前、同名全局项让位、当前值必须能回显）、`readNutritionBasis`（reference_* > custom_nutrition_data.* > base_* > 100 g）。
+- `utils/nutritionBasis.ts`（纯函数 + 10 例单测）：`buildDefaultNutrientRows`（五项默认行，能量随定义表=用户能量偏好 / 钠 mg）、`resolvableBasisUnitNames`（**与后端 `resolve_override_amount` 同口径**：跟随嵌套引用、最多 8 层、悬空引用只看本行 `weight_per_unit`、引用的全局单位必须是质量/体积）、`buildBasisUnitOptions` / `withCurrentBasisUnit`（自定义单位在前、同名全局项让位、当前值必须能回显）、`readNutritionBasis`（reference_* > custom_nutrition_data.* > base_* > 100 g）。
 - `components/nutrition/NutritionBasisField.vue`：基准量 + 单位下拉（含本实体可折算的自定义单位），供两处详情页与草稿对话框共用。
 - `ProductDetail.vue` / `IngredientDetail.vue`：编辑区顶部加基准输入；标题「（每 X 单位）」由 `nutritionBasisLabel`（`products.perBasis` / `ingredients.perBasis`）动态渲染，未编辑时用 `watch(nutritionData)` 同步。
 - 空保存：进入编辑时记录「本来有没有数据」（`nutritionHadData`）。商品本来没有自定义营养 → 什么都不填直接关（**不发清空请求、不弹「已保存」**）；本来有 → 保持原有「清空覆盖」语义。原料本来没有 → 静默关闭；本来有且被清空 → 仍提示「至少填一项」。

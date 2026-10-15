@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
+import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
+import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/shared/models/nutrition.dart';
 import 'package:com_a4ding_livecalc/shared/utils/nutrition_basis.dart';
 import 'package:com_a4ding_livecalc/shared/screens/nutrition_edit_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
+
+/// 带单位偏好的假登录态（编辑器从 authProvider 读能量单位偏好）。
+class _PrefAuthNotifier extends AuthNotifier {
+  _PrefAuthNotifier(User user) : super(AuthRepository()) {
+    state = AuthState(status: AuthStatus.authenticated, user: user);
+  }
+
+  @override
+  Future<void> checkAuth() async {}
+}
 
 void main() {
   testWidgets('nutrition editor is a full page and saves parsed rows', (
@@ -96,9 +109,10 @@ void main() {
     expect(find.text('饱和脂肪'), findsOneWidget);
   });
 
-  testWidgets('新建营养预填五项（能量 kJ / 钠 mg），空保存不写数据', (tester) async {
+  testWidgets('新建营养预填五项（能量随偏好 / 钠 mg），空保存不写数据', (tester) async {
     // 用户要求：新建原料/商品添加营养时默认带出能量、蛋白质、脂肪、碳水化合物、
-    // 钠，能量默认 kJ、钠默认 mg；只点进来没填的话不记录。
+    // 钠，能量默认**跟随能量单位偏好**（无偏好回退 kcal）、钠默认 mg；
+    // 只点进来没填的话不记录。
     tester.view.physicalSize = const Size(800, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -125,8 +139,8 @@ void main() {
     for (final label in const ['能量', '蛋白质', '脂肪', '碳水化合物', '钠']) {
       expect(find.text(label), findsOneWidget, reason: label);
     }
-    // 能量行默认 kJ、钠默认 mg（各自下拉的当前值）
-    expect(find.text('kJ'), findsWidgets);
+    // 无登录用户 → 能量偏好回退 kcal；钠固定 mg（各自下拉的当前值）
+    expect(find.text('kcal'), findsWidgets);
     expect(find.text('mg'), findsWidgets);
 
     // 只点进来看看，什么都没填：不发起保存
@@ -134,6 +148,37 @@ void main() {
     await tester.pumpAndSettle();
     expect(saveCalls, 0);
     expect(saved, isNull);
+  });
+
+  testWidgets('能量偏好为 kJ 的用户：默认行能量单位跟到 kJ', (tester) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final notifier = _PrefAuthNotifier(
+      const User(
+        id: 1,
+        username: 'u',
+        email: 'u@b.c',
+        unitPreferences: UnitPreferences(energyUnit: 'kJ'),
+      ),
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [authProvider.overrideWith((_) => notifier)],
+      child: MaterialApp(
+      locale: const Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: NutritionEditScreen(
+        entityType: 'ingredient',
+        entityId: 0,
+        basisUnitsLoader: () async => const [],
+      ),
+    )));
+    await tester.pumpAndSettle();
+
+    expect(find.text('kJ'), findsWidgets);
+    expect(find.text('kcal'), findsNothing);
   });
 
   testWidgets('填了值后保存，带上「每 X 单位」的营养基准', (tester) async {
