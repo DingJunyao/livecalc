@@ -1829,7 +1829,11 @@
     "danglingUnitsRetargeted": "以下自定义单位引用的单位在新原料中不存在，已改用同名单位：{names}",
     "danglingUnitsRemovePending": "以下自定义单位引用的单位在新原料中不存在，已提交移除申请，待审核：{names}",
     "deleteUnit": "删除单位",
-    "deleteNutrient": "删除营养素"
+    "deleteNutrient": "删除营养素",
+    "perBasis": "（每 {amount}{unit}）",
+    "nutritionBasis": "营养基准",
+    "nutritionBasisUnit": "基准单位",
+    "nutritionBasisHint": "可按包装标签填写（单位支持自定义单位，如 1 袋 = 250 g）"
   },
   "favorites": {
     "title": "我的收藏",
@@ -2110,7 +2114,8 @@
     "presetMilk": "牛奶",
     "presetCookingOil": "食用油",
     "presetSoySauce": "酱油",
-    "presetHoney": "蜂蜜"
+    "presetHoney": "蜂蜜",
+    "perBasis": "（每 {amount}{unit}）"
   },
   "merchants": {
     "title": "商家管理",

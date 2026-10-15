@@ -3,7 +3,7 @@
     <v-card>
       <v-card-title class="d-flex align-center pa-4">
         <span class="text-h6">{{ t('products.draftNutritionDialogTitle', { target }) }}</span>
-        <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
+        <span class="text-caption text-medium-emphasis ms-2">{{ basisLabel }}</span>
         <v-spacer />
         <v-btn
           icon="mdi-close"
@@ -16,6 +16,13 @@
       <v-card-text>
         <div class="text-caption text-medium-emphasis mb-3">
           {{ t('products.draftSavedTogether', { target }) }}
+        </div>
+        <div class="mb-3">
+          <NutritionBasisField
+            v-model:amount="basisAmount"
+            v-model:unit="basisUnit"
+            :options="basisOptions"
+          />
         </div>
         <div v-if="rows.length === 0" class="text-body-2 text-medium-emphasis">
           {{ t('products.noNutritionData') }}
@@ -84,6 +91,14 @@ import { useI18n } from 'vue-i18n'
 import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
 import { useUserUnits } from '@/composables/useUserUnits'
 import type { EntityDraftNutrient } from '@/utils/entityDraftPlan'
+import NutritionBasisField from '@/components/nutrition/NutritionBasisField.vue'
+import { loadNutritionBasisUnitOptions } from '@/utils/entityUnits'
+import {
+  buildDefaultNutrientRows,
+  formatBasisAmount,
+  normalizeBasisUnit,
+  type BasisUnitOption,
+} from '@/utils/nutritionBasis'
 
 // 新增商品/原料对话框里的「营养信息」草稿编辑器：只维护本地数组，
 // 实体保存成功后再由 entityDrafts.persistEntityDrafts 一次性写入。
@@ -92,11 +107,18 @@ const props = defineProps<{
   nutrients: EntityDraftNutrient[]
   /** 实体名（商品/原料），只用于文案 */
   target: string
+  /** 营养基准（「每 X 单位」）：草稿态由父组件持有，实体创建后一并落库 */
+  amount: number
+  unit: string
+  /** 商品草稿：已选中的关联原料 id（其可折算的自定义单位可作基准单位） */
+  ingredientId?: number | null
 }>()
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: boolean): void
   (e: 'update:nutrients', value: EntityDraftNutrient[]): void
+  (e: 'update:amount', value: number): void
+  (e: 'update:unit', value: string): void
 }>()
 
 const { t } = useI18n()
@@ -113,6 +135,35 @@ interface DraftRow {
 const rows = ref<DraftRow[]>([])
 
 const defs = computed(() => buildNutrientDefinitions(energyUnit.value))
+
+// 基准单位候选：草稿态实体还没有 id，商品草稿可借已选关联原料的自定义单位
+const basisOptions = ref<BasisUnitOption[]>([])
+const basisAmount = computed({
+  get: () => props.amount,
+  set: value => emit('update:amount', value),
+})
+const basisUnit = computed({
+  get: () => props.unit,
+  set: value => emit('update:unit', value),
+})
+const basisLabel = computed(() =>
+  t('products.perBasis', {
+    amount: formatBasisAmount(props.amount),
+    unit: normalizeBasisUnit(props.unit),
+  }),
+)
+
+const loadBasisOptions = async () => {
+  try {
+    basisOptions.value = await loadNutritionBasisUnitOptions(
+      'product',
+      null,
+      props.ingredientId ?? null,
+    )
+  } catch {
+    basisOptions.value = []
+  }
+}
 
 const DEFAULT_UNITS = ['g', 'mg', 'μg', 'kcal', 'kJ', 'IU']
 
@@ -141,7 +192,13 @@ watch(
   (open) => {
     if (!open) return
     rows.value = (props.nutrients || []).map(toRow)
-    if (rows.value.length === 0) addRow()
+    if (rows.value.length === 0) {
+      // 首次打开：预填营养成分表常见五项（能量 kJ / 蛋白质 / 脂肪 / 碳水化合物 /
+      // 钠 mg）。全部留空时不会落库任何营养数据（见 persistEntityDrafts 的过滤）。
+      rows.value = buildDefaultNutrientRows(defs.value).map(row => ({ ...row }))
+      emitRows()
+    }
+    void loadBasisOptions()
   },
 )
 
