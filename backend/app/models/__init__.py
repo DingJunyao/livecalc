@@ -29,6 +29,9 @@ from app.models.agent_message import AgentMessage
 from app.models.agent_approval import AgentApproval
 from app.models.user_merchant_product_order import UserMerchantProductOrder
 from app.models.daily_recommendation import DailyRecommendation
+from app.models.daily_recommendation_item import DailyRecommendationItem
+from app.models.user_ai_settings import UserAiSettings
+from app.models.ai_usage_event import AiUsageEvent
 from app.models.user_ingredient_blacklist import UserIngredientBlacklist
 from app.models.blacklist_group_subscription import BlacklistGroupSubscription
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
@@ -64,6 +67,9 @@ __all__ = [
     "UserMerchantProductOrder",
     "SystemConfig",
     "DailyRecommendation",
+    "DailyRecommendationItem",
+    "UserAiSettings",
+    "AiUsageEvent",
     "UserIngredientBlacklist",
     "BlacklistGroup",
     "BlacklistGroupIngredient",
