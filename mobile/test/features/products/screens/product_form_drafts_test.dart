@@ -85,6 +85,8 @@ class _FakeIngredientRepository extends IngredientRepository {
     int skip = 0,
     int limit = 20,
     String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     final q = (search ?? '').trim();
     const items = [

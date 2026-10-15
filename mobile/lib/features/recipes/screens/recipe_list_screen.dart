@@ -56,7 +56,10 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(recipeListProvider.notifier).loadRecipes());
+    Future.microtask(() {
+      ref.read(recipeListProvider.notifier).loadRecipes();
+      ref.read(recipeListProvider.notifier).loadFavorites();
+    });
     _scrollController.addListener(_onScroll);
   }
 
@@ -255,10 +258,42 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                                         CrossAxisAlignment.start,
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Text(r.name,
-                                          style: theme.textTheme.titleSmall,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(r.name,
+                                                style:
+                                                    theme.textTheme.titleSmall,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis),
+                                          ),
+                                          InkWell(
+                                            onTap: () => ref
+                                                .read(recipeListProvider
+                                                    .notifier)
+                                                .toggleFavorite(r.id),
+                                            borderRadius:
+                                                BorderRadius.circular(16),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.all(2),
+                                              child: Icon(
+                                                state.favoriteIds
+                                                        .contains(r.id)
+                                                    ? Icons.favorite
+                                                    : Icons.favorite_border,
+                                                size: 18,
+                                                color: state.favoriteIds
+                                                        .contains(r.id)
+                                                    ? theme
+                                                        .colorScheme.error
+                                                    : theme
+                                                        .colorScheme.outline,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                       const SizedBox(height: 4),
                                       _buildPriceCalories(
                                           theme, r, state.loadingCosts),
@@ -380,12 +415,15 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
         initialDifficulties: state.filterDifficulties,
         initialIngredientIds: state.filterIngredientIds,
         initialConditions: state.filterConditions,
-        onApply: (categories, difficulties, ingredientIds, conditions) {
+        initialFavoritesOnly: state.favoritesOnly,
+        onApply:
+            (categories, difficulties, ingredientIds, conditions, favoritesOnly) {
           ref.read(recipeListProvider.notifier).applyFilters(
                 categories: categories,
                 difficulties: difficulties,
                 ingredientIds: ingredientIds,
                 conditions: conditions,
+                favoritesOnly: favoritesOnly,
               );
         },
       ),
@@ -398,7 +436,8 @@ class _RecipeFilterSheet extends ConsumerStatefulWidget {
   final List<String> initialDifficulties;
   final List<int> initialIngredientIds;
   final List<String> initialConditions;
-  final void Function(List<String>, List<String>, List<int>, List<String>)
+  final bool initialFavoritesOnly;
+  final void Function(List<String>, List<String>, List<int>, List<String>, bool)
       onApply;
 
   const _RecipeFilterSheet({
@@ -406,6 +445,7 @@ class _RecipeFilterSheet extends ConsumerStatefulWidget {
     required this.initialDifficulties,
     required this.initialIngredientIds,
     required this.initialConditions,
+    required this.initialFavoritesOnly,
     required this.onApply,
   });
 
@@ -420,6 +460,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
   late final Set<String> _difficulties;
   late final Set<int> _ingredientIds;
   late final Set<String> _conditions;
+  late bool _favoritesOnly;
   String _ingredientQuery = '';
 
   @override
@@ -429,6 +470,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
     _difficulties = widget.initialDifficulties.toSet();
     _ingredientIds = widget.initialIngredientIds.toSet();
     _conditions = widget.initialConditions.toSet();
+    _favoritesOnly = widget.initialFavoritesOnly;
     _ingredientController.addListener(_onIngredientChanged);
   }
 
@@ -452,7 +494,8 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
       _categories.isNotEmpty ||
       _difficulties.isNotEmpty ||
       _ingredientIds.isNotEmpty ||
-      _conditions.isNotEmpty;
+      _conditions.isNotEmpty ||
+      _favoritesOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -490,6 +533,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                       _difficulties.clear();
                       _ingredientIds.clear();
                       _conditions.clear();
+                      _favoritesOnly = false;
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: Text(l10n.journeyClear),
@@ -508,6 +552,13 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.favoritesOnlyFilter),
+                    value: _favoritesOnly,
+                    onChanged: (v) => setState(() => _favoritesOnly = v),
+                  ),
+                  const SizedBox(height: 8),
                   Text(l10n.recipeCategory, style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
                   Wrap(
@@ -648,6 +699,7 @@ class _RecipeFilterSheetState extends ConsumerState<_RecipeFilterSheet> {
                     _difficulties.toList()..sort(),
                     _ingredientIds.toList()..sort(),
                     _conditions.toList()..sort(),
+                    _favoritesOnly,
                   );
                   Navigator.of(context).pop();
                 },

@@ -20,6 +20,7 @@ import '../../features/products/screens/product_list_screen.dart';
 import '../../features/products/screens/product_detail_screen.dart';
 import '../../features/products/screens/product_form_screen.dart';
 import '../../features/products/models/product.dart';
+import '../../features/favorites/screens/favorites_screen.dart';
 import '../../features/merchants/screens/merchant_list_screen.dart';
 import '../../features/merchants/screens/merchant_detail_screen.dart';
 import '../../features/merchants/screens/merchant_form_screen.dart';
@@ -361,6 +362,15 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/favorites',
+            name: 'favorites',
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const FavoritesScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
+          ),
+          GoRoute(
             path: '/merchants/map',
             name: 'merchant-map',
             builder: (_, __) => const MerchantListScreen(initialShowMap: true),
@@ -484,6 +494,7 @@ enum _TabLabel {
   ingredients,
   products,
   merchants,
+  favorites,
   profile,
   more
 }
@@ -540,6 +551,12 @@ const _merchantsTab = _Tab(
     selectedIcon: Icons.store,
     prefixes: ['/merchants'],
     route: '/merchants');
+const _favoritesTab = _Tab(
+    label: _TabLabel.favorites,
+    icon: Icons.favorite_outline,
+    selectedIcon: Icons.favorite,
+    prefixes: ['/favorites'],
+    route: '/favorites');
 const _profileTab = _Tab(
     label: _TabLabel.profile,
     icon: Icons.person_outline,
@@ -559,6 +576,7 @@ const _desktopTabs = [
   _ingredientsTab,
   _productsTab,
   _merchantsTab,
+  _favoritesTab,
   _profileTab,
 ];
 const _mobileTabs = [_homeTab, _pricesTab, _recipesTab, _moreTab];
@@ -566,6 +584,7 @@ const _moreMenuTabs = [
   _ingredientsTab,
   _productsTab,
   _merchantsTab,
+  _favoritesTab,
   _profileTab,
 ];
 
@@ -577,6 +596,7 @@ String _tabLabel(_TabLabel label, AppLocalizations l10n) {
     _TabLabel.ingredients => l10n.navIngredients,
     _TabLabel.products => l10n.navProducts,
     _TabLabel.merchants => l10n.navMerchants,
+    _TabLabel.favorites => l10n.navFavorites,
     _TabLabel.profile => l10n.navProfile,
     _TabLabel.more => l10n.navMore,
   };
@@ -770,25 +790,32 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
             // 横排胶囊网格：复用 _NavItem，与底栏外观完全一致
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-              child: Row(
-                children: [
-                  for (var i = 0; i < _moreMenuTabs.length; i++)
-                    Expanded(
-                      child: _NavItem(
-                        itemKey: ValueKey(
-                          'more-${_tabLabel(_moreMenuTabs[i].label, l10n)}',
+              child: LayoutBuilder(
+                builder: (_, constraints) {
+                  // 每行 4 个：条目多于 4 个时自动换行（当前 5 个）
+                  final itemWidth = constraints.maxWidth / 4;
+                  return Wrap(
+                    children: [
+                      for (var i = 0; i < _moreMenuTabs.length; i++)
+                        SizedBox(
+                          width: itemWidth,
+                          child: _NavItem(
+                            itemKey: ValueKey(
+                              'more-${_tabLabel(_moreMenuTabs[i].label, l10n)}',
+                            ),
+                            label: _tabLabel(_moreMenuTabs[i].label, l10n),
+                            icon: _moreMenuTabs[i].icon,
+                            selectedIcon: _moreMenuTabs[i].selectedIcon,
+                            selected: i == selectedIdx,
+                            onTap: () {
+                              Navigator.of(ctx).pop();
+                              context.go(_moreMenuTabs[i].route!);
+                            },
+                          ),
                         ),
-                        label: _tabLabel(_moreMenuTabs[i].label, l10n),
-                        icon: _moreMenuTabs[i].icon,
-                        selectedIcon: _moreMenuTabs[i].selectedIcon,
-                        selected: i == selectedIdx,
-                        onTap: () {
-                          Navigator.of(ctx).pop();
-                          context.go(_moreMenuTabs[i].route!);
-                        },
-                      ),
-                    ),
-                ],
+                    ],
+                  );
+                },
               ),
             ),
           ],

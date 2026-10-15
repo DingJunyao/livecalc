@@ -37,6 +37,8 @@ class _ListRepository extends RecipeRepository {
     List<String>? conditions,
     int page = 1,
     int pageSize = 20,
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     return const RecipePage(items: [_summary], total: 1);
   }

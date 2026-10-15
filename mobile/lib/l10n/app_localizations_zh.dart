@@ -518,6 +518,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get navMore => '更多';
 
   @override
+  String get navFavorites => '我的收藏';
+
+  @override
   String get aliasAddHelper => '输入后点击 + 添加';
 
   @override
@@ -1669,6 +1672,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get merchantShowOtherRegionsHint => '含全部地区，不受计算范围限制';
+
+  @override
+  String get favoritesAdd => '收藏';
+
+  @override
+  String get favoritesRemove => '取消收藏';
+
+  @override
+  String get favoritesRemoved => '已取消收藏';
+
+  @override
+  String get favoritesAddFailed => '收藏失败';
+
+  @override
+  String get favoritesRemoveFailed => '取消收藏失败';
+
+  @override
+  String get favoritesOnlyFilter => '仅看我的收藏';
+
+  @override
+  String get favoritesEmpty => '暂无收藏';
+
+  @override
+  String get favoritesTabIngredients => '原料';
+
+  @override
+  String get favoritesTabProducts => '商品';
+
+  @override
+  String get favoritesTabRecipes => '菜谱';
+
+  @override
+  String get favoritesTabMerchants => '商家';
 
   @override
   String get merchantFavoritesOnly => '仅看我的收藏';

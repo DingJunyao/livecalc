@@ -178,7 +178,8 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
   /// 收藏/取消收藏（乐观更新，失败回滚）。
   Future<void> toggleFavorite(int id) async {
     final wasFav = state.favoriteIds.contains(id);
-    final next = Set<int>.of(state.favoriteIds);
+    final previous = state.favoriteIds;
+    final next = Set<int>.of(previous);
     if (wasFav) {
       next.remove(id);
     } else {
@@ -193,7 +194,7 @@ class MerchantListNotifier extends StateNotifier<MerchantListState> {
       }
       if (state.favoritesOnly) await load();
     } on Exception {
-      state = state.copyWith(favoriteIds: state.favoriteIds);
+      state = state.copyWith(favoriteIds: previous);
     }
   }
 

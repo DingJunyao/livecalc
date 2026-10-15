@@ -21,6 +21,8 @@ class _FakeRecipeRepository extends RecipeRepository {
     List<String>? conditions,
     int page = 1,
     int pageSize = 20,
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     return RecipePage(items: items, total: items.length);
   }

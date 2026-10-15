@@ -24,6 +24,8 @@ class _LatencyIngredientRepository extends IngredientRepository {
     int skip = 0,
     int limit = 20,
     String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     searchLog.add(search ?? '');
     if (latency > Duration.zero) {

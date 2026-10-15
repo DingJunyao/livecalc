@@ -8,6 +8,7 @@ import '../models/recipe_detail.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../providers/recipe_provider.dart';
 import '../repositories/recipe_repository.dart';
+import '../../../shared/repositories/favorites_repository.dart';
 import '../utils/nutrition_labels.dart';
 import '../widgets/cost_trend_chart.dart';
 import 'recipe_form_screen.dart';
@@ -26,14 +27,51 @@ class RecipeDetailScreen extends ConsumerStatefulWidget {
 
 class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
   bool _showAllNutrients = false;
+  bool _isFavorite = false;
   int _selectedImageIndex = 0;
   final RecipeRepository _repository = RecipeRepository();
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-        () => ref.read(recipeDetailPageProvider(widget.id).notifier).load());
+    Future.microtask(() {
+      _loadFavorite();
+      ref.read(recipeDetailPageProvider(widget.id).notifier).load();
+    });
+  }
+
+  Future<void> _loadFavorite() async {
+    try {
+      final ids = await FavoritesRepository().fetchIds('recipe');
+      if (!mounted) return;
+      setState(() => _isFavorite = ids.contains(widget.id));
+    } on Exception {
+      // 收藏状态加载失败不阻塞详情
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final wasFav = _isFavorite;
+    setState(() => _isFavorite = !wasFav);
+    try {
+      final repo = FavoritesRepository();
+      if (wasFav) {
+        await repo.remove('recipe', widget.id);
+      } else {
+        await repo.add('recipe', widget.id);
+      }
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _isFavorite = wasFav);
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            wasFav ? l10n.favoritesRemoveFailed : l10n.favoritesAddFailed,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -65,6 +103,14 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     final hasImages = imageUrls.isNotEmpty;
     final isAdmin = ref.read(authProvider).user?.isAdmin == true;
     final appBarActions = [
+      IconButton(
+        icon: Icon(
+          _isFavorite ? Icons.favorite : Icons.favorite_border,
+          color: _isFavorite ? theme.colorScheme.error : null,
+        ),
+        tooltip: _isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+        onPressed: _toggleFavorite,
+      ),
       IconButton(
         icon: const Icon(Icons.analytics_outlined),
         tooltip: l10n.recipeAnalysisTitle,

@@ -18,6 +18,8 @@ class _FakeProductRepository extends ProductRepository {
     int skip = 0,
     int limit = 20,
     String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     searches.add(search);
     if (failNextSearch) {

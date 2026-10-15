@@ -91,6 +91,8 @@ class IngredientRepository {
     int skip = 0,
     int limit = 20,
     String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     final params = <String, dynamic>{
       'skip': skip,
@@ -104,6 +106,8 @@ class IngredientRepository {
     for (final cond in conditions ?? const <String>[]) {
       params[cond] = 'true';
     }
+    if (favoritesOnly) params['favorites_only'] = 'true';
+    if (favoritesFirst) params['favorites_first'] = 'true';
     final response =
         await _client.dio.get('/ingredients', queryParameters: params);
     final data = response.data;

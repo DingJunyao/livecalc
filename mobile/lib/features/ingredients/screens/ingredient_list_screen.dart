@@ -47,6 +47,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(ingredientListProvider.notifier).load();
+      ref.read(ingredientListProvider.notifier).loadFavorites();
       final merchants = ref.read(merchantListProvider);
       if (merchants.items.isEmpty && !merchants.loading) {
         ref.read(merchantListProvider.notifier).load();
@@ -218,6 +219,11 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
             sparkline: state.sparklines[state.items[i].id],
             onTap: () => context.push('/ingredients/${state.items[i].id}'),
             onQuickPrice: () => _quickPrice(state.items[i]),
+            isFavorite: state.favoriteIds.contains(state.items[i].id),
+            onToggleFavorite: () =>
+                ref.read(ingredientListProvider.notifier).toggleFavorite(
+                      state.items[i].id,
+                    ),
             userCurrency: ref.read(displayCurrencyProvider),
           );
         },
@@ -281,10 +287,13 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       builder: (ctx) => _IngredientFilterSheet(
         initialCategoryIds: state.filterCategoryIds,
         initialConditions: state.conditions,
-        onApply: (categoryIds, conditions) {
-          ref
-              .read(ingredientListProvider.notifier)
-              .applyFilters(categoryIds: categoryIds, conditions: conditions);
+        initialFavoritesOnly: state.favoritesOnly,
+        onApply: (categoryIds, conditions, favoritesOnly) {
+          ref.read(ingredientListProvider.notifier).applyFilters(
+                categoryIds: categoryIds,
+                conditions: conditions,
+                favoritesOnly: favoritesOnly,
+              );
         },
       ),
     );
@@ -305,6 +314,8 @@ class _IngredientCard extends ConsumerWidget {
   final List<double>? sparkline;
   final VoidCallback onTap;
   final VoidCallback onQuickPrice;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final String userCurrency;
 
   const _IngredientCard({
@@ -313,6 +324,8 @@ class _IngredientCard extends ConsumerWidget {
     required this.sparkline,
     required this.onTap,
     required this.onQuickPrice,
+    required this.isFavorite,
+    required this.onToggleFavorite,
     this.userCurrency = 'CNY',
   });
 
@@ -403,6 +416,16 @@ class _IngredientCard extends ConsumerWidget {
                 const SizedBox(width: 4),
               ],
               IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? theme.colorScheme.error : null,
+                ),
+                tooltip:
+                    isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+                visualDensity: VisualDensity.compact,
+                onPressed: onToggleFavorite,
+              ),
+              IconButton(
                 icon: const Icon(Icons.add_chart),
                 tooltip: l10n.journeyRecordPrice,
                 visualDensity: VisualDensity.compact,
@@ -421,11 +444,13 @@ class _IngredientCard extends ConsumerWidget {
 class _IngredientFilterSheet extends ConsumerStatefulWidget {
   final List<int> initialCategoryIds;
   final List<String> initialConditions;
-  final void Function(List<int>, List<String>) onApply;
+  final bool initialFavoritesOnly;
+  final void Function(List<int>, List<String>, bool) onApply;
 
   const _IngredientFilterSheet({
     required this.initialCategoryIds,
     required this.initialConditions,
+    required this.initialFavoritesOnly,
     required this.onApply,
   });
 
@@ -438,15 +463,18 @@ class _IngredientFilterSheetState
     extends ConsumerState<_IngredientFilterSheet> {
   late final Set<int> _categoryIds;
   late final Set<String> _conditions;
+  late bool _favoritesOnly;
 
   @override
   void initState() {
     super.initState();
     _categoryIds = widget.initialCategoryIds.toSet();
     _conditions = widget.initialConditions.toSet();
+    _favoritesOnly = widget.initialFavoritesOnly;
   }
 
-  bool get _hasActive => _categoryIds.isNotEmpty || _conditions.isNotEmpty;
+  bool get _hasActive =>
+      _categoryIds.isNotEmpty || _conditions.isNotEmpty || _favoritesOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -472,6 +500,7 @@ class _IngredientFilterSheetState
                     onPressed: () => setState(() {
                       _categoryIds.clear();
                       _conditions.clear();
+                      _favoritesOnly = false;
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: Text(l10n.journeyClear),
@@ -490,6 +519,13 @@ class _IngredientFilterSheetState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.favoritesOnlyFilter),
+                    value: _favoritesOnly,
+                    onChanged: (v) => setState(() => _favoritesOnly = v),
+                  ),
+                  const SizedBox(height: 8),
                   Text(l10n.ingredientCategory,
                       style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
@@ -549,6 +585,7 @@ class _IngredientFilterSheetState
                   widget.onApply(
                     _categoryIds.toList()..sort(),
                     _conditions.toList()..sort(),
+                    _favoritesOnly,
                   );
                   Navigator.of(context).pop();
                 },

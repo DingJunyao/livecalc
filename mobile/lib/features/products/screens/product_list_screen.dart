@@ -46,6 +46,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     super.initState();
     Future.microtask(() {
       ref.read(productListProvider.notifier).load();
+      ref.read(productListProvider.notifier).loadFavorites();
       _loadBrands();
       final merchants = ref.read(merchantListProvider);
       if (merchants.items.isEmpty && !merchants.loading) {
@@ -237,6 +238,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
             sparkline: state.sparklines[state.items[i].id],
             onTap: () => context.push('/products/${state.items[i].id}'),
             onQuickPrice: () => _quickPrice(state.items[i]),
+            isFavorite: state.favoriteIds.contains(state.items[i].id),
+            onToggleFavorite: () =>
+                ref.read(productListProvider.notifier).toggleFavorite(
+                      state.items[i].id,
+                    ),
             userCurrency: ref.read(displayCurrencyProvider),
           );
         },
@@ -275,13 +281,15 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         initialCategoryIds: state.filterCategoryIds,
         initialBrand: state.filterBrand,
         initialConditions: state.conditions,
+        initialFavoritesOnly: state.favoritesOnly,
         brandOptions: _brandOptions,
-        onApply: (ingredientId, categoryIds, brand, conditions) {
+        onApply: (ingredientId, categoryIds, brand, conditions, favoritesOnly) {
           ref.read(productListProvider.notifier).applyFilters(
                 ingredientId: ingredientId,
                 categoryIds: categoryIds,
                 brand: brand,
                 conditions: conditions,
+                favoritesOnly: favoritesOnly,
               );
         },
       ),
@@ -302,6 +310,8 @@ class _ProductCard extends ConsumerWidget {
   final List<double>? sparkline;
   final VoidCallback onTap;
   final VoidCallback onQuickPrice;
+  final bool isFavorite;
+  final VoidCallback onToggleFavorite;
   final String userCurrency;
 
   const _ProductCard({
@@ -310,6 +320,8 @@ class _ProductCard extends ConsumerWidget {
     required this.sparkline,
     required this.onTap,
     required this.onQuickPrice,
+    required this.isFavorite,
+    required this.onToggleFavorite,
     this.userCurrency = 'CNY',
   });
 
@@ -401,6 +413,16 @@ class _ProductCard extends ConsumerWidget {
                 const SizedBox(width: 4),
               ],
               IconButton(
+                icon: Icon(
+                  isFavorite ? Icons.favorite : Icons.favorite_border,
+                  color: isFavorite ? theme.colorScheme.error : null,
+                ),
+                tooltip:
+                    isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+                visualDensity: VisualDensity.compact,
+                onPressed: onToggleFavorite,
+              ),
+              IconButton(
                 icon: const Icon(Icons.add_chart),
                 tooltip: l10n.journeyRecordPrice,
                 visualDensity: VisualDensity.compact,
@@ -423,14 +445,16 @@ class _ProductFilterSheet extends ConsumerStatefulWidget {
   final List<int> initialCategoryIds;
   final String? initialBrand;
   final List<String> initialConditions;
+  final bool initialFavoritesOnly;
   final List<String> brandOptions;
-  final void Function(int?, List<int>, String?, List<String>) onApply;
+  final void Function(int?, List<int>, String?, List<String>, bool) onApply;
 
   const _ProductFilterSheet({
     required this.initialIngredientId,
     required this.initialCategoryIds,
     required this.initialBrand,
     required this.initialConditions,
+    required this.initialFavoritesOnly,
     required this.brandOptions,
     required this.onApply,
   });
@@ -445,6 +469,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
   late Set<int> _categoryIds;
   late String? _brand;
   late Set<String> _conditions;
+  late bool _favoritesOnly;
 
   @override
   void initState() {
@@ -453,13 +478,15 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
     _categoryIds = widget.initialCategoryIds.toSet();
     _brand = widget.initialBrand;
     _conditions = widget.initialConditions.toSet();
+    _favoritesOnly = widget.initialFavoritesOnly;
   }
 
   bool get _hasActive =>
       _ingredientId != null ||
       _categoryIds.isNotEmpty ||
       _brand != null ||
-      _conditions.isNotEmpty;
+      _conditions.isNotEmpty ||
+      _favoritesOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -489,6 +516,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                       _categoryIds.clear();
                       _brand = null;
                       _conditions.clear();
+                      _favoritesOnly = false;
                     }),
                     icon: const Icon(Icons.clear_all, size: 18),
                     label: Text(l10n.journeyClear),
@@ -507,6 +535,13 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(l10n.favoritesOnlyFilter),
+                    value: _favoritesOnly,
+                    onChanged: (v) => setState(() => _favoritesOnly = v),
+                  ),
+                  const SizedBox(height: 8),
                   Text(l10n.productLinkedIngredient,
                       style: theme.textTheme.labelLarge),
                   const SizedBox(height: 8),
@@ -604,6 +639,7 @@ class _ProductFilterSheetState extends ConsumerState<_ProductFilterSheet> {
                     _categoryIds.toList()..sort(),
                     _brand,
                     _conditions.toList()..sort(),
+                    _favoritesOnly,
                   );
                   Navigator.of(context).pop();
                 },

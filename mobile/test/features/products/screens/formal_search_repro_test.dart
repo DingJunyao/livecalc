@@ -31,6 +31,8 @@ class _FormalDataIngredientRepository extends IngredientRepository {
     int skip = 0,
     int limit = 20,
     String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     const items = [
       Ingredient(id: 240, name: '???'),

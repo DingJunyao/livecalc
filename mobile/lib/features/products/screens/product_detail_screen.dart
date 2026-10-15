@@ -24,6 +24,7 @@ import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/product.dart';
 import '../screens/product_form_screen.dart' show ProductFormResult;
 import '../providers/product_provider.dart';
+import '../../../shared/repositories/favorites_repository.dart';
 import '../repositories/product_repository.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
@@ -36,10 +37,13 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
+  bool _isFavorite = false;
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
+      _loadFavorite();
       ref
           .read(productDetailPageProvider(widget.id).notifier)
           .load(initialDays: 30);
@@ -48,6 +52,40 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         ref.read(merchantListProvider.notifier).load();
       }
     });
+  }
+
+  Future<void> _loadFavorite() async {
+    try {
+      final ids = await FavoritesRepository().fetchIds('product');
+      if (!mounted) return;
+      setState(() => _isFavorite = ids.contains(widget.id));
+    } on Exception {
+      // 收藏状态加载失败不阻塞详情
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    final wasFav = _isFavorite;
+    setState(() => _isFavorite = !wasFav);
+    try {
+      final repo = FavoritesRepository();
+      if (wasFav) {
+        await repo.remove('product', widget.id);
+      } else {
+        await repo.add('product', widget.id);
+      }
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _isFavorite = wasFav);
+      final l10n = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            wasFav ? l10n.favoritesRemoveFailed : l10n.favoritesAddFailed,
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -127,6 +165,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(
+              _isFavorite ? Icons.favorite : Icons.favorite_border,
+              color: _isFavorite ? theme.colorScheme.error : null,
+            ),
+            tooltip: _isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+            onPressed: _toggleFavorite,
+          ),
           IconButton(
             icon: const Icon(Icons.payments_outlined),
             tooltip: l10n.journeyRecordPrice,

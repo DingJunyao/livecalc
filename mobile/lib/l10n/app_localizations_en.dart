@@ -533,6 +533,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navMore => 'More';
 
   @override
+  String get navFavorites => 'Favorites';
+
+  @override
   String get aliasAddHelper => 'Press + to add';
 
   @override
@@ -1708,6 +1711,39 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get merchantShowOtherRegionsHint =>
       'Includes all regions, unaffected by calculation scope';
+
+  @override
+  String get favoritesAdd => 'Favorite';
+
+  @override
+  String get favoritesRemove => 'Remove favorite';
+
+  @override
+  String get favoritesRemoved => 'Removed from favorites';
+
+  @override
+  String get favoritesAddFailed => 'Failed to favorite';
+
+  @override
+  String get favoritesRemoveFailed => 'Failed to remove favorite';
+
+  @override
+  String get favoritesOnlyFilter => 'Only my favorites';
+
+  @override
+  String get favoritesEmpty => 'No favorites yet';
+
+  @override
+  String get favoritesTabIngredients => 'Ingredients';
+
+  @override
+  String get favoritesTabProducts => 'Products';
+
+  @override
+  String get favoritesTabRecipes => 'Recipes';
+
+  @override
+  String get favoritesTabMerchants => 'Merchants';
 
   @override
   String get merchantFavoritesOnly => 'Favorites only';

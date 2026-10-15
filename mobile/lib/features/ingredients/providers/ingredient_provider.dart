@@ -4,6 +4,7 @@ import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/ingredient_recipe.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
+import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/models/nutrition.dart';
 import '../../../shared/models/entity_pending_proposal.dart';
 import '../../../shared/models/hierarchy_relation.dart';
@@ -41,6 +42,8 @@ class IngredientListState {
   final bool hasMore;
   final Map<int, LatestPriceInfo> latestPrices;
   final Map<int, List<double>> sparklines;
+  final bool favoritesOnly;
+  final Set<int> favoriteIds;
 
   const IngredientListState({
     this.items = const [],
@@ -56,6 +59,8 @@ class IngredientListState {
     this.hasMore = true,
     this.latestPrices = const {},
     this.sparklines = const {},
+    this.favoritesOnly = false,
+    this.favoriteIds = const {},
   });
 
   IngredientListState copyWith({
@@ -73,6 +78,8 @@ class IngredientListState {
     bool? hasMore,
     Map<int, LatestPriceInfo>? latestPrices,
     Map<int, List<double>>? sparklines,
+    bool? favoritesOnly,
+    Set<int>? favoriteIds,
   }) {
     return IngredientListState(
       items: items ?? this.items,
@@ -88,6 +95,8 @@ class IngredientListState {
       hasMore: hasMore ?? this.hasMore,
       latestPrices: latestPrices ?? this.latestPrices,
       sparklines: sparklines ?? this.sparklines,
+      favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+      favoriteIds: favoriteIds ?? this.favoriteIds,
     );
   }
 }
@@ -128,6 +137,8 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
         categoryIds:
             state.filterCategoryIds.isEmpty ? null : state.filterCategoryIds,
         conditions: state.conditions.isEmpty ? null : state.conditions,
+        favoritesOnly: state.favoritesOnly,
+        favoritesFirst: true,
         skip: (page - 1) * ingredientPageSize,
         limit: ingredientPageSize,
       );
@@ -161,12 +172,49 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   void applyFilters({
     required List<int> categoryIds,
     required List<String> conditions,
+    bool? favoritesOnly,
   }) {
     state = state.copyWith(
       filterCategoryIds: categoryIds,
       conditions: conditions,
+      favoritesOnly: favoritesOnly ?? state.favoritesOnly,
     );
     load();
+  }
+
+  /// 加载「我的收藏」id 集合（供列表心形状态）。
+  Future<void> loadFavorites() async {
+    try {
+      final ids = await FavoritesRepository().fetchIds('ingredient');
+      if (!mounted) return;
+      state = state.copyWith(favoriteIds: ids);
+    } on Exception {
+      // 收藏加载失败不影响列表
+    }
+  }
+
+  /// 收藏/取消收藏（乐观更新，失败回滚）。
+  Future<void> toggleFavorite(int id) async {
+    final wasFav = state.favoriteIds.contains(id);
+    final previous = state.favoriteIds;
+    final next = Set<int>.of(previous);
+    if (wasFav) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    state = state.copyWith(favoriteIds: next);
+    try {
+      final repo = FavoritesRepository();
+      if (wasFav) {
+        await repo.remove('ingredient', id);
+      } else {
+        await repo.add('ingredient', id);
+      }
+      if (state.favoritesOnly) await load();
+    } on Exception {
+      state = state.copyWith(favoriteIds: previous);
+    }
   }
 
   Future<void> addIngredient({

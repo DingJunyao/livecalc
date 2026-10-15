@@ -92,6 +92,8 @@ class RecipeRepository {
     List<String>? conditions,
     int page = 1,
     int pageSize = 20,
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
   }) async {
     final params = <String, dynamic>{
       'skip': (page - 1) * pageSize,
@@ -110,6 +112,8 @@ class RecipeRepository {
     for (final cond in conditions ?? const <String>[]) {
       params[cond] = 'true';
     }
+    if (favoritesOnly) params['favorites_only'] = 'true';
+    if (favoritesFirst) params['favorites_first'] = 'true';
     final response = await _client.dio.get('/recipes', queryParameters: params);
     final data = response.data;
     final list = (data is List) ? data : ((data['items'] as List?) ?? const []);

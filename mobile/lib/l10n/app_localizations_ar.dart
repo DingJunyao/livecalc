@@ -532,6 +532,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navMore => 'المزيد';
 
   @override
+  String get navFavorites => 'مفضلاتي';
+
+  @override
   String get aliasAddHelper => 'اضغط + للإضافة';
 
   @override
@@ -1700,6 +1703,39 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get merchantShowOtherRegionsHint =>
       'يشمل جميع المناطق ولا يتأثر بنطاق الحساب';
+
+  @override
+  String get favoritesAdd => 'إضافة للمفضلة';
+
+  @override
+  String get favoritesRemove => 'إزالة من المفضلة';
+
+  @override
+  String get favoritesRemoved => 'تمت الإزالة من المفضلة';
+
+  @override
+  String get favoritesAddFailed => 'فشل الإضافة للمفضلة';
+
+  @override
+  String get favoritesRemoveFailed => 'فشل إزالة المفضلة';
+
+  @override
+  String get favoritesOnlyFilter => 'مفضلتي فقط';
+
+  @override
+  String get favoritesEmpty => 'لا توجد مفضلات بعد';
+
+  @override
+  String get favoritesTabIngredients => 'المكونات';
+
+  @override
+  String get favoritesTabProducts => 'المنتجات';
+
+  @override
+  String get favoritesTabRecipes => 'الوصفات';
+
+  @override
+  String get favoritesTabMerchants => 'المتاجر';
 
   @override
   String get merchantFavoritesOnly => 'المفضلة فقط';

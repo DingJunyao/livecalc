@@ -1114,6 +1114,12 @@ abstract class AppLocalizations {
   /// **'更多'**
   String get navMore;
 
+  /// No description provided for @navFavorites.
+  ///
+  /// In zh, this message translates to:
+  /// **'我的收藏'**
+  String get navFavorites;
+
   /// No description provided for @aliasAddHelper.
   ///
   /// In zh, this message translates to:
@@ -3227,6 +3233,72 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'含全部地区，不受计算范围限制'**
   String get merchantShowOtherRegionsHint;
+
+  /// No description provided for @favoritesAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏'**
+  String get favoritesAdd;
+
+  /// No description provided for @favoritesRemove.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏'**
+  String get favoritesRemove;
+
+  /// No description provided for @favoritesRemoved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消收藏'**
+  String get favoritesRemoved;
+
+  /// No description provided for @favoritesAddFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'收藏失败'**
+  String get favoritesAddFailed;
+
+  /// No description provided for @favoritesRemoveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消收藏失败'**
+  String get favoritesRemoveFailed;
+
+  /// No description provided for @favoritesOnlyFilter.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅看我的收藏'**
+  String get favoritesOnlyFilter;
+
+  /// No description provided for @favoritesEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无收藏'**
+  String get favoritesEmpty;
+
+  /// No description provided for @favoritesTabIngredients.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get favoritesTabIngredients;
+
+  /// No description provided for @favoritesTabProducts.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get favoritesTabProducts;
+
+  /// No description provided for @favoritesTabRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get favoritesTabRecipes;
+
+  /// No description provided for @favoritesTabMerchants.
+  ///
+  /// In zh, this message translates to:
+  /// **'商家'**
+  String get favoritesTabMerchants;
 
   /// No description provided for @merchantFavoritesOnly.
   ///

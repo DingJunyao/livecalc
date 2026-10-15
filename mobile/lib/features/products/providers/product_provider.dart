@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
+import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/models/nutrition.dart';
 import '../../../shared/models/entity_pending_proposal.dart';
 import '../../entities/repositories/entity_repository.dart';
@@ -36,6 +37,8 @@ class ProductListState {
   final bool hasMore;
   final Map<int, LatestPriceInfo> latestPrices;
   final Map<int, List<double>> sparklines;
+  final bool favoritesOnly;
+  final Set<int> favoriteIds;
 
   const ProductListState({
     this.items = const [],
@@ -53,6 +56,8 @@ class ProductListState {
     this.hasMore = true,
     this.latestPrices = const {},
     this.sparklines = const {},
+    this.favoritesOnly = false,
+    this.favoriteIds = const {},
   });
 
   ProductListState copyWith({
@@ -72,6 +77,8 @@ class ProductListState {
     bool? hasMore,
     Map<int, LatestPriceInfo>? latestPrices,
     Map<int, List<double>>? sparklines,
+    bool? favoritesOnly,
+    Set<int>? favoriteIds,
   }) {
     return ProductListState(
       items: items ?? this.items,
@@ -93,6 +100,8 @@ class ProductListState {
       hasMore: hasMore ?? this.hasMore,
       latestPrices: latestPrices ?? this.latestPrices,
       sparklines: sparklines ?? this.sparklines,
+      favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+      favoriteIds: favoriteIds ?? this.favoriteIds,
     );
   }
 }
@@ -137,6 +146,8 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
             state.filterCategoryIds.isEmpty ? null : state.filterCategoryIds,
         brands: state.filterBrand == null ? null : [state.filterBrand!],
         conditions: state.conditions.isEmpty ? null : state.conditions,
+        favoritesOnly: state.favoritesOnly,
+        favoritesFirst: true,
         skip: (page - 1) * productPageSize,
         limit: productPageSize,
       );
@@ -186,14 +197,51 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
     List<int> categoryIds = const [],
     String? brand,
     List<String> conditions = const [],
+    bool? favoritesOnly,
   }) {
     state = state.copyWith(
       filterIngredientId: ingredientId,
       filterCategoryIds: categoryIds,
       filterBrand: brand,
       conditions: conditions,
+      favoritesOnly: favoritesOnly ?? state.favoritesOnly,
     );
     load();
+  }
+
+  /// 加载「我的收藏」id 集合（供列表心形状态）。
+  Future<void> loadFavorites() async {
+    try {
+      final ids = await FavoritesRepository().fetchIds('product');
+      if (!mounted) return;
+      state = state.copyWith(favoriteIds: ids);
+    } on Exception {
+      // 收藏加载失败不影响列表
+    }
+  }
+
+  /// 收藏/取消收藏（乐观更新，失败回滚）。
+  Future<void> toggleFavorite(int id) async {
+    final wasFav = state.favoriteIds.contains(id);
+    final previous = state.favoriteIds;
+    final next = Set<int>.of(previous);
+    if (wasFav) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    state = state.copyWith(favoriteIds: next);
+    try {
+      final repo = FavoritesRepository();
+      if (wasFav) {
+        await repo.remove('product', id);
+      } else {
+        await repo.add('product', id);
+      }
+      if (state.favoritesOnly) await load();
+    } on Exception {
+      state = state.copyWith(favoriteIds: previous);
+    }
   }
 
   Future<void> addProduct({

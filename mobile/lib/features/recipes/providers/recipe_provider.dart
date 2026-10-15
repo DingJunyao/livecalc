@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/recipe_summary.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
+import '../../../shared/repositories/favorites_repository.dart';
 
 class RecipeListState {
   final List<RecipeSummary> recipes;
@@ -15,6 +16,8 @@ class RecipeListState {
   final List<String> filterDifficulties;
   final List<int> filterIngredientIds;
   final List<String> filterConditions;
+  final bool favoritesOnly;
+  final Set<int> favoriteIds;
   final int total;
   final int currentPage;
   final bool hasMore;
@@ -30,6 +33,8 @@ class RecipeListState {
     this.filterDifficulties = const [],
     this.filterIngredientIds = const [],
     this.filterConditions = const [],
+    this.favoritesOnly = false,
+    this.favoriteIds = const {},
     this.total = 0,
     this.currentPage = 1,
     this.hasMore = true,
@@ -47,6 +52,8 @@ class RecipeListState {
     List<String>? filterDifficulties,
     List<int>? filterIngredientIds,
     List<String>? filterConditions,
+    bool? favoritesOnly,
+    Set<int>? favoriteIds,
     int? total,
     int? currentPage,
     bool? hasMore,
@@ -62,6 +69,8 @@ class RecipeListState {
       filterDifficulties: filterDifficulties ?? this.filterDifficulties,
       filterIngredientIds: filterIngredientIds ?? this.filterIngredientIds,
       filterConditions: filterConditions ?? this.filterConditions,
+      favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+      favoriteIds: favoriteIds ?? this.favoriteIds,
       total: total ?? this.total,
       currentPage: currentPage ?? this.currentPage,
       hasMore: hasMore ?? this.hasMore,
@@ -112,6 +121,8 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
         difficulties: state.filterDifficulties,
         ingredientIds: state.filterIngredientIds,
         conditions: state.filterConditions,
+        favoritesOnly: state.favoritesOnly,
+        favoritesFirst: true,
         page: page,
         pageSize: pageSize,
       );
@@ -125,6 +136,8 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
         filterDifficulties: state.filterDifficulties,
         filterIngredientIds: state.filterIngredientIds,
         filterConditions: state.filterConditions,
+        favoritesOnly: state.favoritesOnly,
+        favoriteIds: state.favoriteIds,
         total: result.total,
         currentPage: page,
         hasMore: recipes.length < result.total,
@@ -152,14 +165,51 @@ class RecipeListNotifier extends StateNotifier<RecipeListState> {
     required List<String> difficulties,
     required List<int> ingredientIds,
     required List<String> conditions,
+    bool? favoritesOnly,
   }) {
     state = state.copyWith(
       filterCategories: categories,
       filterDifficulties: difficulties,
       filterIngredientIds: ingredientIds,
       filterConditions: conditions,
+      favoritesOnly: favoritesOnly ?? state.favoritesOnly,
     );
     loadRecipes();
+  }
+
+  /// 加载「我的收藏」id 集合（供列表心形状态）。
+  Future<void> loadFavorites() async {
+    try {
+      final ids = await FavoritesRepository().fetchIds('recipe');
+      if (!mounted) return;
+      state = state.copyWith(favoriteIds: ids);
+    } on Exception {
+      // 收藏加载失败不影响列表
+    }
+  }
+
+  /// 收藏/取消收藏（乐观更新，失败回滚）。
+  Future<void> toggleFavorite(int id) async {
+    final wasFav = state.favoriteIds.contains(id);
+    final previous = state.favoriteIds;
+    final next = Set<int>.of(previous);
+    if (wasFav) {
+      next.remove(id);
+    } else {
+      next.add(id);
+    }
+    state = state.copyWith(favoriteIds: next);
+    try {
+      final repo = FavoritesRepository();
+      if (wasFav) {
+        await repo.remove('recipe', id);
+      } else {
+        await repo.add('recipe', id);
+      }
+      if (state.favoritesOnly) await loadRecipes();
+    } on Exception {
+      state = state.copyWith(favoriteIds: previous);
+    }
   }
 
   Future<void> _loadCosts(List<RecipeSummary> recipes) async {
