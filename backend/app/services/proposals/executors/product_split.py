@@ -127,17 +127,19 @@ class ProductSplitExecutor(ProposalExecutor):
         db.flush()
         snapshot["new_ingredient_id"] = new_ingredient.id
 
-        # 将合并营养数据写入新原料
+        # 将合并营养数据写入新原料（基准跟着营养一起搬，否则拆出的原料
+        # 会把「每 250 mL」当成「每 250 g」参与缩放）
         has_nutrition = bool(
             merged.get("core_nutrients") or merged.get("all_nutrients")
         )
         if has_nutrition:
+            ref_amount, ref_unit = self._nutrition_reference(product_nutrition)
             nr = NutritionData(
                 ingredient_id=new_ingredient.id,
                 source="custom",
                 nutrients=merged,
-                reference_amount=100.0,
-                reference_unit="g",
+                reference_amount=ref_amount,
+                reference_unit=ref_unit,
                 match_confidence=1.0,
                 is_verified=True,
                 created_by=proposal.proposer_id,
@@ -191,6 +193,21 @@ class ProductSplitExecutor(ProposalExecutor):
         if not records:
             return {}
         return records[0].nutrients or {}
+
+    @staticmethod
+    def _nutrition_reference(product_nut: dict) -> tuple[float, str]:
+        """商品自定义营养里的基准（缺省 100 g，与列默认一致）。"""
+        if isinstance(product_nut, dict):
+            raw = product_nut.get("reference_amount")
+            if raw is not None:
+                try:
+                    amount = float(raw)
+                except (TypeError, ValueError):
+                    amount = 0.0
+                if amount > 0:
+                    unit = str(product_nut.get("reference_unit") or "").strip()
+                    return amount, unit or "g"
+        return 100.0, "g"
 
     def _merge_nutrition(self, product_nut: dict, ingredient_nut: dict) -> dict:
         """合并商品↔原料营养，商品优于原料。"""

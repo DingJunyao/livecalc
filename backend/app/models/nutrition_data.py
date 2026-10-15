@@ -56,9 +56,11 @@ class NutritionData(Base, AuditMixin):
     # }
     nutrients = Column(JSON, nullable=False)
 
-    # 参考基准（默认为每100g）
+    # 参考基准（默认为每100g）。reference_unit 既可以是全局单位缩写
+    # （g/mL/斤…），也可以是该原料自定义单位的名称（如「袋」，由实体单位覆盖
+    # 折算成克）；宽度与 units.name / entity_unit_overrides.unit_name 对齐。
     reference_amount = Column(Float, default=100.0, nullable=False)
-    reference_unit = Column(String(10), default="g", nullable=False)
+    reference_unit = Column(String(50), default="g", nullable=False)
 
     # 匹配置信度（0.0-1.0）
     match_confidence = Column(Float, default=1.0, nullable=False)

@@ -325,8 +325,10 @@ class NutritionCalculator:
         # 转换单位到基准单位（g 或 ml）
         base_quantity = self._convert_to_base(quantity, unit, ingredient_id)
 
-        # 计算缩放比例
-        scale_factor = base_quantity / nutrition.reference_amount
+        # 计算缩放比例：基准也折算成克当量（基准可以是 mL、斤，或该原料的
+        # 自定义单位，如「1 袋 = 250 g」），与请求量同一套换算。
+        reference_base = self._reference_base_amount(nutrition, ingredient_id)
+        scale_factor = base_quantity / reference_base if reference_base else 0.0
 
         # 计算各营养素的值
         calculated_nutrients = self._calculate_scaled_nutrients(
@@ -489,6 +491,11 @@ class NutritionCalculator:
             self._get_nutrition_template()
         )
 
+        # 营养基准（「每 X 单位」）：商品自定义值优先，其次继承关联原料的基准。
+        reference_amount, reference_unit = self._product_reference(
+            custom_data, ingredient
+        )
+
         # 转换为前端组件期望的格式
         # merged_nutrients 是扁平格式: { "能量": {...}, "蛋白质": {...}, "calcium": {...}, ... }
         # 需要转换为: { core_nutrients: {...}, all_nutrients: {...}, nrp_totals: {...} }
@@ -535,8 +542,40 @@ class NutritionCalculator:
                 "nrp_totals": nrp_totals
             },
             "nutrition_sources": sources,
-            "custom_nutrition_data": custom_data
+            "custom_nutrition_data": custom_data,
+            # 与原料营养响应同名的基准字段（「每 X 单位」），前端据此回显/回填
+            "reference_amount": reference_amount,
+            "reference_unit": reference_unit,
         }
+
+    def _product_reference(
+        self, custom_data: Optional[dict], ingredient
+    ) -> tuple[float, str]:
+        """商品营养基准：商品自定义值优先，其次继承关联原料的基准，最后 100/g。"""
+        if isinstance(custom_data, dict):
+            raw_amount = custom_data.get("reference_amount")
+            if raw_amount is not None:
+                try:
+                    amount = float(raw_amount)
+                except (TypeError, ValueError):
+                    amount = 0.0
+                if amount > 0:
+                    unit = str(custom_data.get("reference_unit") or "").strip()
+                    return amount, unit or "g"
+
+        if ingredient is not None:
+            from app.models.mixins import NutritionMixin
+            row = NutritionMixin.get_best_nutrition_data(self.db, ingredient.id)
+            if row is not None:
+                try:
+                    amount = float(row.reference_amount or 100.0)
+                except (TypeError, ValueError):
+                    amount = 100.0
+                if amount > 0:
+                    unit = str(row.reference_unit or "").strip()
+                    return amount, unit or "g"
+
+        return 100.0, "g"
 
     def _get_nutrition_template(self) -> dict:
         """
@@ -610,6 +649,37 @@ class NutritionCalculator:
         else:
             # 其他单位不转换
             return quantity
+
+    def _reference_base_amount(
+        self, nutrition, ingredient_id: Optional[int] = None
+    ) -> float:
+        """把营养基准（「每 X 单位」）折算成克当量，供缩放使用。
+
+        reference_unit 可以是全局单位缩写（g/mL/斤…），也可以是该原料自定义
+        单位的名称（如「1 袋 = 250 g」，经实体单位覆盖折算）——与请求量走同一个
+        _convert_to_base，保证两侧口径一致。
+
+        解析不出来时退回「reference_amount 即克数」的旧口径：存量数据（100/g）
+        与历史行为逐位一致，也不会因为单位被删/改名而算出离谱的缩放比。
+        """
+        try:
+            amount = float(nutrition.reference_amount or 100.0)
+        except (TypeError, ValueError):
+            amount = 100.0
+        if amount <= 0:
+            amount = 100.0
+
+        unit = (nutrition.reference_unit or "g").strip()
+        if not unit or unit.lower() in ("g", "克"):
+            return amount
+
+        try:
+            converted = self._convert_to_base(amount, unit, ingredient_id)
+        except Exception:  # 单位表/覆盖行异常不该让营养查询整体失败
+            return amount
+        # 计数单位无单件重量时 _convert_to_base 返回 0，不在单位表里的单位会原样
+        # 返回入参——两种都无法当作克当量，退回 amount。
+        return converted if converted and converted > 0 else amount
 
     def _parse_quantity(
         self,

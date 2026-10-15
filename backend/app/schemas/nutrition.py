@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from decimal import Decimal
 from typing import Optional, List
 from datetime import datetime
@@ -74,11 +74,25 @@ class NutrientItem(BaseModel):
 
 
 class NutritionEditRequest(BaseModel):
-    """营养数据编辑请求"""
-    base_quantity: float = 100.0  # 基准数量，默认 100g
-    base_unit: str = "g"  # 基准单位
+    """营养数据编辑请求
+
+    base_quantity/base_unit 是「每 X 单位」的营养基准（默认 100 g）。base_unit
+    可以是全局单位缩写（g/mL/斤…），也可以是该实体自定义单位的名称（如「袋」，
+    计算时经实体单位覆盖折算成克）。长度上限与 reference_unit 列宽一致；
+    执行器侧另有一份防御性校验（提议 payload 可能不来自 API）。
+    """
+    base_quantity: float = Field(default=100.0, gt=0)  # 基准数量，默认 100g
+    base_unit: str = Field(default="g", max_length=50)  # 基准单位
     nutrients: List[NutrientItem]  # 营养素列表
     source: str = "custom"  # 数据源：custom/usda/ai_match
+
+    @field_validator('base_unit')
+    @classmethod
+    def _strip_base_unit(cls, value: str) -> str:
+        unit = (value or '').strip()
+        if not unit:
+            raise ValueError('base_unit 不能为空')
+        return unit
 
 
 class NutritionEditResponse(BaseModel):

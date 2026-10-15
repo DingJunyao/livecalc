@@ -387,10 +387,21 @@ class ExportImporter(Importer):
             ).first()
             if existing:
                 continue
+            # 营养基准（「每 X 单位」）：导出侧已带 reference_amount/reference_unit，
+            # 导入时一并还原，否则自定义基准经导出导入往返会回落成 100 g。
+            try:
+                ref_amount = float(item.get("reference_amount") or 0)
+            except (TypeError, ValueError):
+                ref_amount = 0.0
+            if ref_amount <= 0:
+                ref_amount = 100.0
+            ref_unit = str(item.get("reference_unit") or "").strip() or "g"
             self.db.add(NutritionData(
                 ingredient_id=new_ing_id,
                 nutrients=item.get("raw_nutrients") or item.get("nutrients", {}),
                 source=item.get("source", "import"),
+                reference_amount=ref_amount,
+                reference_unit=ref_unit,
                 is_verified=item.get("is_verified", False) and self.is_admin,
             ))
             imported += 1
