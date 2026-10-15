@@ -326,6 +326,88 @@
     </v-card>
 
     <!-- 退出登录按钮 -->
+    <!-- AI 推荐 / BYOK 设置（仅云端模式；本地模式在「设置 · AI 配置」里配置） -->
+    <v-card v-if="!isLocalMode" class="ma-4" elevation="0">
+      <v-card-title class="d-flex align-center pa-4 pb-2">
+        <v-icon class="me-2" size="20">mdi-creation-outline</v-icon>
+        <span class="text-h6">{{ t('profileAi.title') }}</span>
+      </v-card-title>
+      <v-card-text class="pt-0">
+        <v-row dense>
+          <v-col cols="12" sm="6" md="4">
+            <v-select
+              v-model="aiForm.method"
+              :items="aiMethodItems"
+              item-title="title"
+              item-value="value"
+              :label="t('profileAi.method')"
+              variant="outlined"
+              density="compact"
+              :hint="t('profileAi.methodHint')"
+              persistent-hint
+            />
+          </v-col>
+          <template v-if="aiForm.method === 'user_ai'">
+            <v-col cols="12" sm="6" md="4">
+              <v-select
+                v-model="aiForm.provider"
+                :items="['openai', 'anthropic']"
+                :label="t('profileAi.provider')"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-text-field
+                v-model="aiForm.model"
+                :label="t('profileAi.model')"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" v-if="aiPolicy.allow_custom_base_url">
+              <v-text-field
+                v-model="aiForm.base_url"
+                :label="t('profileAi.baseUrl')"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                v-model="aiForm.api_key"
+                :label="t('profileAi.apiKey')"
+                type="password"
+                variant="outlined"
+                density="compact"
+                :placeholder="aiForm.has_api_key ? t('profileAi.apiKeyKeep') : ''"
+                persistent-placeholder
+              />
+              <div v-if="aiForm.has_api_key" class="text-caption text-medium-emphasis mt-1">
+                {{ t('profileAi.apiKeyCurrent') }}{{ aiForm.api_key_masked }}
+                <v-btn size="x-small" variant="text" color="error" @click="clearApiKey">
+                  {{ t('profileAi.apiKeyClear') }}
+                </v-btn>
+              </div>
+            </v-col>
+          </template>
+        </v-row>
+        <p v-if="aiForm.method === 'system_ai'" class="text-caption text-medium-emphasis mt-1">
+          {{ t('profileAi.systemAiHint') }}
+        </p>
+        <p class="text-caption text-disabled mt-1">{{ t('profileAi.privacyNote') }}</p>
+        <v-btn
+          color="primary"
+          class="mt-2"
+          :loading="aiSaving"
+          :disabled="!aiChanged"
+          @click="saveAiSettings"
+        >
+          {{ t('common.save') }}
+        </v-btn>
+      </v-card-text>
+    </v-card>
+
     <v-card v-if="!isLocalMode" class="ma-4" elevation="0">
       <v-btn block color="error" variant="text" @click="logout">
         <v-icon start>mdi-logout</v-icon>
@@ -1602,10 +1684,75 @@ watch(blacklistDialog, (val) => {
   if (!val) loadBlacklistCount()
 })
 
+// ---- AI 推荐 / BYOK 设置 ----
+const aiPolicy = ref<any>({})
+const aiForm = ref<any>({
+  method: null, provider: null, base_url: null, model: null,
+  api_key: '', api_key_masked: '', has_api_key: false,
+  daily_limit_override: null,
+})
+const aiSaving = ref(false)
+const _aiInitial = ref('')
+
+const aiMethodItems = computed(() => {
+  const items = [{ title: t('profileAi.methodRule'), value: 'rule' }]
+  if (aiPolicy.value.default_method !== 'rule' || true) {
+    if (aiPolicy.value.allow_user_choice || aiPolicy.value.default_method === 'system_ai') {
+      items.push({ title: t('profileAi.methodSystemAi'), value: 'system_ai' })
+    }
+    if (aiPolicy.value.allow_byok) {
+      items.push({ title: t('profileAi.methodUserAi'), value: 'user_ai' })
+    }
+  }
+  return items
+})
+
+const aiChanged = computed(() => {
+  const cur = JSON.stringify({ ...aiForm.value, api_key: undefined })
+  return cur !== _aiInitial.value || !!aiForm.value.api_key
+})
+
+async function loadAiSettings() {
+  if (isLocalMode.value) return
+  try {
+    const data: any = await api.get('/profile/ai-settings')
+    aiPolicy.value = data.policy || {}
+    aiForm.value = {
+      method: data.method, provider: data.provider, base_url: data.base_url,
+      model: data.model, api_key: '', api_key_masked: data.api_key_masked,
+      has_api_key: data.has_api_key, daily_limit_override: data.daily_limit_override,
+    }
+    _aiInitial.value = JSON.stringify({ ...aiForm.value, api_key: undefined })
+  } catch { /* 加载失败不阻塞个人中心 */ }
+}
+
+async function saveAiSettings() {
+  aiSaving.value = true
+  try {
+    const body: any = {
+      method: aiForm.value.method,
+      provider: aiForm.value.provider,
+      base_url: aiForm.value.base_url,
+      model: aiForm.value.model,
+    }
+    if (aiForm.value.api_key) body.api_key = aiForm.value.api_key
+    await api.put('/profile/ai-settings', body)
+    await loadAiSettings()
+  } finally {
+    aiSaving.value = false
+  }
+}
+
+async function clearApiKey() {
+  await api.delete('/profile/ai-settings/api-key')
+  await loadAiSettings()
+}
+
 onMounted(() => {
   ensureLoaded()
   loadStats()
   loadBlacklistCount()
+  loadAiSettings()
   loadCurrencies()
     .then(list => { currencies.value = list })
     .catch(() => { /* 忽略本地模式无币种路由 */ })

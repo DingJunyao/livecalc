@@ -506,7 +506,21 @@
     "summaryServer": "AI uses Claude Code, Codex, OpenAI-compatible, or Anthropic-compatible providers; machine translation uses Baidu, Alibaba Cloud, or DeepL.",
     "testConnection": "Test connection",
     "testFailed": "Test failed",
-    "title": "AI and machine translation"
+    "title": "AI and machine translation",
+    "mealPlanSection": "Meal recommendations (AI composition)",
+    "mealPlanProvider": "Composition model provider",
+    "mealPlanProviderHint": "Composes candidate recipes into a meal set; claude_code/codex require the server-side CLI",
+    "mealPlanTimeout": "Per-composition timeout (seconds)",
+    "mealPlanTimeoutHint": "Falls back to rule-based composition on timeout",
+    "aiPolicySection": "AI usage policy",
+    "aiPolicyDefaultMethod": "Default recommendation method",
+    "aiPolicyDailyLimit": "Daily AI usage limit",
+    "aiPolicyDailyLimitHint": "Falls back to rules beyond the limit (counted per user)",
+    "aiPolicyAllowUserChoice": "Allow users to choose their method",
+    "aiPolicyAllowByok": "Allow user-supplied API keys (BYOK)",
+    "aiPolicyAllowCustomBaseUrl": "Allow custom endpoint URLs",
+    "aiPolicyShowAiBadge": "Show the \"AI generated\" badge",
+    "aiPolicyNote": "For public services: use a registered domestic model endpoint and keep the content badge on; user preference text is sent to the configured model."
   },
   "agent": {
     "errors": {
@@ -1164,6 +1178,23 @@
     "changeFailed": "Change failed: {message}",
     "dataExportFailed": "Data export failed: {message}"
   },
+  "profileAi": {
+    "title": "AI recommendations",
+    "method": "Recommendation method",
+    "methodHint": "Rule-based is free; system AI uses the admin-configured model",
+    "methodRule": "Rule-based (free)",
+    "methodSystemAi": "System AI",
+    "methodUserAi": "Bring your own key (BYOK)",
+    "provider": "Model provider",
+    "model": "Model name",
+    "baseUrl": "Endpoint URL",
+    "apiKey": "API key",
+    "apiKeyKeep": "Leave empty to keep unchanged",
+    "apiKeyCurrent": "Current key: ",
+    "apiKeyClear": "Clear",
+    "systemAiHint": "Uses the model and key configured by the admin; subject to the daily usage limit.",
+    "privacyNote": "With AI composition, your candidate recipes and one-line preference are sent to the configured model service."
+  },
   "formatLocales": {
     "auto": "Follow language",
     "zh-CN": "简体中文（中国大陆）",
@@ -1248,7 +1279,11 @@
     "usdaDatasetParseFailed": "Failed to parse the USDA data package",
     "usdaFoodNotFound": "USDA food {id} was not found",
     "usdaZipJsonMissing": "No JSON files were found in the ZIP",
-    "userPlaceNotFound": "Frequent place was not found"
+    "userPlaceNotFound": "Frequent place was not found",
+    "mealNotGenerated": "No recommendation for this meal yet. Generate today's recommendations first",
+    "mealRefreshLimit": "This meal has been refreshed {max} times today. Come back tomorrow!",
+    "mealDishNotInRecommendation": "That dish is not in the current recommendation",
+    "mealNoCandidates": "No available recipes for this meal"
   },
   "localValues": {
     "newNameSuffix": " (new)",
@@ -2206,7 +2241,19 @@
     "changeOne": "Swap",
     "breakfast": "Breakfast",
     "lunch": "Lunch",
-    "dinner": "Dinner"
+    "dinner": "Dinner",
+    "changeMeal": "Change meal",
+    "changeDish": "Swap dish",
+    "aiGenerated": "AI generated",
+    "roleStaple": "Staple",
+    "roleMain": "Main",
+    "roleSide": "Side",
+    "roleSoup": "Soup",
+    "roleDrink": "Drink",
+    "preferenceChip": "Preference: ",
+    "preferencePlaceholder": "One-line preference (e.g. something light, noodles)",
+    "applyPreference": "Apply",
+    "preferenceApplied": "Recomposed with your preference"
   },
   "units": {
     "meter": "Meter",

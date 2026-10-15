@@ -1,11 +1,24 @@
-// Meals handler — 餐食推荐，编排 IndexedDB 数据加载并调用推荐算法。
+// Meals handler — 餐食推荐（多道菜套餐，与云端后端同契约）。
+// 组合方式：AI（浏览器直连 OpenAI 兼容/Anthropic）优先，规则兜底；
+// 未配置 AI 或调用/校验失败时自动降级并在 note 标注。
 
-import { getDb, getAll, getByIndex, addOne, putOne, deleteOne, getById } from '../database'
-import { recommend, type MealRecipe, type MealRecommendation } from '../business/mealRecommender'
-import { resolveHierarchy } from '../business/hierarchyResolver'
+import { getAll, addOne, deleteOne, getById, putOne } from '../database'
 import { resolveImageUrl } from '@/utils/image'
 import * as recipes from './recipes'
+import { getTranslationConfig } from './admin'
 import { localError } from '../../../utils/localErrors'
+import {
+  composeByRule,
+  validateComposition,
+  buildComposePrompt,
+  aiComplete,
+  MEAL_POOL_CATEGORIES,
+  type ComposerCandidate,
+  type ComposedMeal,
+  type ComposedDish,
+  type MealType,
+  type DishRole,
+} from '../business/mealComposer'
 
 // ============================================================
 // 内部辅助
@@ -15,209 +28,262 @@ function getTodayDate(): string {
   return new Date().toISOString().split('T')[0]
 }
 
+function daysAgoDate(days: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - days)
+  return d.toISOString().split('T')[0]
+}
+
 async function getTodayRecommendationsFromDb(): Promise<any[]> {
   const all = await getAll('meal_recommendations')
   const today = getTodayDate()
   return all.filter((r: any) => r.date === today)
 }
 
-/** 获取被禁用的食材 ID 列表（通过黑名单分组订阅）。 */
-async function getBlacklistedIngredientIds(): Promise<number[]> {
-  const db = await getDb()
-  const subscriptions = await getAll('blacklist_subscriptions')
-  const groupIds = subscriptions.map((s: any) => s.group_id)
-  if (groupIds.length === 0) return []
-
-  const allGroupIngredients = await getAll('blacklist_group_ingredients')
-  const ids = allGroupIngredients
-    .filter((gi: any) => groupIds.includes(gi.group_id))
-    .map((gi: any) => gi.ingredient_id)
-  return [...new Set(ids)]
+/** 近 days 天推荐过的菜谱 id 与名字（跨餐次，供去重与提示词）。 */
+async function getRecentRecommendations(days: number): Promise<{ ids: number[]; names: string[] }> {
+  const all = await getAll('meal_recommendations')
+  const start = daysAgoDate(days - 1)
+  const rows = all.filter((r: any) => r.date >= start && r.date <= getTodayDate())
+  const ids: number[] = []
+  const names: string[] = []
+  for (const row of rows) {
+    for (const d of row.dishes || []) {
+      if (d.recipe_id != null && !ids.includes(d.recipe_id)) {
+        ids.push(d.recipe_id)
+        const recipe = await getById('recipes', d.recipe_id)
+        if (recipe?.name) names.push(recipe.name)
+      }
+    }
+  }
+  return { ids, names }
 }
 
-/** 加载所有菜谱并转换为 MealRecipe 格式。 */
-async function loadRecipes(): Promise<MealRecipe[]> {
-  const all = await getAll('recipes')
+/** 加载候选菜谱（分类池内 + 活跃 + 收藏标记）。 */
+async function loadCandidates(mealType: MealType): Promise<ComposerCandidate[]> {
+  const [all, favorites] = await Promise.all([
+    getAll('recipes'),
+    getAll('user_favorites'),
+  ])
+  const favoriteIds = new Set(
+    favorites
+      .filter((f: any) => f.entity_type === 'recipe' && f.entity_id != null)
+      .map((f: any) => f.entity_id)
+  )
+  const categories = MEAL_POOL_CATEGORIES[mealType]
   return all
-    .filter((r: any) => r.is_active !== false)
+    .filter((r: any) => r.is_active !== false && categories.includes(r.category || ''))
     .map((r: any) => ({
       id: r.id,
       name: r.name || '',
-      category: r.category || undefined,
-      cost_estimate: r.cost_estimate != null ? Number(r.cost_estimate) : undefined,
-      calories_per_serving: r.calories_per_serving != null ? Number(r.calories_per_serving) : undefined,
-      protein_per_serving: r.protein_per_serving != null ? Number(r.protein_per_serving) : undefined,
+      category: r.category || '',
+      cost_estimate: r.cost_estimate != null ? Number(r.cost_estimate) : null,
+      calories_per_serving: r.calories_per_serving != null ? Number(r.calories_per_serving) : null,
+      protein_per_serving: r.protein_per_serving != null ? Number(r.protein_per_serving) : null,
+      is_favorite: favoriteIds.has(r.id),
     }))
 }
 
-// ============================================================
-// 推荐生成
-// ============================================================
-
-const MEAL_TYPES: Array<'breakfast' | 'lunch' | 'dinner'> = ['breakfast', 'lunch', 'dinner']
-
-async function loadSupportingData() {
-  const [
-    products,
-    priceRecords,
-    hierarchies,
-    blacklistedIngredientIds,
-  ] = await Promise.all([
-    getAll('products'),
-    getAll('product_records'),
-    getAll('ingredient_hierarchy'),
-    getBlacklistedIngredientIds(),
-  ])
-
-  return {
-    products: products
-      .filter((p: any) => p.is_active !== false)
-      .map((p: any) => ({ id: p.id, ingredient_id: p.ingredient_id })),
-    price_records: priceRecords.map((r: any) => ({
-      product_id: r.product_id,
-      price: r.price ?? r.unit_price ?? 0,
-      quantity: r.quantity ?? 1,
-      recorded_at: r.recorded_at || '',
-    })),
-    hierarchies,
-    blacklisted_ingredient_ids: blacklistedIngredientIds,
+async function loadRecipeNames(ids: number[]): Promise<string[]> {
+  const names: string[] = []
+  for (const id of ids) {
+    const r = await getById('recipes', id)
+    if (r?.name) names.push(r.name)
   }
+  return names
+}
+
+/** 本地 AI 配置（meal_plan.provider 仅支持浏览器直连的 openai/anthropic）。 */
+async function resolveLocalAi(): Promise<{
+  provider: 'openai' | 'anthropic'
+  apiKey: string
+  model: string
+  baseUrl?: string
+  timeoutSeconds: number
+} | null> {
+  try {
+    const cfg: any = await getTranslationConfig()
+    const mealPlan = cfg?.meal_plan || {}
+    const provider = mealPlan.provider
+    if (provider !== 'openai' && provider !== 'anthropic') return null
+    const section = cfg?.ai?.providers?.[provider]
+    if (!section?.enabled || !section.api_key || !section.base_url) return null
+    return {
+      provider,
+      apiKey: section.api_key,
+      model: section.model || (provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-4o-mini'),
+      baseUrl: section.base_url,
+      timeoutSeconds: Number(mealPlan.timeout_seconds) || 120,
+    }
+  } catch {
+    return null
+  }
+}
+
+async function composeMeal(
+  mealType: MealType,
+  excludeIds: number[],
+  preference: string | undefined,
+  singleRole?: DishRole,
+): Promise<ComposedMeal> {
+  const candidates = (await loadCandidates(mealType)).filter(c => !excludeIds.includes(c.id))
+  if (candidates.length === 0) {
+    return { dishes: [], note: '', source: 'rule' }
+  }
+
+  const ai = await resolveLocalAi()
+  if (ai) {
+    const excludedNames = await loadRecipeNames(excludeIds)
+    const recent = await getRecentRecommendations(7)
+    const { system, user } = buildComposePrompt(
+      candidates, mealType, preference || '', excludedNames, recent.names, singleRole)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const text = await aiComplete(
+          ai.provider, ai, system,
+          attempt === 0 ? user : `${user}\n\n上一次输出未通过校验，请修正后重新只输出 JSON。`,
+          ai.timeoutSeconds * 1000)
+        const errors = validateComposition(text, candidates, mealType, excludeIds, singleRole)
+        if (errors.length === 0) {
+          const parsed = JSON.parse(text)
+          return {
+            dishes: parsed.dishes.map((d: any) => ({
+              recipe_id: Number(d.recipe_id),
+              role: d.role,
+              reason: typeof d.reason === 'string' ? d.reason : null,
+            })),
+            note: typeof parsed.note === 'string' ? parsed.note : '',
+            source: 'system_ai',
+          }
+        }
+      } catch {
+        // 超时/网络/解析失败 → 重试一次后降级规则
+      }
+    }
+  }
+
+  return composeByRule(candidates, mealType, excludeIds)
 }
 
 // ============================================================
 // Handlers
 // ============================================================
 
-/**
- * GET /meals/recommendations
- * 获取今日推荐（从缓存读取，无缓存则自动生成）。
- */
+const MEAL_TYPES: MealType[] = ['breakfast', 'lunch', 'dinner']
+
+/** GET /meals/recommendations */
 export async function getRecommendations(_params: Record<string, string>, _query?: any): Promise<any> {
-  const today = getTodayDate()
   const cached = await getTodayRecommendationsFromDb()
-
   if (cached.length > 0) {
-    const cachedResults: MealRecommendation[] = MEAL_TYPES.map(mt => {
-      const found = cached.find((c: any) => c.meal_type === mt)
-      return {
-        meal_type: mt,
-        recipe: found?.recipe_id ? { id: found.recipe_id } : null,
-      }
-    })
-    return await buildResponse(cachedResults)
+    return await buildResponse(cached)
   }
-
-  // 无缓存，自动生成
-  return (await generateAll()) as any
-}
-
-/**
- * POST /meals/recommendations/generate
- * 生成今日三餐推荐。
- */
-export async function generate(_params: Record<string, string>, _data?: any): Promise<any> {
   return await generateAll()
 }
 
-/**
- * POST /meals/recommendations/refresh
- * 刷新单餐推荐。请求体: { meal_type: 'breakfast' | 'lunch' | 'dinner' }
- */
+/** POST /meals/recommendations/generate  body: {preference?} */
+export async function generate(_params: Record<string, string>, data?: any): Promise<any> {
+  return await generateAll(data?.preference)
+}
+
+/** POST /meals/recommendations/refresh  body: {meal_type, recipe_id?, preference?} */
 export async function refresh(_params: Record<string, string>, data?: any): Promise<any> {
-  const mealType: string = data?.meal_type
-  if (!mealType || !MEAL_TYPES.includes(mealType as any)) {
+  const mealType: MealType = data?.meal_type
+  if (!mealType || !MEAL_TYPES.includes(mealType)) {
     throw localError('mealTypeInvalid')
   }
+  const recipeId: number | undefined = data?.recipe_id != null ? Number(data.recipe_id) : undefined
+  const preference: string | undefined = data?.preference || undefined
 
-  const recipes = await loadRecipes()
-  const support = await loadSupportingData()
-  const todayRecs = await getTodayRecommendationsFromDb()
-  // 排除今天其它餐已用的菜谱（不排除当前正在刷新的餐次）
-  const todayRecipeIds = todayRecs
-    .filter((r: any) => r.meal_type !== mealType && r.recipe_id != null)
-    .map((r: any) => r.recipe_id)
-
-  const result = recommend({
-    recipes,
-    today_recipes: todayRecipeIds,
-    meal_type: mealType as 'breakfast' | 'lunch' | 'dinner',
-    hierarchies: support.hierarchies,
-    products: support.products,
-    price_records: support.price_records,
-    blacklisted_ingredient_ids: support.blacklisted_ingredient_ids,
-  })
-
-  // 删除旧的该餐推荐并写入新的
-  const today = getTodayDate()
-  const existing = todayRecs.find((r: any) => r.meal_type === mealType)
-  if (existing) {
-    await deleteOne('meal_recommendations', existing.id)
+  const existing = (await getTodayRecommendationsFromDb()).find(r => r.meal_type === mealType)
+  if (!existing) {
+    throw localError('mealNotGenerated')
+  }
+  const refreshCount = Number(existing.refresh_count) || 0
+  if (refreshCount >= 5) {
+    throw localError('mealRefreshLimit', 429, { meal_type: mealType, max: 5 })
   }
 
-  await saveRecommendation(today, result)
+  const otherIds = (await getTodayRecommendationsFromDb())
+    .filter(r => r.meal_type !== mealType)
+    .flatMap(r => (r.dishes || []).map((d: any) => d.recipe_id))
 
-  return await buildResponse([result])
+  let composed: ComposedMeal
+  if (recipeId != null) {
+    // 单道换：保持其它菜，仅重选该道；换 staple 则新道也 staple
+    const dishes: ComposedDish[] = existing.dishes || []
+    const target = dishes.find(d => d.recipe_id === recipeId)
+    if (!target) throw localError('mealDishNotInRecommendation', 404, { id: recipeId })
+    const singleRole = target.role
+    const exclude = [
+      ...otherIds,
+      ...dishes.filter(d => d.recipe_id !== recipeId).map(d => d.recipe_id),
+    ]
+    composed = await composeMeal(mealType, exclude, preference, singleRole as DishRole)
+    if (!composed.dishes.length) throw localError('mealNoCandidates')
+    const newDish = composed.dishes[0]
+    const remaining = dishes.filter(d => d.recipe_id !== recipeId)
+    const insertAt = dishes.findIndex(d => d.recipe_id === recipeId)
+    remaining.splice(insertAt, 0, {
+      recipe_id: newDish.recipe_id,
+      role: newDish.role,
+      reason: newDish.reason,
+    })
+    existing.dishes = remaining
+  } else {
+    const ownIds = (existing.dishes || []).map((d: any) => d.recipe_id)
+    composed = await composeMeal(mealType, [...otherIds, ...ownIds], preference)
+    if (!composed.dishes.length) throw localError('mealNoCandidates')
+    existing.dishes = composed.dishes
+  }
+
+  existing.source = composed.source
+  if (composed.note) existing.reason = composed.note
+  if (preference) existing.preference = preference
+  existing.refresh_count = refreshCount + 1
+  existing.updated_at = new Date().toISOString()
+  await putOne('meal_recommendations', existing)
+
+  return await buildResponse(await getTodayRecommendationsFromDb())
 }
 
 // ============================================================
-// 内部函数
+// 生成（三餐）
 // ============================================================
 
-async function generateAll(): Promise<any> {
+async function generateAll(preference?: string): Promise<any> {
   const today = getTodayDate()
-  const recipes = await loadRecipes()
-  const support = await loadSupportingData()
-
-  // 删除今日旧推荐
-  const existing = await getTodayRecommendationsFromDb()
-  for (const rec of existing) {
+  for (const rec of await getTodayRecommendationsFromDb()) {
     await deleteOne('meal_recommendations', rec.id)
   }
 
-  const todayRecipeIds: number[] = []
-  const results: MealRecommendation[] = []
-
+  const usedIds: number[] = []
+  const rows: any[] = []
   for (const mealType of MEAL_TYPES) {
-    const result = recommend({
-      recipes,
-      today_recipes: todayRecipeIds,
+    const composed = await composeMeal(mealType, usedIds, preference)
+    if (composed.dishes.length === 0) continue
+    usedIds.push(...composed.dishes.map(d => d.recipe_id))
+    const row = {
+      date: today,
       meal_type: mealType,
-      hierarchies: support.hierarchies,
-      products: support.products,
-      price_records: support.price_records,
-      blacklisted_ingredient_ids: support.blacklisted_ingredient_ids,
-    })
-
-    if (result.recipe) {
-      todayRecipeIds.push(result.recipe.id)
+      dishes: composed.dishes,
+      source: composed.source,
+      reason: composed.note,
+      preference: preference || null,
+      refresh_count: 0,
+      created_at: new Date().toISOString(),
     }
-
-    await saveRecommendation(today, result)
-    results.push(result)
+    await addOne('meal_recommendations', row)
+    rows.push(row)
   }
 
-  return await buildResponse(results)
-}
-
-async function saveRecommendation(date: string, rec: MealRecommendation): Promise<void> {
-  await addOne('meal_recommendations', {
-    date,
-    meal_type: rec.meal_type,
-    recipe_id: rec.recipe?.id ?? null,
-    recipe_name: rec.recipe?.name ?? null,
-    recipe_category: rec.recipe?.category ?? null,
-    cost_estimate: rec.recipe?.cost_estimate ?? null,
-    calories_per_serving: rec.recipe?.calories_per_serving ?? null,
-    protein_per_serving: rec.recipe?.protein_per_serving ?? null,
-    created_at: new Date().toISOString(),
-  })
+  return await buildResponse(rows)
 }
 
 // ============================================================
-// Response building: enrich recipe brief with cost + nutrition
+// Response building
 // ============================================================
 
-function getCurrentMeal(): 'breakfast' | 'lunch' | 'dinner' | null {
+function getCurrentMeal(): MealType | null {
   const h = new Date().getHours()
   if (h >= 5 && h < 10) return 'breakfast'
   if (h >= 10 && h < 14) return 'lunch'
@@ -228,7 +294,6 @@ function getCurrentMeal(): 'breakfast' | 'lunch' | 'dinner' | null {
 function round1(v: number): number { return Math.round(v * 10) / 10 }
 function round2(v: number): number { return Math.round(v * 100) / 100 }
 
-/** Compute full RecipeBrief (cost + nutrition + images) for one recipe. */
 async function buildRecipeBrief(recipeId: number): Promise<any | null> {
   const recipe = await getById('recipes', recipeId)
   if (!recipe) return null
@@ -246,7 +311,6 @@ async function buildRecipeBrief(recipeId: number): Promise<any | null> {
 
   try {
     const nutrition = await recipes.getRecipeNutrition({ id: String(recipeId) })
-    // getRecipeNutrition returns totals for the whole recipe; divide by servings
     if (servings > 0 && nutrition) {
       nutrition_per_serving = {
         calories: round1((nutrition.calories || 0) / servings),
@@ -269,24 +333,26 @@ async function buildRecipeBrief(recipeId: number): Promise<any | null> {
   }
 }
 
-/** Build the full daily-recommendations response: enrich each recipe with
- *  cost/nutrition/images, add is_current_meal, and compute daily totals. */
-async function buildResponse(results: MealRecommendation[]): Promise<any> {
+async function buildResponse(rows: any[]): Promise<any> {
   const today = getTodayDate()
   const currentMeal = getCurrentMeal()
   const recommendations = []
   const totals = { cost: 0, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+  const refreshCounts: Record<string, number> = {}
 
-  for (const r of results) {
-    const recipe = r.recipe ? await buildRecipeBrief(r.recipe.id) : null
-    recommendations.push({
-      meal_type: r.meal_type,
-      recipe,
-      is_current_meal: r.meal_type === currentMeal,
-    })
-    if (recipe) {
-      if (recipe.cost_estimate != null && Number.isFinite(recipe.cost_estimate)) totals.cost += recipe.cost_estimate
-      const n = recipe.nutrition_per_serving
+  for (const mt of MEAL_TYPES) {
+    const row = rows.find(r => r.meal_type === mt)
+    if (!row) continue
+    refreshCounts[row.meal_type] = Number(row.refresh_count) || 0
+    const dishBriefs: any[] = []
+    for (const dish of row.dishes || []) {
+      const brief = await buildRecipeBrief(dish.recipe_id)
+      if (!brief) continue
+      dishBriefs.push({ ...brief, role: dish.role || 'main', reason: dish.reason || null })
+      if (brief.cost_estimate != null && Number.isFinite(brief.cost_estimate)) {
+        totals.cost += brief.cost_estimate
+      }
+      const n = brief.nutrition_per_serving
       if (n) {
         totals.calories += Number.isFinite(n.calories) ? n.calories : 0
         totals.protein_g += Number.isFinite(n.protein_g) ? n.protein_g : 0
@@ -294,6 +360,16 @@ async function buildResponse(results: MealRecommendation[]): Promise<any> {
         totals.fat_g += Number.isFinite(n.fat_g) ? n.fat_g : 0
       }
     }
+    const staple = dishBriefs.find(d => d.role === 'staple')
+    recommendations.push({
+      meal_type: row.meal_type,
+      recipe: staple || dishBriefs[0] || null,
+      dishes: dishBriefs,
+      source: row.source || 'rule',
+      reason: row.reason || null,
+      preference: row.preference || null,
+      is_current_meal: row.meal_type === currentMeal,
+    })
   }
 
   return {
@@ -306,6 +382,7 @@ async function buildResponse(results: MealRecommendation[]): Promise<any> {
       protein_g: round1(totals.protein_g),
       carbs_g: round1(totals.carbs_g),
       fat_g: round1(totals.fat_g),
+      refresh_counts: refreshCounts,
     },
   }
 }

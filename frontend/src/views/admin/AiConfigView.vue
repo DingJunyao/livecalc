@@ -92,14 +92,18 @@ const MT_PROVIDERS = computed<ProviderDef[]>(() => [
   },
 ])
 
+// 餐食推荐组合层的 provider 候选（与后端白名单一致）
+const MEAL_PROVIDERS = ['claude_code', 'codex', 'openai', 'anthropic']
+const AI_POLICY_METHODS = ['rule', 'system_ai', 'user_ai']
+
 const config = ref<any>(null)
 const testing = ref('')
 const saving = ref(false)
 const saveMessage = ref('')
 // 每个 provider 的测试结果在按钮旁就地显示（成功/失败 + 后端返回的 detail）
 const testResult = reactive<Record<string, { ok: boolean; detail: string }>>({})
-// 两个折叠面板默认全展开
-const openPanels = ref<number[]>([0, 1])
+// 三个折叠面板默认全展开
+const openPanels = ref<number[]>([0, 1, 2])
 
 onMounted(async () => { config.value = await getTranslationConfig() })
 
@@ -190,6 +194,91 @@ async function save() {
             @update:field="setField('machine', p.key, $event.field, $event.value)"
             @test="testProvider(p.key)"
           />
+        </v-expansion-panel-text>
+      </v-expansion-panel>
+
+      <v-expansion-panel>
+        <v-expansion-panel-title>
+          <v-icon class="me-2">mdi-silverware-fork-knife</v-icon>{{ t('adminAI.mealPlanSection') }}
+        </v-expansion-panel-title>
+        <v-expansion-panel-text>
+          <v-row class="pa-2">
+            <v-col cols="12" sm="6">
+              <v-select
+                :label="t('adminAI.mealPlanProvider')"
+                :items="MEAL_PROVIDERS"
+                v-model="config.meal_plan.provider"
+                variant="outlined"
+                density="compact"
+                :hint="t('adminAI.mealPlanProviderHint')"
+                persistent-hint
+              />
+            </v-col>
+            <v-col cols="12" sm="6">
+              <v-text-field
+                :label="t('adminAI.mealPlanTimeout')"
+                type="number"
+                v-model.number="config.meal_plan.timeout_seconds"
+                variant="outlined"
+                density="compact"
+                :hint="t('adminAI.mealPlanTimeoutHint')"
+                persistent-hint
+              />
+            </v-col>
+          </v-row>
+
+          <v-divider class="my-3" />
+          <div class="text-subtitle-2 mb-2">{{ t('adminAI.aiPolicySection') }}</div>
+
+          <v-row class="pa-2">
+            <v-col cols="12" sm="6" md="4">
+              <v-select
+                :label="t('adminAI.aiPolicyDefaultMethod')"
+                :items="AI_POLICY_METHODS"
+                v-model="config.ai_policy.default_method"
+                variant="outlined"
+                density="compact"
+              />
+            </v-col>
+            <v-col cols="12" sm="6" md="4">
+              <v-text-field
+                :label="t('adminAI.aiPolicyDailyLimit')"
+                type="number"
+                v-model.number="config.ai_policy.daily_ai_limit"
+                variant="outlined"
+                density="compact"
+                :hint="t('adminAI.aiPolicyDailyLimitHint')"
+                persistent-hint
+              />
+            </v-col>
+          </v-row>
+          <v-switch
+            :label="t('adminAI.aiPolicyAllowUserChoice')"
+            v-model="config.ai_policy.allow_user_choice"
+            density="compact"
+            hide-details
+          />
+          <v-switch
+            :label="t('adminAI.aiPolicyAllowByok')"
+            v-model="config.ai_policy.allow_byok"
+            density="compact"
+            hide-details
+          />
+          <v-switch
+            :label="t('adminAI.aiPolicyAllowCustomBaseUrl')"
+            v-model="config.ai_policy.allow_custom_base_url"
+            density="compact"
+            hide-details
+          />
+          <v-switch
+            :label="t('adminAI.aiPolicyShowAiBadge')"
+            v-model="config.ai_policy.show_ai_badge"
+            density="compact"
+            hide-details
+          />
+          <p class="text-caption text-medium-emphasis mt-2">
+            {{ t('adminAI.aiPolicyNote') }}
+          </p>
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
