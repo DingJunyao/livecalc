@@ -1544,6 +1544,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get productScanBarcode => 'Scan barcode';
 
   @override
+  String get productBarcodeNotFound =>
+      'No product info found for this barcode; fill it in manually.';
+
+  @override
+  String productBarcodeExists(String name) {
+    return 'This barcode already belongs to \"$name\", no need to create it again.';
+  }
+
+  @override
   String get productTags => 'Tags';
 
   @override

@@ -2952,6 +2952,18 @@ abstract class AppLocalizations {
   /// **'扫码输入条码'**
   String get productScanBarcode;
 
+  /// No description provided for @productBarcodeNotFound.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到该条码的商品信息，可手动填写'**
+  String get productBarcodeNotFound;
+
+  /// No description provided for @productBarcodeExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'该条码已属于商品「{name}」，无需重复创建'**
+  String productBarcodeExists(String name);
+
   /// No description provided for @productTags.
   ///
   /// In zh, this message translates to:

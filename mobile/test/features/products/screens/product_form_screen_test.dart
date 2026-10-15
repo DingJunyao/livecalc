@@ -285,6 +285,54 @@ void main() {
     expect(find.byType(LoadingOverlay), findsNothing);
   });
 
+  testWidgets('扫码命中已建档商品：提示已存在且不回填名称/品牌', (tester) async {
+    // 本库命中的条码后端返回 has_enabled_providers=false，旧实现直接静默返回；
+    // 且该条码已属于别的商品，回填名称会让保存撞「条码已存在」。
+    await useTallViewport(tester);
+    final lookupCompleter = Completer<BarcodeLookupResult>();
+    final repo = _ScanLookupRepository(lookupCompleter);
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: ProductFormScreen(
+        fixedIngredient: const Ingredient(id: 8, name: '面粉'),
+        repository: repo,
+        scanner: (_) async => '6907992500942',
+      ),
+    )));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byIcon(Icons.barcode_reader));
+    await tester.tap(find.byIcon(Icons.barcode_reader));
+    await tester.pump();
+
+    lookupCompleter.complete(
+      const BarcodeLookupResult(
+        found: true,
+        source: 'local',
+        product: BarcodeLookupProduct(
+          id: 1030,
+          name: '伊利枕装纯牛奶 240mL',
+          barcode: '6907992500942',
+        ),
+        hasEnabledProviders: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'This barcode already belongs to "伊利枕装纯牛奶 240mL", no need to create it again.',
+      ),
+      findsOneWidget,
+    );
+    final nameField = tester.widget<TextField>(
+      find.widgetWithText(TextField, 'Product name *'),
+    );
+    expect(nameField.controller?.text, isEmpty);
+  });
+
   testWidgets('关联原料为下拉带输入，可搜索并选择一项', (tester) async {
     await useTallViewport(tester);
     final repo = _FakeProductRepository(const Product(id: 0, name: ''));

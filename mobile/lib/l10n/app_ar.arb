@@ -1119,6 +1119,14 @@
   "@productBarcode": {},
   "productScanBarcode": "مسح الرمز الشريطي",
   "@productScanBarcode": {},
+  "productBarcodeNotFound": "لم يتم العثور على معلومات منتج لهذا الرمز الشريطي؛ املأها يدويًا.",
+  "@productBarcodeNotFound": {},
+  "productBarcodeExists": "هذا الرمز الشريطي يخص المنتج \"{name}\" بالفعل، لا حاجة لإعادة إنشائه.",
+  "@productBarcodeExists": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "productTags": "الوسوم",
   "@productTags": {},
   "productLookupLoading": "جارٍ البحث عن معلومات المنتج...",

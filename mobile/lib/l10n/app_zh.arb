@@ -1119,6 +1119,14 @@
   "@productBarcode": {},
   "productScanBarcode": "扫码输入条码",
   "@productScanBarcode": {},
+  "productBarcodeNotFound": "未找到该条码的商品信息，可手动填写",
+  "@productBarcodeNotFound": {},
+  "productBarcodeExists": "该条码已属于商品「{name}」，无需重复创建",
+  "@productBarcodeExists": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "productTags": "标签",
   "@productTags": {},
   "productLookupLoading": "正在查询商品信息…",

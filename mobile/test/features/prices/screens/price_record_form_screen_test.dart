@@ -791,4 +791,41 @@ void main() {
     expect(find.byType(LoadingOverlay), findsNothing);
     expect(find.widgetWithText(AlertDialog, '未找到本地商品'), findsOneWidget);
   });
+
+  testWidgets('扫码命中本地已建档商品：hasEnabledProviders=false 也要选中商品', (tester) async {
+    // 用户实测：扫枕装奶/火腿肠等已建档商品的条码毫无反应。
+    // 后端本地命中时 has_enabled_providers 恒为 false（提前返回），
+    // 旧实现拿它当闸门早退，把本库命中的扫码全部吞掉。
+    final lookupCompleter = Completer<BarcodeLookupResult>();
+    final productRepo = _ScanLookupProductRepository(lookupCompleter);
+    await pumpForm(
+      tester,
+      productRepo: productRepo,
+      scanner: (_) async => '6907992500942',
+      unitNamesLoader: (_, __) async => const [],
+      defaultUnitLoader: (_, __) async => null,
+    );
+
+    await tester.tap(find.byIcon(Icons.barcode_reader));
+    await tester.pump();
+    lookupCompleter.complete(
+      const BarcodeLookupResult(
+        found: true,
+        source: 'local',
+        product: BarcodeLookupProduct(
+          id: 1030,
+          name: '伊利枕装纯牛奶 240mL',
+          barcode: '6907992500942',
+        ),
+        hasEnabledProviders: false,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing);
+    final nameField = tester.widget<TextField>(
+      find.widgetWithText(TextField, '商品名称'),
+    );
+    expect(nameField.controller?.text, '伊利枕装纯牛奶 240mL');
+  });
 }

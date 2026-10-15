@@ -300,10 +300,20 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     try {
       final result = await _productRepository.lookupBarcode(code);
       if (!mounted) return;
-      if (!result.hasEnabledProviders) {
+      // hasEnabledProviders 在本库命中时为 false（后端提前返回），不能拿它早退，
+      // 否则扫已建档商品等于没反应。
+      final l10n = AppLocalizations.of(context);
+      if (!result.found) {
+        _showBarcodeHint(l10n.productBarcodeNotFound);
         return;
       }
-      if (!result.found) return;
+      if (result.product.id != null) {
+        // 条码已属于本库已有商品：回填它的名字会撞「条码已存在」校验，直接提示。
+        _showBarcodeHint(
+          l10n.productBarcodeExists(result.product.name ?? code),
+        );
+        return;
+      }
       setState(() {
         if (_nameController.text.trim().isEmpty) {
           _nameController.text = result.product.name ?? '';
@@ -317,6 +327,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     } finally {
       if (mounted) setState(() => _barcodeLoading = false);
     }
+  }
+
+  void _showBarcodeHint(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _save() async {

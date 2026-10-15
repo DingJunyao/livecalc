@@ -1507,6 +1507,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get productScanBarcode => '扫码输入条码';
 
   @override
+  String get productBarcodeNotFound => '未找到该条码的商品信息，可手动填写';
+
+  @override
+  String productBarcodeExists(String name) {
+    return '该条码已属于商品「$name」，无需重复创建';
+  }
+
+  @override
   String get productTags => '标签';
 
   @override

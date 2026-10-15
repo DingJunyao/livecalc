@@ -1536,6 +1536,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get productScanBarcode => 'مسح الرمز الشريطي';
 
   @override
+  String get productBarcodeNotFound =>
+      'لم يتم العثور على معلومات منتج لهذا الرمز الشريطي؛ املأها يدويًا.';
+
+  @override
+  String productBarcodeExists(String name) {
+    return 'هذا الرمز الشريطي يخص المنتج \"$name\" بالفعل، لا حاجة لإعادة إنشائه.';
+  }
+
+  @override
   String get productTags => 'الوسوم';
 
   @override

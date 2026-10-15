@@ -320,9 +320,9 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     try {
       final result = await _productRepo.lookupBarcode(code);
       if (!mounted) return;
-      if (!result.hasEnabledProviders) {
-        return;
-      }
+      // 不能拿 hasEnabledProviders 当「有没有结果」的闸门：本地库命中（含条码缓存
+      // 命中）时后端提前返回，该字段恒为 false —— 用它早退会把已建档商品的扫码
+      // 全部吞掉（表现为扫码后毫无反应）。判定只看 found。
       if (result.found && result.product.id != null) {
         _selectProduct(
           Product(

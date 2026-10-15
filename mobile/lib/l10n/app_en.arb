@@ -1119,6 +1119,14 @@
   "@productBarcode": {},
   "productScanBarcode": "Scan barcode",
   "@productScanBarcode": {},
+  "productBarcodeNotFound": "No product info found for this barcode; fill it in manually.",
+  "@productBarcodeNotFound": {},
+  "productBarcodeExists": "This barcode already belongs to \"{name}\", no need to create it again.",
+  "@productBarcodeExists": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "productTags": "Tags",
   "@productTags": {},
   "productLookupLoading": "Looking up product information...",
