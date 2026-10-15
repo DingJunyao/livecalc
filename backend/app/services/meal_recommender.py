@@ -25,6 +25,7 @@ from app.models.daily_recommendation import DailyRecommendation
 from app.models.daily_recommendation_item import DailyRecommendationItem
 from app.services.recipe_service import calculate_recipe_cost, calculate_recipe_nutrition
 from app.services import ai_policy
+from app.services.meal_plan_service import evaluate_plan
 from app.services.meal_composer import (
     LLMMealComposer,
     RuleMealComposer,
@@ -634,8 +635,44 @@ async def _build_response_from_records(
             "source": record.source if record else None,
             "reason": record.reason if record else None,
             "preference": record.preference if record else None,
+            "plan": None,
             "is_current_meal": (meal_type == current_meal),
         }
+
+        # 方案来源餐（source='plan'）：渲染方案视图（方案名 + 条目明细）
+        if record is not None and record.source == "plan" and record.plan_id:
+            from app.services.meal_plan_service import evaluate_plan
+
+            plan = record.plan
+            if plan is not None and plan.is_active:
+                evaluation = evaluate_plan(db, user, plan, tz=tz)
+                base_item["plan"] = {
+                    "id": plan.id,
+                    "name": plan.name,
+                    "kind": plan.kind,
+                    "note": plan.note,
+                    "items": [
+                        {
+                            "item_type": it["item_type"],
+                            "name": it.get("name"),
+                            "group": it.get("group"),
+                            "servings": it.get("servings"),
+                            "quantity": it.get("quantity"),
+                            "unit": it.get("unit"),
+                            "cost": it.get("cost"),
+                        }
+                        for it in evaluation["items"]
+                    ],
+                    "totals": evaluation["totals"],
+                }
+                totals["cost"] = round(totals["cost"] + evaluation["totals"]["cost"], 2)
+                if evaluation["totals"].get("currency"):
+                    totals["currency"] = evaluation["totals"]["currency"] or totals["currency"]
+                for key in ("calories", "protein_g", "carbs_g", "fat_g"):
+                    totals[key] = round(
+                        totals[key] + float(evaluation["totals"].get(key, 0) or 0), 2)
+                recommendations.append(base_item)
+                continue
 
         visible_items = [
             item for item in (record.items if record else [])
@@ -848,8 +885,9 @@ async def refresh_meal_recommendation(
         )
         .first()
     )
-    if current_rec is None or not current_rec.items:
+    if current_rec is None:
         return (None, "该餐暂无推荐，请先生成今日推荐")
+    # 方案来源餐（source='plan'）可能没有 items —— 同样允许刷新（重建后翻回 AI/规则）
 
     # 修复后的上限：refresh_count 列真实计数
     if int(current_rec.refresh_count or 0) >= MAX_REFRESH_PER_MEAL:
@@ -926,6 +964,9 @@ async def refresh_meal_recommendation(
     if preference is not None:
         current_rec.preference = preference
     current_rec.refresh_count = int(current_rec.refresh_count or 0) + 1
+    # 换一餐后回归 AI/规则来源（清除方案来源标记）
+    current_rec.source = composed.source
+    current_rec.plan_id = None
     db.commit()
 
     all_records = _load_today_records(db, user.id, today)

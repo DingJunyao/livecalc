@@ -7,6 +7,8 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from pydantic import BaseModel, Field
+
 from app.core.database import get_db
 from app.core.security import get_current_user
 from app.api.deps import get_timezone
@@ -124,6 +126,100 @@ def trigger_recommendation_generation(
     except Exception as e:
         logger.error(f"触发推荐生成失败: {e}", exc_info=True)
         raise LocalizedHTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, message='触发推荐生成失败')
+
+
+class SetPlanRequest(BaseModel):
+    """把试算方案设为今日一餐/三餐"""
+    plan_id: int
+    meal_type: str | None = Field(None, pattern="^(breakfast|lunch|dinner)$")
+
+
+@router.post("/recommendations/set-plan", response_model=MealRecommendationsResponse)
+def set_plan_as_recommendation(
+    request: SetPlanRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """
+    试算方案 → 今日推荐：方案来源餐（source='plan' + plan_id）。
+
+    - kind='meal' 需给 meal_type（未给则用当前餐）
+    - kind='day' 一次设三餐
+    - 该餐今天还没有推荐时自动先生成再覆盖
+    """
+    import datetime
+    from app.models.meal_plan import MealPlan
+    from app.services.meal_recommender import _load_today_records
+
+    try:
+        plan = (
+            db.query(MealPlan)
+            .filter(
+                MealPlan.id == request.plan_id,
+                MealPlan.user_id == current_user.id,
+                MealPlan.is_active == True,  # noqa: E712
+            )
+            .first()
+        )
+        if plan is None:
+            raise LocalizedHTTPException(status_code=404, message='试算方案不存在')
+
+        today = utc_datetime_to_local_date(datetime.datetime.now(datetime.timezone.utc), tz)
+        from app.services.meal_recommender import _load_today_records as _load
+
+        records = {r.meal_type: r for r in _load(db, current_user.id, today)}
+
+        if plan.kind == "meal":
+            meal_type = request.meal_type
+            if meal_type is None:
+                current = _current_meal_for_plan(tz)
+                meal_type = current or "lunch"
+            targets = [meal_type]
+        else:
+            targets = ["breakfast", "lunch", "dinner"]
+
+        for mt in targets:
+            rec = records.get(mt)
+            if rec is None:
+                # 该餐今天没有推荐：直接建一条 plan 来源记录
+                from app.models.daily_recommendation import DailyRecommendation
+
+                rec = DailyRecommendation(
+                    user_id=current_user.id, date=today, meal_type=mt,
+                    source="plan", plan_id=plan.id,
+                )
+                db.add(rec)
+            else:
+                rec.source = "plan"
+                rec.plan_id = plan.id
+        db.commit()
+
+        all_records = _load(db, current_user.id, today)
+        return _build_response_from_records_sync(
+            db, all_records, current_user, tz=tz,
+        )
+    except HTTPException:
+        raise
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"设为今日一餐失败: {e}", exc_info=True)
+        raise LocalizedHTTPException(status_code=500, message='设为今日一餐失败')
+
+
+def _current_meal_for_plan(tz: str) -> str | None:
+    import datetime
+    from app.utils.date_range_utils import _zone
+
+    hour = datetime.datetime.now(_zone(tz)).hour
+    if 5 <= hour < 10:
+        return "breakfast"
+    if 10 <= hour < 14:
+        return "lunch"
+    if 14 <= hour < 22:
+        return "dinner"
+    return None
 
 
 @router.post("/recommendations/refresh", response_model=MealRecommendationsResponse)
