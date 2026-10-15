@@ -6,7 +6,7 @@
     :color="active ? 'error' : undefined"
     :title="active ? t('favorites.unfavorite') : t('favorites.favorite')"
     :aria-label="active ? t('favorites.unfavorite') : t('favorites.favorite')"
-    @click.stop="$emit('toggle')"
+    @click.stop.prevent="$emit('toggle')"
   />
 </template>
 
