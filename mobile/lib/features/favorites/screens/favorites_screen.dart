@@ -9,6 +9,8 @@ import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/directional_icons.dart';
+import '../../../shared/widgets/app_back_button.dart';
+import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -201,6 +203,15 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(l10n.navFavorites),
+          leading: const AppBackButton(),
+          actions: [
+            const CalcContextMenuButton(),
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              tooltip: l10n.journeyRefresh,
+              onPressed: _loading ? null : _load,
+            ),
+          ],
           bottom: TabBar(
             isScrollable: true,
             tabs: [
