@@ -641,7 +641,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('products.nutrition') }}
-          <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ nutritionBasisLabel }}</span>
           <v-spacer />
           <template v-if="!editingNutrition">
             <v-btn
@@ -701,6 +701,13 @@
 
         <!-- 编辑模式 -->
         <v-card-text v-else class="pa-0">
+          <div class="pa-2">
+            <NutritionBasisField
+              v-model:amount="nutritionBasis.amount"
+              v-model:unit="nutritionBasis.unit"
+              :options="nutritionBasisOptions"
+            />
+          </div>
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
             <div class="text-caption text-medium-emphasis ps-2">{{ t('products.nutrients') }}</div>
             <div class="text-caption text-medium-emphasis text-end">{{ t('products.quantity') }}</div>
@@ -787,7 +794,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('products.nutrition') }}
-          <span class="text-caption text-medium-emphasis ms-2">{{ t('products.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ nutritionBasisLabel }}</span>
           <v-spacer />
           <v-btn
             v-if="!loadingNutrition"
@@ -812,6 +819,13 @@
           <div class="text-caption text-medium-emphasis mt-1">{{ t('products.clickEditAdd') }}</div>
         </v-card-text>
         <v-card-text v-else class="pa-0">
+          <div class="pa-2">
+            <NutritionBasisField
+              v-model:amount="nutritionBasis.amount"
+              v-model:unit="nutritionBasis.unit"
+              :options="nutritionBasisOptions"
+            />
+          </div>
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
             <div class="text-caption text-medium-emphasis ps-2">{{ t('products.nutrients') }}</div>
             <div class="text-caption text-medium-emphasis text-end">{{ t('products.quantity') }}</div>
@@ -1311,6 +1325,7 @@ import { useFavorites } from '@/composables/useFavorites'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import BarcodeField from '@/components/common/BarcodeField.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
+import NutritionBasisField from '@/components/nutrition/NutritionBasisField.vue'
 import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, toLocalDayKey, type AsOfPricePoint } from '@/utils/priceAsOf'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
@@ -1325,6 +1340,16 @@ import {
   NO_STANDARD_VALUES,
 } from '@/data/localValues'
 import { newNameSuffix } from '@/utils/localDisplay'
+import { loadNutritionBasisUnitOptions } from '@/utils/entityUnits'
+import {
+  DEFAULT_NUTRITION_BASIS,
+  buildDefaultNutrientRows,
+  formatBasisAmount,
+  normalizeBasisAmount,
+  normalizeBasisUnit,
+  readNutritionBasis,
+  type BasisUnitOption,
+} from '@/utils/nutritionBasis'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import { useUserStore } from '@/stores/user'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
@@ -1805,6 +1830,33 @@ interface NutritionEditItem {
   units: string[]
 }
 const nutritionEditItems = ref<NutritionEditItem[]>([])
+
+// 营养基准（「每 X 单位」）：编辑时按已有的基准预填，缺省 100 g。
+// 单位候选含本商品可折算的自定义单位（商品自身 + 继承原料）。
+const nutritionBasis = ref({ ...DEFAULT_NUTRITION_BASIS })
+const nutritionBasisOptions = ref<BasisUnitOption[]>([])
+// 进入编辑时该商品是否已有自定义营养：决定「清空后保存」是清除覆盖还是不发请求
+const nutritionHadData = ref(false)
+
+const nutritionBasisLabel = computed(() =>
+  t('products.perBasis', {
+    amount: formatBasisAmount(nutritionBasis.value.amount),
+    unit: normalizeBasisUnit(nutritionBasis.value.unit),
+  }),
+)
+
+/** 拉取基准单位候选（含自定义单位）；失败时组件内仍有 g/mL 兜底。 */
+const loadNutritionBasisOptions = async () => {
+  try {
+    nutritionBasisOptions.value = await loadNutritionBasisUnitOptions(
+      'product',
+      productId.value,
+      product.value?.ingredient_id ?? null,
+    )
+  } catch {
+    nutritionBasisOptions.value = []
+  }
+}
 
 const getNutrientOptionsForRow = (currentKey: string) => {
   const usedKeys = new Set(
@@ -3293,9 +3345,23 @@ const startEditNutrition = () => {
     return 0
   })
 
+  // 无任何自定义营养数据：预填营养成分表常见五项（能量 kJ / 蛋白质 / 脂肪 /
+  // 碳水化合物 / 钠 mg）。用户只是点进来看看的话，保存时不会写任何数据。
+  if (items.length === 0) {
+    items.push(...buildDefaultNutrientRows(NUTRIENT_DEFINITIONS.value))
+  }
+
+  nutritionHadData.value = items.some(item => item.value != null)
   nutritionEditItems.value = items
+  nutritionBasis.value = readNutritionBasis(nutritionData.value)
+  void loadNutritionBasisOptions()
   editingNutrition.value = true
 }
+
+// 展示态也要用数据里的基准（标题「（每 X 单位）」在未编辑时同样要准）
+watch(nutritionData, () => {
+  nutritionBasis.value = readNutritionBasis(nutritionData.value)
+})
 
 const cancelEditNutrition = () => {
   editingNutrition.value = false
@@ -3369,6 +3435,12 @@ const saveNutritionEdit = async () => {
     }
 
     if (nutrients.length === 0) {
+      if (!nutritionHadData.value) {
+        // 只是点开编辑器、默认行一个字没填（或全删了本来就没有的数据）：
+        // 不记录，也不打清空接口 —— 免得留下「已保存」的错觉。
+        editingNutrition.value = false
+        return
+      }
       // 商品允许删除全部覆盖数据，回退到继承原料的营养成分
       // 共享数据分流：管理员直写 / 普通用户补空自动通过 / 普通用户有数据→manual 待审
       const res = await api.put(`/products/entity/${productId.value}/nutrition`, null)
@@ -3385,8 +3457,8 @@ const saveNutritionEdit = async () => {
       }
     } else {
       const res = await api.post(`/nutrition/products/${productId.value}/nutrition`, {
-        base_quantity: 100,
-        base_unit: 'g',
+        base_quantity: normalizeBasisAmount(nutritionBasis.value.amount),
+        base_unit: normalizeBasisUnit(nutritionBasis.value.unit),
         nutrients,
         source: 'custom',
       })

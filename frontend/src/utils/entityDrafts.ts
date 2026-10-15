@@ -8,6 +8,7 @@
 // 提示，让用户看到「商品/原料已保存，但哪一项附加数据没保存」。
 
 import { api } from '@/api'
+import { normalizeBasisAmount, normalizeBasisUnit } from '@/utils/nutritionBasis'
 import {
   planDraftUnitWrites,
   reconcileUnitsAfterIngredientChange as reconcileUnitRefs,
@@ -52,12 +53,15 @@ function nutritionSegment(entityType: DraftEntityType): string {
 /**
  * 落库草稿。[units] 里的负数 weight_unit_override_id 指向同批草稿，
  * 正数指向关联原料的自定义单位（仅商品有此来源）。
+ *
+ * [basis] 是营养基准（「每 X 单位」）：省略即沿用 100 g。
  */
 export async function persistEntityDrafts(
   entityType: DraftEntityType,
   entityId: number,
   units: EntityDraftUnit[],
   nutrients: EntityDraftNutrient[],
+  basis?: { amount?: number | null; unit?: string | null } | null,
 ): Promise<PersistDraftsResult> {
   const result: PersistDraftsResult = {
     unitsCreated: 0,
@@ -123,8 +127,8 @@ export async function persistEntityDrafts(
       const response: any = await api.post(
         `/nutrition/${nutritionSegment(entityType)}/${entityId}/nutrition`,
         {
-          base_quantity: 100,
-          base_unit: 'g',
+          base_quantity: normalizeBasisAmount(basis?.amount),
+          base_unit: normalizeBasisUnit(basis?.unit),
           nutrients: payloadNutrients,
           source: 'custom',
         },

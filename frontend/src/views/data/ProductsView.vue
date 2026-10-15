@@ -328,6 +328,9 @@
     <ProductDraftNutritionDialog
       v-model="showDraftNutritionDialog"
       v-model:nutrients="draftNutrients"
+      v-model:amount="draftNutritionBasis.amount"
+      v-model:unit="draftNutritionBasis.unit"
+      :ingredient-id="form.ingredient_id"
       :target="t('common.entityProduct')"
     />
   </v-container>
@@ -359,6 +362,7 @@ import ProductDraftNutritionDialog from '@/components/entities/EntityDraftNutrit
 import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
 import { reconcileUnitsAfterIngredientChange } from '@/utils/entityDraftPlan'
 import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
+import { DEFAULT_NUTRITION_BASIS } from '@/utils/nutritionBasis'
 import { useFavorites } from '@/composables/useFavorites'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 
@@ -442,6 +446,8 @@ const showDraftUnitsDialog = ref(false)
 const showDraftNutritionDialog = ref(false)
 const draftUnits = ref<EntityDraftUnit[]>([])
 const draftNutrients = ref<EntityDraftNutrient[]>([])
+// 草稿营养的基准（「每 X 单位」）：与营养素一起落库
+const draftNutritionBasis = ref({ ...DEFAULT_NUTRITION_BASIS })
 const draftNutrientCount = computed(() =>
   draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
 )
@@ -451,6 +457,7 @@ function resetDrafts() {
   showDraftNutritionDialog.value = false
   draftUnits.value = []
   draftNutrients.value = []
+  draftNutritionBasis.value = { ...DEFAULT_NUTRITION_BASIS }
 }
 
 const queryValue = (key: string) => {
@@ -887,7 +894,7 @@ const saveItem = async () => {
     const response = await api.post('/products/entity', form.value)
     // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库。
     // 注意：即使勾选了「新建同名原料」，附加数据也写**商品层级**（原料只用于关联与引用）。
-    const draftResult = await persistEntityDrafts('product', response.id, draftUnits.value, draftNutrients.value)
+    const draftResult = await persistEntityDrafts('product', response.id, draftUnits.value, draftNutrients.value, draftNutritionBasis.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false

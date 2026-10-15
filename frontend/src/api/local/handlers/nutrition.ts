@@ -72,9 +72,13 @@ export async function getIngredientNutrition(params: Record<string, string>): Pr
     allNutrients[key] = entry
     if (coreNames.includes(key)) coreNutrients[key] = entry
   }
+  // 营养基准（「每 X 单位」）：本地库把基准记在营养素行上（同一原料同一份基准）
+  const basis = all.find((row: any) => row?.reference_amount != null) ?? null
   return {
     items: all,
     total: all.length,
+    reference_amount: basis?.reference_amount ?? 100,
+    reference_unit: basis?.reference_unit ?? 'g',
     nutrition: {
       core_nutrients: coreNutrients,
       all_nutrients: allNutrients,
@@ -103,10 +107,15 @@ export async function updateIngredientNutrition(params: Record<string, string>, 
   const db = await getDb()
 
   // 先将前端字段名映射为数据库字段
+  // 基准（「每 X 单位」）：随每行一起写，读回时取首行（与后端 reference_* 对应）
+  const baseQuantity = Number(data?.base_quantity) > 0 ? Number(data.base_quantity) : 100
+  const baseUnit = String(data?.base_unit ?? '').trim() || 'g'
   const mapped = nutrients.map(n => ({
     nutrient_name: n.nutrient_name || n.name || '',
     amount_per_100g: n.amount_per_100g ?? n.value ?? 0,
     unit: n.unit || 'g',
+    reference_amount: baseQuantity,
+    reference_unit: baseUnit,
     source: n.source || 'custom',
     is_verified: true,
     ingredient_id: ingredientId,
@@ -396,12 +405,26 @@ export async function getProductNutrition(params: Record<string, string>): Promi
     }
   }
 
+  const customRef = product.custom_nutrition_data && !Array.isArray(product.custom_nutrition_data)
+    ? product.custom_nutrition_data
+    : null
+  const customRefAmount = Number(customRef?.reference_amount)
+  const customRefUnit = String(customRef?.reference_unit ?? '').trim()
+
   return {
     items: Object.entries(allNutrients).map(([k, v]) => ({ nutrient_name: k, ...v })),
     total: Object.keys(allNutrients).length,
     source,
+    reference_amount: customRefAmount > 0 ? customRefAmount : 100,
+    reference_unit: customRefUnit || 'g',
     nutrition: { core_nutrients: coreNutrients, all_nutrients: allNutrients },
-    custom_nutrition_data: { core_nutrients: customCore, all_nutrients: customAll },
+    custom_nutrition_data: {
+      core_nutrients: customCore,
+      all_nutrients: customAll,
+      ...(customRefAmount > 0
+        ? { reference_amount: customRefAmount, reference_unit: customRefUnit || 'g' }
+        : {}),
+    },
   }
 }
 
@@ -418,7 +441,13 @@ export async function updateProductNutrition(params: Record<string, string>, dat
   } else {
     const nutrients = data?.nutrients || data
     if (Array.isArray(nutrients) && nutrients.length > 0) {
-      customData = nutrients
+      // 基准（「每 X 单位」）与营养素一起存：{items, reference_amount, reference_unit}
+      // 基准为默认 100 g 时保持老形状（纯数组），兼容既有本地数据与其它读取方
+      const baseQuantity = Number(data?.base_quantity) > 0 ? Number(data.base_quantity) : 100
+      const baseUnit = String(data?.base_unit ?? '').trim() || 'g'
+      customData = baseQuantity === 100 && baseUnit === 'g'
+        ? nutrients
+        : { items: nutrients, reference_amount: baseQuantity, reference_unit: baseUnit }
     }
     // 空数组 = 清除覆盖，回退到原料
   }

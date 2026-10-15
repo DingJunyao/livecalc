@@ -13,6 +13,11 @@
 
 import { api } from '@/api'
 import { pickDefaultUnitName } from './unitOptions'
+import {
+  buildBasisUnitOptions,
+  resolvableBasisUnitNames,
+  type BasisUnitOption,
+} from './nutritionBasis'
 
 export interface UnitOption {
   title: string
@@ -276,4 +281,67 @@ export async function loadEntityUnitOptions(
   if (!entityId) return [...baseOptions]
   const entityOptions = await fetchEntityUnitOptions(entityType, entityId, params.ingredientId)
   return mergeUnitOptions(baseOptions, entityOptions)
+}
+
+/** 只取全局「质量 / 体积」单位行：营养基准必须是能折算成克的量纲。 */
+async function requestMassVolumeUnitRows(): Promise<any[]> {
+  try {
+    const res = await api.get('/units/', { params: { limit: 500 } })
+    return normalizeRows(res).filter(
+      (unit: any) =>
+        unit?.is_active !== false &&
+        (unit?.unit_type === 'mass' || unit?.unit_type === 'volume'),
+    )
+  } catch {
+    return []
+  }
+}
+
+/**
+ * 营养基准（「每 X 单位」）的下拉候选。
+ *
+ * 候选 = 本实体（商品则含关联原料）**可折算**的自定义单位 + 全局质量/体积单位。
+ * 折算不出来的自定义单位不列出：基准算不出克当量时，后端缩放会退化成「按克」口径，
+ * 让用户选它等于埋雷（详见 utils/nutritionBasis.ts 的判定）。
+ *
+ * 实体 id 尚未存在（新增商品/原料的草稿态）时只给全局单位。
+ */
+export async function loadNutritionBasisUnitOptions(
+  entityType: EntityUnitEntityType,
+  entityId: number | null | undefined,
+  ingredientId?: number | null,
+): Promise<BasisUnitOption[]> {
+  const [globalRows, ownRows, inheritedRows] = await Promise.all([
+    requestMassVolumeUnitRows(),
+    entityId ? requestEntityUnitRows(entityType, entityId) : Promise.resolve([] as any[]),
+    (async () => {
+      if (!entityId || entityType !== 'product') return [] as any[]
+      const linkedId = ingredientId ?? (await fetchLinkedIngredientId(entityId))
+      return linkedId ? requestEntityUnitRows('ingredient', linkedId) : ([] as any[])
+    })(),
+  ])
+
+  const globalOptions: BasisUnitOption[] = globalRows.map((unit: any) => ({
+    title: `${unit.name ?? unit.abbreviation} (${unit.abbreviation})`,
+    value: String(unit.abbreviation ?? unit.name ?? ''),
+  }))
+  // 兜底只给符号，不带语言相关的单位名（/units/ 拉不到时也要能用）
+  const fallback: BasisUnitOption[] = [
+    { title: 'g', value: 'g' },
+    { title: 'mL', value: 'mL' },
+  ]
+
+  const rows = dedupeUnitRows(ownRows, inheritedRows)
+  const customNames = resolvableBasisUnitNames(rows, globalRows)
+  const options = buildBasisUnitOptions(
+    globalOptions.length > 0 ? globalOptions : fallback,
+    customNames,
+  )
+  // 兜底项在拉取失败时补上，保证至少能选克/毫升
+  for (const option of fallback) {
+    if (!options.some(item => item.value === option.value)) {
+      options.push(option)
+    }
+  }
+  return options
 }

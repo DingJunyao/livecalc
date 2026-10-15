@@ -756,10 +756,10 @@ async def get_ingredient_nutrition(
         if ingredient:
             result["ingredient_name"] = ingredient.name
 
-        # 查询营养数据源信息
-        nutrition_data = db.query(NutritionData).filter(
-            NutritionData.ingredient_id == ingredient_id
-        ).first()
+        # 查询营养数据源信息。与计算器取同一行（best）——多条营养数据并存时
+        # （如 USDA 行 + 自定义行）基准若来自另一行，缩放比与展示会对不上。
+        from app.models.mixins import NutritionMixin
+        nutrition_data = NutritionMixin.get_best_nutrition_data(db, ingredient_id)
 
         if nutrition_data:
             result["source"] = nutrition_data.source
@@ -1799,7 +1799,11 @@ async def edit_product_nutrition(
         structured_nutrients = {
             "core_nutrients": {},
             "all_nutrients": {},
-            "nutrient_details": {}
+            "nutrient_details": {},
+            # 营养基准（「每 X 单位」）与 USDA 商品匹配写入的字段同名同义：
+            # 展示层与编辑器按它回显，缺省即 100 g。
+            "reference_amount": request.base_quantity,
+            "reference_unit": request.base_unit,
         }
 
         for nutrient in request.nutrients:

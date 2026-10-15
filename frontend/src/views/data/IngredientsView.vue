@@ -299,6 +299,8 @@
     <EntityDraftNutritionDialog
       v-model="showDraftNutritionDialog"
       v-model:nutrients="draftNutrients"
+      v-model:amount="draftNutritionBasis.amount"
+      v-model:unit="draftNutritionBasis.unit"
       :target="t('common.entityIngredient')"
     />
   </v-container>
@@ -329,6 +331,7 @@ import EntityDraftUnitsDialog from '@/components/entities/EntityDraftUnitsDialog
 import EntityDraftNutritionDialog from '@/components/entities/EntityDraftNutritionDialog.vue'
 import { buildDraftNotices, persistEntityDrafts } from '@/utils/entityDrafts'
 import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPlan'
+import { DEFAULT_NUTRITION_BASIS } from '@/utils/nutritionBasis'
 
 const { t } = useI18n()
 const localeStore = useLocaleStore()
@@ -408,6 +411,8 @@ const showDraftUnitsDialog = ref(false)
 const showDraftNutritionDialog = ref(false)
 const draftUnits = ref<EntityDraftUnit[]>([])
 const draftNutrients = ref<EntityDraftNutrient[]>([])
+// 草稿营养的基准（「每 X 单位」）：与营养素一起落库
+const draftNutritionBasis = ref({ ...DEFAULT_NUTRITION_BASIS })
 const draftNutrientCount = computed(() =>
   draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
 )
@@ -417,6 +422,7 @@ function resetDrafts() {
   showDraftNutritionDialog.value = false
   draftUnits.value = []
   draftNutrients.value = []
+  draftNutritionBasis.value = { ...DEFAULT_NUTRITION_BASIS }
 }
 
 /** 本页只有一个 snackbar：有失败/跳过时优先展示它，否则展示保存结果。 */
@@ -676,7 +682,7 @@ const saveItem = async () => {
 
     const response = await api.post('/ingredients', payload)
     // 原料已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并写**原料层级**
-    const draftResult = await persistEntityDrafts('ingredient', response.id, draftUnits.value, draftNutrients.value)
+    const draftResult = await persistEntityDrafts('ingredient', response.id, draftUnits.value, draftNutrients.value, draftNutritionBasis.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false

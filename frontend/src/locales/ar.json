@@ -1829,7 +1829,11 @@
     "danglingUnitsRetargeted": "كانت هذه الوحدات المخصصة تشير إلى وحدات غير موجودة في المكوّن الجديد، وأصبحت الآن تشير إلى الوحدة التي تحمل الاسم نفسه: {names}",
     "danglingUnitsRemovePending": "تم إرسال طلب إزالة الوحدات المخصصة التي تشير إلى وحدات غير موجودة في المكوّن الجديد (قيد المراجعة): {names}",
     "deleteUnit": "حذف الوحدة",
-    "deleteNutrient": "حذف العنصر الغذائي"
+    "deleteNutrient": "حذف العنصر الغذائي",
+    "perBasis": "(لكل {amount}{unit})",
+    "nutritionBasis": "الأساس",
+    "nutritionBasisUnit": "وحدة الأساس",
+    "nutritionBasisHint": "طابق الملصق (الوحدات المخصصة مدعومة، مثل 1 كيس = 250 غ)"
   },
   "favorites": {
     "title": "مفضلاتي",
@@ -2110,7 +2114,8 @@
     "presetMilk": "حليب",
     "presetCookingOil": "زيت طهي",
     "presetSoySauce": "صلصة صويا",
-    "presetHoney": "عسل"
+    "presetHoney": "عسل",
+    "perBasis": "(لكل {amount}{unit})"
   },
   "merchants": {
     "title": "إدارة المتاجر",

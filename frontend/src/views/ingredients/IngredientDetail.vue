@@ -586,7 +586,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('ingredients.nutrition') }}
-          <span class="text-caption text-medium-emphasis ms-2">{{ t('ingredients.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ nutritionBasisLabel }}</span>
           <v-spacer />
           <template v-if="!editingNutrition">
             <v-btn
@@ -646,6 +646,13 @@
 
         <!-- 编辑模式 -->
         <v-card-text v-else class="pa-0">
+          <div class="pa-2">
+            <NutritionBasisField
+              v-model:amount="nutritionBasis.amount"
+              v-model:unit="nutritionBasis.unit"
+              :options="nutritionBasisOptions"
+            />
+          </div>
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
             <div class="text-caption text-medium-emphasis ps-2">{{ t('ingredients.nutrients') }}</div>
             <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.quantity') }}</div>
@@ -732,7 +739,7 @@
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="success">mdi-food-apple-outline</v-icon>
           {{ t('ingredients.nutrition') }}
-          <span class="text-caption text-medium-emphasis ms-2">{{ t('ingredients.per100g') }}</span>
+          <span class="text-caption text-medium-emphasis ms-2">{{ nutritionBasisLabel }}</span>
           <v-spacer />
           <v-btn
             v-if="!loadingNutrition"
@@ -757,6 +764,13 @@
           <div class="text-caption text-medium-emphasis mt-1">{{ t('ingredients.clickEditAdd') }}</div>
         </v-card-text>
         <v-card-text v-else class="pa-0">
+          <div class="pa-2">
+            <NutritionBasisField
+              v-model:amount="nutritionBasis.amount"
+              v-model:unit="nutritionBasis.unit"
+              :options="nutritionBasisOptions"
+            />
+          </div>
           <div class="nutrition-edit-table py-2 px-2 header-row border-bottom">
             <div class="text-caption text-medium-emphasis ps-2">{{ t('ingredients.nutrients') }}</div>
             <div class="text-caption text-medium-emphasis text-end">{{ t('ingredients.quantity') }}</div>
@@ -1935,6 +1949,17 @@ import { useRoute, useRouter } from 'vue-router'
 import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
 import { getErrorMessage } from '@/utils/errorHandler'
+import NutritionBasisField from '@/components/nutrition/NutritionBasisField.vue'
+import { loadNutritionBasisUnitOptions } from '@/utils/entityUnits'
+import {
+  DEFAULT_NUTRITION_BASIS,
+  buildDefaultNutrientRows,
+  formatBasisAmount,
+  normalizeBasisAmount,
+  normalizeBasisUnit,
+  readNutritionBasis,
+  type BasisUnitOption,
+} from '@/utils/nutritionBasis'
 import { useFavorites } from '@/composables/useFavorites'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import BarcodeField from '@/components/common/BarcodeField.vue'
@@ -2737,6 +2762,32 @@ interface NutritionEditItem {
   units: string[]       // 可选单位列表
 }
 const nutritionEditItems = ref<NutritionEditItem[]>([])
+
+// 营养基准（「每 X 单位」）：编辑时按已有的基准预填，缺省 100 g。
+// 单位候选含本原料可折算的自定义单位（自定义单位名，后端按实体覆盖折克）。
+const nutritionBasis = ref({ ...DEFAULT_NUTRITION_BASIS })
+const nutritionBasisOptions = ref<BasisUnitOption[]>([])
+// 进入编辑时该原料是否已有营养数据：决定「清空后保存」是报错还是静默不记录
+const nutritionHadData = ref(false)
+
+const nutritionBasisLabel = computed(() =>
+  t('ingredients.perBasis', {
+    amount: formatBasisAmount(nutritionBasis.value.amount),
+    unit: normalizeBasisUnit(nutritionBasis.value.unit),
+  }),
+)
+
+/** 拉取基准单位候选（含自定义单位）；失败时组件内仍有 g/mL 兜底。 */
+const loadNutritionBasisOptions = async () => {
+  try {
+    nutritionBasisOptions.value = await loadNutritionBasisUnitOptions(
+      'ingredient',
+      ingredientId.value,
+    )
+  } catch {
+    nutritionBasisOptions.value = []
+  }
+}
 
 // 行内名称下拉可选列表（过滤已选的，保留当前行自身的 key）
 const getNutrientOptionsForRow = (currentKey: string) => {
@@ -4581,9 +4632,23 @@ const startEditNutrition = () => {
     return 0
   })
 
+  // 无任何营养数据：预填营养成分表常见五项（能量 kJ / 蛋白质 / 脂肪 /
+  // 碳水化合物 / 钠 mg）；用户只是点进来看看的话，保存时不会写任何数据。
+  if (items.length === 0) {
+    items.push(...buildDefaultNutrientRows(NUTRIENT_DEFINITIONS.value))
+  }
+
+  nutritionHadData.value = items.some(item => item.value != null)
   nutritionEditItems.value = items
+  nutritionBasis.value = readNutritionBasis(nutritionData.value)
+  void loadNutritionBasisOptions()
   editingNutrition.value = true
 }
+
+// 展示态也要用数据里的基准（标题「（每 X 单位）」在未编辑时同样要准）
+watch(nutritionData, () => {
+  nutritionBasis.value = readNutritionBasis(nutritionData.value)
+})
 
 const cancelEditNutrition = () => {
   editingNutrition.value = false
@@ -4662,14 +4727,19 @@ const saveNutritionEdit = async () => {
     }
 
     if (nutrients.length === 0) {
+      if (!nutritionHadData.value) {
+        // 只是点开编辑器、默认行一个字没填：不记录（也不报「至少填一项」）
+        editingNutrition.value = false
+        return
+      }
       showMessage(t('ingredients.nutrientRequired'), 'error')
       savingNutrition.value = false
       return
     }
 
     const res = await api.post(`/nutrition/ingredients/${ingredientId.value}/nutrition`, {
-      base_quantity: 100,
-      base_unit: 'g',
+      base_quantity: normalizeBasisAmount(nutritionBasis.value.amount),
+      base_unit: normalizeBasisUnit(nutritionBasis.value.unit),
       nutrients,
       source: 'custom',
     })

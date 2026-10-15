@@ -1829,7 +1829,11 @@
     "danglingUnitsRetargeted": "These custom units referenced units missing from the new ingredient and now point to the same-named unit: {names}",
     "danglingUnitsRemovePending": "Submitted removal of custom unit(s) referencing units missing from the new ingredient (pending review): {names}",
     "deleteUnit": "Delete unit",
-    "deleteNutrient": "Delete nutrient"
+    "deleteNutrient": "Delete nutrient",
+    "perBasis": "(per {amount}{unit})",
+    "nutritionBasis": "Per",
+    "nutritionBasisUnit": "Basis unit",
+    "nutritionBasisHint": "Match the label (custom units supported, e.g. 1 bag = 250 g)"
   },
   "favorites": {
     "title": "My Favorites",
@@ -2110,7 +2114,8 @@
     "presetMilk": "Milk",
     "presetCookingOil": "Cooking oil",
     "presetSoySauce": "Soy sauce",
-    "presetHoney": "Honey"
+    "presetHoney": "Honey",
+    "perBasis": "(per {amount}{unit})"
   },
   "merchants": {
     "title": "Merchants",
