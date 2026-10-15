@@ -6,8 +6,16 @@ from app.core.database import Base
 def test_get_and_update_own_settings(as_admin):
     from starlette.testclient import TestClient
     from app.main import app
+    from app.models.user_ai_settings import UserAiSettings
 
     Base.metadata.create_all(bind=engine)
+    # 共享内存库：清掉其他用例留下的设置行，从干净态开始
+    db = TestingSessionLocal()
+    try:
+        db.query(UserAiSettings).filter(UserAiSettings.user_id == FakeUser.id).delete()
+        db.commit()
+    finally:
+        db.close()
     client = TestClient(app)
     resp = client.get("/api/v1/profile/ai-settings")
     assert resp.status_code == 200, resp.text

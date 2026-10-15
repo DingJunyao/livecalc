@@ -47,6 +47,11 @@ def test_daily_recommendation_has_items_not_recipe_id():
         assert loaded.items[0].recipe_id == recipe.id
         assert loaded.items[0].role == "staple"
     finally:
+        db.query(DailyRecommendationItem).filter(
+            DailyRecommendationItem.recommendation_id == rec.id).delete()
+        db.query(DailyRecommendation).filter(DailyRecommendation.id == rec.id).delete()
+        db.query(Recipe).filter(Recipe.id == recipe.id).delete()
+        db.commit()
         db.close()
 
 
@@ -57,6 +62,11 @@ def test_user_ai_settings_and_usage_events():
 
     db = TestingSessionLocal()
     try:
+        db.query(UserAiSettings).filter(UserAiSettings.user_id == FakeUser.id).delete()
+        db.query(__import__("app.models.ai_usage_event", fromlist=["AiUsageEvent"]).AiUsageEvent).filter(
+            __import__("app.models.ai_usage_event", fromlist=["AiUsageEvent"]).AiUsageEvent.user_id == FakeUser.id
+        ).delete()
+        db.commit()
         db.add(UserAiSettings(
             user_id=FakeUser.id, method="user_ai", provider="openai",
             base_url="https://example.com/v1", api_key_enc="enc-secret",

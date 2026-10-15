@@ -59,6 +59,10 @@ def test_daily_limit_and_usage_events():
 
     db = TestingSessionLocal()
     try:
+        from app.models.ai_usage_event import AiUsageEvent as _E
+
+        db.query(_E).filter(_E.user_id == FakeUser.id).delete()
+        db.commit()
         assert count_today_system_ai_usage(db, FakeUser.id) == 0
         policy = {"daily_ai_limit": 2}
         assert system_ai_limit_reached(db, FakeUser(), policy) is False

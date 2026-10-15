@@ -1,5 +1,8 @@
 """
 每日饮食推荐 - 请求/响应 Schema
+
+多道菜套餐（设计 §4.7）：recommendations[].dishes 为完整套餐；
+recipe 保留为兼容别名（staple 或首道菜），旧前端可继续消费。
 """
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -30,10 +33,20 @@ class RecipeBrief(BaseModel):
         from_attributes = True
 
 
+class RecommendedDish(RecipeBrief):
+    """套餐中的一道菜"""
+    role: str = "main"  # staple | main | side | soup | drink
+    reason: Optional[str] = None
+
+
 class MealRecommendationItem(BaseModel):
-    """单餐推荐"""
+    """单餐推荐（多道菜套餐）"""
     meal_type: str
-    recipe: Optional[RecipeBrief] = None
+    recipe: Optional[RecipeBrief] = None  # 兼容别名：staple（无则首道）菜
+    dishes: List[RecommendedDish] = []
+    source: Optional[str] = None  # rule | system_ai | user_ai | plan
+    reason: Optional[str] = None
+    preference: Optional[str] = None
     is_current_meal: bool = False
 
 
@@ -65,6 +78,16 @@ class MealRecommendationsResponse(BaseModel):
     refreshing_meals: List[str] = []
 
 
+class GenerateMealRequest(BaseModel):
+    """生成今日推荐的可选参数"""
+    preference: Optional[str] = Field(None, max_length=200, description="一句话偏好")
+
+
 class RefreshMealRequest(BaseModel):
-    """刷新某一餐请求"""
+    """刷新某一餐请求
+
+    recipe_id 为空 = 整餐重搭；给定 = 单道换（只替换该道菜）。
+    """
     meal_type: str = Field(..., pattern="^(breakfast|lunch|dinner)$")
+    recipe_id: Optional[int] = None
+    preference: Optional[str] = Field(None, max_length=200, description="一句话偏好")

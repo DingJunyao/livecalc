@@ -191,6 +191,16 @@ class RuleMealComposer:
             take(_top_by_category(shortlist, ("荤菜", "素菜", "水产"), used), "main")
             take(_top_by_category(shortlist, ("汤与粥",), used), "soup", threshold=0.5)
 
+        # staple 兜底：主食候选被排除/缺失时，取剩余最高分者顶位，
+        # 保证「一餐 ≥1 staple」的结构（理由如实说明替代）。
+        if not any(d.role == "staple" for d in dishes):
+            remaining = [d for d in shortlist if d["id"] not in used]
+            if remaining:
+                pick = max(remaining, key=lambda d: d.get("score", 0.0))
+                used.add(pick["id"])
+                dishes.insert(0, ComposedDish(
+                    pick["id"], "staple", "主食候选不足，以最接近者替代"))
+
         return ComposedMeal(dishes=dishes, note="按营养与成本目标挑选", source="rule")
 
 

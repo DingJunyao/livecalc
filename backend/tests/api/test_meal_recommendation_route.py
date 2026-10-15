@@ -2,6 +2,7 @@ import inspect
 from types import SimpleNamespace
 
 import pytest
+from starlette.requests import Request
 
 from app.api.meals import (
     get_daily_recommendations,
@@ -40,10 +41,11 @@ def test_refresh_conflict_preserves_service_error(monkeypatch):
         lambda *args, **kwargs: (False, "already refreshing"),
     )
 
-    request = SimpleNamespace(meal_type="lunch")
+    request = SimpleNamespace(meal_type="lunch", recipe_id=None, preference=None)
     current_user = SimpleNamespace(id=1)
+    http_request = Request(scope={"type": "http", "headers": []})
     with pytest.raises(LocalizedHTTPException) as exc_info:
-        refresh_recommendation(request, db=None, current_user=current_user, tz="UTC")
+        refresh_recommendation(request, http_request, db=None, current_user=current_user, tz="UTC")
 
     assert exc_info.value.message == "刷新失败: {error}"
     assert exc_info.value.params["error"] == "already refreshing"

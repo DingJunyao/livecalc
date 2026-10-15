@@ -64,6 +64,12 @@ class FakeUser:
     is_admin = True
     email_verified = True
     created_at = None
+    # 推荐服务读取的营养目标与预算
+    daily_calorie_target = 2000
+    daily_protein_target = 60
+    daily_carb_target = 300
+    daily_fat_target = 65
+    daily_budget = None
 
 
 def fake_current_user():
@@ -143,6 +149,11 @@ class NonAdminFakeUser:
     email_verified = True
     token_version = 0
     created_at = None
+    daily_calorie_target = 2000
+    daily_protein_target = 60
+    daily_carb_target = 300
+    daily_fat_target = 65
+    daily_budget = None
 
 
 def _fake_non_admin_user():
