@@ -544,6 +544,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           entityType: 'product',
           entityId: 0,
           initialNutrients: _draftNutrients,
+          // 草稿基准带回编辑器：否则重开一次就悄悄退回「每 100 g」
+          nutrition: NutritionInfo(
+            entityId: 0,
+            baseQuantity: _draftNutritionBasis.amount,
+            baseUnit: _draftNutritionBasis.unit,
+            nutrients: _draftNutrients,
+          ),
           allowUsda: false,
           onSave: (entries, basis) async {
             _draftNutrients = entries;
