@@ -21,11 +21,11 @@ export const DEFAULT_NUTRITION_BASIS = { amount: 100, unit: 'g' }
 export const DEFAULT_NUTRIENT_KEYS = ['energy', 'protein', 'fat', 'carbohydrate', 'sodium'] as const
 
 /**
- * 默认单位覆盖：能量给 kJ（营养成分表通行写法）、钠给 mg；
- * 其余用营养素定义里的 defaultUnit。用户仍可在行内下拉改。
+ * 默认单位覆盖：钠给 mg（营养成分表通行写法）；**能量不在这里覆盖** —— 它跟随
+ * 用户能量单位偏好（buildNutrientDefinitions 已把 def.defaultUnit 参数化为
+ * kcal | kJ，缺省 kcal），没有单独写死。其余营养素用定义里的 defaultUnit。
  */
 const DEFAULT_UNIT_OVERRIDES: Record<string, string> = {
-  energy: 'kJ',
   sodium: 'mg',
 }
 
@@ -45,8 +45,9 @@ export interface DefaultNutrientRow {
 }
 
 /**
- * 新建（无任何营养数据）时的默认行：五项核心营养素 + 能量 kJ / 钠 mg。
- * 定义表里找不到的键跳过（营养素定义由调用方按用户能量单位偏好构建）。
+ * 新建（无任何营养数据）时的默认行：五项核心营养素。能量单位随定义表
+ * （即用户能量单位偏好，缺省 kcal）、钠固定 mg。定义表里找不到的键跳过
+ * （营养素定义由调用方按用户能量单位偏好构建）。
  */
 export function buildDefaultNutrientRows(defs: NutrientDefLike[]): DefaultNutrientRow[] {
   const rows: DefaultNutrientRow[] = []

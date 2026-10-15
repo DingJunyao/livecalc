@@ -21,11 +21,18 @@ const DEFS = [
   { key: 'fiber', label: '膳食纤维', units: ['g'], defaultUnit: 'g' },
 ]
 
-test('默认行是五项核心营养素，能量 kJ、钠 mg', () => {
+test('默认行是五项核心营养素：能量随定义（偏好）、钠 mg', () => {
+  // DEFS 能量 defaultUnit='kcal'（偏好为 kcal 时 buildNutrientDefinitions 的产物）
   const rows = buildDefaultNutrientRows(DEFS)
   assert.deepEqual(rows.map(r => r.key), ['energy', 'protein', 'fat', 'carbohydrate', 'sodium'])
-  assert.deepEqual(rows.map(r => r.unit), ['kJ', 'g', 'g', 'g', 'mg'])
+  assert.deepEqual(rows.map(r => r.unit), ['kcal', 'g', 'g', 'g', 'mg'])
   assert.ok(rows.every(r => r.value === null))
+
+  // 偏好为 kJ 时能量行跟到 kJ
+  const kJDefs = DEFS.map(d =>
+    d.key === 'energy' ? { ...d, defaultUnit: 'kJ' } : d,
+  )
+  assert.equal(buildDefaultNutrientRows(kJDefs)[0].unit, 'kJ')
 })
 
 test('默认行跳过定义表里没有的营养素', () => {
