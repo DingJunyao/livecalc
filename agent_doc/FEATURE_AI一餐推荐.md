@@ -60,3 +60,29 @@
 5. **默认策略 = claude_code 意味着测试默认会拉起真实 CLI**：不 mock `resolve_ai_credentials` 的测试必须显式强制 rule，否则每餐等 120s 超时（全量 26 分钟的元凶）。
 6. `_merge_default_config` 类「默认合并」函数必须保留未知顶层键，否则前端 PUT 回写会静默丢掉后续新增的配置区块。
 7. 提示词 system 部分自身含空行时，不能用「空行 partition」拆分 system/user——builder 直接返回元组。
+
+## 前端三端落地（2B + 2C，2026-10-15）
+
+**web 云端（master 0c752b03）**
+- `api/meals.ts`：`RecommendedDish`（role/reason）、`MealRecommendation.dishes/source/reason/preference`；`triggerRecommendationGeneration(preference?)`、`refreshMealRecommendation(mealType, recipeId?, preference?)`。
+- `stores/meals.ts`：`preferenceInput`，`refreshMeal(mealType, recipeId?)`，生成与轮询均携带偏好。
+- `components/meals/MealCard.vue`：多道菜套餐卡（role 徽标 v-chip、每道行内「换这道」、卡片级「换整餐」、AI 来源 `mdi-creation` 标、理由/偏好脚注、封面取 staple 有图者、本地 blob 图缓存）；无 `dishes` 时回退旧单道渲染（本地旧数据兼容）。`MealTimeline` 事件签名扩为 `(mealType, recipeId?)`。
+- `views/meals/DailyMealsView.vue`：顶部一句话偏好输入（回车 / 应用按钮 → 当前餐整餐重搭使偏好生效）。
+
+**本地离线模式（同提交）**
+- `api/local/business/mealComposer.ts`：与后端同契约的 TS 组合器 —— 分类池常量、`composeByRule`（staple 兜底同构）、`validateComposition`、`buildComposePrompt`、`aiComplete`（浏览器 fetch 直连 OpenAI 兼容 / Anthropic，含 `anthropic-dangerous-direct-browser-access` 头）。
+- `api/local/handlers/meals.ts` 重写：行结构 `dishes/source/reason/preference/refresh_count`；单道换（保 staple、保 sort_order）；5 次/餐/天上限；近 7 天去重；AI 走 `meal_plan.provider`（仅 openai/anthropic 浏览器可直连），未配置/失败/校验不过自动降级规则；`buildResponse` 用 staple 做兼容别名 + totals 聚合全部 dishes。删旧 `business/mealRecommender.ts`。
+- `localErrors` 新增 `mealNotGenerated/mealRefreshLimit/mealDishNotInRecommendation/mealNoCandidates`（三语）。
+
+**管理配置与个人设置（同提交）**
+- `AiConfigView.vue`：新增「餐食推荐（AI 组合）」面板（provider 四选 + 超时秒数）与「AI 使用策略」（默认方式 / 每日上限 / 允许自选 / 允许 BYOK / 允许自定义端点 / AI 标识开关 + 对外服务合规提示文案）。依赖后端 `_merge_default_config` 保留未知顶层键（已修）。
+- `ProfileView.vue`：「AI 推荐」卡（方式选择按 policy 过滤、BYOK provider/model/base_url/key 字段、密钥打码回显 + 清除、系统 AI 说明与隐私说明），走 `/profile/ai-settings` 三端点。
+
+**移动端（feat 4315a115）**
+- `RecommendedDish` 模型（role/reason/cost/image）；`MealRecommendation` 加 dishes/source/reason/preference。
+- `MealCard`：多道菜清单（role 徽标 Container、每道行成本·热量、`swap_horiz` 换这道、`auto_awesome` AI 星标、理由/偏好脚注、`mealsChangeMeal` 换整餐按钮）；header 标题改为 dishNames 串。
+- `home_provider`：`preferenceInput` + `setPreference`；`refreshMeal(mealType, {recipeId})`；生成与全餐刷新带偏好。
+- `home_screen`：顶部偏好输入（应用 = 当前餐重搭）。
+- l10n：三语 ARB 各加 11 键（`mealsAiGenerated/ChangeMeal/ChangeDish/Role*/PreferenceChip/Placeholder/ApplyPreference`）并 `flutter gen-l10n`。
+
+**验证**：web `build` ✓ / `check:i18n` ✓ / `tsc --noEmit` 131 条（基线 138，本地旧 meals 代码的 6 个 unused-var 随重写消除）；移动端 `flutter analyze` 0 error、`flutter test` 679 通过 / 6 存量失败（基线一致）。实机验证（真实 AI 配置下的生成/换菜）待用户进行。
