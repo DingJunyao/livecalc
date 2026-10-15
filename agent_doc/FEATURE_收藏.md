@@ -102,6 +102,8 @@
 - 移动端：`flutter analyze` 0 error（仅 1 条未触碰文件的 `onReorder` deprecation info）、`flutter test` **665 通过 / 6 存量失败**（apple_map×3、locale_preferences×2、my_proposals×1 = 基线）；11 处测试假仓库（`_Fake*Repository` / `_ListRepository`）签名随接口补参同步（`favoritesOnly`/`favoritesFirst`）。
 - 实机 GUI 验证仍待服务启动后由用户点验（桌面心形不跳转、收藏页四 tab 观感、移动端更多菜单入口与三类心形）。
 
+**补充（同日第二轮，用户实机两条）**：①移动端「我的收藏」改称「收藏」（zh ARB `navFavorites`，桌面侧栏/更多菜单/收藏页标题同源生效；en/ar 本就是 Favorites/مفضلاتي 不动，web 仍为「我的收藏」）；②收藏页商家 tab 补「已关闭」标注——`_FavoriteTile` 新增可选 `titleBadge`，商家 tab 用与商家列表屏同款橙色胶囊（`Colors.orange` + `merchantClosed`），已关闭商家照常显示但带标注。
+
 **经验**：
 1. `@click.stop` 防不住「链接型容器」（`v-card :to` / `v-list-item :to`）的默认导航 —— 子按钮必须 `.prevent`；
 2. 聚合页要复用**列表端点**（完整字段）而不是另造精简接口，否则页面必然简陋；富化接口（最新价/迷你图/成本）与列表页保持同源；
