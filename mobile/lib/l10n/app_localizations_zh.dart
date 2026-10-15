@@ -586,6 +586,12 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get nutritionBasis => '营养基准';
+
+  @override
+  String get nutritionBasisHint => '可按包装标签填；单位支持自定义单位（如 1 袋 = 250 g）';
+
+  @override
   String get nutritionNoData => '暂无营养数据';
 
   @override

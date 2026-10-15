@@ -186,7 +186,7 @@ void main() {
       tester,
       NutritionEditScreen(
         initialNutrients: const [],
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
     );
 
@@ -217,7 +217,7 @@ void main() {
         saving: false,
         entityType: 'ingredient',
         entityId: 1,
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
     );
 

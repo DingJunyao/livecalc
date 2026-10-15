@@ -12,6 +12,7 @@ import 'package:com_a4ding_livecalc/features/products/screens/product_form_scree
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/models/entity_unit.dart';
 import 'package:com_a4ding_livecalc/shared/models/nutrition.dart';
+import 'package:com_a4ding_livecalc/shared/utils/nutrition_basis.dart';
 import 'package:com_a4ding_livecalc/shared/screens/entity_units_draft_screen.dart';
 import 'package:com_a4ding_livecalc/shared/services/entity_draft_persist.dart';
 
@@ -203,6 +204,7 @@ class _RecordingPersister extends EntityDraftPersister {
   int? entityId;
   List<EntityUnit> units = const [];
   List<NutrientEntry> nutrients = const [];
+  NutritionBasis basis = const NutritionBasis();
 
   _RecordingPersister() : super(isAdmin: true);
 
@@ -212,11 +214,13 @@ class _RecordingPersister extends EntityDraftPersister {
     required int entityId,
     List<EntityUnit> units = const [],
     List<NutrientEntry> nutrients = const [],
+    NutritionBasis basis = const NutritionBasis(),
   }) async {
     this.entityType = entityType;
     this.entityId = entityId;
     this.units = units;
     this.nutrients = nutrients;
+    this.basis = basis;
     return EntityDraftPersistResult(
       unitsCreated: units.length,
       nutrientsSaved: nutrients.length,
@@ -396,14 +400,12 @@ void main() {
     await _tapDraftTile(tester, 'Nutrition');
     expect(find.text('USDA'), findsNothing);
 
-    final dropdown = find.byType(DropdownButtonFormField<String>).first;
-    await tester.ensureVisible(dropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(dropdown);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Protein').last);
-    await tester.pumpAndSettle();
-    final valueField = find.byType(TextField).first;
+    // 新建营养预填五项（首行是能量）；基准行在营养素表之前
+    // （TextField 0 = 基准量，1 = 能量值）
+    expect(find.text('Energy'), findsOneWidget);
+    expect(find.text('Sodium'), findsOneWidget);
+
+    final valueField = find.byType(TextField).at(1);
     await tester.ensureVisible(valueField);
     await tester.pumpAndSettle();
     await tester.enterText(valueField, '10');

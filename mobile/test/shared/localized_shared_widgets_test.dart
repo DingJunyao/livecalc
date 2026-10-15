@@ -403,7 +403,7 @@ void main() {
         saving: false,
         entityType: 'ingredient',
         entityId: 1,
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
     );
     expect(find.text('Nutrition'), findsOneWidget);
@@ -419,7 +419,7 @@ void main() {
         saving: false,
         entityType: 'ingredient',
         entityId: 1,
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
     );
     expect(find.text('القيم الغذائية'), findsOneWidget);
@@ -572,7 +572,7 @@ void main() {
       const Locale('en', 'US'),
       NutritionEditScreen(
         initialNutrients: const [],
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
       size: const Size(900, 1200),
     );
@@ -585,7 +585,7 @@ void main() {
       const Locale('ar'),
       NutritionEditScreen(
         initialNutrients: const [],
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
       size: const Size(900, 1200),
     );
@@ -658,7 +658,7 @@ void main() {
       const Locale('zh', 'CN'),
       NutritionEditScreen(
         initialNutrients: const [],
-        onSave: (_) async => null,
+        onSave: (_, __) async => null,
       ),
       size: const Size(900, 1200),
     );

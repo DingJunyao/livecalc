@@ -1,5 +1,6 @@
 import '../../../core/api/api_client.dart';
 import '../../../shared/models/nutrition.dart';
+import '../../../shared/utils/nutrition_basis.dart';
 import '../models/usda_models.dart';
 
 class NutritionRepository {
@@ -34,11 +35,12 @@ class NutritionRepository {
 
   Future<MutationReviewResult> saveIngredientNutrition(
     int id,
-    List<NutrientEntry> nutrients,
-  ) async {
+    List<NutrientEntry> nutrients, {
+    NutritionBasis basis = const NutritionBasis(),
+  }) async {
     final response = await _client.dio.post(
       '/nutrition/ingredients/$id/nutrition',
-      data: _payload(nutrients),
+      data: _payload(nutrients, basis),
     );
     return MutationReviewResult.fromJson(
       response.data is Map
@@ -49,11 +51,12 @@ class NutritionRepository {
 
   Future<MutationReviewResult> saveProductNutrition(
     int id,
-    List<NutrientEntry> nutrients,
-  ) async {
+    List<NutrientEntry> nutrients, {
+    NutritionBasis basis = const NutritionBasis(),
+  }) async {
     final response = await _client.dio.post(
       '/nutrition/products/$id/nutrition',
-      data: _payload(nutrients),
+      data: _payload(nutrients, basis),
     );
     return MutationReviewResult.fromJson(
       response.data is Map
@@ -73,10 +76,13 @@ class NutritionRepository {
     );
   }
 
-  Map<String, dynamic> _payload(List<NutrientEntry> nutrients) {
+  Map<String, dynamic> _payload(
+    List<NutrientEntry> nutrients,
+    NutritionBasis basis,
+  ) {
     return {
-      'base_quantity': 100,
-      'base_unit': 'g',
+      'base_quantity': normalizeBasisAmount(basis.amount),
+      'base_unit': normalizeBasisUnit(basis.unit),
       'source': 'custom',
       'nutrients': [
         for (final n in nutrients)

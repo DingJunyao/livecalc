@@ -398,6 +398,10 @@
       "base": {}
     }
   },
+  "nutritionBasis": "الأساس",
+  "@nutritionBasis": {},
+  "nutritionBasisHint": "طابق الملصق؛ الوحدات المخصصة مدعومة (مثل 1 كيس = 250 غ)",
+  "@nutritionBasisHint": {},
   "nutritionNoData": "لا توجد بيانات غذائية",
   "@nutritionNoData": {},
   "nutritionNoDataHint": "استخدم زر التعديل في أعلى اليمين للإضافة",

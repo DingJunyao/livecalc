@@ -1234,6 +1234,18 @@ abstract class AppLocalizations {
   /// **'（每{base}）'**
   String nutritionPerBase(Object base);
 
+  /// No description provided for @nutritionBasis.
+  ///
+  /// In zh, this message translates to:
+  /// **'营养基准'**
+  String get nutritionBasis;
+
+  /// No description provided for @nutritionBasisHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可按包装标签填；单位支持自定义单位（如 1 袋 = 250 g）'**
+  String get nutritionBasisHint;
+
   /// No description provided for @nutritionNoData.
   ///
   /// In zh, this message translates to:

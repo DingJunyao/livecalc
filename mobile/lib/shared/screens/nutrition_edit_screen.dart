@@ -6,6 +6,8 @@ import '../../features/nutrition/models/usda_models.dart';
 import '../../features/nutrition/repositories/usda_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
+import '../utils/entity_unit_names.dart';
+import '../utils/nutrition_basis.dart';
 import '../widgets/directional_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/save_action_button.dart';
@@ -30,7 +32,7 @@ class NutritionEditArguments {
   final NutritionInfo? nutrition;
   final bool allowClear;
   final Future<void> Function()? onRefresh;
-  final Future<Object?> Function(List<NutrientEntry>) onSave;
+  final Future<Object?> Function(List<NutrientEntry>, NutritionBasis) onSave;
   final Future<Object?> Function()? onClear;
 
   const NutritionEditArguments({
@@ -55,9 +57,11 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
   /// 是否允许切到 USDA 匹配：USDA 匹配直接写服务端，草稿（商品还没创建）时必须关掉。
   final bool allowUsda;
   final Future<void> Function()? onRefresh;
-  final Future<Object?> Function(List<NutrientEntry>)? onSave;
+  final Future<Object?> Function(List<NutrientEntry>, NutritionBasis)? onSave;
   final Future<Object?> Function()? onClear;
   final UsdaRepository? usdaRepository;
+  /// 基准单位的可注入取数缝（测试用）：缺省走 /units/ + 本实体自定义单位。
+  final Future<List<String>> Function()? basisUnitsLoader;
 
   const NutritionEditScreen({
     super.key,
@@ -72,6 +76,7 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
     this.onSave,
     this.onClear,
     this.usdaRepository,
+    this.basisUnitsLoader,
   });
 
   @override
@@ -90,6 +95,16 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
   bool _saving = false;
   bool _usdaMode = false;
 
+  /// 营养基准（「每 X 单位」）：默认 100 g，可改成包装标签上的量/单位
+  /// （单位候选含本实体可折算的自定义单位）。
+  NutritionBasis _basis = const NutritionBasis();
+  final _basisAmountController = TextEditingController(
+    text: formatBasisAmount(kDefaultNutritionBasisAmount),
+  );
+  List<String> _basisUnits = const ['g', 'mL'];
+  /// 进入编辑时是否已有营养数据：空保存时「不记录」还是「至少填一项」看它
+  bool _hadNutritionData = false;
+
   @override
   void initState() {
     super.initState();
@@ -99,13 +114,65 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     _rows.addAll([
       for (final nutrient in initialNutrients) _NutritionEditRow.from(nutrient),
     ]);
-    if (_rows.isEmpty) _addRow();
+    // 没有任何营养数据：预填营养成分表常见五项（能量 kJ / 蛋白质 / 脂肪 /
+    // 碳水化合物 / 钠 mg）。用户只是点进来看看的话，保存时不会写任何数据。
+    if (_rows.isEmpty) {
+      for (final label in kDefaultNutrientLabels) {
+        final unit = kDefaultNutrientUnits[label] ?? 'g';
+        _rows.add(_NutritionEditRow(
+          label: label,
+          unit: unit,
+          units: _unitsFor(label, unit),
+        ));
+      }
+    }
+    _hadNutritionData = _rows.any((row) {
+      final value = row.value;
+      return value != null && value > 0;
+    });
+    _basis = widget.nutrition == null
+        ? const NutritionBasis()
+        : NutritionBasis(
+            amount: normalizeBasisAmount(widget.nutrition!.baseQuantity),
+            unit: normalizeBasisUnit(widget.nutrition!.baseUnit),
+          );
+    _basisAmountController.text = formatBasisAmount(_basis.amount);
+    _loadBasisUnits();
     _searchController.addListener(_onSearchChanged);
   }
+
+  Future<void> _loadBasisUnits() async {
+    // 实体还不存在（新增商品/原料的草稿态，entityId=0）：没有自定义单位可列，
+    // 也不必为此打网络（返回 g/mL 常量即可）。
+    if (widget.entityId <= 0 && widget.basisUnitsLoader == null) return;
+    List<String> units;
+    try {
+      units = await (widget.basisUnitsLoader?.call() ??
+          loadNutritionBasisUnitNames(
+            entityType: widget.entityType,
+            entityId: widget.entityId,
+          ));
+    } catch (_) {
+      units = const [];
+    }
+    if (!mounted) return;
+    setState(() {
+      _basisUnits = withCurrentBasisUnit(
+        units.isEmpty ? const ['g', 'mL'] : units,
+        _basis.unit,
+      );
+    });
+  }
+
+  NutritionBasis get _currentBasis => NutritionBasis(
+        amount: normalizeBasisAmount(_basisAmountController.text),
+        unit: normalizeBasisUnit(_basis.unit),
+      );
 
   @override
   void dispose() {
     _debounce?.cancel();
+    _basisAmountController.dispose();
     _searchController.dispose();
     for (final row in _rows) {
       row.controller.dispose();
@@ -219,6 +286,11 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
       ));
     }
     if (entries.isEmpty) {
+      if (!_hadNutritionData) {
+        // 只是点开编辑器、默认行一个字没填：不记录，也不提示「至少填一项」
+        Navigator.of(context).pop(const NutritionEditResult());
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context).nutritionAtLeastOne),
@@ -226,7 +298,8 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
       );
       return;
     }
-    await _runMutation(() async => await widget.onSave?.call(entries));
+    final basis = _currentBasis;
+    await _runMutation(() async => await widget.onSave?.call(entries, basis));
   }
 
   Future<void> _clearCustom() async {
@@ -345,6 +418,59 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        // 营养基准：「每 X 单位」按包装标签填，避免用户心算折成 100 g
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(child: Text(l10n.nutritionBasis)),
+            SizedBox(
+              width: 96,
+              child: TextField(
+                controller: _basisAmountController,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.end,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 120,
+              child: DropdownButtonFormField<String>(
+                isExpanded: true,
+                initialValue: _basis.unit,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  for (final unit in _basisUnits.toSet())
+                    DropdownMenuItem(value: unit, child: Text(unit)),
+                ],
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _basis = NutritionBasis(
+                        amount: normalizeBasisAmount(
+                            _basisAmountController.text),
+                        unit: value,
+                      ));
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          l10n.nutritionBasisHint,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: Theme.of(context).colorScheme.outline),
+        ),
+        const SizedBox(height: 12),
         Row(
           children: [
             Expanded(child: Text(l10n.nutritionNutrient)),

@@ -1,6 +1,7 @@
 import 'dart:developer';
 
 import '../../core/api/api_client.dart';
+import 'nutrition_basis.dart';
 
 /// 实体自定义单位 / 全局单位的可注入请求缝（测试用）。
 ///
@@ -233,4 +234,88 @@ List<String> mergePriceUnitOptions(
     result.insert(0, currentName);
   }
   return result;
+}
+
+/// 营养基准（「每 X 单位」）的单位候选。
+///
+/// 候选 = 本实体（商品则含关联原料）**可折算**的自定义单位 + 全局质量/体积单位。
+/// 实体尚未存在（新增商品/原料的草稿态，entityId<=0）时只给全局单位；
+/// 商品若带了已选关联原料 id，则用该原料的可折算单位当候选。
+///
+/// 与 web 端 `entityUnits.loadNutritionBasisUnitOptions` 同口径；失败时回退
+/// g/mL 常量，绝不抛异常、不弹用户可见错误。
+Future<List<String>> loadNutritionBasisUnitNames({
+  required String entityType,
+  required int entityId,
+  int? ingredientId,
+  ApiClient? client,
+  EntityUnitsRequest? request,
+}) async {
+  final fetch = request ?? _apiGet(client);
+
+  Future<List<Map>> rowsOf(String path) async {
+    final Object? data;
+    try {
+      data = await fetch(path);
+    } catch (error, stackTrace) {
+      log(
+        'loadNutritionBasisUnitNames: GET $path 失败',
+        name: 'entity_unit_names',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return const [];
+    }
+    return [
+      for (final row in _rowsOf(data))
+        if (row is Map && !_isInactive(row)) Map<String, Object?>.from(row),
+    ];
+  }
+
+  final globalRows = <Map>[
+    for (final row in await rowsOf('/units/?limit=500'))
+      if (row['unit_type'] == 'mass' || row['unit_type'] == 'volume') row,
+  ];
+  final globalNames = <String>[
+    for (final row in globalRows)
+      if (_firstNonEmptyName(row, const ['abbreviation', 'name']).isNotEmpty)
+        _firstNonEmptyName(row, const ['abbreviation', 'name']),
+  ];
+
+  final ownRows = entityId > 0 ? await rowsOf('/entities/$entityType/$entityId/units') : <Map>[];
+  var inheritedRows = <Map>[];
+  if (entityType == 'product') {
+    final linkedId = entityId > 0
+        ? (ingredientId ?? await _fetchIngredientId(fetch, entityId))
+        : ingredientId;
+    if (linkedId != null && linkedId > 0) {
+      inheritedRows = await rowsOf('/entities/ingredient/$linkedId/units');
+    }
+  }
+
+  final seenIds = <int>{};
+  final seenNames = <String>{};
+  final customRows = <Map>[];
+  for (final row in [...ownRows, ...inheritedRows]) {
+    final id = row['id'];
+    final idValue = id is num ? id.toInt() : int.tryParse('$id');
+    if (idValue != null) {
+      if (seenIds.contains(idValue)) continue;
+      seenIds.add(idValue);
+    }
+    final name = _firstNonEmptyName(row, const ['unit_name', 'name']);
+    if (name.isNotEmpty) {
+      if (seenNames.contains(name)) continue;
+      seenNames.add(name);
+    }
+    customRows.add(row);
+  }
+
+  final customNames = resolvableBasisUnitNames(customRows, globalRows);
+  final options = mergeBasisUnitOptions(globalNames, customNames);
+  if (options.isEmpty) return const ['g', 'mL'];
+  for (final fallback in const ['g', 'mL']) {
+    if (!options.contains(fallback)) options.add(fallback);
+  }
+  return options;
 }

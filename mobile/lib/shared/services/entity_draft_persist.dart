@@ -3,6 +3,7 @@ import '../../features/nutrition/repositories/nutrition_repository.dart';
 import '../models/entity_unit.dart';
 import '../models/nutrition.dart';
 import '../utils/draft_units.dart';
+import '../utils/nutrition_basis.dart';
 
 /// 一条附加数据的保存失败/跳过原因（文案由调用方按 l10n 组合）。
 class EntityDraftIssue {
@@ -63,6 +64,7 @@ class EntityDraftPersister {
     required int entityId,
     List<EntityUnit> units = const [],
     List<NutrientEntry> nutrients = const [],
+    NutritionBasis basis = const NutritionBasis(),
   }) async {
     var unitsCreated = 0;
     var unitsPending = 0;
@@ -131,8 +133,10 @@ class EntityDraftPersister {
     if (entries.isNotEmpty) {
       try {
         final review = entityType == 'ingredient'
-            ? await nutritionRepository.saveIngredientNutrition(entityId, entries)
-            : await nutritionRepository.saveProductNutrition(entityId, entries);
+            ? await nutritionRepository.saveIngredientNutrition(entityId, entries,
+                basis: basis)
+            : await nutritionRepository.saveProductNutrition(entityId, entries,
+                basis: basis);
         if (review.pending) {
           nutritionPending = true;
         } else {

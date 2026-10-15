@@ -1,4 +1,5 @@
 import '../../features/recipes/utils/nutrition_labels.dart';
+import '../utils/nutrition_basis.dart';
 import 'entity_pending_proposal.dart';
 
 /// 单个营养素条目（键已由后端转为中文展示名）。
@@ -41,7 +42,11 @@ double? _toDouble(dynamic v) {
   return double.tryParse(v.toString());
 }
 
-/// 原料/商品营养数据（每 100g 基准）。
+/// 原料/商品营养数据。
+///
+/// [baseQuantity]/[baseUnit] 即「每 X 单位」的营养基准：来自后端的
+/// reference_amount/reference_unit（旧响应退回 base_quantity/base_unit），
+/// 默认 100 g。展示与编辑都以它为准。
 class NutritionInfo {
   final int entityId;
   final String? entityName;
@@ -76,12 +81,13 @@ class NutritionInfo {
         ? nutrition['all_nutrients'] as Map<String, dynamic>
         : const <String, dynamic>{};
 
+    final basis = readNutritionBasisFromJson(json);
     return NutritionInfo(
       entityId: (json['ingredient_id'] ?? json['product_id'] ?? 0) as int,
       entityName:
           json['ingredient_name'] as String? ?? json['product_name'] as String?,
-      baseQuantity: _toDouble(json['base_quantity']) ?? 100,
-      baseUnit: json['base_unit'] as String? ?? json['unit'] as String? ?? 'g',
+      baseQuantity: basis.amount,
+      baseUnit: basis.unit,
       source: json['source'] as String?,
       nutrients: _parseNutrients(core, all),
       pendingProposal: json['pending_proposal'] is Map<String, dynamic>
@@ -104,10 +110,11 @@ class NutritionInfo {
     }
     final data = proposal.updateData;
     final custom = _pendingNutritionData(data);
+    final basis = readNutritionBasisFromJson(data);
     return NutritionInfo(
       entityId: entityId,
-      baseQuantity: _toDouble(data['base_quantity']) ?? 100,
-      baseUnit: data['base_unit']?.toString() ?? 'g',
+      baseQuantity: basis.amount,
+      baseUnit: basis.unit,
       source: data['custom_nutrition_source']?.toString() ??
           data['source']?.toString(),
       nutrients: _parseNutrients(
@@ -124,11 +131,12 @@ class NutritionInfo {
     final data = proposal!.updateData;
     final custom = _pendingNutritionData(data);
     if (custom.isEmpty) return this;
+    final basis = readNutritionBasisFromJson(data);
     return NutritionInfo(
       entityId: entityId,
       entityName: entityName,
-      baseQuantity: _toDouble(data['base_quantity']) ?? baseQuantity,
-      baseUnit: data['base_unit']?.toString() ?? baseUnit,
+      baseQuantity: basis.amount,
+      baseUnit: basis.unit,
       source: data.containsKey('custom_nutrition_source')
           ? data['custom_nutrition_source']?.toString()
           : data['source']?.toString() ?? source,

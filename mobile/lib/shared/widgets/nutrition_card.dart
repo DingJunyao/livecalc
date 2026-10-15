@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/i18n/app_formatters.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/nutrition.dart';
+import '../utils/nutrition_basis.dart';
 import '../screens/nutrition_edit_screen.dart';
 
 /// 营养成分卡片（原料/商品共用），支持编辑与（商品）清空自定义数据。
@@ -15,7 +16,7 @@ class NutritionCard extends StatelessWidget {
   final String entityType;
   final int entityId;
   final String? entityName;
-  final Future<Object?> Function(List<NutrientEntry>) onSave;
+  final Future<Object?> Function(List<NutrientEntry>, NutritionBasis) onSave;
   final Future<Object?> Function()? onClear;
 
   const NutritionCard({

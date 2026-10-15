@@ -5,6 +5,7 @@ import '../../../shared/models/merchant_price.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/models/nutrition.dart';
+import '../../../shared/utils/nutrition_basis.dart';
 import '../../../shared/models/entity_pending_proposal.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../nutrition/repositories/nutrition_repository.dart';
@@ -822,11 +823,14 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     );
   }
 
-  Future<Object?> saveNutrition(List<NutrientEntry> nutrients) async {
+  Future<Object?> saveNutrition(
+    List<NutrientEntry> nutrients,
+    NutritionBasis basis,
+  ) async {
     state = state.copyWith(savingNutrition: true);
     try {
-      final result =
-          await _nutritionRepo.saveProductNutrition(productId, nutrients);
+      final result = await _nutritionRepo
+          .saveProductNutrition(productId, nutrients, basis: basis);
       await _loadNutrition();
       return result;
     } finally {

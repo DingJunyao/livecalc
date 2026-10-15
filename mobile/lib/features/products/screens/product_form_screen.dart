@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/nutrition.dart';
+import '../../../shared/utils/nutrition_basis.dart';
 import '../../../shared/screens/entity_units_draft_screen.dart';
 import '../../../shared/screens/nutrition_edit_screen.dart';
 import '../../../shared/services/entity_draft_persist.dart';
@@ -118,6 +119,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   // 新增商品时先填好的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
   final List<EntityUnit> _draftUnits = [];
   List<NutrientEntry> _draftNutrients = const [];
+  /// 草稿营养的基准（「每 X 单位」）：与营养素一起落库
+  NutritionBasis _draftNutritionBasis = const NutritionBasis();
   // 单位草稿的参照数据（全局单位、关联原料的单位与密度），进入草稿页前懒加载
   List<GlobalUnitOption> _globalUnitOptions = const [];
   List<EntityUnit> _inheritedUnits = const [];
@@ -542,8 +545,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           entityId: 0,
           initialNutrients: _draftNutrients,
           allowUsda: false,
-          onSave: (entries) async {
+          onSave: (entries, basis) async {
             _draftNutrients = entries;
+            _draftNutritionBasis = basis;
             return null;
           },
         ),
@@ -563,6 +567,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       entityId: productId,
       units: _draftUnits,
       nutrients: _draftNutrients,
+      basis: _draftNutritionBasis,
     );
     if (!mounted) return;
     _notifyDraftResult(result);

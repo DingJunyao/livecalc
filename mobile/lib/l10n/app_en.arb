@@ -398,6 +398,10 @@
       "base": {}
     }
   },
+  "nutritionBasis": "Per",
+  "@nutritionBasis": {},
+  "nutritionBasisHint": "Match the label; custom units are supported (e.g. 1 bag = 250 g)",
+  "@nutritionBasisHint": {},
   "nutritionNoData": "No nutrition data",
   "@nutritionNoData": {},
   "nutritionNoDataHint": "Use Edit in the top-right corner to add it",

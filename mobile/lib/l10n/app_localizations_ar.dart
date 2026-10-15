@@ -600,6 +600,13 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get nutritionBasis => 'الأساس';
+
+  @override
+  String get nutritionBasisHint =>
+      'طابق الملصق؛ الوحدات المخصصة مدعومة (مثل 1 كيس = 250 غ)';
+
+  @override
   String get nutritionNoData => 'لا توجد بيانات غذائية';
 
   @override

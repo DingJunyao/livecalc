@@ -601,6 +601,13 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get nutritionBasis => 'Per';
+
+  @override
+  String get nutritionBasisHint =>
+      'Match the label; custom units are supported (e.g. 1 bag = 250 g)';
+
+  @override
   String get nutritionNoData => 'No nutrition data';
 
   @override
