@@ -1954,6 +1954,96 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mealsApplyPreference => 'تطبيق';
 
   @override
+  String get navPlans => 'الحاسبة';
+
+  @override
+  String get plansNewPlan => 'خطة جديدة';
+
+  @override
+  String get plansEdit => 'تحرير الخطة';
+
+  @override
+  String get plansKindMeal => 'وجبة';
+
+  @override
+  String get plansKindDay => 'يوم';
+
+  @override
+  String plansItemCount(Object count) {
+    return '$count عناصر';
+  }
+
+  @override
+  String get plansSetToday => 'تعيين لليوم';
+
+  @override
+  String get plansSetTodayDone =>
+      'تم التعيين كتوصية اليوم — راجع الصفحة الرئيسية';
+
+  @override
+  String get plansSetTodayFailed => 'فشل التعيين لليوم';
+
+  @override
+  String get plansDeleteTitle => 'حذف الخطة';
+
+  @override
+  String get plansEmpty => 'لا توجد خطط بعد';
+
+  @override
+  String get plansPlanName => 'اسم الخطة';
+
+  @override
+  String get plansAddRecipe => 'إضافة وصفة';
+
+  @override
+  String get plansItemAdded => 'أُضيف — عدّل في القائمة';
+
+  @override
+  String get plansServings => 'الحصص';
+
+  @override
+  String get plansServingsPlus => 'حصة +1';
+
+  @override
+  String get plansQuantity => 'الكمية';
+
+  @override
+  String get plansTotals => 'الإجمالي مقابل الهدف';
+
+  @override
+  String get plansTotalCost => 'التكلفة';
+
+  @override
+  String get plansCalories => 'السعرات';
+
+  @override
+  String get plansProtein => 'البروتين';
+
+  @override
+  String get plansFat => 'الدهون';
+
+  @override
+  String get plansTarget => 'الهدف';
+
+  @override
+  String get plansCostTrend => 'اتجاه التكلفة (بالأسعار التاريخية)';
+
+  @override
+  String get plansSaved => 'تم الحفظ';
+
+  @override
+  String get plansSaveFailed => 'فشل الحفظ';
+
+  @override
+  String get plansTypeRecipe => 'وصفة';
+
+  @override
+  String get plansTypeIngredient => 'مكوّن';
+
+  @override
+  String get plansTypeProduct => 'منتج';
+
+  @override
   String get homeSwapAll => 'تبديل الكل';
 
   @override

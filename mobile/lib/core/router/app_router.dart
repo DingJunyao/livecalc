@@ -21,6 +21,7 @@ import '../../features/products/screens/product_detail_screen.dart';
 import '../../features/products/screens/product_form_screen.dart';
 import '../../features/products/models/product.dart';
 import '../../features/favorites/screens/favorites_screen.dart';
+import '../../features/planner/screens/planner_screens.dart';
 import '../../features/merchants/screens/merchant_list_screen.dart';
 import '../../features/merchants/screens/merchant_detail_screen.dart';
 import '../../features/merchants/screens/merchant_form_screen.dart';
@@ -371,6 +372,25 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/plans',
+            name: 'plans',
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const PlannerListScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
+          ),
+          GoRoute(
+            path: '/plans/edit',
+            name: 'plan-edit',
+            builder: (context, state) {
+              final extra = state.extra;
+              final plan =
+                  extra is Map ? extra['plan'] as Map<String, dynamic>? : null;
+              return PlannerEditScreen(plan: plan);
+            },
+          ),
+          GoRoute(
             path: '/merchants/map',
             name: 'merchant-map',
             builder: (_, __) => const MerchantListScreen(initialShowMap: true),
@@ -495,6 +515,7 @@ enum _TabLabel {
   products,
   merchants,
   favorites,
+  plans,
   profile,
   more
 }
@@ -551,6 +572,12 @@ const _merchantsTab = _Tab(
     selectedIcon: Icons.store,
     prefixes: ['/merchants'],
     route: '/merchants');
+const _plansTab = _Tab(
+    label: _TabLabel.plans,
+    icon: Icons.assignment_outlined,
+    selectedIcon: Icons.assignment,
+    prefixes: ['/plans'],
+    route: '/plans');
 const _favoritesTab = _Tab(
     label: _TabLabel.favorites,
     icon: Icons.favorite_outline,
@@ -577,6 +604,7 @@ const _desktopTabs = [
   _productsTab,
   _merchantsTab,
   _favoritesTab,
+  _plansTab,
   _profileTab,
 ];
 const _mobileTabs = [_homeTab, _pricesTab, _recipesTab, _moreTab];
@@ -585,6 +613,7 @@ const _moreMenuTabs = [
   _productsTab,
   _merchantsTab,
   _favoritesTab,
+  _plansTab,
   _profileTab,
 ];
 
@@ -597,6 +626,7 @@ String _tabLabel(_TabLabel label, AppLocalizations l10n) {
     _TabLabel.products => l10n.navProducts,
     _TabLabel.merchants => l10n.navMerchants,
     _TabLabel.favorites => l10n.navFavorites,
+    _TabLabel.plans => l10n.navPlans,
     _TabLabel.profile => l10n.navProfile,
     _TabLabel.more => l10n.navMore,
   };

@@ -3708,6 +3708,180 @@ abstract class AppLocalizations {
   /// **'应用'**
   String get mealsApplyPreference;
 
+  /// No description provided for @navPlans.
+  ///
+  /// In zh, this message translates to:
+  /// **'试算'**
+  String get navPlans;
+
+  /// No description provided for @plansNewPlan.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建方案'**
+  String get plansNewPlan;
+
+  /// No description provided for @plansEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑方案'**
+  String get plansEdit;
+
+  /// No description provided for @plansKindMeal.
+  ///
+  /// In zh, this message translates to:
+  /// **'一顿'**
+  String get plansKindMeal;
+
+  /// No description provided for @plansKindDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'一日'**
+  String get plansKindDay;
+
+  /// No description provided for @plansItemCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 项'**
+  String plansItemCount(Object count);
+
+  /// No description provided for @plansSetToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为今日'**
+  String get plansSetToday;
+
+  /// No description provided for @plansSetTodayDone.
+  ///
+  /// In zh, this message translates to:
+  /// **'已设为今日推荐，回首页查看'**
+  String get plansSetTodayDone;
+
+  /// No description provided for @plansSetTodayFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为今日失败'**
+  String get plansSetTodayFailed;
+
+  /// No description provided for @plansDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除方案'**
+  String get plansDeleteTitle;
+
+  /// No description provided for @plansEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有试算方案'**
+  String get plansEmpty;
+
+  /// No description provided for @plansPlanName.
+  ///
+  /// In zh, this message translates to:
+  /// **'方案名称'**
+  String get plansPlanName;
+
+  /// No description provided for @plansAddRecipe.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加菜谱'**
+  String get plansAddRecipe;
+
+  /// No description provided for @plansItemAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加，可在列表调整'**
+  String get plansItemAdded;
+
+  /// No description provided for @plansServings.
+  ///
+  /// In zh, this message translates to:
+  /// **'份量'**
+  String get plansServings;
+
+  /// No description provided for @plansServingsPlus.
+  ///
+  /// In zh, this message translates to:
+  /// **'份量 +1'**
+  String get plansServingsPlus;
+
+  /// No description provided for @plansQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量'**
+  String get plansQuantity;
+
+  /// No description provided for @plansTotals.
+  ///
+  /// In zh, this message translates to:
+  /// **'合计 vs 目标'**
+  String get plansTotals;
+
+  /// No description provided for @plansTotalCost.
+  ///
+  /// In zh, this message translates to:
+  /// **'成本'**
+  String get plansTotalCost;
+
+  /// No description provided for @plansCalories.
+  ///
+  /// In zh, this message translates to:
+  /// **'热量'**
+  String get plansCalories;
+
+  /// No description provided for @plansProtein.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白质'**
+  String get plansProtein;
+
+  /// No description provided for @plansFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪'**
+  String get plansFat;
+
+  /// No description provided for @plansTarget.
+  ///
+  /// In zh, this message translates to:
+  /// **'目标'**
+  String get plansTarget;
+
+  /// No description provided for @plansCostTrend.
+  ///
+  /// In zh, this message translates to:
+  /// **'成本走势（历史价格折算）'**
+  String get plansCostTrend;
+
+  /// No description provided for @plansSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存'**
+  String get plansSaved;
+
+  /// No description provided for @plansSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败'**
+  String get plansSaveFailed;
+
+  /// No description provided for @plansTypeRecipe.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get plansTypeRecipe;
+
+  /// No description provided for @plansTypeIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get plansTypeIngredient;
+
+  /// No description provided for @plansTypeProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get plansTypeProduct;
+
   /// No description provided for @homeSwapAll.
   ///
   /// In zh, this message translates to:

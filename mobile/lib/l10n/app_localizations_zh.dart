@@ -1915,6 +1915,95 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mealsApplyPreference => '应用';
 
   @override
+  String get navPlans => '试算';
+
+  @override
+  String get plansNewPlan => '新建方案';
+
+  @override
+  String get plansEdit => '编辑方案';
+
+  @override
+  String get plansKindMeal => '一顿';
+
+  @override
+  String get plansKindDay => '一日';
+
+  @override
+  String plansItemCount(Object count) {
+    return '$count 项';
+  }
+
+  @override
+  String get plansSetToday => '设为今日';
+
+  @override
+  String get plansSetTodayDone => '已设为今日推荐，回首页查看';
+
+  @override
+  String get plansSetTodayFailed => '设为今日失败';
+
+  @override
+  String get plansDeleteTitle => '删除方案';
+
+  @override
+  String get plansEmpty => '还没有试算方案';
+
+  @override
+  String get plansPlanName => '方案名称';
+
+  @override
+  String get plansAddRecipe => '添加菜谱';
+
+  @override
+  String get plansItemAdded => '已添加，可在列表调整';
+
+  @override
+  String get plansServings => '份量';
+
+  @override
+  String get plansServingsPlus => '份量 +1';
+
+  @override
+  String get plansQuantity => '数量';
+
+  @override
+  String get plansTotals => '合计 vs 目标';
+
+  @override
+  String get plansTotalCost => '成本';
+
+  @override
+  String get plansCalories => '热量';
+
+  @override
+  String get plansProtein => '蛋白质';
+
+  @override
+  String get plansFat => '脂肪';
+
+  @override
+  String get plansTarget => '目标';
+
+  @override
+  String get plansCostTrend => '成本走势（历史价格折算）';
+
+  @override
+  String get plansSaved => '已保存';
+
+  @override
+  String get plansSaveFailed => '保存失败';
+
+  @override
+  String get plansTypeRecipe => '菜谱';
+
+  @override
+  String get plansTypeIngredient => '原料';
+
+  @override
+  String get plansTypeProduct => '商品';
+
+  @override
   String get homeSwapAll => '换一换';
 
   @override

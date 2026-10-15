@@ -1,0 +1,700 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/providers/calc_context_provider.dart';
+import '../../../shared/utils/currency_fmt.dart';
+import '../../../shared/widgets/app_back_button.dart';
+import '../../../shared/widgets/calc_context_menu_button.dart';
+import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/loading_indicator.dart';
+import '../providers/planner_provider.dart';
+import '../repositories/planner_repository.dart';
+
+/// 试算方案列表：查看 / 新建 / 删除 / 设为今日。
+class PlannerListScreen extends ConsumerStatefulWidget {
+  const PlannerListScreen({super.key});
+
+  @override
+  ConsumerState<PlannerListScreen> createState() => _PlannerListScreenState();
+}
+
+class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
+  bool _settingPlan = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+        () => ref.read(plannerListProvider.notifier).load());
+  }
+
+  Future<void> _setToday(Map<String, dynamic> plan) async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _settingPlan = true);
+    try {
+      await PlannerRepository().setPlan(
+        plan['id'] as int,
+        mealType: plan['kind'] == 'day' ? null : 'dinner',
+      );
+      if (!mounted) return;
+      // 提示用户回首页看推荐
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSetTodayDone)),
+      );
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSetTodayFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _settingPlan = false);
+    }
+  }
+
+  Future<void> _delete(Map<String, dynamic> plan) async {
+    final l10n = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.plansDeleteTitle),
+        content: Text('${plan['name']}?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text(l10n.commonCancel)),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text(l10n.commonConfirm)),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await ref.read(plannerListProvider.notifier).delete(plan['id'] as int);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final state = ref.watch(plannerListProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(l10n.navPlans),
+        leading: const AppBackButton(),
+        actions: [
+          const CalcContextMenuButton(),
+          IconButton(
+            icon: const Icon(Icons.add),
+            tooltip: l10n.plansNewPlan,
+            onPressed: () async {
+              await context.push('/plans/edit');
+              ref.read(plannerListProvider.notifier).load();
+            },
+          ),
+        ],
+      ),
+      body: _buildBody(theme, l10n, state),
+    );
+  }
+
+  Widget _buildBody(
+      ThemeData theme, AppLocalizations l10n, PlannerListState state) {
+    if (state.loading) return const LoadingIndicator();
+    if (state.error != null) {
+      return ErrorDisplay(
+          message: state.error!,
+          onRetry: () => ref.read(plannerListProvider.notifier).load());
+    }
+    if (state.plans.isEmpty) {
+      return EmptyState(
+        icon: Icons.assignment_outlined,
+        title: l10n.plansEmpty,
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: () => ref.read(plannerListProvider.notifier).load(),
+      child: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          for (final plan in state.plans)
+            Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              clipBehavior: Clip.antiAlias,
+              child: ListTile(
+                onTap: () async {
+                  await context.push('/plans/edit',
+                      extra: {'plan': plan});
+                  ref.read(plannerListProvider.notifier).load();
+                },
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        plan['name'] ?? '',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: plan['kind'] == 'day'
+                            ? theme.colorScheme.tertiaryContainer
+                            : theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        plan['kind'] == 'day'
+                            ? l10n.plansKindDay
+                            : l10n.plansKindMeal,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: plan['kind'] == 'day'
+                              ? theme.colorScheme.onTertiaryContainer
+                              : theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: Text(
+                  l10n.plansItemCount(((plan['items'] as List?) ?? const []).length),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed:
+                          _settingPlan ? null : () => _setToday(plan),
+                      child: Text(l10n.plansSetToday),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      tooltip: l10n.commonDelete,
+                      onPressed: () => _delete(plan),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 试算方案编辑器：名称/类型 + 加菜谱条目 + 实时求值 + 保存 + 设为今日 + 成本趋势。
+class PlannerEditScreen extends ConsumerStatefulWidget {
+  final Map<String, dynamic>? plan; // null = 新建
+  const PlannerEditScreen({super.key, this.plan});
+
+  @override
+  ConsumerState<PlannerEditScreen> createState() => _PlannerEditScreenState();
+}
+
+class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
+  final _nameController = TextEditingController();
+  final _repo = PlannerRepository();
+  String _kind = 'meal';
+  int? _planId;
+  bool _loading = true;
+  bool _saving = false;
+  bool _evaluating = false;
+  String? _error;
+
+  List<Map<String, dynamic>> _items = const [];
+  Map<String, dynamic>? _evaluation;
+  List<Map<String, dynamic>> _trend = const [];
+  final int _trendDays = 90;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _load());
+  }
+
+  Future<void> _load() async {
+    final plan = widget.plan;
+    if (plan == null) {
+      setState(() => _loading = false);
+      return;
+    }
+    try {
+      final full = await _repo.get(plan['id'] as int);
+      if (!mounted) return;
+      setState(() {
+        _planId = full['id'] as int;
+        _nameController.text = full['name'] ?? '';
+        _kind = full['kind'] ?? 'meal';
+        _items = ((full['items'] as List?) ?? const [])
+            .cast<Map<String, dynamic>>();
+        _loading = false;
+      });
+      await _evaluate();
+      await _loadTrend();
+    } on Exception catch (e) {
+      if (!mounted) return;
+      setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
+
+  Future<void> _evaluate() async {
+    if (_items.isEmpty) {
+      setState(() => _evaluation = null);
+      return;
+    }
+    setState(() => _evaluating = true);
+    try {
+      final evaluation = await _repo.evaluate(
+        kind: _kind,
+        mealType: 'lunch',
+        items: _items.map(_itemToPayload).toList(),
+      );
+      if (!mounted) return;
+      setState(() => _evaluation = evaluation);
+    } on Exception {
+      // 求值失败静默，保留上次结果
+    } finally {
+      if (mounted) setState(() => _evaluating = false);
+    }
+  }
+
+  Map<String, dynamic> _itemToPayload(Map<String, dynamic> item) => {
+        'group': item['group'] ?? 'other',
+        'item_type': item['item_type'],
+        'recipe_id': item['recipe_id'],
+        'ingredient_id': item['ingredient_id'],
+        'product_id': item['product_id'],
+        'servings': item['servings'],
+        'quantity': item['quantity'],
+        'unit_id': item['unit_id'],
+        'sort_order': item['sort_order'] ?? 0,
+      };
+
+  Future<void> _save() async {
+    final l10n = AppLocalizations.of(context);
+    setState(() => _saving = true);
+    try {
+      final items = _items.asMap().entries.map((e) {
+        final payload = _itemToPayload(e.value);
+        payload['sort_order'] = e.key;
+        return payload;
+      }).toList();
+      if (_planId == null) {
+        final created = await _repo.create(
+          name: _nameController.text,
+          kind: _kind,
+          items: items,
+        );
+        _planId = created['id'] as int;
+      } else {
+        await _repo.update(_planId!,
+            name: _nameController.text, kind: _kind, items: items);
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSaved)),
+      );
+      await _loadTrend();
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSaveFailed)),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _setToday() async {
+    final l10n = AppLocalizations.of(context);
+    if (_planId == null) await _save();
+    if (_planId == null) return;
+    try {
+      await _repo.setPlan(_planId!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSetTodayDone)),
+      );
+    } on Exception {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.plansSetTodayFailed)),
+      );
+    }
+  }
+
+  Future<void> _loadTrend() async {
+    if (_planId == null) return;
+    try {
+      final trend = await _repo.costTrend(_planId!, days: _trendDays);
+      if (!mounted) return;
+      setState(() => _trend = trend);
+    } on Exception {
+      // 趋势失败静默
+    }
+  }
+
+  Future<void> _addRecipe() async {
+    final l10n = AppLocalizations.of(context);
+    final recipe = await context.push<Map<String, dynamic>>(
+        '/recipes?picker=1');
+    if (recipe == null) return;
+    setState(() {
+      _items = [
+        ..._items,
+        {
+          'group': _kind == 'day' ? 'other' : 'dinner',
+          'item_type': 'recipe',
+          'recipe_id': recipe['id'],
+          'servings': 1.0,
+          'sort_order': _items.length,
+          'name': recipe['name'],
+        }
+      ];
+    });
+    await _evaluate();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(l10n.plansItemAdded)),
+    );
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final userCurrency = ref.read(displayCurrencyProvider);
+
+    if (_loading) return const LoadingIndicator();
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(l10n.navPlans)),
+        body: ErrorDisplay(message: _error!, onRetry: _load),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_planId == null ? l10n.plansNewPlan : l10n.plansEdit),
+        leading: const AppBackButton(),
+        actions: [
+          const CalcContextMenuButton(),
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: l10n.commonSave,
+            onPressed: _saving || _nameController.text.trim().isEmpty
+                ? null
+                : _save,
+          ),
+          IconButton(
+            icon: const Icon(Icons.verified_outlined),
+            tooltip: l10n.plansSetToday,
+            onPressed: _saving ? null : _setToday,
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration:
+                  InputDecoration(labelText: l10n.plansPlanName),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(value: 'meal', label: Text(l10n.plansKindMeal)),
+                ButtonSegment(value: 'day', label: Text(l10n.plansKindDay)),
+              ],
+              selected: {_kind},
+              onSelectionChanged: (v) {
+                setState(() => _kind = v.first);
+                _evaluate();
+              },
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonalIcon(
+              onPressed: _addRecipe,
+              icon: const Icon(Icons.add),
+              label: Text(l10n.plansAddRecipe),
+            ),
+            const SizedBox(height: 8),
+            for (final item in _items)
+              ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                title: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        item['item_type'] == 'recipe'
+                            ? l10n.mealsRoleStaple
+                            : _planTypeLabel(item['item_type'] ?? '', l10n),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.onPrimaryContainer),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        item['name'] ?? '#${item['recipe_id'] ?? item['ingredient_id'] ?? item['product_id']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+                subtitle: item['item_type'] == 'recipe'
+                    ? Text('${l10n.plansServings}: ${item['servings'] ?? 1}')
+                    : Text('${l10n.plansQuantity}: ${item['quantity'] ?? 0}'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (item['item_type'] == 'recipe')
+                      IconButton(
+                        icon: const Icon(Icons.exposure_plus_1, size: 18),
+                        tooltip: l10n.plansServingsPlus,
+                        onPressed: () {
+                          setState(() {
+                            final idx = _items.indexOf(item);
+                            _items = [
+                              for (var i = 0; i < _items.length; i++)
+                                if (i == idx)
+                                  {
+                                    ...item,
+                                    'servings':
+                                        ((item['servings'] as num?) ?? 1) + 1,
+                                  }
+                                else
+                                  _items[i],
+                            ];
+                          });
+                          _evaluate();
+                        },
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 18),
+                      onPressed: () {
+                        setState(() {
+                          _items = List.of(_items)..remove(item);
+                        });
+                        _evaluate();
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            if (_evaluation != null) ...[
+              const Divider(height: 24),
+              Text(l10n.plansTotals,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _totalsGrid(theme, l10n, userCurrency),
+              if (_evaluating)
+                const Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+            ],
+            if (_trend.isNotEmpty) ...[
+              const Divider(height: 24),
+              Text(l10n.plansCostTrend,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              _trendChart(theme, l10n),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _totalsGrid(
+      ThemeData theme, AppLocalizations l10n, String userCurrency) {
+    final totals = _evaluation!['totals'] as Map<String, dynamic>;
+    final targets = _evaluation!['targets'] as Map<String, dynamic>;
+    double numOf(dynamic v) => (v as num?)?.toDouble() ?? 0;
+    final rows = [
+      (l10n.plansTotalCost, formatMoney(numOf(totals['cost']), userCurrency),
+          formatMoney(numOf(targets['cost']), userCurrency),
+          numOf(totals['cost']) > numOf(targets['cost'])),
+      (l10n.plansCalories,
+          '${formatNumber(numOf(totals['calories']).round())} kcal',
+          '${formatNumber(numOf(targets['calories']).round())} kcal',
+          numOf(totals['calories']) > numOf(targets['calories'])),
+      (l10n.plansProtein,
+          '${formatNumber(numOf(totals['protein_g']), maximumFractionDigits: 1)} g',
+          '${formatNumber(numOf(targets['protein_g']), maximumFractionDigits: 1)} g',
+          numOf(totals['protein_g']) > numOf(targets['protein_g'])),
+      (l10n.plansFat,
+          '${formatNumber(numOf(totals['fat_g']), maximumFractionDigits: 1)} g',
+          '${formatNumber(numOf(targets['fat_g']), maximumFractionDigits: 1)} g',
+          numOf(totals['fat_g']) > numOf(targets['fat_g'])),
+    ];
+    return Column(
+      children: [
+        for (final (label, value, target, over) in rows)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              children: [
+                SizedBox(
+                    width: 72,
+                    child: Text(label,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.outline))),
+                Expanded(
+                  child: Text(value,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: over
+                            ? theme.colorScheme.error
+                            : theme.colorScheme.onSurface,
+                      )),
+                ),
+                Text('${l10n.plansTarget} $target',
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: theme.colorScheme.outline)),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// 简易折线（CustomPainter，与 sparkline 同思路但带轴）
+  Widget _trendChart(ThemeData theme, AppLocalizations l10n) {
+    final values = _trend
+        .map((p) => (p['total_cost'] as num?)?.toDouble() ?? 0)
+        .toList(growable: false);
+    final dates = _trend.map((p) => p['date'] as String).toList(growable: false);
+    if (values.length < 2) return const SizedBox.shrink();
+    final minV = values.reduce((a, b) => a < b ? a : b);
+    final maxV = values.reduce((a, b) => a > b ? a : b);
+    final span = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
+    return SizedBox(
+      height: 160,
+      child: CustomPaint(
+        painter: _TrendPainter(
+          values: values,
+          minV: minV,
+          span: span,
+          lineColor: theme.colorScheme.primary,
+          gridColor: theme.colorScheme.outlineVariant,
+          labelStyle: theme.textTheme.labelSmall
+              ?.copyWith(color: theme.colorScheme.outline),
+          startLabel: dates.first,
+          endLabel: dates.last,
+        ),
+        child: const SizedBox.expand(),
+      ),
+    );
+  }
+}
+
+String _planTypeLabel(String type, AppLocalizations l10n) {
+  switch (type) {
+    case 'recipe':
+      return l10n.plansTypeRecipe;
+    case 'ingredient':
+      return l10n.plansTypeIngredient;
+    case 'product':
+      return l10n.plansTypeProduct;
+    default:
+      return type;
+  }
+}
+
+class _TrendPainter extends CustomPainter {
+  final List<double> values;
+  final double minV;
+  final double span;
+  final Color lineColor;
+  final Color gridColor;
+  final TextStyle? labelStyle;
+  final String startLabel;
+  final String endLabel;
+
+  _TrendPainter({
+    required this.values,
+    required this.minV,
+    required this.span,
+    required this.lineColor,
+    required this.gridColor,
+    required this.labelStyle,
+    required this.startLabel,
+    required this.endLabel,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final grid = Paint()
+      ..color = gridColor
+      ..strokeWidth = 1;
+
+    // 横向网格 3 条
+    for (var i = 1; i <= 3; i++) {
+      final y = size.height * i / 4;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
+    }
+
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = size.width * i / (values.length - 1);
+      final y = size.height - ((values[i] - minV) / span) * size.height * 0.9 - size.height * 0.05;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(path, paint);
+
+    final startTp = TextPainter(
+      text: TextSpan(text: startLabel, style: labelStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    startTp.paint(canvas, Offset(0, size.height - 14));
+    final endTp = TextPainter(
+      text: TextSpan(text: endLabel, style: labelStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    endTp.paint(canvas, Offset(size.width - endTp.width, size.height - 14));
+  }
+
+  @override
+  bool shouldRepaint(covariant _TrendPainter old) => old.values != values;
+}
+

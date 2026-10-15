@@ -1965,6 +1965,95 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mealsApplyPreference => 'Apply';
 
   @override
+  String get navPlans => 'Planner';
+
+  @override
+  String get plansNewPlan => 'New plan';
+
+  @override
+  String get plansEdit => 'Edit plan';
+
+  @override
+  String get plansKindMeal => 'Meal';
+
+  @override
+  String get plansKindDay => 'Day';
+
+  @override
+  String plansItemCount(Object count) {
+    return '$count items';
+  }
+
+  @override
+  String get plansSetToday => 'Set as today';
+
+  @override
+  String get plansSetTodayDone => 'Set as today\'s recommendation — check Home';
+
+  @override
+  String get plansSetTodayFailed => 'Failed to set as today';
+
+  @override
+  String get plansDeleteTitle => 'Delete plan';
+
+  @override
+  String get plansEmpty => 'No plans yet';
+
+  @override
+  String get plansPlanName => 'Plan name';
+
+  @override
+  String get plansAddRecipe => 'Add recipe';
+
+  @override
+  String get plansItemAdded => 'Added — adjust in the list';
+
+  @override
+  String get plansServings => 'Servings';
+
+  @override
+  String get plansServingsPlus => 'Servings +1';
+
+  @override
+  String get plansQuantity => 'Quantity';
+
+  @override
+  String get plansTotals => 'Totals vs targets';
+
+  @override
+  String get plansTotalCost => 'Cost';
+
+  @override
+  String get plansCalories => 'Calories';
+
+  @override
+  String get plansProtein => 'Protein';
+
+  @override
+  String get plansFat => 'Fat';
+
+  @override
+  String get plansTarget => 'Target';
+
+  @override
+  String get plansCostTrend => 'Cost trend (historical prices)';
+
+  @override
+  String get plansSaved => 'Saved';
+
+  @override
+  String get plansSaveFailed => 'Failed to save';
+
+  @override
+  String get plansTypeRecipe => 'Recipe';
+
+  @override
+  String get plansTypeIngredient => 'Ingredient';
+
+  @override
+  String get plansTypeProduct => 'Product';
+
+  @override
   String get homeSwapAll => 'Swap all';
 
   @override
