@@ -24,6 +24,10 @@ export const useMealsStore = defineStore('meals', () => {
   const generating = ref(false)
   const error = ref<string | null>(null)
   const refreshLoading = ref<Record<string, boolean>>({})
+  /** 一句话偏好输入（随生成/换菜提交） */
+  const preferenceInput = ref('')
+  /** 最近一次生效的偏好（生成后回显） */
+  const activePreference = ref('')
 
   let _pollTimer: ReturnType<typeof setTimeout> | null = null
   let _pollCount = 0
@@ -89,7 +93,7 @@ export const useMealsStore = defineStore('meals', () => {
 
           if (data.status === 'not_generated') {
             // 生成可能失败了，重新触发
-            await triggerRecommendationGeneration()
+            await triggerRecommendationGeneration(preferenceInput.value || undefined)
           }
 
           if (version !== _pollVersion) {
@@ -211,7 +215,7 @@ export const useMealsStore = defineStore('meals', () => {
 
       // 未生成 → 触发后台生成 + 轮询
       if (data.status === 'not_generated') {
-        await triggerRecommendationGeneration()
+        await triggerRecommendationGeneration(preferenceInput.value || undefined)
       }
 
       loading.value = false
@@ -223,14 +227,15 @@ export const useMealsStore = defineStore('meals', () => {
     }
   }
 
-  /** 刷新某一餐（后台异步模式） */
-  async function refreshMeal(mealType: string) {
+  /** 刷新某一餐（后台异步模式）：recipeId 为空 = 整餐重搭；给定 = 单道换 */
+  async function refreshMeal(mealType: string, recipeId?: number) {
     refreshLoading.value = { ...refreshLoading.value, [mealType]: true }
     try {
       // 触发后台刷新
-      await refreshMealRecommendation(mealType)
+      await refreshMealRecommendation(mealType, recipeId, preferenceInput.value || undefined)
       // 轮询等待完成
       await _pollRefreshMeal(mealType)
+      activePreference.value = preferenceInput.value
     } catch (e: any) {
       throw e
     } finally {
@@ -249,5 +254,7 @@ export const useMealsStore = defineStore('meals', () => {
     loadRecommendations,
     refreshMeal,
     stopPolling,
+    preferenceInput,
+    activePreference,
   }
 })

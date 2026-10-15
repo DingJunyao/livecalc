@@ -506,7 +506,21 @@
     "summaryServer": "يستخدم الذكاء الاصطناعي Claude Code أو Codex أو مزودات متوافقة مع OpenAI أو Anthropic؛ وتستخدم الترجمة الآلية Baidu أو Alibaba Cloud أو DeepL.",
     "testConnection": "اختبار الاتصال",
     "testFailed": "فشل الاختبار",
-    "title": "الذكاء الاصطناعي والترجمة الآلية"
+    "title": "الذكاء الاصطناعي والترجمة الآلية",
+    "mealPlanSection": "توصيات الوجبات (تركيب بالذكاء الاصطناعي)",
+    "mealPlanProvider": "مزود نموذج التركيب",
+    "mealPlanProviderHint": "يجمع الوصفات المرشحة في وجبة؛ claude_code/codex يتطلبان CLI على الخادم",
+    "mealPlanTimeout": "مهلة التركيب (ثوانٍ)",
+    "mealPlanTimeoutHint": "يتراجع تلقائياً إلى التركيب القواعدي عند انتهاء المهلة",
+    "aiPolicySection": "سياسة استخدام الذكاء الاصطناعي",
+    "aiPolicyDefaultMethod": "طريقة التوصية الافتراضية",
+    "aiPolicyDailyLimit": "الحد اليومي لاستخدام الذكاء الاصطناعي",
+    "aiPolicyDailyLimitHint": "يتراجع إلى القواعد بعد تجاوز الحد (يُحسب لكل مستخدم)",
+    "aiPolicyAllowUserChoice": "السماح للمستخدمين باختيار طريقتهم",
+    "aiPolicyAllowByok": "السماح بمفاتيح المستخدم الخاصة (BYOK)",
+    "aiPolicyAllowCustomBaseUrl": "السماح بعناوين نقاط نهاية مخصصة",
+    "aiPolicyShowAiBadge": "إظهار شارة «مُنشأ بالذكاء الاصطناعي»",
+    "aiPolicyNote": "للخدمات العامة: استخدم نقطة نهاية نموذج محلي مرخصة وأبقِ شارة المحتوى مفعلة؛ يتم إرسال نص تفضيلات المستخدم إلى النموذج المُعد."
   },
   "agent": {
     "errors": {
@@ -1164,6 +1178,23 @@
     "changeFailed": "فشل التعديل: {message}",
     "dataExportFailed": "فشل تصدير البيانات: {message}"
   },
+  "profileAi": {
+    "title": "التوصيات بالذكاء الاصطناعي",
+    "method": "طريقة التوصية",
+    "methodHint": "التركيب القواعدي مجاني؛ ذكاء النظام يستخدم النموذج الذي يعدله المدير",
+    "methodRule": "قواعدي (مجاني)",
+    "methodSystemAi": "ذكاء النظام",
+    "methodUserAi": "مفتاحك الخاص (BYOK)",
+    "provider": "مزود النموذج",
+    "model": "اسم النموذج",
+    "baseUrl": "عنوان نقطة النهاية",
+    "apiKey": "مفتاح API",
+    "apiKeyKeep": "اتركه فارغاً للإبقاء عليه",
+    "apiKeyCurrent": "المفتاح الحالي: ",
+    "apiKeyClear": "مسح",
+    "systemAiHint": "يستخدم النموذج والمفتاح الذي يعدله المدير؛ ويخضع للحد اليومي للاستخدام.",
+    "privacyNote": "عند التركيب بالذكاء الاصطناعي، تُرسل قائمة الوصفات المرشحة وتفضيلاتك إلى خدمة النموذج المُعدة."
+  },
   "formatLocales": {
     "auto": "اتباع اللغة",
     "zh-CN": "简体中文（中国大陆）",
@@ -1248,7 +1279,11 @@
     "usdaDatasetParseFailed": "تعذّر تحليل حزمة بيانات USDA",
     "usdaFoodNotFound": "لم يتم العثور على طعام USDA {id}",
     "usdaZipJsonMissing": "لم يتم العثور على ملفات JSON في ملف ZIP",
-    "userPlaceNotFound": "لم يتم العثور على المكان المتكرر"
+    "userPlaceNotFound": "لم يتم العثور على المكان المتكرر",
+    "mealNotGenerated": "لا يوجد توصية لهذه الوجبة بعد. أنشئ توصيات اليوم أولاً",
+    "mealRefreshLimit": "تم تحديث هذه الوجبة {max} مرات اليوم. عد غداً!",
+    "mealDishNotInRecommendation": "هذا الطبق ليس في التوصية الحالية",
+    "mealNoCandidates": "لا توجد وصفات متاحة لهذه الوجبة"
   },
   "localValues": {
     "newNameSuffix": " (جديد)",
@@ -2206,7 +2241,19 @@
     "changeOne": "تبديل",
     "breakfast": "الفطور",
     "lunch": "الغداء",
-    "dinner": "العشاء"
+    "dinner": "العشاء",
+    "changeMeal": "تغيير الوجبة",
+    "changeDish": "تبديل الطبق",
+    "aiGenerated": "مُنشأ بالذكاء الاصطناعي",
+    "roleStaple": "نشويات",
+    "roleMain": "طبق رئيسي",
+    "roleSide": "طبق جانبي",
+    "roleSoup": "حساء",
+    "roleDrink": "مشروب",
+    "preferenceChip": "التفضيل: ",
+    "preferencePlaceholder": "تفضيل من سطر واحد (مثل: شيء خفيف)",
+    "applyPreference": "تطبيق",
+    "preferenceApplied": "أعيد التركيب وفق تفضيلك"
   },
   "units": {
     "meter": "متر",

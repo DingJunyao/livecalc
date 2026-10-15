@@ -62,6 +62,34 @@
         <DailySummaryBar :totals="store.totals" :loading="false" />
       </div>
 
+      <!-- 一句话偏好 -->
+      <div class="px-4 pt-3">
+        <v-text-field
+          v-model="store.preferenceInput"
+          :label="t('meals.preferencePlaceholder')"
+          prepend-inner-icon="mdi-comment-quote-outline"
+          variant="outlined"
+          density="compact"
+          hide-details
+          clearable
+          :disabled="store.loading || store.generating"
+          @keyup.enter="applyPreference"
+        >
+          <template #append-inner>
+            <v-btn
+              size="small"
+              variant="tonal"
+              color="primary"
+              :loading="applyingPreference"
+              :disabled="!store.preferenceInput || store.loading || store.generating"
+              @click="applyPreference"
+            >
+              {{ t('meals.applyPreference') }}
+            </v-btn>
+          </template>
+        </v-text-field>
+      </div>
+
       <!-- 时间线 -->
       <MealTimeline
         :recommendations="store.recommendations"
@@ -81,7 +109,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import { useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
@@ -107,6 +135,32 @@ const snackbar = reactive({
   color: 'info',
 })
 
+const applyingPreference = ref(false)
+
+/** 应用偏好：按当前餐重搭（有推荐时整餐重搭一次让偏好生效；无推荐交给生成流程） */
+async function applyPreference() {
+  if (!store.preferenceInput || applyingPreference.value) return
+  applyingPreference.value = true
+  try {
+    const current = store.recommendations.find(r => r.is_current_meal) ||
+      store.recommendations.find(r => r.dishes?.length || r.recipe)
+    if (current) {
+      await store.refreshMeal(current.meal_type)
+    } else {
+      await store.loadRecommendations()
+    }
+    snackbar.color = 'success'
+    snackbar.message = t('meals.preferenceApplied')
+    snackbar.show = true
+  } catch (e: any) {
+    snackbar.color = 'error'
+    snackbar.message = e.userMessage || t('meals.refreshFailed')
+    snackbar.show = true
+  } finally {
+    applyingPreference.value = false
+  }
+}
+
 const formattedDate = computed(() => {
   if (!store.date) return ''
   return formatDate(store.date, localeStore.effectiveFormatLocale, {
@@ -121,9 +175,9 @@ function goToProfile() {
   router.push('/profile')
 }
 
-async function handleRefresh(mealType: string) {
+async function handleRefresh(mealType: string, recipeId?: number) {
   try {
-    await store.refreshMeal(mealType)
+    await store.refreshMeal(mealType, recipeId)
     snackbar.color = 'success'
     snackbar.message = t('meals.refreshed')
     snackbar.show = true

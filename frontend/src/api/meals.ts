@@ -20,9 +20,21 @@ export interface RecipeBrief {
   nutrition_per_serving?: NutritionPerServing | null
 }
 
+export type DishRole = 'staple' | 'main' | 'side' | 'soup' | 'drink'
+
+export interface RecommendedDish extends RecipeBrief {
+  role: DishRole
+  reason?: string | null
+}
+
 export interface MealRecommendation {
   meal_type: 'breakfast' | 'lunch' | 'dinner'
   recipe: RecipeBrief | null
+  /** 多道菜套餐（新）；recipe 为 staple（无则首道）菜的兼容别名 */
+  dishes?: RecommendedDish[]
+  source?: 'rule' | 'system_ai' | 'user_ai' | 'plan' | null
+  reason?: string | null
+  preference?: string | null
   is_current_meal: boolean
 }
 
@@ -50,16 +62,23 @@ export async function getDailyRecommendations(): Promise<DailyRecommendationsRes
   return api.get('/meals/recommendations') as any
 }
 
-/** 触发后台生成今日推荐 */
-export async function triggerRecommendationGeneration(): Promise<DailyRecommendationsResponse> {
-  return api.post('/meals/recommendations/generate') as any
+/** 触发后台生成今日推荐（可带一句话偏好） */
+export async function triggerRecommendationGeneration(preference?: string): Promise<DailyRecommendationsResponse> {
+  return api.post(
+    '/meals/recommendations/generate',
+    preference ? { preference } : undefined
+  ) as any
 }
 
-/** 刷新某一餐推荐 */
+/** 刷新某一餐推荐：recipeId 为空 = 整餐重搭；给定 = 单道换 */
 export async function refreshMealRecommendation(
-  mealType: string
+  mealType: string,
+  recipeId?: number,
+  preference?: string
 ): Promise<DailyRecommendationsResponse> {
   return api.post('/meals/recommendations/refresh', {
     meal_type: mealType,
+    recipe_id: recipeId ?? null,
+    preference: preference ?? null,
   }) as any
 }
