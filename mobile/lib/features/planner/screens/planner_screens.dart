@@ -385,7 +385,10 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
     if (_loading) return const LoadingIndicator();
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.navPlans)),
+        appBar: AppBar(
+          title: Text(l10n.navPlans),
+          leading: const AppBackButton(),
+        ),
         body: ErrorDisplay(message: _error!, onRetry: _load),
       );
     }
@@ -453,9 +456,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
-                        item['item_type'] == 'recipe'
-                            ? l10n.mealsRoleStaple
-                            : _planTypeLabel(item['item_type'] ?? '', l10n),
+                        _planTypeLabel(item['item_type'] ?? '', l10n),
                         style: theme.textTheme.labelSmall?.copyWith(
                             color: theme.colorScheme.onPrimaryContainer),
                       ),
