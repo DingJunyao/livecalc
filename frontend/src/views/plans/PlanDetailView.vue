@@ -235,40 +235,47 @@
         </v-col>
       </v-row>
 
-      <!-- 营养成分（全部营养素 + NRV%） -->
-      <v-card v-if="nutrientRows.length" elevation="0" class="ma-4">
-        <v-card-title class="d-flex align-center pb-2">
-          <v-icon start color="success">mdi-food-apple-outline</v-icon>
-          {{ t('plans.nutrition') }}
-        </v-card-title>
-        <v-divider />
-        <v-card-text class="pa-0">
-          <div class="d-flex py-2 border-bottom">
-            <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">{{ t('recipes.nutrient') }}</div>
-            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 100px">{{ t('recipes.amount') }}</div>
-            <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 64px">{{ t('recipes.nrvPercent') }}</div>
-          </div>
-          <div
-            v-for="(row, i) in nutrientRows"
-            :key="row.key"
-            class="d-flex py-2"
-            :class="{ 'border-bottom': i !== nutrientRows.length - 1 }"
-          >
-            <div class="text-body-2 ps-4 flex-grow-1">{{ row.label }}</div>
-            <div class="text-body-2 text-end pe-4" style="min-width: 100px">{{ row.amount }}</div>
-            <div class="text-body-2 text-end pe-4" style="min-width: 64px">{{ row.nrv != null ? `${row.nrv}%` : '-' }}</div>
-          </div>
-          <div class="mt-3 mb-3 text-caption text-medium-emphasis ps-4">
-            {{ t('recipes.nrvExplanation') }}
-          </div>
-        </v-card-text>
-      </v-card>
+      <!-- 营养成分（全部营养素 + NRV%）| 营养来源（贡献环形图）：宽屏 1:3 分栏，窄屏纵向堆叠 -->
+      <v-row no-gutters>
+        <v-col cols="12" md="3">
+        <!-- 营养成分（全部营养素 + NRV%） -->
+        <v-card v-if="nutrientRows.length" elevation="0" class="ma-4">
+          <v-card-title class="d-flex align-center pb-2">
+            <v-icon start color="success">mdi-food-apple-outline</v-icon>
+            {{ t('plans.nutrition') }}
+          </v-card-title>
+          <v-divider />
+          <v-card-text class="pa-0">
+            <div class="d-flex py-2 border-bottom">
+              <div class="text-caption text-medium-emphasis ps-4 flex-grow-1">{{ t('recipes.nutrient') }}</div>
+              <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 100px">{{ t('recipes.amount') }}</div>
+              <div class="text-caption text-medium-emphasis text-end pe-4" style="min-width: 64px">{{ t('recipes.nrvPercent') }}</div>
+            </div>
+            <div
+              v-for="(row, i) in nutrientRows"
+              :key="row.key"
+              class="d-flex py-2"
+              :class="{ 'border-bottom': i !== nutrientRows.length - 1 }"
+            >
+              <div class="text-body-2 ps-4 flex-grow-1">{{ row.label }}</div>
+              <div class="text-body-2 text-end pe-4" style="min-width: 100px">{{ row.amount }}</div>
+              <div class="text-body-2 text-end pe-4" style="min-width: 64px">{{ row.nrv != null ? `${row.nrv}%` : '-' }}</div>
+            </div>
+            <div class="mt-3 mb-3 text-caption text-medium-emphasis ps-4">
+              {{ t('recipes.nrvExplanation') }}
+            </div>
+          </v-card-text>
+        </v-card>
 
-      <!-- 营养素贡献（各条目占比） -->
-      <NutritionSourceGrid
-        v-if="evaluation?.nutrition?.per_serving_nutrition"
-        :nutrition-data="evaluation.nutrition"
-      />
+        </v-col>
+        <v-col cols="12" md="9">
+          <NutritionSourceGrid
+            v-if="evaluation?.nutrition?.per_serving_nutrition"
+            :nutrition-data="evaluation.nutrition"
+          />
+        </v-col>
+      </v-row>
+
     </template>
   </v-container>
 </template>
