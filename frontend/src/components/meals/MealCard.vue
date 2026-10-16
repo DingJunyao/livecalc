@@ -69,14 +69,15 @@
 
     <!-- 多道菜套餐（新） -->
     <template v-else-if="dishes.length > 0">
-      <!-- 封面：主食（无则首道）的图 -->
-      <v-img
-        v-if="coverImage"
-        :src="coverImage"
-        height="120"
-        cover
-        class="align-end"
-      >
+      <!-- 首图行：有几张就并排几张，等宽填满不留空白 -->
+      <div v-if="dishImageList.length" class="meal-card__image-row">
+        <img
+          v-for="(img, i) in dishImageList"
+          :key="i"
+          :src="img"
+          class="meal-card__dish-image"
+          alt=""
+        />
         <v-toolbar
           color="rgba(0,0,0,0.4)"
           density="compact"
@@ -94,9 +95,9 @@
             prepend-icon="mdi-creation"
           >{{ t('meals.aiGenerated') }}</v-chip>
         </v-toolbar>
-      </v-img>
+      </div>
 
-      <v-card-item v-if="!coverImage">
+      <v-card-item v-else>
         <v-card-title class="text-body-1 d-flex align-center flex-wrap ga-2">
           {{ dishNames }}
           <v-chip
@@ -140,6 +141,14 @@
           </template>
         </v-list-item>
       </v-list>
+
+      <!-- 合计营养（含 NRV%） -->
+      <v-card-text class="py-2 d-flex flex-wrap text-caption text-medium-emphasis" style="gap: 4px 14px">
+        <span v-for="row in nutritionSummary" :key="row.key" class="d-flex align-center ga-1">
+          <v-icon size="small">{{ row.icon }}</v-icon>
+          {{ row.label }} {{ row.text }}{{ row.nrv != null ? ` · NRV ${row.nrv}%` : '' }}
+        </span>
+      </v-card-text>
 
       <!-- 理由 / 偏好脚注 -->
       <v-card-text class="py-2" v-if="recommendation.reason || recommendation.preference">
@@ -210,13 +219,13 @@
             <v-icon size="small">mdi-cash</v-icon>
             {{ costText }}
           </span>
-          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            <v-icon size="small">mdi-fire</v-icon>
-            {{ calorieText }}
-          </span>
-          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            <v-icon size="small">mdi-food-drumstick-outline</v-icon>
-            {{ proteinText }}
+          <span
+            v-for="row in nutritionSummary"
+            :key="row.key"
+            class="text-caption text-medium-emphasis d-flex align-center ga-1"
+          >
+            <v-icon size="small">{{ row.icon }}</v-icon>
+            {{ row.label }} {{ row.text }}{{ row.nrv != null ? ` · NRV ${row.nrv}%` : '' }}
           </span>
         </div>
         <div
@@ -256,6 +265,7 @@ import { resolveImageUrl, loadLocalImageBlob } from '@/utils/image'
 import { useI18n } from 'vue-i18n'
 import { useLocaleStore } from '@/stores/locale'
 import { RECIPE_CATEGORY_KEYS } from '@/data/recipeCategories'
+import { nrvPct } from '@/utils/nrv'
 
 const router = useRouter()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
@@ -286,6 +296,59 @@ const hasFood = computed(
 const isAiSource = computed(
   () => props.recommendation.source === 'system_ai' || props.recommendation.source === 'user_ai'
 )
+
+// ---- 逐条目首图：本地 blob 优先，其次 image_urls（云） ----
+const localDishImageUrls = ref<Record<number, string>>({})
+let dishObjectUrls: string[] = []
+
+async function refreshLocalDishImages() {
+  for (const url of dishObjectUrls) URL.revokeObjectURL(url)
+  dishObjectUrls = []
+  localDishImageUrls.value = {}
+  for (const dish of dishes.value) {
+    if (!dish.id || !dish.images?.length) continue
+    const url = await loadLocalImageBlob('recipes', dish.id, dish.images[0])
+    if (!url) continue
+    dishObjectUrls.push(url)
+    localDishImageUrls.value = { ...localDishImageUrls.value, [dish.id]: url }
+  }
+}
+
+watch(dishes, () => { void refreshLocalDishImages() }, { immediate: true })
+
+const dishImageList = computed(() => {
+  const list: string[] = []
+  for (const dish of dishes.value) {
+    const local = localDishImageUrls.value[dish.id]
+    if (local) {
+      list.push(local)
+      continue
+    }
+    const url = resolveImageUrl(dish.image_urls?.[0]) || resolveImageUrl(dish.images?.[0])
+    if (url) list.push(url)
+  }
+  return list
+})
+
+const mealNutrients = computed(() => {
+  const rows: any[] = dishes.value.length > 0
+    ? dishes.value.map(d => d.nutrition_per_serving)
+    : [props.recommendation.recipe?.nutrition_per_serving]
+  const totals = { energy: 0, protein: 0, carbohydrate: 0, fat: 0 }
+  for (const row of rows) {
+    if (!row) continue
+    totals.energy += Number(row.calories ?? row.energy ?? 0)
+    totals.protein += Number(row.protein_g ?? row.protein ?? 0)
+    totals.carbohydrate += Number(row.carbs_g ?? row.carbohydrate ?? 0)
+    totals.fat += Number(row.fat_g ?? row.fat ?? 0)
+  }
+  return totals
+})
+
+function nrvSuffix(key: 'energy' | 'protein' | 'carbohydrate' | 'fat') {
+  const pct = nrvPct(key, mealNutrients.value[key])
+  return pct != null ? ` · NRV ${pct}%` : ''
+}
 
 const dishNames = computed(() => {
   const list = dishes.value
