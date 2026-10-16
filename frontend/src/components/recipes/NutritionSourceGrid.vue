@@ -244,13 +244,12 @@ onMounted(() => {
   })
 })
 
-onMounted(() => window.addEventListener('resize', () => {
-  chartInstances.forEach(c => c.resize())
-}))
+const handleResize = () => chartInstances.forEach(c => c.resize())
+
+onMounted(() => window.addEventListener('resize', handleResize))
+
 onUnmounted(() => {
-  window.removeEventListener('resize', () => {
-    chartInstances.forEach(c => c.resize())
-  })
+  window.removeEventListener('resize', handleResize)
   chartInstances.forEach(c => c.dispose())
   chartInstances.clear()
 })
@@ -270,16 +269,16 @@ onUnmounted(() => {
   align-items: center;
 }
 .mini-donut {
-  width: 120px;
-  height: 120px;
+  width: 100%;
+  max-width: 160px;
+  aspect-ratio: 1;
 }
 @media (max-width: 599px) {
   .nutrition-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .mini-donut {
-    width: 100px;
-    height: 100px;
+    max-width: 100px;
   }
 }
 </style>
