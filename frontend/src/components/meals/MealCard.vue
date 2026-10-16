@@ -43,6 +43,8 @@
           :src="img"
           class="meal-card__dish-image"
           alt=""
+          loading="lazy"
+          referrerpolicy="no-referrer"
         />
       </div>
       <v-card-title class="d-flex align-center pb-1">
@@ -95,6 +97,8 @@
           :src="img"
           class="meal-card__dish-image"
           alt=""
+          loading="lazy"
+          referrerpolicy="no-referrer"
         />
         <v-toolbar
           color="rgba(0,0,0,0.4)"
