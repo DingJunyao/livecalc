@@ -63,13 +63,16 @@
         <a
           v-for="(item, i) in planView.items"
           :key="i"
-          class="d-flex justify-space-between text-body-2 py-0.5 text-decoration-none meal-card__plan-item"
+          class="d-flex align-center py-0.5 text-decoration-none meal-card__plan-item"
           :class="{ 'meal-card__plan-item--link': !!planItemLink(item) }"
           :href="planItemLink(item) || undefined"
           @click.prevent="onPlanItemClick(item)"
         >
-          <span class="text-truncate me-2">{{ item.name || '…' }}</span>
-          <span class="text-no-wrap">
+          <v-chip size="x-small" :color="planItemTypeColor(item.item_type)" variant="tonal" class="me-2">
+            {{ planItemTypeLabel(item.item_type) }}
+          </v-chip>
+          <span class="text-body-2 text-truncate flex-grow-1">{{ item.name || '…' }}</span>
+          <span class="text-body-2 text-no-wrap ms-2">
             {{ item.cost != null ? formatMoney(item.cost, planView.totals?.currency || userCurrency) : '--' }}
           </span>
         </a>
@@ -79,7 +82,7 @@
           <span>{{ formatMoney(planView.totals?.cost ?? 0, planView.totals?.currency || userCurrency) }}</span>
         </div>
         <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
-          <span>{{ t('plans.calories') }} {{ formatNumber(Math.round(planView.totals?.calories ?? 0)) }} kcal（NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}%）</span>
+          <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(planView.totals?.calories ?? 0)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}%）</span>
           <span>{{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}%）</span>
           <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}%）</span>
           <span>{{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%）</span>
@@ -132,42 +135,41 @@
         </v-card-title>
       </v-card-item>
 
-      <!-- 菜品清单 -->
-      <v-list density="compact" class="py-0">
-        <v-list-item
+      <!-- 菜品清单（与「分组/方案」条目同一行结构：徽标 + 菜名 + 右侧成本·热量 + 换这道） -->
+      <div class="px-4 pt-1">
+        <div
           v-for="dish in dishes"
           :key="dish.id"
-          :title="dish.name"
-          :subtitle="dishSubtitleFull(dish)"
+          class="d-flex align-center py-0.5 meal-card__row meal-card__row--link"
           @click="goToRecipe(dish.id)"
-          class="meal-card__dish"
         >
-          <template #prepend>
-            <v-chip size="x-small" :color="roleColor(dish.role)" variant="tonal" class="me-1">
-              {{ roleLabel(dish.role) }}
-            </v-chip>
-          </template>
-          <template #append>
-            <v-btn
-              icon="mdi-swap-horizontal"
-              size="x-small"
-              variant="text"
-              :loading="isRefreshing"
-              :disabled="isRefreshing"
-              :title="t('meals.changeDish')"
-              @click.stop="onChangeDish(dish)"
-            />
-          </template>
-        </v-list-item>
-      </v-list>
+          <v-chip size="x-small" :color="roleColor(dish.role)" variant="tonal" class="me-2">
+            {{ roleLabel(dish.role) }}
+          </v-chip>
+          <span class="text-body-2 text-truncate flex-grow-1">{{ dish.name }}</span>
+          <span class="text-body-2 text-no-wrap ms-2">
+            {{ dishCost(dish) }} · {{ dishCalorie(dish) }}
+          </span>
+          <v-btn
+            icon="mdi-swap-horizontal"
+            size="x-small"
+            variant="text"
+            :loading="isRefreshing"
+            :disabled="isRefreshing"
+            :title="t('meals.changeDish')"
+            class="ms-1"
+            @click.stop="onChangeDish(dish)"
+          />
+        </div>
+      </div>
 
-      <!-- 合计营养（含 NRV%） -->
-      <v-card-text class="py-2 d-flex flex-wrap text-caption text-medium-emphasis" style="gap: 4px 14px">
-        <span v-for="row in nutritionSummary" :key="row.key" class="d-flex align-center ga-1">
-          <v-icon size="small">{{ row.icon }}</v-icon>
-          {{ row.label }} {{ row.text }}{{ row.nrv != null ? ` · NRV ${row.nrv}%` : '' }}
-        </span>
-      </v-card-text>
+      <!-- 合计营养（与分组块同格式：逐项一行 + NRV 内联） -->
+      <div class="px-4 py-2 text-caption text-medium-emphasis d-flex flex-column">
+        <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(mealNutrients.energy)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', mealNutrients.energy) }}%）</span>
+        <span>{{ t('plans.protein') }} {{ formatNumber(mealNutrients.protein, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', mealNutrients.protein) }}%）</span>
+        <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(mealNutrients.carbohydrate, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', mealNutrients.carbohydrate) }}%）</span>
+        <span>{{ t('plans.fat') }} {{ formatNumber(mealNutrients.fat, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', mealNutrients.fat) }}%）</span>
+      </div>
 
       <!-- 理由 / 偏好脚注 -->
       <v-card-text class="py-2" v-if="recommendation.reason || recommendation.preference">
@@ -382,6 +384,18 @@ const dishNames = computed(() => {
   return props.recommendation.recipe?.name || ''
 })
 
+function planItemTypeLabel(type: string): string {
+  if (type === 'recipe') return t('plans.typeRecipe')
+  if (type === 'ingredient') return t('plans.typeIngredient')
+  return t('plans.typeProduct')
+}
+
+function planItemTypeColor(type: string): string {
+  if (type === 'recipe') return 'primary'
+  if (type === 'ingredient') return 'success'
+  return 'tertiary'
+}
+
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
     staple: t('meals.roleStaple'),
@@ -395,15 +409,6 @@ function roleLabel(role: string): string {
 
 function roleColor(role: string): string {
   return role === 'staple' ? 'primary' : 'default'
-}
-
-function dishSubtitle(dish: RecommendedDish): string {
-  return dish.category ? recipeCategoryLabel(dish.category) : ''
-}
-
-/** 副标题：类别 · 成本 · 热量（挪到副标题，标题留给菜名不截断） */
-function dishSubtitleFull(dish: RecommendedDish): string {
-  return [dishSubtitle(dish), dishCost(dish), dishCalorie(dish)].filter(Boolean).join(' · ')
 }
 
 function dishCost(dish: RecommendedDish): string {
@@ -545,8 +550,13 @@ function onChangeDish(dish: RecommendedDish) {
 }
 
 .meal-card__plan-item--link,
-.meal-card__plan-title {
+.meal-card__plan-title,
+.meal-card__row--link {
   cursor: pointer;
+}
+
+.meal-card__row--link:hover {
+  background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
 /* 首图行：单行等宽并排、限高裁切（图片可被遮盖） */
