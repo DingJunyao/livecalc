@@ -246,6 +246,10 @@ function renderTrendChart() {
     const avgValues = chartData.value.map((d: any) => d.avg_cost || 0)
     const minValues = chartData.value.map((d: any) => d.min_cost || 0)
     const maxValues = chartData.value.map((d: any) => d.max_cost || 0)
+    // 区间带要用堆叠实现：第二条必须是「max - min」的差值，否则会叠成 [min, min + max]
+    const bandValues = maxValues.map((v: number, i: number) =>
+      Math.max(0, (Number(v) || 0) - (Number(minValues[i]) || 0)),
+    )
 
     chartInstance.setOption({
       rtl: false,
@@ -254,12 +258,20 @@ function renderTrendChart() {
         extraCssText: 'direction:ltr;',
         formatter: (params: any[]) => {
           const date = params[0] ? formatDate(params[0].axisValue, localeStore.effectiveFormatLocale) : ''
+          // 时间轴的 value 是 [时间戳, 数值]，直接丢给 formatMoney 会变 NaN（显示成横杠）
+          const num = (p: any) => {
+            if (!p) return NaN
+            const raw = Array.isArray(p.value) ? p.value[p.value.length - 1] : p.value
+            return Number(raw)
+          }
           const avg = params.find((p: any) => p.seriesName === t('recipes.averageCost'))
           const minP = params.find((p: any) => p.seriesName === t('recipes.minimum'))
-          const maxP = params.find((p: any) => p.seriesName === t('recipes.maximum'))
-          const avgText = avg ? formatMoney(avg.value, userCurrency.value) : '-'
-          const minText = minP ? formatMoney(minP.value, userCurrency.value) : '-'
-          const maxText = maxP ? formatMoney(maxP.value, userCurrency.value) : '-'
+          const bandP = params.find((p: any) => p.seriesName === t('recipes.maximum'))
+          const minVal = num(minP)
+          const maxVal = Number.isFinite(minVal) ? minVal + (Number.isFinite(num(bandP)) ? num(bandP) : 0) : NaN
+          const avgText = Number.isFinite(num(avg)) ? formatMoney(num(avg), userCurrency.value) : '-'
+          const minText = Number.isFinite(minVal) ? formatMoney(minVal, userCurrency.value) : '-'
+          const maxText = Number.isFinite(maxVal) ? formatMoney(maxVal, userCurrency.value) : '-'
           return `${date}<br/>${t('recipes.averageLabel')}: ${avgText}<br/>${t('recipes.rangeLabel')}: ${minText} ~ ${maxText}`
         },
       },
@@ -282,13 +294,14 @@ function renderTrendChart() {
       },
       series: [
         {
+          // 区间下沿（透明），作为堆叠底座
           name: t('recipes.minimum'),
           type: 'line',
           data: minValues.map((v, i) => [points[i], v]),
           lineStyle: { width: 0 },
           symbol: 'none',
           areaStyle: { opacity: 0 },
-          stack: 'total',
+          stack: 'range',
         },
         {
           name: t('recipes.averageCost'),
@@ -299,21 +312,16 @@ function renderTrendChart() {
           symbolSize: 4,
           lineStyle: { width: 2, color: '#ff9800' },
           itemStyle: { color: '#ff9800' },
-          areaStyle: {
-            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-              { offset: 0, color: 'rgba(255,152,0,0.25)' },
-              { offset: 1, color: 'rgba(255,152,0,0.02)' },
-            ]),
-          },
         },
         {
+          // 区间带：堆叠在 min 之上的「max - min」差值
           name: t('recipes.maximum'),
           type: 'line',
-          data: maxValues.map((v, i) => [points[i], v]),
+          data: bandValues.map((v, i) => [points[i], v]),
           lineStyle: { width: 0 },
           symbol: 'none',
-          areaStyle: { opacity: 0 },
-          stack: 'total',
+          stack: 'range',
+          areaStyle: { color: 'rgba(255,152,0,0.18)' },
         },
       ],
     }, true)
