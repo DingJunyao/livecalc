@@ -35,6 +35,11 @@ export interface MealPlanBriefItem {
   quantity?: number | null
   unit?: string | null
   cost: number | null
+  recipe_id?: number | null
+  ingredient_id?: number | null
+  product_id?: number | null
+  /** 菜谱条目的首图（原料/商品条目为空） */
+  image_urls?: string[]
 }
 
 /** 方案来源餐的方案视图（source='plan' 时后端返回） */
