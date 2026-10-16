@@ -2300,6 +2300,8 @@
     "roleDrink": "Drink",
     "preferenceChip": "Preference: ",
     "preferencePlaceholder": "One-line preference (e.g. something light, noodles)",
+    "preferenceTargetCurrent": "Current meal",
+    "preferenceTargetAll": "All three meals",
     "applyPreference": "Apply",
     "preferenceApplied": "Recomposed with your preference"
   },

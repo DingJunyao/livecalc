@@ -2300,6 +2300,8 @@
     "roleDrink": "مشروب",
     "preferenceChip": "التفضيل: ",
     "preferencePlaceholder": "تفضيل من سطر واحد (مثل: شيء خفيف)",
+    "preferenceTargetCurrent": "الوجبة الحالية",
+    "preferenceTargetAll": "الوجبات الثلاث",
     "applyPreference": "تطبيق",
     "preferenceApplied": "أعيد التركيب وفق تفضيلك"
   },

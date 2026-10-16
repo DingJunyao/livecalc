@@ -2300,6 +2300,8 @@
     "roleDrink": "饮品",
     "preferenceChip": "偏好：",
     "preferencePlaceholder": "一句话偏好（如：想吃清淡的、想吃面）",
+    "preferenceTargetCurrent": "当前餐",
+    "preferenceTargetAll": "三餐全部",
     "applyPreference": "应用",
     "preferenceApplied": "已按偏好重新组合"
   },
