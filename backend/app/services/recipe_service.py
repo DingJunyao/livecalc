@@ -1212,7 +1212,8 @@ async def calculate_recipe_cost(
     return {
         "total_cost": total_cost,
         "currency": currency,
-        "cost_per_serving": total_cost / (servings_override or recipe.servings or 1),
+        # total_cost 是 Decimal；servings_override 可能是 float（试算页传 float(servings)），Decimal / float 会抛 TypeError，统一转成 Decimal 再除
+        "cost_per_serving": total_cost / Decimal(str(servings_override or recipe.servings or 1)),
         "cost_breakdown": cost_breakdown
     }
 

@@ -645,7 +645,7 @@ async def _build_response_from_records(
 
             plan = record.plan
             if plan is not None and plan.is_active:
-                evaluation = evaluate_plan(db, user, plan, tz=tz)
+                evaluation = await evaluate_plan(db, user, plan, tz=tz)
                 base_item["plan"] = {
                     "id": plan.id,
                     "name": plan.name,

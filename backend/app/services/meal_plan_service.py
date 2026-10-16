@@ -25,6 +25,14 @@ from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.user import User
 from app.services.ingredient_price_service import get_weighted_ingredient_price
+from app.services.nutrition_reference import (
+    KEY_BY_NAME,
+    NAME_BY_KEY,
+    NRV_BY_KEY,
+    UNIT_BY_KEY,
+    energy_to_kcal,
+    nrv_pct,
+)
 from app.services.recipe_service import (
     calculate_recipe_cost,
     calculate_recipe_nutrition,
@@ -40,7 +48,88 @@ def _round2(v: float) -> float:
     return round(v + 0.0, 2)
 
 
-def _item_cost_nutrition(
+def _nutrient_values_from_all_nutrients(all_nutrients: Dict, factor: float = 1.0) -> Dict[str, float]:
+    """把 all_nutrients（英文 key）整体折算 factor 倍；能量统一成 kcal。"""
+    values: Dict[str, float] = {}
+    for key, raw in (all_nutrients or {}).items():
+        if isinstance(raw, dict):
+            value = raw.get("value")
+            unit = raw.get("unit")
+        elif isinstance(raw, (int, float)):
+            value, unit = raw, None
+        else:
+            continue
+        if value is None:
+            continue
+        try:
+            number = float(value) * factor
+        except (TypeError, ValueError):
+            continue
+        if key == "energy":
+            number = energy_to_kcal(number, unit)
+        values[key] = number
+    return values
+
+
+def _recipe_nutrient_values(nutrition: Dict) -> Dict[str, float]:
+    """菜谱 per-serving 的全部营养素（英文 key）；能量用已换算 kJ→kcal 的 per_serving.calories。"""
+    per_serving = (nutrition or {}).get("per_serving") or {}
+    all_nutrients = ((nutrition or {}).get("per_serving_nutrition") or {}).get("all_nutrients") or {}
+    values = _nutrient_values_from_all_nutrients(all_nutrients)
+    values["energy"] = float(per_serving.get("calories") or 0)
+    values.setdefault("protein", float(per_serving.get("protein") or 0))
+    values.setdefault("fat", float(per_serving.get("fat") or 0))
+    values.setdefault("carbohydrate", float(per_serving.get("carbs") or 0))
+    return {k: v for k, v in values.items() if v}
+
+
+def _build_plan_nutrition(items_info: List[Dict]) -> Dict:
+    """把各条目的 nutrient_values 汇成前端「营养成分 / 营养来源」所需的结构。
+
+    形状与 `calculate_recipe_nutrition` 的返回对齐（`per_serving_nutrition` +
+    `ingredient_details[].nutrition_contribution`），这样前端可以直接复用菜谱详情的组件。
+    """
+    totals: Dict[str, float] = {}
+    details: List[Dict] = []
+    for info in items_info:
+        values = info.get("nutrient_values") or {}
+        if not values:
+            continue
+        for key, value in values.items():
+            totals[key] = totals.get(key, 0.0) + float(value)
+        details.append({
+            "ingredient_id": info.get("item_id"),
+            "ingredient_name": info.get("name") or "",
+            "item_type": info.get("item_type"),
+            "nutrition_contribution": {
+                key: {"value": _round2(float(value)), "unit": UNIT_BY_KEY.get(key, "")}
+                for key, value in values.items()
+            },
+        })
+    if not totals:
+        return {}
+    core: Dict[str, Dict] = {}
+    all_nutrients: Dict[str, Dict] = {}
+    for key, value in totals.items():
+        unit = UNIT_BY_KEY.get(key, "")
+        pct = nrv_pct(key, value)
+        all_nutrients[key] = {"value": _round2(value), "unit": unit, "nrp_pct": pct}
+        name = NAME_BY_KEY.get(key)
+        if name:
+            core[name] = {
+                "value": _round2(value),
+                "unit": unit,
+                "key": key,
+                "nrp_pct": pct,
+                "standard": f"NRV标准值：{NRV_BY_KEY[key]}{unit}" if key in NRV_BY_KEY else "无标准",
+            }
+    return {
+        "per_serving_nutrition": {"core_nutrients": core, "all_nutrients": all_nutrients},
+        "ingredient_details": details,
+    }
+
+
+async def _item_cost_nutrition(
     db: Session, user: User, item: MealPlanItem, tz: str,
 ) -> Dict:
     """单个条目的 {name, cost, currency, nutrition}。计算失败不抛出，返回 None 值。"""
@@ -54,6 +143,7 @@ def _item_cost_nutrition(
         "cost": None,
         "currency": None,
         "nutrition": None,
+        "nutrient_values": {},
     }
 
     if item.item_type == "recipe":
@@ -63,7 +153,7 @@ def _item_cost_nutrition(
         out["name"] = recipe.name
         servings_override = float(item.servings) if item.servings is not None else None
         try:
-            cost = calculate_recipe_cost(
+            cost = await calculate_recipe_cost(
                 recipe.id, user.id, db,
                 tz=tz, servings_override=servings_override,
             )
@@ -73,7 +163,7 @@ def _item_cost_nutrition(
         except Exception:
             logger.debug(f"试算：菜谱 {recipe.id} 成本计算失败", exc_info=True)
         try:
-            nutrition = calculate_recipe_nutrition(recipe.id, db=db)
+            nutrition = await calculate_recipe_nutrition(recipe.id, db=db)
             if nutrition:
                 ps = nutrition.get("per_serving") or {}
                 out["nutrition"] = {
@@ -82,6 +172,7 @@ def _item_cost_nutrition(
                     "carbs_g": _round2(float(ps.get("carbs", 0) or 0)),
                     "fat_g": _round2(float(ps.get("fat", 0) or 0)),
                 }
+                out["nutrient_values"] = _recipe_nutrient_values(nutrition)
         except Exception:
             logger.debug(f"试算：菜谱 {recipe.id} 营养计算失败", exc_info=True)
         return out
@@ -165,6 +256,8 @@ def _item_cost_nutrition(
                         "carbs_g": _round2(_nutrient("carbohydrate") * factor),
                         "fat_g": _round2(_nutrient("fat") * factor),
                     }
+                    out["nutrient_values"] = _nutrient_values_from_all_nutrients(
+                        all_nutrients, factor)
         except Exception:
             logger.debug(f"试算：原料 {ingredient.id} 营养折算失败", exc_info=True)
         return out
@@ -205,12 +298,58 @@ def _item_cost_nutrition(
                 out["currency"] = record.currency
         except Exception:
             logger.debug(f"试算：商品 {product.id} 最新价失败", exc_info=True)
+        # 营养：商品自建营养优先，其次沿关联原料（NutritionMixin 合并），基准是「每 X 单位」
+        try:
+            from app.services.nutrition_calculator import NutritionCalculator
+
+            data = NutritionCalculator(db).calculate_product_nutrition(
+                product.id, quantity or None, unit_abbr,
+            )
+            nutrients = (data or {}).get("nutrition") or {}
+            all_nutrients = nutrients.get("all_nutrients") or {}
+            if all_nutrients:
+                ref_amount = float((data or {}).get("reference_amount") or 100.0) or 100.0
+                ref_unit = (data or {}).get("reference_unit") or "g"
+                qty_unit = unit_abbr or ref_unit
+                qty_in_ref = quantity
+                if qty_unit != ref_unit:
+                    converter = UnitConversionService(db)
+                    converted = converter.convert(
+                        Decimal(str(quantity)), qty_unit, ref_unit,
+                        entity_type="product", entity_id=product.id,
+                    )
+                    # 折算不出来时按「数量即基准单位」处理，不臆估
+                    qty_in_ref = float(converted[0]) if converted else quantity
+                factor = (qty_in_ref / ref_amount) if ref_amount else 0.0
+                values: Dict[str, float] = {}
+                for name, value in all_nutrients.items():
+                    if not isinstance(value, dict) or value.get("value") is None:
+                        continue
+                    key = KEY_BY_NAME.get(name) or name
+                    try:
+                        number = float(value["value"]) * factor
+                    except (TypeError, ValueError):
+                        continue
+                    if key == "energy":
+                        number = energy_to_kcal(number, value.get("unit"))
+                    if number:
+                        values[key] = number
+                if values:
+                    out["nutrient_values"] = values
+                    out["nutrition"] = {
+                        "calories": _round2(values.get("energy", 0.0)),
+                        "protein_g": _round2(values.get("protein", 0.0)),
+                        "carbs_g": _round2(values.get("carbohydrate", 0.0)),
+                        "fat_g": _round2(values.get("fat", 0.0)),
+                    }
+        except Exception:
+            logger.debug(f"试算：商品 {product.id} 营养折算失败", exc_info=True)
         return out
 
     return out
 
 
-def evaluate_items(
+async def evaluate_items(
     db: Session, user: User, items: List[Dict],
     kind: str = "meal", meal_type: str = "lunch", tz: str = "UTC",
 ) -> Dict:
@@ -245,18 +384,18 @@ def evaluate_items(
         if stub.unit_id:
             stub.unit = db.query(Unit).get(stub.unit_id)
 
-    return _evaluate_stub_items(db, user, stub_items, kind, meal_type, tz)
+    return await _evaluate_stub_items(db, user, stub_items, kind, meal_type, tz)
 
 
-def evaluate_plan(
+async def evaluate_plan(
     db: Session, user: User, plan: MealPlan, tz: str = "UTC",
     meal_type: str = "lunch",
 ) -> Dict:
     """评估已落库方案（plan.items 已在 session）。"""
-    return _evaluate_stub_items(db, user, list(plan.items), plan.kind, meal_type, tz)
+    return await _evaluate_stub_items(db, user, list(plan.items), plan.kind, meal_type, tz)
 
 
-def _evaluate_stub_items(
+async def _evaluate_stub_items(
     db: Session, user: User, items: List[MealPlanItem],
     kind: str, meal_type: str, tz: str,
 ) -> Dict:
@@ -266,7 +405,7 @@ def _evaluate_stub_items(
     totals = {"cost": 0.0, "currency": None,
               "calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
     for item in items:
-        info = _item_cost_nutrition(db, user, item, tz)
+        info = await _item_cost_nutrition(db, user, item, tz)
         eval_items.append(info)
         if info.get("cost") is not None:
             totals["cost"] = _round2(totals["cost"] + info["cost"])
@@ -290,11 +429,17 @@ def _evaluate_stub_items(
 
     deltas = {k: _round2(totals[k] - targets[k]) for k in targets if k in totals}
 
+    nutrition_block = _build_plan_nutrition(eval_items)
+    # 逐条目的原文（nutrient_values）不再回传，避免响应体过大
+    for info in eval_items:
+        info.pop("nutrient_values", None)
+
     return {
         "items": eval_items,
         "totals": totals,
         "targets": targets,
         "deltas": deltas,
+        "nutrition": nutrition_block,
     }
 
 
@@ -312,7 +457,9 @@ def plan_cost_trend(
     start = end - timedelta(days=days - 1)
 
     daily: Dict[str, Dict[str, Optional[float]]] = {
-        (start + timedelta(days=i)).date().isoformat(): {"cost": 0.0, "currency": None}
+        (start + timedelta(days=i)).date().isoformat(): {
+            "cost": 0.0, "min": 0.0, "max": 0.0, "currency": None,
+        }
         for i in range(days)
     }
 
@@ -333,6 +480,12 @@ def plan_cost_trend(
                 if avg is not None:
                     daily[day]["cost"] = _round2(
                         daily[day]["cost"] + float(avg) * servings)
+                mn = point.get("min_cost")
+                mx = point.get("max_cost")
+                if mn is not None:
+                    daily[day]["min"] = _round2(daily[day]["min"] + float(mn) * servings)
+                if mx is not None:
+                    daily[day]["max"] = _round2(daily[day]["max"] + float(mx) * servings)
                 if daily[day]["currency"] is None and point.get("currency"):
                     daily[day]["currency"] = point["currency"]
         except Exception:
@@ -355,6 +508,10 @@ def plan_cost_trend(
                     if unit_price is not None:
                         daily[day]["cost"] = _round2(
                             daily[day]["cost"] + float(unit_price) * quantity)
+                        daily[day]["min"] = _round2(
+                            daily[day]["min"] + float(unit_price) * quantity)
+                        daily[day]["max"] = _round2(
+                            daily[day]["max"] + float(unit_price) * quantity)
                         if daily[day]["currency"] is None and weighted.get("currency"):
                             daily[day]["currency"] = weighted["currency"]
                 except Exception:
@@ -392,10 +549,19 @@ def plan_cost_trend(
             # 最新价语义：前向填充到整个窗口
             for day in daily:
                 daily[day]["cost"] = _round2(daily[day]["cost"] + unit_price * qty)
+                daily[day]["min"] = _round2(daily[day]["min"] + unit_price * qty)
+                daily[day]["max"] = _round2(daily[day]["max"] + unit_price * qty)
                 if daily[day]["currency"] is None and record.currency:
                     daily[day]["currency"] = record.currency
 
     return [
-        {"date": day, "total_cost": info["cost"], "currency": info["currency"]}
+        {
+            "date": day,
+            "total_cost": info["cost"],
+            "min_cost": info["min"],
+            "max_cost": info["max"],
+            "avg_cost": info["cost"],
+            "currency": info["currency"],
+        }
         for day, info in sorted(daily.items())
     ]
