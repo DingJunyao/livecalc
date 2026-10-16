@@ -1690,7 +1690,8 @@ async def get_recipe_images(
 @router.get("/{recipe_id}/cost-history", response_model=List[RecipeCostHistoryResponse])
 async def get_recipe_cost_history(
     recipe_id: int,
-    days: int = Query(90, ge=7, le=365, description="查询天数"),
+    # le=3650：前端「全部」筛选项传 3650 天（365 上限会 422 → 筛选无效假象）
+    days: int = Query(90, ge=7, le=3650, description="查询天数"),
     region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
@@ -1742,7 +1743,8 @@ async def get_recipe_cost_history(
 @router.get("/{recipe_id}/cost-history-range", response_model=List[RecipeCostRangeResponse])
 async def get_recipe_cost_history_range(
     recipe_id: int,
-    days: int = Query(90, ge=7, le=365, description="查询天数"),
+    # le=3650：前端「全部」筛选项传 3650 天（365 上限会 422 → 筛选无效假象）
+    days: int = Query(90, ge=7, le=3650, description="查询天数"),
     offset_days: int = Query(0, ge=0, description="偏移天数（从 offset_days 天前开始算）"),
     region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
