@@ -48,7 +48,7 @@
       <v-card-title class="d-flex align-center pb-1">
         <v-icon start size="18" color="tertiary">mdi-clipboard-text-outline</v-icon>
         <a
-          class="text-body-1 font-weight-medium text-truncate text-decoration-none"
+          class="text-body-1 font-weight-medium text-truncate meal-card__plan-title"
           :href="`/plans/${planView.id}`"
           :title="t('plans.title')"
           @click.prevent="goToPlan(planView.id)"
@@ -532,12 +532,32 @@ function onChangeDish(dish: RecommendedDish) {
 </script>
 
 <style scoped>
-.meal-card__plan-item {
-  color: rgb(var(--v-theme-on-surface));
+.meal-card__plan-item,
+.meal-card__plan-title {
+  color: inherit;
+  text-decoration: none;
 }
 
-.meal-card__plan-item--link:hover {
-  color: rgb(var(--v-theme-primary));
+.meal-card__plan-item--link,
+.meal-card__plan-title {
+  cursor: pointer;
+}
+
+/* 首图行：单行等宽并排、限高裁切（图片可被遮盖） */
+.meal-card__image-row {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 120px;
+  overflow: hidden;
+}
+
+.meal-card__dish-image {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .meal-card {
   transition: transform 0.2s, box-shadow 0.2s;
