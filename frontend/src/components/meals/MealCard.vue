@@ -59,12 +59,12 @@
           {{ planView.kind === 'day' ? t('plans.kindDay') : t('plans.kindMeal') }}
         </v-chip>
       </v-card-title>
-      <v-card-text class="pt-0">
+      <div class="px-4 pt-1">
         <a
           v-for="(item, i) in planView.items"
           :key="i"
-          class="d-flex align-center py-0.5 text-decoration-none meal-card__plan-item"
-          :class="{ 'meal-card__plan-item--link': !!planItemLink(item) }"
+          class="d-flex align-center py-0.5 text-decoration-none meal-card__row"
+          :class="{ 'meal-card__row--link': !!planItemLink(item) }"
           :href="planItemLink(item) || undefined"
           @click.prevent="onPlanItemClick(item)"
         >
@@ -73,18 +73,20 @@
             {{ item.cost != null ? formatMoney(item.cost, planView.totals?.currency || userCurrency) : '--' }}
           </span>
         </a>
-        <v-divider class="my-2" />
+      </div>
+      <v-divider class="mx-4 my-2" />
+      <div class="px-4 pb-2 d-flex flex-column">
         <div class="d-flex justify-space-between text-body-2 font-weight-bold">
           <span>{{ t('plans.totalCost') }}</span>
           <span>{{ formatMoney(planView.totals?.cost ?? 0, planView.totals?.currency || userCurrency) }}</span>
         </div>
         <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
           <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(planView.totals?.calories ?? 0)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}%）</span>
-          <span>{{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}%）</span>
-          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}%）</span>
-          <span>{{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%）</span>
+          <span>{{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}%）</span>
+          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}%）</span>
+          <span>{{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%）</span>
         </div>
-      </v-card-text>
+      </div>
     </template>
 
     <!-- 多道菜套餐（新） -->
@@ -540,13 +542,11 @@ function onChangeDish(dish: RecommendedDish) {
 </script>
 
 <style scoped>
-.meal-card__plan-item,
 .meal-card__plan-title {
   color: inherit;
   text-decoration: none;
 }
 
-.meal-card__plan-item--link,
 .meal-card__plan-title,
 .meal-card__row--link {
   cursor: pointer;
