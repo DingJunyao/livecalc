@@ -52,21 +52,26 @@ DEFAULT_TRANSLATION_CONFIG = {
 }
 
 
+def _deep_merge(base: dict, override: dict) -> dict:
+    """递归合并：override 覆盖 base；两侧都是 dict 时下钻，否则整体替换。"""
+    for key, value in (override or {}).items():
+        if isinstance(value, dict) and isinstance(base.get(key), dict):
+            _deep_merge(base[key], value)
+        else:
+            base[key] = value
+    return base
+
+
 def _merge_default_config(stored: dict) -> dict:
-    """把默认 provider 条目补齐进已存储配置，不覆盖已有字段。"""
+    """把默认值补齐进已存储配置（递归合并，已有值优先）。
+
+    必须递归：早期实现（a）整块替换 provider 会丢掉存储里没写的默认字段；
+    （b）`key not in merged` 的判据让 meal_plan / ai_policy 这类**默认里已存在**
+    的区块读回默认值——管理员保存的策略每次 GET 都被悄悄回滚。
+    """
     import copy
 
-    merged = copy.deepcopy(DEFAULT_TRANSLATION_CONFIG)
-    for region in ("ai", "machine"):
-        stored_providers = (stored.get(region) or {}).get("providers") or {}
-        for key, value in stored_providers.items():
-            merged[region]["providers"][key] = value
-    # 未知/后续新增的顶层区块（如 meal_plan / ai_policy）按存储值保留，
-    # 避免 PUT 回写时被默认合并丢掉。
-    for key, value in stored.items():
-        if key not in merged:
-            merged[key] = value
-    return merged
+    return _deep_merge(copy.deepcopy(DEFAULT_TRANSLATION_CONFIG), stored or {})
 
 
 def get_stored_translation_config(db: Session) -> TranslationConfig:
@@ -336,7 +341,9 @@ async def put_translation_config(
     current_user=Depends(get_current_admin_user),
 ):
     cfg = get_stored_translation_config(db)
-    cfg.config = body.config
+    # 递归合并而非整份替换：旧前端（GET 只拿到 ai/machine 的版本）提交残缺结构时，
+    # 不会把 meal_plan / ai_policy 等区块从库里抹掉。
+    cfg.config = _deep_merge(cfg.to_dict(), body.config or {})
     db.commit()
     db.refresh(cfg)
     return cfg.to_dict()
