@@ -173,6 +173,12 @@ export function validateComposition(
   return errors
 }
 
+/**
+ * 首次输出未通过校验时追加的重试后缀（与提示词同属模型输入，非用户可见文案）。
+ * 放在这里而不是调用方，是为了让「发给模型的文本」集中在本模块。
+ */
+export const RETRY_SUFFIX = '\n\n上一次输出未通过校验，请修正后重新只输出 JSON。'
+
 export function buildComposePrompt(
   candidates: ComposerCandidate[],
   mealType: MealType,

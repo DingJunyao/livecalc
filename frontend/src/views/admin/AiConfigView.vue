@@ -8,6 +8,7 @@ import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { getTranslationConfig, putTranslationConfig, testTranslationConnection } from '@/api/usda'
 import ProviderCard from '@/components/admin/ProviderCard.vue'
+import { normalizeTranslationConfig } from '@/utils/translationConfig'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -105,7 +106,47 @@ const testResult = reactive<Record<string, { ok: boolean; detail: string }>>({})
 // 三个折叠面板默认全展开
 const openPanels = ref<number[]>([0, 1, 2])
 
-onMounted(async () => { config.value = await getTranslationConfig() })
+// 组合层可选 provider：白名单 ∩ 当前「启用」开关 —— 随上方 AI provider 的开关**实时**变化，
+// 而不是写死四个或按已保存的配置（保存前的勾选也要立刻生效）。
+// 本地模式收窄到浏览器可直连的两个（claude_code/codex 依赖服务端 CLI）。
+const enabledMealProviders = computed(() => {
+  const allowed = isLocalMode.value
+    ? MEAL_PROVIDERS.filter((p) => p === 'openai' || p === 'anthropic')
+    : MEAL_PROVIDERS
+  const providers = config.value?.ai?.providers || {}
+  return allowed.filter((key) => {
+    const section = providers[key]
+    if (!section?.enabled) return false
+    // 本地模式是浏览器直连：缺 key / 端点时组合器照样降级为规则，索性不列出来
+    if (isLocalMode.value) return !!section.api_key && !!section.base_url
+    return true
+  })
+})
+
+const mealProviderItems = computed(() => {
+  // 标签直接复用上方 provider 卡片的标题，避免再维护一份 i18n 键映射
+  const titleOf = (key: string) => AI_PROVIDERS.value.find((p) => p.key === key)?.title || key
+  const items = enabledMealProviders.value.map((key) => ({ title: titleOf(key), value: key }))
+  const current = config.value?.meal_plan?.provider
+  // 当前选择未启用时仍列出来并标注，避免下拉值「凭空消失」被静默改掉
+  if (current && !items.some((item) => item.value === current)) {
+    items.push({
+      title: `${titleOf(current)}${t('adminAI.mealPlanProviderDisabled')}`,
+      value: current,
+    })
+  }
+  return items
+})
+
+// 所选 provider 未启用 → 后端会降级为规则组合，页面必须提示
+const mealProviderDisabled = computed(() => {
+  const current = config.value?.meal_plan?.provider
+  return !!current && !enabledMealProviders.value.includes(current)
+})
+
+// 归一化后再渲染：配置缺 meal_plan / ai_policy 区块时（旧后端序列化或本地模式旧存档）
+// 模板里的 config.ai_policy.xxx 会抛 undefined，整页渲染失败。
+onMounted(async () => { config.value = normalizeTranslationConfig(await getTranslationConfig()) })
 
 // 写入某分组下某 provider 的某字段
 function setField(group: 'ai' | 'machine', provider: string, field: string, value: any) {
@@ -206,13 +247,16 @@ async function save() {
             <v-col cols="12" sm="6">
               <v-select
                 :label="t('adminAI.mealPlanProvider')"
-                :items="MEAL_PROVIDERS"
+                :items="mealProviderItems"
                 v-model="config.meal_plan.provider"
                 variant="outlined"
                 density="compact"
                 :hint="t('adminAI.mealPlanProviderHint')"
                 persistent-hint
               />
+              <p v-if="mealProviderDisabled" class="text-caption text-warning mt-1">
+                {{ t('adminAI.mealPlanProviderDisabledHint') }}
+              </p>
             </v-col>
             <v-col cols="12" sm="6">
               <v-text-field

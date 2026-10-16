@@ -2,6 +2,7 @@
 // 存储：meal_plans 单 store，条目以 items 数组内嵌行内（本地单用户，无跨表查询需求）。
 
 import { getAll, addOne, deleteOne, getById, putOne } from '../database'
+import { NUTRIENT_UNIT_BY_KEY, nrvPct } from '@/utils/nrv'
 import * as recipes from './recipes'
 import { resolveImageUrl } from '@/utils/image'
 import { localError } from '../../../utils/localErrors'
@@ -58,8 +59,26 @@ async function buildBrief(recipeId: number): Promise<any | null> {
   }
 }
 
+/** 原料营养：nutrition_data.all_nutrients 标准 key × 折算克数（简化：数量≈克） */
+async function ingredientNutrition(ingredientId: number | null | undefined, quantity: any): Promise<any> {
+  if (ingredientId == null) return null
+  const nutritionData = await getAll('nutrition_data')
+  const nd = nutritionData.find((n: any) => n.ingredient_id === ingredientId)
+  if (!nd?.nutrients) return null
+  const allN = nd.nutrients.all_nutrients || {}
+  const ref = Number(nd.reference_amount) || 100
+  const grams = Number(quantity ?? 0)
+  const factor = grams / ref
+  return {
+    calories: Math.round((Number(allN.energy?.value ?? 0)) * factor * 100) / 100,
+    protein_g: Math.round((Number(allN.protein?.value ?? 0)) * factor * 100) / 100,
+    carbs_g: Math.round((Number(allN.carbohydrate?.value ?? 0)) * factor * 100) / 100,
+    fat_g: Math.round((Number(allN.fat?.value ?? 0)) * factor * 100) / 100,
+  }
+}
+
 /** 单条目求值：recipe 走菜谱引擎；ingredient/product 用本地价格记录最新价 × 数量。 */
-async function evaluateItem(item: any): Promise<{ cost: number | null; currency: string | null; nutrition: any }> {
+export async function evaluateItem(item: any): Promise<{ cost: number | null; currency: string | null; nutrition: any }> {
   if (item.item_type === 'recipe' && item.recipe_id != null) {
     const brief = await buildBrief(item.recipe_id)
     return { cost: brief?.cost_estimate ?? null, currency: 'CNY', nutrition: brief?.nutrition_per_serving ?? null }
@@ -80,22 +99,7 @@ async function evaluateItem(item: any): Promise<{ cost: number | null; currency:
       const stdQty = Number(latest.standard_quantity) || 1
       cost = Math.round((Number(latest.price) / stdQty) * Number(item.quantity ?? 0) * 100) / 100
     }
-    // 营养：nutrition_data.all_nutrients 标准 key × 折算克数（简化：数量≈克）
-    let nutrition: any = null
-    const nutritionData = await getAll('nutrition_data')
-    const nd = nutritionData.find((n: any) => n.ingredient_id === item.ingredient_id)
-    if (nd?.nutrients) {
-      const allN = nd.nutrients.all_nutrients || {}
-      const ref = Number(nd.reference_amount) || 100
-      const grams = Number(item.quantity ?? 0)
-      const factor = grams / ref
-      nutrition = {
-        calories: Math.round((Number(allN.energy?.value ?? 0)) * factor * 100) / 100,
-        protein_g: Math.round((Number(allN.protein?.value ?? 0)) * factor * 100) / 100,
-        carbs_g: Math.round((Number(allN.carbohydrate?.value ?? 0)) * factor * 100) / 100,
-        fat_g: Math.round((Number(allN.fat?.value ?? 0)) * factor * 100) / 100,
-      }
-    }
+    const nutrition = await ingredientNutrition(item.ingredient_id, item.quantity)
     return { cost, currency: latest?.currency || 'CNY', nutrition }
   }
   if (item.item_type === 'product' && item.product_id != null) {
@@ -108,13 +112,55 @@ async function evaluateItem(item: any): Promise<{ cost: number | null; currency:
       const stdQty = Number(latest.standard_quantity) || 1
       cost = Math.round((Number(latest.price) / stdQty) * Number(item.quantity ?? 0) * 100) / 100
     }
-    return { cost, currency: latest?.currency || 'CNY', nutrition: null }
+    // 营养：商品自建营养（custom_nutrition_data，基准 reference_amount/reference_unit）优先，
+    // 其次继承关联原料的 nutrition_data —— 与云端 NutritionMixin 合并口径一致
+    const product = (await getAll('products')).find((p: any) => p.id === item.product_id)
+    const custom = product?.custom_nutrition_data
+    const customAll = custom?.nutrients?.all_nutrients
+    let nutrition: any = null
+    if (customAll) {
+      const ref = Number(custom.reference_amount) || 100
+      const factor = Number(item.quantity ?? 0) / ref
+      nutrition = {
+        calories: Math.round((Number(customAll.energy?.value ?? 0)) * factor * 100) / 100,
+        protein_g: Math.round((Number(customAll.protein?.value ?? 0)) * factor * 100) / 100,
+        carbs_g: Math.round((Number(customAll.carbohydrate?.value ?? 0)) * factor * 100) / 100,
+        fat_g: Math.round((Number(customAll.fat?.value ?? 0)) * factor * 100) / 100,
+      }
+    } else {
+      nutrition = await ingredientNutrition(product?.ingredient_id, item.quantity)
+    }
+    return { cost, currency: latest?.currency || 'CNY', nutrition }
   }
   return { cost: null, currency: null, nutrition: null }
 }
 
+/** 与云端 evaluate 的 `nutrition` 块同形状（本地模式只有 4 个核心营养素/条目） */
+function buildLocalNutrition(
+    totals: Record<string, number>,
+    details: any[],
+): any {
+  const keys = Object.keys(totals).filter(k => totals[k])
+  if (!keys.length) return {}
+  const core: Record<string, any> = {}
+  const all: Record<string, any> = {}
+  for (const key of keys) {
+    const value = Math.round(totals[key] * 100) / 100
+    const unit = NUTRIENT_UNIT_BY_KEY[key] || ''
+    const pct = nrvPct(key, value)
+    all[key] = { value, unit, nrp_pct: pct }
+    core[key] = { value, unit, key, nrp_pct: pct, name_zh: key }
+  }
+  return {
+    per_serving_nutrition: { core_nutrients: core, all_nutrients: all },
+    ingredient_details: details,
+  }
+}
+
 async function evaluateRows(kind: string, mealType: string, items: any[]): Promise<any> {
   const evalItems: any[] = []
+  const nutrientTotals: Record<string, number> = {}
+  const nutrientDetails: any[] = []
   const totals = { cost: 0, currency: null as string | null, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
   for (const item of items) {
     const { cost, currency, nutrition } = await evaluateItem(item)
@@ -140,6 +186,29 @@ async function evaluateRows(kind: string, mealType: string, items: any[]): Promi
       totals.protein_g += nutrition.protein_g || 0
       totals.carbs_g += nutrition.carbs_g || 0
       totals.fat_g += nutrition.fat_g || 0
+      const values: Record<string, number> = {
+        energy: Number(nutrition.calories) || 0,
+        protein: Number(nutrition.protein_g) || 0,
+        carbohydrate: Number(nutrition.carbs_g) || 0,
+        fat: Number(nutrition.fat_g) || 0,
+      }
+      const contribution: Record<string, { value: number; unit: string }> = {}
+      for (const [key, value] of Object.entries(values)) {
+        if (!value) continue
+        nutrientTotals[key] = (nutrientTotals[key] || 0) + value
+        contribution[key] = {
+          value: Math.round(value * 100) / 100,
+          unit: NUTRIENT_UNIT_BY_KEY[key] || '',
+        }
+      }
+      if (Object.keys(contribution).length) {
+        nutrientDetails.push({
+          ingredient_id: null,
+          ingredient_name: name || '',
+          item_type: item.item_type,
+          nutrition_contribution: contribution,
+        })
+      }
     }
   }
   // 目标（本地无用户资料存储，用默认值；与云端默认一致）
@@ -152,7 +221,13 @@ async function evaluateRows(kind: string, mealType: string, items: any[]): Promi
   }
   const deltas: Record<string, number> = {}
   for (const k of Object.keys(targets)) deltas[k] = Math.round((totals[k] - targets[k]) * 100) / 100
-  return { items: evalItems, totals, targets, deltas }
+  return {
+    items: evalItems,
+    totals,
+    targets,
+    deltas,
+    nutrition: buildLocalNutrition(nutrientTotals, nutrientDetails),
+  }
 }
 
 // ============================================================
@@ -248,6 +323,10 @@ export async function costTrend(params: Record<string, string>, query?: any): Pr
     out.push({
       date: dayStr,
       total_cost: Math.round(total * 100) / 100,
+      // 本地没有逐日价格区间：min = max = avg（前端照样画区间带，只是重合）
+      min_cost: Math.round(total * 100) / 100,
+      max_cost: Math.round(total * 100) / 100,
+      avg_cost: Math.round(total * 100) / 100,
       currency: 'CNY',
     })
   }

@@ -114,6 +114,18 @@ const router = createRouter({
           meta: { titleKey: 'routes.plans' },
         },
         {
+          path: 'plans/new',
+          name: 'plan-new',
+          component: () => import('@/views/plans/PlanDetailView.vue'),
+          meta: { titleKey: 'routes.plans' },
+        },
+        {
+          path: 'plans/:id',
+          name: 'plan-detail',
+          component: () => import('@/views/plans/PlanDetailView.vue'),
+          meta: { titleKey: 'routes.plans' },
+        },
+        {
           path: 'favorites',
           name: 'favorites',
           component: () => import('@/views/favorites/FavoritesView.vue'),

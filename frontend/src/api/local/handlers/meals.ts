@@ -6,12 +6,14 @@ import { getAll, addOne, deleteOne, getById, putOne } from '../database'
 import { resolveImageUrl } from '@/utils/image'
 import * as recipes from './recipes'
 import { getTranslationConfig } from './admin'
+import { evaluateItem } from './mealPlans'
 import { localError } from '../../../utils/localErrors'
 import {
   composeByRule,
   validateComposition,
   buildComposePrompt,
   aiComplete,
+  RETRY_SUFFIX,
   MEAL_POOL_CATEGORIES,
   type ComposerCandidate,
   type ComposedMeal,
@@ -141,7 +143,7 @@ async function composeMeal(
       try {
         const text = await aiComplete(
           ai.provider, ai, system,
-          attempt === 0 ? user : `${user}\n\n上一次输出未通过校验，请修正后重新只输出 JSON。`,
+          attempt === 0 ? user : user + RETRY_SUFFIX,
           ai.timeoutSeconds * 1000)
         const errors = validateComposition(text, candidates, mealType, excludeIds, singleRole)
         if (errors.length === 0) {
@@ -369,9 +371,6 @@ async function buildResponse(rows: any[]): Promise<any> {
         const planItems = []
         for (const it of plan.items || []) {
           let name: string | null = null
-          const store =
-            it.item_type === 'recipe' ? 'recipes'
-            : it.item_type === 'ingredient' ? 'ingredients' : 'products'
           const entity = it.recipe_id != null
             ? await getById('recipes', it.recipe_id)
             : it.ingredient_id != null ? await getById('ingredients', it.ingredient_id)

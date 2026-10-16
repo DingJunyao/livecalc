@@ -45,6 +45,28 @@ export interface PlanEvaluationItem {
   nutrition: NutritionPerServing | null
 }
 
+export interface PlanNutrientValue {
+  value: number
+  unit: string
+  key?: string
+  nrp_pct?: number | null
+  standard?: string
+}
+
+export interface PlanNutrition {
+  per_serving_nutrition?: {
+    core_nutrients?: Record<string, PlanNutrientValue>
+    all_nutrients?: Record<string, PlanNutrientValue>
+  }
+  /** 各条目对每个营养素（英文 key）的贡献，供「营养来源」组件用 */
+  ingredient_details?: {
+    ingredient_id?: number
+    ingredient_name?: string
+    item_type?: PlanItemType
+    nutrition_contribution?: Record<string, { value: number; unit?: string }>
+  }[]
+}
+
 export interface PlanEvaluation {
   items: PlanEvaluationItem[]
   totals: {
@@ -57,11 +79,17 @@ export interface PlanEvaluation {
   }
   targets: Record<string, number>
   deltas: Record<string, number>
+  /** 全部营养素（含 NRV%）与各条目贡献；空对象=该方案没有营养数据 */
+  nutrition?: PlanNutrition
 }
 
 export interface PlanTrendPoint {
   date: string
   total_cost: number
+  /** 当日成本区间（逐条目 min/max 求和），旧接口可能没有 */
+  min_cost?: number
+  max_cost?: number
+  avg_cost?: number
   currency: string | null
 }
 

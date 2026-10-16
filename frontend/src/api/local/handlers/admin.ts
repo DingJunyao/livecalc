@@ -13,6 +13,7 @@ import { fixBlobMime } from '@/utils/image'
 import CryptoJS from 'crypto-js'
 import { isLocalError, localError, translateLocalError } from '../../../utils/localErrors'
 import { toStableTaskError } from '../../../utils/importTaskErrors'
+import { deepMergeConfig, normalizeTranslationConfig } from '../../../utils/translationConfig'
 import { t as translate } from '../../../plugins/i18n.ts'
 
 async function getConfigValue(key: string): Promise<any> {
@@ -636,39 +637,20 @@ export async function getEmailTemplate(params: Record<string, string>): Promise<
 // ============================================================
 
 export async function getTranslationConfig(): Promise<any> {
-  // 默认结构：未保存过时使用；已保存则合并返回（确保 API key 等配置可持久化读回）
-  const defaults = {
-    ai: {
-      providers: {
-        claude_code: { enabled: false },
-        openai: { enabled: false, base_url: 'https://api.openai.com/v1', api_key: '', model: 'gpt-4o-mini' },
-        anthropic: { enabled: false, base_url: 'https://api.anthropic.com', api_key: '', model: 'claude-sonnet-4-6' },
-      },
-    },
-    machine: {
-      providers: {
-        baidu: { enabled: false, appid: '', secret: '' },
-        aliyun: { enabled: false, access_key_id: '', access_key_secret: '' },
-        deepl: { enabled: false, auth_key: '' },
-      },
-    },
-  }
+  // 默认结构（含 meal_plan / ai_policy）来自 utils/translationConfig，与后端同一份口径；
+  // 已保存则递归合并返回（确保 API key 等配置可持久化读回、缺失区块按默认补齐）
   const saved = await getConfigValue('translation_config')
-  if (!saved) return defaults
-  // 浅合并：保留已保存的 provider key，补齐缺失的默认字段
-  const merged = JSON.parse(JSON.stringify(defaults))
-  for (const group of ['ai', 'machine']) {
-    if (saved?.[group]?.providers) {
-      merged[group].providers = { ...merged[group].providers, ...saved[group].providers }
-    }
-  }
-  return merged
+  return normalizeTranslationConfig(saved)
 }
 
 export async function updateTranslationConfig(_params: Record<string, string>, data?: any): Promise<any> {
-  const config = data?.config || data
-  await setConfigValue('translation_config', config)
-  return config
+  const incoming = data?.config || data
+  const saved = await getConfigValue('translation_config')
+  // 与当前存档递归合并：本地模式下 meal_plan 由 meals provider 读取，
+  // 整份替换会连带抹掉另一端的改动。
+  const merged = deepMergeConfig(normalizeTranslationConfig(saved), incoming)
+  await setConfigValue('translation_config', merged)
+  return merged
 }
 
 export async function testTranslationConnection(_params: Record<string, string>, data?: any): Promise<any> {

@@ -509,7 +509,9 @@
     "title": "AI 与机翻配置",
     "mealPlanSection": "餐食推荐（AI 组合）",
     "mealPlanProvider": "组合模型 provider",
-    "mealPlanProviderHint": "用于把候选菜谱组合成一餐套餐；claude_code/codex 依赖服务器本机 CLI",
+    "mealPlanProviderHint": "用于把候选菜谱组合成一餐套餐；只列出已启用的 provider（在「AI 翻译」面板里勾选），claude_code/codex 依赖服务器本机 CLI",
+    "mealPlanProviderDisabled": "（未启用）",
+    "mealPlanProviderDisabledHint": "所选 provider 还未启用，推荐会自动降级为规则组合；请先在「AI 翻译」面板打开它的开关。",
     "mealPlanTimeout": "单次组合超时（秒）",
     "mealPlanTimeoutHint": "超时自动降级为规则组合",
     "aiPolicySection": "AI 使用策略",
@@ -997,6 +999,8 @@
     "confirmTitle": "请确认",
     "confirm": "确认",
     "close": "关闭",
+    "save": "保存",
+    "cancel": "取消",
     "entityProduct": "商品",
     "entityIngredient": "原料",
     "updateAvailable": "发现新版本，刷新以更新",
@@ -1285,7 +1289,8 @@
     "mealNotGenerated": "该餐还没有推荐，请先生成今日推荐",
     "mealRefreshLimit": "今天{meal_type}推荐已经刷新 {max} 次了，明天再来吧～",
     "mealDishNotInRecommendation": "该菜不在当前推荐中",
-    "mealNoCandidates": "该餐类暂无可用菜谱"
+    "mealNoCandidates": "该餐类暂无可用菜谱",
+    "planNotFound": "方案不存在"
   },
   "localValues": {
     "newNameSuffix": "(新)",
@@ -1898,6 +1903,7 @@
     "setToday": "设为今日",
     "setTodayDone": "已将「{name}」设为今日推荐",
     "setTodayFailed": "设为今日失败",
+    "takeToPlanner": "拿去试算",
     "empty": "还没有试算方案",
     "planName": "方案名称",
     "planKind": "方案类型",
@@ -1905,6 +1911,7 @@
     "addIngredient": "添加原料（搜索）",
     "addProduct": "添加商品（搜索）",
     "noItems": "还没有条目，用上方搜索添加",
+    "nutrition": "营养成分",
     "servings": "份量",
     "quantity": "数量",
     "totals": "合计 vs 目标",
@@ -1921,6 +1928,7 @@
     "saved": "已保存",
     "deleted": "方案已删除",
     "deleteFailed": "删除失败",
+    "deleteConfirm": "确定要删除方案「{name}」吗？此操作不可恢复。",
     "typeRecipe": "菜谱",
     "typeIngredient": "原料",
     "typeProduct": "商品"
