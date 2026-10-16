@@ -147,9 +147,23 @@ export async function getPlanCostTrend(
   days = 90,
   offsetDays = 0
 ): Promise<PlanTrendPoint[]> {
-  return api.get(`/meal-plans/${id}/cost-trend`, {
+  const res: any = await api.get(`/meal-plans/${id}/cost-trend`, {
     params: { days, offset_days: offsetDays },
-  }) as any
+  })
+  const rows: any[] = Array.isArray(res) ? res : (res?.items || [])
+  // 归一化：后端只回 total_cost（或字段缺失）时补齐 min/max/avg，
+  // 否则复用菜谱图表的组件会因为读不到 avg_cost 而把折线画成 0
+  return rows.map((row: any) => {
+    const cost = Number(row.total_cost ?? row.avg_cost ?? 0)
+    return {
+      date: String(row.date ?? ''),
+      total_cost: cost,
+      avg_cost: Number(row.avg_cost ?? cost),
+      min_cost: Number(row.min_cost ?? cost),
+      max_cost: Number(row.max_cost ?? cost),
+      currency: row.currency ?? null,
+    }
+  })
 }
 
 /** 试算方案 → 今日推荐（kind=meal 需 mealType；kind=day 一次设三餐） */
