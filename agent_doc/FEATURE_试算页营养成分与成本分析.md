@@ -113,3 +113,15 @@
 - `npm run build` ✓ / `check:i18n` ✓ / `check:i18n:sources` 2167 ✓（少了一个只因模板不再用 `plans.days`）/ `tsc` 137 ✓
 - 模板 → 脚本标识符核对 ✓；未实机验证
 
+## 「一日方案设为今日」按分组拆三餐（用户反馈：三部分全写进每一餐）
+
+- 根因：方案来源餐渲染时对三餐各自评估的是**整个方案**（`evaluate_plan` 不按条目分组过滤），
+  所以早/午/晚三张卡都是同一份全部条目。
+- 修复：`evaluate_plan` 增加 `group` 参数 —— `plan.kind == 'day'` 且传入 group 时只取 `item.group == group`
+  的条目，并按该餐的目标比例（kind='meal' + meal_type=group）计算；`meal_recommender._build_response_from_records`
+  渲染方案来源餐时传 `group=meal_type`。方案本身在 `/plans/:id` 仍按整天评估，不受影响。
+- 「其它」分组的条目不会计入任何一餐（不映射到餐次）；商品条目营养已计入（上一轮）。
+- 实测（开发库副本，一日方案 5 条目）：早 2 条 4.7/305kcal（目标 500）、午 2 条 7.46/431（800）、
+  晚 1 条 7.11/279（700），合计 19.27/1015.08 与整方案一致。
+- 回归：meal/plan 相关 13 例 → 12 passed + 1 条既有顺序性失败（同 HEAD 基线）。
+
