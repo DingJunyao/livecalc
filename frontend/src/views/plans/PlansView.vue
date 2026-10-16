@@ -68,10 +68,33 @@
             <v-btn size="small" variant="text" color="primary" @click.stop="openPlan(plan.id)">
               {{ t('plans.edit') }}
             </v-btn>
+            <v-menu v-if="plan.kind === 'meal'">
+              <template #activator="{ props: menuProps }">
+                <v-btn
+                  size="small"
+                  variant="text"
+                  color="primary"
+                  :loading="settingPlan === plan.id"
+                  v-bind="menuProps"
+                  @click.stop
+                >
+                  {{ t('plans.setToday') }}
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item
+                  v-for="mt in mealTypeOptions"
+                  :key="mt.value"
+                  :title="mt.title"
+                  @click="onSetToday(plan, mt.value)"
+                />
+              </v-list>
+            </v-menu>
             <v-btn
+              v-else
               size="small"
               variant="text"
-              :color="plan.kind === 'day' ? 'tertiary' : 'primary'"
+              color="tertiary"
               :loading="settingPlan === plan.id"
               @click.stop="onSetToday(plan)"
             >
@@ -254,10 +277,17 @@ async function onDelete(plan: MealPlan) {
   }
 }
 
-async function onSetToday(plan: MealPlan) {
+/** 一顿方案的目标餐次选项（与「一顿」的语义一致：早/午/晚各一档） */
+const mealTypeOptions = computed(() => [
+  { title: t('meals.breakfast'), value: 'breakfast' },
+  { title: t('meals.lunch'), value: 'lunch' },
+  { title: t('meals.dinner'), value: 'dinner' },
+])
+
+async function onSetToday(plan: MealPlan, mealType?: 'breakfast' | 'lunch' | 'dinner') {
   settingPlan.value = plan.id
   try {
-    await setPlanAsRecommendation(plan.id)
+    await setPlanAsRecommendation(plan.id, mealType)
     notify(t('plans.setTodayDone', { name: plan.name }), 'success')
   } catch (e: any) {
     notify(e.userMessage || t('plans.setTodayFailed'), 'error')
