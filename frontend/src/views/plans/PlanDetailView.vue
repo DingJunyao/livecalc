@@ -165,7 +165,7 @@
                 <v-select
                   v-model="item.unit_id"
                   :items="unitOptions"
-                  :placeholder="t('plans.defaultUnit')"
+                  :placeholder="defaultUnitHint(idx)"
                   density="compact"
                   hide-details
                   variant="plain"
@@ -471,6 +471,12 @@ function itemLink(item: PlanItemInput) {
 function openItem(item: PlanItemInput) {
   const link = itemLink(item)
   if (link) void router.push(link)
+}
+
+/** 未选单位时后端实际用的单位：原料回退「克」，商品用价格记录的标准单位（来自 evaluate 的 items[].unit） */
+function defaultUnitHint(idx: number) {
+  const unit = evaluation.value?.items?.[idx]?.unit
+  return unit ? `${t('plans.defaultUnit')}（${unit}）` : t('plans.defaultUnit')
 }
 
 function perItemCost(idx: number) {
