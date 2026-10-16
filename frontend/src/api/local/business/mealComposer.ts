@@ -190,13 +190,13 @@ export function buildComposePrompt(
   const singleLine = singleRole
     ? `6. 本次是「单道替换」：只输出恰好 1 道菜，且 role 必须是 ${singleRole}。`
     : '6. 午餐/晚餐的 staple 必须是分类为「主食」的菜；分类为「主食」的菜必须标 staple。'
-  const system = `你是中餐营养搭配助手。给定候选菜谱短名单（JSON）与约束，组合一餐（1-4 道菜）。
+  const system = `你是营养搭配助手。给定候选菜谱短名单（JSON）与约束，组合一餐（1-4 道菜）。
 硬性要求：
 1. 至少一道 role="staple"（主食）；
 2. 只能从短名单中选，不得编造 recipe_id；
 3. 每道菜给 role（staple|main|side|soup|drink）与不超过 30 字的推荐理由；
 4. 避开「排除菜谱」与「近 7 天已推荐」中的菜；优先满足用户偏好、营养目标与预算；
-5. 用中文输出理由；
+5. 理由用界面语言书写；菜系不限（不限于中餐），按短名单里实际有的菜搭配；
 ${singleLine}
 只输出一个 JSON 对象，不要 markdown 代码块、不要解释：
 {"dishes": [{"recipe_id": 123, "role": "staple", "reason": "…"}], "note": "整餐一句话理由"}`
