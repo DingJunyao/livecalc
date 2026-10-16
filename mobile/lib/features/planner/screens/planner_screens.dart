@@ -32,13 +32,43 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
         () => ref.read(plannerListProvider.notifier).load());
   }
 
+  /// 「一顿」方案要先选要替换哪一餐（与 web 同口径）；「一日」一次设三餐
   Future<void> _setToday(Map<String, dynamic> plan) async {
+    final l10n = AppLocalizations.of(context);
+    if (plan['kind'] == 'day') {
+      await _doSetToday(plan, null);
+      return;
+    }
+    if (!mounted) return;
+    final mealType = await showDialog<String>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        title: Text(l10n.plansSetToday),
+        children: [
+          for (final entry in {
+            'breakfast': l10n.homeBreakfast,
+            'lunch': l10n.homeLunch,
+            'dinner': l10n.homeDinner,
+          }.entries)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, entry.key),
+              child: Text(entry.value),
+            ),
+        ],
+      ),
+    );
+    if (mealType == null) return;
+    await _doSetToday(plan, mealType);
+  }
+
+  Future<void> _doSetToday(
+      Map<String, dynamic> plan, String? mealType) async {
     final l10n = AppLocalizations.of(context);
     setState(() => _settingPlan = true);
     try {
       await PlannerRepository().setPlan(
         plan['id'] as int,
-        mealType: plan['kind'] == 'day' ? null : 'dinner',
+        mealType: mealType,
       );
       if (!mounted) return;
       // 提示用户回首页看推荐
