@@ -1914,6 +1914,7 @@
     "nutrition": "营养成分",
     "servings": "份量",
     "quantity": "数量",
+    "defaultUnit": "默认单位",
     "totals": "合计 vs 目标",
     "totalCost": "成本",
     "calories": "热量",

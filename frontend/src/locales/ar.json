@@ -1914,6 +1914,7 @@
     "nutrition": "التغذية",
     "servings": "الحصص",
     "quantity": "الكمية",
+    "defaultUnit": "الوحدة الافتراضية",
     "totals": "الإجمالي مقابل الهدف",
     "totalCost": "التكلفة",
     "calories": "السعرات",

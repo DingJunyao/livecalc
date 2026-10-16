@@ -1914,6 +1914,7 @@
     "nutrition": "Nutrition",
     "servings": "Servings",
     "quantity": "Quantity",
+    "defaultUnit": "Default unit",
     "totals": "Totals vs targets",
     "totalCost": "Cost",
     "calories": "Calories",

@@ -143,11 +143,11 @@
                   v-model="item.servings"
                   :min="0.5"
                   :step="0.5"
-                  control-variant="stack"
+                  control-variant="hidden"
                   density="compact"
                   hide-details
                   inline
-                  style="max-width: 120px"
+                  style="width: 96px"
                 />
               </template>
               <template v-else>
@@ -156,11 +156,21 @@
                   v-model="item.quantity"
                   :min="0"
                   :step="10"
-                  control-variant="stack"
+                  control-variant="hidden"
                   density="compact"
                   hide-details
                   inline
-                  style="max-width: 120px"
+                  style="width: 110px"
+                />
+                <v-select
+                  v-model="item.unit_id"
+                  :items="unitOptions"
+                  :placeholder="t('plans.defaultUnit')"
+                  density="compact"
+                  hide-details
+                  variant="plain"
+                  clearable
+                  style="width: 150px"
                 />
               </template>
             </v-card-text>
@@ -193,6 +203,17 @@
         </v-row>
       </v-card>
 
+      <!-- 方案里没有可算营养的条目（例如商品没维护营养）时给明确提示 -->
+      <v-alert
+        v-if="evaluation && !evaluation.nutrition?.per_serving_nutrition"
+        type="info"
+        variant="tonal"
+        density="compact"
+        class="mb-4"
+      >
+        {{ t('recipes.noNutritionData') }}
+      </v-alert>
+
       <!-- 宽屏：成本构成 | 成本走势（含价格区间） 左右分列 -->
       <v-row no-gutters>
         <v-col cols="12" md="6">
@@ -203,22 +224,14 @@
           />
         </v-col>
         <v-col cols="12" md="6">
-          <!-- 成本走势 -->
-          <v-card v-if="editor.id" elevation="0" class="ma-4">
-            <v-card-title class="d-flex align-center pb-2">
-              <div class="text-subtitle-2">{{ t('plans.costTrend') }}</div>
-              <v-spacer />
-              <v-btn-toggle v-model="trendDays" density="compact" variant="tonal">
-                <v-btn :value="30">30{{ t('plans.days') }}</v-btn>
-                <v-btn :value="90">90{{ t('plans.days') }}</v-btn>
-                <v-btn :value="365">365{{ t('plans.days') }}</v-btn>
-              </v-btn-toggle>
-            </v-card-title>
-            <v-divider />
-            <v-card-text>
-              <div ref="trendCanvas" style="height: 260px" />
-            </v-card-text>
-          </v-card>
+          <!-- 成本走势：与「食材成本占比」同一套卡片样式（复用菜谱详情的图表，自带价格区间） -->
+          <CostTrendAnalysis
+            v-if="editor.id"
+            :recipe-id="editor.id"
+            :cost-history="trendPoints"
+            :loading="trendLoading"
+            @filter-change="onTrendFilterChange"
+          />
         </v-col>
       </v-row>
 
@@ -265,9 +278,9 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useDisplay } from 'vuetify'
-import * as echarts from 'echarts'
 import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import CostProportionChart from '@/components/recipes/CostProportionChart.vue'
+import CostTrendAnalysis from '@/components/recipes/CostTrendAnalysis.vue'
 import NutritionSourceGrid from '@/components/recipes/NutritionSourceGrid.vue'
 import { api } from '@/api'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
@@ -277,7 +290,7 @@ import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useLocaleStore } from '@/stores/locale'
 import { formatMoney } from '@/utils/currency'
-import { formatDate, formatNumber } from '@/utils/format'
+import { formatNumber } from '@/utils/format'
 import {
   getPlan, createPlan, updatePlan, deletePlan,
   evaluatePlan, getPlanCostTrend, setPlanAsRecommendation,
@@ -307,9 +320,11 @@ const loading = ref(false)
 const saving = ref(false)
 const settingToday = ref(false)
 const evaluation = ref<PlanEvaluation | null>(null)
-const trendDays = ref(90)
-const trendCanvas = ref<HTMLElement | null>(null)
-let trendChart: echarts.ECharts | null = null
+/** 成本走势数据（交给 CostTrendAnalysis 渲染：平均线 + 价格区间带） */
+const trendPoints = ref<any[]>([])
+const trendLoading = ref(false)
+/** 单位下拉（方案条目的数量单位，value 用 unit_id —— 与后端 meal_plan_items.unit_id 对齐） */
+const unitOptions = ref<{ title: string; value: number }[]>([])
 
 const editor = ref<{
   id: number | null
@@ -573,7 +588,7 @@ async function loadPlan() {
   // loading 落下后 v-if 才渲染出内容（含图表容器），此时再求值 / 画图
   await nextTick()
   void evaluateDraft()
-  void renderTrend()
+  void loadTrend()
 }
 
 function goBack() {
@@ -597,7 +612,7 @@ async function onSave() {
       await updatePlan(editor.value.id, body)
       notify(t('plans.saved'), 'success')
       await nextTick()
-      void renderTrend()
+      void loadTrend()
     } else {
       const created = await createPlan(body)
       notify(t('plans.saved'), 'success')
@@ -640,92 +655,50 @@ async function onSetToday() {
   }
 }
 
-// ---- 趋势图（echarts，与 CostTrendAnalysis 同库） ----
-async function renderTrend() {
-  if (!editor.value.id || !trendCanvas.value) return
-  try {
-    const points = await getPlanCostTrend(editor.value.id, trendDays.value)
-    trendChart = trendChart || echarts.init(trendCanvas.value)
-    const code = points.find(p => p.currency)?.currency || userCurrency.value
-    const minPts = points.map(p => [p.date, p.min_cost ?? p.total_cost])
-    // 堆叠区间带：第二条必须放「max - min」的差值，否则会叠成 [min, min + max]（平均值就贴底了）
-    const bandPts = points.map(p => [
-      p.date,
-      Math.max(0, (p.max_cost ?? p.total_cost) - (p.min_cost ?? p.total_cost)),
-    ])
-    const avgPts = points.map(p => [p.date, p.total_cost])
-    const money = (v: unknown) => {
-      const num = Array.isArray(v) ? Number(v[1]) : Number(v)
-      return Number.isFinite(num) ? formatMoney(num, code) : '-'
-    }
-    trendChart.setOption({
-      tooltip: {
-        trigger: 'axis',
-        formatter: (params: any[]) => {
-          const date = params[0] ? formatDate(params[0].axisValue, localeStore.effectiveFormatLocale) : ''
-          const avg = params.find((p: any) => p.seriesName === t('plans.totalCost'))
-          const mn = params.find((p: any) => p.seriesName === t('recipes.minimum'))
-          const band = params.find((p: any) => p.seriesName === t('recipes.maximum'))
-          const num = (v: unknown) => (Array.isArray(v) ? Number(v[1]) : Number(v))
-          const minValue = mn ? num(mn.value) : NaN
-          const maxValue = band ? minValue + num(band.value) : NaN
-          return `${date}<br/>${t('recipes.averageCost')}: ${avg ? money(avg.value) : '-'}`
-            + `<br/>${t('recipes.rangeLabel')}: ${Number.isFinite(minValue) ? money(minValue) : '-'} ~ `
-            + `${Number.isFinite(maxValue) ? money(maxValue) : '-'}`
-        },
-      },
-      grid: { left: 60, right: 16, top: 16, bottom: 28 },
-      xAxis: { type: 'time', axisLabel: { hideOverlap: true } },
-      yAxis: { type: 'value', scale: true, axisLabel: { formatter: (v: number) => formatMoney(v, code) } },
-      series: [
-        {
-          name: t('recipes.minimum'),
-          type: 'line',
-          data: minPts,
-          lineStyle: { width: 0 },
-          symbol: 'none',
-          stack: 'range',
-          areaStyle: { opacity: 0 },
-          silent: true,
-        },
-        {
-          name: t('recipes.maximum'),
-          type: 'line',
-          data: bandPts,
-          lineStyle: { width: 0 },
-          symbol: 'none',
-          stack: 'range',
-          areaStyle: { color: 'rgba(255,152,0,0.18)' },
-          silent: true,
-        },
-        {
-          name: t('plans.totalCost'),
-          type: 'line',
-          data: avgPts,
-          smooth: true,
-          showSymbol: false,
-          lineStyle: { width: 2, color: '#ff9800' },
-          itemStyle: { color: '#ff9800' },
-        },
-      ],
-    }, true)
-  } catch { /* 趋势失败静默 */ }
+// ---- 成本走势 ----
+const TREND_FILTER_DAYS: Record<string, number> = {
+  week: 7, month: 30, quarter: 90, year: 365, all: 3650,
 }
 
-watch(trendDays, () => void renderTrend())
-// 方案 id 变化（载入 / 新建保存后 replace）→ 等 DOM 出来再画
-watch(() => editor.value.id, async () => {
-  await nextTick()
-  void renderTrend()
-})
+async function loadTrend(days = 90) {
+  if (!editor.value.id) {
+    trendPoints.value = []
+    return
+  }
+  trendLoading.value = true
+  try {
+    trendPoints.value = await getPlanCostTrend(editor.value.id, days)
+  } catch {
+    trendPoints.value = []
+  } finally {
+    trendLoading.value = false
+  }
+}
 
-function onResize() {
-  trendChart?.resize()
+function onTrendFilterChange(filter: string) {
+  void loadTrend(TREND_FILTER_DAYS[filter] ?? 90)
+}
+
+// 方案 id 变化（载入 / 新建保存后 replace）→ 重新拉趋势
+watch(() => editor.value.id, () => void loadTrend())
+
+/** 单位下拉：全局启用单位（value 用 unit_id）+ 实体自定义单位（若带 id） */
+async function loadUnitOptions() {
+  if (unitOptions.value.length) return
+  try {
+    const res: any = await api.get('/units/', { params: { limit: 500 } })
+    const rows = Array.isArray(res) ? res : (res?.items || [])
+    unitOptions.value = rows
+      .filter((u: any) => u?.is_active !== false && u?.id != null)
+      .map((u: any) => ({ title: `${u.name} (${u.abbreviation})`, value: Number(u.id) }))
+  } catch {
+    // 拉不到就保持默认单位（原料按克 / 商品按记录单位）
+  }
 }
 
 onMounted(() => {
   void loadPlan()
-  window.addEventListener('resize', onResize)
+  void loadUnitOptions()
 })
 
 // 同一路由内换方案（列表点进另一个方案 / 新建后 replace 成 :id）也要重新载入
@@ -734,8 +707,7 @@ watch(() => route.fullPath, () => {
 })
 
 onUnmounted(() => {
-  window.removeEventListener('resize', onResize)
-  trendChart?.dispose()
+  // 无本地图表实例需要释放（趋势由 CostTrendAnalysis 自管）
 })
 </script>
 

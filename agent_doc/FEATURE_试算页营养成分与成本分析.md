@@ -91,3 +91,25 @@
 - `npx tsc --noEmit` 137（135 基线 + 2 条 `.vue` 路由盲区）/ 模板 → 脚本标识符核对 ✓
 - 仍未实机验证（`/plans` 需登录）
 
+## 再一轮（用户实机反馈四条）
+
+1. **条目数量输入显示不全 + 没有单位下拉**：`v-number-input` 原来 `style="max-width: 120px"` 且带步进器，
+   数字被挤掉 → 改 `control-variant="hidden"` + 固定 `width: 96/110px`；原料/商品条目补单位下拉
+   （`value` 用 **unit_id**，与 `meal_plan_items.unit_id` 对齐；候选来自 `GET /units/?limit=500` 的启用项，
+   拉不到就保持后端默认：原料按克 / 商品按记录标准单位），新增三语键 `plans.defaultUnit` 作占位文案。
+2. **各食材营养占比图表看不到**：核查后确认**后端数据是全的**（开发库 plan 2：17 项核心营养素、6 个条目贡献、
+   min 101.11 / max 107.58）。判断是**运行中的后端仍在旧代码上**（本轮做 git 迁移时还原过 `backend/**`，
+   uvicorn 未必跟上）→ 需要重启后端；为避免以后再把「数据缺失」看成「图表没出来」，详情页在没有营养块时
+   加了一条明确提示（复用 `recipes.noNutritionData`）。
+3. **成本走势标题与「食材成本占比」不一致 + 区间又看不到**：自绘的 echarts 走势（含手写的 min/max 堆叠区间带）
+   整个删掉，改为直接复用菜谱详情的 `CostTrendAnalysis` —— 卡片标题/结构天然一致，价格区间带、图例、
+   周/月/季/年/全部 筛选都由它负责（`filter-change` 映射到 7/30/90/365/3650 天再拉数据）。
+   少一份自绘图表 = 少一处「区间算错/不显示」的坑。
+4. **列表 NRV**：NRV 取的是 `nutrition.per_serving_nutrition.all_nutrients[key].nrp_pct`（后端算好），
+   数据没到就没有 —— 同 (2)，随后端重启即恢复；布局本身是 `flex-wrap`，空间不够会自动换行。
+
+### 验证（再一轮）
+
+- `npm run build` ✓ / `check:i18n` ✓ / `check:i18n:sources` 2167 ✓（少了一个只因模板不再用 `plans.days`）/ `tsc` 137 ✓
+- 模板 → 脚本标识符核对 ✓；未实机验证
+
