@@ -7,6 +7,9 @@ class RecommendedDish {
   final String? currency;
   final String? imageUrl;
   final double? calories;
+  final double? proteinG;
+  final double? carbsG;
+  final double? fatG;
   final String role; // staple / main / side / soup / drink
   final String? reason;
 
@@ -18,6 +21,9 @@ class RecommendedDish {
     this.currency,
     this.imageUrl,
     this.calories,
+    this.proteinG,
+    this.carbsG,
+    this.fatG,
     this.role = 'main',
     this.reason,
   });
@@ -32,10 +38,28 @@ class RecommendedDish {
       currency: json['currency'] as String?,
       imageUrl: (json['image_urls'] as List<dynamic>?)?.firstOrNull?.toString(),
       calories: (nutrition?['calories'] as num?)?.toDouble(),
+      proteinG: (nutrition?['protein_g'] as num?)?.toDouble(),
+      carbsG: (nutrition?['carbs_g'] as num?)?.toDouble(),
+      fatG: (nutrition?['fat_g'] as num?)?.toDouble(),
       role: json['role'] as String? ?? 'main',
       reason: json['reason'] as String?,
     );
   }
+}
+
+/// 一组营养合计（[energy] 为库存 kcal，其余为 g）。
+class MealNutrients {
+  final double energy;
+  final double protein;
+  final double carbohydrate;
+  final double fat;
+
+  const MealNutrients({
+    this.energy = 0,
+    this.protein = 0,
+    this.carbohydrate = 0,
+    this.fat = 0,
+  });
 }
 
 class MealRecommendation {
@@ -55,12 +79,14 @@ class MealRecommendation {
   final String? reason;
   final String? preference;
   /// 试算方案来源餐（source='plan'）
+  final int? planId;
   final String? planName;
   final String? planKind;
   final List<MealPlanItemBrief> planItems;
   final double? planCost;
   final double? planCalories;
   final double? planProteinG;
+  final double? planCarbsG;
   final double? planFatG;
 
   const MealRecommendation({
@@ -78,16 +104,59 @@ class MealRecommendation {
     this.source,
     this.reason,
     this.preference,
+    this.planId,
     this.planName,
     this.planKind,
     this.planItems = const [],
     this.planCost,
     this.planCalories,
     this.planProteinG,
+    this.planCarbsG,
     this.planFatG,
   });
 
   bool get isAiSource => source == 'system_ai' || source == 'user_ai';
+
+  /// 多道菜合计营养（逐道 nutrition_per_serving 相加，与 web 餐卡同口径）。
+  MealNutrients get dishNutrients {
+    var energy = 0.0;
+    var protein = 0.0;
+    var carbohydrate = 0.0;
+    var fat = 0.0;
+    for (final dish in dishes) {
+      energy += dish.calories ?? 0;
+      protein += dish.proteinG ?? 0;
+      carbohydrate += dish.carbsG ?? 0;
+      fat += dish.fatG ?? 0;
+    }
+    return MealNutrients(
+      energy: energy,
+      protein: protein,
+      carbohydrate: carbohydrate,
+      fat: fat,
+    );
+  }
+
+  /// 多道菜合计成本；一道成本都没有时返回 null（显示 --）。
+  double? get dishCost {
+    var sum = 0.0;
+    var found = false;
+    for (final dish in dishes) {
+      final cost = dish.estimatedCost;
+      if (cost == null) continue;
+      found = true;
+      sum += cost;
+    }
+    return found ? sum : null;
+  }
+
+  /// 方案来源餐的营养合计。
+  MealNutrients get planNutrients => MealNutrients(
+        energy: planCalories ?? 0,
+        protein: planProteinG ?? 0,
+        carbohydrate: planCarbsG ?? 0,
+        fat: planFatG ?? 0,
+      );
 
   factory MealRecommendation.fromJson(Map<String, dynamic> json) {
     final plan = json['plan'] as Map<String, dynamic>?;
@@ -113,6 +182,7 @@ class MealRecommendation {
       source: json['source'] as String?,
       reason: json['reason'] as String?,
       preference: json['preference'] as String?,
+      planId: plan?['id'] as int?,
       planName: plan?['name'] as String?,
       planKind: plan?['kind'] as String?,
       planItems: (plan?['items'] as List<dynamic>?)
@@ -128,23 +198,44 @@ class MealRecommendation {
       planProteinG: ((plan?['totals'] as Map<String, dynamic>?)?['protein_g']
               as num?)
           ?.toDouble(),
+      planCarbsG: ((plan?['totals'] as Map<String, dynamic>?)?['carbs_g']
+              as num?)
+          ?.toDouble(),
       planFatG: ((plan?['totals'] as Map<String, dynamic>?)?['fat_g'] as num?)
           ?.toDouble(),
     );
   }
 }
 
-/// 方案来源餐的条目（名称 + 成本）
+/// 方案来源餐的条目（名称 + 成本 + 可跳转的实体 id / 首图）
 class MealPlanItemBrief {
+  final String? itemType; // recipe / ingredient / product
   final String? name;
   final double? cost;
+  final int? recipeId;
+  final int? ingredientId;
+  final int? productId;
+  final String? imageUrl;
 
-  const MealPlanItemBrief({this.name, this.cost});
+  const MealPlanItemBrief({
+    this.itemType,
+    this.name,
+    this.cost,
+    this.recipeId,
+    this.ingredientId,
+    this.productId,
+    this.imageUrl,
+  });
 
   factory MealPlanItemBrief.fromJson(Map<String, dynamic> json) {
     return MealPlanItemBrief(
+      itemType: json['item_type'] as String?,
       name: json['name'] as String?,
       cost: (json['cost'] as num?)?.toDouble(),
+      recipeId: json['recipe_id'] as int?,
+      ingredientId: json['ingredient_id'] as int?,
+      productId: json['product_id'] as int?,
+      imageUrl: (json['image_urls'] as List<dynamic>?)?.firstOrNull?.toString(),
     );
   }
 }

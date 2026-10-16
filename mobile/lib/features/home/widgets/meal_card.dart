@@ -2,25 +2,36 @@ import 'package:flutter/material.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../models/meal_recommendation.dart';
+import '../../../shared/utils/nutrition_display.dart';
 import '../../../shared/utils/currency_fmt.dart';
 
 class MealCard extends StatelessWidget {
   final MealRecommendation meal;
-  final VoidCallback? onTap;
+  /// 单道菜点按：传入该菜谱 id（进菜谱详情）
+  final void Function(int recipeId)? onDishTap;
+  /// 方案条目点按：进对应实体详情
+  final void Function(MealPlanItemBrief item)? onPlanItemTap;
+  /// 方案名点按（移动端暂无方案独立详情路由，先落到试算页）
+  final VoidCallback? onPlanTap;
   final bool isRefreshing;
   final VoidCallback? onRefresh;
   /// 单道换：传入被换菜的 recipeId（null = 整餐重搭）
   final void Function(int recipeId)? onSwapDish;
   final String userCurrency;
+  /// 能量显示单位（kcal / kJ，随用户偏好，与 web 一致）
+  final String energyUnit;
 
   const MealCard({
     super.key,
     required this.meal,
-    this.onTap,
+    this.onDishTap,
+    this.onPlanItemTap,
+    this.onPlanTap,
     this.isRefreshing = false,
     this.onRefresh,
     this.onSwapDish,
     this.userCurrency = 'CNY',
+    this.energyUnit = 'kcal',
   });
 
   IconData _mealIcon(String type) {
@@ -49,29 +60,12 @@ class MealCard extends StatelessWidget {
     }
   }
 
-  String _roleLabel(String role, AppLocalizations l10n) {
-    switch (role) {
-      case 'staple':
-        return l10n.mealsRoleStaple;
-      case 'main':
-        return l10n.mealsRoleMain;
-      case 'side':
-        return l10n.mealsRoleSide;
-      case 'soup':
-        return l10n.mealsRoleSoup;
-      case 'drink':
-        return l10n.mealsRoleDrink;
-      default:
-        return role;
-    }
-  }
-
-  /// 方案来源餐：方案名 + 逐条目成本 + 合计与营养
+  /// 方案来源餐：方案名 + 逐条目成本 + 合计与营养（与多道菜块同格式）
   Widget _buildPlanSection(ThemeData theme, AppLocalizations l10n) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
@@ -79,12 +73,15 @@ class MealCard extends StatelessWidget {
                   size: 16, color: theme.colorScheme.tertiary),
               const SizedBox(width: 6),
               Expanded(
-                child: Text(
-                  meal.planName ?? '',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600),
+                child: InkWell(
+                  onTap: onPlanTap,
+                  child: Text(
+                    meal.planName ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ),
               Text(
@@ -96,65 +93,113 @@ class MealCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 2),
           for (final item in meal.planItems)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      item.name ?? '-',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall,
-                    ),
-                  ),
-                  Text(
-                    item.cost != null
-                        ? formatMoney(item.cost!, userCurrency)
-                        : '--',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
+            _buildItemRow(
+              theme,
+              name: item.name ?? '-',
+              trailing: item.cost != null
+                  ? formatMoney(item.cost!, userCurrency)
+                  : '--',
+              onTap: onPlanItemTap == null ? null : () => onPlanItemTap!(item),
             ),
-          const Divider(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(l10n.plansTotalCost,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              Text(formatMoney(meal.planCost ?? 0, userCurrency),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 16,
-            runSpacing: 6,
-            children: [
-              _nutrientChip(
-                Icons.local_fire_department,
-                '${formatNumber((meal.planCalories ?? 0).round())} kcal',
-                theme,
-              ),
-              _nutrientChip(
-                Icons.egg_outlined,
-                '${formatNumber(meal.planProteinG ?? 0, maximumFractionDigits: 1)} g ${l10n.homeProtein}',
-                theme,
-              ),
-              _nutrientChip(
-                Icons.water_drop_outlined,
-                '${formatNumber(meal.planFatG ?? 0, maximumFractionDigits: 1)} g ${l10n.homeFat}',
-                theme,
-              ),
-            ],
-          ),
+          _buildTotalsFooter(theme, l10n, meal.planNutrients,
+              cost: meal.planCost),
         ],
       ),
+    );
+  }
+
+  /// 条目行：菜名 + 成本（多道菜块与方案块共用，行距一致）
+  Widget _buildItemRow(
+    ThemeData theme, {
+    required String name,
+    required String trailing,
+    Widget? action,
+    VoidCallback? onTap,
+  }) {
+    final row = ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 36),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(trailing, style: theme.textTheme.bodyMedium),
+          if (action != null) action,
+        ],
+      ),
+    );
+    return onTap == null ? row : InkWell(onTap: onTap, child: row);
+  }
+
+  /// 块尾：分割线 + 成本合计 + 四项营养素（各带 NRV%），与 web 餐卡同格式
+  Widget _buildTotalsFooter(
+    ThemeData theme,
+    AppLocalizations l10n,
+    MealNutrients nutrients, {
+    double? cost,
+  }) {
+    final labelStyle =
+        theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600);
+    final lineStyle =
+        theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(l10n.plansTotalCost, style: labelStyle),
+            Text(cost != null ? formatMoney(cost, userCurrency) : '--',
+                style: labelStyle),
+          ],
+        ),
+        const SizedBox(height: 4),
+        _nutrientLine(
+          lineStyle,
+          l10n.plansCalories,
+          '${formatNumber(toDisplayCalorie(nutrients.energy, energyUnit))} '
+              '$energyUnit',
+          nrvPct('energy', nutrients.energy),
+        ),
+        _nutrientLine(
+          lineStyle,
+          l10n.plansProtein,
+          '${formatNumber(nutrients.protein, maximumFractionDigits: 1)} g',
+          nrvPct('protein', nutrients.protein),
+        ),
+        _nutrientLine(
+          lineStyle,
+          l10n.nutritionNutrientCarbohydrate,
+          '${formatNumber(nutrients.carbohydrate, maximumFractionDigits: 1)} g',
+          nrvPct('carbohydrate', nutrients.carbohydrate),
+        ),
+        _nutrientLine(
+          lineStyle,
+          l10n.plansFat,
+          '${formatNumber(nutrients.fat, maximumFractionDigits: 1)} g',
+          nrvPct('fat', nutrients.fat),
+        ),
+      ],
+    );
+  }
+
+  Widget _nutrientLine(
+      TextStyle? style, String label, String value, double? pct) {
+    final suffix = pct == null
+        ? ''
+        : ' (NRV ${formatPercentValue(pct, maximumFractionDigits: 2)})';
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text('$label $value$suffix', style: style),
     );
   }
 
@@ -181,13 +226,17 @@ class MealCard extends StatelessWidget {
   /// 标题/封面行是否还要再写一遍菜名：多道菜清单或方案条目已逐项列出名字时不再重复。
   bool get _showHeaderNames => !_isPlan && !_hasDishes;
 
-  /// 封面图：staple（无则首道）有图者
-  RecommendedDish? get _coverDish {
-    if (!_hasDishes) return null;
-    return meal.dishes.firstWhere(
-      (d) => d.imageUrl != null && d.imageUrl!.isNotEmpty,
-      orElse: () => meal.dishes.first,
-    );
+  /// 首图行：有图的菜谱才出图，有几张就并排几张（与 web 同口径）。
+  List<String> get _headerImageUrls {
+    final urls = _isPlan
+        ? meal.planItems.map((item) => item.imageUrl)
+        : _hasDishes
+            ? meal.dishes.map((dish) => dish.imageUrl)
+            : <String?>[meal.imageUrl];
+    return urls
+        .whereType<String>()
+        .where((url) => url.isNotEmpty)
+        .toList(growable: false);
   }
 
   /// 兼容单道菜/空数据时的名称（多道菜与方案的名字见下方清单）。
@@ -197,10 +246,7 @@ class MealCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final cover = _coverDish;
-    final hasImage = _hasDishes
-        ? (cover?.imageUrl?.isNotEmpty ?? false)
-        : (meal.imageUrl != null && meal.imageUrl!.isNotEmpty);
+    final headerImages = _headerImageUrls;
     final hasBody = _isPlan || _hasDishes ||
         meal.calories != null ||
         meal.proteinG != null ||
@@ -213,9 +259,8 @@ class MealCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasImage)
-            _buildImageHeader(theme, l10n,
-                _hasDishes ? cover!.imageUrl! : meal.imageUrl!)
+          if (headerImages.isNotEmpty)
+            _buildImageHeader(theme, l10n, headerImages)
           else
             _buildTitleHeader(theme, l10n),
           if (_isPlan)
@@ -329,118 +374,102 @@ class MealCard extends StatelessWidget {
   /// 多道菜清单：role 徽标 + 名称 + 成本·热量 + 换这道
   Widget _buildDishList(ThemeData theme, AppLocalizations l10n) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (final dish in meal.dishes)
-            ListTile(
-              dense: true,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-              onTap: onTap,
-              title: Row(
-                children: [
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: dish.role == 'staple'
-                          ? theme.colorScheme.primaryContainer
-                          : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      _roleLabel(dish.role, l10n),
-                      style: theme.textTheme.labelSmall?.copyWith(
-                        color: dish.role == 'staple'
-                            ? theme.colorScheme.onPrimaryContainer
-                            : theme.colorScheme.outline,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      dish.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium
-                          ?.copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              subtitle: Text(
-                '${dish.estimatedCost != null ? formatMoney(dish.estimatedCost!, dish.currency ?? userCurrency) : '--'}'
-                '${dish.calories != null ? ' · ${formatNumber(dish.calories!.round())} kcal' : ''}',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.tertiary),
-              ),
-              trailing: onSwapDish != null
-                  ? IconButton(
+            _buildItemRow(
+              theme,
+              name: dish.name,
+              trailing: dish.estimatedCost != null
+                  ? formatMoney(dish.estimatedCost!,
+                      dish.currency ?? userCurrency)
+                  : '--',
+              action: onSwapDish == null
+                  ? null
+                  : IconButton(
                       icon: const Icon(Icons.swap_horiz, size: 20),
                       tooltip: l10n.mealsChangeDish,
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                          width: 32, height: 32),
                       onPressed: isRefreshing
                           ? null
                           : () => onSwapDish!(dish.recipeId),
-                    )
-                  : null,
-            ),
-          if (_isAi)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
-              child: Row(
-                children: [
-                  Icon(Icons.auto_awesome,
-                      size: 12, color: theme.colorScheme.tertiary),
-                  const SizedBox(width: 4),
-                  Text(
-                    l10n.mealsAiGenerated,
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.tertiary),
-                  ),
-                ],
               ),
+              onTap: onDishTap == null
+                  ? null
+                  : () => onDishTap!(dish.recipeId),
             ),
+          _buildTotalsFooter(theme, l10n, meal.dishNutrients,
+              cost: meal.dishCost),
+          if (_isAi) _buildAiBadge(theme, l10n),
+        ],
+      ),
+    );
+  }
+
+  /// AI 标识：整张卡只在块尾保留这一处（头部不再重复写一遍）
+  Widget _buildAiBadge(ThemeData theme, AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6, bottom: 2),
+      child: Row(
+        children: [
+          Icon(Icons.auto_awesome, size: 12, color: theme.colorScheme.tertiary),
+          const SizedBox(width: 4),
+          Text(
+            l10n.mealsAiGenerated,
+            style: theme.textTheme.labelSmall
+                ?.copyWith(color: theme.colorScheme.tertiary),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildImageHeader(
-      ThemeData theme, AppLocalizations l10n, String imageUrl) {
+      ThemeData theme, AppLocalizations l10n, List<String> imageUrls) {
     return SizedBox(
-      height: 140,
+      height: 120,
       width: double.infinity,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            imageUrl,
-            fit: BoxFit.cover,
-            loadingBuilder: (context, child, progress) {
-              if (progress == null) return child;
-              return Container(
-                color: theme.colorScheme.surfaceContainerHighest,
-                child: const Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+          Row(
+            children: [
+              for (final imageUrl in imageUrls)
+                Expanded(
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, progress) {
+                      if (progress == null) return child;
+                      return Container(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        child: const Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (_, __, ___) => Container(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      child: Center(
+                        child: Icon(
+                          _mealIcon(meal.mealType),
+                          size: 48,
+                          color: theme.colorScheme.outline,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-              );
-            },
-            errorBuilder: (_, __, ___) => Container(
-              color: theme.colorScheme.surfaceContainerHighest,
-              child: Center(
-                child: Icon(
-                  _mealIcon(meal.mealType),
-                  size: 48,
-                  color: theme.colorScheme.outline,
-                ),
-              ),
-            ),
+            ],
           ),
           Positioned(
             left: 0,
@@ -459,25 +488,10 @@ class MealCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    children: [
-                      Text(
-                        _mealLabel(meal.mealType, l10n),
-                        style: theme.textTheme.bodySmall
-                            ?.copyWith(color: Colors.white70),
-                      ),
-                      if (_isAi) ...[
-                        const SizedBox(width: 8),
-                        const Icon(Icons.auto_awesome,
-                            size: 12, color: Colors.white70),
-                        const SizedBox(width: 2),
-                        Text(
-                          l10n.mealsAiGenerated,
-                          style: theme.textTheme.labelSmall
-                              ?.copyWith(color: Colors.white70),
-                        ),
-                      ],
-                    ],
+                  Text(
+                    _mealLabel(meal.mealType, l10n),
+                    style: theme.textTheme.bodySmall
+                        ?.copyWith(color: Colors.white70),
                   ),
                   if (_showHeaderNames) ...[
                     const SizedBox(height: 2),
@@ -513,23 +527,10 @@ class MealCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(
-                      _mealLabel(meal.mealType, l10n),
-                      style: theme.textTheme.labelMedium
-                          ?.copyWith(color: theme.colorScheme.outline),
-                    ),
-                    if (_isAi) ...[
-                      const SizedBox(width: 8),
-                      Icon(Icons.auto_awesome,
-                          size: 12, color: theme.colorScheme.tertiary),
-                      const SizedBox(width: 2),
-                      Text(l10n.mealsAiGenerated,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                              color: theme.colorScheme.tertiary)),
-                    ],
-                  ],
+                Text(
+                  _mealLabel(meal.mealType, l10n),
+                  style: theme.textTheme.labelMedium
+                      ?.copyWith(color: theme.colorScheme.outline),
                 ),
                 if (_showHeaderNames) ...[
                   const SizedBox(height: 2),

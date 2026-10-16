@@ -3,7 +3,9 @@ import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../models/meal_recommendation.dart';
 import '../providers/home_provider.dart';
 import '../widgets/meal_card.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -40,6 +42,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(homeProvider);
+    final energyUnit =
+        ref.watch(authProvider).user?.unitPreferences?.energyUnit ?? 'kcal';
 
     ref.listen(homeProvider, (previous, next) {
       if (next.lastError != null && next.lastError != previous?.lastError) {
@@ -112,9 +116,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: MealCard(
                   meal: meal,
                   isRefreshing: state.refreshLoading[meal.mealType] ?? false,
-                  onTap: meal.recipeId != null
-                      ? () => context.push('/recipes/${meal.recipeId}')
-                      : null,
+                  onDishTap: (recipeId) => context.push('/recipes/$recipeId'),
+                  onPlanItemTap: (item) => _openPlanItem(context, item),
+                  onPlanTap: () => context.push('/plans'),
                   onSwapDish: (recipeId) => ref
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType, recipeId: recipeId),
@@ -122,6 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType),
                   userCurrency: ref.read(displayCurrencyProvider),
+                  energyUnit: energyUnit,
                 ),
               )),
         ],
@@ -176,6 +181,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+}
+
+/// 方案条目 → 对应实体详情（菜谱 / 原料 / 商品）
+void _openPlanItem(BuildContext context, MealPlanItemBrief item) {
+  final path = switch (item.itemType) {
+    'recipe' when item.recipeId != null => '/recipes/${item.recipeId}',
+    'ingredient' when item.ingredientId != null =>
+      '/ingredients/${item.ingredientId}',
+    'product' when item.productId != null => '/products/${item.productId}',
+    _ => null,
+  };
+  if (path != null) context.push(path);
 }
 
 String _homeErrorText(AppLocalizations l10n, HomeErrorCode code) {
