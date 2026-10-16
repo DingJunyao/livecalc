@@ -68,9 +68,6 @@
           :href="planItemLink(item) || undefined"
           @click.prevent="onPlanItemClick(item)"
         >
-          <v-chip size="x-small" :color="planItemTypeColor(item.item_type)" variant="tonal" class="me-2">
-            {{ planItemTypeLabel(item.item_type) }}
-          </v-chip>
           <span class="text-body-2 text-truncate flex-grow-1">{{ item.name || '…' }}</span>
           <span class="text-body-2 text-no-wrap ms-2">
             {{ item.cost != null ? formatMoney(item.cost, planView.totals?.currency || userCurrency) : '--' }}
@@ -135,7 +132,7 @@
         </v-card-title>
       </v-card-item>
 
-      <!-- 菜品清单（与「分组/方案」条目同一行结构：徽标 + 菜名 + 右侧成本·热量 + 换这道） -->
+      <!-- 菜品清单：与「分组/方案」条目同一行结构（唯一差别是行尾「换这道」） -->
       <div class="px-4 pt-1">
         <div
           v-for="dish in dishes"
@@ -143,13 +140,8 @@
           class="d-flex align-center py-0.5 meal-card__row meal-card__row--link"
           @click="goToRecipe(dish.id)"
         >
-          <v-chip size="x-small" :color="roleColor(dish.role)" variant="tonal" class="me-2">
-            {{ roleLabel(dish.role) }}
-          </v-chip>
           <span class="text-body-2 text-truncate flex-grow-1">{{ dish.name }}</span>
-          <span class="text-body-2 text-no-wrap ms-2">
-            {{ dishCost(dish) }} · {{ dishCalorie(dish) }}
-          </span>
+          <span class="text-body-2 text-no-wrap ms-2">{{ dishCost(dish) }}</span>
           <v-btn
             icon="mdi-swap-horizontal"
             size="x-small"
@@ -163,12 +155,19 @@
         </div>
       </div>
 
-      <!-- 合计营养（与分组块同格式：逐项一行 + NRV 内联） -->
-      <div class="px-4 py-2 text-caption text-medium-emphasis d-flex flex-column">
-        <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(mealNutrients.energy)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', mealNutrients.energy) }}%）</span>
-        <span>{{ t('plans.protein') }} {{ formatNumber(mealNutrients.protein, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', mealNutrients.protein) }}%）</span>
-        <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(mealNutrients.carbohydrate, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', mealNutrients.carbohydrate) }}%）</span>
-        <span>{{ t('plans.fat') }} {{ formatNumber(mealNutrients.fat, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', mealNutrients.fat) }}%）</span>
+      <!-- 合计（与分组块同格式：分割线 + 成本 + 逐项营养） -->
+      <v-divider class="mx-4 my-2" />
+      <div class="px-4 pb-2 d-flex flex-column">
+        <div class="d-flex justify-space-between text-body-2 font-weight-bold">
+          <span>{{ t('plans.totalCost') }}</span>
+          <span>{{ mealCostText }}</span>
+        </div>
+        <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
+          <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(mealNutrients.energy)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', mealNutrients.energy) }}%）</span>
+          <span>{{ t('plans.protein') }} {{ formatNumber(mealNutrients.protein, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', mealNutrients.protein) }}%）</span>
+          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(mealNutrients.carbohydrate, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', mealNutrients.carbohydrate) }}%）</span>
+          <span>{{ t('plans.fat') }} {{ formatNumber(mealNutrients.fat, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', mealNutrients.fat) }}%）</span>
+        </div>
       </div>
 
       <!-- 理由 / 偏好脚注 -->
@@ -384,18 +383,6 @@ const dishNames = computed(() => {
   return props.recommendation.recipe?.name || ''
 })
 
-function planItemTypeLabel(type: string): string {
-  if (type === 'recipe') return t('plans.typeRecipe')
-  if (type === 'ingredient') return t('plans.typeIngredient')
-  return t('plans.typeProduct')
-}
-
-function planItemTypeColor(type: string): string {
-  if (type === 'recipe') return 'primary'
-  if (type === 'ingredient') return 'success'
-  return 'tertiary'
-}
-
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
     staple: t('meals.roleStaple'),
@@ -502,6 +489,16 @@ const proteinText = computed(() => {
   return pro != null
     ? `${formatNumber(pro, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}`
     : '--'
+})
+
+/** AI 块的成本合计（各道菜 cost_estimate 相加） */
+const mealCostText = computed(() => {
+  if (dishes.value.length > 0) {
+    const sum = dishes.value.reduce((acc, d) => acc + Number(d.cost_estimate ?? 0), 0)
+    const currency = dishes.value.find(d => d.currency)?.currency || userCurrency.value
+    return formatMoney(sum, currency)
+  }
+  return costText.value
 })
 
 /** 方案条目 → 对应实体详情 */
