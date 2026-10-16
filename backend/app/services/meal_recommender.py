@@ -645,7 +645,8 @@ async def _build_response_from_records(
 
             plan = record.plan
             if plan is not None and plan.is_active:
-                evaluation = await evaluate_plan(db, user, plan, tz=tz)
+                # 一日方案按该餐的分组只取对应条目（否则三餐都会塞进整个方案）
+                evaluation = await evaluate_plan(db, user, plan, tz=tz, group=meal_type)
                 base_item["plan"] = {
                     "id": plan.id,
                     "name": plan.name,

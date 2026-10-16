@@ -390,9 +390,21 @@ async def evaluate_items(
 async def evaluate_plan(
     db: Session, user: User, plan: MealPlan, tz: str = "UTC",
     meal_type: str = "lunch",
+    group: Optional[str] = None,
 ) -> Dict:
-    """评估已落库方案（plan.items 已在 session）。"""
-    return await _evaluate_stub_items(db, user, list(plan.items), plan.kind, meal_type, tz)
+    """评估已落库方案（plan.items 已在 session）。
+
+    group：一日方案的条目分组（早/午/晚/其它）。传入时只评估该分组的条目，
+    且目标比例按「这一餐」算 —— 「一日方案设为今日」靠它把三餐拆开。
+    """
+    items = list(plan.items)
+    kind = plan.kind
+    target_meal = meal_type
+    if group and plan.kind == "day":
+        items = [it for it in items if it.group == group]
+        kind = "meal"
+        target_meal = group if group in ("breakfast", "lunch", "dinner") else "lunch"
+    return await _evaluate_stub_items(db, user, items, kind, target_meal, tz)
 
 
 async def _evaluate_stub_items(
