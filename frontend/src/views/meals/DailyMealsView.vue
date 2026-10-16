@@ -62,9 +62,20 @@
         <DailySummaryBar :totals="store.totals" :loading="false" />
       </div>
 
-      <!-- 一句话偏好 -->
-      <div class="px-4 pt-3">
+      <!-- 一句话偏好（可指定应用到哪一餐） -->
+      <div class="px-4 pt-3 d-flex ga-2 flex-wrap align-start">
+        <v-select
+          v-model="preferenceTarget"
+          :items="preferenceTargets"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="max-width: 168px"
+          :disabled="store.loading || store.generating"
+        />
         <v-text-field
+          class="flex-grow-1"
+          style="min-width: 220px"
           v-model="store.preferenceInput"
           :label="t('meals.preferencePlaceholder')"
           prepend-inner-icon="mdi-comment-quote-outline"
@@ -138,17 +149,38 @@ const snackbar = reactive({
 
 const applyingPreference = ref(false)
 
-/** 应用偏好：按当前餐重搭（有推荐时整餐重搭一次让偏好生效；无推荐交给生成流程） */
+/** 偏好应用范围：当前餐 / 指定某一餐 / 三餐全部 */
+const preferenceTarget = ref<'current' | 'breakfast' | 'lunch' | 'dinner' | 'all'>('current')
+const preferenceTargets = computed(() => [
+  { title: t('meals.preferenceTargetCurrent'), value: 'current' },
+  { title: t('meals.breakfast'), value: 'breakfast' },
+  { title: t('meals.lunch'), value: 'lunch' },
+  { title: t('meals.dinner'), value: 'dinner' },
+  { title: t('meals.preferenceTargetAll'), value: 'all' },
+])
+
+function hasAnyMeal(): boolean {
+  return store.recommendations.some(r => r.dishes?.length || r.recipe || r.plan)
+}
+
+/** 应用偏好：还没生成就交给生成流程（一次生成三餐），已生成则按所选范围整餐重搭 */
 async function applyPreference() {
   if (!store.preferenceInput || applyingPreference.value) return
   applyingPreference.value = true
   try {
-    const current = store.recommendations.find(r => r.is_current_meal) ||
-      store.recommendations.find(r => r.dishes?.length || r.recipe)
-    if (current) {
-      await store.refreshMeal(current.meal_type)
-    } else {
+    if (!hasAnyMeal()) {
       await store.loadRecommendations()
+    } else {
+      const current = store.recommendations.find(r => r.is_current_meal) ||
+        store.recommendations.find(r => r.dishes?.length || r.recipe || r.plan)
+      const targets: string[] = preferenceTarget.value === 'all'
+        ? ['breakfast', 'lunch', 'dinner']
+        : preferenceTarget.value === 'current'
+          ? [current?.meal_type || 'lunch']
+          : [preferenceTarget.value]
+      for (const mealType of targets) {
+        await store.refreshMeal(mealType)
+      }
     }
     snackbar.color = 'success'
     snackbar.message = t('meals.preferenceApplied')
