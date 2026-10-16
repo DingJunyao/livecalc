@@ -3726,6 +3726,30 @@ abstract class AppLocalizations {
   /// **'已按偏好重新组合'**
   String get mealsPreferenceApplied;
 
+  /// No description provided for @mealsEstimatedToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今日预估'**
+  String get mealsEstimatedToday;
+
+  /// No description provided for @chartsAverage.
+  ///
+  /// In zh, this message translates to:
+  /// **'平均'**
+  String get chartsAverage;
+
+  /// No description provided for @chartsRange.
+  ///
+  /// In zh, this message translates to:
+  /// **'范围'**
+  String get chartsRange;
+
+  /// No description provided for @plansDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'天'**
+  String get plansDays;
+
   /// No description provided for @navPlans.
   ///
   /// In zh, this message translates to:

@@ -1963,6 +1963,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mealsPreferenceApplied => 'أعيد التركيب وفق تفضيلك';
 
   @override
+  String get mealsEstimatedToday => 'تقدير اليوم';
+
+  @override
+  String get chartsAverage => 'المتوسط';
+
+  @override
+  String get chartsRange => 'النطاق';
+
+  @override
+  String get plansDays => 'يوم';
+
+  @override
   String get navPlans => 'الحاسبة';
 
   @override

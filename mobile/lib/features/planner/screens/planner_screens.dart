@@ -13,6 +13,9 @@ import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../providers/planner_provider.dart';
 import '../repositories/planner_repository.dart';
+import '../widgets/cost_trend_chart.dart';
+import '../widgets/plan_actions.dart';
+import '../widgets/plan_totals_grid.dart';
 
 /// 试算方案列表：查看 / 新建 / 删除 / 设为今日。
 class PlannerListScreen extends ConsumerStatefulWidget {
@@ -34,77 +37,18 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
 
   /// 「一顿」方案要先选要替换哪一餐（与 web 同口径）；「一日」一次设三餐
   Future<void> _setToday(Map<String, dynamic> plan) async {
-    final l10n = AppLocalizations.of(context);
-    if (plan['kind'] == 'day') {
-      await _doSetToday(plan, null);
-      return;
-    }
-    if (!mounted) return;
-    final mealType = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(l10n.plansSetToday),
-        children: [
-          for (final entry in {
-            'breakfast': l10n.homeBreakfast,
-            'lunch': l10n.homeLunch,
-            'dinner': l10n.homeDinner,
-          }.entries)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, entry.key),
-              child: Text(entry.value),
-            ),
-        ],
-      ),
-    );
-    if (mealType == null) return;
-    await _doSetToday(plan, mealType);
-  }
-
-  Future<void> _doSetToday(
-      Map<String, dynamic> plan, String? mealType) async {
-    final l10n = AppLocalizations.of(context);
+    if (_settingPlan) return;
     setState(() => _settingPlan = true);
     try {
-      await PlannerRepository().setPlan(
-        plan['id'] as int,
-        mealType: mealType,
-      );
-      if (!mounted) return;
-      // 提示用户回首页看推荐
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.plansSetTodayDone)),
-      );
-    } on Exception {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.plansSetTodayFailed)),
-      );
+      await setPlanToday(context, plan);
     } finally {
       if (mounted) setState(() => _settingPlan = false);
     }
   }
 
   Future<void> _delete(Map<String, dynamic> plan) async {
-    final l10n = AppLocalizations.of(context);
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(l10n.plansDeleteTitle),
-        content: Text('${plan['name']}?'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(l10n.commonCancel)),
-          FilledButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(l10n.commonConfirm)),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await ref.read(plannerListProvider.notifier).delete(plan['id'] as int);
-    }
+    if (!await confirmDeletePlan(context, plan)) return;
+    await ref.read(plannerListProvider.notifier).delete(plan['id'] as int);
   }
 
   @override
@@ -182,7 +126,7 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
       clipBehavior: Clip.antiAlias,
       child: ListTile(
         onTap: () async {
-          await context.push('/plans/edit', extra: {'plan': plan});
+          await context.push('/plans/${plan['id']}');
           ref.read(plannerListProvider.notifier).load();
         },
         title: Row(
@@ -296,7 +240,9 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
   List<Map<String, dynamic>> _items = const [];
   Map<String, dynamic>? _evaluation;
   List<Map<String, dynamic>> _trend = const [];
-  final int _trendDays = 90;
+  int _trendDays = 90;
+  /// 全局单位（原料 / 商品条目选单位用）
+  List<Map<String, dynamic>> _units = const [];
 
   @override
   void initState() {
@@ -321,6 +267,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
             .cast<Map<String, dynamic>>();
         _loading = false;
       });
+      await _loadUnits();
       await _evaluate();
       await _loadTrend();
     } on Exception catch (e) {
@@ -344,11 +291,84 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
       );
       if (!mounted) return;
       setState(() => _evaluation = evaluation);
+      _backfillUnitIds();
     } on Exception {
       // 求值失败静默，保留上次结果
     } finally {
       if (mounted) setState(() => _evaluating = false);
     }
+  }
+
+  Future<void> _loadUnits() async {
+    try {
+      final units = await _repo.units();
+      if (!mounted) return;
+      setState(() {
+        _units = units.where((unit) => unit['is_active'] != false).toList();
+      });
+    } on Exception {
+      // 单位拉不到就保持后端默认单位
+    }
+  }
+
+  String _unitLabel(Map<String, dynamic> unit) {
+    final abbreviation = (unit['abbreviation'] as String?)?.trim() ?? '';
+    final name = (unit['name'] as String?)?.trim() ?? '';
+    if (abbreviation.isEmpty) return name;
+    if (name.isEmpty || name == abbreviation) return abbreviation;
+    return '$abbreviation ($name)';
+  }
+
+  Map<String, dynamic>? _unitById(dynamic id) {
+    if (id == null) return null;
+    for (final unit in _units) {
+      if (unit['id'] == id) return unit;
+    }
+    return null;
+  }
+
+  /// 求值回到的「生效单位」→ 显式写回 unit_id（与 web 同口径：读 evaluate 的实际生效单位落库）
+  void _backfillUnitIds() {
+    final evaluation = _evaluation;
+    if (evaluation == null || _units.isEmpty || _items.isEmpty) return;
+    final evalItems = (evaluation['items'] as List?) ?? const [];
+    final items = List<Map<String, dynamic>>.from(_items);
+    var changed = false;
+    for (var i = 0; i < items.length && i < evalItems.length; i++) {
+      final item = items[i];
+      if (item['item_type'] == 'recipe' || item['unit_id'] != null) continue;
+      final name = (evalItems[i] as Map)['unit']?.toString() ?? '';
+      if (name.isEmpty) continue;
+      for (final unit in _units) {
+        final matches = unit['name'] == name ||
+            unit['abbreviation'] == name ||
+            _unitLabel(unit) == name;
+        if (!matches) continue;
+        items[i] = {...item, 'unit_id': unit['id']};
+        changed = true;
+        break;
+      }
+    }
+    if (changed) setState(() => _items = items);
+  }
+
+  void _setItemUnit(Map<String, dynamic> item, int? unitId) {
+    final index = _items.indexOf(item);
+    if (index < 0) return;
+    setState(() {
+      final items = List<Map<String, dynamic>>.from(_items);
+      items[index] = {...item, 'unit_id': unitId};
+      _items = items;
+    });
+    _evaluate();
+  }
+
+  /// 某条目求值后的生效单位名（下拉未选时的提示）
+  String? _effectiveUnitName(int index) {
+    final evalItems = (_evaluation?['items'] as List?) ?? const [];
+    if (index >= evalItems.length) return null;
+    final name = (evalItems[index] as Map)['unit']?.toString();
+    return (name == null || name.isEmpty) ? null : name;
   }
 
   /// 与 web 同口径：meal 方案的目标按条目分组对应的餐次比例算
@@ -544,184 +564,135 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
               label: Text(l10n.plansAddRecipe),
             ),
             const SizedBox(height: 8),
-            for (final item in _items)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                onTap: () => _openItem(item),
-                title: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        _planTypeLabel(item['item_type'] ?? '', l10n),
-                        style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        item['name'] ?? '#${item['recipe_id'] ?? item['ingredient_id'] ?? item['product_id']}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                subtitle: item['item_type'] == 'recipe'
-                    ? Text('${l10n.plansServings}: ${item['servings'] ?? 1}')
-                    : Text('${l10n.plansQuantity}: ${item['quantity'] ?? 0}'),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (item['item_type'] == 'recipe')
-                      IconButton(
-                        icon: const Icon(Icons.exposure_plus_1, size: 18),
-                        tooltip: l10n.plansServingsPlus,
-                        onPressed: () {
-                          setState(() {
-                            final idx = _items.indexOf(item);
-                            _items = [
-                              for (var i = 0; i < _items.length; i++)
-                                if (i == idx)
-                                  {
-                                    ...item,
-                                    'servings':
-                                        ((item['servings'] as num?) ?? 1) + 1,
-                                  }
-                                else
-                                  _items[i],
-                            ];
-                          });
-                          _evaluate();
-                        },
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.close, size: 18),
-                      onPressed: () {
-                        setState(() {
-                          _items = List.of(_items)..remove(item);
-                        });
-                        _evaluate();
-                      },
-                    ),
-                  ],
-                ),
-              ),
+            for (var index = 0; index < _items.length; index++)
+              _itemTile(theme, l10n, index),
             if (_evaluation != null) ...[
               const Divider(height: 24),
               Text(l10n.plansTotals,
                   style: theme.textTheme.titleSmall
                       ?.copyWith(fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
-              _totalsGrid(theme, l10n, userCurrency),
+              PlanTotalsGrid(
+                totals: (_evaluation!['totals'] as Map<String, dynamic>?) ??
+                    const {},
+                targets: (_evaluation!['targets'] as Map<String, dynamic>?) ??
+                    const {},
+                userCurrency: userCurrency,
+              ),
               if (_evaluating)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
                   child: LinearProgressIndicator(minHeight: 2),
                 ),
             ],
-            if (_trend.isNotEmpty) ...[
-              const Divider(height: 24),
-              Text(l10n.plansCostTrend,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              _trendChart(theme, l10n),
-            ],
+            const SizedBox(height: 12),
+            CostTrendChart(
+              points: _trend,
+              userCurrency: userCurrency,
+              days: _trendDays,
+              onDaysChanged: (days) {
+                setState(() => _trendDays = days);
+                _loadTrend();
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _totalsGrid(
-      ThemeData theme, AppLocalizations l10n, String userCurrency) {
-    final totals = _evaluation!['totals'] as Map<String, dynamic>;
-    final targets = _evaluation!['targets'] as Map<String, dynamic>;
-    double numOf(dynamic v) => (v as num?)?.toDouble() ?? 0;
-    final rows = [
-      (l10n.plansTotalCost, formatMoney(numOf(totals['cost']), userCurrency),
-          formatMoney(numOf(targets['cost']), userCurrency),
-          numOf(totals['cost']) > numOf(targets['cost'])),
-      (l10n.plansCalories,
-          '${formatNumber(numOf(totals['calories']).round())} kcal',
-          '${formatNumber(numOf(targets['calories']).round())} kcal',
-          numOf(totals['calories']) > numOf(targets['calories'])),
-      (l10n.plansProtein,
-          '${formatNumber(numOf(totals['protein_g']), maximumFractionDigits: 1)} g',
-          '${formatNumber(numOf(targets['protein_g']), maximumFractionDigits: 1)} g',
-          numOf(totals['protein_g']) > numOf(targets['protein_g'])),
-      (l10n.plansFat,
-          '${formatNumber(numOf(totals['fat_g']), maximumFractionDigits: 1)} g',
-          '${formatNumber(numOf(targets['fat_g']), maximumFractionDigits: 1)} g',
-          numOf(totals['fat_g']) > numOf(targets['fat_g'])),
-    ];
-    return Column(
-      children: [
-        for (final (label, value, target, over) in rows)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                SizedBox(
-                    width: 72,
-                    child: Text(label,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.outline))),
-                Expanded(
-                  child: Text(value,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: over
-                            ? theme.colorScheme.error
-                            : theme.colorScheme.onSurface,
-                      )),
-                ),
-                Text('${l10n.plansTarget} $target',
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.outline)),
-              ],
+  /// 单条目行：类型徽标 + 名称 +（菜谱：份量 / 原料·商品：数量 + 单位下拉）+ 操作
+  Widget _itemTile(ThemeData theme, AppLocalizations l10n, int index) {
+    final item = _items[index];
+    final isRecipe = item['item_type'] == 'recipe';
+    return ListTile(
+      dense: true,
+      contentPadding: EdgeInsets.zero,
+      onTap: () => _openItem(item),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Text(
+              _planTypeLabel(item['item_type'] ?? '', l10n),
+              style: theme.textTheme.labelSmall
+                  ?.copyWith(color: theme.colorScheme.onPrimaryContainer),
             ),
           ),
-      ],
-    );
-  }
-
-  /// 简易折线（CustomPainter，与 sparkline 同思路但带轴）
-  Widget _trendChart(ThemeData theme, AppLocalizations l10n) {
-    final values = _trend
-        .map((p) => (p['total_cost'] as num?)?.toDouble() ?? 0)
-        .toList(growable: false);
-    final dates = _trend.map((p) => p['date'] as String).toList(growable: false);
-    if (values.length < 2) return const SizedBox.shrink();
-    final minV = values.reduce((a, b) => a < b ? a : b);
-    final maxV = values.reduce((a, b) => a > b ? a : b);
-    final span = (maxV - minV) == 0 ? 1.0 : (maxV - minV);
-    return SizedBox(
-      height: 160,
-      child: CustomPaint(
-        painter: _TrendPainter(
-          values: values,
-          minV: minV,
-          span: span,
-          lineColor: theme.colorScheme.primary,
-          gridColor: theme.colorScheme.outlineVariant,
-          labelStyle: theme.textTheme.labelSmall
-              ?.copyWith(color: theme.colorScheme.outline),
-          startLabel: dates.first,
-          endLabel: dates.last,
-        ),
-        child: const SizedBox.expand(),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              item['name'] ??
+                  '#${item['recipe_id'] ?? item['ingredient_id'] ?? item['product_id']}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      ),
+      subtitle: isRecipe
+          ? Text('${l10n.plansServings}: ${item['servings'] ?? 1}')
+          : Row(
+              children: [
+                Text('${l10n.plansQuantity}: ${item['quantity'] ?? 0}'),
+                if (_units.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  DropdownButton<int>(
+                    value: _unitById(item['unit_id']) == null
+                        ? null
+                        : item['unit_id'] as int,
+                    isDense: true,
+                    underline: const SizedBox.shrink(),
+                    hint: Text(_effectiveUnitName(index) ?? ''),
+                    items: [
+                      for (final unit in _units)
+                        DropdownMenuItem<int>(
+                          value: unit['id'] as int,
+                          child: Text(_unitLabel(unit)),
+                        ),
+                    ],
+                    onChanged: (value) => _setItemUnit(item, value),
+                  ),
+                ],
+              ],
+            ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isRecipe)
+            IconButton(
+              icon: const Icon(Icons.exposure_plus_1, size: 18),
+              tooltip: l10n.plansServingsPlus,
+              onPressed: () {
+                setState(() {
+                  final items = List<Map<String, dynamic>>.from(_items);
+                  items[index] = {
+                    ...item,
+                    'servings': ((item['servings'] as num?) ?? 1) + 1,
+                  };
+                  _items = items;
+                });
+                _evaluate();
+              },
+            ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 18),
+            onPressed: () {
+              setState(() {
+                _items = List.of(_items)..removeAt(index);
+              });
+              _evaluate();
+            },
+          ),
+        ],
       ),
     );
   }
+
 }
 
 String _planTypeLabel(String type, AppLocalizations l10n) {
@@ -735,71 +706,6 @@ String _planTypeLabel(String type, AppLocalizations l10n) {
     default:
       return type;
   }
-}
-
-class _TrendPainter extends CustomPainter {
-  final List<double> values;
-  final double minV;
-  final double span;
-  final Color lineColor;
-  final Color gridColor;
-  final TextStyle? labelStyle;
-  final String startLabel;
-  final String endLabel;
-
-  _TrendPainter({
-    required this.values,
-    required this.minV,
-    required this.span,
-    required this.lineColor,
-    required this.gridColor,
-    required this.labelStyle,
-    required this.startLabel,
-    required this.endLabel,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = lineColor
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    final grid = Paint()
-      ..color = gridColor
-      ..strokeWidth = 1;
-
-    // 横向网格 3 条
-    for (var i = 1; i <= 3; i++) {
-      final y = size.height * i / 4;
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), grid);
-    }
-
-    final path = Path();
-    for (var i = 0; i < values.length; i++) {
-      final x = size.width * i / (values.length - 1);
-      final y = size.height - ((values[i] - minV) / span) * size.height * 0.9 - size.height * 0.05;
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    canvas.drawPath(path, paint);
-
-    final startTp = TextPainter(
-      text: TextSpan(text: startLabel, style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    startTp.paint(canvas, Offset(0, size.height - 14));
-    final endTp = TextPainter(
-      text: TextSpan(text: endLabel, style: labelStyle),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    endTp.paint(canvas, Offset(size.width - endTp.width, size.height - 14));
-  }
-
-  @override
-  bool shouldRepaint(covariant _TrendPainter old) => old.values != values;
 }
 
 double _num(dynamic v) => (v as num?)?.toDouble() ?? 0;

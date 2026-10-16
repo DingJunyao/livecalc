@@ -1924,6 +1924,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mealsPreferenceApplied => '已按偏好重新组合';
 
   @override
+  String get mealsEstimatedToday => '今日预估';
+
+  @override
+  String get chartsAverage => '平均';
+
+  @override
+  String get chartsRange => '范围';
+
+  @override
+  String get plansDays => '天';
+
+  @override
   String get navPlans => '试算';
 
   @override

@@ -22,6 +22,7 @@ import '../../features/products/screens/product_form_screen.dart';
 import '../../features/products/models/product.dart';
 import '../../features/favorites/screens/favorites_screen.dart';
 import '../../features/planner/screens/planner_screens.dart';
+import '../../features/planner/screens/plan_detail_screen.dart';
 import '../../features/merchants/screens/merchant_list_screen.dart';
 import '../../features/merchants/screens/merchant_detail_screen.dart';
 import '../../features/merchants/screens/merchant_form_screen.dart';
@@ -388,6 +389,16 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
               final plan =
                   extra is Map ? extra['plan'] as Map<String, dynamic>? : null;
               return PlannerEditScreen(plan: plan);
+            },
+          ),
+          GoRoute(
+            path: '/plans/:id',
+            name: 'plan-detail',
+            builder: (context, state) {
+              final id = int.tryParse(state.pathParameters['id'] ?? '');
+              return id == null
+                  ? const PlannerListScreen()
+                  : PlanDetailScreen(planId: id);
             },
           ),
           GoRoute(

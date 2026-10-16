@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../shared/providers/calc_context_provider.dart';
+import '../../../shared/utils/currency_fmt.dart';
+import '../../../shared/utils/nutrition_display.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -67,6 +70,88 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  /// 今日预估：成本 + 热量/蛋白质/碳水化合物/脂肪（各带 NRV%），优先一行、放不下换行
+  Widget _buildSummaryBar(
+    ThemeData theme,
+    AppLocalizations l10n,
+    Map<String, dynamic>? totals,
+    String userCurrency,
+    String energyUnit,
+  ) {
+    if (totals == null) return const SizedBox.shrink();
+    double numOf(String key) => (totals[key] as num?)?.toDouble() ?? 0;
+    final calories = numOf('calories');
+    final protein = numOf('protein_g');
+    final carbs = numOf('carbs_g');
+    final fat = numOf('fat_g');
+    String nrv(String key, double value) {
+      final pct = nrvPct(key, value);
+      return pct == null
+          ? ''
+          : ' (NRV ${formatNumber(pct, maximumFractionDigits: 2)}%)';
+    }
+
+    Widget item(IconData icon, String label, String value) => Padding(
+          padding: const EdgeInsets.only(right: 12, top: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: theme.colorScheme.outline),
+              const SizedBox(width: 4),
+              Text(
+                '$label ',
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.outline),
+              ),
+              Text(value, style: theme.textTheme.bodySmall),
+            ],
+          ),
+        );
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 4,
+          runSpacing: 2,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            item(
+              Icons.payments_outlined,
+              l10n.mealsEstimatedToday,
+              formatMoney(numOf('cost'),
+                  (totals['currency'] as String?) ?? userCurrency),
+            ),
+            item(
+              Icons.local_fire_department,
+              l10n.plansCalories,
+              '${formatNumber(toDisplayCalorie(calories, energyUnit))} '
+                  '$energyUnit${nrv('energy', calories)}',
+            ),
+            item(
+              Icons.egg_outlined,
+              l10n.plansProtein,
+              '${formatNumber(protein, maximumFractionDigits: 1)} g'
+                  '${nrv('protein', protein)}',
+            ),
+            item(
+              Icons.grain,
+              l10n.nutritionNutrientCarbohydrate,
+              '${formatNumber(carbs, maximumFractionDigits: 1)} g'
+                  '${nrv('carbohydrate', carbs)}',
+            ),
+            item(
+              Icons.water_drop_outlined,
+              l10n.plansFat,
+              '${formatNumber(fat, maximumFractionDigits: 1)} g'
+                  '${nrv('fat', fat)}',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _preferenceController.dispose();
@@ -118,6 +203,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       recArea = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 今日预估（成本 + 四项营养素 NRV%，与 web DailySummaryBar 同口径）
+          if (state.recommendation?.totals != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: _buildSummaryBar(
+                theme,
+                l10n,
+                state.recommendation!.totals,
+                ref.read(displayCurrencyProvider),
+                energyUnit,
+              ),
+            ),
           // 一句话偏好输入（可指定应用到哪一餐）
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
@@ -189,7 +286,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   isRefreshing: state.refreshLoading[meal.mealType] ?? false,
                   onDishTap: (recipeId) => context.push('/recipes/$recipeId'),
                   onPlanItemTap: (item) => _openPlanItem(context, item),
-                  onPlanTap: () => context.push('/plans'),
+                  onPlanTap: meal.planId == null
+                      ? null
+                      : () => context.push('/plans/${meal.planId}'),
                   onSwapDish: (recipeId) => ref
                       .read(homeProvider.notifier)
                       .refreshMeal(meal.mealType, recipeId: recipeId),

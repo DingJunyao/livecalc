@@ -70,6 +70,15 @@ class PlannerRepository {
     return ((response.data as List?) ?? const []).cast<Map<String, dynamic>>();
   }
 
+  /// 全局单位（试算条目选单位用；与 web `GET /units/?limit=500` 同源）
+  Future<List<Map<String, dynamic>>> units() async {
+    final response =
+        await _client.dio.get('/units/', queryParameters: {'limit': 500});
+    final data = response.data;
+    final items = data is Map ? (data['items'] ?? const []) : data;
+    return ((items as List?) ?? const []).cast<Map<String, dynamic>>();
+  }
+
   /// 试算方案 → 今日推荐
   Future<void> setPlan(int planId, {String? mealType}) async {
     await _client.dio.post('/meals/recommendations/set-plan', data: {

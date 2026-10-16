@@ -1974,6 +1974,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mealsPreferenceApplied => 'Recomposed with your preference';
 
   @override
+  String get mealsEstimatedToday => 'Estimated today';
+
+  @override
+  String get chartsAverage => 'Average';
+
+  @override
+  String get chartsRange => 'Range';
+
+  @override
+  String get plansDays => 'd';
+
+  @override
   String get navPlans => 'Planner';
 
   @override
