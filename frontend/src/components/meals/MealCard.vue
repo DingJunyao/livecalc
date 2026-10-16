@@ -91,7 +91,7 @@
 
     <!-- 多道菜套餐（新） -->
     <template v-else-if="dishes.length > 0">
-      <!-- 首图行：有几张就并排几张，等宽填满不留空白 -->
+      <!-- 首图行：有几张就并排几张，等宽填满不留空白（不重复写菜名，菜名由下方清单给出） -->
       <div v-if="dishImageList.length" class="meal-card__image-row">
         <img
           v-for="(img, i) in dishImageList"
@@ -102,37 +102,25 @@
           loading="lazy"
           referrerpolicy="no-referrer"
         />
-        <v-toolbar
-          color="rgba(0,0,0,0.4)"
-          density="compact"
-          class="meal-card__overlay-toolbar"
-        >
-          <v-toolbar-title class="text-white text-body-1">
-            {{ dishNames }}
-          </v-toolbar-title>
-          <v-chip
-            v-if="isAiSource"
-            size="x-small"
-            color="light-blue-accent-1"
-            variant="flat"
-            class="me-2"
-            prepend-icon="mdi-creation"
-          >{{ t('meals.aiGenerated') }}</v-chip>
-        </v-toolbar>
+        <v-chip
+          v-if="isAiSource"
+          size="x-small"
+          color="light-blue-accent-1"
+          variant="flat"
+          class="meal-card__overlay-chip"
+          prepend-icon="mdi-creation"
+        >{{ t('meals.aiGenerated') }}</v-chip>
       </div>
 
-      <v-card-item v-else>
-        <v-card-title class="text-body-1 d-flex align-center flex-wrap ga-2">
-          {{ dishNames }}
-          <v-chip
-            v-if="isAiSource"
-            size="x-small"
-            color="light-blue"
-            variant="tonal"
-            prepend-icon="mdi-creation"
-          >{{ t('meals.aiGenerated') }}</v-chip>
-        </v-card-title>
-      </v-card-item>
+      <!-- 无首图：同样不重复写菜名，仅保留 AI 标识 -->
+      <div v-else-if="isAiSource" class="meal-card__ai-chip-row">
+        <v-chip
+          size="x-small"
+          color="light-blue"
+          variant="tonal"
+          prepend-icon="mdi-creation"
+        >{{ t('meals.aiGenerated') }}</v-chip>
+      </div>
 
       <!-- 菜品清单：与「分组/方案」条目同一行结构（唯一差别是行尾「换这道」） -->
       <div class="px-4 pt-1">
@@ -379,12 +367,6 @@ function nrvSuffix(key: 'energy' | 'protein' | 'carbohydrate' | 'fat') {
   return pct != null ? ` · NRV ${pct}%` : ''
 }
 
-const dishNames = computed(() => {
-  const list = dishes.value
-  if (list.length > 0) return list.map(d => d.name).join(' · ')
-  return props.recommendation.recipe?.name || ''
-})
-
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
     staple: t('meals.roleStaple'),
@@ -599,6 +581,19 @@ function onChangeDish(dish: RecommendedDish) {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
+}
+/* 有首图但不再写菜名：AI 标识直接浮在图上 */
+.meal-card__overlay-chip {
+  position: absolute;
+  bottom: 8px;
+  inset-inline-end: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+/* 无首图：AI 标识单占一行（右对齐），菜名交给下方清单 */
+.meal-card__ai-chip-row {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px 0;
 }
 .meal-card__dish {
   min-height: 40px;
