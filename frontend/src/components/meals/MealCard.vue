@@ -63,8 +63,8 @@
         <a
           v-for="(item, i) in planView.items"
           :key="i"
-          class="d-flex align-center py-0.5 text-decoration-none meal-card__row"
-          :class="{ 'meal-card__row--link': !!planItemLink(item) }"
+          class="d-flex align-center py-0.5 text-decoration-none meal-card__plan-item"
+          :class="{ 'meal-card__plan-item--link': !!planItemLink(item) }"
           :href="planItemLink(item) || undefined"
           @click.prevent="onPlanItemClick(item)"
         >
@@ -542,11 +542,13 @@ function onChangeDish(dish: RecommendedDish) {
 </script>
 
 <style scoped>
+.meal-card__plan-item,
 .meal-card__plan-title {
   color: inherit;
   text-decoration: none;
 }
 
+.meal-card__plan-item--link,
 .meal-card__plan-title,
 .meal-card__row--link {
   cursor: pointer;
