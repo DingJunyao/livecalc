@@ -325,6 +325,28 @@ const trendPoints = ref<any[]>([])
 const trendLoading = ref(false)
 /** 单位下拉（方案条目的数量单位，value 用 unit_id —— 与后端 meal_plan_items.unit_id 对齐） */
 const unitOptions = ref<{ title: string; value: number }[]>([])
+/** /units/ 原始行：用于「单位名 / 缩写 → unit_id」解析（默认单位要显式落库，不能只留空） */
+const unitRows = ref<any[]>([])
+
+function unitIdByName(name: string | null | undefined): number | null {
+  if (!name) return null
+  const hit = unitRows.value.find((u: any) => u.name === name || u.abbreviation === name)
+  return hit?.id != null ? Number(hit.id) : null
+}
+
+/**
+ * 未选单位的原料/商品条目：把后端**实际生效**的单位显式写进 unit_id。
+ * 后端口径：原料无单位 → 克；商品无单位 → 该商品价格记录的标准单位（见 evaluate 的 items[].unit）。
+ * 显式存下来，界面下拉就会选中它，保存/求值也走同一个 unit_id。
+ */
+function backfillDefaultUnits() {
+  const effective = evaluation.value?.items || []
+  editor.value.items.forEach((item, idx) => {
+    if (item.item_type === 'recipe' || item.unit_id != null) return
+    const id = unitIdByName(effective[idx]?.unit || 'g')
+    if (id != null) item.unit_id = id
+  })
+}
 
 const editor = ref<{
   id: number | null
@@ -458,6 +480,8 @@ async function evaluateDraft() {
       })),
     })
   } catch { /* 求值失败静默，保留上次结果 */ }
+  // 拿到「实际生效单位」后立刻显式落库（首次加载 / 刚加入条目）
+  backfillDefaultUnits()
 }
 
 /** 条目 → 对应实体详情页 */
@@ -693,10 +717,11 @@ async function loadUnitOptions() {
   if (unitOptions.value.length) return
   try {
     const res: any = await api.get('/units/', { params: { limit: 500 } })
-    const rows = Array.isArray(res) ? res : (res?.items || [])
-    unitOptions.value = rows
+    const rows = (Array.isArray(res) ? res : (res?.items || []))
       .filter((u: any) => u?.is_active !== false && u?.id != null)
-      .map((u: any) => ({ title: `${u.name} (${u.abbreviation})`, value: Number(u.id) }))
+    unitRows.value = rows
+    unitOptions.value = rows.map((u: any) => ({ title: `${u.name} (${u.abbreviation})`, value: Number(u.id) }))
+    backfillDefaultUnits()
   } catch {
     // 拉不到就保持默认单位（原料按克 / 商品按记录单位）
   }
