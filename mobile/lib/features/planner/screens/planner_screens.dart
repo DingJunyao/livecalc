@@ -82,6 +82,7 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(plannerListProvider);
+    final userCurrency = ref.watch(displayCurrencyProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -99,12 +100,15 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
           ),
         ],
       ),
-      body: _buildBody(theme, l10n, state),
+      body: _buildBody(theme, l10n, state, userCurrency),
     );
   }
 
   Widget _buildBody(
-      ThemeData theme, AppLocalizations l10n, PlannerListState state) {
+      ThemeData theme,
+      AppLocalizations l10n,
+      PlannerListState state,
+      String userCurrency) {
     if (state.loading) return const LoadingIndicator();
     if (state.error != null) {
       return ErrorDisplay(
@@ -123,71 +127,118 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
         padding: const EdgeInsets.all(12),
         children: [
           for (final plan in state.plans)
-            Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              clipBehavior: Clip.antiAlias,
-              child: ListTile(
-                onTap: () async {
-                  await context.push('/plans/edit',
-                      extra: {'plan': plan});
-                  ref.read(plannerListProvider.notifier).load();
-                },
-                title: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        plan['name'] ?? '',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: plan['kind'] == 'day'
-                            ? theme.colorScheme.tertiaryContainer
-                            : theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        plan['kind'] == 'day'
-                            ? l10n.plansKindDay
-                            : l10n.plansKindMeal,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: plan['kind'] == 'day'
-                              ? theme.colorScheme.onTertiaryContainer
-                              : theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                subtitle: Text(
-                  l10n.plansItemCount(((plan['items'] as List?) ?? const []).length),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextButton(
-                      onPressed:
-                          _settingPlan ? null : () => _setToday(plan),
-                      child: Text(l10n.plansSetToday),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      tooltip: l10n.commonDelete,
-                      onPressed: () => _delete(plan),
-                    ),
-                  ],
+            _planCard(theme, l10n, state, plan, userCurrency),
+        ],
+      ),
+    );
+  }
+
+  /// 列表卡片：名称/类型 + 成本 + 营养素（含 NRV%）+ 30 天成本迷你图
+  Widget _planCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    PlannerListState state,
+    Map<String, dynamic> plan,
+    String userCurrency,
+  ) {
+    final planId = plan['id'];
+    final totals = planId is int ? state.totals[planId] : null;
+    final nutrients = planId is int ? state.nutrients[planId] : null;
+    final trend =
+        planId is int ? (state.trends[planId] ?? const <double>[]) : const <double>[];
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        onTap: () async {
+          await context.push('/plans/edit', extra: {'plan': plan});
+          ref.read(plannerListProvider.notifier).load();
+        },
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                plan['name'] ?? '',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+              decoration: BoxDecoration(
+                color: plan['kind'] == 'day'
+                    ? theme.colorScheme.tertiaryContainer
+                    : theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                plan['kind'] == 'day'
+                    ? l10n.plansKindDay
+                    : l10n.plansKindMeal,
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: plan['kind'] == 'day'
+                      ? theme.colorScheme.onTertiaryContainer
+                      : theme.colorScheme.onPrimaryContainer,
                 ),
               ),
             ),
-        ],
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.plansItemCount(((plan['items'] as List?) ?? const []).length),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+            if (totals != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                formatMoney(_num(totals['cost']),
+                    (totals['currency'] as String?) ?? userCurrency),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.tertiary,
+                ),
+              ),
+              Text(
+                _nutritionLine(l10n, totals, nutrients),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+            if (trend.length >= 2 && trend.any((v) => v > 0)) ...[
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 24,
+                width: double.infinity,
+                child: CustomPaint(
+                  painter: _MiniSparklinePainter(
+                    values: trend,
+                    color: theme.colorScheme.tertiary,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: _settingPlan ? null : () => _setToday(plan),
+              child: Text(l10n.plansSetToday),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 20),
+              tooltip: l10n.commonDelete,
+              onPressed: () => _delete(plan),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -257,7 +308,8 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
     try {
       final evaluation = await _repo.evaluate(
         kind: _kind,
-        mealType: 'lunch',
+        // 与 web 同口径：meal 方案按条目分组推餐次（other 退回午餐）
+        mealType: _mealTypeOf(_items),
         items: _items.map(_itemToPayload).toList(),
       );
       if (!mounted) return;
@@ -266,6 +318,26 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
       // 求值失败静默，保留上次结果
     } finally {
       if (mounted) setState(() => _evaluating = false);
+    }
+  }
+
+  /// 与 web 同口径：meal 方案的目标按条目分组对应的餐次比例算
+  String _mealTypeOf(List<Map<String, dynamic>> items) {
+    final group = items.isEmpty ? null : items.first['group'];
+    return (group == 'breakfast' || group == 'dinner')
+        ? group as String
+        : 'lunch';
+  }
+
+  /// 条目 → 对应实体详情页
+  void _openItem(Map<String, dynamic> item) {
+    final type = item['item_type'];
+    if (type == 'recipe' && item['recipe_id'] != null) {
+      context.push('/recipes/${item['recipe_id']}');
+    } else if (type == 'ingredient' && item['ingredient_id'] != null) {
+      context.push('/ingredients/${item['ingredient_id']}');
+    } else if (type == 'product' && item['product_id'] != null) {
+      context.push('/products/${item['product_id']}');
     }
   }
 
@@ -446,6 +518,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
               ListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
+                onTap: () => _openItem(item),
                 title: Row(
                   children: [
                     Container(
@@ -699,3 +772,70 @@ class _TrendPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrendPainter old) => old.values != values;
 }
 
+double _num(dynamic v) => (v as num?)?.toDouble() ?? 0;
+
+/// 列表卡片上的一行营养素（带 NRV%，与 web 列表同口径）
+String _nutritionLine(
+  AppLocalizations l10n,
+  Map<String, dynamic> totals,
+  Map<String, dynamic>? nutrients,
+) {
+  final perServing = nutrients?['per_serving_nutrition'] as Map<String, dynamic>?;
+  final all = (perServing?['all_nutrients'] as Map<String, dynamic>?) ??
+      const <String, dynamic>{};
+  String nrv(String key) {
+    final pct = (all[key] as Map<String, dynamic>?)?['nrp_pct'];
+    return pct is num ? ' (NRV ${pct.round()}%)' : '';
+  }
+
+  return '${l10n.plansCalories} ${formatNumber(_num(totals['calories']).round())} kcal'
+      '${nrv('energy')} · '
+      '${l10n.plansProtein} ${formatNumber(_num(totals['protein_g']), maximumFractionDigits: 1)} g'
+      '${nrv('protein')} · '
+      '${l10n.plansFat} ${formatNumber(_num(totals['fat_g']), maximumFractionDigits: 1)} g'
+      '${nrv('fat')}';
+}
+
+/// 列表卡片里的迷你成本折线（只描线，不画网格与坐标）
+class _MiniSparklinePainter extends CustomPainter {
+  _MiniSparklinePainter({required this.values, required this.color});
+
+  final List<double> values;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (values.length < 2) return;
+    var minV = values.first;
+    var maxV = values.first;
+    for (final v in values) {
+      if (v < minV) minV = v;
+      if (v > maxV) maxV = v;
+    }
+    final span = (maxV - minV).abs() < 1e-9 ? 1.0 : (maxV - minV);
+    final dx = size.width / (values.length - 1);
+    final path = Path();
+    for (var i = 0; i < values.length; i++) {
+      final x = dx * i;
+      final y = size.height -
+          ((values[i] - minV) / span) * (size.height - 4) -
+          2;
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MiniSparklinePainter old) =>
+      old.values != values || old.color != color;
+}
