@@ -34,6 +34,39 @@
       </v-btn>
     </v-card-text>
 
+    <!-- 方案来源餐（source='plan'）：方案名 + 条目明细 + 合计 -->
+    <template v-else-if="planView">
+      <v-card-title class="d-flex align-center pb-1">
+        <v-icon start size="18" color="tertiary">mdi-clipboard-text-outline</v-icon>
+        <span class="text-body-1 font-weight-medium text-truncate">{{ planView.name }}</span>
+        <v-chip size="x-small" color="tertiary" variant="tonal" class="ms-2">
+          {{ planView.kind === 'day' ? t('plans.kindDay') : t('plans.kindMeal') }}
+        </v-chip>
+      </v-card-title>
+      <v-card-text class="pt-0">
+        <div
+          v-for="(item, i) in planView.items"
+          :key="i"
+          class="d-flex justify-space-between text-body-2 py-0.5"
+        >
+          <span class="text-truncate me-2">{{ item.name || '…' }}</span>
+          <span class="text-no-wrap">
+            {{ item.cost != null ? formatMoney(item.cost, planView.totals?.currency || userCurrency) : '--' }}
+          </span>
+        </div>
+        <v-divider class="my-2" />
+        <div class="d-flex justify-space-between text-body-2 font-weight-bold">
+          <span>{{ t('plans.totalCost') }}</span>
+          <span>{{ formatMoney(planView.totals?.cost ?? 0, planView.totals?.currency || userCurrency) }}</span>
+        </div>
+        <div class="text-caption text-medium-emphasis mt-1">
+          {{ t('plans.calories') }} {{ formatNumber(Math.round(planView.totals?.calories ?? 0)) }} kcal
+          · {{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
+          · {{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
+        </div>
+      </v-card-text>
+    </template>
+
     <!-- 多道菜套餐（新） -->
     <template v-else-if="dishes.length > 0">
       <!-- 封面：主食（无则首道）的图 -->
@@ -246,7 +279,10 @@ const emit = defineEmits<{
 }>()
 
 const dishes = computed<RecommendedDish[]>(() => props.recommendation.dishes || [])
-const hasFood = computed(() => dishes.value.length > 0 || !!props.recommendation.recipe)
+const planView = computed(() => props.recommendation.plan || null)
+const hasFood = computed(
+  () => dishes.value.length > 0 || !!props.recommendation.recipe || !!planView.value,
+)
 const isAiSource = computed(
   () => props.recommendation.source === 'system_ai' || props.recommendation.source === 'user_ai'
 )

@@ -27,11 +27,40 @@ export interface RecommendedDish extends RecipeBrief {
   reason?: string | null
 }
 
+export interface MealPlanBriefItem {
+  item_type: 'recipe' | 'ingredient' | 'product' | string
+  name?: string | null
+  group?: string | null
+  servings?: number | null
+  quantity?: number | null
+  unit?: string | null
+  cost: number | null
+}
+
+/** 方案来源餐的方案视图（source='plan' 时后端返回） */
+export interface MealPlanBrief {
+  id: number
+  name: string
+  kind: 'meal' | 'day' | string
+  note?: string | null
+  items: MealPlanBriefItem[]
+  totals: {
+    cost: number
+    currency: string | null
+    calories: number
+    protein_g: number
+    carbs_g: number
+    fat_g: number
+  }
+}
+
 export interface MealRecommendation {
   meal_type: 'breakfast' | 'lunch' | 'dinner'
   recipe: RecipeBrief | null
   /** 多道菜套餐（新）；recipe 为 staple（无则首道）菜的兼容别名 */
   dishes?: RecommendedDish[]
+  /** 试算方案来源餐：渲染方案视图 */
+  plan?: MealPlanBrief | null
   source?: 'rule' | 'system_ai' | 'user_ai' | 'plan' | null
   reason?: string | null
   preference?: string | null

@@ -9,12 +9,32 @@
     <template #append>
       <CalcContextMenu />
       <template v-if="editor.id">
+        <v-menu v-if="editor.kind === 'meal'">
+          <template #activator="{ props: menuProps }">
+            <v-btn
+              icon="mdi-clipboard-check-outline"
+              variant="text"
+              :loading="settingToday"
+              :title="t('plans.setToday')"
+              v-bind="menuProps"
+            />
+          </template>
+          <v-list density="compact">
+            <v-list-item
+              v-for="mt in mealTypeOptions"
+              :key="mt.value"
+              :title="mt.title"
+              @click="onSetToday(mt.value)"
+            />
+          </v-list>
+        </v-menu>
         <v-btn
+          v-else
           icon="mdi-clipboard-check-outline"
           variant="text"
           :loading="settingToday"
           :title="t('plans.setToday')"
-          @click="onSetToday"
+          @click="onSetToday()"
         />
         <v-btn
           icon="mdi-delete-outline"
@@ -362,6 +382,13 @@ const editor = ref<{
   items: (PlanItemInput & { name?: string | null })[]
 }>({ id: null, name: '', kind: 'meal', items: [] })
 
+/** 一顿方案设为今日时的目标餐次（早餐/午餐/晚餐） */
+const mealTypeOptions = computed(() => [
+  { title: t('meals.breakfast'), value: 'breakfast' },
+  { title: t('meals.lunch'), value: 'lunch' },
+  { title: t('meals.dinner'), value: 'dinner' },
+])
+
 const groupItems = computed(() => [
   { title: t('meals.breakfast'), value: 'breakfast' },
   { title: t('meals.lunch'), value: 'lunch' },
@@ -679,11 +706,11 @@ async function onDelete() {
   }
 }
 
-async function onSetToday() {
+async function onSetToday(mealType?: 'breakfast' | 'lunch' | 'dinner') {
   if (!editor.value.id) return
   settingToday.value = true
   try {
-    await setPlanAsRecommendation(editor.value.id)
+    await setPlanAsRecommendation(editor.value.id, mealType)
     notify(t('plans.setTodayDone', { name: editor.value.name }), 'success')
   } catch (e: any) {
     notify(e.userMessage || t('plans.setTodayFailed'), 'error')
