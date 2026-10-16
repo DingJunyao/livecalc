@@ -178,6 +178,9 @@ class MealCard extends StatelessWidget {
   bool get _isPlan => meal.planName != null;
   bool get _isAi => meal.isAiSource;
 
+  /// 标题/封面行是否还要再写一遍菜名：多道菜清单或方案条目已逐项列出名字时不再重复。
+  bool get _showHeaderNames => !_isPlan && !_hasDishes;
+
   /// 封面图：staple（无则首道）有图者
   RecommendedDish? get _coverDish {
     if (!_hasDishes) return null;
@@ -187,9 +190,8 @@ class MealCard extends StatelessWidget {
     );
   }
 
-  String get _dishNames => _hasDishes
-      ? meal.dishes.map((d) => d.name).join(' · ')
-      : (meal.recipeName ?? '');
+  /// 兼容单道菜/空数据时的名称（多道菜与方案的名字见下方清单）。
+  String get _dishNames => meal.recipeName ?? '';
 
   @override
   Widget build(BuildContext context) {
@@ -477,14 +479,16 @@ class MealCard extends StatelessWidget {
                       ],
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _dishNames.isNotEmpty ? _dishNames : l10n.homeNotSet,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
+                  if (_showHeaderNames) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _dishNames.isNotEmpty ? _dishNames : l10n.homeNotSet,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -527,11 +531,13 @@ class MealCard extends StatelessWidget {
                     ],
                   ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  _dishNames.isNotEmpty ? _dishNames : l10n.homeNotSet,
-                  style: theme.textTheme.titleMedium,
-                ),
+                if (_showHeaderNames) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    _dishNames.isNotEmpty ? _dishNames : l10n.homeNotSet,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ],
               ],
             ),
           ),
