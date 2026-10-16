@@ -23,25 +23,6 @@
       <div v-show="!loading && chartData.length">
         <div class="trend-layout">
           <div ref="chartRef" class="trend-chart" dir="ltr" style="flex:1;min-height:300px" />
-          <div class="ingredient-tags">
-            <div class="text-caption text-medium-emphasis mb-2">{{ t('recipes.legendClickHighlight') }}</div>
-            <v-btn
-              v-for="(item, i) in breakdownIngredients"
-              :key="i"
-              size="small"
-              variant="tonal"
-              class="mb-1"
-              :color="item.color"
-              :class="{ 'font-weight-bold': selectedIngredientIndex === i }"
-              @click="toggleIngredientHighlight(i)"
-              block
-            >
-              <template #prepend>
-                <v-icon size="small" :color="item.color">mdi-circle</v-icon>
-              </template>
-              {{ item.name }}
-            </v-btn>
-          </div>
         </div>
       </div>
     </v-card-text>
@@ -358,13 +339,12 @@ onMounted(() => {
   })
 })
 
-onMounted(() => window.addEventListener('resize', () => {
-  chartInstance?.resize()
-}))
+const handleResize = () => chartInstance?.resize()
+
+onMounted(() => window.addEventListener('resize', handleResize))
+
 onUnmounted(() => {
-  window.removeEventListener('resize', () => {
-    chartInstance?.resize()
-  })
+  window.removeEventListener('resize', handleResize)
   chartInstance?.dispose()
 })
 </script>
@@ -373,10 +353,6 @@ onUnmounted(() => {
 .trend-layout {
   display: flex;
   gap: 12px;
-}
-.ingredient-tags {
-  width: 120px;
-  flex-shrink: 0;
 }
 @media (max-width: 959px) {
   .trend-layout {

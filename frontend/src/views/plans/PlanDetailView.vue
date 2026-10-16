@@ -236,8 +236,8 @@
       </v-row>
 
       <!-- 营养成分（全部营养素 + NRV%）| 营养来源（贡献环形图）：宽屏 1:3 分栏，窄屏纵向堆叠 -->
-      <v-row no-gutters>
-        <v-col cols="12" md="3">
+      <v-row no-gutters class="nutrition-split">
+        <v-col cols="12" class="nutrition-col nutrition-col-a">
         <!-- 营养成分（全部营养素 + NRV%） -->
         <v-card v-if="nutrientRows.length" elevation="0" class="ma-4">
           <v-card-title class="d-flex align-center pb-2">
@@ -268,7 +268,7 @@
         </v-card>
 
         </v-col>
-        <v-col cols="12" md="9">
+        <v-col cols="12" class="nutrition-col nutrition-col-b">
           <NutritionSourceGrid
             v-if="evaluation?.nutrition?.per_serving_nutrition"
             :nutrition-data="evaluation.nutrition"
@@ -750,6 +750,26 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 营养成分 | 营养来源：双栏起点 1:1，≥1600px 调到 1:3；窄屏纵向堆叠 */
+@media (min-width: 960px) {
+  .nutrition-split > .nutrition-col {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+}
+
+@media (min-width: 1600px) {
+  .nutrition-split > .nutrition-col-a {
+    flex: 0 0 25%;
+    max-width: 25%;
+  }
+
+  .nutrition-split > .nutrition-col-b {
+    flex: 0 0 75%;
+    max-width: 75%;
+  }
+}
+
 .plan-item-card {
   background: rgb(var(--v-theme-surface));
 }
