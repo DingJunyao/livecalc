@@ -66,6 +66,98 @@ class MealCard extends StatelessWidget {
     }
   }
 
+  /// 方案来源餐：方案名 + 逐条目成本 + 合计与营养
+  Widget _buildPlanSection(ThemeData theme, AppLocalizations l10n) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.assignment_outlined,
+                  size: 16, color: theme.colorScheme.tertiary),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  meal.planName ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              Text(
+                meal.planKind == 'day'
+                    ? l10n.plansKindDay
+                    : l10n.plansKindMeal,
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.colorScheme.onTertiaryContainer),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          for (final item in meal.planItems)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.name ?? '-',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                  Text(
+                    item.cost != null
+                        ? formatMoney(item.cost!, userCurrency)
+                        : '--',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          const Divider(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l10n.plansTotalCost,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+              Text(formatMoney(meal.planCost ?? 0, userCurrency),
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 16,
+            runSpacing: 6,
+            children: [
+              _nutrientChip(
+                Icons.local_fire_department,
+                '${formatNumber((meal.planCalories ?? 0).round())} kcal',
+                theme,
+              ),
+              _nutrientChip(
+                Icons.egg_outlined,
+                '${formatNumber(meal.planProteinG ?? 0, maximumFractionDigits: 1)} g ${l10n.homeProtein}',
+                theme,
+              ),
+              _nutrientChip(
+                Icons.water_drop_outlined,
+                '${formatNumber(meal.planFatG ?? 0, maximumFractionDigits: 1)} g ${l10n.homeFat}',
+                theme,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _nutrientChip(IconData icon, String text, ThemeData theme) {
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -82,6 +174,8 @@ class MealCard extends StatelessWidget {
   }
 
   bool get _hasDishes => meal.dishes.isNotEmpty;
+
+  bool get _isPlan => meal.planName != null;
   bool get _isAi => meal.isAiSource;
 
   /// 封面图：staple（无则首道）有图者
@@ -105,7 +199,7 @@ class MealCard extends StatelessWidget {
     final hasImage = _hasDishes
         ? (cover?.imageUrl?.isNotEmpty ?? false)
         : (meal.imageUrl != null && meal.imageUrl!.isNotEmpty);
-    final hasBody = _hasDishes ||
+    final hasBody = _isPlan || _hasDishes ||
         meal.calories != null ||
         meal.proteinG != null ||
         meal.carbsG != null ||
@@ -122,7 +216,9 @@ class MealCard extends StatelessWidget {
                 _hasDishes ? cover!.imageUrl! : meal.imageUrl!)
           else
             _buildTitleHeader(theme, l10n),
-          if (_hasDishes)
+          if (_isPlan)
+            _buildPlanSection(theme, l10n)
+          else if (_hasDishes)
             _buildDishList(theme, l10n)
           else if (hasBody)
             Padding(

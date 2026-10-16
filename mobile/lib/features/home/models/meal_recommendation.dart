@@ -54,6 +54,14 @@ class MealRecommendation {
   final String? source; // rule / system_ai / user_ai / plan
   final String? reason;
   final String? preference;
+  /// 试算方案来源餐（source='plan'）
+  final String? planName;
+  final String? planKind;
+  final List<MealPlanItemBrief> planItems;
+  final double? planCost;
+  final double? planCalories;
+  final double? planProteinG;
+  final double? planFatG;
 
   const MealRecommendation({
     required this.mealType,
@@ -70,11 +78,19 @@ class MealRecommendation {
     this.source,
     this.reason,
     this.preference,
+    this.planName,
+    this.planKind,
+    this.planItems = const [],
+    this.planCost,
+    this.planCalories,
+    this.planProteinG,
+    this.planFatG,
   });
 
   bool get isAiSource => source == 'system_ai' || source == 'user_ai';
 
   factory MealRecommendation.fromJson(Map<String, dynamic> json) {
+    final plan = json['plan'] as Map<String, dynamic>?;
     final recipe = json['recipe'] as Map<String, dynamic>?;
     final nutrition = recipe?['nutrition_per_serving'] as Map<String, dynamic>?;
     return MealRecommendation(
@@ -97,6 +113,38 @@ class MealRecommendation {
       source: json['source'] as String?,
       reason: json['reason'] as String?,
       preference: json['preference'] as String?,
+      planName: plan?['name'] as String?,
+      planKind: plan?['kind'] as String?,
+      planItems: (plan?['items'] as List<dynamic>?)
+              ?.map((e) =>
+                  MealPlanItemBrief.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          const [],
+      planCost: ((plan?['totals'] as Map<String, dynamic>?)?['cost'] as num?)
+          ?.toDouble(),
+      planCalories: ((plan?['totals'] as Map<String, dynamic>?)?['calories']
+              as num?)
+          ?.toDouble(),
+      planProteinG: ((plan?['totals'] as Map<String, dynamic>?)?['protein_g']
+              as num?)
+          ?.toDouble(),
+      planFatG: ((plan?['totals'] as Map<String, dynamic>?)?['fat_g'] as num?)
+          ?.toDouble(),
+    );
+  }
+}
+
+/// 方案来源餐的条目（名称 + 成本）
+class MealPlanItemBrief {
+  final String? name;
+  final double? cost;
+
+  const MealPlanItemBrief({this.name, this.cost});
+
+  factory MealPlanItemBrief.fromJson(Map<String, dynamic> json) {
+    return MealPlanItemBrief(
+      name: json['name'] as String?,
+      cost: (json['cost'] as num?)?.toDouble(),
     );
   }
 }
