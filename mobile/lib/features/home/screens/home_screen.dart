@@ -79,7 +79,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     String energyUnit,
   ) {
     if (totals == null) return const SizedBox.shrink();
-    double numOf(String key) => (totals[key] as num?)?.toDouble() ?? 0;
+    // 宽容取值：后端是数字，但本地模式 / 旧响应可能给字符串，别让类型转换把首页打崩
+    double numOf(String key) {
+      final value = totals[key];
+      if (value is num) return value.toDouble();
+      return double.tryParse('$value') ?? 0;
+    }
     final calories = numOf('calories');
     final protein = numOf('protein_g');
     final carbs = numOf('carbs_g');
@@ -91,13 +96,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           : ' (NRV ${formatNumber(pct, maximumFractionDigits: 2)}%)';
     }
 
+    // 用 Wrap（而非 Row）承载「标签 + 数值」：窄屏放不下时换行，不产生 RenderFlex 溢出
     Widget item(IconData icon, String label, String value) => Padding(
           padding: const EdgeInsets.only(right: 12, top: 2),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Wrap(
+            spacing: 4,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Icon(icon, size: 14, color: theme.colorScheme.outline),
-              const SizedBox(width: 4),
               Text(
                 '$label ',
                 style: theme.textTheme.bodySmall
