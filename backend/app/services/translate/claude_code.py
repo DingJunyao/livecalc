@@ -33,6 +33,10 @@ class ClaudeCodeTranslator:
 
         return await asyncio.to_thread(_sync)
 
+    async def complete(self, prompt: str, system_prompt: str) -> str:
+        """通用补全（非翻译场景）：system + 原始 prompt 直接喂 CLI，不加翻译指令。"""
+        return await self._run_cli(system_prompt + "\n\n" + prompt)
+
     async def translate_batch(self, texts: list[str], system_prompt: str = FOOD_TRANSLATION_SYSTEM_PROMPT) -> list[str]:
         results: list[str] = []
         for i in range(0, len(texts), self.batch_size):

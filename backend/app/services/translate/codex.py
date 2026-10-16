@@ -35,6 +35,10 @@ class CodexTranslator:
 
         return await asyncio.wait_for(_run(), timeout=self.timeout)
 
+    async def complete(self, prompt: str, system_prompt: str) -> str:
+        """通用补全（非翻译场景）：system + 原始 prompt 直接喂 SDK，不加翻译指令。"""
+        return await self._run_codex(system_prompt + "\n\n" + prompt)
+
     async def translate_batch(
         self,
         texts: list[str],

@@ -28,6 +28,21 @@ class AnthropicTranslator:
             r.raise_for_status()
             return r.json()
 
+    async def complete(
+        self, prompt: str, system_prompt: str, temperature: float = 0.4
+    ) -> str:
+        """通用补全（非翻译场景）。"""
+        payload = {
+            "model": self.model,
+            "max_tokens": 2048,
+            "temperature": temperature,
+            "system": system_prompt,
+            "messages": [{"role": "user", "content": prompt}],
+        }
+        data = await self._post_json(payload)
+        return "".join(
+            b.get("text", "") for b in data.get("content", []) if b.get("type") == "text")
+
     async def translate_batch(self, texts: list[str], system_prompt: str = FOOD_TRANSLATION_SYSTEM_PROMPT) -> list[str]:
         results: list[str] = []
         for i in range(0, len(texts), self.batch_size):

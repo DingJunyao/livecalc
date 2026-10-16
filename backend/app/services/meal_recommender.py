@@ -444,11 +444,18 @@ def _build_llm_composer(creds: dict) -> Optional[LLMMealComposer]:
     translator = get_translator(provider, creds.get("section") or {}, timeout)
 
     async def complete(system: str, user: str) -> str:
-        results = await asyncio.wait_for(
-            translator.translate_batch([user], system_prompt=system),
+        # 组合一餐要走通用补全：translate_batch 会拼上「请逐行翻译…」（用户曾看到两者混在一起）
+        runner = getattr(translator, "complete", None)
+        if runner is None:
+            results = await asyncio.wait_for(
+                translator.translate_batch([user], system_prompt=system),
+                timeout=timeout + 5,
+            )
+            return results[0] if results else ""
+        return await asyncio.wait_for(
+            runner(user, system_prompt=system),
             timeout=timeout + 5,
         )
-        return results[0] if results else ""
 
     return LLMMealComposer(complete)
 

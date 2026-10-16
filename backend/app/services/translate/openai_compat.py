@@ -32,6 +32,21 @@ class OpenAICompatTranslator:
             "不要编号、不要解释：\n" + "\n".join(texts)
         )
 
+    async def complete(
+        self, prompt: str, system_prompt: str, temperature: float = 0.4
+    ) -> str:
+        """通用对话补全（非翻译场景，如餐食组合）。**不**拼接「逐行翻译」指令。"""
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": temperature,
+        }
+        data = await self._post_json(payload)
+        return data["choices"][0]["message"]["content"]
+
     async def translate_batch(self, texts: list[str], system_prompt: str = FOOD_TRANSLATION_SYSTEM_PROMPT) -> list[str]:
         results: list[str] = []
         for i in range(0, len(texts), self.batch_size):

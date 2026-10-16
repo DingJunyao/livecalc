@@ -146,3 +146,43 @@ def test_prompt_contains_shortlist_and_preference():
         preference="想吃辣", lang="zh", single_role=None)
     assert "米饭" in user and "想吃辣" in user and "宫保鸡丁" in user
     assert "staple" in system and "JSON" in system
+
+def test_compose_prompt_is_cuisine_neutral():
+    """回归：提示词不能只面向中餐，且不得混入翻译指令。"""
+    system, user = build_compose_prompt(
+        _shortlist(), "dinner", targets={"calories": 700}, budget=None,
+        excluded_names=[], recent_names=[], preference="我有胰岛素抵抗", lang="zh")
+    assert "中餐营养搭配助手" not in system   # 不再把角色限定为中餐
+    assert "不限于中餐" in system
+    assert "请逐行翻译" not in system and "请逐行翻译" not in user
+    assert "output_language" in user
+
+
+def test_llm_composer_uses_generic_complete(monkeypatch):
+    """回归：组合请求必须走 provider 的通用 complete。
+
+    translate_batch 是翻译入口，会拼上「请逐行翻译下列条目…」——用户曾看到组合提示词里混着这句。
+    """
+    import asyncio
+    from app.services import meal_recommender as mr
+    from app.services.translate import registry
+
+    calls = {}
+
+    class FakeTranslator:
+        async def complete(self, prompt, system_prompt=None, **kwargs):
+            calls["complete"] = (prompt, system_prompt)
+            return '{"dishes": [{"recipe_id": 1, "role": "staple", "reason": "x"}], "note": "n"}'
+
+        async def translate_batch(self, texts, system_prompt=None):
+            calls["translate_batch"] = texts
+            return ["x"]
+
+    monkeypatch.setattr(registry, "get_translator", lambda *a, **k: FakeTranslator())
+    composer = mr._build_llm_composer({"provider": "openai", "section": {}, "timeout": 10})
+    assert composer is not None
+    text = asyncio.run(composer._complete("SYS", "USER"))
+    assert calls["complete"] == ("USER", "SYS")
+    assert "translate_batch" not in calls
+    assert "dishes" in text
+
