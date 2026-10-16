@@ -558,6 +558,12 @@ function onChangeDish(dish: RecommendedDish) {
   background: rgba(var(--v-theme-on-surface), 0.04);
 }
 
+/* 两侧行高一致：AI 块行尾的「换这道」按钮把行撑到 36px，分组行补同样的 min-height */
+.meal-card__row,
+.meal-card__plan-item {
+  min-height: 36px;
+}
+
 /* 首图行：单行等宽并排、限高裁切（图片可被遮盖） */
 .meal-card__image-row {
   position: relative;
