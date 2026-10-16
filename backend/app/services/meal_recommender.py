@@ -645,7 +645,25 @@ async def _build_response_from_records(
 
             plan = record.plan
             if plan is not None and plan.is_active:
-                # 一日方案按该餐的分组只取对应条目（否则三餐都会塞进整个方案）
+                from app.services.storage import get_storage as _get_storage
+
+                # 与 evaluate_plan 同一套过滤：一日方案只取该餐分组的条目（返回顺序一致，可按下标对齐）
+                plan_items = [
+                    pi for pi in plan.items
+                    if plan.kind != "day" or pi.group == meal_type
+                ]
+
+                def _item_image_urls(pi) -> list:
+                    """方案条目的菜谱首图（原料/商品条目没有图）。"""
+                    recipe = getattr(pi, "recipe", None)
+                    images = (recipe.images or []) if recipe is not None else []
+                    return [
+                        _get_storage().url_for(
+                            img[len('/static/images/'):]
+                            if img.startswith('/static/images/') else img)
+                        for img in images
+                    ]
+
                 evaluation = await evaluate_plan(db, user, plan, tz=tz, group=meal_type)
                 base_item["plan"] = {
                     "id": plan.id,
@@ -661,8 +679,24 @@ async def _build_response_from_records(
                             "quantity": it.get("quantity"),
                             "unit": it.get("unit"),
                             "cost": it.get("cost"),
+                            "recipe_id": (
+                                plan_items[idx].recipe_id
+                                if idx < len(plan_items) else None
+                            ),
+                            "ingredient_id": (
+                                plan_items[idx].ingredient_id
+                                if idx < len(plan_items) else None
+                            ),
+                            "product_id": (
+                                plan_items[idx].product_id
+                                if idx < len(plan_items) else None
+                            ),
+                            "image_urls": (
+                                _item_image_urls(plan_items[idx])
+                                if idx < len(plan_items) else []
+                            ),
                         }
-                        for it in evaluation["items"]
+                        for idx, it in enumerate(evaluation["items"])
                     ],
                     "totals": evaluation["totals"],
                 }

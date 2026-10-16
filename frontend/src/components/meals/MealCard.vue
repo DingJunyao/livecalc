@@ -34,40 +34,53 @@
       </v-btn>
     </v-card-text>
 
-    <!-- 方案来源餐（source='plan'）：方案名 + 条目明细 + 合计 -->
+    <!-- 方案来源餐（source='plan'）：首图行 + 方案名 + 条目明细 + 合计 -->
     <template v-else-if="planView">
+      <div v-if="planImages.length" class="meal-card__image-row">
+        <img
+          v-for="(img, i) in planImages"
+          :key="i"
+          :src="img"
+          class="meal-card__dish-image"
+          alt=""
+        />
+      </div>
       <v-card-title class="d-flex align-center pb-1">
         <v-icon start size="18" color="tertiary">mdi-clipboard-text-outline</v-icon>
-        <span class="text-body-1 font-weight-medium text-truncate">{{ planView.name }}</span>
+        <a
+          class="text-body-1 font-weight-medium text-truncate text-decoration-none"
+          :href="`/plans/${planView.id}`"
+          :title="t('plans.title')"
+          @click.prevent="goToPlan(planView.id)"
+        >{{ planView.name }}</a>
         <v-chip size="x-small" color="tertiary" variant="tonal" class="ms-2">
           {{ planView.kind === 'day' ? t('plans.kindDay') : t('plans.kindMeal') }}
         </v-chip>
       </v-card-title>
       <v-card-text class="pt-0">
-        <div
+        <a
           v-for="(item, i) in planView.items"
           :key="i"
-          class="d-flex justify-space-between text-body-2 py-0.5"
+          class="d-flex justify-space-between text-body-2 py-0.5 text-decoration-none meal-card__plan-item"
+          :class="{ 'meal-card__plan-item--link': !!planItemLink(item) }"
+          :href="planItemLink(item) || undefined"
+          @click.prevent="onPlanItemClick(item)"
         >
           <span class="text-truncate me-2">{{ item.name || '…' }}</span>
           <span class="text-no-wrap">
             {{ item.cost != null ? formatMoney(item.cost, planView.totals?.currency || userCurrency) : '--' }}
           </span>
-        </div>
+        </a>
         <v-divider class="my-2" />
         <div class="d-flex justify-space-between text-body-2 font-weight-bold">
           <span>{{ t('plans.totalCost') }}</span>
           <span>{{ formatMoney(planView.totals?.cost ?? 0, planView.totals?.currency || userCurrency) }}</span>
         </div>
-        <div class="text-caption text-medium-emphasis mt-1">
-          {{ t('plans.calories') }} {{ formatNumber(Math.round(planView.totals?.calories ?? 0)) }} kcal
-          · {{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
-          · {{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
-          · {{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
-          · NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}% /
-          {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}% /
-          {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}% /
-          {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%
+        <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
+          <span>{{ t('plans.calories') }} {{ formatNumber(Math.round(planView.totals?.calories ?? 0)) }} kcal（NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}%）</span>
+          <span>{{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}%）</span>
+          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}%）</span>
+          <span>{{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g（NRV {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%）</span>
         </div>
       </v-card-text>
     </template>
@@ -261,7 +274,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import type { MealRecommendation, RecommendedDish } from '@/api/meals'
+import type { MealPlanBriefItem, MealRecommendation, RecommendedDish } from '@/api/meals'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
@@ -334,6 +347,13 @@ const dishImageList = computed(() => {
   }
   return list
 })
+
+/** 方案来源餐的首图：该餐各菜谱条目的首图（有图才显示，等宽并排） */
+const planImages = computed(() =>
+  (planView.value?.items || [])
+    .map(item => item.image_urls?.[0])
+    .filter((url): url is string => !!url),
+)
 
 const mealNutrients = computed(() => {
   const rows: any[] = dishes.value.length > 0
@@ -473,6 +493,23 @@ const proteinText = computed(() => {
     : '--'
 })
 
+/** 方案条目 → 对应实体详情 */
+function planItemLink(item: MealPlanBriefItem) {
+  if (item.item_type === 'recipe' && item.recipe_id) return `/recipes/${item.recipe_id}`
+  if (item.item_type === 'ingredient' && item.ingredient_id) return `/data/ingredients/${item.ingredient_id}`
+  if (item.item_type === 'product' && item.product_id) return `/data/products/${item.product_id}`
+  return null
+}
+
+function onPlanItemClick(item: MealPlanBriefItem) {
+  const link = planItemLink(item)
+  if (link) void router.push(link)
+}
+
+function goToPlan(planId: number) {
+  void router.push(`/plans/${planId}`)
+}
+
 function goToRecipe(recipeId: number) {
   router.push(`/recipes/${recipeId}`)
 }
@@ -495,6 +532,13 @@ function onChangeDish(dish: RecommendedDish) {
 </script>
 
 <style scoped>
+.meal-card__plan-item {
+  color: rgb(var(--v-theme-on-surface));
+}
+
+.meal-card__plan-item--link:hover {
+  color: rgb(var(--v-theme-primary));
+}
 .meal-card {
   transition: transform 0.2s, box-shadow 0.2s;
 }

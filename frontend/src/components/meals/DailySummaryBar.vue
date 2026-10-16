@@ -27,25 +27,25 @@
               </span>
             </div>
 
-            <!-- 营养汇总 -->
-            <div class="summary-item">
-              <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-                <v-icon size="small">mdi-fire</v-icon>
-                {{ t('meals.calories') }}
-              </span>
-              <span class="font-weight-medium ms-1">
-                {{ totals.calories != null ? `${formatNumber(toDisplayCalorie(totals.calories), localeStore.effectiveFormatLocale)} ${energyUnitLabel}` : '--' }}
-              </span>
-            </div>
+            <!-- 营养汇总：优先一行，放不下自动换行 -->
+            <div class="d-flex ga-2 flex-wrap align-center">
+              <div class="summary-item">
+                <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
+                  <v-icon size="small">mdi-fire</v-icon>
+                  {{ t('meals.calories') }}
+                </span>
+                <span class="font-weight-medium ms-1">
+                  {{ totals.calories != null ? `${formatNumber(toDisplayCalorie(totals.calories), localeStore.effectiveFormatLocale)} ${energyUnitLabel}${nrvText(nrv.energy)}` : '--' }}
+                </span>
+              </div>
 
-            <div class="d-flex ga-2 flex-wrap">
               <div class="summary-item">
                 <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
                   <v-icon size="small">mdi-food-drumstick-outline</v-icon>
                   {{ t('meals.protein') }}
                 </span>
                 <span class="font-weight-medium ms-1">
-                  {{ totals.protein_g != null ? `${formatNumber(totals.protein_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
+                  {{ totals.protein_g != null ? `${formatNumber(totals.protein_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}${nrvText(nrv.protein)}` : '--' }}
                 </span>
               </div>
               <div class="summary-item">
@@ -54,7 +54,7 @@
                   {{ t('meals.carbs') }}
                 </span>
                 <span class="font-weight-medium ms-1">
-                  {{ totals.carbs_g != null ? `${formatNumber(totals.carbs_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
+                  {{ totals.carbs_g != null ? `${formatNumber(totals.carbs_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}${nrvText(nrv.carbohydrate)}` : '--' }}
                 </span>
               </div>
               <div class="summary-item">
@@ -63,7 +63,7 @@
                   {{ t('meals.fat') }}
                 </span>
                 <span class="font-weight-medium ms-1">
-                  {{ totals.fat_g != null ? `${formatNumber(totals.fat_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}` : '--' }}
+                  {{ totals.fat_g != null ? `${formatNumber(totals.fat_g, localeStore.effectiveFormatLocale)} ${t('nutrientUnits.g')}${nrvText(nrv.fat)}` : '--' }}
                 </span>
               </div>
             </div>
@@ -102,6 +102,7 @@ import { formatNumber } from '@/utils/format'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useLocaleStore } from '@/stores/locale'
+import { nrvPct } from '@/utils/nrv'
 
 const { mdAndUp } = useDisplay()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
@@ -114,6 +115,21 @@ const props = defineProps<{
   totals: DailyTotals | null
   loading: boolean
 }>()
+
+/** NRV%（GB 28050 参考值：能量 2000 kcal、蛋白质 60 g、碳水化合物 300 g、脂肪 60 g） */
+const nrv = computed(() => {
+  const totals = props.totals
+  return {
+    energy: totals?.calories != null ? nrvPct('energy', totals.calories) : null,
+    protein: totals?.protein_g != null ? nrvPct('protein', totals.protein_g) : null,
+    carbohydrate: totals?.carbs_g != null ? nrvPct('carbohydrate', totals.carbs_g) : null,
+    fat: totals?.fat_g != null ? nrvPct('fat', totals.fat_g) : null,
+  }
+})
+
+function nrvText(pct: number | null) {
+  return pct != null ? `（NRV ${pct}%）` : ''
+}
 
 const goalProgress = computed(() => {
   if (!props.totals || props.totals.calories == null) return null
