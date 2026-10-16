@@ -62,7 +62,12 @@
         <div class="text-caption text-medium-emphasis mt-1">
           {{ t('plans.calories') }} {{ formatNumber(Math.round(planView.totals?.calories ?? 0)) }} kcal
           · {{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
+          · {{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
           · {{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, undefined, { maximumFractionDigits: 1 }) }} g
+          · NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}% /
+          {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}% /
+          {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}% /
+          {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%
         </div>
       </v-card-text>
     </template>
