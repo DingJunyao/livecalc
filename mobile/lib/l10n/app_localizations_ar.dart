@@ -1954,6 +1954,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get mealsApplyPreference => 'تطبيق';
 
   @override
+  String get mealsPreferenceTargetCurrent => 'الوجبة الحالية';
+
+  @override
+  String get mealsPreferenceTargetAll => 'الوجبات الثلاث';
+
+  @override
+  String get mealsPreferenceApplied => 'أعيد التركيب وفق تفضيلك';
+
+  @override
   String get navPlans => 'الحاسبة';
 
   @override

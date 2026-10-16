@@ -1965,6 +1965,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mealsApplyPreference => 'Apply';
 
   @override
+  String get mealsPreferenceTargetCurrent => 'Current meal';
+
+  @override
+  String get mealsPreferenceTargetAll => 'All three meals';
+
+  @override
+  String get mealsPreferenceApplied => 'Recomposed with your preference';
+
+  @override
   String get navPlans => 'Planner';
 
   @override

@@ -1915,6 +1915,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mealsApplyPreference => '应用';
 
   @override
+  String get mealsPreferenceTargetCurrent => '当前餐';
+
+  @override
+  String get mealsPreferenceTargetAll => '三餐全部';
+
+  @override
+  String get mealsPreferenceApplied => '已按偏好重新组合';
+
+  @override
   String get navPlans => '试算';
 
   @override

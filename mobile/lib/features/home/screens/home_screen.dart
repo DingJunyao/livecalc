@@ -20,11 +20,51 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _preferenceController = TextEditingController();
+  /// 一句话偏好的应用范围：current / breakfast / lunch / dinner / all
+  String _preferenceTarget = 'current';
+  bool _applyingPreference = false;
 
   @override
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(homeProvider.notifier).loadToday());
+  }
+
+  /// 应用一句话偏好：按所选范围整餐重搭（还没生成就先跑一次生成，与 web 同口径）
+  Future<void> _applyPreference() async {
+    final state = ref.read(homeProvider);
+    if (state.preferenceInput.isEmpty || _applyingPreference) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _applyingPreference = true);
+    try {
+      final meals = state.recommendation?.meals ?? const <MealRecommendation>[];
+      final hasAnyMeal = meals.any((meal) =>
+          meal.dishes.isNotEmpty || meal.recipeId != null || meal.planName != null);
+      if (!hasAnyMeal) {
+        await ref.read(homeProvider.notifier).loadToday();
+      } else {
+        final current = meals.firstWhere((meal) => meal.isCurrentMeal,
+            orElse: () => meals.first);
+        final targets = switch (_preferenceTarget) {
+          'all' => const ['breakfast', 'lunch', 'dinner'],
+          'current' => [current.mealType],
+          final other => [other],
+        };
+        for (final mealType in targets) {
+          await ref.read(homeProvider.notifier).refreshMeal(mealType);
+        }
+      }
+      if (!mounted) return;
+      // 失败时由 state 监听统一弹错误提示，这里就不再说「已重新组合」
+      if (ref.read(homeProvider).lastError != null) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).mealsPreferenceApplied),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _applyingPreference = false);
+    }
   }
 
   @override
@@ -78,36 +118,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       recArea = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 一句话偏好输入（随生成/换菜提交）
+          // 一句话偏好输入（可指定应用到哪一餐）
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: TextField(
-              controller: _preferenceController,
-              decoration: InputDecoration(
-                labelText: l10n.mealsPreferencePlaceholder,
-                prefixIcon: const Icon(Icons.chat_bubble_outline),
-                suffixIcon: Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: TextButton(
-                    onPressed: state.preferenceInput.isEmpty
+            child: Column(
+              children: [
+                TextField(
+                  controller: _preferenceController,
+                  decoration: InputDecoration(
+                    labelText: l10n.mealsPreferencePlaceholder,
+                    prefixIcon: const Icon(Icons.chat_bubble_outline),
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(left: 4),
+                      child: TextButton(
+                        onPressed: state.preferenceInput.isEmpty ||
+                                _applyingPreference
+                            ? null
+                            : _applyPreference,
+                        child: Text(l10n.mealsApplyPreference),
+                      ),
+                    ),
+                    border: const OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                  onChanged: (v) =>
+                      ref.read(homeProvider.notifier).setPreference(v),
+                ),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: DropdownButton<String>(
+                    value: _preferenceTarget,
+                    isDense: true,
+                    underline: const SizedBox.shrink(),
+                    onChanged: _applyingPreference
                         ? null
-                        : () async {
-                            FocusScope.of(context).unfocus();
-                            final current = state.recommendation!.meals
-                                .firstWhere((m) => m.isCurrentMeal,
-                                    orElse: () => state.recommendation!.meals.first);
-                            await ref
-                                .read(homeProvider.notifier)
-                                .refreshMeal(current.mealType);
-                          },
-                    child: Text(l10n.mealsApplyPreference),
+                        : (value) => setState(
+                            () => _preferenceTarget = value ?? 'current'),
+                    items: [
+                      DropdownMenuItem(
+                        value: 'current',
+                        child: Text(l10n.mealsPreferenceTargetCurrent),
+                      ),
+                      DropdownMenuItem(
+                        value: 'breakfast',
+                        child: Text(l10n.homeBreakfast),
+                      ),
+                      DropdownMenuItem(
+                        value: 'lunch',
+                        child: Text(l10n.homeLunch),
+                      ),
+                      DropdownMenuItem(
+                        value: 'dinner',
+                        child: Text(l10n.homeDinner),
+                      ),
+                      DropdownMenuItem(
+                        value: 'all',
+                        child: Text(l10n.mealsPreferenceTargetAll),
+                      ),
+                    ],
                   ),
                 ),
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              onChanged: (v) =>
-                  ref.read(homeProvider.notifier).setPreference(v),
+              ],
             ),
           ),
           ...state.recommendation!.meals.map((meal) => Padding(

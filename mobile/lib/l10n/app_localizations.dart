@@ -3708,6 +3708,24 @@ abstract class AppLocalizations {
   /// **'应用'**
   String get mealsApplyPreference;
 
+  /// No description provided for @mealsPreferenceTargetCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前餐'**
+  String get mealsPreferenceTargetCurrent;
+
+  /// No description provided for @mealsPreferenceTargetAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'三餐全部'**
+  String get mealsPreferenceTargetAll;
+
+  /// No description provided for @mealsPreferenceApplied.
+  ///
+  /// In zh, this message translates to:
+  /// **'已按偏好重新组合'**
+  String get mealsPreferenceApplied;
+
   /// No description provided for @navPlans.
   ///
   /// In zh, this message translates to:
