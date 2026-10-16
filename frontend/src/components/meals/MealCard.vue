@@ -138,7 +138,7 @@
           v-for="dish in dishes"
           :key="dish.id"
           :title="dish.name"
-          :subtitle="dishSubtitle(dish)"
+          :subtitle="dishSubtitleFull(dish)"
           @click="goToRecipe(dish.id)"
           class="meal-card__dish"
         >
@@ -148,9 +148,6 @@
             </v-chip>
           </template>
           <template #append>
-            <span class="text-caption text-medium-emphasis me-1">
-              {{ dishCost(dish) }} · {{ dishCalorie(dish) }}
-            </span>
             <v-btn
               icon="mdi-swap-horizontal"
               size="x-small"
@@ -404,6 +401,11 @@ function dishSubtitle(dish: RecommendedDish): string {
   return dish.category ? recipeCategoryLabel(dish.category) : ''
 }
 
+/** 副标题：类别 · 成本 · 热量（挪到副标题，标题留给菜名不截断） */
+function dishSubtitleFull(dish: RecommendedDish): string {
+  return [dishSubtitle(dish), dishCost(dish), dishCalorie(dish)].filter(Boolean).join(' · ')
+}
+
 function dishCost(dish: RecommendedDish): string {
   return dish.cost_estimate != null
     ? formatMoney(Number(dish.cost_estimate), dish.currency || userCurrency.value)
@@ -578,6 +580,10 @@ function onChangeDish(dish: RecommendedDish) {
 }
 .meal-card__overlay-toolbar {
   background: linear-gradient(to top, rgba(0,0,0,0.6), transparent) !important;
+  /* 必须脱离 flex 流：否则 toolbar 的 width:100% 会把图片的 flex-basis:0 压成 0 宽（图加载了却看不见） */
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
 }
 .meal-card__dish {
   min-height: 40px;
