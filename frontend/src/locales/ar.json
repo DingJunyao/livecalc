@@ -509,7 +509,9 @@
     "title": "الذكاء الاصطناعي والترجمة الآلية",
     "mealPlanSection": "توصيات الوجبات (تركيب بالذكاء الاصطناعي)",
     "mealPlanProvider": "مزود نموذج التركيب",
-    "mealPlanProviderHint": "يجمع الوصفات المرشحة في وجبة؛ claude_code/codex يتطلبان CLI على الخادم",
+    "mealPlanProviderHint": "يجمع الوصفات المرشحة في وجبة؛ تُعرض المزودات المفعّلة فقط (فعّلها من لوحة ترجمة الذكاء الاصطناعي)، و claude_code/codex يتطلبان CLI على الخادم",
+    "mealPlanProviderDisabled": " (غير مفعّل)",
+    "mealPlanProviderDisabledHint": "المزود المحدد غير مفعّل بعد، لذا سيتراجع التوصية تلقائياً إلى التركيب القواعدي. فعّل مفتاحه من لوحة ترجمة الذكاء الاصطناعي أولاً.",
     "mealPlanTimeout": "مهلة التركيب (ثوانٍ)",
     "mealPlanTimeoutHint": "يتراجع تلقائياً إلى التركيب القواعدي عند انتهاء المهلة",
     "aiPolicySection": "سياسة استخدام الذكاء الاصطناعي",
@@ -997,6 +999,8 @@
     "confirmTitle": "يرجى التأكيد",
     "confirm": "تأكيد",
     "close": "إغلاق",
+    "save": "حفظ",
+    "cancel": "إلغاء",
     "entityProduct": "المنتج",
     "entityIngredient": "المكوّن",
     "updateAvailable": "يتوفر إصدار جديد. حدّث الصفحة للتحديث.",
@@ -1285,7 +1289,8 @@
     "mealNotGenerated": "لا يوجد توصية لهذه الوجبة بعد. أنشئ توصيات اليوم أولاً",
     "mealRefreshLimit": "تم تحديث هذه الوجبة {max} مرات اليوم. عد غداً!",
     "mealDishNotInRecommendation": "هذا الطبق ليس في التوصية الحالية",
-    "mealNoCandidates": "لا توجد وصفات متاحة لهذه الوجبة"
+    "mealNoCandidates": "لا توجد وصفات متاحة لهذه الوجبة",
+    "planNotFound": "الخطة غير موجودة"
   },
   "localValues": {
     "newNameSuffix": " (جديد)",
@@ -1898,6 +1903,7 @@
     "setToday": "تعيين لليوم",
     "setTodayDone": "تم تعيين «{name}» كتوصية اليوم",
     "setTodayFailed": "فشل التعيين لليوم",
+    "takeToPlanner": "استخدم في الحاسبة",
     "empty": "لا توجد خطط بعد",
     "planName": "اسم الخطة",
     "planKind": "نوع الخطة",
@@ -1905,6 +1911,7 @@
     "addIngredient": "إضافة مكوّن (بحث)",
     "addProduct": "إضافة منتج (بحث)",
     "noItems": "لا عناصر بعد — أضف من البحث أعلاه",
+    "nutrition": "التغذية",
     "servings": "الحصص",
     "quantity": "الكمية",
     "totals": "الإجمالي مقابل الهدف",
@@ -1921,6 +1928,7 @@
     "saved": "تم الحفظ",
     "deleted": "تم حذف الخطة",
     "deleteFailed": "فشل الحذف",
+    "deleteConfirm": "حذف الخطة \"{name}\"؟ لا يمكن التراجع عن هذا الإجراء.",
     "typeRecipe": "وصفة",
     "typeIngredient": "مكوّن",
     "typeProduct": "منتج"

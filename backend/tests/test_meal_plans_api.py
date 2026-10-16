@@ -208,3 +208,83 @@ def test_set_plan_and_refresh_flips_source(as_admin, monkeypatch):
         assert dinner["plan"] is None
     finally:
         _cleanup_recipe(recipe_id)
+
+
+def _ensure_fake_user(db):
+    from app.models.user import User
+
+    if db.query(User).filter(User.id == FakeUser.id).first() is None:
+        db.add(User(id=FakeUser.id, username="probe_admin", email="probe@example.com",
+                    password_hash="x", is_admin=True, is_active=True))
+        db.commit()
+
+
+def test_evaluate_awaits_async_recipe_engines(as_admin, monkeypatch):
+    """回归：菜谱成本/营养引擎是 async def，试算必须 await。
+
+    未 await 时拿到的是 coroutine → `cost.get(...)` 抛 AttributeError → 被
+    `except Exception` 静默吞掉 → item.cost / nutrition 全 None →「合计 vs 目标」恒为 0。
+    这里用假引擎把「必须 await」钉死：一旦退回同步调用，合计就会变成 0。
+    """
+    from starlette.testclient import TestClient
+    from app.main import app
+    from app.services import meal_plan_service as mps
+
+    async def fake_cost(recipe_id, user_id, db=None, **kwargs):
+        return {"total_cost": 25.0, "currency": "CNY", "cost_per_serving": 12.5}
+
+    async def fake_nutrition(recipe_id, db=None, **kwargs):
+        return {"per_serving": {"calories": 300.0, "protein": 10.0,
+                                "carbs": 40.0, "fat": 5.0}}
+
+    monkeypatch.setattr(mps, "calculate_recipe_cost", fake_cost)
+    monkeypatch.setattr(mps, "calculate_recipe_nutrition", fake_nutrition)
+
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        recipe_id = _seed_recipe(db)
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    try:
+        resp = client.post("/api/v1/meal-plans/evaluate", json={
+            "kind": "meal", "meal_type": "dinner",
+            "items": [{"group": "dinner", "item_type": "recipe",
+                       "recipe_id": recipe_id, "servings": 2}],
+        })
+        assert resp.status_code == 200, resp.text
+        payload = resp.json()
+        assert payload["items"][0]["cost"] == 12.5
+        assert payload["items"][0]["nutrition"]["calories"] == 300.0
+        # 合计必须跟着走（未 await 时会退化成 0）
+        assert payload["totals"]["cost"] == 12.5
+        assert payload["totals"]["calories"] == 300.0
+        assert payload["totals"]["protein_g"] == 10.0
+    finally:
+        _cleanup_recipe(recipe_id)
+
+
+def test_recipe_cost_per_serving_accepts_float_servings_override(as_admin):
+    """回归：servings_override 传 float（试算页传 float(servings)）时，
+    Decimal 总价 / float 会抛 TypeError（recipe_service.calculate_recipe_cost 末尾的 cost_per_serving）。"""
+    import asyncio
+    from app.services.recipe_service import calculate_recipe_cost
+
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        _ensure_fake_user(db)
+        recipe_id = _seed_recipe(db)
+        result = asyncio.run(calculate_recipe_cost(
+            recipe_id, FakeUser.id, db, servings_override=2.0,
+        ))
+    finally:
+        db.close()
+    try:
+        assert result is not None
+        assert float(result["cost_per_serving"]) == 0.0
+        assert float(result["total_cost"]) == 0.0
+    finally:
+        _cleanup_recipe(recipe_id)

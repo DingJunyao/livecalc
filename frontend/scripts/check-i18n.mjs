@@ -11,6 +11,9 @@ const sourceIgnorePaths = [
   'src/api/local/seed.ts',
   'src/api/agent.ts',
   'src/api/local/agent',
+  // 本地模式餐食组合器：字符串是发给模型的提示词与内部校验反馈（只用于重试判定/回退），
+  // 不是用户可见文案，故不参与「中文硬编码」扫描。
+  'src/api/local/business/mealComposer.ts',
   'src/utils/currencyNames.ts',
   'src/utils/catalogLabels.ts',
   'src/utils/pastePriceParser.ts',

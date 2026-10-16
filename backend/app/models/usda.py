@@ -44,7 +44,7 @@ class UsdaFoodNutrient(Base):
 
 
 class TranslationConfig(Base):
-    """翻译配置（单行，JSON 存 ai/machine 两区各 provider 配置）"""
+    """翻译配置（单行，JSON 存 ai/machine 两区各 provider 配置 + meal_plan/ai_policy 等区块）"""
     __tablename__ = "translation_configs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -53,10 +53,19 @@ class TranslationConfig(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     def to_dict(self):
-        return {
-            "ai": (self.config or {}).get("ai", {"providers": {}}),
-            "machine": (self.config or {}).get("machine", {"providers": {}}),
-        }
+        """返回**整份**配置（含 ai/machine 之外的 meal_plan / ai_policy 等顶层区块）。
+
+        早期实现只回 ai/machine：GET /admin/translation-config 因此丢掉
+        meal_plan / ai_policy，前端读 ``config.ai_policy`` 直接崩；
+        ``ai_policy.get_policy()`` 也就永远只能读到默认值。
+        ai/machine 仍保证存在（翻译链路依赖 find_provider_section 遍历两区）。
+        """
+        import copy
+
+        cfg = copy.deepcopy(self.config or {})
+        for region in ("ai", "machine"):
+            cfg.setdefault(region, {"providers": {}})
+        return cfg
 
 
 class UsdaTask(Base):

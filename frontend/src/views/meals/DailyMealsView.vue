@@ -194,7 +194,7 @@ function handleTakeToPlanner(mealType: string) {
     })),
   }
   sessionStorage.setItem('planDraft', JSON.stringify(draft))
-  router.push('/plans')
+  router.push('/plans/new')
 }
 
 async function handleRefresh(mealType: string, recipeId?: number) {

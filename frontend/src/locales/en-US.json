@@ -509,7 +509,9 @@
     "title": "AI and machine translation",
     "mealPlanSection": "Meal recommendations (AI composition)",
     "mealPlanProvider": "Composition model provider",
-    "mealPlanProviderHint": "Composes candidate recipes into a meal set; claude_code/codex require the server-side CLI",
+    "mealPlanProviderHint": "Composes candidate recipes into a meal set; only enabled providers are listed (toggle them in the AI translation panel), and claude_code/codex require the server-side CLI",
+    "mealPlanProviderDisabled": " (not enabled)",
+    "mealPlanProviderDisabledHint": "The selected provider is not enabled yet, so recommendations fall back to rule-based composition. Turn on its switch in the AI translation panel first.",
     "mealPlanTimeout": "Per-composition timeout (seconds)",
     "mealPlanTimeoutHint": "Falls back to rule-based composition on timeout",
     "aiPolicySection": "AI usage policy",
@@ -997,6 +999,8 @@
     "confirmTitle": "Please confirm",
     "confirm": "Confirm",
     "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
     "entityProduct": "product",
     "entityIngredient": "ingredient",
     "updateAvailable": "A new version is available. Refresh to update.",
@@ -1285,7 +1289,8 @@
     "mealNotGenerated": "No recommendation for this meal yet. Generate today's recommendations first",
     "mealRefreshLimit": "This meal has been refreshed {max} times today. Come back tomorrow!",
     "mealDishNotInRecommendation": "That dish is not in the current recommendation",
-    "mealNoCandidates": "No available recipes for this meal"
+    "mealNoCandidates": "No available recipes for this meal",
+    "planNotFound": "Plan not found"
   },
   "localValues": {
     "newNameSuffix": " (new)",
@@ -1898,6 +1903,7 @@
     "setToday": "Set as today",
     "setTodayDone": "\"{name}\" set as today's recommendation",
     "setTodayFailed": "Failed to set as today",
+    "takeToPlanner": "Use in planner",
     "empty": "No plans yet",
     "planName": "Plan name",
     "planKind": "Plan type",
@@ -1905,6 +1911,7 @@
     "addIngredient": "Add ingredient (search)",
     "addProduct": "Add product (search)",
     "noItems": "No items yet — add via the search above",
+    "nutrition": "Nutrition",
     "servings": "Servings",
     "quantity": "Quantity",
     "totals": "Totals vs targets",
@@ -1921,6 +1928,7 @@
     "saved": "Saved",
     "deleted": "Plan deleted",
     "deleteFailed": "Failed to delete",
+    "deleteConfirm": "Delete plan \"{name}\"? This cannot be undone.",
     "typeRecipe": "Recipe",
     "typeIngredient": "Ingredient",
     "typeProduct": "Product"

@@ -239,7 +239,7 @@ async def evaluate(
     from app.services.meal_plan_service import evaluate_items
 
     items = [it.model_dump() for it in body.items]
-    return evaluate_items(db, current_user, items, body.kind, body.meal_type, tz)
+    return await evaluate_items(db, current_user, items, body.kind, body.meal_type, tz)
 
 
 @router.get("/{plan_id}/cost-trend")
