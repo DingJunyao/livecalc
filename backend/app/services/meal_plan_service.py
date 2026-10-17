@@ -268,18 +268,26 @@ async def _item_cost_nutrition(
             return out
         out["name"] = product.name
         quantity = float(item.quantity or 0)
+        record = (
+            db.query(ProductRecord)
+            .filter(
+                ProductRecord.product_id == product.id,
+                ProductRecord.is_active == True,  # noqa: E712
+            )
+            .order_by(ProductRecord.recorded_at.desc())
+            .first()
+        )
         unit_abbr = item.unit.abbreviation if item.unit else None
+        if unit_abbr is None and record is not None:
+            # 未显式选单位时，商品沿用最新有效价格记录的标准单位，
+            # 例如“500 g/件”的商品条目默认按 g 计算与展示。
+            unit_abbr = (
+                record.standard_unit.abbreviation
+                if record.standard_unit is not None
+                else None
+            )
         out["unit"] = unit_abbr
         try:
-            record = (
-                db.query(ProductRecord)
-                .filter(
-                    ProductRecord.product_id == product.id,
-                    ProductRecord.is_active == True,  # noqa: E712
-                )
-                .order_by(ProductRecord.recorded_at.desc())
-                .first()
-            )
             if record is not None and record.price is not None:
                 # 单价 = 价格 / 标准数量；数量按记录的标准单位换算
                 std_qty = float(record.standard_quantity or 1) or 1.0
