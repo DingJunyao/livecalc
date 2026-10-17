@@ -48,6 +48,10 @@ def _round2(v: float) -> float:
     return round(v + 0.0, 2)
 
 
+def _round4(v: float) -> float:
+    return round(v + 0.0, 4)
+
+
 def _nutrient_values_from_all_nutrients(all_nutrients: Dict, factor: float = 1.0) -> Dict[str, float]:
     """把 all_nutrients（英文 key）整体折算 factor 倍；能量统一成 kcal。"""
     values: Dict[str, float] = {}
@@ -428,7 +432,10 @@ async def _evaluate_stub_items(
         info = await _item_cost_nutrition(db, user, item, tz)
         eval_items.append(info)
         if info.get("cost") is not None:
-            totals["cost"] = _round2(totals["cost"] + info["cost"])
+            if info["cost"] != 0:
+                totals["cost"] = _round4(
+                    _round2(totals["cost"]) + _round4(info["cost"])
+                )
             totals["currency"] = info.get("currency") or totals["currency"]
         n = info.get("nutrition")
         if n:
@@ -528,6 +535,10 @@ def plan_cost_trend(
                     if unit_price is not None:
                         daily[day]["cost"] = _round2(
                             daily[day]["cost"] + float(unit_price) * quantity)
+                        daily[day]["raw_cost"] = (
+                            daily[day].get("raw_cost", 0.0)
+                            + float(unit_price) * quantity
+                        )
                         daily[day]["min"] = _round2(
                             daily[day]["min"] + float(unit_price) * quantity)
                         daily[day]["max"] = _round2(
@@ -569,6 +580,9 @@ def plan_cost_trend(
             # 最新价语义：前向填充到整个窗口
             for day in daily:
                 daily[day]["cost"] = _round2(daily[day]["cost"] + unit_price * qty)
+                daily[day]["raw_cost"] = (
+                    daily[day].get("raw_cost", 0.0) + unit_price * qty
+                )
                 daily[day]["min"] = _round2(daily[day]["min"] + unit_price * qty)
                 daily[day]["max"] = _round2(daily[day]["max"] + unit_price * qty)
                 if daily[day]["currency"] is None and record.currency:
@@ -577,10 +591,10 @@ def plan_cost_trend(
     return [
         {
             "date": day,
-            "total_cost": info["cost"],
+            "total_cost": info.get("raw_cost", info["cost"]),
             "min_cost": info["min"],
             "max_cost": info["max"],
-            "avg_cost": info["cost"],
+            "avg_cost": info.get("raw_cost", info["cost"]),
             "currency": info["currency"],
         }
         for day, info in sorted(daily.items())

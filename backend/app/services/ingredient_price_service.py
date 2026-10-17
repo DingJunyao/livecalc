@@ -276,6 +276,30 @@ def get_weighted_ingredient_price(
         for pt in result.get("participants", [])
         if pt.get("product_id") in product_records
     }
+    if result["unit_price"] is not None and result["participants"]:
+        first_pid = result["participants"][0]["product_id"]
+        records = result.get("participant_records", {}).get(first_pid, [])
+        std_unit = records[0].standard_unit if records else None
+        std_abbr = std_unit.abbreviation if std_unit else None
+        if target_unit_abbr and std_abbr and target_unit_abbr != std_abbr:
+            from app.services.unit_conversion_service import UnitConversionService
+
+            converted = UnitConversionService(db).convert(
+                Decimal("1"),
+                target_unit_abbr,
+                std_abbr,
+                entity_type="ingredient",
+                entity_id=ingredient_id,
+            )
+            if converted:
+                result["unit_price"] = float(
+                    Decimal(str(result["unit_price"])) * converted[0]
+                )
+                result["unit"] = target_unit_abbr
+            else:
+                result["unit"] = std_abbr
+        else:
+            result["unit"] = target_unit_abbr or std_abbr
     return result
 
 
