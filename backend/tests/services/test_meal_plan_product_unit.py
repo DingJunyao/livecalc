@@ -3,7 +3,9 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
+from types import SimpleNamespace
 from conftest import FakeUser
+from app.services import recipe_service
 
 
 def test_product_without_unit_uses_latest_price_record_standard_unit(db_session):
@@ -169,3 +171,73 @@ def test_weighted_ingredient_price_converts_standard_unit_to_target(db_session):
 
     assert result["unit"] == expected_unit_abbreviation
     assert result["unit_price"] == pytest.approx(1.18 / 500 * 120)
+
+
+def test_plan_cost_trend_scales_recipe_range_by_servings(monkeypatch):
+    from app.services import meal_plan_service as meal_plan_service
+    from app.services import recipe_service
+
+    point = {
+        "date": "2026-10-17",
+        "avg_cost": 3.0,
+        "min_cost": 1.0,
+        "max_cost": 4.0,
+        "currency": "CNY",
+    }
+    monkeypatch.setattr(
+        recipe_service,
+        "calculate_recipe_cost_range_trend",
+        lambda *args, **kwargs: [point],
+    )
+    plan = SimpleNamespace(items=[SimpleNamespace(
+        recipe_id=1, servings=2, item_type="recipe",
+    )])
+    user = SimpleNamespace(id=FakeUser.id)
+
+    result = meal_plan_service.plan_cost_trend(
+        None, user, plan, days=1, tz="Asia/Shanghai"
+    )
+
+    assert len(result) == 1
+    assert result[0]["avg_cost"] == pytest.approx(6.0)
+    assert result[0]["min_cost"] == pytest.approx(2.0)
+    assert result[0]["max_cost"] == pytest.approx(8.0)
+    assert result[0]["total_cost"] == pytest.approx(6.0)
+
+
+def test_plan_cost_trend_keeps_recipe_average_with_loose_items(monkeypatch):
+    from app.services import meal_plan_service as meal_plan_service
+
+    recipe_point = {
+        "date": "2026-10-17",
+        "avg_cost": 3.0,
+        "min_cost": 1.0,
+        "max_cost": 4.0,
+        "currency": "CNY",
+    }
+    monkeypatch.setattr(
+        recipe_service,
+        "calculate_recipe_cost_range_trend",
+        lambda *args, **kwargs: [recipe_point],
+    )
+    monkeypatch.setattr(
+        meal_plan_service,
+        "get_weighted_ingredient_price",
+        lambda *args, **kwargs: {"unit_price": 0.1, "currency": "CNY"},
+    )
+    plan = SimpleNamespace(items=[
+        SimpleNamespace(recipe_id=1, servings=1, item_type="recipe"),
+        SimpleNamespace(
+            ingredient_id=1, quantity=1, unit=None, item_type="ingredient",
+        ),
+    ])
+    user = SimpleNamespace(id=FakeUser.id)
+
+    result = meal_plan_service.plan_cost_trend(
+        None, user, plan, days=1, tz="Asia/Shanghai"
+    )
+
+    assert result[0]["avg_cost"] == pytest.approx(3.1)
+    assert result[0]["min_cost"] == pytest.approx(1.1)
+    assert result[0]["max_cost"] == pytest.approx(4.1)
+    assert result[0]["total_cost"] == pytest.approx(3.1)

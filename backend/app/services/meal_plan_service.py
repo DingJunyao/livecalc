@@ -485,7 +485,7 @@ def plan_cost_trend(
 
     daily: Dict[str, Dict[str, Optional[float]]] = {
         (start + timedelta(days=i)).date().isoformat(): {
-            "cost": 0.0, "min": 0.0, "max": 0.0, "currency": None,
+            "avg": 0.0, "min": 0.0, "max": 0.0, "currency": None,
         }
         for i in range(days)
     }
@@ -505,14 +505,13 @@ def plan_cost_trend(
                     continue
                 avg = point.get("avg_cost", point.get("avg"))
                 if avg is not None:
-                    daily[day]["cost"] = _round2(
-                        daily[day]["cost"] + float(avg) * servings)
+                    daily[day]["avg"] += float(avg) * servings
                 mn = point.get("min_cost")
                 mx = point.get("max_cost")
                 if mn is not None:
-                    daily[day]["min"] = _round2(daily[day]["min"] + float(mn) * servings)
+                    daily[day]["min"] += float(mn) * servings
                 if mx is not None:
-                    daily[day]["max"] = _round2(daily[day]["max"] + float(mx) * servings)
+                    daily[day]["max"] += float(mx) * servings
                 if daily[day]["currency"] is None and point.get("currency"):
                     daily[day]["currency"] = point["currency"]
         except Exception:
@@ -533,16 +532,10 @@ def plan_cost_trend(
                     )
                     unit_price = weighted.get("unit_price")
                     if unit_price is not None:
-                        daily[day]["cost"] = _round2(
-                            daily[day]["cost"] + float(unit_price) * quantity)
-                        daily[day]["raw_cost"] = (
-                            daily[day].get("raw_cost", 0.0)
-                            + float(unit_price) * quantity
-                        )
-                        daily[day]["min"] = _round2(
-                            daily[day]["min"] + float(unit_price) * quantity)
-                        daily[day]["max"] = _round2(
-                            daily[day]["max"] + float(unit_price) * quantity)
+                        contribution = float(unit_price) * quantity
+                        daily[day]["avg"] += contribution
+                        daily[day]["min"] += contribution
+                        daily[day]["max"] += contribution
                         if daily[day]["currency"] is None and weighted.get("currency"):
                             daily[day]["currency"] = weighted["currency"]
                 except Exception:
@@ -579,22 +572,20 @@ def plan_cost_trend(
                     pass
             # 最新价语义：前向填充到整个窗口
             for day in daily:
-                daily[day]["cost"] = _round2(daily[day]["cost"] + unit_price * qty)
-                daily[day]["raw_cost"] = (
-                    daily[day].get("raw_cost", 0.0) + unit_price * qty
-                )
-                daily[day]["min"] = _round2(daily[day]["min"] + unit_price * qty)
-                daily[day]["max"] = _round2(daily[day]["max"] + unit_price * qty)
+                contribution = unit_price * qty
+                daily[day]["avg"] += contribution
+                daily[day]["min"] += contribution
+                daily[day]["max"] += contribution
                 if daily[day]["currency"] is None and record.currency:
                     daily[day]["currency"] = record.currency
 
     return [
         {
             "date": day,
-            "total_cost": info.get("raw_cost", info["cost"]),
-            "min_cost": info["min"],
-            "max_cost": info["max"],
-            "avg_cost": info.get("raw_cost", info["cost"]),
+            "total_cost": _round4(info["avg"]),
+            "min_cost": _round4(info["min"]),
+            "max_cost": _round4(info["max"]),
+            "avg_cost": _round4(info["avg"]),
             "currency": info["currency"],
         }
         for day, info in sorted(daily.items())
