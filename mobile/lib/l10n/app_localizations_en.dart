@@ -1992,10 +1992,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plansNewPlan => 'New plan';
 
   @override
+  String get plansItems => 'Items';
+
+  @override
   String get plansEdit => 'Edit plan';
 
   @override
   String get plansKindMeal => 'Meal';
+
+  @override
+  String get plansGroupOther => 'Other';
+
+  @override
+  String get plansBadgeMeal => 'Meal';
+
+  @override
+  String get plansBadgeDay => 'Day';
 
   @override
   String get plansKindDay => 'Day';
@@ -2024,6 +2036,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plansPlanName => 'Plan name';
 
   @override
+  String get plansAddItem => 'Add item';
+
+  @override
   String get plansAddRecipe => 'Add recipe';
 
   @override
@@ -2034,6 +2049,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get plansServingsPlus => 'Servings +1';
+
+  @override
+  String get plansQuantityMinus => 'Decrease quantity';
+
+  @override
+  String get plansQuantityPlus => 'Increase quantity';
 
   @override
   String get plansQuantity => 'Quantity';
@@ -2057,7 +2078,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get plansTarget => 'Target';
 
   @override
-  String get plansCostTrend => 'Cost trend (historical prices)';
+  String get plansCostTrend => 'Cost trend';
+
+  @override
+  String get chartsLow => 'Low';
+
+  @override
+  String get chartsHigh => 'High';
 
   @override
   String get plansSaved => 'Saved';

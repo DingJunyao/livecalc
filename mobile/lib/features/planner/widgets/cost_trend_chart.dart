@@ -72,7 +72,8 @@ class _CostTrendChartState extends State<CostTrendChart> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final points = widget.points;
-    final avg = points.map((p) => _num(p['total_cost'])).toList(growable: false);
+    final avg =
+        points.map((p) => _num(p['total_cost'])).toList(growable: false);
     final min =
         points.map((p) => _numOrNull(p['min_cost'])).toList(growable: false);
     final max =
@@ -133,7 +134,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
                 height: 160,
                 child: Center(
                   child: Text(
-                    l10n.nutritionNoData,
+                    l10n.recipeNoCostTrend,
                     style: TextStyle(color: theme.colorScheme.outline),
                   ),
                 ),
@@ -141,9 +142,44 @@ class _CostTrendChartState extends State<CostTrendChart> {
             else ...[
               if (point != null)
                 Text(
-                  _caption(l10n, point, hasBand),
+                  point['date']?.toString() ?? '',
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline),
+                ),
+              if (point != null)
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 4,
+                  children: [
+                    _summaryItem(
+                      theme,
+                      l10n.chartsAverage,
+                      formatMoney(
+                        _num(point['total_cost']),
+                        widget.userCurrency,
+                      ),
+                    ),
+                    if (hasBand &&
+                        _numOrNull(point['min_cost']) != null &&
+                        _numOrNull(point['max_cost']) != null) ...[
+                      _summaryItem(
+                        theme,
+                        l10n.chartsLow,
+                        formatMoney(
+                          _num(point['min_cost']),
+                          widget.userCurrency,
+                        ),
+                      ),
+                      _summaryItem(
+                        theme,
+                        l10n.chartsHigh,
+                        formatMoney(
+                          _num(point['max_cost']),
+                          widget.userCurrency,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               const SizedBox(height: 6),
               SizedBox(
@@ -177,7 +213,8 @@ class _CostTrendChartState extends State<CostTrendChart> {
                               ?.copyWith(color: theme.colorScheme.outline),
                           startLabel: points.first['date'] as String? ?? '',
                           endLabel: points.last['date'] as String? ?? '',
-                          moneyLabel: (v) => formatMoney(v, widget.userCurrency),
+                          moneyLabel: (v) =>
+                              formatMoney(v, widget.userCurrency),
                         ),
                         child: const SizedBox.expand(),
                       ),
@@ -192,19 +229,23 @@ class _CostTrendChartState extends State<CostTrendChart> {
     );
   }
 
-  String _caption(
-      AppLocalizations l10n, Map<String, dynamic> point, bool hasBand) {
-    final avgText = formatMoney(_num(point['total_cost']), widget.userCurrency);
-    final buffer = StringBuffer('${point['date'] ?? ''} · ');
-    buffer.write('${l10n.chartsAverage} $avgText');
-    final min = _numOrNull(point['min_cost']);
-    final max = _numOrNull(point['max_cost']);
-    if (hasBand && min != null && max != null) {
-      buffer.write(' · ${l10n.chartsRange} '
-          '${formatMoney(min, widget.userCurrency)}–'
-          '${formatMoney(max, widget.userCurrency)}');
-    }
-    return buffer.toString();
+  Widget _summaryItem(ThemeData theme, String label, String value) {
+    return Text.rich(
+      TextSpan(
+        text: '$label ',
+        style: theme.textTheme.labelSmall
+            ?.copyWith(color: theme.colorScheme.outline),
+        children: [
+          TextSpan(
+            text: value,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

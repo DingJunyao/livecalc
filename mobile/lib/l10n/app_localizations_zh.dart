@@ -1942,10 +1942,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get plansNewPlan => '新建方案';
 
   @override
+  String get plansItems => '食材项目';
+
+  @override
   String get plansEdit => '编辑方案';
 
   @override
   String get plansKindMeal => '一顿';
+
+  @override
+  String get plansGroupOther => '其他';
+
+  @override
+  String get plansBadgeMeal => '餐';
+
+  @override
+  String get plansBadgeDay => '顿';
 
   @override
   String get plansKindDay => '一日';
@@ -1974,6 +1986,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get plansPlanName => '方案名称';
 
   @override
+  String get plansAddItem => '添加条目';
+
+  @override
   String get plansAddRecipe => '添加菜谱';
 
   @override
@@ -1984,6 +1999,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get plansServingsPlus => '份量 +1';
+
+  @override
+  String get plansQuantityMinus => '减少数量';
+
+  @override
+  String get plansQuantityPlus => '增加数量';
 
   @override
   String get plansQuantity => '数量';
@@ -2007,7 +2028,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get plansTarget => '目标';
 
   @override
-  String get plansCostTrend => '成本走势（历史价格折算）';
+  String get plansCostTrend => '成本走势';
+
+  @override
+  String get chartsLow => '最低';
+
+  @override
+  String get chartsHigh => '最高';
 
   @override
   String get plansSaved => '已保存';

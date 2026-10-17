@@ -1981,10 +1981,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get plansNewPlan => 'خطة جديدة';
 
   @override
+  String get plansItems => 'العناصر';
+
+  @override
   String get plansEdit => 'تحرير الخطة';
 
   @override
   String get plansKindMeal => 'وجبة';
+
+  @override
+  String get plansGroupOther => 'أخرى';
+
+  @override
+  String get plansBadgeMeal => 'وجبة';
+
+  @override
+  String get plansBadgeDay => 'يوم';
 
   @override
   String get plansKindDay => 'يوم';
@@ -2014,6 +2026,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get plansPlanName => 'اسم الخطة';
 
   @override
+  String get plansAddItem => 'إضافة عنصر';
+
+  @override
   String get plansAddRecipe => 'إضافة وصفة';
 
   @override
@@ -2024,6 +2039,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get plansServingsPlus => 'حصة +1';
+
+  @override
+  String get plansQuantityMinus => 'تقليل الكمية';
+
+  @override
+  String get plansQuantityPlus => 'زيادة الكمية';
 
   @override
   String get plansQuantity => 'الكمية';
@@ -2047,7 +2068,13 @@ class AppLocalizationsAr extends AppLocalizations {
   String get plansTarget => 'الهدف';
 
   @override
-  String get plansCostTrend => 'اتجاه التكلفة (بالأسعار التاريخية)';
+  String get plansCostTrend => 'اتجاه التكلفة';
+
+  @override
+  String get chartsLow => 'الأقل';
+
+  @override
+  String get chartsHigh => 'الأعلى';
 
   @override
   String get plansSaved => 'تم الحفظ';

@@ -33,6 +33,7 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
 
   bool _loading = true;
   bool _busy = false;
+  bool _trendLoading = true;
   String? _error;
   Map<String, dynamic>? _plan;
   Map<String, dynamic>? _evaluation;
@@ -109,11 +110,14 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
 
   Future<void> _loadTrend() async {
     try {
+      setState(() => _trendLoading = true);
       final trend = await _repo.costTrend(widget.planId, days: _trendDays);
       if (!mounted) return;
       setState(() => _trend = trend);
     } on Exception {
       // 趋势失败静默
+    } finally {
+      if (mounted) setState(() => _trendLoading = false);
     }
   }
 
@@ -208,7 +212,8 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
     }
     final evaluation = _evaluation;
     final totals = (evaluation?['totals'] as Map<String, dynamic>?) ?? const {};
-    final targets = (evaluation?['targets'] as Map<String, dynamic>?) ?? const {};
+    final targets =
+        (evaluation?['targets'] as Map<String, dynamic>?) ?? const {};
     final nutrition = evaluation?['nutrition'] as Map<String, dynamic>?;
     final evalItems = ((evaluation?['items'] as List?) ?? const [])
         .cast<Map<String, dynamic>>();
@@ -227,7 +232,7 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        plan['name'] as String? ?? '',
+                        l10n.plansItems,
                         style: theme.textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.bold),
                       ),
@@ -260,6 +265,14 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.colorScheme.outline),
                 ),
+                for (var i = 0; i < items.length; i++)
+                  _itemRow(
+                    theme,
+                    l10n,
+                    items[i],
+                    evalItems.length > i ? evalItems[i] : null,
+                    userCurrency,
+                  ),
                 if ((plan['note'] as String?)?.isNotEmpty ?? false) ...[
                   const SizedBox(height: 6),
                   Text(plan['note'] as String? ?? '',
@@ -289,44 +302,27 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
               ),
             ),
           ),
-          NutritionSourceGrid(nutrition: RecipeNutrition.fromJson(nutrition ?? const {})),
-          CostProportionChart(
-            breakdown: _costBreakdown(items, evalItems),
-            totalCost: _num(totals['cost']),
-            userCurrency: (totals['currency'] as String?) ?? userCurrency,
-          ),
         ],
         CostTrendChart(
           points: _trend,
           userCurrency: userCurrency,
+          loading: _trendLoading,
           days: _trendDays,
           onDaysChanged: (days) {
             setState(() => _trendDays = days);
             _loadTrend();
           },
         ),
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.plansItemCount(items.length),
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                for (var i = 0; i < items.length; i++)
-                  _itemRow(
-                    theme,
-                    l10n,
-                    items[i],
-                    evalItems.length > i ? evalItems[i] : null,
-                    userCurrency,
-                  ),
-              ],
-            ),
+        if (evaluation != null) ...[
+          CostProportionChart(
+            breakdown: _costBreakdown(items, evalItems),
+            totalCost: _num(totals['cost']),
+            userCurrency: (totals['currency'] as String?) ?? userCurrency,
           ),
-        ),
+          NutritionSourceGrid(
+            nutrition: RecipeNutrition.fromJson(nutrition ?? const {}),
+          ),
+        ],
       ],
     );
   }
@@ -389,7 +385,8 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
   ) {
     final out = <CostBreakdownItem>[];
     for (var i = 0; i < items.length; i++) {
-      final detail = evalItems.length > i ? evalItems[i] : const <String, dynamic>{};
+      final detail =
+          evalItems.length > i ? evalItems[i] : const <String, dynamic>{};
       final cost = (detail['cost'] as num?)?.toDouble() ?? 0;
       if (cost <= 0) continue;
       out.add(CostBreakdownItem(

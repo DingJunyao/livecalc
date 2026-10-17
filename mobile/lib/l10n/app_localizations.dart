@@ -3762,6 +3762,12 @@ abstract class AppLocalizations {
   /// **'新建方案'**
   String get plansNewPlan;
 
+  /// No description provided for @plansItems.
+  ///
+  /// In zh, this message translates to:
+  /// **'食材项目'**
+  String get plansItems;
+
   /// No description provided for @plansEdit.
   ///
   /// In zh, this message translates to:
@@ -3773,6 +3779,24 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'一顿'**
   String get plansKindMeal;
+
+  /// No description provided for @plansGroupOther.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他'**
+  String get plansGroupOther;
+
+  /// No description provided for @plansBadgeMeal.
+  ///
+  /// In zh, this message translates to:
+  /// **'餐'**
+  String get plansBadgeMeal;
+
+  /// No description provided for @plansBadgeDay.
+  ///
+  /// In zh, this message translates to:
+  /// **'顿'**
+  String get plansBadgeDay;
 
   /// No description provided for @plansKindDay.
   ///
@@ -3822,6 +3846,12 @@ abstract class AppLocalizations {
   /// **'方案名称'**
   String get plansPlanName;
 
+  /// No description provided for @plansAddItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加条目'**
+  String get plansAddItem;
+
   /// No description provided for @plansAddRecipe.
   ///
   /// In zh, this message translates to:
@@ -3845,6 +3875,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'份量 +1'**
   String get plansServingsPlus;
+
+  /// No description provided for @plansQuantityMinus.
+  ///
+  /// In zh, this message translates to:
+  /// **'减少数量'**
+  String get plansQuantityMinus;
+
+  /// No description provided for @plansQuantityPlus.
+  ///
+  /// In zh, this message translates to:
+  /// **'增加数量'**
+  String get plansQuantityPlus;
 
   /// No description provided for @plansQuantity.
   ///
@@ -3891,8 +3933,20 @@ abstract class AppLocalizations {
   /// No description provided for @plansCostTrend.
   ///
   /// In zh, this message translates to:
-  /// **'成本走势（历史价格折算）'**
+  /// **'成本走势'**
   String get plansCostTrend;
+
+  /// No description provided for @chartsLow.
+  ///
+  /// In zh, this message translates to:
+  /// **'最低'**
+  String get chartsLow;
+
+  /// No description provided for @chartsHigh.
+  ///
+  /// In zh, this message translates to:
+  /// **'最高'**
+  String get chartsHigh;
 
   /// No description provided for @plansSaved.
   ///

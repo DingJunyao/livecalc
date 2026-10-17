@@ -46,8 +46,13 @@ void main() {
     );
     await tester.pump();
 
+    expect(find.text('Cost trend'), findsOneWidget);
     expect(find.textContaining('Average'), findsOneWidget);
-    expect(find.textContaining('Range'), findsOneWidget);
+    expect(find.textContaining('Low'), findsOneWidget);
+    expect(find.textContaining('High'), findsOneWidget);
+    expect(find.textContaining('24.9'), findsOneWidget);
+    expect(find.textContaining('23.9'), findsOneWidget);
+    expect(find.textContaining('26.4'), findsOneWidget);
     expect(find.textContaining('CNY'), findsWidgets);
 
     await tester.tap(find.text('30d'));

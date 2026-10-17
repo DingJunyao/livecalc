@@ -224,9 +224,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // 一句话偏好输入（可指定应用到哪一餐）
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: Column(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                TextField(
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _preferenceTarget,
+                      isDense: true,
+                      onChanged: _applyingPreference
+                          ? null
+                          : (value) =>
+                              setState(() => _preferenceTarget = value ?? 'current'),
+                      items: [
+                        DropdownMenuItem(
+                          value: 'current',
+                          child: Text(l10n.mealsPreferenceTargetCurrent),
+                        ),
+                        DropdownMenuItem(
+                          value: 'breakfast',
+                          child: Text(l10n.homeBreakfast),
+                        ),
+                        DropdownMenuItem(
+                          value: 'lunch',
+                          child: Text(l10n.homeLunch),
+                        ),
+                        DropdownMenuItem(
+                          value: 'dinner',
+                          child: Text(l10n.homeDinner),
+                        ),
+                        DropdownMenuItem(
+                          value: 'all',
+                          child: Text(l10n.mealsPreferenceTargetAll),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: TextField(
                   controller: _preferenceController,
                   decoration: InputDecoration(
                     labelText: l10n.mealsPreferencePlaceholder,
@@ -247,39 +284,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   onChanged: (v) =>
                       ref.read(homeProvider.notifier).setPreference(v),
                 ),
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: DropdownButton<String>(
-                    value: _preferenceTarget,
-                    isDense: true,
-                    underline: const SizedBox.shrink(),
-                    onChanged: _applyingPreference
-                        ? null
-                        : (value) => setState(
-                            () => _preferenceTarget = value ?? 'current'),
-                    items: [
-                      DropdownMenuItem(
-                        value: 'current',
-                        child: Text(l10n.mealsPreferenceTargetCurrent),
-                      ),
-                      DropdownMenuItem(
-                        value: 'breakfast',
-                        child: Text(l10n.homeBreakfast),
-                      ),
-                      DropdownMenuItem(
-                        value: 'lunch',
-                        child: Text(l10n.homeLunch),
-                      ),
-                      DropdownMenuItem(
-                        value: 'dinner',
-                        child: Text(l10n.homeDinner),
-                      ),
-                      DropdownMenuItem(
-                        value: 'all',
-                        child: Text(l10n.mealsPreferenceTargetAll),
-                      ),
-                    ],
-                  ),
                 ),
               ],
             ),
