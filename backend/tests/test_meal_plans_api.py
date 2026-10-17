@@ -210,6 +210,45 @@ def test_set_plan_and_refresh_flips_source(as_admin, monkeypatch):
         _cleanup_recipe(recipe_id)
 
 
+def test_plan_routes_are_private_to_creator(as_non_admin):
+    """试算方案只对创建者可见/可操作；其他用户一律 404。"""
+    from starlette.testclient import TestClient
+    from app.main import app
+    from app.models.meal_plan import MealPlan
+
+    Base.metadata.create_all(bind=engine)
+    db = TestingSessionLocal()
+    try:
+        plan = MealPlan(
+            user_id=FakeUser.id,
+            name="owner-only",
+            kind="meal",
+            created_by=FakeUser.id,
+            updated_by=FakeUser.id,
+        )
+        db.add(plan)
+        db.commit()
+        plan_id = plan.id
+    finally:
+        db.close()
+
+    client = TestClient(app)
+    base = f"/api/v1/meal-plans/{plan_id}"
+    assert client.get(base).status_code == 404
+    assert client.put(base, json={"name": "hijacked"}).status_code == 404
+    assert client.delete(base).status_code == 404
+    assert client.get(
+        f"{base}/cost-trend", params={"days": 7}
+    ).status_code == 404
+    assert client.post(
+        "/api/v1/meals/recommendations/set-plan",
+        json={"plan_id": plan_id, "meal_type": "dinner"},
+    ).status_code == 404
+
+    listed = client.get("/api/v1/meal-plans").json()["items"]
+    assert all(item["id"] != plan_id for item in listed)
+
+
 def _ensure_fake_user(db):
     from app.models.user import User
 
