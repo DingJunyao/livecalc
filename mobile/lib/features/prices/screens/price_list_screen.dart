@@ -133,7 +133,12 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
           content: Text(
             l10n.priceDeleteRecordMessage(
               r.productName,
-              formatMoney(r.price, userCurrency),
+              formatMoneyWithConvert(
+                r.price,
+                r.currency,
+                userCurrency,
+                exchangeRate: r.exchangeRate,
+              ),
             ),
           ),
           actions: [

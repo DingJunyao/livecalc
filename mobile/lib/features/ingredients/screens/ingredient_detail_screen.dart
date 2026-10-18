@@ -1465,7 +1465,12 @@ class _RecordRow extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 2),
                 Text(
-                  '${formatMoney(r.price, currency)} / ${_fmtQty(r.quantity)}'
+                  '${formatMoneyWithConvert(
+                    r.price,
+                    r.currency,
+                    currency,
+                    exchangeRate: r.exchangeRate,
+                  )} / ${_fmtQty(r.quantity)}'
                   '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,

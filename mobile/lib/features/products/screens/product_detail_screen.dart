@@ -1168,7 +1168,12 @@ class _ProductRecordRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${formatMoney(r.price, currency)} / ${_fmtQty(r.quantity)}'
+                  '${formatMoneyWithConvert(
+                    r.price,
+                    r.currency,
+                    currency,
+                    exchangeRate: r.exchangeRate,
+                  )} / ${_fmtQty(r.quantity)}'
                   '${r.unit.isEmpty ? '' : ' ${r.unit}'}',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.primary,

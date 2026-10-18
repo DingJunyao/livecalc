@@ -32,4 +32,37 @@ void main() {
       '1,234.5 CNY',
     );
   });
+
+  test('price keeps its native currency and converts a foreign record', () {
+    expect(
+      formatMoneyWithConvert(
+        1250,
+        'IDR',
+        'CNY',
+        exchangeRate: 0.1,
+        formatLocale: 'zh-CN',
+      ),
+      '1,250 IDR ≈ 125 CNY',
+    );
+    expect(
+      formatMoneyWithConvert(
+        1250,
+        'IDR',
+        'CNY',
+        exchangeRate: null,
+        formatLocale: 'zh-CN',
+      ),
+      '1,250 IDR',
+    );
+    expect(
+      formatMoneyWithConvert(
+        1250,
+        'cny',
+        'CNY',
+        exchangeRate: 0.1,
+        formatLocale: 'zh-CN',
+      ),
+      '1,250 CNY',
+    );
+  });
 }

@@ -85,7 +85,9 @@ PriceRecord _seedRecord({
   double quantity = 500,
   String unit = 'g',
   int? merchantId = 1,
-  String? merchantName = '盒马鲜生',
+  String? merchantName = 'Boxmart',
+  String currency = 'CNY',
+  double? exchangeRate,
 }) =>
     PriceRecord(
       id: id,
@@ -97,6 +99,8 @@ PriceRecord _seedRecord({
       merchantId: merchantId,
       merchantName: merchantName,
       recordedAt: '2026-08-11T10:00:00Z',
+      currency: currency,
+      exchangeRate: exchangeRate,
     );
 
 void main() {
@@ -317,5 +321,43 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('编辑价格记录'), findsOneWidget);
     expect(find.text('番茄'), findsOneWidget);
+  });
+
+  testWidgets('delete dialog keeps the record currency and shows conversion', (
+    tester,
+  ) async {
+    final repo = _FakePriceRepository(
+      seed: [
+        _seedRecord(price: 1250, currency: 'IDR', exchangeRate: 0.1),
+      ],
+    );
+    await pumpList(tester, repo: repo);
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuItem<String>).last);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('1,250 IDR'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('125 CNY'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.textContaining('1,250 CNY'),
+      ),
+      findsNothing,
+    );
   });
 }

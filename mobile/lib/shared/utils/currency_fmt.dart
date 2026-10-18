@@ -24,3 +24,25 @@ String formatMoney(
 num convertAmount(num amount, num? exchangeRate) {
   return amount * (exchangeRate ?? 1);
 }
+
+String formatMoneyWithConvert(
+  num amount,
+  String code,
+  String targetCode, {
+  num? exchangeRate,
+  String? formatLocale,
+}) {
+  final native = formatMoney(amount, code, formatLocale: formatLocale);
+  final nativeCode = code.trim().toUpperCase();
+  final target = targetCode.trim().toUpperCase();
+  final rate = exchangeRate;
+  if (nativeCode.isEmpty ||
+      nativeCode == target ||
+      rate == null ||
+      rate <= 0) {
+    return nativeCode == target
+        ? formatMoney(amount, target, formatLocale: formatLocale)
+        : native;
+  }
+  return '$native ≈ ${formatMoney(convertAmount(amount, rate), target, formatLocale: formatLocale)}';
+}
