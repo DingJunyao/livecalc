@@ -2737,6 +2737,7 @@ const chartPricePoints = computed<AsOfPricePoint[]>(() => {
     const np = normalizeRecordToJin(
       {
         price: parseFloat(String(record.price)) || 0,
+        exchange_rate: record.exchange_rate,
         standard_quantity: record.standard_quantity,
         quantity: record.quantity,
         unit_id: record.unit_id,

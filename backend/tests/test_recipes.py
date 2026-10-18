@@ -7,6 +7,7 @@ from app.models.recipe import Recipe, RecipeIngredient
 from app.models.product_entity import Product
 from app.models.product import ProductRecord
 from app.models.nutrition import Ingredient
+from app.models.nutrition_data import NutritionData
 from app.models.unit import Unit
 from datetime import datetime
 from decimal import Decimal
@@ -142,6 +143,116 @@ async def test_cross_user_recipe_cost_uses_public_price(db_session):
     db.query(Product).filter_by(id=product.id).delete()
     db.query(Ingredient).filter_by(id=ingredient.id).delete()
     db.query(User).filter(User.id.in_([user_a.id, user_b.id])).delete()
+    db.query(Unit).filter_by(id=gram.id).delete()
+    db.commit()
+
+
+@pytest.mark.asyncio
+async def test_recipe_nutrition_falls_back_to_range_max(db_session):
+    """quantity=None 的条目：营养计算按 quantity_range 最大值参与，不再按 0。
+
+    「电饭煲蒸米饭」类导入菜谱的源数据只有范围（大米 100-200g）或模糊量
+    （水「适量」），quantity 落库为 NULL。修复前 calculate_recipe_nutrition
+    把 None 当 "0"，整谱营养被静默清零；修复后与成本同口径
+    （_get_effective_quantity）：范围取最大值，模糊量 适量=100g。
+    """
+    from app.services.recipe_service import calculate_recipe_nutrition
+
+    db = db_session
+
+    gram = Unit(
+        name="test_gram_range",
+        abbreviation="g",
+        unit_type="mass",
+        si_factor=1.0,
+        is_si_base=True,
+        is_standard=True,
+    )
+    db.add(gram)
+    db.flush()
+
+    user = User(username="range_qty_user", email="range_qty@test.local", password_hash="x")
+    db.add(user)
+    db.flush()
+
+    ingredient = Ingredient(name="范围数量测试食材")
+    db.add(ingredient)
+    db.flush()
+
+    nutrition = NutritionData(
+        ingredient_id=ingredient.id,
+        source="test",
+        nutrients={
+            "core_nutrients": {
+                "能量": {"value": 365, "unit": "kcal", "key": "energy"},
+                "蛋白质": {"value": 7.13, "unit": "g", "key": "protein"},
+            },
+            "all_nutrients": {},
+        },
+        reference_amount=100,
+        reference_unit="g",
+    )
+    db.add(nutrition)
+    db.flush()
+
+    recipe = Recipe(name="范围数量测试菜谱", servings=1, user_id=user.id)
+    db.add(recipe)
+    db.flush()
+
+    # ① 无 quantity、有范围 100-200g → 按最大值 200g 参与
+    ri_range = RecipeIngredient(
+        recipe_id=recipe.id,
+        ingredient_id=ingredient.id,
+        quantity=None,
+        quantity_range={"min": 100.0, "max": 200.0},
+        unit_id=gram.id,
+    )
+    # ② 无 quantity、无范围、原文「适量」→ 按模糊量映射 100g 参与
+    ri_vague = RecipeIngredient(
+        recipe_id=recipe.id,
+        ingredient_id=ingredient.id,
+        quantity=None,
+        original_quantity="适量",
+        unit_id=gram.id,
+    )
+    # ③ 对照：有确定数量 50g → 50g
+    ri_fixed = RecipeIngredient(
+        recipe_id=recipe.id,
+        ingredient_id=ingredient.id,
+        quantity="50",
+        unit_id=gram.id,
+    )
+    db.add_all([ri_range, ri_vague, ri_fixed])
+    db.commit()
+
+    result = await calculate_recipe_nutrition(recipe.id, db=db)
+
+    assert result is not None, "calculate_recipe_nutrition 不应返回 None"
+
+    # 修复前三项全按 0 计，total_calories = 0；修复后 = 365×(2+1+0.5) = 1277.5
+    assert float(result["total_calories"]) == pytest.approx(1277.5), (
+        f"能量应按 范围最大值200g + 适量100g + 50g 计算，实际: {result['total_calories']}"
+    )
+    assert float(result["total_protein"]) == pytest.approx(7.13 * 3.5)
+
+    detail_by_ri = {
+        d["recipe_ingredient_id"]: d for d in result.get("ingredient_details", [])
+    }
+    assert detail_by_ri[ri_range.id]["quantity"] == pytest.approx(200.0), (
+        "范围条目应取最大值 200g"
+    )
+    assert detail_by_ri[ri_vague.id]["quantity"] == pytest.approx(100.0), (
+        "「适量」条目应按模糊量映射 100g"
+    )
+    assert detail_by_ri[ri_fixed.id]["quantity"] == pytest.approx(50.0)
+
+    # 清理本次测试数据
+    db.query(RecipeIngredient).filter(RecipeIngredient.id.in_(
+        [ri_range.id, ri_vague.id, ri_fixed.id])).delete(synchronize_session=False)
+    db.query(NutritionData).filter_by(id=nutrition.id).delete()
+    db.query(Recipe).filter_by(id=recipe.id).delete()
+    db.query(Ingredient).filter_by(id=ingredient.id).delete()
+    db.query(User).filter_by(id=user.id).delete()
     db.query(Unit).filter_by(id=gram.id).delete()
     db.commit()
 

@@ -3659,7 +3659,11 @@ const chartData = computed(() => {
 
     // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
     // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
-    const price = parseFloat(String(record.price)) || 0
+    // price 先按 exchange_rate 折算到用户币种——记录存的是币种原值
+    // （如 76500 IDR），不乘汇率会以原值参与加权，撑爆整个图表。
+    const rateRaw = parseFloat(String(record.exchange_rate))
+    const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : 1
+    const price = (parseFloat(String(record.price)) || 0) * rate
     let convertedUnitPrice: number | null = null
     const stdQty = parseFloat(String(record.standard_quantity))
     const stdUnit = record.standard_unit
