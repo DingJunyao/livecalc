@@ -36,6 +36,8 @@ export interface PriceRecordLike {
   unit_id?: number | null
   standard_unit_id?: number | null
   recorded_at?: string | null
+  /** 记录币种 → 用户币种 汇率（后端 exchange_rate / 本地 exchangeRateToUserCurrency）；缺失按 1 */
+  exchange_rate?: number | null
 }
 
 export interface NormalizedPrice {
@@ -73,7 +75,12 @@ export function normalizeRecordToJin(
   entityType: string,
   entityId: number,
 ): NormalizedPrice {
-  const price = Number(record.price) || 0
+  // 先折算到用户币种再归一化：price 是记录币种原值（如 76500 IDR），
+  // 不乘 exchange_rate 会让外币记录以原值参与加权（与后端
+  // record_price_in_user_currency 口径一致；缺失/非法汇率按 1）。
+  const rateRaw = Number(record.exchange_rate)
+  const rate = Number.isFinite(rateRaw) && rateRaw > 0 ? rateRaw : 1
+  const price = (Number(record.price) || 0) * rate
   const stdQty = Number(record.standard_quantity) || Number(record.quantity) || 1
   const unitId = record.standard_unit_id ?? record.unit_id
   const unit = unitId != null ? units.find(u => u.id === unitId) : undefined

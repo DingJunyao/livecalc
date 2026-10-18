@@ -948,7 +948,7 @@ def _get_effective_quantity(recipe_ingredient) -> tuple[Decimal, int | None]:
     """
     从 recipe_ingredient 中提取有效数量和有效单位ID。
 
-    优先使用 quantity，如果为 None 则尝试从 quantity_range 取平均值。
+    优先使用 quantity，如果为 None 则从 quantity_range 取最大值（缺 max 退 min）。
     如果仍是 None，检查 original_quantity 中的模糊量关键词（适量→100g, 少许→5g）。
 
     Returns:
@@ -1104,7 +1104,7 @@ async def calculate_recipe_cost(
 
         if unit_price is not None:
             # 计算成本：单价 × 菜谱中的数量 = 成本
-            # 优先使用 quantity，如果为 None 则从 quantity_range 取平均值
+            # 优先使用 quantity，如果为 None 则从 quantity_range 取最大值
             # 当使用 VAGUE_QUANTITY_GRAM_MAP 回退时，effective_unit_id 为克(3)
             quantity, effective_unit_id = _get_effective_quantity(recipe_ingredient)
 
@@ -1804,39 +1804,29 @@ async def calculate_recipe_nutrition(
         reference_unit = nutrition.reference_unit or "g"
 
         # 获取菜谱中的原料数量，并转换为标准单位
-        ingredient_quantity_str = recipe_ingredient.quantity or "0"
-        # 将 None 视为 "0"
-        if recipe_ingredient.quantity is None:
-            ingredient_quantity_str = "0"
-        ingredient_unit = ""
+        # 与成本同口径（_get_effective_quantity）：quantity 为 None 时依次回退
+        # quantity_range 最大值（缺 max 退 min）→ 模糊量关键词（适量=100g、
+        # 少许=5g），而不是按 0 参与计算——否则无量条目会把整谱营养静默清零。
+        quantity, effective_unit_id = _get_effective_quantity(recipe_ingredient)
+        ingredient_unit_obj = recipe_ingredient.unit
+        if effective_unit_id is not None and (
+            ingredient_unit_obj is None or ingredient_unit_obj.id != effective_unit_id
+        ):
+            # 模糊量回退给出的有效单位是克（id=3），可能与条目单位（如 mL）不同
+            from app.models.unit import Unit
+            ingredient_unit_obj = db.get(Unit, effective_unit_id)
 
-        # 尝试解析数量和单位
+        # 尝试转换为标准单位
         try:
-            # 如果数量是纯数字字符串
-            if str(ingredient_quantity_str).replace(".", "").replace("-", "").isdigit():
-                quantity = Decimal(str(ingredient_quantity_str))
-                # 如果有单位信息，尝试使用原始数量和单位
-                if recipe_ingredient.unit:
-                    ingredient_unit = recipe_ingredient.unit.abbreviation
-                    # 转换为标准单位
-                    standard_quantity, standard_unit = convert_to_standard(quantity, ingredient_unit)
-                else:
-                    # 没有单位信息，假设使用参考基准单位
-                    standard_quantity = quantity
-                    standard_unit = reference_unit
+            if ingredient_unit_obj:
+                standard_quantity, standard_unit = convert_to_standard(
+                    quantity, ingredient_unit_obj.abbreviation
+                )
             else:
-                # 数量可能包含单位（如 "250g"），需要解析
-                import re
-                match = re.match(r"([\d.]+)\s*([a-zA-Z\u4e00-\u9fff]+)", str(ingredient_quantity_str))
-                if match:
-                    quantity = Decimal(match.group(1))
-                    ingredient_unit = match.group(2)
-                    standard_quantity, standard_unit = convert_to_standard(quantity, ingredient_unit)
-                else:
-                    # 无法解析，使用默认值
-                    standard_quantity = Decimal("0")
-                    standard_unit = reference_unit
-        except Exception as e:
+                # 没有单位信息，假设使用参考基准单位
+                standard_quantity = quantity
+                standard_unit = reference_unit
+        except Exception:
             # 解析失败，使用默认值
             standard_quantity = Decimal("0")
             standard_unit = reference_unit
@@ -2213,7 +2203,7 @@ def calculate_recipe_cost_as_of(
         if latest_record or unit_price is not None or aggregation_chain is not None or recipe_chain is not None:
             # 计算成本：单价 × 菜谱中的数量 = 成本
             # 计算成本：单价 × 菜谱中的数量 = 成本
-            # 优先使用 quantity，如果为 None 则从 quantity_range 取平均值
+            # 优先使用 quantity，如果为 None 则从 quantity_range 取最大值
             # 当使用 VAGUE_QUANTITY_GRAM_MAP 回退时，effective_unit_id 为克(3)
             quantity, effective_unit_id = _get_effective_quantity(recipe_ingredient)
 
