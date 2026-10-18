@@ -201,16 +201,22 @@ double? _unitsPerJin(String? unit) {
 }
 
 double _pricePerJin(PriceRecord record, bool useStandardQuantity) {
+  // 先按 exchange_rate 折算到用户币种再归一化：price 是记录币种原值
+  // （如 76500 IDR），不乘汇率会以原值参与加权、撑爆图表。与后端
+  // record_price_in_user_currency / Web 端 normalizeRecordToJin 同口径；
+  // 汇率缺失或非法（<=0）按 1 不换算。
+  final rate = record.exchangeRate;
+  final rateFactor = (rate != null && rate > 0) ? rate : 1.0;
   if (useStandardQuantity) {
     final standardFactor = _unitsPerJin(record.standardUnit);
     if (record.standardQuantity != null &&
         record.standardQuantity! > 0 &&
         standardFactor != null) {
-      return record.price / record.standardQuantity! * standardFactor;
+      return record.price * rateFactor / record.standardQuantity! * standardFactor;
     }
   }
 
   final factor = _unitsPerJin(record.unit) ?? 1;
   final quantity = record.quantity > 0 ? record.quantity : 1;
-  return record.price / quantity * factor;
+  return record.price * rateFactor / quantity * factor;
 }

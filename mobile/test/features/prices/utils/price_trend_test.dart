@@ -11,6 +11,7 @@ PriceRecord record({
   String? standardQuantity = '500.000',
   String? standardUnit = 'g',
   String recordedAt = '2026-08-01T13:41:00+00:00',
+  String? exchangeRate,
 }) {
   return PriceRecord.fromJson({
     'id': id,
@@ -24,6 +25,7 @@ PriceRecord record({
     'standard_unit_id': 3,
     'record_type': 'price',
     'recorded_at': recordedAt,
+    if (exchangeRate != null) 'exchange_rate': exchangeRate,
   });
 }
 
@@ -186,5 +188,63 @@ void main() {
     expect(points.first.date, '2026-10-12');
     expect(points.map((p) => p.date).toList(),
         ['2026-10-12', '2026-10-13', '2026-10-14']);
+  });
+
+  test('外币记录按 exchange_rate 折算到用户币种再参与加权', () {
+    // 大米商品 76500 IDR / 5kg（汇率 ≈0.00038）→ ≈2.90 元/斤；
+    // 不折算会按 7650 元/斤参与，把整条平均线和区间撑爆
+    const rate = 0.000379720483330907;
+    final points = buildPriceTrendPoints(
+      [
+        record(
+          price: '76500',
+          quantity: '5.0',
+          unit: 'kg',
+          standardQuantity: '5000',
+          exchangeRate: '$rate',
+          recordedAt: '2026-10-14T11:00:00+08:00',
+        ),
+      ],
+      useStandardQuantity: true,
+      endDay: '2026-10-14',
+    );
+
+    expect(points.single.avgCost, closeTo(76500 * rate / 10, 1e-9));
+  });
+
+  test('exchange_rate 缺失或非法（<=0）时按 1 不换算', () {
+    final missing = buildPriceTrendPoints(
+      [record(price: '2.50', recordedAt: '2026-10-14T11:00:00+08:00')],
+      useStandardQuantity: true,
+      endDay: '2026-10-14',
+    );
+    expect(missing.single.avgCost, closeTo(2.5, 1e-9));
+
+    final zero = buildPriceTrendPoints(
+      [record(price: '2.50', exchangeRate: '0', recordedAt: '2026-10-14T11:00:00+08:00')],
+      useStandardQuantity: true,
+      endDay: '2026-10-14',
+    );
+    expect(zero.single.avgCost, closeTo(2.5, 1e-9));
+  });
+
+  test('非质量单位（袋）在标准量路径下按 5kg 折算，不再 1:1 当每斤价', () {
+    // 39 元 / 1袋(5kg)：修复前 _unitsPerJin('袋') 兜底 1 → 39 元/斤；
+    // 修复后走 standard_quantity 5000g → 3.9 元/斤
+    final points = buildPriceTrendPoints(
+      [
+        record(
+          price: '39',
+          quantity: '1.0',
+          unit: '袋',
+          standardQuantity: '5000',
+          recordedAt: '2026-10-14T11:00:00+08:00',
+        ),
+      ],
+      useStandardQuantity: true,
+      endDay: '2026-10-14',
+    );
+
+    expect(points.single.avgCost, closeTo(3.9, 0.001));
   });
 }

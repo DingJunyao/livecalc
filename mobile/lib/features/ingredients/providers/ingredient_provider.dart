@@ -816,6 +816,9 @@ class IngredientDetailPageNotifier
       state = state.copyWith(
         chartPoints: buildPriceTrendPoints(
           result.records,
+          // 与商品详情/Web 原料详情同口径：优先按 standard_quantity（g）折算，
+          // 否则「袋」等非质量单位按 1:1 兜底，5kg 袋装价会被当成每斤价
+          useStandardQuantity: true,
           startDay: startDate.isEmpty ? null : startDate,
           backfillSparse: true,
         ),
