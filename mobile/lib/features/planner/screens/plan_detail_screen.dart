@@ -391,9 +391,8 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
       if (cost <= 0) continue;
       out.add(CostBreakdownItem(
         ingredientName: (items[i]['name'] ?? detail['name'] ?? '').toString(),
-        ingredientId: (items[i]['recipe_id'] ??
-            items[i]['ingredient_id'] ??
-            items[i]['product_id']) as int?,
+        // 营养溯源也以 item_id 配色，这里保持同一标识，避免同名色块不一致。
+        ingredientId: detail['item_id'] as int?,
         cost: cost,
         unitPrice: 0,
       ));

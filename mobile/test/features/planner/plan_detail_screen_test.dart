@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:com_a4ding_livecalc/core/api/api_client.dart';
+import 'package:com_a4ding_livecalc/features/recipes/utils/ingredient_colors.dart';
 import 'package:com_a4ding_livecalc/features/planner/screens/plan_detail_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/providers/calc_context_provider.dart';
@@ -48,8 +49,34 @@ class _PlanDetailApiAdapter implements HttpClientAdapter {
         'totals': {'cost': 12, 'currency': 'CNY'},
         'targets': {},
         'items': [
-          {'name': 'Recipe', 'cost': 12, 'unit': 'serving'},
+          {
+            'item_id': 77,
+            'name': 'Recipe',
+            'cost': 12,
+            'unit': 'serving',
+          },
         ],
+        'nutrition': {
+          'per_serving_nutrition': {
+            'core_nutrients': {
+              'protein': {
+                'value': 10,
+                'unit': 'g',
+                'key': 'protein',
+                'nrp_pct': 10,
+              },
+            },
+          },
+          'ingredient_details': [
+            {
+              'ingredient_id': 77,
+              'ingredient_name': 'Recipe',
+              'nutrition_contribution': {
+                'protein': {'value': 10, 'unit': 'g'},
+              },
+            },
+          ],
+        },
       });
     }
     if (path == '/meal-plans/1/cost-trend') {
@@ -149,5 +176,54 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.text('No nutrition data'), findsNothing);
+  });
+
+  testWidgets('cost share and nutrition source use the same item color',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final adapter = _PlanDetailApiAdapter();
+    final previousAdapter = ApiClient.instance.dio.httpClientAdapter;
+    ApiClient.instance.dio.interceptors.clear();
+    ApiClient.instance.dio.httpClientAdapter = adapter;
+    addTearDown(() {
+      if (!adapter.trendCompleter.isCompleted) {
+        adapter.trendCompleter.completeError(Exception('cancelled'));
+      }
+      ApiClient.instance.dio.httpClientAdapter = previousAdapter;
+    });
+
+    await tester.pumpWidget(_wrap(_router()));
+    adapter.trendCompleter.complete(
+      ResponseBody.fromString(
+        jsonEncode([]),
+        200,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    List<Color> segmentColors(Key key) {
+      final surface = Theme.of(tester.element(find.byKey(key).first))
+          .colorScheme
+          .surface;
+      return tester
+          .widgetList<ColoredBox>(find.descendant(
+            of: find.byKey(key),
+            matching: find.byType(ColoredBox),
+          ))
+          .where((widget) => widget.color != surface)
+          .map((widget) => widget.color)
+          .toList();
+    }
+
+    final costColors = segmentColors(const Key('cost_bar'));
+    final nutritionColors = segmentColors(const Key('nrv_bar'));
+    expect(costColors, [getIngredientColor(77)]);
+    expect(nutritionColors, [getIngredientColor(77)]);
+    expect(costColors.first, nutritionColors.first);
   });
 }
