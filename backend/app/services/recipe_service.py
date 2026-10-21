@@ -619,15 +619,16 @@ def _contains_cost_range_ppg(
     tz: str = "UTC",
     region_id: Optional[int] = None,
 ) -> Optional[tuple[Decimal, Decimal, Decimal, str]]:
-    """CONTAINS 子食材按 strength 加权的三档 (min,max,avg) ppg + chain。
+    """CONTAINS 子食材三档 (min,max,avg) ppg + chain。
 
-    与 _get_aggregated_cost_from_children 1:1 对齐：遍历 CONTAINS 子食材
-    （strength 降序），每个调 _get_child_price_per_gram_range 拿 (min,max,avg)，
-    按 strength 各档独立加权求和（非取极值子食材）。total_strength==0 时
-    退化为简单平均（对齐既有 else 分支）。
+    遍历 CONTAINS 子食材（strength 降序），每个调 _get_child_price_per_gram_range
+    拿 (min,max,avg)：
+    - avg：各子食材 avg 按 strength 加权（与既有 weighted_avg 严格一致）。
+    - min/max：取各子食材极值的**极值**（跨子食材价格范围），不按 strength 加权。
+      旧实现把各子食材 min/max 再加权；子食材平时只有单一前向填充价 → 区间塌缩成一条线
+      （用户反馈「猪肉下属一堆原料，不可能一直没变化，而且也要显示区间」）。
 
-    数学保证：每个子食材 min_i≤avg_i≤max_i，加权（凸组合）后总体
-    min≤avg≤max 恒成立。avg_w 严格等于既有 weighted_avg。
+    数学保证：每个子食材 min_i≤avg_i≤max_i，故 min(min_i)≤加权 avg≤max(max_i) 恒成立。
 
     visited 透传给 _get_child_price_per_gram_range 做循环检测。
     """
@@ -658,18 +659,20 @@ def _contains_cost_range_ppg(
     if not children_ranges:
         return None
 
-    # 各档独立加权（凸组合：Σstrength_i/Σstrength = 1）
+    # 各档分别计算：
+    # - min/max 取「各子食材极值」的极值（跨子食材的价格范围：如猪肉 = 五花肉…肋排…猪蹄），
+    #   而不是把各子食材的 min/max 再按 strength 加权——子食材平时只有单一前向填充价时，
+    #   加权后 min==max，区间会塌缩成一条线（用户反馈「也要显示区间」）。
+    # - avg 仍按 strength 加权（凸组合），且必落在 [min, max] 内。
     if total_strength > 0:
         denom = Decimal(str(total_strength))
-        min_w = sum(cmin * Decimal(str(s)) for cmin, _, _, s, _ in children_ranges) / denom
-        max_w = sum(cmax * Decimal(str(s)) for _, cmax, _, s, _ in children_ranges) / denom
         avg_w = sum(cavg * Decimal(str(s)) for _, _, cavg, s, _ in children_ranges) / denom
     else:
         # 全 strength=0 退化为简单平均（对齐既有 else 分支）
         n = Decimal(len(children_ranges))
-        min_w = sum(cmin for cmin, _, _, _, _ in children_ranges) / n
-        max_w = sum(cmax for _, cmax, _, _, _ in children_ranges) / n
         avg_w = sum(cavg for _, _, cavg, _, _ in children_ranges) / n
+    min_w = min(cmin for cmin, _, _, _, _ in children_ranges)
+    max_w = max(cmax for _, cmax, _, _, _ in children_ranges)
 
     child_names = ", ".join(name for _, _, _, _, name in children_ranges)
     chain = f"{ingredient.name} ← 子食材({child_names})"
@@ -1429,6 +1432,24 @@ def _fallback_cost_range_ppg(
     return mn, mx, av, chain
 
 
+def _contains_descendant_ids(db: Session, ingredient_id: int) -> frozenset:
+    """原料在 contains 关系下的全部后代食材 id（请求级缓存）。"""
+    from app.services.lookup_cache import memoize_result
+
+    def _build():
+        seen: set = set()
+        stack = [ingredient_id]
+        while stack:
+            cur = stack.pop()
+            for edge in _hierarchy_edges(db, "contains", cur):
+                if edge.child_id not in seen:
+                    seen.add(edge.child_id)
+                    stack.append(edge.child_id)
+        return frozenset(seen)
+
+    return memoize_result(db, "contains_descendants", ingredient_id, _build)
+
+
 def _name_match_cost_range_ppg(
     db: Session,
     ingredient: Ingredient,
@@ -1439,23 +1460,49 @@ def _name_match_cost_range_ppg(
 ) -> Optional[tuple[Decimal, Decimal, Decimal]]:
     """按食材名作 product_name_contains 匹配的记录集 (min,max,avg) ppg。
 
-    注意：_get_price_records_with_fallback（复数）只接 product_id 不接 name_contains，
-    所以先用单数版 _get_price_record_with_fallback 拿前向填充锚点，
-    再以锚点所在本地日 + product_name.contains 取该日全部同名记录（对齐复数版的
-    「锚点日全记录集」范式）。
+    只匹配「非从属子食材」的商品：子食材价格由 contains 聚合负责，
+    否则「猪肉」会命中子食材「猪肉末」的商品，把整个类别短路成单品价
+    （价格恒定、区间塌缩，且跳过了五花肉/前腿肉等有记录的子食材）。
+
+    取「≤ as_of 的最新匹配日」全部同名记录（前向填充口径不变）。
     """
-    anchor = _get_price_record_with_fallback(
-        db=db, user_id=user_id, product_name_contains=ingredient.name,
-        as_of_date=as_of_date, tz=tz, region_id=region_id,
+    from app.services.lookup_cache import memoize_result
+
+    excluded = _contains_descendant_ids(db, ingredient.id)
+
+    def _build():
+        _days, day_records, timeline = _price_timeline_index(
+            db, product_name_contains=ingredient.name, tz=tz, region_id=region_id,
+        )
+        if not timeline:
+            return ([], {})
+        from app.models.product_entity import Product
+        product_ids = {r.product_id for r in timeline if r.product_id is not None}
+        pid_to_ing = dict(
+            db.query(Product.id, Product.ingredient_id)
+            .filter(Product.id.in_(product_ids))
+            .all()
+        ) if product_ids else {}
+        filtered: dict = {}
+        for day, recs in day_records.items():
+            keep = [
+                r for r in recs
+                if pid_to_ing.get(r.product_id) not in excluded
+            ]
+            if keep:
+                filtered[day] = keep
+        return (sorted(filtered.keys()), filtered)
+
+    days, by_day = memoize_result(
+        db, f"name_match_days:{region_id}", ingredient.id, _build,
     )
-    if not anchor:
+    if not days:
         return None
-    fill_date = utc_datetime_to_local_date(anchor.recorded_at, tz)
-    # 锚点日全部同名记录：走名称时间轴缓存（与逐日按 day range SQL 查询同源同序）
-    _, day_records, _ = _price_timeline_index(
-        db, product_name_contains=ingredient.name, tz=tz, region_id=region_id,
-    )
-    recs = day_records.get(fill_date, [])
+    as_of_day = utc_datetime_to_local_date(as_of_date, tz)
+    eligible = [d for d in days if d <= as_of_day]
+    if not eligible:
+        return None
+    recs = by_day.get(eligible[-1], [])
     return _records_cost_range_ppg(recs, db, ingredient.id)
 
 

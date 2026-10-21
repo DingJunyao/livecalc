@@ -89,6 +89,41 @@ direct（自身商品加权价）
 实机复验（Edge，`/data/ingredients/14`）：最新价显示 `15.90 CNY / 斤` + 「替代/从属折算」+ 区间
 `15.90 - 15.90` + 「同名商品匹配」；趋势图为紫色虚线，开关「含替代/从属」默认打开。
 
+## 第二轮反馈修复（猪肉不该是恒定值，也要区间）
+
+用户指出：猪肉下属一大堆原料，价格不可能一直不变，而且要显示区间。
+
+### 根因 1：同名匹配命中了「从属子食材」的商品，绕过了从属聚合
+
+- 猪肉（id=14）本身 0 条价格记录，但有 11 个有记录的子食材
+  （五花肉 35 条、前腿肉 33 条、梅花肉 16 条、里脊 22 条、后腿肉 23 条、肋排 11 条…）。
+- `_name_match_cost_range_ppg` 用 `product_name.contains('猪肉')` 匹配，命中了**子食材「猪肉末」**
+  的商品（只有 2026-06 的 3 条记录，12.98/9.90/15.90 每 500g）→ 前向填充成恒定 `15.90/斤`，
+  在降级链里先于 `contains` 命中，直接短路。
+- **修复**：新增 `_contains_descendant_ids()`（contains 子树，请求级缓存）；
+  同名匹配时通过 `Product.ingredient_id` 过滤掉**从属后代食材**的商品。
+  修复后猪肉走 `contains_aggregation`，平均值随子食材记录变化：
+  30 天内 `11.73 → 11.27 → 11.30 → 11.05 → 11.16 → 12.31 → 11.85`（7 个变化点）。
+
+### 根因 2：从属聚合的区间被「加权 min/max」压平
+
+- 旧实现：`min = Σ(子食材.min × strength) / Σstrength`、`max` 同理。
+  子食材平时只有单一前向填充价（min==max），加权后整体 min==max，区间塌缩成一条线。
+- **修复**：`min/max` 改为**跨子食材取极值**（最便宜子食材下沿 ~ 最贵子食材上沿），
+  `avg` 仍按 strength 加权，数学上仍保证 `min ≤ avg ≤ max`。
+  猪肉 30 天区间变为 `5.80 – 29.90`（五花肉…肋排…猪蹄），随数据稳定；平均值不变。
+
+### 其它
+
+- `PriceTrendChart` 折算序列 tooltip 增加区间行（有区间时显示 `范围: min - max`）。
+- 新增回归：
+  - `test_contains_band_uses_cross_child_extremes`：子食材价 0.01/0.03（80/20 权重）→
+    `min=0.010, max=0.032, avg=0.0150`（跨子食材极值 + 加权均值）；
+  - `test_name_match_skips_descendant_ingredient_products`：同名匹配只保留非后代商品记录。
+- 排查中发现：后端当前由 **VS Code 调试进程（`python -m app.main`）** 启动，**没有 `--reload`**，
+  改 Python 后不会自动生效——需要重启调试会话。这也是第二轮修复在页面上暂时看不到区间的原因。
+
+
 > 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
 > not defined on instance` 的假报警，刷新页面即消失（脚本部分未热重载）。
 

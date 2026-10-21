@@ -427,11 +427,13 @@ function updateChart() {
         }
         if (computedPoint) {
           const chainText = computedPoint.chain ? `（${computedPoint.chain}）` : ''
+          const hasRange = Number(computedPoint.max) > Number(computedPoint.min) + 1e-9
           rows.push(`
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
               <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #7e57c2;"></span>
               <span>${computedLabel.value}: ${formatMoney(computedPoint.avg, userCurrency.value)}${unitSuffix.value}</span>
             </div>
+            ${hasRange ? `<div style="margin-top: 2px; color: #666; font-size: 12px;">${t('charts.range')}: ${formatMoney(computedPoint.min, userCurrency.value)} - ${formatMoney(computedPoint.max, userCurrency.value)}${unitSuffix.value}</div>` : ''}
             <div style="margin-top: 2px; color: #999; font-size: 12px;">${sourceLabel(computedPoint.source)}${chainText}</div>
           `)
         }
