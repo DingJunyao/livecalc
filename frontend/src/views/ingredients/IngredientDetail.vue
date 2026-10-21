@@ -3770,7 +3770,9 @@ const merchantComparisonSeries = computed(() => {
     }
     const series = buildWeightedAsOfDailySeries(points, (pid) =>
       pid == null ? 50 : (productWeights.value.get(pid) ?? 50),
-      { startDay: chartRangeStartDay.value, backfillSparse: true },
+      // bandFromRecords：该商家当天各关联商品的记录价 min/max（as-of 携带），
+      // 让「一个原料关联多个商品」的商家也能显示价格区间带
+      { startDay: chartRangeStartDay.value, backfillSparse: true, bandFromRecords: true },
     ).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count, recorded: recordDays.has(d.date) }))
     if (series.length === 0) continue
     const name = mid == null
