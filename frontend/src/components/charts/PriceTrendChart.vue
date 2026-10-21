@@ -309,21 +309,27 @@ const displayEmpty = computed(() => {
   return chartData.value.length === 0 && computedData.value.length === 0
 })
 
+// 按需「初始化或重绘」。
+// 图表容器由 v-if 控制：首帧没有数据时 DOM 不存在，onMounted 的 initChart 拿不到
+// ref → 之后数据（尤其是只有折算序列、没有直接价时）到达，必须在这里补 init，
+// 否则 ECharts 从未初始化，图表区域一片空白。
+function renderOrInit() {
+  if (!chart) {
+    if (chartRef.value) initChart()
+    return
+  }
+  updateChart()
+}
+
 // 模式 / 商家勾选变化 → 重绘（勾选为空时显示空态）
 watch([viewMode, selectedMerchantIds, () => props.comparisonSeries], () => {
-  nextTick(updateChart)
+  nextTick(renderOrInit)
 }, { deep: true })
 
 // 监听筛选变化
 watch(selectedFilter, (newFilter) => {
   emit('filter-change', newFilter)
-  nextTick(() => {
-    if (chartData.value.length > 0 && !chart) {
-      initChart()
-    } else {
-      updateChart()
-    }
-  })
+  nextTick(renderOrInit)
 })
 
 // 初始化图表
@@ -729,33 +735,31 @@ function handleResize() {
 watch(() => props.data, (newData) => {
   if (newData?.length) {
     if (!hasEverHadData.value) hasEverHadData.value = true
-    nextTick(() => {
-      if (!chart) {
-        initChart()
-      } else {
-        updateChart()
-      }
-    })
+    nextTick(renderOrInit)
   }
 }, { deep: true })
 
-// 折算序列变化 / 开关切换 → 重绘
+// 折算序列变化 / 开关切换 → 重绘（首帧只有折算序列时也要补初始化）
 watch([includeComputed, () => props.computedSeries], () => {
-  nextTick(updateChart)
+  nextTick(renderOrInit)
 }, { deep: true })
 
 // loading 结束后只需调整尺寸，无需重建图表（DOM 未被销毁）
 watch(() => props.loading, () => {
-  if (!props.loading && chart) {
+  if (!props.loading) {
     nextTick(() => {
-      chart.resize()
-      updateChart()
+      if (chart) {
+        chart.resize()
+        updateChart()
+      } else {
+        renderOrInit()
+      }
     })
   }
 })
 
 watch(() => [locale.value, localeStore.effectiveFormatLocale], () => {
-  updateChart()
+  renderOrInit()
 })
 
 // 生命周期
