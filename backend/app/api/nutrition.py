@@ -1211,6 +1211,10 @@ async def get_ingredient_latest_price_by_merchant(
         False,
         description="按商家补充替代/回退/从属折算价（该商家没有直接价时）",
     ),
+    prefer_relations_when_stale: bool = Query(
+        False,
+        description="该商家直接价超期（>30 天）时优先用关系折算价",
+    ),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     quantity: Optional[float] = Query(None, description="菜谱中该食材的用量"),
@@ -1442,32 +1446,29 @@ async def get_ingredient_latest_price_by_merchant(
             return _find(ingredient_id)
 
         # ① 直接价（按商家）
-        results = _lookup_merchant_prices(ingredient)
+        direct_results = _lookup_merchant_prices(ingredient)
         fallback_chain = None
-        seen_merchants = {r["merchant_id"] for r in results}
 
-        def _merge_relation_rows(rows: list[dict], source: str, chain: OptType[str]) -> int:
-            """把「关系折算」的商家行补进结果：该商家已有直接价则跳过（直接价优先）。"""
-            added = 0
+        # 关系折算候选：mid -> row（回退优先，其次同名商品，最后从属聚合）
+        relation_rows: dict[int, dict] = {}
+
+        def _collect_relation_rows(rows: list[dict], source: str, chain: OptType[str]) -> None:
+            """收集关系折算行（后续按商家决定：无直接价 → 补；直接价超期 → 替换）。"""
             for row in rows:
                 mid = row.get("merchant_id")
-                if mid is None or mid in seen_merchants:
+                if mid is None or mid in relation_rows:
                     continue
                 merged = dict(row)
                 merged.update({"source": source, "chain": chain, "is_derived": True})
-                results.append(merged)
-                seen_merchants.add(mid)
-                added += 1
-            return added
+                relation_rows[mid] = merged
 
         # ② 按商家补齐替代/回退/从属折算（include_relations=true 时）
-        # 旧行为只在「完全没有直接价」时整体回退；现在逐商家补齐：
-        # 某商家没有直接价、但能在该商家买到替代/从属食材时，也给出一条折算价。
+        # 某商家没有直接价、或直接价超期（>30 天）时，用该商家的替代/从属价替代。
         if include_relations:
             fb_result = _find_fallback_ingredient()
             if fb_result:
                 fb_ingredient, fb_chain = fb_result
-                _merge_relation_rows(
+                _collect_relation_rows(
                     _lookup_merchant_prices(fb_ingredient), "fallback", fb_chain,
                 )
                 fallback_chain = fb_chain
@@ -1484,7 +1485,7 @@ async def get_ingredient_latest_price_by_merchant(
             )
             if excluded:
                 nm_query = nm_query.filter(~Product.ingredient_id.in_(list(excluded)))
-            _merge_relation_rows(_lookup_rows(nm_query.all()), "name_match", None)
+            _collect_relation_rows(_lookup_rows(nm_query.all()), "name_match", None)
 
             # 从属聚合（按商家）：子食材在该商家的代表价按 strength 加权；
             # 区间取各子食材价格的极值（与趋势图 contains 区间同口径）。
@@ -1529,7 +1530,31 @@ async def get_ingredient_latest_price_by_merchant(
                 f"{ingredient.name} ← 子食材({', '.join(child_names)})"
                 if child_names else None
             )
-            _merge_relation_rows(agg_rows, "contains_aggregation", contains_chain)
+            _collect_relation_rows(agg_rows, "contains_aggregation", contains_chain)
+
+        # ③ 组装：直接价优先；直接价超期且开启「超期优先关系」时用关系价替换
+        direct_by_mid = {r["merchant_id"]: r for r in direct_results}
+        results = []
+        for mid, row in direct_by_mid.items():
+            candidate = relation_rows.get(mid)
+            if (
+                include_relations
+                and prefer_relations_when_stale
+                and row.get("is_stale")
+                and candidate is not None
+            ):
+                replaced = dict(candidate)
+                replaced["merchant_name"] = row.get("merchant_name") or replaced.get("merchant_name")
+                replaced["direct_price"] = row["price"]
+                replaced["direct_stale"] = True
+                results.append(replaced)
+            else:
+                results.append(row)
+        # 该商家没有直接价 → 补一条关系折算价
+        for mid, row in relation_rows.items():
+            if mid in direct_by_mid:
+                continue
+            results.append(row)
 
         # 陈旧记录（超过 30 天）排到最后，两组内仍按价格升序
         results.sort(key=lambda x: (x["is_stale"], x["price"]))

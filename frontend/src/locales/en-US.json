@@ -1980,6 +1980,7 @@
     "madeFrom": "Made from \"{name}\"",
     "servingWeight": "Serving weight",
     "latestPrice": "Composite latest price",
+    "directPriceStale": "Previous direct price {price} (stale)",
     "weightedDetails": "Weighted details ({count} products)",
     "weightLabel": "Weight {weight}",
     "weightSourceMine": "Mine",
