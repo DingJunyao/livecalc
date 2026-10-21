@@ -229,7 +229,7 @@
       </v-card>
 
       <!-- 最新价格 -->
-      <v-card elevation="0" class="grid-item item-latest-price" v-else-if="latestPrice">
+      <v-card elevation="0" class="grid-item item-latest-price" v-else-if="latestPrice || latestComputedPoint">
         <v-card-title class="d-flex align-center pb-2">
           <v-icon start color="tertiary">mdi-cash</v-icon>
           {{ t('ingredients.latestPrice') }}
@@ -238,8 +238,17 @@
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              {{ formatMoney(Number(latestPrice), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
+              {{ formatMoney(Number(latestPrice ?? latestComputedPoint?.avg), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
             </div>
+            <!-- 无直接商品价时：展示按替代/回退/半成品/从属关系折算出的最新价 -->
+            <v-chip
+              v-if="!latestPrice && latestComputedPoint"
+              size="small"
+              color="deep-purple"
+              variant="tonal"
+            >
+              {{ t('charts.computedPrice') }}
+            </v-chip>
             <!-- 区间/商品数与综合价同源（接口 participants），保证平均值必落在区间内 -->
             <template v-if="latestPriceRange">
               <v-divider vertical class="d-none d-sm-flex" />
@@ -254,9 +263,21 @@
                 <div class="text-subtitle-1 font-weight-bold">{{ latestPriceRange.count }}</div>
               </div>
             </template>
+            <template v-else-if="!latestPrice && latestComputedPoint">
+              <v-divider vertical class="d-none d-sm-flex" />
+              <div class="text-center">
+                <div class="text-caption text-medium-emphasis">{{ t('ingredients.range') }}</div>
+                <div class="text-subtitle-1 font-weight-bold">
+                  {{ formatMoney(latestComputedPoint.min, userCurrency) }} - {{ formatMoney(latestComputedPoint.max, userCurrency) }} / {{ chartUnit }}
+                </div>
+              </div>
+            </template>
           </div>
-          <div v-if="latestPriceDate" class="text-caption text-medium-emphasis mt-2">
+          <div v-if="latestPrice && latestPriceDate" class="text-caption text-medium-emphasis mt-2">
             {{ formatToLocalDate(latestPriceDate) }}
+          </div>
+          <div v-if="!latestPrice && latestComputedPoint" class="text-caption text-medium-emphasis mt-2">
+            {{ formatToLocalDate(latestComputedPoint.date) }} · {{ computedSourceLabel(latestComputedPoint.source) }}<span v-if="latestComputedPoint.chain">（{{ latestComputedPoint.chain }}）</span>
           </div>
           <div v-if="latestPriceRelaxed" class="text-caption text-medium-emphasis mt-1">
             {{ t('ingredients.staleRelaxed') }}
@@ -3767,6 +3788,23 @@ const computedChartSeries = computed(() => {
       chain: p.chain,
     }))
 })
+
+// 最新一条折算价（无直接商品价时，最新价格卡片改展示它 + 来源）
+const latestComputedPoint = computed(() => {
+  if (computedChartSeries.value.length === 0) return null
+  return [...computedChartSeries.value].sort((a, b) => (a.date < b.date ? 1 : -1))[0]
+})
+
+// 折算来源文案（与 PriceTrendChart 的 tooltip 同口径）
+const computedSourceLabel = (source?: string): string => {
+  switch (source) {
+    case 'fallback': return t('charts.sourceFallback')
+    case 'name_match': return t('charts.sourceNameMatch')
+    case 'recipe': return t('charts.sourceRecipe')
+    case 'contains_aggregation': return t('charts.sourceContains')
+    default: return t('charts.sourceDirect')
+  }
+}
 
 // 聚合价格数据用于图表（逐日 as-of 加权：每商品最近一次价格向前携带）
 const chartData = computed(() => {

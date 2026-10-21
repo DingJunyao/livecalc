@@ -70,6 +70,28 @@ direct（自身商品加权价）
   并透传 chain/三档；有直接价时短路、不调用 fallback。2 passed。
 - 前端 `pnpm run build` 通过；`check:i18n` 三语键一致；后端 `py_compile` 通过。
 
+## 实机反馈修复（首版上线后发现）
+
+用户在 `http://localhost:5173/data/ingredients/14`（猪肉）看到「图表、最新价格都是空的」。两个独立原因：
+
+1. **图表空白（ECharts 从未初始化）**：图表容器由 `v-if="hasEverHadData || !displayEmpty"` 控制。
+   首帧只有折算序列、没有直接价时 `displayEmpty` 为 true → 容器不存在 → `onMounted` 的
+   `initChart()` 拿不到 `chartRef` 直接 return；之后折算数据到达、容器渲染出来，但所有 watch
+   只调 `updateChart()`（`if (!chart) return`），于是永远没有实例。
+   **修复**：抽出 `renderOrInit()`（无实例且有 ref → `initChart()`，否则 `updateChart()`），
+   数据 / 折算序列 / loading / 语言 / 筛选 / 模式等所有 watch 统一走它。
+2. **最新价格空白**：卡片条件是 `v-else-if="latestPrice"`，而 `latestPrice` 只来自直接商品价；
+   猪肉 0 条直接记录（只有同名商品可折算）→ 整张卡片被隐藏。
+   **修复**：卡片条件改为 `latestPrice || latestComputedPoint`；无直接价时展示最新折算价
+   （大字 + `/斤`）、`charts.computedPrice` 标签、区间（min–max）、日期 + 来源链路
+   （「2026/10/21 · 同名商品匹配」）；有直接价时行为不变。
+
+实机复验（Edge，`/data/ingredients/14`）：最新价显示 `15.90 CNY / 斤` + 「替代/从属折算」+ 区间
+`15.90 - 15.90` + 「同名商品匹配」；趋势图为紫色虚线，开关「含替代/从属」默认打开。
+
+> 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
+> not defined on instance` 的假报警，刷新页面即消失（脚本部分未热重载）。
+
 ## 已知限制
 
 - 本地模式（IndexedDB）没有该接口，调用失败会静默隐藏折算序列（开关也不出现）。
