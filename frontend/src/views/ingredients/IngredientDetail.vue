@@ -333,11 +333,27 @@
                   :data="mp.sparkline_data"
                   color="tertiary"
                 />
-                <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">{{ mp.merchant_name }}</div>
+                <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">
+                  {{ mp.merchant_name }}
+                  <!-- 该商家没有直接价时，展示按替代/回退/从属折算出来的价 -->
+                  <v-chip
+                    v-if="mp.is_derived"
+                    size="x-small"
+                    color="deep-purple"
+                    variant="tonal"
+                    class="ms-1"
+                    :title="mp.chain || computedSourceLabel(mp.source)"
+                  >
+                    {{ computedSourceLabel(mp.source) }}
+                  </v-chip>
+                </div>
                 <div class="merchant-price-value" style="position: relative; z-index: 1">
                   <span class="font-weight-bold" :class="mp.is_lowest ? 'text-success' : ''">
                     {{ formatMoney(mp.price, userCurrency) }}
                   </span>
+                  <div v-if="mp.is_derived && mp.min_price != null" class="text-caption text-medium-emphasis">
+                    {{ t('charts.range') }} {{ formatMoney(mp.min_price, userCurrency) }} - {{ formatMoney(mp.max_price, userCurrency) }}
+                  </div>
                 </div>
                 <div v-if="mp.recorded_at" class="merchant-price-date" style="position: relative; z-index: 1">
                   {{ formatToLocalDate(mp.recorded_at) }}
@@ -2277,6 +2293,15 @@ interface MerchantPrice {
   product_name: string
   is_lowest: boolean
   is_stale?: boolean
+  /** 折算来源（direct / fallback / name_match / contains_aggregation） */
+  source?: string
+  /** 折算链路说明（如「猪肉 ← 子食材(五花肉, …)」） */
+  chain?: string | null
+  /** 该商家没有直接价、此行是按替代/回退/从属折算出来的 */
+  is_derived?: boolean
+  /** 从属聚合的区间（各子食材价格的极值） */
+  min_price?: number | null
+  max_price?: number | null
 }
 const merchantPrices = ref<MerchantPrice[]>([])
 const merchantPriceUnit = ref<string | null>(null)
@@ -3834,6 +3859,8 @@ const showDirectAsPrimary = computed(
 const onIncludeComputedChange = (value: boolean) => {
   includeComputedRelations.value = value
   loadComputedPriceSeries()
+  // 各商家价格同口径：该商家没有直接价时补替代/回退/从属折算价
+  loadMerchantPrices()
 }
 
 // 折算来源文案（与 PriceTrendChart 的 tooltip 同口径）
@@ -4023,11 +4050,15 @@ const loadProductWeights = async () => {
 }
 
 // 加载按商家分组的最新价格
+// include_relations：该商家没有直接价时，补一条按替代/回退/从属折算的价（与图表同一个开关）
 const loadMerchantPrices = async () => {
   loadingMerchantPrices.value = true
   try {
     const response = await api.get(`/nutrition/ingredients/${ingredientId.value}/latest-price-by-merchant`, {
-      params: { region_id: null },
+      params: {
+        region_id: null,
+        include_relations: includeComputedRelations.value,
+      },
     })
     merchantPrices.value = response.prices || []
     merchantPriceUnit.value = response.unit || null

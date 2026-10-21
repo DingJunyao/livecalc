@@ -1207,6 +1207,10 @@ async def get_ingredient_price_series(
 async def get_ingredient_latest_price_by_merchant(
     ingredient_id: int,
     region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
+    include_relations: bool = Query(
+        False,
+        description="按商家补充替代/回退/从属折算价（该商家没有直接价时）",
+    ),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
     quantity: Optional[float] = Query(None, description="菜谱中该食材的用量"),
@@ -1245,17 +1249,21 @@ async def get_ingredient_latest_price_by_merchant(
         target_unit_abbr = "斤"
 
         def _lookup_merchant_prices(ing: Ingredient) -> list[dict]:
-            """对单个食材查找各商家代表价。同商家多商品时按商品权重加权（覆盖>全局>50）。
+            """对单个食材查找各商家代表价（只按该食材自己的商品）。"""
+            products = db.query(Product).filter(
+                Product.ingredient_id == ing.id,
+                Product.is_active == True  # noqa: E712
+            ).all()
+            return _lookup_rows(products)
+
+        def _lookup_rows(products: list) -> list[dict]:
+            """给定商品集合 → 各商家代表价。同商家多商品时按商品权重加权（覆盖>全局>50）。
 
             P2：价格跨用户公开，不按 user_id 过滤。权重仅作用于「商家代表价」这一平均语义，
             不影响极值/计数/原始记录。
             """
             from app.services.ingredient_price_service import _resolve_weight
 
-            products = db.query(Product).filter(
-                Product.ingredient_id == ing.id,
-                Product.is_active == True  # noqa: E712
-            ).all()
             product_map = {p.id: p for p in products if p.id}
             product_ids = list(product_map.keys())
             if not product_ids:
@@ -1341,7 +1349,7 @@ async def get_ingredient_latest_price_by_merchant(
                         qty_convert = unit_service.convert(
                             quantity, quantity_unit, price_unit_abbr,
                             entity_type="ingredient",
-                            entity_id=ing.id,
+                            entity_id=ingredient.id,
                         )
                         if qty_convert is not None:
                             converted_val, _ = qty_convert
@@ -1362,16 +1370,15 @@ async def get_ingredient_latest_price_by_merchant(
                     "recorded_at": serialize_datetime(sample_record.recorded_at) if sample_record.recorded_at else None,
                     "is_stale": is_stale_recorded_at(sample_record.recorded_at),
                     "product_name": sample_record.product_name,
+                    "source": "direct",
+                    "chain": None,
+                    "is_derived": False,
                 })
 
             return results
 
-        # ① 直接查找
-        results = _lookup_merchant_prices(ingredient)
-        fallback_chain = None
-
-        # ② 无直接价格 → 走 FALLBACK / SUBSTITUTABLE 回退链（P2：跨用户公开，不按 user_id 隔离）
-        if not results:
+        def _find_fallback_ingredient() -> OptType[tuple[Ingredient, str]]:
+            """回退链（fallback + substitutable 双向）里第一个「有价格记录」的食材。"""
             hierarchies = db.query(IngredientHierarchy).filter(
                 IngredientHierarchy.is_active == True,  # noqa: E712
                 IngredientHierarchy.relation_type.in_([
@@ -1386,7 +1393,6 @@ async def get_ingredient_latest_price_by_merchant(
                 if h.relation_type == HierarchyRelationType.SUBSTITUTABLE.value:
                     fallback_parents[h.parent_id].append(h)
 
-            # 预加载相关食材
             fb_ingredient_ids: set[int] = {ingredient_id}
             for h in hierarchies:
                 fb_ingredient_ids.add(h.parent_id)
@@ -1398,7 +1404,7 @@ async def get_ingredient_latest_price_by_merchant(
 
             tried: set[int] = set()
 
-            def _find_fallback(ing_id: int) -> OptType[tuple[Ingredient, str]]:
+            def _find(ing_id: int) -> OptType[tuple[Ingredient, str]]:
                 if ing_id in tried:
                     return None
                 tried.add(ing_id)
@@ -1409,10 +1415,9 @@ async def get_ingredient_latest_price_by_merchant(
                     fb_ing = fb_ingredients_map.get(fb_id)
                     if not fb_ing or not fb_ing.is_active:
                         continue
-                    # 检查该回退食材是否有有价商品（P2：跨用户公开，不按 user_id 隔离）
                     fb_prods = db.query(Product).filter(
                         Product.ingredient_id == fb_id,
-                        Product.is_active == True
+                        Product.is_active == True  # noqa: E712
                     ).all()
                     fb_pids = [p.id for p in fb_prods if p.id]
                     if not fb_pids:
@@ -1421,7 +1426,7 @@ async def get_ingredient_latest_price_by_merchant(
                         db.query(ProductRecord).filter(
                             ProductRecord.product_id.in_(fb_pids),
                             ProductRecord.merchant_id.isnot(None),
-                            ProductRecord.is_active == True,
+                            ProductRecord.is_active == True,  # noqa: E712
                         ),
                         db, region_id,
                     ).first()
@@ -1429,16 +1434,102 @@ async def get_ingredient_latest_price_by_merchant(
                         cur = fb_ingredients_map.get(ing_id)
                         chain = f"{cur.name if cur else ing_id} → {fb_ing.name}"
                         return fb_ing, chain
-                    deeper = _find_fallback(fb_id)
+                    deeper = _find(fb_id)
                     if deeper:
                         return deeper
                 return None
 
-            fb_result = _find_fallback(ingredient_id)
+            return _find(ingredient_id)
+
+        # ① 直接价（按商家）
+        results = _lookup_merchant_prices(ingredient)
+        fallback_chain = None
+        seen_merchants = {r["merchant_id"] for r in results}
+
+        def _merge_relation_rows(rows: list[dict], source: str, chain: OptType[str]) -> int:
+            """把「关系折算」的商家行补进结果：该商家已有直接价则跳过（直接价优先）。"""
+            added = 0
+            for row in rows:
+                mid = row.get("merchant_id")
+                if mid is None or mid in seen_merchants:
+                    continue
+                merged = dict(row)
+                merged.update({"source": source, "chain": chain, "is_derived": True})
+                results.append(merged)
+                seen_merchants.add(mid)
+                added += 1
+            return added
+
+        # ② 按商家补齐替代/回退/从属折算（include_relations=true 时）
+        # 旧行为只在「完全没有直接价」时整体回退；现在逐商家补齐：
+        # 某商家没有直接价、但能在该商家买到替代/从属食材时，也给出一条折算价。
+        if include_relations:
+            fb_result = _find_fallback_ingredient()
             if fb_result:
                 fb_ingredient, fb_chain = fb_result
-                results = _lookup_merchant_prices(fb_ingredient)
+                _merge_relation_rows(
+                    _lookup_merchant_prices(fb_ingredient), "fallback", fb_chain,
+                )
                 fallback_chain = fb_chain
+
+            # 同名商品匹配：排除自身与 contains 后代（口径与趋势图一致）
+            try:
+                from app.services.recipe_service import _contains_descendant_ids
+                excluded = set(_contains_descendant_ids(db, ingredient.id)) | {ingredient.id}
+            except Exception:
+                excluded = {ingredient.id}
+            nm_query = db.query(Product).filter(
+                Product.name.contains(ingredient.name),
+                Product.is_active == True,  # noqa: E712
+            )
+            if excluded:
+                nm_query = nm_query.filter(~Product.ingredient_id.in_(list(excluded)))
+            _merge_relation_rows(_lookup_rows(nm_query.all()), "name_match", None)
+
+            # 从属聚合（按商家）：子食材在该商家的代表价按 strength 加权；
+            # 区间取各子食材价格的极值（与趋势图 contains 区间同口径）。
+            contains_edges = db.query(IngredientHierarchy).filter(
+                IngredientHierarchy.parent_id == ingredient.id,
+                IngredientHierarchy.is_active == True,  # noqa: E712
+                IngredientHierarchy.relation_type == HierarchyRelationType.CONTAINS.value,
+            ).all()
+            per_mid: dict = defaultdict(list)
+            child_names: list[str] = []
+            for edge in contains_edges:
+                child = db.get(Ingredient, edge.child_id)
+                if not child:
+                    continue
+                child_rows = _lookup_merchant_prices(child)
+                if not child_rows:
+                    continue
+                child_names.append(child.name)
+                for row in child_rows:
+                    per_mid[row["merchant_id"]].append((row, edge.strength or 50))
+            agg_rows: list[dict] = []
+            for mid, items in per_mid.items():
+                den = sum(s for _, s in items)
+                if den <= 0:
+                    continue
+                avg_price = sum(r["price"] * s for r, s in items) / den
+                prices = [r["price"] for r, _ in items]
+                sample = max(items, key=lambda x: x[0].get("recorded_at") or "")[0]
+                row = dict(sample)
+                row.update({
+                    "price": round(avg_price, 2),
+                    "min_price": round(min(prices), 2),
+                    "max_price": round(max(prices), 2),
+                    "is_stale": all(r["is_stale"] for r, _ in items),
+                    "total_cost": (
+                        round(avg_price * quantity, 2)
+                        if quantity is not None and quantity > 0 else None
+                    ),
+                })
+                agg_rows.append(row)
+            contains_chain = (
+                f"{ingredient.name} ← 子食材({', '.join(child_names)})"
+                if child_names else None
+            )
+            _merge_relation_rows(agg_rows, "contains_aggregation", contains_chain)
 
         # 陈旧记录（超过 30 天）排到最后，两组内仍按价格升序
         results.sort(key=lambda x: (x["is_stale"], x["price"]))
