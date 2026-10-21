@@ -1158,6 +1158,10 @@ async def get_ingredient_price_series(
     ingredient_id: int,
     days: int = Query(30, ge=1, le=366, description="查询天数（逐日折算，最多 366 天）"),
     offset_days: int = Query(0, ge=0, description="偏移天数（从 n 天前开始算）"),
+    prefer_relations_when_stale: bool = Query(
+        False,
+        description="直接价超期（>30 天）时优先用替代/回退/从属折算结果",
+    ),
     region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user),
@@ -1171,6 +1175,9 @@ async def get_ingredient_price_series(
     用途：原料详情趋势图在「该原料自己没有直接商品价」的日子，
     用同一套菜谱成本口径显示折算结果（替代/回退/半成品/从属）。
     返回每克单价三档（元/克，已折算到用户币种）+ source + chain。
+
+    prefer_relations_when_stale=True：直接价最近记录已超 30 天、且关系折算可用时，
+    改用关系结果（同时返回 direct_ppg / direct_stale 供前端提示）。
     """
     region_id = resolve_region_param(db, current_user, region_id)
     try:
@@ -1184,6 +1191,7 @@ async def get_ingredient_price_series(
             offset_days=offset_days,
             tz=tz,
             region_id=region_id,
+            prefer_relations_when_stale=prefer_relations_when_stale,
         )
     except HTTPException:
         raise

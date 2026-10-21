@@ -238,19 +238,22 @@
         <v-card-text class="py-6">
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
-              {{ formatMoney(Number(latestPrice ?? latestComputedPoint?.avg), userCurrency) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
+              {{ formatMoney(
+                Number(showDirectAsPrimary ? latestPrice : latestComputedPoint?.avg),
+                userCurrency,
+              ) }}<span class="text-h6 font-weight-regular"> / {{ massUnitLabel }}</span>
             </div>
-            <!-- 无直接商品价时：展示按替代/回退/半成品/从属关系折算出的最新价 -->
+            <!-- 无直接商品价 / 直接价超期被替代时：展示按替代、回退、半成品、从属关系折算出的最新价 -->
             <v-chip
-              v-if="!latestPrice && latestComputedPoint"
+              v-if="!showDirectAsPrimary && latestComputedPoint"
               size="small"
               color="deep-purple"
               variant="tonal"
             >
               {{ t('charts.computedPrice') }}
             </v-chip>
-            <!-- 区间/商品数与综合价同源（接口 participants），保证平均值必落在区间内 -->
-            <template v-if="latestPriceRange">
+            <!-- 区间：直接价优先时用接口 participants 区间；否则用折算序列区间 -->
+            <template v-if="showDirectAsPrimary && latestPriceRange">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('ingredients.range') }}</div>
@@ -263,7 +266,7 @@
                 <div class="text-subtitle-1 font-weight-bold">{{ latestPriceRange.count }}</div>
               </div>
             </template>
-            <template v-else-if="!latestPrice && latestComputedPoint">
+            <template v-else-if="!showDirectAsPrimary && latestComputedPoint">
               <v-divider vertical class="d-none d-sm-flex" />
               <div class="text-center">
                 <div class="text-caption text-medium-emphasis">{{ t('ingredients.range') }}</div>
@@ -273,17 +276,20 @@
               </div>
             </template>
           </div>
-          <div v-if="latestPrice && latestPriceDate" class="text-caption text-medium-emphasis mt-2">
+          <div v-if="showDirectAsPrimary && latestPriceDate" class="text-caption text-medium-emphasis mt-2">
             {{ formatToLocalDate(latestPriceDate) }}
           </div>
-          <div v-if="!latestPrice && latestComputedPoint" class="text-caption text-medium-emphasis mt-2">
+          <div v-if="!showDirectAsPrimary && latestComputedPoint" class="text-caption text-medium-emphasis mt-2">
             {{ formatToLocalDate(latestComputedPoint.date) }} · {{ computedSourceLabel(latestComputedPoint.source) }}<span v-if="latestComputedPoint.chain">（{{ latestComputedPoint.chain }}）</span>
           </div>
-          <div v-if="latestPriceRelaxed" class="text-caption text-medium-emphasis mt-1">
+          <div v-if="!showDirectAsPrimary && latestComputedPoint?.directStale && latestComputedPoint?.directAvg != null" class="text-caption text-error mt-1">
+            {{ t('charts.staleDirectReplaced', { price: `${formatMoney(latestComputedPoint.directAvg, userCurrency)} / ${chartUnit}` }) }}
+          </div>
+          <div v-if="showDirectAsPrimary && latestPriceRelaxed" class="text-caption text-medium-emphasis mt-1">
             {{ t('ingredients.staleRelaxed') }}
           </div>
           <!-- 加权来源明细（透明追溯） -->
-          <v-expansion-panels v-if="latestPriceParticipants.length" variant="accordion" class="mt-2">
+          <v-expansion-panels v-if="showDirectAsPrimary && latestPriceParticipants.length" variant="accordion" class="mt-2">
             <v-expansion-panel>
               <v-expansion-panel-title class="text-caption">
                 {{ t('ingredients.weightedDetails', { count: latestPriceParticipants.length }) }}
@@ -364,12 +370,15 @@
         :comparison-series="merchantComparisonSeries"
         :computed-series="computedChartSeries"
         :computed-title="t('charts.computedPrice')"
+        :stale-prefer="preferStaleRelations"
+        :stale-prefer-switch="hasRelations"
         :loading="loadingChartPrices"
         color="#ff9800"
         :avg-label="t('ingredients.weightedAverage')"
         :count-label="t('charts.productCount')"
         class="grid-item item-price-trend"
         @filter-change="onPriceTrendFilterChange"
+        @update:stale-prefer="onStalePreferChange"
       />
 
       <!-- 关联商品 -->
@@ -3743,8 +3752,12 @@ const computedPricePoints = ref<Array<{
   min_ppg: number
   max_ppg: number
   avg_ppg: number
+  direct_ppg?: number | null
+  direct_stale?: boolean
 }>>([])
 const loadingComputedPrice = ref(false)
+// 直接价超期（>30 天）时是否优先用替代/从属折算结果（可切换，默认开）
+const preferStaleRelations = ref(true)
 
 const loadComputedPriceSeries = async () => {
   if (!ingredientId.value) return
@@ -3761,7 +3774,12 @@ const loadComputedPriceSeries = async () => {
   try {
     const res: any = await api.get(
       `/nutrition/ingredients/${ingredientId.value}/price-series`,
-      { params: { days } },
+      {
+        params: {
+          days,
+          prefer_relations_when_stale: preferStaleRelations.value,
+        },
+      },
     )
     computedPricePoints.value = Array.isArray(res) ? res : []
   } catch (e) {
@@ -3786,14 +3804,31 @@ const computedChartSeries = computed(() => {
       avg: Number(p.avg_ppg) * gramsPerUnit,
       source: p.source,
       chain: p.chain,
+      directStale: !!p.direct_stale,
+      directAvg: p.direct_ppg != null ? Number(p.direct_ppg) * gramsPerUnit : null,
     }))
 })
 
-// 最新一条折算价（无直接商品价时，最新价格卡片改展示它 + 来源）
+// 最新一条折算价（无直接商品价，或直接价超期且开关打开时，最新价格卡片改展示它 + 来源）
 const latestComputedPoint = computed(() => {
   if (computedChartSeries.value.length === 0) return null
   return [...computedChartSeries.value].sort((a, b) => (a.date < b.date ? 1 : -1))[0]
 })
+
+// 「超期优先替代/从属」打开且最新折算点是「替代了超期直接价」→ 折算价作为主显示
+const preferComputedAsPrimary = computed(
+  () => preferStaleRelations.value && !!latestComputedPoint.value?.directStale,
+)
+// 直接价作为主显示的条件（有直接价、且没有被超期折算替代）
+const showDirectAsPrimary = computed(
+  () => !!latestPrice.value && !preferComputedAsPrimary.value,
+)
+
+// 切换「超期优先替代/从属」：重新取折算序列（口径在后端计算，前端不能只做展示切换）
+const onStalePreferChange = (value: boolean) => {
+  preferStaleRelations.value = value
+  loadComputedPriceSeries()
+}
 
 // 折算来源文案（与 PriceTrendChart 的 tooltip 同口径）
 const computedSourceLabel = (source?: string): string => {
