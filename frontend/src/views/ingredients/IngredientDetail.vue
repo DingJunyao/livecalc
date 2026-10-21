@@ -325,7 +325,12 @@
                 v-for="mp in merchantPrices"
                 :key="mp.merchant_id"
                 class="merchant-price-item"
-                :class="{ 'merchant-price-lowest': mp.is_lowest, 'merchant-price-stale': mp.is_stale }"
+                :class="{
+                  'merchant-price-lowest': mp.is_lowest,
+                  // 折算行不用「陈旧置灰」：来源不同，用紫色区分（灰色会让人误以为不可用）
+                  'merchant-price-stale': mp.is_stale && !mp.is_derived,
+                  'merchant-price-derived': mp.is_derived,
+                }"
                 style="position: relative"
               >
                 <SparklineBackground
@@ -333,20 +338,7 @@
                   :data="mp.sparkline_data"
                   color="tertiary"
                 />
-                <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">
-                  {{ mp.merchant_name }}
-                  <!-- 该商家没有直接价时，展示按替代/回退/从属折算出来的价 -->
-                  <v-chip
-                    v-if="mp.is_derived"
-                    size="x-small"
-                    color="deep-purple"
-                    variant="tonal"
-                    class="ms-1"
-                    :title="mp.chain || computedSourceLabel(mp.source)"
-                  >
-                    {{ computedSourceLabel(mp.source) }}
-                  </v-chip>
-                </div>
+                <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">{{ mp.merchant_name }}</div>
                 <div class="merchant-price-value" style="position: relative; z-index: 1">
                   <span class="font-weight-bold" :class="mp.is_lowest ? 'text-success' : ''">
                     {{ formatMoney(mp.price, userCurrency) }}
@@ -355,8 +347,25 @@
                     {{ t('charts.range') }} {{ formatMoney(mp.min_price, userCurrency) }} - {{ formatMoney(mp.max_price, userCurrency) }}
                   </div>
                 </div>
+                <!-- 折算来源：放在名字下方单独一行，避免和 merchant_name 挤在一行
+                     （也不用 v-chip，避免 .v-chip__content 的额外内边距影响排版） -->
+                <div
+                  v-if="mp.is_derived"
+                  class="merchant-price-source text-truncate"
+                  :title="mp.chain || computedSourceLabel(mp.source)"
+                >
+                  {{ computedSourceLabel(mp.source) }}
+                </div>
                 <div v-if="mp.recorded_at" class="merchant-price-date" style="position: relative; z-index: 1">
                   {{ formatToLocalDate(mp.recorded_at) }}
+                </div>
+                <!-- 直接价已超期、被同商家的关系折算价替代时，标明原直接价 -->
+                <div
+                  v-if="mp.direct_stale && mp.direct_price != null"
+                  class="merchant-price-date text-error"
+                  style="position: relative; z-index: 1"
+                >
+                  {{ t('ingredients.directPriceStale', { price: formatMoney(mp.direct_price, userCurrency) }) }}
                 </div>
                 <div v-if="mp.is_lowest" class="merchant-price-badge">
                   <v-chip size="x-small" color="success" variant="flat" label>{{ t('ingredients.lowest') }}</v-chip>
@@ -2302,6 +2311,9 @@ interface MerchantPrice {
   /** 从属聚合的区间（各子食材价格的极值） */
   min_price?: number | null
   max_price?: number | null
+  /** 直接价被关系折算替代时的原直接价 */
+  direct_price?: number | null
+  direct_stale?: boolean
 }
 const merchantPrices = ref<MerchantPrice[]>([])
 const merchantPriceUnit = ref<string | null>(null)
@@ -4058,6 +4070,8 @@ const loadMerchantPrices = async () => {
       params: {
         region_id: null,
         include_relations: includeComputedRelations.value,
+        // 该商家直接价超期时，用同商家的替代/从属价格替代（与图表口径一致）
+        prefer_relations_when_stale: includeComputedRelations.value,
       },
     })
     merchantPrices.value = response.prices || []
@@ -5394,10 +5408,28 @@ onMounted(() => {
   background: rgba(var(--v-theme-success), 0.12);
 }
 
-/* 陈旧记录（超过 30 天）：置灰弱化，排在列表最后 */
+/* 陈旧记录（超过 30 天）：置灰弱化，排在列表最后。
+   注意：折算行（source 为回退/从属等）不加这个类——它只是「按关系算出来的价」，
+   不是不可用的旧价，用灰色会误导。 */
 .merchant-price-stale {
   opacity: 0.5;
   filter: grayscale(1);
+}
+
+/* 折算行：紫色调背景 + 左侧强调条，与直接价的灰底区分开 */
+.merchant-price-derived {
+  background: rgba(126, 87, 194, 0.08);
+  border-left: 2px solid rgba(126, 87, 194, 0.55);
+}
+
+.merchant-price-derived:hover {
+  background: rgba(126, 87, 194, 0.14);
+}
+
+.merchant-price-source {
+  margin-top: 2px;
+  font-size: 0.65rem;
+  color: rgb(126, 87, 194);
 }
 
 .merchant-price-name {

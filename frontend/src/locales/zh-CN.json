@@ -1980,6 +1980,7 @@
     "madeFrom": "由「{name}」制作",
     "servingWeight": "成品基准量",
     "latestPrice": "综合最新价",
+    "directPriceStale": "原直接价 {price}（已超期）",
     "weightedDetails": "加权明细（{count} 个商品参与）",
     "weightLabel": "权重 {weight}",
     "weightSourceMine": "我的",

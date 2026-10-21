@@ -1980,6 +1980,7 @@
     "madeFrom": "مُحضّر من \"{name}\"",
     "servingWeight": "وزن الحصة النهائية",
     "latestPrice": "أحدث سعر مركّب",
+    "directPriceStale": "السعر المباشر السابق {price} (قديم)",
     "weightedDetails": "تفاصيل الترجيح ({count} منتجات)",
     "weightLabel": "الوزن {weight}",
     "weightSourceMine": "خاصتي",
