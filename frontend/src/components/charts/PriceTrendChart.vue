@@ -17,26 +17,18 @@
         <v-btn value="avg" size="small">{{ t('charts.overall') }}</v-btn>
         <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
       </v-btn-toggle>
-      <!-- 超期优先替代/从属：原料存在回退/替代/从属关系时可切换（默认开） -->
+      <!-- 折算序列开关（替代/回退/半成品/从属）：
+           开 = 显示关系折算价，且直接价超期时优先用关系结果；关 = 只看直接价。
+           原料存在层级关系（或已有折算数据）时出现，默认打开。 -->
       <v-switch
-        v-if="stalePreferSwitch"
-        :model-value="stalePrefer"
-        :label="t('charts.preferRelationsStale')"
-        density="compact"
-        hide-details
-        color="deep-purple"
-        class="computed-switch me-2"
-        @update:model-value="(v: any) => emit('update:stalePrefer', !!v)"
-      />
-      <!-- 折算序列开关（替代/回退/半成品/从属）：有折算数据时才出现，默认打开 -->
-      <v-switch
-        v-if="hasComputed"
-        v-model="includeComputed"
+        v-if="computedToggleEnabled || hasComputed"
+        :model-value="includeComputed"
         :label="t('charts.includeComputed')"
         density="compact"
         hide-details
         color="primary"
         class="computed-switch me-2"
+        @update:model-value="(v: any) => emit('update:includeComputed', !!v)"
       />
       <v-btn-toggle
         v-model="selectedFilter"
@@ -183,10 +175,13 @@ const props = withDefaults(defineProps<{
   computedSeries?: DataPoint[]
   /** 折算序列图例名（默认 charts.computedPrice） */
   computedTitle?: string
-  /** 「直接价超期时优先用替代/从属」开关状态（父组件持有，切换后重新取数） */
-  stalePrefer?: boolean
-  /** 是否显示「超期优先替代/从属」开关（原料存在层级关系时由父组件开启） */
-  stalePreferSwitch?: boolean
+  /**
+   * 是否包含替代/从属折算（父组件持有，切换后需重新取数）：
+   * 开 = 显示折算序列，并允许「直接价超期时优先用关系结果」；关 = 只看直接价。
+   */
+  includeComputed?: boolean
+  /** 是否显示「含替代/从属」开关（原料存在回退/替代/从属关系时由父组件开启） */
+  computedToggleEnabled?: boolean
 }>(), {
   icon: 'mdi-chart-line',
   iconColor: 'primary',
@@ -196,15 +191,15 @@ const props = withDefaults(defineProps<{
   comparisonSeries: () => [],
   computedSeries: () => [],
   computedTitle: undefined,
-  stalePrefer: true,
-  stalePreferSwitch: false
+  includeComputed: true,
+  computedToggleEnabled: false
 })
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
 
 const emit = defineEmits<{
   'filter-change': [filter: 'week' | 'month' | 'quarter' | 'year' | 'all']
-  'update:stalePrefer': [value: boolean]
+  'update:includeComputed': [value: boolean]
 }>()
 
 const chartRef = ref<HTMLElement>()
@@ -248,12 +243,11 @@ const sliceByFilter = (points: DataPoint[]): DataPoint[] => {  if (!points || po
 }
 
 // ---- 折算序列（替代 / 回退 / 半成品 / 从属；与菜谱成本同一降级链）----
-// 只在「该原料自己没有直接商品价」的日子有数据；开关默认打开。
-const includeComputed = ref(true)
+// 开关由父组件持有（includeComputed），切换后父组件重新取数。
 const hasComputed = computed(() => (props.computedSeries?.length ?? 0) > 0)
 const computedLabel = computed(() => props.computedTitle ?? t('charts.computedPrice'))
 const computedData = computed<DataPoint[]>(() => {
-  if (!hasComputed.value || !includeComputed.value) return []
+  if (!hasComputed.value || !props.includeComputed) return []
   // 按商家模式不叠加折算序列（商家维度没有该口径）
   if (hasComparison.value && viewMode.value === 'merchant') return []
   return sliceByFilter(props.computedSeries ?? [])
@@ -784,7 +778,7 @@ watch(() => props.data, (newData) => {
 }, { deep: true })
 
 // 折算序列变化 / 开关切换 → 重绘（首帧只有折算序列时也要补初始化）
-watch([includeComputed, () => props.computedSeries], () => {
+watch([() => props.includeComputed, () => props.computedSeries], () => {
   nextTick(renderOrInit)
 }, { deep: true })
 

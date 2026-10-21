@@ -587,7 +587,6 @@
     "byMerchant": "حسب المتجر",
     "computedPrice": "السعر المحتسب (بديل/مشتق)",
     "includeComputed": "تضمين البديل",
-    "preferRelationsStale": "تفضيل البديل عند قدم السعر",
     "staleDirectReplaced": "السعر المباشر قديم؛ يُستخدم البديل (كان {price})",
     "sourceDirect": "سعر المنتج المباشر",
     "sourceFallback": "علاقة بديلة/احتياطية",

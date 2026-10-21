@@ -370,15 +370,15 @@
         :comparison-series="merchantComparisonSeries"
         :computed-series="computedChartSeries"
         :computed-title="t('charts.computedPrice')"
-        :stale-prefer="preferStaleRelations"
-        :stale-prefer-switch="hasRelations"
+        :include-computed="includeComputedRelations"
+        :computed-toggle-enabled="hasRelations"
         :loading="loadingChartPrices"
         color="#ff9800"
         :avg-label="t('ingredients.weightedAverage')"
         :count-label="t('charts.productCount')"
         class="grid-item item-price-trend"
         @filter-change="onPriceTrendFilterChange"
-        @update:stale-prefer="onStalePreferChange"
+        @update:include-computed="onIncludeComputedChange"
       />
 
       <!-- 关联商品 -->
@@ -3756,11 +3756,16 @@ const computedPricePoints = ref<Array<{
   direct_stale?: boolean
 }>>([])
 const loadingComputedPrice = ref(false)
-// 直接价超期（>30 天）时是否优先用替代/从属折算结果（可切换，默认开）
-const preferStaleRelations = ref(true)
+// 唯一开关「含替代/从属」：开 = 显示关系折算价，且直接价超期时优先用关系结果；关 = 只看直接价。
+const includeComputedRelations = ref(true)
 
 const loadComputedPriceSeries = async () => {
   if (!ingredientId.value) return
+  // 关闭开关时不取折算数据（既省一次逐日降级链计算，也保证图表只剩直接价）
+  if (!includeComputedRelations.value) {
+    computedPricePoints.value = []
+    return
+  }
   const daysMap: Record<string, number> = {
     week: 7,
     month: 30,
@@ -3777,7 +3782,8 @@ const loadComputedPriceSeries = async () => {
       {
         params: {
           days,
-          prefer_relations_when_stale: preferStaleRelations.value,
+          // 开关打开时才允许「直接价超期优先关系折算」
+          prefer_relations_when_stale: includeComputedRelations.value,
         },
       },
     )
@@ -3815,18 +3821,18 @@ const latestComputedPoint = computed(() => {
   return [...computedChartSeries.value].sort((a, b) => (a.date < b.date ? 1 : -1))[0]
 })
 
-// 「超期优先替代/从属」打开且最新折算点是「替代了超期直接价」→ 折算价作为主显示
+// 开关打开且最新折算点是「替代了超期直接价」→ 折算价作为主显示
 const preferComputedAsPrimary = computed(
-  () => preferStaleRelations.value && !!latestComputedPoint.value?.directStale,
+  () => includeComputedRelations.value && !!latestComputedPoint.value?.directStale,
 )
 // 直接价作为主显示的条件（有直接价、且没有被超期折算替代）
 const showDirectAsPrimary = computed(
   () => !!latestPrice.value && !preferComputedAsPrimary.value,
 )
 
-// 切换「超期优先替代/从属」：重新取折算序列（口径在后端计算，前端不能只做展示切换）
-const onStalePreferChange = (value: boolean) => {
-  preferStaleRelations.value = value
+// 唯一的「含替代/从属」开关：切换后重新取折算序列（口径在后端计算，不能只做展示切换）
+const onIncludeComputedChange = (value: boolean) => {
+  includeComputedRelations.value = value
   loadComputedPriceSeries()
 }
 
