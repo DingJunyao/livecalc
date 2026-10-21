@@ -340,6 +340,7 @@
         :unit="chartUnit"
         :empty-text="t('ingredients.noPriceHistory')"
         :data="chartData"
+        :comparison-series="merchantComparisonSeries"
         :loading="loadingChartPrices"
         color="#ff9800"
         :avg-label="t('ingredients.weightedAverage')"
@@ -3643,84 +3644,141 @@ const chartRangeStartDay = computed<string | undefined>(() => {
   return start ? (toLocalDayKey(start) ?? undefined) : undefined
 })
 
-// 聚合价格数据用于图表（逐日 as-of 加权：每商品最近一次价格向前携带）
-const chartData = computed(() => {
-  if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
+// 单条记录 → 归一化价格点（按用户质量偏好单位）。图表综合序列与商家对比序列共用。
+const toChartPricePoint = (record: any): AsOfPricePoint | null => {
+  if (!record?.recorded_at) return null
 
   // 图表按用户质量偏好单位归一化（与 chartUnit 对齐；unitFactors 表覆盖 mass/volume）
   // ⚠️ 用单位缩写（abbr）作 key 查 unitFactors，不能用 name——
   // 表里是 'kg':1000 而非 '千克':1000，用 name 会命中不到→toFactor=1→单价少算 1000 倍
   const defaultUnit = massUnit.value?.abbreviation ?? CHINESE_JIN_NAME
   const unitFactors = CHART_UNIT_FACTORS_TO_GRAMS
-  const points: AsOfPricePoint[] = []
 
-  for (const record of chartPriceRecords.value) {
-    if (!record.recorded_at) continue
+  // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
+  // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
+  // price 先按 exchange_rate 折算到用户币种——记录存的是币种原值
+  // （如 76500 IDR），不乘汇率会以原值参与加权，撑爆整个图表。
+  const rateRaw = parseFloat(String(record.exchange_rate))
+  const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : 1
+  const price = (parseFloat(String(record.price)) || 0) * rate
+  let convertedUnitPrice: number | null = null
+  const stdQty = parseFloat(String(record.standard_quantity))
+  const stdUnit = record.standard_unit
+  if (stdQty > 0 && stdUnit && unitFactors[stdUnit] !== undefined) {
+    // standard_quantity 以克为单位（后端统一归一化到 g）
+    const pricePerGram = price / stdQty
+    convertedUnitPrice = pricePerGram * (unitFactors[defaultUnit] || 1)
+  } else {
+    const quantity = parseFloat(String(record.original_quantity)) || 1
+    const originalUnitPrice = price / quantity
+    const originalUnit = record.original_unit
 
-    // 优先使用后端维护的 standard_quantity（已按最新实体单位覆盖换算，
-    // 含商品级自定义单位，如「袋=1000g」）；缺失时回退原始单位手工折算。
-    // price 先按 exchange_rate 折算到用户币种——记录存的是币种原值
-    // （如 76500 IDR），不乘汇率会以原值参与加权，撑爆整个图表。
-    const rateRaw = parseFloat(String(record.exchange_rate))
-    const rate = isFinite(rateRaw) && rateRaw > 0 ? rateRaw : 1
-    const price = (parseFloat(String(record.price)) || 0) * rate
-    let convertedUnitPrice: number | null = null
-    const stdQty = parseFloat(String(record.standard_quantity))
-    const stdUnit = record.standard_unit
-    if (stdQty > 0 && stdUnit && unitFactors[stdUnit] !== undefined) {
-      // standard_quantity 以克为单位（后端统一归一化到 g）
-      const pricePerGram = price / stdQty
-      convertedUnitPrice = pricePerGram * (unitFactors[defaultUnit] || 1)
-    } else {
-      const quantity = parseFloat(String(record.original_quantity)) || 1
-      const originalUnitPrice = price / quantity
-      const originalUnit = record.original_unit
-
-      // 如果原始单位和默认单位不同，进行转换
-      if (originalUnit && originalUnit !== defaultUnit) {
-        // 计数单位的默认回退：1个=100g
-        // 如果有 entity_unit_overrides，优先使用实际重量
-        let fromFactor = unitFactors[originalUnit]
-        if (fromFactor === undefined) {
-          // 检查是否有该原料/商品的自定义单位
-          const entityUnit = entityUnits.value?.find(
-            (eu: any) => eu.unit_name === originalUnit
-          )
-          if (entityUnit && entityUnit.weight_per_unit && entityUnit.weight_unit_id) {
-            // weight_per_unit 是以 weight_unit 为单位，通常是 g
-            const conversionCount = entityUnit.conversion_factor || 1
-            fromFactor = (entityUnit.weight_per_unit * conversionCount) // 每1个原始单位 = ?g
-          } else {
-            // 默认：1个=100g
-            fromFactor = 100
-          }
+    // 如果原始单位和默认单位不同，进行转换
+    if (originalUnit && originalUnit !== defaultUnit) {
+      // 计数单位的默认回退：1个=100g
+      // 如果有 entity_unit_overrides，优先使用实际重量
+      let fromFactor = unitFactors[originalUnit]
+      if (fromFactor === undefined) {
+        // 检查是否有该原料/商品的自定义单位
+        const entityUnit = entityUnits.value?.find(
+          (eu: any) => eu.unit_name === originalUnit
+        )
+        if (entityUnit && entityUnit.weight_per_unit && entityUnit.weight_unit_id) {
+          // weight_per_unit 是以 weight_unit 为单位，通常是 g
+          const conversionCount = entityUnit.conversion_factor || 1
+          fromFactor = (entityUnit.weight_per_unit * conversionCount) // 每1个原始单位 = ?g
+        } else {
+          // 默认：1个=100g
+          fromFactor = 100
         }
-
-        const toFactor = unitFactors[defaultUnit] || 1
-
-        // 单价转换公式：新单价 = 原单价 × (toFactor / fromFactor)
-        convertedUnitPrice = originalUnitPrice * (toFactor / fromFactor)
-      } else {
-        convertedUnitPrice = originalUnitPrice
       }
-    }
 
-    if (convertedUnitPrice == null || !isFinite(convertedUnitPrice)) continue
-    points.push({
-      product_id: (record as any).product_id ?? null,
-      date: record.recorded_at,
-      value: convertedUnitPrice,
-    })
+      const toFactor = unitFactors[defaultUnit] || 1
+
+      // 单价转换公式：新单价 = 原单价 × (toFactor / fromFactor)
+      convertedUnitPrice = originalUnitPrice * (toFactor / fromFactor)
+    } else {
+      convertedUnitPrice = originalUnitPrice
+    }
   }
+
+  if (convertedUnitPrice == null || !isFinite(convertedUnitPrice)) return null
+  return {
+    product_id: record.product_id ?? null,
+    date: record.recorded_at,
+    value: convertedUnitPrice,
+  }
+}
+
+// 聚合价格数据用于图表（逐日 as-of 加权：每商品最近一次价格向前携带）
+const chartData = computed(() => {
+  if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
+
+  const points: AsOfPricePoint[] = []
+  for (const record of chartPriceRecords.value) {
+    const p = toChartPricePoint(record)
+    if (p) points.push(p)
+  }
+  if (points.length === 0) return []
 
   // 逐日 as-of 加权（与后端综合价 / 原料迷你图 / 菜谱成本同口径）：
   // 每个商品取其「最近有记录日」的均价，并一直有效到下一次记录；
   // 这样某天只有单个商品有记录时，该点仍是综合价而不是单品价。
   // min/max/count 为参与加权的商品价区间与商品数（当日可见价集合）。
+  // recorded：当天是否真有价格记录（趋势图只在这些日子画点）。
+  const recordDays = new Set<string>()
+  for (const p of points) {
+    const day = toLocalDayKey(p.date)
+    if (day) recordDays.add(day)
+  }
   return buildWeightedAsOfDailySeries(points, (pid) =>
     pid == null ? 50 : (productWeights.value.get(pid) ?? 50),
     { startDay: chartRangeStartDay.value, backfillSparse: true },
-  ).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count }))
+  ).map((d) => ({
+    date: d.date,
+    min: d.min,
+    max: d.max,
+    avg: d.avg,
+    count: d.count,
+    recorded: recordDays.has(d.date),
+  }))
+})
+
+// 按商家对比序列：同一批记录按 merchant_id 分组，每组内沿用相同折算与 as-of 加权口径。
+// 传给 PriceTrendChart 的 comparisonSeries；≥2 条时图表显示「综合/按商家」切换。
+const merchantComparisonSeries = computed(() => {
+  if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
+  const byMerchant = new Map<number | null, AsOfPricePoint[]>()
+  const nameById = new Map<number, string>()
+  for (const record of chartPriceRecords.value) {
+    const p = toChartPricePoint(record)
+    if (!p) continue
+    const mid = (record.merchant_id ?? null) as number | null
+    if (mid != null && !nameById.has(mid) && record.merchant_name) {
+      nameById.set(mid, record.merchant_name)
+    }
+    if (!byMerchant.has(mid)) byMerchant.set(mid, [])
+    byMerchant.get(mid)!.push(p)
+  }
+  const out: Array<{ merchantId: number | null; name: string; data: Array<{ date: string; min: number; max: number; avg: number; count: number; recorded: boolean }> }> = []
+  for (const [mid, points] of byMerchant) {
+    // 该商家真实有记录的日子（as-of 携带日不画点）
+    const recordDays = new Set<string>()
+    for (const p of points) {
+      const day = toLocalDayKey(p.date)
+      if (day) recordDays.add(day)
+    }
+    const series = buildWeightedAsOfDailySeries(points, (pid) =>
+      pid == null ? 50 : (productWeights.value.get(pid) ?? 50),
+      { startDay: chartRangeStartDay.value, backfillSparse: true },
+    ).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count, recorded: recordDays.has(d.date) }))
+    if (series.length === 0) continue
+    const name = mid == null
+      ? t('prices.unknownMerchant')
+      : (nameById.get(mid) || t('recipes.merchantFallbackName', { id: mid }))
+    out.push({ merchantId: mid, name, data: series })
+  }
+  return out
 })
 
 // 最新价格卡片右侧的区间/商品数：直接取接口返回的参与商品，

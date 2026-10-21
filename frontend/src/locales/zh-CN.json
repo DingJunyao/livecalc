@@ -583,6 +583,8 @@
   },
   "charts": {
     "average": "平均",
+    "overall": "综合",
+    "byMerchant": "按商家",
     "noData": "暂无数据",
     "priceTrend": "价格趋势",
     "productCount": "商品数",

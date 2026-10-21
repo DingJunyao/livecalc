@@ -1590,6 +1590,40 @@ def calculate_recipe_cost_range_as_of(
     }
 
 
+def _recipe_record_days(
+    db: Session,
+    recipe_id: int,
+    start_date,
+    end_date,
+    tz: str = "UTC",
+) -> set:
+    """菜谱直接食材对应商品在 [start_date, end_date] 内「有价格记录」的本地日期集合。
+
+    用途：成本趋势图只在真实有记录的日子画点；as-of 前向填充出来的日子不画点。
+    只统计直接食材（不递归半成品菜里的食材），作为「当天有没有人记价」的直观判断；
+    个别记录因权重/超期未参与计算时也仍会画点，属于可接受的近似。
+    """
+    utc_start, utc_end = local_date_range_to_utc_range(start_date, end_date, tz)
+    rows = (
+        db.query(ProductRecord.recorded_at)
+        .join(Product, Product.id == ProductRecord.product_id)
+        .join(RecipeIngredient, RecipeIngredient.ingredient_id == Product.ingredient_id)
+        .filter(
+            RecipeIngredient.recipe_id == recipe_id,
+            ProductRecord.is_active == True,  # noqa: E712
+            ProductRecord.recorded_at >= utc_start,
+            ProductRecord.recorded_at <= utc_end,
+        )
+        .distinct()
+        .all()
+    )
+    return {
+        utc_datetime_to_local_date(r[0], tz).isoformat()
+        for r in rows
+        if r and r[0] is not None
+    }
+
+
 def calculate_recipe_cost_range_trend(
     recipe_id: int,
     user_id: int,
@@ -1643,6 +1677,13 @@ def calculate_recipe_cost_range_trend(
     # ═══════════════════════════════════════════════════════════
     cost_range_trend = []
 
+    # 当天是否有新的价格记录（供前端趋势图区分「真实记录日」与「as-of 携带日」）
+    try:
+        record_days = _recipe_record_days(db, recipe_id, start_date, end_date, tz)
+    except Exception as e:
+        logger.debug("计算菜谱记录日失败 recipe=%s: %s", recipe_id, e)
+        record_days = set()
+
     for date in date_list:
         _, as_of_datetime = local_date_range_to_utc_range(date, date, tz)
 
@@ -1686,6 +1727,7 @@ def calculate_recipe_cost_range_trend(
             "max_cost": round(float(result["max_cost"]), 4),
             "avg_cost": round(float(result["avg_cost"]), 4),
             "breakdown": breakdown_items,
+            "has_record": date.strftime("%Y-%m-%d") in record_days,
         })
 
     return cost_range_trend

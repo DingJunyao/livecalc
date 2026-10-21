@@ -161,6 +161,7 @@ class RecipeCostRangeResponse(BaseModel):
     avg_cost: float  # 平均成本（元）
     breakdown: Optional[List[IngredientCostBreakdown]] = None  # 各食材成本明细（用于堆叠面积图）
     recorded_at: int  # Unix 时间戳（秒）
+    has_record: bool = False  # 当日是否有新的价格记录（false = as-of 前向填充日，趋势图不画点）
 
 
 class MerchantCostItem(BaseModel):

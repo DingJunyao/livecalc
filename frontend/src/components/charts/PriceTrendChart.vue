@@ -4,6 +4,19 @@
       <v-icon start :color="iconColor">{{ icon }}</v-icon>
       {{ chartTitle }}
       <v-spacer />
+      <!-- 对比模式切换：仅在传入 ≥2 条商家序列时显示 -->
+      <v-btn-toggle
+        v-if="hasComparison"
+        v-model="viewMode"
+        mandatory
+        density="compact"
+        variant="outlined"
+        divided
+        class="filter-buttons me-2"
+      >
+        <v-btn value="avg" size="small">{{ t('charts.overall') }}</v-btn>
+        <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
+      </v-btn-toggle>
       <v-btn-toggle
         v-model="selectedFilter"
         mandatory
@@ -24,6 +37,34 @@
     </v-card-title>
     <v-divider />
 
+    <!-- 按商家模式：商家多选 chips（默认选前 3 家，避免线条过多） -->
+    <div v-if="hasComparison && viewMode === 'merchant'" class="merchant-chips px-4 pt-2">
+      <v-chip-group
+        v-model="selectedMerchantIds"
+        multiple
+        column
+        density="compact"
+        selected-class="text-primary"
+      >
+        <v-chip
+          v-for="s in comparisonSeries"
+          :key="String(s.merchantId)"
+          :value="s.merchantId"
+          size="small"
+          filter
+          variant="outlined"
+        >
+          <template #prepend>
+            <span
+              class="merchant-dot"
+              :style="{ backgroundColor: merchantColor(s.merchantId) }"
+            />
+          </template>
+          {{ s.name }}
+        </v-chip>
+      </v-chip-group>
+    </div>
+
     <div class="chart-area" style="position: relative; min-height: 300px">
       <!-- 加载中覆盖层（不销毁图表 DOM） -->
       <div
@@ -36,7 +77,7 @@
 
       <!-- 无数据（仅在非加载且无数据时显示） -->
       <div
-        v-if="!loading && (!chartData || chartData.length === 0)"
+        v-if="!loading && displayEmpty"
         class="text-center py-12"
       >
         <v-icon size="64" color="medium-emphasis">mdi-chart-line</v-icon>
@@ -44,7 +85,7 @@
       </div>
 
       <!-- 图表（一旦有数据就始终渲染，DOM 不被销毁） -->
-      <template v-if="hasEverHadData || (chartData && chartData.length > 0)">
+      <template v-if="hasEverHadData || !displayEmpty">
 
         <div ref="chartRef" class="chart-container" dir="ltr"></div>
       </template>
@@ -82,6 +123,15 @@ interface DataPoint {
   max: number
   avg: number
   count?: number
+  /** 该日是否真实有价格记录；false = as-of 携带日（按商家模式不画点，只连线） */
+  recorded?: boolean
+}
+
+/** 按商家对比：一条商家序列（与主序列同口径的逐日 as-of 数据） */
+export interface MerchantSeries {
+  merchantId: number | null
+  name: string
+  data: DataPoint[]
 }
 
 const props = withDefaults(defineProps<{
@@ -95,12 +145,15 @@ const props = withDefaults(defineProps<{
   color?: string
   avgLabel?: string
   countLabel?: string
+  /** 商家对比序列；≥2 条时显示「综合/按商家」切换 */
+  comparisonSeries?: MerchantSeries[]
 }>(), {
   icon: 'mdi-chart-line',
   iconColor: 'primary',
   unit: '',
   loading: false,
-  color: '#42b883'
+  color: '#42b883',
+  comparisonSeries: () => []
 })
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
@@ -118,6 +171,79 @@ const { currency: userCurrency } = useUserCurrency()
 const hasEverHadData = ref(false)
 
 const selectedFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month')
+
+// ---- 按商家对比模式 ----
+const viewMode = ref<'avg' | 'merchant'>('avg')
+const selectedMerchantIds = ref<Array<number | null>>([])
+
+const hasComparison = computed(() => (props.comparisonSeries?.length ?? 0) >= 2)
+
+// 商家固定色板（与主序列色区分）
+const MERCHANT_COLORS = ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#14b8a6', '#ec4899', '#84cc16', '#f97316']
+const merchantColor = (merchantId: number | null): string => {
+  const idx = props.comparisonSeries.findIndex((s) => s.merchantId === merchantId)
+  return MERCHANT_COLORS[((idx < 0 ? 0 : idx) % MERCHANT_COLORS.length)]
+}
+
+// 商家序列按同一时间区间切片（与主序列口径一致）
+const sliceByFilter = (points: DataPoint[]): DataPoint[] => {
+  if (!points || points.length === 0) return []
+  if (selectedFilter.value === 'all') {
+    return [...points].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  }
+  const startDate = new Date()
+  switch (selectedFilter.value) {
+    case 'week': startDate.setDate(startDate.getDate() - 7); break
+    case 'month': startDate.setMonth(startDate.getMonth() - 1); break
+    case 'quarter': startDate.setMonth(startDate.getMonth() - 3); break
+    case 'year': startDate.setFullYear(startDate.getFullYear() - 1); break
+  }
+  return points
+    .filter((d) => new Date(d.date) >= startDate)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+}
+
+// 按商家模式下实际绘制的序列（选中且区间内有数据的）
+const visibleMerchantSeries = computed(() => {
+  if (!hasComparison.value || viewMode.value !== 'merchant') return []
+  const selected = new Set(selectedMerchantIds.value)
+  return props.comparisonSeries
+    .filter((s) => selected.has(s.merchantId))
+    .map((s) => ({ ...s, data: sliceByFilter(s.data) }))
+    .filter((s) => s.data.length > 0)
+})
+
+// 切到按商家模式 / 商家集合变化时：默认勾选「记录数最多」的前 3 家（避免全画太乱）。
+// 注意：时间区间切换会让父页面累积加载记录、序列引用变化，但商家 id 集合不变
+// → 此时保留用户已勾选的商家（仅剔除已不存在的 id），不能重置回默认。
+const merchantIdsSignature = (list: MerchantSeries[]): string =>
+  list.map((s) => String(s.merchantId)).sort().join(',')
+
+const lastMerchantSignature = ref('')
+
+watch([viewMode, () => props.comparisonSeries], ([mode]) => {
+  if (!hasComparison.value) {
+    if (mode === 'merchant') viewMode.value = 'avg'
+    return
+  }
+  if (mode !== 'merchant') return
+  const series = props.comparisonSeries
+  const signature = merchantIdsSignature(series)
+  // 勾选中仍有效的 id（剔除已消失的商家）
+  const validSelection = selectedMerchantIds.value.filter((id) =>
+    series.some((s) => s.merchantId === id),
+  )
+  // 商家集合没变（仅数据刷新 / 区间加载）且有有效勾选 → 保持原选取
+  if (signature === lastMerchantSignature.value && validSelection.length > 0) {
+    selectedMerchantIds.value = validSelection
+    return
+  }
+  lastMerchantSignature.value = signature
+  const ranked = [...series]
+    .map((s) => ({ id: s.merchantId, count: s.data.reduce((acc, d) => acc + (d.count ?? 1), 0) }))
+    .sort((a, b) => b.count - a.count)
+  selectedMerchantIds.value = ranked.slice(0, 3).map((r) => r.id)
+})
 
 const chartTitle = computed(() => props.title ?? t('charts.priceTrend'))
 const emptyMessage = computed(() => props.emptyText ?? t('charts.noData'))
@@ -139,36 +265,20 @@ const unitSuffix = computed(() => props.unit ? ` / ${props.unit}` : '')
 const toTimestamp = (date: string): number => new Date(`${date}T00:00:00`).getTime()
 
 // 过滤数据
-const chartData = computed(() => {
-  if (!props.data || props.data.length === 0) return []
+const chartData = computed(() => sliceByFilter(props.data ?? []))
 
-  // 「全部」区间：不按时间窗口切片，返回全部数据（仅排序）
-  if (selectedFilter.value === 'all') {
-    return [...props.data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+// 当前展示是否为空（按商家模式看选中序列，否则看主序列）
+const displayEmpty = computed(() => {
+  if (hasComparison.value && viewMode.value === 'merchant') {
+    return visibleMerchantSeries.value.length === 0
   }
-
-  const now = new Date()
-  const startDate = new Date(now.getTime())
-
-  switch (selectedFilter.value) {
-    case 'week':
-      startDate.setDate(startDate.getDate() - 7)
-      break
-    case 'month':
-      startDate.setMonth(startDate.getMonth() - 1)
-      break
-    case 'quarter':
-      startDate.setMonth(startDate.getMonth() - 3)
-      break
-    case 'year':
-      startDate.setFullYear(startDate.getFullYear() - 1)
-      break
-  }
-
-  return props.data
-    .filter(d => new Date(d.date) >= startDate)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  return !chartData.value || chartData.value.length === 0
 })
+
+// 模式 / 商家勾选变化 → 重绘（勾选为空时显示空态）
+watch([viewMode, selectedMerchantIds, () => props.comparisonSeries], () => {
+  nextTick(updateChart)
+}, { deep: true })
 
 // 监听筛选变化
 watch(selectedFilter, (newFilter) => {
@@ -195,6 +305,17 @@ function initChart() {
 // 更新图表
 function updateChart() {
   if (!chart) return
+
+  // 按商家对比模式：每个选中商家一条线
+  if (hasComparison.value && viewMode.value === 'merchant') {
+    const series = visibleMerchantSeries.value
+    if (series.length === 0) {
+      chart.clear()
+      return
+    }
+    chart.setOption(buildMerchantOption(series), true)
+    return
+  }
 
   // 如果没有数据，清空图表
   if (chartData.value.length === 0) {
@@ -332,11 +453,14 @@ function updateChart() {
         symbol: 'none',
         showSymbol: false
       },
-      // 平均值线
+      // 平均值线（仅真实有记录的日子画点；as-of 携带日只连线）
       {
         name: props.avgLabel,
         type: 'line',
-        data: data.map(d => [toTimestamp(d.date), d.avg]),
+        data: data.map(d => ({
+          value: [toTimestamp(d.date), d.avg],
+          symbolSize: d.recorded === false ? 0 : 6,
+        })),
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
@@ -363,7 +487,80 @@ function updateChart() {
     ]
   }
 
-  chart.setOption(option)
+  chart.setOption(option, true)
+}
+
+// 按商家对比模式的 ECharts 配置：每个商家一条均价线（无区间带，避免多商家时过乱）
+function buildMerchantOption(series: Array<MerchantSeries & { data: DataPoint[] }>): EChartsOption {
+  const singlePoint = series.every((s) => s.data.length === 1)
+  const allDates = series.flatMap((s) => s.data.map((d) => d.date))
+  const singleTs = singlePoint && allDates.length > 0 ? toTimestamp(allDates[0]) : 0
+  const HALF_DAY_MS = 12 * 60 * 60 * 1000
+
+  return {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'line' },
+      formatter: (params: any) => {
+        const list = Array.isArray(params) ? params : [params]
+        if (list.length === 0) return ''
+        const dateStr = formatDate(list[0].value[0], localeStore.effectiveFormatLocale)
+        const rows = list.map((p: any) => {
+          const value = Array.isArray(p.value) ? p.value[1] : p.value
+          const color = p.color ?? '#888'
+          return `
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+              <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color};"></span>
+              <span>${p.seriesName}: ${formatMoney(value, userCurrency.value)}${unitSuffix.value}</span>
+            </div>
+          `
+        }).join('')
+        return `<div style="padding: 8px 12px;"><div style="font-weight: 600; margin-bottom: 6px;">${dateStr}</div>${rows}</div>`
+      }
+    },
+    grid: {
+      left: '5%',
+      right: '4%',
+      bottom: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'time',
+      min: singlePoint ? singleTs - HALF_DAY_MS : 'dataMin',
+      max: singlePoint ? singleTs + HALF_DAY_MS : 'dataMax',
+      axisLabel: {
+        hideOverlap: true,
+        formatter: (value: number) =>
+          formatDate(value, localeStore.effectiveFormatLocale, { month: '2-digit', day: '2-digit' })
+      },
+      axisPointer: {
+        label: { formatter: (params: any) => formatDate(params.value, localeStore.effectiveFormatLocale) }
+      },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { formatter: (value: number) => formatMoney(value, userCurrency.value) },
+      splitLine: { lineStyle: { type: 'dashed', color: '#e5e5e5' } },
+      axisPointer: {
+        label: { formatter: (params: any) => `${formatMoney(params.value, userCurrency.value)}${unitSuffix.value}` }
+      }
+    },
+    series: series.map((s) => ({
+      name: s.name,
+      type: 'line' as const,
+      // 仅「当日真实有记录」的日子画点；as-of 携带日只连线（symbolSize 0）
+      data: s.data.map((d) => ({
+        value: [toTimestamp(d.date), d.avg],
+        symbolSize: d.recorded === false ? 0 : 5,
+      })),
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      lineStyle: { color: merchantColor(s.merchantId), width: 2 },
+      itemStyle: { color: merchantColor(s.merchantId), borderColor: '#fff', borderWidth: 1.5 }
+    }))
+  }
 }
 
 // 响应式调整
@@ -422,6 +619,19 @@ onBeforeUnmount(() => {
 
 .filter-buttons {
   flex-shrink: 0;
+}
+
+/* 商家对比 chips */
+.merchant-chips {
+  border-bottom: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+
+.merchant-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-inline-end: 4px;
 }
 
 /* 移动端适配 */
