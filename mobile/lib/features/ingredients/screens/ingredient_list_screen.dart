@@ -46,8 +46,15 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(ingredientListProvider.notifier).load();
-      ref.read(ingredientListProvider.notifier).loadFavorites();
+      final notifier = ref.read(ingredientListProvider.notifier);
+      // 同商品列表：输入框随页面重建总是空的，但 provider 常驻。
+      // state 里残留的上次关键词会造成「空输入框 + 旧搜索结果」。
+      if (ref.read(ingredientListProvider).searchQuery.isNotEmpty) {
+        notifier.setSearch('');
+      } else {
+        notifier.load();
+      }
+      notifier.loadFavorites();
       final merchants = ref.read(merchantListProvider);
       if (merchants.items.isEmpty && !merchants.loading) {
         ref.read(merchantListProvider.notifier).load();

@@ -45,8 +45,17 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(productListProvider.notifier).load();
-      ref.read(productListProvider.notifier).loadFavorites();
+      final notifier = ref.read(productListProvider.notifier);
+      // 输入框随页面重建总是空的，而 productListProvider 是全局常驻的。
+      // 若上次离开时搜索词还留在 state 里，会出现「空输入框 + 旧搜索结果」，
+      // 且之后刷新仍带旧关键词（空关键词也拿不到全部商品）。
+      // 进入页面时以空关键词为准：setSearch('') 会清空并触发一次全量加载。
+      if (ref.read(productListProvider).searchQuery.isNotEmpty) {
+        notifier.setSearch('');
+      } else {
+        notifier.load();
+      }
+      notifier.loadFavorites();
       _loadBrands();
       final merchants = ref.read(merchantListProvider);
       if (merchants.items.isEmpty && !merchants.loading) {

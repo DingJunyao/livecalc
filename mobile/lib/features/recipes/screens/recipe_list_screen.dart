@@ -57,8 +57,16 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(recipeListProvider.notifier).loadRecipes();
-      ref.read(recipeListProvider.notifier).loadFavorites();
+      final notifier = ref.read(recipeListProvider.notifier);
+      // 同商品/原料列表：页面重建后输入框为空，provider 常驻会保留旧关键词，
+      // 导致「空输入框 + 旧搜索结果」。进入页面时以空关键词为准
+      // （setSearch('') 自带 400ms 防抖加载，无需再手动 loadRecipes）。
+      if (ref.read(recipeListProvider).searchQuery.isNotEmpty) {
+        notifier.setSearch('');
+      } else {
+        notifier.loadRecipes();
+      }
+      notifier.loadFavorites();
     });
     _scrollController.addListener(_onScroll);
   }

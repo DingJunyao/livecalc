@@ -86,6 +86,38 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     super.dispose();
   }
 
+  /// 拉取全部可选商家（翻页）。
+  ///
+  /// 后端 `GET /merchants` 默认 `limit=10`、按 `created_at` 倒序，只请求一次时
+  /// 较早创建的商家会被截断（「下拉里没有美道家万达广场店」即此因：该店在
+  /// 营业商家列表里排第 12）。这里按 `total` 翻页取全，单页用后端上限 100，
+  /// 最多 10 页兜底防死循环。
+  Future<List<Map<String, dynamic>>> _fetchAllMerchants() async {
+    const pageSize = 100;
+    final out = <Map<String, dynamic>>[];
+    var skip = 0;
+    for (var i = 0; i < 10; i++) {
+      final resp = await _repo.client.dio.get(
+        '/merchants',
+        queryParameters: {'skip': skip, 'limit': pageSize},
+      );
+      final data = resp.data;
+      final raw = data is List
+          ? data
+          : ((data is Map ? data['items'] as List<dynamic>? : null) ??
+              const <dynamic>[]);
+      out.addAll(raw.cast<Map<String, dynamic>>());
+      final total = data is Map ? (data['total'] as num?)?.toInt() : null;
+      if (raw.isEmpty ||
+          raw.length < pageSize ||
+          (total != null && out.length >= total)) {
+        break;
+      }
+      skip += pageSize;
+    }
+    return out;
+  }
+
   Future<void> _loadMerchants() async {
     try {
       final custom = widget.merchantsLoader;
@@ -93,12 +125,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
       if (custom != null) {
         list = await custom();
       } else {
-        final resp = await _repo.client.dio.get('/merchants');
-        // 响应可能是 List 或 {items, total, ...} 对象，统一取 items 列表
-        final raw = (resp.data is List)
-            ? resp.data as List<dynamic>
-            : (resp.data['items'] as List<dynamic>);
-        list = raw.cast<Map<String, dynamic>>();
+        list = await _fetchAllMerchants();
       }
       if (!mounted) return;
       setState(() => _merchants = list);
