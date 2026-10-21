@@ -123,6 +123,31 @@ direct（自身商品加权价）
 - 排查中发现：后端当前由 **VS Code 调试进程（`python -m app.main`）** 启动，**没有 `--reload`**，
   改 Python 后不会自动生效——需要重启调试会话。这也是第二轮修复在页面上暂时看不到区间的原因。
 
+## 第三轮反馈修复（开关切回后图表消失 / tooltip 贴左）
+
+用户反馈：①「含替代/从属」开关关掉再打开，图表就没了；②鼠标在图表上时 tooltip 一直在左边、还会被遮挡。
+
+### 根因 1：容器被 `v-if` 销毁后重建，ECharts 实例仍指向旧 DOM
+
+- 图表容器条件是 `v-if="hasEverHadData || !displayEmpty"`。猪肉没有直接商品价时，
+  关掉开关 → `computedData` 为空 → `displayEmpty` 为 true → 容器被移除；
+  但 `chart` 实例还在（指向已移除的 DOM）。再打开时容器重建，`updateChart()` 往旧实例写，
+  画面自然空白（ECharts 不报错，只是画在已脱离文档的 canvas 上）。
+- **修复**：
+  - 容器条件加 `|| hasComputed`：只要存在折算数据，关闭开关时也保留容器（只是清空图形）；
+  - `renderOrInit()` 增加「DOM 被替换」检测：`chart.getDom() !== chartRef.value` 时
+    `dispose()` 并重建实例。
+
+### 根因 2：tooltip 宽度超过容器被钳在左侧
+
+- 从属链路文案很长（`猪肉 ← 子食材(五花肉, 前腿肉, 梅花肉, 里脊, …, 猪蹄)`），
+  加上 ECharts 默认 `confine: false`（允许溢出容器），容器裁切后视觉上「一直贴在左边」。
+- **修复**：
+  - tooltip 加 `confine: true`（限制在图表容器内，跟随指针正常左右移动）+ `max-width: 320px`；
+  - `shortChain()` 把链路截断到 36 字符（超出加 `…`），避免 tooltip 撑到容器外；
+  - 商家对比模式 tooltip 同样加 `confine` 与最大宽度。
+
+
 
 > 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
 > not defined on instance` 的假报警，刷新页面即消失（脚本部分未热重载）。

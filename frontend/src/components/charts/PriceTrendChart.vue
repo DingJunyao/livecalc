@@ -94,8 +94,9 @@
         <div class="text-body-1 text-medium-emphasis mt-4">{{ emptyMessage }}</div>
       </div>
 
-      <!-- 图表（一旦有数据就始终渲染，DOM 不被销毁） -->
-      <template v-if="hasEverHadData || !displayEmpty">
+      <!-- 图表（一旦有数据就始终渲染，DOM 不被销毁；有折算数据时也保留容器，
+           避免关掉「含替代/从属」后 DOM 被移除、再打开时实例指向已销毁的 DOM） -->
+      <template v-if="hasEverHadData || !displayEmpty || hasComputed">
 
         <div ref="chartRef" class="chart-container" dir="ltr"></div>
       </template>
@@ -313,7 +314,13 @@ const displayEmpty = computed(() => {
 // 图表容器由 v-if 控制：首帧没有数据时 DOM 不存在，onMounted 的 initChart 拿不到
 // ref → 之后数据（尤其是只有折算序列、没有直接价时）到达，必须在这里补 init，
 // 否则 ECharts 从未初始化，图表区域一片空白。
+// 另外：若容器被 v-if 销毁后重建，旧实例仍指向已移除的 DOM → 必须 dispose 后重建，
+// 否则「关掉含替代/从属再打开」会一片空白。
 function renderOrInit() {
+  if (chart && chartRef.value && chart.getDom() !== chartRef.value) {
+    chart.dispose()
+    chart = null
+  }
   if (!chart) {
     if (chartRef.value) initChart()
     return
@@ -387,10 +394,19 @@ function updateChart() {
       default: return t('charts.sourceDirect')
     }
   }
+  // 从属链路可能很长（猪肉 ← 子食材(五花肉, 前腿肉, …)），tooltip 里截断，
+  // 否则 tooltip 宽度超过图表容器会被 ECharts 钳在左边。
+  const shortChain = (chain?: string | null): string => {
+    if (!chain) return ''
+    return chain.length > 36 ? `${chain.slice(0, 36)}…` : chain
+  }
 
   const option: EChartsOption = {
     tooltip: {
       trigger: 'axis',
+      // confine：把 tooltip 限制在图表容器内（默认允许溢出，容器裁切后看起来「一直贴左」）
+      confine: true,
+      extraCssText: 'max-width: 320px; white-space: normal; line-height: 1.4;',
       axisPointer: {
         type: 'cross',
         animation: false,
@@ -426,7 +442,7 @@ function updateChart() {
           `)
         }
         if (computedPoint) {
-          const chainText = computedPoint.chain ? `（${computedPoint.chain}）` : ''
+          const chainText = computedPoint.chain ? `（${shortChain(computedPoint.chain)}）` : ''
           const hasRange = Number(computedPoint.max) > Number(computedPoint.min) + 1e-9
           rows.push(`
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
@@ -652,6 +668,8 @@ function buildMerchantOption(series: Array<MerchantSeries & { data: DataPoint[] 
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
+      confine: true,
+      extraCssText: 'max-width: 320px; white-space: normal; line-height: 1.4;',
       formatter: (params: any) => {
         const list = (Array.isArray(params) ? params : [params])
           .filter((p: any) => !bandNames.has(p.seriesName))
