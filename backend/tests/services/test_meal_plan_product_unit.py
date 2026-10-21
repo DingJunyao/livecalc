@@ -177,8 +177,10 @@ def test_plan_cost_trend_scales_recipe_range_by_servings(monkeypatch):
     from app.services import meal_plan_service as meal_plan_service
     from app.services import recipe_service
 
+    # plan_cost_trend 的逐日 key 是按 UTC「今天」倒推的；日期写死会让测试随时间失效
+    today = datetime.now(timezone.utc).date().isoformat()
     point = {
-        "date": "2026-10-17",
+        "date": today,
         "avg_cost": 3.0,
         "min_cost": 1.0,
         "max_cost": 4.0,
@@ -208,8 +210,9 @@ def test_plan_cost_trend_scales_recipe_range_by_servings(monkeypatch):
 def test_plan_cost_trend_keeps_recipe_average_with_loose_items(monkeypatch):
     from app.services import meal_plan_service as meal_plan_service
 
+    today = datetime.now(timezone.utc).date().isoformat()
     recipe_point = {
-        "date": "2026-10-17",
+        "date": today,
         "avg_cost": 3.0,
         "min_cost": 1.0,
         "max_cost": 4.0,
@@ -241,3 +244,45 @@ def test_plan_cost_trend_keeps_recipe_average_with_loose_items(monkeypatch):
     assert result[0]["min_cost"] == pytest.approx(1.1)
     assert result[0]["max_cost"] == pytest.approx(4.1)
     assert result[0]["total_cost"] == pytest.approx(3.1)
+
+
+def test_plan_cost_trend_marks_recipe_record_days(monkeypatch):
+    """菜谱项当天有价格记录 → 方案走势的 has_record 透传 True（供图表只在此画点）。"""
+    from app.services import meal_plan_service as meal_plan_service
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    point = {
+        "date": today,
+        "avg_cost": 3.0,
+        "min_cost": 1.0,
+        "max_cost": 4.0,
+        "currency": "CNY",
+        "has_record": True,
+    }
+    monkeypatch.setattr(
+        recipe_service,
+        "calculate_recipe_cost_range_trend",
+        lambda *args, **kwargs: [point],
+    )
+    plan = SimpleNamespace(items=[
+        SimpleNamespace(recipe_id=1, servings=1, item_type="recipe"),
+    ])
+    user = SimpleNamespace(id=FakeUser.id)
+
+    result = meal_plan_service.plan_cost_trend(
+        None, user, plan, days=1, tz="Asia/Shanghai"
+    )
+
+    assert result[0]["has_record"] is True
+
+    # 菜谱项当天无新记录（as-of 携带日）→ has_record 为 False
+    point_no_record = dict(point, has_record=False)
+    monkeypatch.setattr(
+        recipe_service,
+        "calculate_recipe_cost_range_trend",
+        lambda *args, **kwargs: [point_no_record],
+    )
+    result2 = meal_plan_service.plan_cost_trend(
+        None, user, plan, days=1, tz="Asia/Shanghai"
+    )
+    assert result2[0]["has_record"] is False

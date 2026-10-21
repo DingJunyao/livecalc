@@ -486,6 +486,7 @@ def plan_cost_trend(
     daily: Dict[str, Dict[str, Optional[float]]] = {
         (start + timedelta(days=i)).date().isoformat(): {
             "avg": 0.0, "min": 0.0, "max": 0.0, "currency": None,
+            "has_record": False,
         }
         for i in range(days)
     }
@@ -514,6 +515,8 @@ def plan_cost_trend(
                     daily[day]["max"] += float(mx) * servings
                 if daily[day]["currency"] is None and point.get("currency"):
                     daily[day]["currency"] = point["currency"]
+                if point.get("has_record"):
+                    daily[day]["has_record"] = True
         except Exception:
             logger.debug(f"趋势：菜谱 {item.recipe_id} 失败", exc_info=True)
 
@@ -579,6 +582,45 @@ def plan_cost_trend(
                 if daily[day]["currency"] is None and record.currency:
                     daily[day]["currency"] = record.currency
 
+    # 散项：窗口内其对应商品只要有价格记录，当天就算「有记录」
+    # （供前端趋势图只在有记录的日子画点，不把 as-of 携带日也画成点）
+    try:
+        product_ids = [
+            it.product_id for it in loose_items
+            if it.item_type == "product" and it.product_id
+        ]
+        ingredient_ids = [
+            it.ingredient_id for it in loose_items
+            if it.item_type == "ingredient" and it.ingredient_id
+        ]
+        if product_ids or ingredient_ids:
+            from sqlalchemy import or_
+
+            conditions = []
+            if product_ids:
+                conditions.append(ProductRecord.product_id.in_(product_ids))
+            if ingredient_ids:
+                conditions.append(Product.ingredient_id.in_(ingredient_ids))
+            rows = (
+                db.query(ProductRecord.recorded_at)
+                .join(Product, Product.id == ProductRecord.product_id)
+                .filter(
+                    or_(*conditions),
+                    ProductRecord.is_active == True,  # noqa: E712
+                )
+                .distinct()
+                .all()
+            )
+            for (recorded_at,) in rows:
+                if recorded_at is None:
+                    continue
+                # daily 的 key 是 UTC 日期（start/end 均为 UTC），这里保持同一口径
+                day = recorded_at.date().isoformat()
+                if day in daily:
+                    daily[day]["has_record"] = True
+    except Exception:
+        logger.debug("趋势：散项记录日计算失败", exc_info=True)
+
     return [
         {
             "date": day,
@@ -587,6 +629,7 @@ def plan_cost_trend(
             "max_cost": _round4(info["max"]),
             "avg_cost": _round4(info["avg"]),
             "currency": info["currency"],
+            "has_record": bool(info.get("has_record")),
         }
         for day, info in sorted(daily.items())
     ]

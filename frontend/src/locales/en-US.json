@@ -583,6 +583,8 @@
   },
   "charts": {
     "average": "Average",
+    "overall": "Overall",
+    "byMerchant": "By merchant",
     "noData": "No data",
     "priceTrend": "Price trend",
     "productCount": "Products",

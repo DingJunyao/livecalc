@@ -287,7 +287,11 @@ function renderTrendChart() {
         {
           name: t('recipes.averageCost'),
           type: 'line',
-          data: avgValues.map((v, i) => [points[i], v]),
+          // 只在当天真有价格记录的日子画点（has_record=false 为 as-of 携带日）
+          data: avgValues.map((v, i) => ({
+            value: [points[i], v],
+            symbolSize: chartData.value[i]?.has_record === false ? 0 : 4,
+          })),
           smooth: true,
           symbol: 'circle',
           symbolSize: 4,

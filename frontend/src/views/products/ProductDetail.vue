@@ -535,6 +535,7 @@
             :unit="chartUnit"
             :empty-text="t('products.noPriceHistory')"
             :data="chartData"
+            :comparison-series="merchantComparisonSeries"
             :loading="loadingChartPrices"
             color="#ff9800"
             class="grid-item item-price-trend"
@@ -2721,41 +2722,44 @@ const getNutritionNRV = (item: any) => {
   })
 }
 
+// 单条记录 → 归一化价格点（按用户质量偏好单位）。综合序列与商家对比序列共用。
+const toProductChartPoint = (record: any): AsOfPricePoint | null => {
+  if (!record?.recorded_at) return null
+  const date = new Date(record.recorded_at)
+  if (isNaN(date.getTime())) return null
+
+  // 按记录单位类型归一化到 ¥/斤：质量记录直接换算，计数记录经
+  // weight_per_unit 折算；无法归一化（如纯计数且无覆盖）的记录跳过，
+  // 不污染质量口径的趋势。这是鸡蛋「价格趋势很离谱」的根因。
+  const np = normalizeRecordToJin(
+    {
+      price: parseFloat(String(record.price)) || 0,
+      exchange_rate: record.exchange_rate,
+      standard_quantity: record.standard_quantity,
+      quantity: record.quantity,
+      unit_id: record.unit_id,
+      standard_unit_id: record.standard_unit_id,
+    },
+    priceUnits.value,
+    priceOverrides.value,
+    priceDensities.value,
+    'ingredient',
+    product.value?.ingredient_id ?? 0,
+  )
+  if (np.pricePerJin == null) return null
+  // 再按用户质量偏好单位折算（convertFromJin 未知单位时保持斤）
+  const unitPrice = convertFromJin(np.pricePerJin) ?? np.pricePerJin
+
+  return { product_id: record.product_id ?? null, date, value: unitPrice }
+}
+
 // 归一化后的价格点（按用户质量偏好单位），供图表与价格卡片共用
 const chartPricePoints = computed<AsOfPricePoint[]>(() => {
   const points: AsOfPricePoint[] = []
-
   for (const record of chartPriceRecords.value) {
-    if (!record.recorded_at) continue
-
-    const date = new Date(record.recorded_at)
-    if (isNaN(date.getTime())) continue
-
-    // 按记录单位类型归一化到 ¥/斤：质量记录直接换算，计数记录经
-    // weight_per_unit 折算；无法归一化（如纯计数且无覆盖）的记录跳过，
-    // 不污染质量口径的趋势。这是鸡蛋「价格趋势很离谱」的根因。
-    const np = normalizeRecordToJin(
-      {
-        price: parseFloat(String(record.price)) || 0,
-        exchange_rate: record.exchange_rate,
-        standard_quantity: record.standard_quantity,
-        quantity: record.quantity,
-        unit_id: record.unit_id,
-        standard_unit_id: record.standard_unit_id,
-      },
-      priceUnits.value,
-      priceOverrides.value,
-      priceDensities.value,
-      'ingredient',
-      product.value?.ingredient_id ?? 0,
-    )
-    if (np.pricePerJin == null) continue
-    // 再按用户质量偏好单位折算（convertFromJin 未知单位时保持斤）
-    const unitPrice = convertFromJin(np.pricePerJin) ?? np.pricePerJin
-
-    points.push({ product_id: record.product_id ?? null, date, value: unitPrice })
+    const p = toProductChartPoint(record)
+    if (p) points.push(p)
   }
-
   return points
 })
 
@@ -2792,7 +2796,8 @@ const chartData = computed(() => {
   }
 
   // 单商品视图「按商品」区间会退化成均价线：区间改按「记录」口径 as-of 携带，
-  // 与「最新价格」卡片的区间（最近一次记录日的记录价区间）一致
+  // 与「最新价格」卡片的区间（最近一次记录日的记录价区间）一致。
+  // recorded：当天是否真有价格记录（趋势图只在这些日子画点）。
   return buildWeightedAsOfDailySeries(points, () => 50, {
     bandFromRecords: true,
     startDay: chartRangeStartDay.value,
@@ -2803,7 +2808,46 @@ const chartData = computed(() => {
     max: d.max,
     avg: d.avg,
     count: recordCountByDay.get(d.date) ?? 0,
+    recorded: recordCountByDay.has(d.date),
   }))
+})
+
+// 按商家对比序列：同一批记录按 merchant_id 分组，每组内沿用相同归一化与 as-of 口径
+//（单商品无跨商品加权，权重恒 50；区间口径与主序列一致 bandFromRecords）。
+const merchantComparisonSeries = computed(() => {
+  if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
+  const byMerchant = new Map<number | null, AsOfPricePoint[]>()
+  const nameById = new Map<number, string>()
+  for (const record of chartPriceRecords.value) {
+    const p = toProductChartPoint(record)
+    if (!p) continue
+    const mid = (record.merchant_id ?? null) as number | null
+    if (mid != null && !nameById.has(mid) && record.merchant_name) {
+      nameById.set(mid, record.merchant_name)
+    }
+    if (!byMerchant.has(mid)) byMerchant.set(mid, [])
+    byMerchant.get(mid)!.push(p)
+  }
+  const out: Array<{ merchantId: number | null; name: string; data: Array<{ date: string; min: number; max: number; avg: number; count: number; recorded: boolean }> }> = []
+  for (const [mid, points] of byMerchant) {
+    // 该商家真实有记录的日子（as-of 携带日不画点）
+    const recordDays = new Set<string>()
+    for (const p of points) {
+      const day = toLocalDayKey(p.date)
+      if (day) recordDays.add(day)
+    }
+    const series = buildWeightedAsOfDailySeries(points, () => 50, {
+      bandFromRecords: true,
+      startDay: chartRangeStartDay.value,
+      backfillSparse: true,
+    }).map((d) => ({ date: d.date, min: d.min, max: d.max, avg: d.avg, count: d.count, recorded: recordDays.has(d.date) }))
+    if (series.length === 0) continue
+    const name = mid == null
+      ? t('prices.unknownMerchant')
+      : (nameById.get(mid) || t('recipes.merchantFallbackName', { id: mid }))
+    out.push({ merchantId: mid, name, data: series })
+  }
+  return out
 })
 
 // 最新一次记录日的区间/条数（价格卡片右侧展示；不从图表尾点取，尾点可能是携带日）

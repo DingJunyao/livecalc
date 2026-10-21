@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <!-- 顶部导航栏 - 移到 container 外面以便固定 -->
   <v-app-bar elevation="0" color="background" fixed>
     <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
@@ -1125,7 +1125,9 @@ const chartData = computed(() => {
     date: record.date,
     min: record.min_cost * ratio,
     max: record.max_cost * ratio,
-    avg: record.avg_cost * ratio
+    avg: record.avg_cost * ratio,
+    // 只有当天真有价格记录才画点；as-of 前向填充日不画点
+    recorded: !!record.has_record
   }))
 })
 

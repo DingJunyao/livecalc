@@ -508,10 +508,23 @@ const loadUnits = async () => {
 }
 
 // --- 商家加载 ---
+// 后端单页上限 100 且默认按创建时间倒序返回营业中商家；只取一页会在商家较多时
+// 漏掉较早创建的店（移动端曾因默认 limit=10 漏掉「美道家万达广场店」）。
+// 这里按 total 翻页取全，最多 10 页兜底。
 const loadMerchants = async () => {
   try {
-    const res = await api.get('/merchants', { params: { limit: 100 } })
-    merchants.value = (res as any).items || []
+    const pageSize = 100
+    const all: Merchant[] = []
+    let skip = 0
+    for (let i = 0; i < 10; i++) {
+      const res: any = await api.get('/merchants', { params: { skip, limit: pageSize } })
+      const items: Merchant[] = res?.items || []
+      all.push(...items)
+      const total = typeof res?.total === 'number' ? res.total : null
+      if (items.length < pageSize || (total !== null && all.length >= total)) break
+      skip += pageSize
+    }
+    merchants.value = all
   } catch {
     merchants.value = []
   }

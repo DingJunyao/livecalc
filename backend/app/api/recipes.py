@@ -1796,6 +1796,7 @@ async def get_recipe_cost_history_range(
                 avg_cost=item["avg_cost"],
                 date=item["date"],
                 recorded_at=item["recorded_at"],
+                has_record=bool(item.get("has_record")),
                 breakdown=[
                     {
                         "ingredient_id": bi["ingredient_id"],
