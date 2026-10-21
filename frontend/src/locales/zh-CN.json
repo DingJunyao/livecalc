@@ -587,7 +587,6 @@
     "byMerchant": "按商家",
     "computedPrice": "替代/从属折算",
     "includeComputed": "含替代/从属",
-    "preferRelationsStale": "超期优先替代/从属",
     "staleDirectReplaced": "直接价已超期，按关系折算（原直接价 {price}）",
     "sourceDirect": "直接商品价",
     "sourceFallback": "回退/替代关系",

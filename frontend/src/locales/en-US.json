@@ -587,7 +587,6 @@
     "byMerchant": "By merchant",
     "computedPrice": "Fallback/derived price",
     "includeComputed": "Include fallback",
-    "preferRelationsStale": "Prefer fallback when stale",
     "staleDirectReplaced": "Direct price is stale; using fallback (was {price})",
     "sourceDirect": "Direct product price",
     "sourceFallback": "Fallback/substitute relation",
