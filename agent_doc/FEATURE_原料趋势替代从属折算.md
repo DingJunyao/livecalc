@@ -197,6 +197,48 @@ direct（自身商品加权价）
 - `test_name_match_skips_descendant_ingredient_products`：自身商品与子食材商品都被排除，
   只保留无关商品记录。
 
+## 第五轮：各商家价格也按关系折算
+
+用户要求：**「各商家价格」也要有折算相关的计算**。
+
+### 原实现与问题
+
+- `GET /nutrition/ingredients/{id}/latest-price-by-merchant` 只按「该原料自己的商品」算每个商家的
+  代表价；只有**完全没有直接价**时才整体回退到 fallback 食材，且不处理 name_match / contains。
+- 结果：猪肉（0 条直接记录）虽然图表能显示从属折算，但「各商家价格」一片空白；
+  食用油只有 3 家有直接价的门店，其它有子食材价格的门店也不会出现。
+
+### 新逻辑（`include_relations=true`）
+
+按商家逐条补齐，**直接价优先**：
+
+```
+每个商家：direct（该商家该原料的商品加权价）
+        → 缺失时才取 fallback（回退/替代食材在该商家的价）
+        → 再缺失取 name_match（同名商品，排除自身 + contains 后代）
+        → 再缺失取 contains（各子食材在该商家的代表价按 strength 加权；区间取子食材极值）
+```
+
+- 拆分 `_lookup_merchant_prices(ing)` → `_lookup_rows(products)`，供直接/同名商品复用；
+- 回退链查找抽成 `_find_fallback_ingredient()`；
+- 每行新增 `source` / `chain` / `is_derived`，从属聚合额外给 `min_price` / `max_price`；
+- 已有直接价的商家不会被折算行覆盖（`seen_merchants` 去重）。
+
+接口参数：`include_relations`（bool，默认 false，保持旧消费者行为）。前端与图表共用
+「含替代/从属」开关：开关切换时同时重取趋势序列 + 各商家价格。
+
+### 前端展示
+
+- 各商家价格行：折算行显示紫色小标签（回退/替代关系 / 同名商品匹配 / 从属子食材聚合），
+  hover 显示完整链路；从属聚合行额外显示区间（子食材最低–最高）。
+- 直接价行外观不变。
+
+### 实跑（只读真实库）
+
+- 猪肉（14）`include_relations=false` → 0 家；`true` → 6 家，全部 `contains_aggregation`，
+  价格 9.15 / 11.29 / 11.92 / 12.26 / 13.25 / 20.88 元/斤；
+- 食用油（3）→ 3 家直接价（6.58/6.58/6.59），未被折算行覆盖。
+
 
 
 > 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
