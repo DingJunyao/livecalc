@@ -17,6 +17,16 @@
         <v-btn value="avg" size="small">{{ t('charts.overall') }}</v-btn>
         <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
       </v-btn-toggle>
+      <!-- 折算序列开关（替代/回退/半成品/从属）：有折算数据时才出现，默认打开 -->
+      <v-switch
+        v-if="hasComputed"
+        v-model="includeComputed"
+        :label="t('charts.includeComputed')"
+        density="compact"
+        hide-details
+        color="primary"
+        class="computed-switch me-2"
+      />
       <v-btn-toggle
         v-model="selectedFilter"
         mandatory
@@ -125,6 +135,10 @@ interface DataPoint {
   count?: number
   /** 该日是否真实有价格记录；false = as-of 携带日（按商家模式不画点，只连线） */
   recorded?: boolean
+  /** 折算来源：direct/fallback/name_match/recipe/contains_aggregation（computedSeries 用） */
+  source?: string
+  /** 折算链路说明，如「酱油 → 生抽」 */
+  chain?: string | null
 }
 
 /** 按商家对比：一条商家序列（与主序列同口径的逐日 as-of 数据） */
@@ -147,13 +161,22 @@ const props = withDefaults(defineProps<{
   countLabel?: string
   /** 商家对比序列；≥2 条时显示「综合/按商家」切换 */
   comparisonSeries?: MerchantSeries[]
+  /**
+   * 按菜谱成本降级链折算出来的价格（替代/回退/半成品/从属）。
+   * 只用于「该原料自己没有直接商品价」的日子；非空时显示「含替代/从属」开关（默认开）。
+   */
+  computedSeries?: DataPoint[]
+  /** 折算序列图例名（默认 charts.computedPrice） */
+  computedTitle?: string
 }>(), {
   icon: 'mdi-chart-line',
   iconColor: 'primary',
   unit: '',
   loading: false,
   color: '#42b883',
-  comparisonSeries: () => []
+  comparisonSeries: () => [],
+  computedSeries: () => [],
+  computedTitle: undefined
 })
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
@@ -186,8 +209,7 @@ const merchantColor = (merchantId: number | null): string => {
 }
 
 // 商家序列按同一时间区间切片（与主序列口径一致）
-const sliceByFilter = (points: DataPoint[]): DataPoint[] => {
-  if (!points || points.length === 0) return []
+const sliceByFilter = (points: DataPoint[]): DataPoint[] => {  if (!points || points.length === 0) return []
   if (selectedFilter.value === 'all') {
     return [...points].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }
@@ -202,6 +224,18 @@ const sliceByFilter = (points: DataPoint[]): DataPoint[] => {
     .filter((d) => new Date(d.date) >= startDate)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 }
+
+// ---- 折算序列（替代 / 回退 / 半成品 / 从属；与菜谱成本同一降级链）----
+// 只在「该原料自己没有直接商品价」的日子有数据；开关默认打开。
+const includeComputed = ref(true)
+const hasComputed = computed(() => (props.computedSeries?.length ?? 0) > 0)
+const computedLabel = computed(() => props.computedTitle ?? t('charts.computedPrice'))
+const computedData = computed<DataPoint[]>(() => {
+  if (!hasComputed.value || !includeComputed.value) return []
+  // 按商家模式不叠加折算序列（商家维度没有该口径）
+  if (hasComparison.value && viewMode.value === 'merchant') return []
+  return sliceByFilter(props.computedSeries ?? [])
+})
 
 // 按商家模式下实际绘制的序列（选中且区间内有数据的）
 const visibleMerchantSeries = computed(() => {
@@ -267,12 +301,12 @@ const toTimestamp = (date: string): number => new Date(`${date}T00:00:00`).getTi
 // 过滤数据
 const chartData = computed(() => sliceByFilter(props.data ?? []))
 
-// 当前展示是否为空（按商家模式看选中序列，否则看主序列）
+// 当前展示是否为空（按商家模式看选中序列，否则看主序列 + 折算序列）
 const displayEmpty = computed(() => {
   if (hasComparison.value && viewMode.value === 'merchant') {
     return visibleMerchantSeries.value.length === 0
   }
-  return !chartData.value || chartData.value.length === 0
+  return chartData.value.length === 0 && computedData.value.length === 0
 })
 
 // 模式 / 商家勾选变化 → 重绘（勾选为空时显示空态）
@@ -317,22 +351,36 @@ function updateChart() {
     return
   }
 
-  // 如果没有数据，清空图表
-  if (chartData.value.length === 0) {
+  // 如果没有数据（含折算序列），清空图表
+  const computedPoints = computedData.value
+  if (chartData.value.length === 0 && computedPoints.length === 0) {
     chart.clear()
     return
   }
 
   const data = chartData.value
-  const minValue = Math.min(...data.map(d => d.min))
+  const allMins = [...data, ...computedPoints].map(d => Number(d.min))
+  const minValue = allMins.length ? Math.min(...allMins) : 0
   const base = Math.min(0, minValue - 0.1)
 
   // 只有一个数据点（实体只有一次价格记录、区间又拿不到更早的携带起点）时：
   // time 轴的 dataMin/dataMax 是同一时刻 → 点被压在轴边缘、几乎看不出图表。
   // 左右各撑开半天，让唯一的数据点落在中间并显示日期刻度。
-  const singlePoint = data.length === 1
-  const singleTs = singlePoint ? toTimestamp(data[0].date) : 0
+  const datePoints = [...data, ...computedPoints]
+  const singlePoint = datePoints.length === 1
+  const singleTs = singlePoint ? toTimestamp(datePoints[0].date) : 0
   const HALF_DAY_MS = 12 * 60 * 60 * 1000
+
+  // 折算来源文案（fallback/name_match/recipe/contains_aggregation）
+  const sourceLabel = (source?: string): string => {
+    switch (source) {
+      case 'fallback': return t('charts.sourceFallback')
+      case 'name_match': return t('charts.sourceNameMatch')
+      case 'recipe': return t('charts.sourceRecipe')
+      case 'contains_aggregation': return t('charts.sourceContains')
+      default: return t('charts.sourceDirect')
+    }
+  }
 
   const option: EChartsOption = {
     tooltip: {
@@ -348,28 +396,40 @@ function updateChart() {
         }
       },
       formatter: (params: any) => {
-        // time 轴：params 与 series 顺序一致，第三系列为平均值线
-        const avgPoint = params[2] ?? params[0]
-        const dateIndex = avgPoint?.dataIndex ?? -1
-        if (dateIndex < 0 || dateIndex >= data.length) return ''
+        const list = Array.isArray(params) ? params : [params]
+        const ts = list[0]?.axisValue ?? (Array.isArray(list[0]?.value) ? list[0].value[0] : null)
+        if (ts == null) return ''
 
-        const item = data[dateIndex]
-        const dateStr = formatDate(item.date, localeStore.effectiveFormatLocale)
+        const direct = data.find(d => toTimestamp(d.date) === ts)
+        const computedPoint = computedPoints.find(d => toTimestamp(d.date) === ts)
+        if (!direct && !computedPoint) return ''
 
-        return `
-          <div style="padding: 8px 12px;">
-            <div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>
+        const dateStr = formatDate(ts, localeStore.effectiveFormatLocale)
+        const rows: string[] = []
+        if (direct) {
+          rows.push(`
             <div style="display: flex; align-items: center; gap: 8px;">
               <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: ${props.color};"></span>
-              <span>${averageLabel.value}: ${formatMoney(item.avg, userCurrency.value)}${unitSuffix.value}</span>
+              <span>${averageLabel.value}: ${formatMoney(direct.avg, userCurrency.value)}${unitSuffix.value}</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
               <span style="display: inline-block; width: 12px; height: 12px; background-color: ${props.color}33; border-radius: 2px;"></span>
-              <span>${t('charts.range')}: ${formatMoney(item.min, userCurrency.value)} - ${formatMoney(item.max, userCurrency.value)}${unitSuffix.value}</span>
+              <span>${t('charts.range')}: ${formatMoney(direct.min, userCurrency.value)} - ${formatMoney(direct.max, userCurrency.value)}${unitSuffix.value}</span>
             </div>
-            ${item.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">${countLabel.value}: ${item.count}</div>` : ''}
-          </div>
-        `
+            ${direct.count ? `<div style="margin-top: 4px; color: #999; font-size: 12px;">${countLabel.value}: ${direct.count}</div>` : ''}
+          `)
+        }
+        if (computedPoint) {
+          const chainText = computedPoint.chain ? `（${computedPoint.chain}）` : ''
+          rows.push(`
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 2px; background-color: #7e57c2;"></span>
+              <span>${computedLabel.value}: ${formatMoney(computedPoint.avg, userCurrency.value)}${unitSuffix.value}</span>
+            </div>
+            <div style="margin-top: 2px; color: #999; font-size: 12px;">${sourceLabel(computedPoint.source)}${chainText}</div>
+          `)
+        }
+        return `<div style="padding: 8px 12px;"><div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>${rows.join('')}</div>`
       }
     },
     grid: {
@@ -483,7 +543,41 @@ function updateChart() {
             shadowColor: `${props.color}80`
           }
         }
-      }
+      },
+      // 折算序列（替代/回退/半成品/从属）：虚线 + 区间带，与直接商品价区分
+      ...(computedPoints.length > 0
+        ? [
+            {
+              name: '\u0000computed-lower',
+              type: 'line' as const,
+              data: computedPoints.map(d => [toTimestamp(d.date), d.min - base]),
+              lineStyle: { opacity: 0 },
+              stack: 'computed-band',
+              symbol: 'none',
+              showSymbol: false
+            },
+            {
+              name: '\u0000computed-upper',
+              type: 'line' as const,
+              data: computedPoints.map(d => [toTimestamp(d.date), Math.max(0, d.max - d.min)]),
+              lineStyle: { opacity: 0 },
+              stack: 'computed-band',
+              symbol: 'none',
+              showSymbol: false,
+              areaStyle: { color: '#7e57c2', opacity: 0.12 }
+            },
+            {
+              name: computedLabel.value,
+              type: 'line' as const,
+              data: computedPoints.map(d => [toTimestamp(d.date), d.avg]),
+              smooth: true,
+              symbol: 'none',
+              lineStyle: { color: '#7e57c2', width: 2, type: 'dashed' },
+              itemStyle: { color: '#7e57c2' },
+              z: 3
+            }
+          ]
+        : [])
     ]
   }
 
@@ -643,6 +737,11 @@ watch(() => props.data, (newData) => {
       }
     })
   }
+}, { deep: true })
+
+// 折算序列变化 / 开关切换 → 重绘
+watch([includeComputed, () => props.computedSeries], () => {
+  nextTick(updateChart)
 }, { deep: true })
 
 // loading 结束后只需调整尺寸，无需重建图表（DOM 未被销毁）
