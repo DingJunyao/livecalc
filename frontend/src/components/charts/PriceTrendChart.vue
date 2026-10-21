@@ -17,6 +17,17 @@
         <v-btn value="avg" size="small">{{ t('charts.overall') }}</v-btn>
         <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
       </v-btn-toggle>
+      <!-- 超期优先替代/从属：原料存在回退/替代/从属关系时可切换（默认开） -->
+      <v-switch
+        v-if="stalePreferSwitch"
+        :model-value="stalePrefer"
+        :label="t('charts.preferRelationsStale')"
+        density="compact"
+        hide-details
+        color="deep-purple"
+        class="computed-switch me-2"
+        @update:model-value="(v: any) => emit('update:stalePrefer', !!v)"
+      />
       <!-- 折算序列开关（替代/回退/半成品/从属）：有折算数据时才出现，默认打开 -->
       <v-switch
         v-if="hasComputed"
@@ -140,6 +151,9 @@ interface DataPoint {
   source?: string
   /** 折算链路说明，如「酱油 → 生抽」 */
   chain?: string | null
+  /** 该日直接价已超期、被关系折算替代（原直接均价） */
+  directStale?: boolean
+  directAvg?: number | null
 }
 
 /** 按商家对比：一条商家序列（与主序列同口径的逐日 as-of 数据） */
@@ -169,6 +183,10 @@ const props = withDefaults(defineProps<{
   computedSeries?: DataPoint[]
   /** 折算序列图例名（默认 charts.computedPrice） */
   computedTitle?: string
+  /** 「直接价超期时优先用替代/从属」开关状态（父组件持有，切换后重新取数） */
+  stalePrefer?: boolean
+  /** 是否显示「超期优先替代/从属」开关（原料存在层级关系时由父组件开启） */
+  stalePreferSwitch?: boolean
 }>(), {
   icon: 'mdi-chart-line',
   iconColor: 'primary',
@@ -177,13 +195,16 @@ const props = withDefaults(defineProps<{
   color: '#42b883',
   comparisonSeries: () => [],
   computedSeries: () => [],
-  computedTitle: undefined
+  computedTitle: undefined,
+  stalePrefer: true,
+  stalePreferSwitch: false
 })
 const { t, locale } = useI18n()
 const localeStore = useLocaleStore()
 
 const emit = defineEmits<{
   'filter-change': [filter: 'week' | 'month' | 'quarter' | 'year' | 'all']
+  'update:stalePrefer': [value: boolean]
 }>()
 
 const chartRef = ref<HTMLElement>()
@@ -451,6 +472,9 @@ function updateChart() {
             </div>
             ${hasRange ? `<div style="margin-top: 2px; color: #666; font-size: 12px;">${t('charts.range')}: ${formatMoney(computedPoint.min, userCurrency.value)} - ${formatMoney(computedPoint.max, userCurrency.value)}${unitSuffix.value}</div>` : ''}
             <div style="margin-top: 2px; color: #999; font-size: 12px;">${sourceLabel(computedPoint.source)}${chainText}</div>
+            ${computedPoint.directStale && computedPoint.directAvg != null
+              ? `<div style="margin-top: 2px; color: #c62828; font-size: 12px;">${t('charts.staleDirectReplaced', { price: `${formatMoney(computedPoint.directAvg, userCurrency.value)}${unitSuffix.value}` })}</div>`
+              : ''}
           `)
         }
         return `<div style="padding: 8px 12px;"><div style="font-weight: 600; margin-bottom: 8px;">${dateStr}</div>${rows.join('')}</div>`

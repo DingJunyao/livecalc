@@ -1468,7 +1468,10 @@ def _name_match_cost_range_ppg(
     """
     from app.services.lookup_cache import memoize_result
 
-    excluded = _contains_descendant_ids(db, ingredient.id)
+    # 排除自身 + 从属后代食材的商品：
+    # - 自身商品的价格由 direct 负责，同名匹配再命中一次只是把同一个旧价换个 source；
+    # - 子食材价格由 contains 聚合负责，否则「猪肉」会命中子食材「猪肉末」的商品。
+    excluded = _contains_descendant_ids(db, ingredient.id) | {ingredient.id}
 
     def _build():
         _days, day_records, timeline = _price_timeline_index(
@@ -1780,6 +1783,70 @@ def calculate_recipe_cost_range_trend(
     return cost_range_trend
 
 
+def _relation_cost_range_ppg(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+) -> Optional[tuple[tuple, str, Optional[str]]]:
+    """降级链中「非直接价」的几层：fallback → name_match → recipe → contains。
+
+    返回 ((min,max,avg), source, chain) 或 None。供折算序列在两种情形复用：
+    ①自身没有直接商品价；②直接价超期且开启「超期优先关系折算」。
+    """
+    fb = _fallback_cost_range_ppg(
+        db, ingredient, user_id, as_of_date, tz, region_id=region_id,
+    )
+    if fb is not None:
+        return (fb[:3], "fallback", fb[3])
+    nm = _name_match_cost_range_ppg(
+        db, ingredient, user_id, as_of_date, tz, region_id=region_id,
+    )
+    if nm is not None:
+        return (nm, "name_match", None)
+    rc = _get_cost_from_recipe_range(
+        db, ingredient, user_id, as_of_date, None, tz, region_id=region_id,
+    )
+    if rc is not None:
+        return (rc[:3], "recipe", rc[3])
+    ct = _contains_cost_range_ppg(
+        db, ingredient, user_id, as_of_date, None, tz, region_id=region_id,
+    )
+    if ct is not None:
+        return (ct[:3], "contains_aggregation", ct[3])
+    return None
+
+
+def _direct_latest_record_day(
+    db: Session,
+    ingredient: Ingredient,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+):
+    """该原料直接商品在 as_of 之前最后一次价格记录的本地日（无记录返 None）。
+
+    用于判断直接价是否超期（> INGREDIENT_PRICE_STALE_DAYS 天）。
+    时间轴按 product_id 走请求级缓存，逐日循环里只是一次内存查找。
+    """
+    latest = None
+    for p in active_products_for_ingredient(db, ingredient.id):
+        recs = _get_price_records_with_fallback(
+            db=db, user_id=user_id, product_id=p.id,
+            as_of_date=as_of_date, tz=tz, region_id=region_id,
+        )
+        for r in recs or []:
+            if r is None or r.recorded_at is None:
+                continue
+            day = utc_datetime_to_local_date(r.recorded_at, tz)
+            if latest is None or day > latest:
+                latest = day
+    return latest
+
+
 def calculate_ingredient_price_series(
     db: Session,
     ingredient_id: int,
@@ -1788,6 +1855,7 @@ def calculate_ingredient_price_series(
     offset_days: int = 0,
     tz: str = "UTC",
     region_id: Optional[int] = None,
+    prefer_relations_when_stale: bool = False,
 ) -> List[Dict]:
     """原料逐日 as-of 折算价（与菜谱成本完全同一降级链）。
 
@@ -1796,6 +1864,11 @@ def calculate_ingredient_price_series(
 
     返回每克单价三档（元/克，已折算到用户币种），供原料详情趋势图在
     「该原料自己没有直接商品价」的日子按替代/回退/从属关系显示折算结果。
+
+    prefer_relations_when_stale=True 时：若直接价的最近一条记录已超过
+    INGREDIENT_PRICE_STALE_DAYS（30 天），且有可用的关系折算结果，则优先返回
+    关系结果（source 为 fallback/name_match/...），并带上 direct_ppg / direct_stale
+    便于前端展示「直接价已超期、按关系折算」。关闭该开关即回到「直接价优先」。
 
     days 上限 366：逐日跑降级链成本较高，前端「全部」区间也只取近一年。
     """
@@ -1817,43 +1890,40 @@ def calculate_ingredient_price_series(
         source: Optional[str] = None
         chain: Optional[str] = None
         rng = None
+        direct_ppg: Optional[float] = None
+        direct_stale = False
         try:
             rng = _direct_cost_range_ppg(
                 db, ingredient, user_id, as_of, tz, region_id=region_id,
             )
             if rng is not None:
                 source = "direct"
-            else:
-                fb = _fallback_cost_range_ppg(
-                    db, ingredient, user_id, as_of, tz, region_id=region_id,
-                )
-                if fb is not None:
-                    rng = fb[:3]
-                    chain = fb[3]
-                    source = "fallback"
-                else:
-                    nm = _name_match_cost_range_ppg(
+                if prefer_relations_when_stale:
+                    # 直接价超期（最近记录 >30 天）时，改用关系折算结果
+                    from app.services.ingredient_price_service import (
+                        INGREDIENT_PRICE_STALE_DAYS,
+                    )
+                    latest_day = _direct_latest_record_day(
                         db, ingredient, user_id, as_of, tz, region_id=region_id,
                     )
-                    if nm is not None:
-                        rng = nm
-                        source = "name_match"
-                    else:
-                        rc = _get_cost_from_recipe_range(
-                            db, ingredient, user_id, as_of, None, tz, region_id=region_id,
+                    if latest_day is not None and (
+                        current - latest_day
+                    ).days > INGREDIENT_PRICE_STALE_DAYS:
+                        alt = _relation_cost_range_ppg(
+                            db, ingredient, user_id, as_of, tz, region_id=region_id,
                         )
-                        if rc is not None:
-                            rng = rc[:3]
-                            chain = rc[3]
-                            source = "recipe"
-                        else:
-                            ct = _contains_cost_range_ppg(
-                                db, ingredient, user_id, as_of, None, tz, region_id=region_id,
-                            )
-                            if ct is not None:
-                                rng = ct[:3]
-                                chain = ct[3]
-                                source = "contains_aggregation"
+                        if alt is not None:
+                            direct_ppg = float(rng[2])
+                            direct_stale = True
+                            rng, source, chain = alt
+                        # 关系折算不可用 → 保留直接价（宁可显示旧价也不能没有价格）
+
+            if source is None:
+                alt = _relation_cost_range_ppg(
+                    db, ingredient, user_id, as_of, tz, region_id=region_id,
+                )
+                if alt is not None:
+                    rng, source, chain = alt
         except Exception as e:  # 单日失败不影响整条序列
             logger.debug("原料折算价序列失败 ingredient=%s date=%s: %s", ingredient_id, current, e)
 
@@ -1866,6 +1936,8 @@ def calculate_ingredient_price_series(
                 "min_ppg": float(mn),
                 "max_ppg": float(mx),
                 "avg_ppg": float(av),
+                "direct_ppg": direct_ppg,
+                "direct_stale": direct_stale,
             })
         current += timedelta(days=1)
 

@@ -147,6 +147,54 @@ direct（自身商品加权价）
   - `shortChain()` 把链路截断到 36 字符（超出加 `…`），避免 tooltip 撑到容器外；
   - 商家对比模式 tooltip 同样加 `confine` 与最大宽度。
 
+## 第四轮：直接价超期时优先关系折算（可切换，默认开）
+
+用户问「食用油（id=3）为什么没有展示回退/替代/从属的计算后价格」，并选择
+「**直接价超期（>30 天）时优先用关系折算，但要能切换**」。
+
+### 数据事实
+
+- 食用油有 1 个商品、3 条记录，最新 2026-06-13（>130 天，早已超期）；同时有 4 个
+  `contains` 子食材：植物油、猪油、牛油、黄油（后两者无价格）。
+- 旧口径：`direct` 优先 + 「全部超期放开」→ 30 天都是 `direct`，恒定 6.59 元/斤，
+  从属聚合（5.99–14.33）被挡掉。
+- 修复中又发现：`name_match` 会把**原料自己的商品**也匹配进来（食用油→同名商品），
+  等于把同一个旧价换个 source。已把「自身 id」一并加入排除集合。
+
+### 后端
+
+- `calculate_ingredient_price_series(..., prefer_relations_when_stale=False)`：
+  - 直接价存在但最近记录超过 `INGREDIENT_PRICE_STALE_DAYS`（30 天），且关系折算可用时，
+    改用 `fallback → name_match → recipe → contains` 的结果；
+  - 返回点新增 `direct_ppg`（原直接均价）与 `direct_stale`（是否被替代）；
+  - 关系折算不可用时保留直接价（宁可显示旧价也不能没有价格）。
+- 抽出 `_relation_cost_range_ppg()`（非直接价的几层）与 `_direct_latest_record_day()`（判断超期）。
+- 接口 `GET /nutrition/ingredients/{id}/price-series` 新增
+  `prefer_relations_when_stale`（bool，默认 false）。
+- `_name_match_cost_range_ppg` 排除集合 = 自身 + contains 后代。
+
+实跑（30 天）：
+- 食用油 `prefer=False` → `direct` ×30，6.59 元/斤；
+- 食用油 `prefer=True` → `contains_aggregation` ×30，5.99–14.33 元/斤，`direct_stale=true`，
+  链路「食用油 ← 子食材(植物油, 猪油)」；
+- 猪肉（无直接价）两种开关结果一致（本来就走 contains）。
+
+### 前端
+
+- 图表标题栏新增开关 **「超期优先替代/从属」**（仅原料存在层级关系时显示，默认开）；
+  切换会带 `prefer_relations_when_stale` 重新请求折算序列（口径在后端，不能只切展示）。
+- 折算 tooltip 在直接价被替代时多一行红字：
+  「直接价已超期，按关系折算（原直接价 {price}）」。
+- 最新价格卡片：当折叠算点 `directStale=true` 时，折算价作为主显示（大字 + `替代/从属折算`
+  标签 + 区间 + 日期/来源），并在下方提示原直接价；关闭开关后恢复「直接价优先」。
+
+### 回归
+
+- `test_prefer_relations_when_direct_is_stale`：直接价超期 + 开关 → 关系结果、
+  `direct_stale=true`、`direct_ppg` 保留；关闭 → direct。
+- `test_name_match_skips_descendant_ingredient_products`：自身商品与子食材商品都被排除，
+  只保留无关商品记录。
+
 
 
 > 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
