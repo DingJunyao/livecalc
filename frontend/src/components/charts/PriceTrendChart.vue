@@ -490,28 +490,87 @@ function updateChart() {
   chart.setOption(option, true)
 }
 
-// 按商家对比模式的 ECharts 配置：每个商家一条均价线（无区间带，避免多商家时过乱）
+// 按商家对比模式的 ECharts 配置：每个商家一条均价线；
+// 该商家当天有多个商品价（min<max）时，额外画一条淡色区间带。
 function buildMerchantOption(series: Array<MerchantSeries & { data: DataPoint[] }>): EChartsOption {
   const singlePoint = series.every((s) => s.data.length === 1)
   const allDates = series.flatMap((s) => s.data.map((d) => d.date))
   const singleTs = singlePoint && allDates.length > 0 ? toTimestamp(allDates[0]) : 0
   const HALF_DAY_MS = 12 * 60 * 60 * 1000
 
+  // 区间带的堆叠底座：所有选中序列的全局最小值（同一底座保证带子位置正确）
+  const allMins = series.flatMap((s) => s.data.map((d) => d.min))
+  const bandBase = allMins.length ? Math.min(0, Math.min(...allMins) - 0.1) : 0
+
+  // 哪些商家需要区间带（当天存在 min < max）
+  const hasBand = new Map<number | null, boolean>()
+  for (const s of series) {
+    hasBand.set(s.merchantId, s.data.some((d) => Number(d.max) > Number(d.min) + 1e-9))
+  }
+
+  const bandSeries: any[] = []
+  const bandNames = new Set<string>()
+  for (const s of series) {
+    if (!hasBand.get(s.merchantId)) continue
+    const color = merchantColor(s.merchantId)
+    // 用 \u0000 前缀避免与真实商家名冲突，也便于 tooltip 过滤
+    const lowerName = `\u0000band-lower-${s.merchantId}`
+    const upperName = `\u0000band-upper-${s.merchantId}`
+    bandNames.add(lowerName)
+    bandNames.add(upperName)
+    bandSeries.push(
+      {
+        name: lowerName,
+        type: 'line',
+        data: s.data.map((d) => [toTimestamp(d.date), Number(d.min) - bandBase]),
+        lineStyle: { opacity: 0 },
+        symbol: 'none',
+        showSymbol: false,
+        stack: `merchant-band-${s.merchantId}`,
+        z: 1,
+      },
+      {
+        name: upperName,
+        type: 'line',
+        data: s.data.map((d) => [toTimestamp(d.date), Math.max(0, Number(d.max) - Number(d.min))]),
+        lineStyle: { opacity: 0 },
+        symbol: 'none',
+        showSymbol: false,
+        stack: `merchant-band-${s.merchantId}`,
+        areaStyle: { color, opacity: 0.15 },
+        z: 1,
+      },
+    )
+  }
+
+  // 商家名 → 序列数据：tooltip 里补「区间」数值
+  const seriesByName = new Map(series.map((s) => [s.name, s]))
+
   return {
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line' },
       formatter: (params: any) => {
-        const list = Array.isArray(params) ? params : [params]
+        const list = (Array.isArray(params) ? params : [params])
+          .filter((p: any) => !bandNames.has(p.seriesName))
         if (list.length === 0) return ''
         const dateStr = formatDate(list[0].value[0], localeStore.effectiveFormatLocale)
         const rows = list.map((p: any) => {
           const value = Array.isArray(p.value) ? p.value[1] : p.value
           const color = p.color ?? '#888'
+          // 当天区间（有多个商品价时展示「min – max」）
+          const s = seriesByName.get(p.seriesName)
+          const ts = Array.isArray(p.value) ? p.value[0] : null
+          const point = s && ts != null
+            ? s.data.find((d) => toTimestamp(d.date) === ts)
+            : undefined
+          const rangeText = point && Number(point.max) > Number(point.min) + 1e-9
+            ? ` <span style="color:#999;">(${formatMoney(point.min, userCurrency.value)} – ${formatMoney(point.max, userCurrency.value)})</span>`
+            : ''
           return `
             <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
               <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background-color: ${color};"></span>
-              <span>${p.seriesName}: ${formatMoney(value, userCurrency.value)}${unitSuffix.value}</span>
+              <span>${p.seriesName}: ${formatMoney(value, userCurrency.value)}${unitSuffix.value}${rangeText}</span>
             </div>
           `
         }).join('')
@@ -546,20 +605,24 @@ function buildMerchantOption(series: Array<MerchantSeries & { data: DataPoint[] 
         label: { formatter: (params: any) => `${formatMoney(params.value, userCurrency.value)}${unitSuffix.value}` }
       }
     },
-    series: series.map((s) => ({
-      name: s.name,
-      type: 'line' as const,
-      // 仅「当日真实有记录」的日子画点；as-of 携带日只连线（symbolSize 0）
-      data: s.data.map((d) => ({
-        value: [toTimestamp(d.date), d.avg],
-        symbolSize: d.recorded === false ? 0 : 5,
+    series: [
+      ...bandSeries,
+      ...series.map((s) => ({
+        name: s.name,
+        type: 'line' as const,
+        // 仅「当日真实有记录」的日子画点；as-of 携带日只连线（symbolSize 0）
+        data: s.data.map((d) => ({
+          value: [toTimestamp(d.date), d.avg],
+          symbolSize: d.recorded === false ? 0 : 5,
+        })),
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 5,
+        lineStyle: { color: merchantColor(s.merchantId), width: 2 },
+        itemStyle: { color: merchantColor(s.merchantId), borderColor: '#fff', borderWidth: 1.5 },
+        z: 2,
       })),
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 5,
-      lineStyle: { color: merchantColor(s.merchantId), width: 2 },
-      itemStyle: { color: merchantColor(s.merchantId), borderColor: '#fff', borderWidth: 1.5 }
-    }))
+    ]
   }
 }
 
