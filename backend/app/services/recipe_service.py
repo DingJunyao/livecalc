@@ -1733,6 +1733,98 @@ def calculate_recipe_cost_range_trend(
     return cost_range_trend
 
 
+def calculate_ingredient_price_series(
+    db: Session,
+    ingredient_id: int,
+    user_id: int,
+    days: int = 90,
+    offset_days: int = 0,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+) -> List[Dict]:
+    """原料逐日 as-of 折算价（与菜谱成本完全同一降级链）。
+
+    降级链（与 _ingredient_cost_range 1:1）：
+      direct → fallback（含 substitutable）→ name_match → recipe（半成品）→ contains（从属聚合）
+
+    返回每克单价三档（元/克，已折算到用户币种），供原料详情趋势图在
+    「该原料自己没有直接商品价」的日子按替代/回退/从属关系显示折算结果。
+
+    days 上限 366：逐日跑降级链成本较高，前端「全部」区间也只取近一年。
+    """
+    ingredient = db.get(Ingredient, ingredient_id)
+    if not ingredient:
+        return []
+    try:
+        days = max(1, min(int(days or 90), 366))
+    except (TypeError, ValueError):
+        days = 90
+
+    end_date = utc_datetime_to_local_date(datetime.now(timezone.utc), tz) - timedelta(days=max(0, offset_days))
+    start_date = end_date - timedelta(days=days - 1)
+
+    out: List[Dict] = []
+    current = start_date
+    while current <= end_date:
+        _, as_of = local_date_range_to_utc_range(current, current, tz)
+        source: Optional[str] = None
+        chain: Optional[str] = None
+        rng = None
+        try:
+            rng = _direct_cost_range_ppg(
+                db, ingredient, user_id, as_of, tz, region_id=region_id,
+            )
+            if rng is not None:
+                source = "direct"
+            else:
+                fb = _fallback_cost_range_ppg(
+                    db, ingredient, user_id, as_of, tz, region_id=region_id,
+                )
+                if fb is not None:
+                    rng = fb[:3]
+                    chain = fb[3]
+                    source = "fallback"
+                else:
+                    nm = _name_match_cost_range_ppg(
+                        db, ingredient, user_id, as_of, tz, region_id=region_id,
+                    )
+                    if nm is not None:
+                        rng = nm
+                        source = "name_match"
+                    else:
+                        rc = _get_cost_from_recipe_range(
+                            db, ingredient, user_id, as_of, None, tz, region_id=region_id,
+                        )
+                        if rc is not None:
+                            rng = rc[:3]
+                            chain = rc[3]
+                            source = "recipe"
+                        else:
+                            ct = _contains_cost_range_ppg(
+                                db, ingredient, user_id, as_of, None, tz, region_id=region_id,
+                            )
+                            if ct is not None:
+                                rng = ct[:3]
+                                chain = ct[3]
+                                source = "contains_aggregation"
+        except Exception as e:  # 单日失败不影响整条序列
+            logger.debug("原料折算价序列失败 ingredient=%s date=%s: %s", ingredient_id, current, e)
+
+        if source is not None and rng is not None:
+            mn, mx, av = rng
+            out.append({
+                "date": current.strftime("%Y-%m-%d"),
+                "source": source,
+                "chain": chain,
+                "min_ppg": float(mn),
+                "max_ppg": float(mx),
+                "avg_ppg": float(av),
+            })
+        current += timedelta(days=1)
+
+    return out
+
+
 async def calculate_recipe_nutrition(
     recipe_id: int,
     db: Session = None

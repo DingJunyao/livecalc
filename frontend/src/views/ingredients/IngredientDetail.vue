@@ -341,6 +341,8 @@
         :empty-text="t('ingredients.noPriceHistory')"
         :data="chartData"
         :comparison-series="merchantComparisonSeries"
+        :computed-series="computedChartSeries"
+        :computed-title="t('charts.computedPrice')"
         :loading="loadingChartPrices"
         color="#ff9800"
         :avg-label="t('ingredients.weightedAverage')"
@@ -3710,6 +3712,62 @@ const toChartPricePoint = (record: any): AsOfPricePoint | null => {
   }
 }
 
+// ---- 折算价序列（替代 / 回退 / 半成品 / 从属）----
+// 与菜谱成本完全同一降级链，由后端逐日计算（direct → fallback → name_match →
+// recipe → contains）；这里只用「非 direct」的日子，补上该原料自己没有商品价时的曲线。
+const computedPricePoints = ref<Array<{
+  date: string
+  source: string
+  chain: string | null
+  min_ppg: number
+  max_ppg: number
+  avg_ppg: number
+}>>([])
+const loadingComputedPrice = ref(false)
+
+const loadComputedPriceSeries = async () => {
+  if (!ingredientId.value) return
+  const daysMap: Record<string, number> = {
+    week: 7,
+    month: 30,
+    quarter: 90,
+    year: 365,
+    // 后端逐日跑降级链，成本较高，最多一年
+    all: 366,
+  }
+  const days = daysMap[currentChartFilter.value] ?? 30
+  loadingComputedPrice.value = true
+  try {
+    const res: any = await api.get(
+      `/nutrition/ingredients/${ingredientId.value}/price-series`,
+      { params: { days } },
+    )
+    computedPricePoints.value = Array.isArray(res) ? res : []
+  } catch (e) {
+    console.error('Failed to load computed price series', e)
+    computedPricePoints.value = []
+  } finally {
+    loadingComputedPrice.value = false
+  }
+}
+
+// 每克价 → 图表单位价（与 chartUnit 同口径），只保留非 direct 的日子
+const computedChartSeries = computed(() => {
+  if (computedPricePoints.value.length === 0) return []
+  const unit = massUnit.value?.abbreviation ?? CHINESE_JIN_NAME
+  const gramsPerUnit = CHART_UNIT_FACTORS_TO_GRAMS[unit] || 1
+  return computedPricePoints.value
+    .filter((p) => p.source && p.source !== 'direct' && isFinite(Number(p.avg_ppg)))
+    .map((p) => ({
+      date: p.date,
+      min: (isFinite(Number(p.min_ppg)) ? Number(p.min_ppg) : Number(p.avg_ppg)) * gramsPerUnit,
+      max: (isFinite(Number(p.max_ppg)) ? Number(p.max_ppg) : Number(p.avg_ppg)) * gramsPerUnit,
+      avg: Number(p.avg_ppg) * gramsPerUnit,
+      source: p.source,
+      chain: p.chain,
+    }))
+})
+
 // 聚合价格数据用于图表（逐日 as-of 加权：每商品最近一次价格向前携带）
 const chartData = computed(() => {
   if (!chartPriceRecords.value || chartPriceRecords.value.length === 0) return []
@@ -3834,6 +3892,7 @@ const loadData = async () => {
     loadProductWeights()
     loadPriceRecords()
     loadChartPriceRecords(daysAgo(30))  // 图表默认加载近 30 天（月）
+    loadComputedPriceSeries()  // 替代/回退/半成品/从属折算序列（默认展示）
     loadNutritionData()
     loadRecipes()
     loadHierarchy()
@@ -4094,6 +4153,8 @@ const onPriceTrendFilterChange = (filter: 'week' | 'month' | 'quarter' | 'year' 
     all: undefined,
   }
   loadChartPriceRecords(startDateMap[filter])
+  // 折算序列按新区间重取（后端逐日计算，不能只做前端切片）
+  loadComputedPriceSeries()
 }
 
 // 重置图表缓存并重新加载当前区间（用于价格记录变更后刷新）
@@ -4108,6 +4169,7 @@ const refreshChart = () => {
     all: undefined,
   }
   loadChartPriceRecords(startDateMap[currentChartFilter.value])
+  loadComputedPriceSeries()
 }
 
 // 加载营养数据

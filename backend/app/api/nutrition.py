@@ -1153,6 +1153,48 @@ def _parse_ingredient_ids(raw: str) -> list[int]:
     return values
 
 
+@router.get("/ingredients/{ingredient_id}/price-series")
+async def get_ingredient_price_series(
+    ingredient_id: int,
+    days: int = Query(30, ge=1, le=366, description="查询天数（逐日折算，最多 366 天）"),
+    offset_days: int = Query(0, ge=0, description="偏移天数（从 n 天前开始算）"),
+    region_id: Optional[int] = Query(None, description="按商家地区子树过滤（默认不过滤）"),
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """原料逐日 as-of 折算价（与菜谱成本同一降级链）。
+
+    降级链：direct → fallback（含 substitutable 替代）→ name_match（同名商品）
+    → recipe（半成品制作菜谱）→ contains（从属子食材按 strength 聚合）。
+
+    用途：原料详情趋势图在「该原料自己没有直接商品价」的日子，
+    用同一套菜谱成本口径显示折算结果（替代/回退/半成品/从属）。
+    返回每克单价三档（元/克，已折算到用户币种）+ source + chain。
+    """
+    region_id = resolve_region_param(db, current_user, region_id)
+    try:
+        from app.services.recipe_service import calculate_ingredient_price_series
+
+        return calculate_ingredient_price_series(
+            db,
+            ingredient_id,
+            current_user.id,
+            days=days,
+            offset_days=offset_days,
+            tz=tz,
+            region_id=region_id,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(
+            status_code=500,
+            message="获取原料折算价序列失败：{error}",
+            error=str(e),
+        )
+
+
 @router.get("/ingredients/{ingredient_id}/latest-price-by-merchant")
 async def get_ingredient_latest_price_by_merchant(
     ingredient_id: int,
