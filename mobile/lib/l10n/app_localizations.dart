@@ -1264,6 +1264,18 @@ abstract class AppLocalizations {
   /// **'原直接价'**
   String get originalDirectPrice;
 
+  /// No description provided for @chartOverall.
+  ///
+  /// In zh, this message translates to:
+  /// **'综合'**
+  String get chartOverall;
+
+  /// No description provided for @chartByMerchant.
+  ///
+  /// In zh, this message translates to:
+  /// **'按商家'**
+  String get chartByMerchant;
+
   /// No description provided for @nutritionTitle.
   ///
   /// In zh, this message translates to:

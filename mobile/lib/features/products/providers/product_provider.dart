@@ -304,6 +304,12 @@ class ProductDetailPageState {
   final List<MerchantPrice> merchantPrices;
   final List<PriceRecord> records;
   final List<CostHistoryPoint> chartPoints;
+
+  /// 真实有价格记录的本地日期（趋势图只在这些日子画点）
+  final Set<String> chartRecordDays;
+
+  /// 按商家分组的趋势序列（「综合 / 按商家」对比）
+  final List<PriceMerchantSeries> merchantSeries;
   final bool loading;
   final bool loadingLatest;
   final bool loadingMerchants;
@@ -315,10 +321,12 @@ class ProductDetailPageState {
   final bool loadingNutrition;
   final bool savingNutrition;
   final List<EntityUnit> units;
+
   /// 关联原料的自定义单位：本商品没同名覆盖时继承使用（「箱 = 12 盒」里的盒）
   final List<EntityUnit> inheritedUnits;
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
+
   /// 可作为「重量单位」的全局质量/体积单位（单位表单下拉用）
   final List<GlobalUnitOption> globalUnitOptions;
   final bool loadingUnits;
@@ -335,6 +343,8 @@ class ProductDetailPageState {
     this.merchantPrices = const [],
     this.records = const [],
     this.chartPoints = const [],
+    this.chartRecordDays = const {},
+    this.merchantSeries = const [],
     this.loading = false,
     this.loadingLatest = false,
     this.loadingMerchants = false,
@@ -364,6 +374,8 @@ class ProductDetailPageState {
     List<MerchantPrice>? merchantPrices,
     List<PriceRecord>? records,
     List<CostHistoryPoint>? chartPoints,
+    Set<String>? chartRecordDays,
+    List<PriceMerchantSeries>? merchantSeries,
     bool? loading,
     bool? loadingLatest,
     bool? loadingMerchants,
@@ -395,6 +407,8 @@ class ProductDetailPageState {
       merchantPrices: merchantPrices ?? this.merchantPrices,
       records: records ?? this.records,
       chartPoints: chartPoints ?? this.chartPoints,
+      chartRecordDays: chartRecordDays ?? this.chartRecordDays,
+      merchantSeries: merchantSeries ?? this.merchantSeries,
       loading: loading ?? this.loading,
       loadingLatest: loadingLatest ?? this.loadingLatest,
       loadingMerchants: loadingMerchants ?? this.loadingMerchants,
@@ -603,8 +617,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
               source: 'pending',
               isPending: true,
               weightUnitId: _toInt(data['weight_unit_id']),
-              weightUnitOverrideId:
-                  _toInt(data['weight_unit_override_id']),
+              weightUnitOverrideId: _toInt(data['weight_unit_override_id']),
             ),
           ];
         }
@@ -630,10 +643,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
               weightUnitId: data.containsKey('weight_unit_id')
                   ? _toInt(data['weight_unit_id'])
                   : unit.weightUnitId,
-              weightUnitOverrideId:
-                  data.containsKey('weight_unit_override_id')
-                      ? _toInt(data['weight_unit_override_id'])
-                      : unit.weightUnitOverrideId,
+              weightUnitOverrideId: data.containsKey('weight_unit_override_id')
+                  ? _toInt(data['weight_unit_override_id'])
+                  : unit.weightUnitOverrideId,
             )
           else
             unit,
@@ -724,6 +736,13 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
       }
       state = state.copyWith(
         chartPoints: buildPriceTrendPoints(
+          result.records,
+          useStandardQuantity: true,
+          startDay: startDate.isEmpty ? null : startDate,
+          backfillSparse: true,
+        ),
+        chartRecordDays: priceRecordDays(result.records),
+        merchantSeries: buildMerchantTrendSeries(
           result.records,
           useStandardQuantity: true,
           startDay: startDate.isEmpty ? null : startDate,
@@ -866,8 +885,7 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         unmappedUnits: unmapped,
         densities: densities,
         globalUnitOptions: _weightUnitOptions,
-        effectiveDensityKgM3:
-            await _computeEffectiveDensity(densities),
+        effectiveDensityKgM3: await _computeEffectiveDensity(densities),
         loadingUnits: false,
       );
     } on Exception {

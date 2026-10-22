@@ -62,7 +62,47 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
 `computedSourceNameMatch` / `computedSourceRecipe` / `computedSourceContains` /
 `originalDirectPrice`；`flutter gen-l10n` 重新生成 `app_localizations*.dart`。
 
-## 验证
+## 追加：开关文字标签 + 「综合 / 按商家」对比
+
+用户反馈两条：
+
+1. **「含替代/从属」开关没有提示**：移动端没有 hover，之前只包了 `Tooltip`，界面上只有一个光秃秃的
+   开关。改为「开关 + 可见文字标签」一行（整行可点切换，`key: include_computed_row`）。
+2. **手机端没做「对比食材/商品在不同超市的价格趋势」**：这是本功能的核心诉求。
+
+### 数据层
+
+`features/prices/utils/price_trend.dart` 新增：
+
+- `PriceMerchantSeries { merchantId, name, points, recordDays }`；
+- `buildMerchantTrendSeries(records, {useStandardQuantity, startDay, staleDays, backfillSparse})`：
+  按 `merchantId` 分组，每组各跑一遍 `buildPriceTrendPoints`（同一套逐日 as-of、区间切片、
+  30 天陈旧上限），返回按「记录日数量」降序（默认选前 3 家）；
+- `priceRecordDays(records)`：真实记录日本地日期集合（「有记录才画点」）。
+
+`IngredientDetailPageState` / `ProductDetailPageState` 新增 `merchantSeries` 与 `chartRecordDays`，
+由各自的 `_loadChart` 用同一批 `result.records` 构建（切区间时同步刷新）。
+
+### 图表（`CostTrendChart`）
+
+- 新增 `merchantSeries` / `recordDays`。
+- `merchantSeries.length >= 2` 时标题下出现两个 ChoiceChip：**综合 / 按商家**；
+  进入「按商家」后出现横向 `FilterChip` 列表（默认选中记录数最多的前 3 家，可用色点区分）；
+  至少保留 1 家，避免空图；切换区间时只在「商家集合变化」时重置默认选择，手动勾选保持。
+- 按商家模式绘制：每家一条固定色板（`kMerchantLineColors`，与 Web 同组色）的均价平滑线，
+  **只在该商家真实有记录的日子画点**（as-of 携带日不画）；Y 轴按选中商家的均价范围缩放；
+  tooltip 逐行列出各商家当日均价（含色点）。
+- 综合模式也补了「只在记录日画点」（`recordDays`）。
+- 折算叠加序列与「按商家」互斥（按商家模式不画紫色折算带，避免混淆）。
+
+### 验证
+
+- `flutter analyze`：No issues found。
+- 新增 `test/features/prices/utils/merchant_trend_test.dart`（3 例：分组/排序/记录日、
+  无商家记录被忽略、`priceRecordDays` 去重）+ 原有 4 例模型测试 → 7 passed；
+  `test/features/ingredients + products + recipes/widgets` → 132 passed。
+
+
 
 - `flutter analyze`：仅剩 1 条**既有**提示（`test/features/products/screens/product_list_stale_search_test.dart`
   的 `prefer_const_constructors`），本次改动无新增。

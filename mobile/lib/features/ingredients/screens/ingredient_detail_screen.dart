@@ -254,6 +254,8 @@ class _IngredientDetailScreenState
                   includeComputed: state.includeComputed,
                   showComputedSwitch: true,
                   onIncludeComputedChange: notifier.setIncludeComputed,
+                  merchantSeries: state.merchantSeries,
+                  recordDays: state.chartRecordDays,
                   loading: state.loadingChart,
                   userCurrency: userCurrency,
                   onRangeChange: (days) => notifier.reloadChart(days),

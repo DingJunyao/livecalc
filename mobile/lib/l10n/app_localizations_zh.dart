@@ -599,6 +599,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get originalDirectPrice => '原直接价';
 
   @override
+  String get chartOverall => '综合';
+
+  @override
+  String get chartByMerchant => '按商家';
+
+  @override
   String get nutritionTitle => '营养成分';
 
   @override

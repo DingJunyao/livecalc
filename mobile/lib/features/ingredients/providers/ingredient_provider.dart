@@ -289,6 +289,12 @@ class IngredientDetailPageState {
   final List<PriceRecord> records;
   final List<CostHistoryPoint> chartPoints;
 
+  /// 真实有价格记录的本地日期（趋势图只在这些日子画点）
+  final Set<String> chartRecordDays;
+
+  /// 按商家分组的趋势序列（「综合 / 按商家」对比）
+  final List<PriceMerchantSeries> merchantSeries;
+
   /// 替代/回退/半成品/从属折算价（与 chartPoints 同一时间区间、每斤价）
   final List<ComputedPricePoint> computedPoints;
 
@@ -335,6 +341,8 @@ class IngredientDetailPageState {
     this.productPrices = const {},
     this.records = const [],
     this.chartPoints = const [],
+    this.chartRecordDays = const {},
+    this.merchantSeries = const [],
     this.computedPoints = const [],
     this.includeComputed = true,
     this.loading = false,
@@ -376,6 +384,8 @@ class IngredientDetailPageState {
     Map<int, LatestPriceInfo>? productPrices,
     List<PriceRecord>? records,
     List<CostHistoryPoint>? chartPoints,
+    Set<String>? chartRecordDays,
+    List<PriceMerchantSeries>? merchantSeries,
     List<ComputedPricePoint>? computedPoints,
     bool? includeComputed,
     bool? loading,
@@ -419,6 +429,8 @@ class IngredientDetailPageState {
       productPrices: productPrices ?? this.productPrices,
       records: records ?? this.records,
       chartPoints: chartPoints ?? this.chartPoints,
+      chartRecordDays: chartRecordDays ?? this.chartRecordDays,
+      merchantSeries: merchantSeries ?? this.merchantSeries,
       computedPoints: computedPoints ?? this.computedPoints,
       includeComputed: includeComputed ?? this.includeComputed,
       loading: loading ?? this.loading,
@@ -873,6 +885,14 @@ class IngredientDetailPageNotifier
           result.records,
           // 与商品详情/Web 原料详情同口径：优先按 standard_quantity（g）折算，
           // 否则「袋」等非质量单位按 1:1 兜底，5kg 袋装价会被当成每斤价
+          useStandardQuantity: true,
+          startDay: startDate.isEmpty ? null : startDate,
+          backfillSparse: true,
+        ),
+        chartRecordDays: priceRecordDays(result.records),
+        // 「综合 / 按商家」对比：按商家分组各跑一遍 as-of 序列
+        merchantSeries: buildMerchantTrendSeries(
+          result.records,
           useStandardQuantity: true,
           startDay: startDate.isEmpty ? null : startDate,
           backfillSparse: true,

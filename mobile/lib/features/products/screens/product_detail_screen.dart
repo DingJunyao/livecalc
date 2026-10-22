@@ -251,6 +251,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: CostTrendChart(
                   points: state.chartPoints,
+                  merchantSeries: state.merchantSeries,
+                  recordDays: state.chartRecordDays,
                   loading: state.loadingChart,
                   userCurrency: userCurrency,
                   onRangeChange: (days) => notifier.reloadChart(days),
@@ -557,7 +559,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     children: [
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(l10n.productMergeDialogPrompt(product.name)),
+                        child:
+                            Text(l10n.productMergeDialogPrompt(product.name)),
                       ),
                       Flexible(
                         child: RadioGroup<int>(
@@ -598,7 +601,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     : () async {
                         setDialogState(() => merging = true);
                         try {
-                          final result = await ProductRepository().mergeIntoProduct(
+                          final result =
+                              await ProductRepository().mergeIntoProduct(
                             widget.id,
                             targetProductId: selected!.id,
                           );
@@ -680,8 +684,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       // 同名冲突（409）：引导用户指定新原料名称后重试
       if (e.response?.statusCode == 409) {
         final data = e.response?.data;
-        final detail =
-            data is Map && data['detail'] is String ? data['detail'] as String : '';
+        final detail = data is Map && data['detail'] is String
+            ? data['detail'] as String
+            : '';
         await _showSplitRenameDialog(notifier, product, detail);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -734,9 +739,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: splitting
-                  ? null
-                  : () => Navigator.of(dialogCtx).pop(),
+              onPressed: splitting ? null : () => Navigator.of(dialogCtx).pop(),
               child: Text(l10n.commonCancel),
             ),
             FilledButton(

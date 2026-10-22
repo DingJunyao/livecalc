@@ -122,6 +122,77 @@ List<CostHistoryPoint> buildPriceTrendPoints(
   return out;
 }
 
+/// 某商家的价格趋势序列（「综合 / 按商家」对比用）。
+class PriceMerchantSeries {
+  final int merchantId;
+  final String name;
+  final List<CostHistoryPoint> points;
+
+  /// 该商家真实有价格记录的本地日期（用于「有记录才画点」）
+  final Set<String> recordDays;
+
+  const PriceMerchantSeries({
+    required this.merchantId,
+    required this.name,
+    required this.points,
+    required this.recordDays,
+  });
+}
+
+/// 从价格记录里按商家分组，各跑一遍 as-of 加权序列。
+///
+/// 与 Web 端「综合/按商家」对比同口径：组内沿用同一套逐日 as-of、区间切片与
+/// 陈旧上限；返回按「记录数」降序排列（前端默认选中前 3 家，避免线条过多）。
+List<PriceMerchantSeries> buildMerchantTrendSeries(
+  List<PriceRecord> records, {
+  bool useStandardQuantity = false,
+  String? startDay,
+  int staleDays = _priceStaleDays,
+  bool backfillSparse = false,
+}) {
+  final byMerchant = <int, List<PriceRecord>>{};
+  for (final r in records) {
+    final mid = r.merchantId;
+    if (mid == null) continue;
+    byMerchant.putIfAbsent(mid, () => <PriceRecord>[]).add(r);
+  }
+
+  final out = <PriceMerchantSeries>[];
+  for (final entry in byMerchant.entries) {
+    final points = buildPriceTrendPoints(
+      entry.value,
+      useStandardQuantity: useStandardQuantity,
+      startDay: startDay,
+      staleDays: staleDays,
+      backfillSparse: backfillSparse,
+    );
+    if (points.isEmpty) continue;
+    final recordDays = priceRecordDays(entry.value);
+    final name = entry.value
+            .map((r) => r.merchantName)
+            .firstWhere((n) => n != null && n.isNotEmpty, orElse: () => null) ??
+        '#${entry.key}';
+    out.add(PriceMerchantSeries(
+      merchantId: entry.key,
+      name: name,
+      points: points,
+      recordDays: recordDays,
+    ));
+  }
+  out.sort((a, b) => b.recordDays.length.compareTo(a.recordDays.length));
+  return out;
+}
+
+/// 记录里真实有价格的本地日期集合（趋势图「只在记录日画点」）。
+Set<String> priceRecordDays(List<PriceRecord> records) {
+  final days = <String>{};
+  for (final r in records) {
+    final dt = DateTime.tryParse(r.recordedAt)?.toLocal();
+    if (dt != null) days.add(localDayKey(dt));
+  }
+  return days;
+}
+
 /// 区间请求结果是否需要回退「全量」取数。
 ///
 /// as-of 序列需要「区间起点之前最近一次记录」作为携带起点，而按区间取数
@@ -159,6 +230,7 @@ class _ProductStep {
 
   final List<String> days;
   final List<double> values;
+
   /// 超过该日视为过期（不再参与综合价）；null 表示不设上限
   final String? expiresOn;
   int next = 0;
@@ -212,7 +284,10 @@ double _pricePerJin(PriceRecord record, bool useStandardQuantity) {
     if (record.standardQuantity != null &&
         record.standardQuantity! > 0 &&
         standardFactor != null) {
-      return record.price * rateFactor / record.standardQuantity! * standardFactor;
+      return record.price *
+          rateFactor /
+          record.standardQuantity! *
+          standardFactor;
     }
   }
 

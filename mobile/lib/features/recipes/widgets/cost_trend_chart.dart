@@ -4,7 +4,23 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/computed_price_point.dart';
 import '../../../shared/utils/smooth_path.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../prices/utils/price_trend.dart' show PriceMerchantSeries;
 import '../repositories/recipe_repository.dart';
+
+/// 按商家对比时各商家线条的固定色板（与 Web 端商家对比同一组色）。
+const List<Color> kMerchantLineColors = [
+  Color(0xFF1976D2),
+  Color(0xFF388E3C),
+  Color(0xFFF57C00),
+  Color(0xFF7B1FA2),
+  Color(0xFF00796B),
+  Color(0xFFC2185B),
+  Color(0xFF455A64),
+  Color(0xFF5D4037),
+];
+
+/// 趋势图口径：综合（所有商家合并）/ 按商家对比。
+enum TrendViewMode { overall, merchant }
 
 /// 成本趋势图表：min/max 区间带 + avg 折线 + 触摸 tooltip + 区间筛选。
 /// 与 Web 端 PriceTrendChart 体验一致（无第三方图表库依赖）。
@@ -26,6 +42,12 @@ class CostTrendChart extends StatefulWidget {
   final bool showComputedSwitch;
   final ValueChanged<bool>? onIncludeComputedChange;
 
+  /// 按商家对比序列（≥2 家时出现「综合 / 按商家」切换）
+  final List<PriceMerchantSeries> merchantSeries;
+
+  /// 综合口径的真实记录日（只在有记录的日子画点）
+  final Set<String> recordDays;
+
   const CostTrendChart({
     super.key,
     required this.points,
@@ -38,6 +60,8 @@ class CostTrendChart extends StatefulWidget {
     this.includeComputed = true,
     this.showComputedSwitch = false,
     this.onIncludeComputedChange,
+    this.merchantSeries = const [],
+    this.recordDays = const {},
   });
 
   @override
@@ -55,6 +79,40 @@ String _formatDate(String value, {bool short = false}) {
 class _CostTrendChartState extends State<CostTrendChart> {
   _Range _selected = _Range.month;
   int? _touchIndex;
+  TrendViewMode _viewMode = TrendViewMode.overall;
+  final Set<int> _selectedMerchants = {};
+
+  bool get _canCompareMerchants => widget.merchantSeries.length >= 2;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncDefaultMerchants();
+  }
+
+  @override
+  void didUpdateWidget(covariant CostTrendChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 切换区间会重取商家序列：只在「商家集合变了」时重置默认选中，
+    // 用户手动勾选的商家在切区间后保持（与 Web 端一致）。
+    final oldIds = oldWidget.merchantSeries.map((e) => e.merchantId).toSet();
+    final newIds = widget.merchantSeries.map((e) => e.merchantId).toSet();
+    if (oldIds.length != newIds.length || !oldIds.containsAll(newIds)) {
+      _selectedMerchants.removeWhere((id) => !newIds.contains(id));
+      _syncDefaultMerchants();
+    }
+    if (!_canCompareMerchants && _viewMode == TrendViewMode.merchant) {
+      _viewMode = TrendViewMode.overall;
+    }
+  }
+
+  /// 默认选中记录数最多的前 3 家（防线条过多）；已选过则不覆盖。
+  void _syncDefaultMerchants() {
+    if (!_canCompareMerchants || _selectedMerchants.isNotEmpty) return;
+    _selectedMerchants.addAll(
+      widget.merchantSeries.take(3).map((e) => e.merchantId),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,25 +134,95 @@ class _CostTrendChartState extends State<CostTrendChart> {
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
-            if (widget.showComputedSwitch)
-              Tooltip(
-                message: l10n.includeComputed,
-                child: Transform.scale(
-                  scale: 0.75,
-                  child: Switch(
-                    key: const Key('include_computed_switch'),
-                    value: widget.includeComputed,
-                    onChanged: (v) => widget.onIncludeComputedChange?.call(v),
-                  ),
-                ),
-              ),
             const SizedBox(width: 8),
             _buildRangeToggle(),
           ],
         ),
+        // 「含替代/从属」：移动端没有 hover，必须带可见文字标签，否则只有一个光秃秃的开关
+        if (widget.showComputedSwitch)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: InkWell(
+              key: const Key('include_computed_row'),
+              onTap: () =>
+                  widget.onIncludeComputedChange?.call(!widget.includeComputed),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 40,
+                    height: 28,
+                    child: FittedBox(
+                      child: Switch(
+                        key: const Key('include_computed_switch'),
+                        value: widget.includeComputed,
+                        onChanged: (v) =>
+                            widget.onIncludeComputedChange?.call(v),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    l10n.includeComputed,
+                    style: theme.textTheme.labelMedium
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        // 「综合 / 按商家」：≥2 家商家时出现（对比同一食材/商品在不同超市的价格趋势）
+        if (_canCompareMerchants) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _buildModeChip(l10n.chartOverall, TrendViewMode.overall),
+              const SizedBox(width: 8),
+              _buildModeChip(l10n.chartByMerchant, TrendViewMode.merchant),
+            ],
+          ),
+          if (_viewMode == TrendViewMode.merchant) ...[
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 34,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: widget.merchantSeries.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (ctx, i) {
+                  final s = widget.merchantSeries[i];
+                  final selected = _selectedMerchants.contains(s.merchantId);
+                  final color =
+                      kMerchantLineColors[i % kMerchantLineColors.length];
+                  return FilterChip(
+                    selected: selected,
+                    showCheckmark: false,
+                    avatar: CircleAvatar(
+                      backgroundColor: selected ? color : Colors.transparent,
+                      radius: 6,
+                    ),
+                    label: Text(s.name, overflow: TextOverflow.ellipsis),
+                    labelStyle: theme.textTheme.labelSmall,
+                    onSelected: (v) {
+                      setState(() {
+                        if (v) {
+                          _selectedMerchants.add(s.merchantId);
+                        } else if (_selectedMerchants.length > 1) {
+                          // 至少留一家，避免整张图空白
+                          _selectedMerchants.remove(s.merchantId);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
         const SizedBox(height: 8),
         SizedBox(
-          height: 200,
+          // 按商家模式下方多一行 chips，图高略降保证整体卡片不跳动过大
+          height: 210,
           child: Stack(children: [
             _buildBody(theme),
             // 切换范围加载中：保留旧数据 + 顶部细进度条，避免用户误以为
@@ -109,6 +237,19 @@ class _CostTrendChartState extends State<CostTrendChart> {
           ]),
         ),
       ],
+    );
+  }
+
+  Widget _buildModeChip(String label, TrendViewMode mode) {
+    final theme = Theme.of(context);
+    final selected = _viewMode == mode;
+    return ChoiceChip(
+      label: Text(label),
+      selected: selected,
+      showCheckmark: false,
+      labelStyle: theme.textTheme.labelSmall,
+      visualDensity: VisualDensity.compact,
+      onSelected: (_) => setState(() => _viewMode = mode),
     );
   }
 
@@ -176,6 +317,11 @@ class _CostTrendChartState extends State<CostTrendChart> {
       onTouch: (i) => setState(() => _touchIndex = i),
       userCurrency: widget.userCurrency,
       computedPoints: widget.includeComputed ? widget.computedPoints : const [],
+      recordDays: widget.recordDays,
+      merchantMode: _viewMode == TrendViewMode.merchant,
+      merchantSeries: widget.merchantSeries
+          .where((s) => _selectedMerchants.contains(s.merchantId))
+          .toList(),
     );
   }
 }
@@ -187,6 +333,9 @@ class _Chart extends StatelessWidget {
   final ValueChanged<int?> onTouch;
   final String userCurrency;
   final List<ComputedPricePoint> computedPoints;
+  final Set<String> recordDays;
+  final bool merchantMode;
+  final List<PriceMerchantSeries> merchantSeries;
 
   const _Chart({
     required this.points,
@@ -195,6 +344,9 @@ class _Chart extends StatelessWidget {
     required this.onTouch,
     required this.userCurrency,
     this.computedPoints = const [],
+    this.recordDays = const {},
+    this.merchantMode = false,
+    this.merchantSeries = const [],
   });
 
   @override
@@ -223,6 +375,9 @@ class _Chart extends StatelessWidget {
                   touchIndex: touchIndex,
                   gridColor: Theme.of(context).colorScheme.outlineVariant,
                   userCurrency: userCurrency,
+                  recordDays: recordDays,
+                  merchantMode: merchantMode,
+                  merchantSeries: merchantSeries,
                 ),
               ),
               if (touchIndex != null && touchIndex! < points.length)
@@ -235,7 +390,9 @@ class _Chart extends StatelessWidget {
                       computedPoints: computedPoints,
                       index: touchIndex!,
                       color: color,
-                      userCurrency: userCurrency),
+                      userCurrency: userCurrency,
+                      merchantMode: merchantMode,
+                      merchantSeries: merchantSeries),
                 ),
             ],
           ),
@@ -266,12 +423,16 @@ class _Tooltip extends StatelessWidget {
   final int index;
   final Color color;
   final String userCurrency;
+  final bool merchantMode;
+  final List<PriceMerchantSeries> merchantSeries;
   const _Tooltip(
       {required this.points,
       this.computedPoints = const [],
       required this.index,
       required this.color,
-      required this.userCurrency});
+      required this.userCurrency,
+      this.merchantMode = false,
+      this.merchantSeries = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -279,6 +440,45 @@ class _Tooltip extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     final p = points[index];
     final computed = _computedForDate(p.date);
+    // 按商家模式：逐行列出各选中商家在该日的均价
+    final merchantRows = <Widget>[];
+    if (merchantMode) {
+      for (var i = 0; i < merchantSeries.length; i++) {
+        final s = merchantSeries[i];
+        final point = s.points.firstWhere(
+          (e) => e.date == p.date,
+          orElse: () => CostHistoryPoint(
+              date: p.date,
+              minCost: double.nan,
+              maxCost: 0,
+              avgCost: double.nan),
+        );
+        if (point.avgCost.isNaN) continue;
+        final color = kMerchantLineColors[i % kMerchantLineColors.length];
+        merchantRows.add(Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  '${s.name} ${formatMoney(point.avgCost, userCurrency)}',
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.onInverseSurface),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+    }
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -292,29 +492,38 @@ class _Tooltip extends StatelessWidget {
             Text(_formatDate(p.date),
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
-            const SizedBox(height: 2),
-            Text(
-                '${l10n.recipeAverageLabel} ${formatMoney(p.avgCost, userCurrency)}',
-                style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.onInverseSurface,
-                    fontWeight: FontWeight.bold)),
-            Text(
-                '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
-                style: theme.textTheme.labelSmall
-                    ?.copyWith(color: theme.colorScheme.onInverseSurface)),
-            if (computed != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                  '${l10n.computedPrice} ${formatMoney(computed.avg, userCurrency)}'
-                  '${computed.max > computed.min + 1e-9 ? ' (${formatMoney(computed.min, userCurrency)} ~ ${formatMoney(computed.max, userCurrency)})' : ''}',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFFB39DDB),
-                      fontWeight: FontWeight.bold)),
-              if (computed.chain != null && computed.chain!.isNotEmpty)
-                Text(_computedSourceLabel(computed.source, l10n),
+            if (merchantMode) ...[
+              if (merchantRows.isEmpty)
+                Text(l10n.recipeNoCostTrend,
                     style: theme.textTheme.labelSmall?.copyWith(
                         color: theme.colorScheme.onInverseSurface
                             .withValues(alpha: 0.7))),
+              ...merchantRows,
+            ] else ...[
+              const SizedBox(height: 2),
+              Text(
+                  '${l10n.recipeAverageLabel} ${formatMoney(p.avgCost, userCurrency)}',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                      color: theme.colorScheme.onInverseSurface,
+                      fontWeight: FontWeight.bold)),
+              Text(
+                  '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.onInverseSurface)),
+              if (computed != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                    '${l10n.computedPrice} ${formatMoney(computed.avg, userCurrency)}'
+                    '${computed.max > computed.min + 1e-9 ? ' (${formatMoney(computed.min, userCurrency)} ~ ${formatMoney(computed.max, userCurrency)})' : ''}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: const Color(0xFFB39DDB),
+                        fontWeight: FontWeight.bold)),
+                if (computed.chain != null && computed.chain!.isNotEmpty)
+                  Text(_computedSourceLabel(computed.source, l10n),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onInverseSurface
+                              .withValues(alpha: 0.7))),
+              ],
             ],
           ],
         ),
@@ -352,6 +561,9 @@ class _TrendPainter extends CustomPainter {
   final Color gridColor;
   final String userCurrency;
   final List<ComputedPricePoint> computedPoints;
+  final Set<String> recordDays;
+  final bool merchantMode;
+  final List<PriceMerchantSeries> merchantSeries;
 
   _TrendPainter({
     required this.points,
@@ -360,6 +572,9 @@ class _TrendPainter extends CustomPainter {
     required this.gridColor,
     required this.userCurrency,
     this.computedPoints = const [],
+    this.recordDays = const {},
+    this.merchantMode = false,
+    this.merchantSeries = const [],
   });
 
   @override
@@ -374,14 +589,27 @@ class _TrendPainter extends CustomPainter {
 
     double minV = double.infinity;
     double maxV = double.negativeInfinity;
-    for (final p in points) {
-      if (p.minCost < minV) minV = p.minCost;
-      if (p.maxCost > maxV) maxV = p.maxCost;
-    }
-    // 折算序列的区间也要落进同一坐标系，否则虚线/区间带会被裁在画布外
-    for (final c in computedPoints) {
-      if (c.min < minV) minV = c.min;
-      if (c.max > maxV) maxV = c.max;
+    if (merchantMode) {
+      for (final s in merchantSeries) {
+        for (final p in s.points) {
+          if (p.avgCost < minV) minV = p.avgCost;
+          if (p.avgCost > maxV) maxV = p.avgCost;
+        }
+      }
+      if (minV == double.infinity) {
+        minV = 0;
+        maxV = 1;
+      }
+    } else {
+      for (final p in points) {
+        if (p.minCost < minV) minV = p.minCost;
+        if (p.maxCost > maxV) maxV = p.maxCost;
+      }
+      // 折算序列的区间也要落进同一坐标系，否则虚线/区间带会被裁在画布外
+      for (final c in computedPoints) {
+        if (c.min < minV) minV = c.min;
+        if (c.max > maxV) maxV = c.max;
+      }
     }
     if (maxV == minV) {
       maxV += 1;
@@ -398,7 +626,6 @@ class _TrendPainter extends CustomPainter {
     final gridPaint = Paint()
       ..color = gridColor
       ..strokeWidth = 0.5;
-    // 镙囩鏍煎眰闂撮殧灏忎簬 1 鏃朵繚鐣欎竴浣嶅皬鏁帮紝閬垮厤鍥涜垗浜斿叆鍚庡嚭鐜?6,6,7,7 杩欐牱鐨勯噸澶嶆爣绛?
     final gridStep = (maxV - minV) / 4;
     for (var i = 0; i <= 4; i++) {
       final v = minV + (maxV - minV) * i / 4;
@@ -408,6 +635,59 @@ class _TrendPainter extends CustomPainter {
           ? formatMoney(v, userCurrency)
           : formatMoney(v.round(), userCurrency);
       _text(canvas, label, Offset(2, y - 7), gridColor, 9);
+    }
+
+    // ---- 按商家对比：每家一条均价线，只在真实记录日画点 ----
+    if (merchantMode) {
+      final dateIndex = <String, int>{};
+      for (var i = 0; i < points.length; i++) {
+        dateIndex[points[i].date] = i;
+      }
+      for (var m = 0; m < merchantSeries.length; m++) {
+        final series = merchantSeries[m];
+        final lineColor = kMerchantLineColors[m % kMerchantLineColors.length];
+        final linePaint = Paint()
+          ..color = lineColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..isAntiAlias = true;
+        final idxs = <int>[];
+        final pts = <Offset>[];
+        for (final p in series.points) {
+          final idx = dateIndex[p.date];
+          if (idx == null) continue;
+          idxs.add(idx);
+          pts.add(Offset(xAt(idx), yAt(p.avgCost)));
+        }
+        if (pts.length >= 2) {
+          canvas.drawPath(buildSmoothPath(pts), linePaint);
+        } else if (pts.length == 1) {
+          canvas.drawCircle(pts.first, 3, Paint()..color = lineColor);
+        }
+        // 只在「该商家真有记录」的日子画点，as-of 携带日不画
+        for (var k = 0; k < idxs.length; k++) {
+          if (!series.recordDays.contains(series.points[k].date)) continue;
+          canvas.drawCircle(pts[k], 2.6, Paint()..color = lineColor);
+        }
+      }
+      if (touchIndex != null &&
+          touchIndex! >= 0 &&
+          touchIndex! < points.length) {
+        final x = xAt(touchIndex!);
+        canvas.drawLine(
+          Offset(x, plotTop),
+          Offset(x, plotBottom),
+          Paint()
+            ..color = gridColor.withValues(alpha: 0.8)
+            ..strokeWidth = 1,
+        );
+      }
+      final idxList = [0, (points.length / 2).floor(), points.length - 1];
+      for (final i in idxList) {
+        final label = _formatDate(points[i].date, short: true);
+        _text(canvas, label, Offset(xAt(i) - 12, plotBottom + 6), gridColor, 9);
+      }
+      return;
     }
 
     // 只有一个数据点（实体只有一次价格记录、所选区间也拿不到更早的携带起点）：
@@ -472,6 +752,16 @@ class _TrendPainter extends CustomPainter {
       ..strokeWidth = 2
       ..isAntiAlias = true;
     canvas.drawPath(_pathOf(points, xAt, (p) => p.avgCost, yAt), linePaint);
+
+    // 只在真实记录日画点（as-of 携带日不画），与 Web 端口径一致
+    if (recordDays.isNotEmpty) {
+      final dotPaint = Paint()..color = color;
+      for (var i = 0; i < points.length; i++) {
+        if (!recordDays.contains(points[i].date)) continue;
+        canvas.drawCircle(
+            Offset(xAt(i), yAt(points[i].avgCost)), 2.6, dotPaint);
+      }
+    }
 
     // 触摸十字线 + 高亮点
     if (touchIndex != null && touchIndex! >= 0 && touchIndex! < points.length) {
@@ -584,6 +874,9 @@ class _TrendPainter extends CustomPainter {
   bool shouldRepaint(covariant _TrendPainter old) =>
       old.points != points ||
       old.computedPoints != computedPoints ||
+      old.recordDays != recordDays ||
+      old.merchantMode != merchantMode ||
+      old.merchantSeries != merchantSeries ||
       old.touchIndex != touchIndex ||
       old.color != color ||
       old.userCurrency != userCurrency;

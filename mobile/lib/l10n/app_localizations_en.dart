@@ -614,6 +614,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get originalDirectPrice => 'Previous direct price';
 
   @override
+  String get chartOverall => 'Overall';
+
+  @override
+  String get chartByMerchant => 'By merchant';
+
+  @override
   String get nutritionTitle => 'Nutrition';
 
   @override

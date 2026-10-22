@@ -613,6 +613,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get originalDirectPrice => 'السعر المباشر السابق';
 
   @override
+  String get chartOverall => 'الإجمالي';
+
+  @override
+  String get chartByMerchant => 'حسب المتجر';
+
+  @override
   String get nutritionTitle => 'القيم الغذائية';
 
   @override
