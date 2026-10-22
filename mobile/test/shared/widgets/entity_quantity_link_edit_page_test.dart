@@ -99,6 +99,7 @@ void main() {
     expect(find.byType(BottomSheet), findsNothing);
     expect(find.text('单包'), findsOneWidget);
     expect(find.text('包'), findsOneWidget);
+    expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(3));
     expect(repo.calls, contains('search:product:'));
   });
 }
