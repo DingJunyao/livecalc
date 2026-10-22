@@ -1,11 +1,10 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 
+import '../../features/entities/repositories/entity_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/entity_quantity_link.dart';
 import '../utils/currency_fmt.dart';
-import '../../features/entities/repositories/entity_repository.dart';
+import 'entity_quantity_link_edit_page.dart';
 
 /// 单位与密度卡片内的「关联与换算」区：一条关联 = 一句等式。
 class EntityQuantityLinksSection extends StatefulWidget {
@@ -94,20 +93,24 @@ class _EntityQuantityLinksSectionState
 
   Future<void> _openEditor({EntityQuantityLink? editing}) async {
     final l10n = AppLocalizations.of(context);
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => _QuantityLinkDialog(
-        repository: _repo,
-        entityType: widget.entityType,
-        entityId: widget.entityId,
-        entityName: widget.entityName,
-        editing: editing,
-        l10n: l10n,
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => EntityQuantityLinkEditPage(
+          repository: _repo,
+          entityType: widget.entityType,
+          entityId: widget.entityId,
+          entityName: widget.entityName,
+          ingredientId: widget.ingredientId,
+          link: editing,
+        ),
       ),
     );
-    if (result != true) return;
+    if (result == null) return;
     await _load();
-    if (mounted) _toast(l10n.entityLinksSaved);
+    if (!mounted) return;
+    _toast(result == 'pending'
+        ? l10n.commonSubmittedPendingReview
+        : l10n.entityLinksSaved);
   }
 
   Future<void> _delete(EntityQuantityLink link) async {
@@ -178,9 +181,14 @@ class _EntityQuantityLinksSectionState
         ),
         const SizedBox(height: 8),
         if (_loading)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              l10n.commonLoading,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           )
         else ...[
           if (_links.isEmpty)
@@ -324,341 +332,6 @@ class _LinkRow extends StatelessWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _QuantityLinkDialog extends StatefulWidget {
-  final EntityRepository repository;
-  final String entityType;
-  final int entityId;
-  final String? entityName;
-  final EntityQuantityLink? editing;
-  final AppLocalizations l10n;
-
-  const _QuantityLinkDialog({
-    required this.repository,
-    required this.entityType,
-    required this.entityId,
-    required this.entityName,
-    required this.editing,
-    required this.l10n,
-  });
-
-  @override
-  State<_QuantityLinkDialog> createState() => _QuantityLinkDialogState();
-}
-
-class _QuantityLinkDialogState extends State<_QuantityLinkDialog> {
-  final _search = TextEditingController();
-  final _fromQty = TextEditingController(text: '1');
-  final _fromUnit = TextEditingController();
-  final _toQty = TextEditingController(text: '1');
-  final _toUnit = TextEditingController();
-  final _note = TextEditingController();
-  Timer? _debounce;
-  int _searchSeq = 0;
-  String _targetType = 'product';
-  Map<String, dynamic>? _target;
-  List<Map<String, dynamic>> _options = const [];
-  bool _searching = false;
-  bool _saving = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final editing = widget.editing;
-    if (editing != null) {
-      _targetType = editing.other.type;
-      _target = {
-        'id': editing.other.id,
-        'name': editing.other.name,
-        'ingredient_id': editing.other.ingredientId,
-      };
-      _fromQty.text = _fmt(editing.current.quantity);
-      _fromUnit.text = editing.current.unit;
-      _toQty.text = _fmt(editing.other.quantity);
-      _toUnit.text = editing.other.unit;
-      _note.text = editing.note ?? '';
-    } else {
-      _targetType = widget.entityType == 'product' ? 'product' : 'ingredient';
-    }
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    _search.dispose();
-    _fromQty.dispose();
-    _fromUnit.dispose();
-    _toQty.dispose();
-    _toUnit.dispose();
-    _note.dispose();
-    super.dispose();
-  }
-
-  String _fmt(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
-  }
-
-  void _onSearch(String value) {
-    _debounce?.cancel();
-    final query = value.trim();
-    if (query.isEmpty) {
-      setState(() => _options = const []);
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final seq = ++_searchSeq;
-      setState(() => _searching = true);
-      try {
-        final rows = await widget.repository
-            .searchQuantityLinkTargets(_targetType, query);
-        if (!mounted || seq != _searchSeq) return;
-        setState(() => _options = rows);
-      } finally {
-        if (mounted && seq == _searchSeq) {
-          setState(() => _searching = false);
-        }
-      }
-    });
-  }
-
-  String get _preview {
-    final fromName = widget.entityName ?? '—';
-    final toName = _target?['name']?.toString() ?? '—';
-    return '${_fromQty.text.trim()} ${_fromUnit.text.trim()} $fromName'
-        ' = ${_toQty.text.trim()} ${_toUnit.text.trim()} $toName';
-  }
-
-  Future<void> _save() async {
-    final l10n = widget.l10n;
-    final targetId = (_target?['id'] as num?)?.toInt();
-    final fromQty = double.tryParse(_fromQty.text.trim());
-    final toQty = double.tryParse(_toQty.text.trim());
-    if (targetId == null) {
-      _show(l10n.entityLinksTargetRequired);
-      return;
-    }
-    if (fromQty == null || fromQty <= 0 || toQty == null || toQty <= 0) {
-      _show(l10n.entityLinksQuantityInvalid);
-      return;
-    }
-    if (_fromUnit.text.trim().isEmpty || _toUnit.text.trim().isEmpty) {
-      _show(l10n.entityLinksUnitRequired);
-      return;
-    }
-    setState(() => _saving = true);
-    try {
-      final editing = widget.editing;
-      if (editing != null) {
-        await widget.repository.updateQuantityLink(
-          widget.entityType, widget.entityId, editing.id,
-          fromQuantity: fromQty,
-          fromUnit: _fromUnit.text.trim(),
-          toQuantity: toQty,
-          toUnit: _toUnit.text.trim(),
-          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-        );
-      } else {
-        await widget.repository.createQuantityLink(
-          widget.entityType, widget.entityId,
-          toType: _targetType,
-          toId: targetId,
-          fromQuantity: fromQty,
-          fromUnit: _fromUnit.text.trim(),
-          toQuantity: toQty,
-          toUnit: _toUnit.text.trim(),
-          note: _note.text.trim().isEmpty ? null : _note.text.trim(),
-        );
-      }
-      if (mounted) Navigator.of(context).pop(true);
-    } catch (e) {
-      _show(e.toString());
-    } finally {
-      if (mounted) setState(() => _saving = false);
-    }
-  }
-
-  void _show(String text) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = widget.l10n;
-    final editing = widget.editing != null;
-    return AlertDialog(
-      title: Text(editing ? l10n.entityLinksEdit : l10n.entityLinksAdd),
-      content: SizedBox(
-        width: 520,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${l10n.entityLinksCurrent}: ${widget.entityName ?? '—'}',
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: [
-                  ButtonSegment(
-                    value: 'product',
-                    label: Text(l10n.entityLinksProduct),
-                  ),
-                  ButtonSegment(
-                    value: 'ingredient',
-                    label: Text(l10n.entityLinksIngredient),
-                  ),
-                ],
-                selected: {_targetType},
-                onSelectionChanged: editing
-                    ? null
-                    : (values) => setState(() {
-                          _targetType = values.first;
-                          _target = null;
-                          _options = const [];
-                          _search.clear();
-                        }),
-              ),
-              const SizedBox(height: 8),
-              if (!editing)
-                TextField(
-                  controller: _search,
-                  decoration: InputDecoration(
-                    labelText: l10n.entityLinksSearch,
-                    prefixIcon: const Icon(Icons.search),
-                    suffixIcon: _searching
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                          )
-                        : null,
-                  ),
-                  onChanged: _onSearch,
-                ),
-              if (!editing && _options.isNotEmpty)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 150),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      for (final row in _options)
-                        ListTile(
-                          dense: true,
-                          title: Text(row['name']?.toString() ?? '—'),
-                          subtitle: row['ingredient_name'] != null
-                              ? Text(row['ingredient_name'].toString())
-                              : null,
-                          selected: _target?['id'] == row['id'],
-                          onTap: () => setState(() => _target = row),
-                        ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _fromQty,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.entityLinksQuantity,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _fromUnit,
-                      decoration: InputDecoration(
-                        labelText: l10n.entityLinksUnit,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _toQty,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: l10n.entityLinksQuantity,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextField(
-                      controller: _toUnit,
-                      decoration: InputDecoration(
-                        labelText: l10n.entityLinksUnit,
-                      ),
-                      onChanged: (_) => setState(() {}),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${l10n.entityLinksPreview}: $_preview',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _note,
-                maxLength: 200,
-                decoration: InputDecoration(
-                  labelText: l10n.entityLinksNote,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-          child: Text(l10n.commonCancel),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : Text(l10n.commonSave),
-        ),
-      ],
     );
   }
 }

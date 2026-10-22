@@ -1589,6 +1589,48 @@ abstract class AppLocalizations {
   /// **'关联与换算'**
   String get entityLinksTitle;
 
+  /// No description provided for @entityLinksToSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联对象'**
+  String get entityLinksToSection;
+
+  /// No description provided for @entityLinksTargetType.
+  ///
+  /// In zh, this message translates to:
+  /// **'对象类型'**
+  String get entityLinksTargetType;
+
+  /// No description provided for @entityLinksTargetPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择商品/原料'**
+  String get entityLinksTargetPlaceholder;
+
+  /// No description provided for @entityLinksUnitsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可用单位，请先在「单位与密度」中添加'**
+  String get entityLinksUnitsEmpty;
+
+  /// No description provided for @entityLinksConversionSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'换算关系'**
+  String get entityLinksConversionSection;
+
+  /// No description provided for @entityLinksSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存失败，请重试'**
+  String get entityLinksSaveFailed;
+
+  /// No description provided for @entityLinksSelectTargetFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'先选择关联对象'**
+  String get entityLinksSelectTargetFirst;
+
   /// No description provided for @entityLinksHint.
   ///
   /// In zh, this message translates to:
@@ -1600,6 +1642,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'关联'**
   String get entityLinksAdd;
+
+  /// No description provided for @entityLinksAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加关联'**
+  String get entityLinksAddTitle;
 
   /// No description provided for @entityLinksEmpty.
   ///

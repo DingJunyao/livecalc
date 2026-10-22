@@ -771,11 +771,35 @@ class AppLocalizationsZh extends AppLocalizations {
   String get entityLinksTitle => '关联与换算';
 
   @override
+  String get entityLinksToSection => '关联对象';
+
+  @override
+  String get entityLinksTargetType => '对象类型';
+
+  @override
+  String get entityLinksTargetPlaceholder => '选择商品/原料';
+
+  @override
+  String get entityLinksUnitsEmpty => '没有可用单位，请先在「单位与密度」中添加';
+
+  @override
+  String get entityLinksConversionSection => '换算关系';
+
+  @override
+  String get entityLinksSaveFailed => '保存失败，请重试';
+
+  @override
+  String get entityLinksSelectTargetFirst => '先选择关联对象';
+
+  @override
   String get entityLinksHint =>
       '关联不会合并商品/原料；有直接价格时仍用直接价格，缺价时按等式折算。例：1 提 = 5 包；3 kg 鲜香菇 = 1 kg 干香菇。';
 
   @override
   String get entityLinksAdd => '关联';
+
+  @override
+  String get entityLinksAddTitle => '添加关联';
 
   @override
   String get entityLinksEmpty => '还没有关联。点「关联」添加一条换算，例如「1 提 五连包 = 5 包 单包」。';

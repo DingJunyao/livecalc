@@ -788,11 +788,36 @@ class AppLocalizationsAr extends AppLocalizations {
   String get entityLinksTitle => 'الربط والتحويل';
 
   @override
+  String get entityLinksToSection => 'الربط بـ';
+
+  @override
+  String get entityLinksTargetType => 'نوع العنصر';
+
+  @override
+  String get entityLinksTargetPlaceholder => 'اختر منتجاً/مكوّناً';
+
+  @override
+  String get entityLinksUnitsEmpty =>
+      'لا توجد وحدات متاحة. أضف وحدة في «الوحدات والكثافات» أولاً.';
+
+  @override
+  String get entityLinksConversionSection => 'علاقة التحويل';
+
+  @override
+  String get entityLinksSaveFailed => 'فشل الحفظ. حاول مرة أخرى.';
+
+  @override
+  String get entityLinksSelectTargetFirst => 'اختر عنصر الربط أولاً';
+
+  @override
   String get entityLinksHint =>
       'الربط لا يدمج المنتجات/المكونات. السعر المباشر له الأولوية، ويُستخدم الربط فقط عند غياب السعر. مثال: 1 عبوة من 5 = 5 عبوات مفردة؛ 3 كجم فطر طازج = 1 كجم فطر مجفف.';
 
   @override
   String get entityLinksAdd => 'ربط';
+
+  @override
+  String get entityLinksAddTitle => 'إضافة ربط';
 
   @override
   String get entityLinksEmpty =>

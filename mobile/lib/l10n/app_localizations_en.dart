@@ -789,11 +789,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get entityLinksTitle => 'Links & conversion';
 
   @override
+  String get entityLinksToSection => 'Linked to';
+
+  @override
+  String get entityLinksTargetType => 'Object type';
+
+  @override
+  String get entityLinksTargetPlaceholder => 'Choose product/ingredient';
+
+  @override
+  String get entityLinksUnitsEmpty =>
+      'No units available. Add one in Units & densities first.';
+
+  @override
+  String get entityLinksConversionSection => 'Conversion';
+
+  @override
+  String get entityLinksSaveFailed => 'Save failed. Try again.';
+
+  @override
+  String get entityLinksSelectTargetFirst => 'Select a target first';
+
+  @override
   String get entityLinksHint =>
       'Linking does not merge products/ingredients. Direct prices win; the link is only used when a price is missing. Example: 1 pack of 5 = 5 single packs; 3 kg fresh shiitake = 1 kg dried shiitake.';
 
   @override
   String get entityLinksAdd => 'Link';
+
+  @override
+  String get entityLinksAddTitle => 'Add link';
 
   @override
   String get entityLinksEmpty =>

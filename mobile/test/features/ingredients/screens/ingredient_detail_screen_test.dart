@@ -56,7 +56,9 @@ class _FakeMerchantRepository extends MerchantRepository {
 
 void main() {
   testWidgets('ingredient detail embeds the hierarchy graph', (tester) async {
-    tester.view.physicalSize = const Size(800, 1800);
+    // 单位与密度卡内新增「关联与换算」后，层级卡初始位置更靠下；
+    // 加高视口，确保层级图在首屏被构建（与真实滚动一致）。
+    tester.view.physicalSize = const Size(800, 3000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
