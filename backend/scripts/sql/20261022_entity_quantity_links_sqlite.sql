@@ -1,4 +1,11 @@
--- SQLite: 商品/原料两两数量关联
+-- SQLite（正式库，不使用 Alembic）：商品/原料两两数量关联
+-- 执行前请备份数据库；脚本可重复执行（表/索引均 IF NOT EXISTS）。
+-- 验证：
+--   PRAGMA table_info(entity_quantity_links);
+--   PRAGMA index_list(entity_quantity_links);
+-- 回滚（确认无数据/已备份后再执行）：
+--   DROP TABLE IF EXISTS entity_quantity_links;
+
 CREATE TABLE IF NOT EXISTS entity_quantity_links (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     from_type VARCHAR(20) NOT NULL,
@@ -16,6 +23,7 @@ CREATE TABLE IF NOT EXISTS entity_quantity_links (
     updated_by INTEGER,
     is_active BOOLEAN NOT NULL DEFAULT 1
 );
+
 CREATE INDEX IF NOT EXISTS ix_entity_quantity_links_from_type ON entity_quantity_links (from_type);
 CREATE INDEX IF NOT EXISTS ix_entity_quantity_links_to_type ON entity_quantity_links (to_type);
 CREATE INDEX IF NOT EXISTS ix_entity_quantity_link_from ON entity_quantity_links (from_type, from_id);

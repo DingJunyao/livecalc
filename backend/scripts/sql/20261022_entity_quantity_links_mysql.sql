@@ -1,4 +1,11 @@
--- MySQL: 商品/原料两两数量关联
+-- MySQL（正式库，不使用 Alembic）：商品/原料两两数量关联
+-- 执行前请备份数据库；脚本可重复执行（表 IF NOT EXISTS）。
+-- 验证：
+--   SHOW COLUMNS FROM entity_quantity_links;
+--   SHOW INDEX FROM entity_quantity_links;
+-- 回滚（确认无数据/已备份后再执行）：
+--   DROP TABLE IF EXISTS entity_quantity_links;
+
 CREATE TABLE IF NOT EXISTS entity_quantity_links (
     id INT NOT NULL AUTO_INCREMENT,
     from_type VARCHAR(20) NOT NULL,
