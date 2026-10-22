@@ -176,43 +176,11 @@ class _CostTrendChartState extends State<CostTrendChart> {
               ),
             ),
           ),
-        // 「按商家」时选择要对比的商家（多选，默认记录数最多的前 3 家）
+        // 「按商家」时用下拉选择要对比的商家（多选，默认记录数最多的前 3 家）。
+        // 不再用单行 chips：横向滚动既看不出能拖，屏幕窄时也难操作。
         if (_canCompareMerchants && _viewMode == TrendViewMode.merchant) ...[
           const SizedBox(height: 6),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: widget.merchantSeries.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder: (ctx, i) {
-                final s = widget.merchantSeries[i];
-                final selected = _selectedMerchants.contains(s.merchantId);
-                final color =
-                    kMerchantLineColors[i % kMerchantLineColors.length];
-                return FilterChip(
-                  selected: selected,
-                  showCheckmark: false,
-                  avatar: CircleAvatar(
-                    backgroundColor: selected ? color : Colors.transparent,
-                    radius: 6,
-                  ),
-                  label: Text(s.name, overflow: TextOverflow.ellipsis),
-                  labelStyle: theme.textTheme.labelSmall,
-                  onSelected: (v) {
-                    setState(() {
-                      if (v) {
-                        _selectedMerchants.add(s.merchantId);
-                      } else if (_selectedMerchants.length > 1) {
-                        // 至少留一家，避免整张图空白
-                        _selectedMerchants.remove(s.merchantId);
-                      }
-                    });
-                  },
-                );
-              },
-            ),
-          ),
+          _buildMerchantSelector(theme),
         ],
         const SizedBox(height: 8),
         SizedBox(
@@ -233,6 +201,118 @@ class _CostTrendChartState extends State<CostTrendChart> {
         ),
       ],
     );
+  }
+
+  /// 商家多选下拉：点开后在底部弹出勾选面板（移动端比横向 chips 更易操作，
+  /// 也不会因为「一行标签」让人看不出可以拖动）。
+  Widget _buildMerchantSelector(ThemeData theme) {
+    final l10n = AppLocalizations.of(context);
+    final selected = widget.merchantSeries
+        .where((s) => _selectedMerchants.contains(s.merchantId))
+        .toList();
+    final String label;
+    if (selected.isEmpty) {
+      label = l10n.chartByMerchant;
+    } else if (selected.length <= 2) {
+      label = selected.map((s) => s.name).join('、');
+    } else {
+      label = '${selected.take(2).map((s) => s.name).join('、')} 等 '
+          '${selected.length} 家';
+    }
+    return InkWell(
+      key: const Key('merchant_selector'),
+      borderRadius: BorderRadius.circular(8),
+      onTap: _openMerchantPicker,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: DefaultTextStyle.of(context).style,
+              ),
+            ),
+            const Icon(Icons.arrow_drop_down, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openMerchantPicker() async {
+    final l10n = AppLocalizations.of(context);
+    final picked = await showModalBottomSheet<Set<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final temp = Set<int>.from(_selectedMerchants);
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            return SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    title: Text(l10n.chartByMerchant),
+                    trailing: TextButton(
+                      onPressed: () => Navigator.pop(ctx, temp),
+                      child: Text(l10n.commonDone),
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Flexible(
+                    child: ListView(
+                      shrinkWrap: true,
+                      children: [
+                        for (var i = 0; i < widget.merchantSeries.length; i++)
+                          CheckboxListTile(
+                            value: temp
+                                .contains(widget.merchantSeries[i].merchantId),
+                            title: Text(widget.merchantSeries[i].name,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                            secondary: CircleAvatar(
+                              radius: 6,
+                              backgroundColor: kMerchantLineColors[
+                                  i % kMerchantLineColors.length],
+                            ),
+                            dense: true,
+                            onChanged: (v) {
+                              final id = widget.merchantSeries[i].merchantId;
+                              setSheet(() {
+                                if (v == true) {
+                                  temp.add(id);
+                                } else if (temp.length > 1) {
+                                  // 至少留一家，避免整张图空白
+                                  temp.remove(id);
+                                }
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _selectedMerchants
+        ..clear()
+        ..addAll(picked);
+    });
   }
 
   /// 「综合 / 按商家」下拉：与时间区间下拉同一形态，避免窄屏两个 chips 撑爆标题行。

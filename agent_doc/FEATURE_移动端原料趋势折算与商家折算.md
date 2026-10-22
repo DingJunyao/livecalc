@@ -136,6 +136,19 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
 
 验证：新增 1 例 `nonDirectComputedPoints` 过滤测试（共 8）→ passed；`flutter analyze` No issues found。
 
+## 追加 4：商家选择从「单行 chips」改为下拉
+
+用户反馈：按商家模式下的商家开关挤在一行，看不出能不能横向拖动，不建议单行标签，改下拉更好。
+
+- 删除横向 `ListView` + `FilterChip` 行；
+- 改为**下拉式触发器**（`key: merchant_selector`）：描边圆角框 + 当前选中摘要
+  （≤2 家显示名字，>2 家显示「A、B 等 N 家」）+ 下拉箭头；
+- 点开是**底部勾选面板**（`showModalBottomSheet` + `CheckboxListTile`，色点对应曲线颜色，
+  右上角「完成」）：移动端比单行 chips 更好点，也避免了「拖动」暗示；
+- 勾选实时生效、至少保留 1 家；点「完成」/点遮罩关闭后回写选中集合（遮罩取消不丢已勾选项）。
+
+验证：`flutter analyze` No issues found；原料+商品+模型相关 **91 passed**。
+
 
 
 - `flutter analyze`：仅剩 1 条**既有**提示（`test/features/products/screens/product_list_stale_search_test.dart`
