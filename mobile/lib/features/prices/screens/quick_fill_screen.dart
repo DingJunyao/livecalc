@@ -245,7 +245,11 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
         var names = const <String>[];
         try {
           names = await (widget.unitNamesLoader?.call(id, null) ??
-              loadEntityUnitNames(entityType: 'product', entityId: id));
+              loadEntityUnitNames(
+                entityType: 'product',
+                entityId: id,
+                includeLinkUnits: true,
+              ));
         } catch (error, stackTrace) {
           // 单个商品失败只影响它自己的菜单（回退常量列表），不打扰用户。
           log(

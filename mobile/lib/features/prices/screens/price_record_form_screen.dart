@@ -304,6 +304,7 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
           entityId: productId,
           ingredientId: ingredientId,
           request: widget.entityUnitsRequest,
+          includeLinkUnits: true,
         ));
     if (!mounted || seq != _unitsSeq) return;
     setState(() {

@@ -786,6 +786,87 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => 'Saturated fat';
 
   @override
+  String get entityLinksTitle => 'Links & conversion';
+
+  @override
+  String get entityLinksHint =>
+      'Linking does not merge products/ingredients. Direct prices win; the link is only used when a price is missing. Example: 1 pack of 5 = 5 single packs; 3 kg fresh shiitake = 1 kg dried shiitake.';
+
+  @override
+  String get entityLinksAdd => 'Link';
+
+  @override
+  String get entityLinksEmpty =>
+      'No links yet. Tap “Link” to add a conversion, e.g. “1 pack of 5 = 5 single packs”.';
+
+  @override
+  String get entityLinksSaved => 'Link saved';
+
+  @override
+  String get entityLinksDelete => 'Delete link';
+
+  @override
+  String get entityLinksDeleteConfirm =>
+      'Delete this link? It will no longer be used for conversion.';
+
+  @override
+  String get entityLinksDeleted => 'Link deleted';
+
+  @override
+  String get entityLinksPending => 'Pending';
+
+  @override
+  String get entityLinksEdit => 'Edit link';
+
+  @override
+  String entityLinksReadOnlyScope(Object name) {
+    return 'Links of ingredient “$name” (read-only)';
+  }
+
+  @override
+  String get entityLinksCurrent => 'Current';
+
+  @override
+  String get entityLinksProduct => 'Product';
+
+  @override
+  String get entityLinksIngredient => 'Ingredient';
+
+  @override
+  String get entityLinksSearch => 'Search products/ingredients';
+
+  @override
+  String get entityLinksQuantity => 'Quantity';
+
+  @override
+  String get entityLinksUnit => 'Unit';
+
+  @override
+  String get entityLinksPreview => 'Preview';
+
+  @override
+  String get entityLinksNote => 'Note (optional)';
+
+  @override
+  String get entityLinksNoPrice =>
+      'No price on the other side; only the conversion is saved.';
+
+  @override
+  String entityLinksUnresolvable(Object unit, Object other) {
+    return 'Cannot convert to grams: set a unit weight for “$unit” or “$other” first.';
+  }
+
+  @override
+  String get entityLinksTargetRequired => 'Choose a product/ingredient to link';
+
+  @override
+  String get entityLinksQuantityInvalid =>
+      'Both quantities must be greater than 0';
+
+  @override
+  String get entityLinksUnitRequired => 'Both units are required';
+
+  @override
   String get unitsScreenTitle => 'Units & densities';
 
   @override

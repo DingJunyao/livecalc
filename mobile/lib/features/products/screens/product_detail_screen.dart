@@ -10,6 +10,7 @@ import '../../../shared/models/merchant_price.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/entity_units_card.dart';
+import '../../../shared/widgets/entity_quantity_links_section.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/merchant_price_list.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -322,6 +323,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 isAdmin: isAdmin,
               ),
               onDeleteDensity: notifier.deleteDensity,
+              extraSections: [
+                EntityQuantityLinksSection(
+                  entityType: 'product',
+                  entityId: widget.id,
+                  entityName: product.name,
+                  ingredientId: product.ingredientId,
+                  ingredientName: product.ingredientName,
+                  currency: userCurrency,
+                ),
+              ],
             ),
           ],
         ),

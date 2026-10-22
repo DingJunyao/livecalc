@@ -1,6 +1,7 @@
 import '../../../core/api/api_client.dart';
 import '../../nutrition/models/usda_models.dart';
 import '../../../shared/models/entity_unit.dart';
+import '../../../shared/models/entity_quantity_link.dart';
 
 /// 「字段未提供」哨兵：与显式 null（清空）区分。
 const Object _keep = Object();
@@ -210,6 +211,127 @@ class EntityRepository {
   ) async {
     final response = await _client.dio
         .delete('/entities/$entityType/$entityId/density/$densityId');
+    final data = response.data is Map
+        ? Map<String, dynamic>.from(response.data as Map)
+        : const <String, dynamic>{};
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: null,
+      pending: review.pending,
+      message: review.message,
+    );
+  }
+
+  // ------------------------------------------------------------------ //
+  //  商品/原料数量关联
+  // ------------------------------------------------------------------ //
+
+  Future<List<EntityQuantityLink>> listQuantityLinks(
+    String entityType,
+    int entityId, {
+    bool includePrices = true,
+  }) async {
+    final response = await _client.dio.get(
+      '/entities/$entityType/$entityId/quantity-links',
+      queryParameters: {'include_prices': includePrices},
+    );
+    final data = response.data;
+    final list = data is Map ? (data['items'] as List?) ?? const [] : const [];
+    return list
+        .whereType<Map>()
+        .map((e) => EntityQuantityLink.fromJson(Map<String, dynamic>.from(e)))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> searchQuantityLinkTargets(
+    String targetType,
+    String query,
+  ) async {
+    final response = await _client.dio.get(
+      targetType == 'product' ? '/products/entity' : '/ingredients',
+      queryParameters: targetType == 'product'
+          ? {'search': query, 'limit': 20}
+          : {'q': query, 'limit': 20},
+    );
+    final data = response.data;
+    final list = data is Map ? (data['items'] as List?) ?? const [] : const [];
+    return list
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  Future<EntityWriteResult<EntityQuantityLink>> createQuantityLink(
+    String entityType,
+    int entityId, {
+    required String toType,
+    required int toId,
+    required double fromQuantity,
+    required String fromUnit,
+    required double toQuantity,
+    required String toUnit,
+    String? note,
+    bool isAdmin = true,
+  }) async {
+    final response = await _client.dio.post(
+      '/entities/$entityType/$entityId/quantity-links',
+      data: {
+        'to_type': toType,
+        'to_id': toId,
+        'from_quantity': fromQuantity,
+        'from_unit': fromUnit,
+        'to_quantity': toQuantity,
+        'to_unit': toUnit,
+        'note': note,
+      },
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final value = EntityQuantityLink.fromJson(data);
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: value,
+      pending: !isAdmin && value.id == 0 || review.pending,
+      message: review.message,
+    );
+  }
+
+  Future<EntityWriteResult<EntityQuantityLink>> updateQuantityLink(
+    String entityType,
+    int entityId,
+    int linkId, {
+    required double fromQuantity,
+    required String fromUnit,
+    required double toQuantity,
+    required String toUnit,
+    String? note,
+  }) async {
+    final response = await _client.dio.put(
+      '/entities/$entityType/$entityId/quantity-links/$linkId',
+      data: {
+        'from_quantity': fromQuantity,
+        'from_unit': fromUnit,
+        'to_quantity': toQuantity,
+        'to_unit': toUnit,
+        'note': note,
+      },
+    );
+    final data = Map<String, dynamic>.from(response.data as Map);
+    final value = EntityQuantityLink.fromJson(data);
+    final review = MutationReviewResult.fromJson(data);
+    return EntityWriteResult(
+      value: value,
+      pending: review.pending,
+      message: review.message,
+    );
+  }
+
+  Future<EntityWriteResult<void>> deleteQuantityLink(
+    String entityType,
+    int entityId,
+    int linkId,
+  ) async {
+    final response = await _client.dio
+        .delete('/entities/$entityType/$entityId/quantity-links/$linkId');
     final data = response.data is Map
         ? Map<String, dynamic>.from(response.data as Map)
         : const <String, dynamic>{};

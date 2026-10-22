@@ -768,6 +768,83 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => '饱和脂肪';
 
   @override
+  String get entityLinksTitle => '关联与换算';
+
+  @override
+  String get entityLinksHint =>
+      '关联不会合并商品/原料；有直接价格时仍用直接价格，缺价时按等式折算。例：1 提 = 5 包；3 kg 鲜香菇 = 1 kg 干香菇。';
+
+  @override
+  String get entityLinksAdd => '关联';
+
+  @override
+  String get entityLinksEmpty => '还没有关联。点「关联」添加一条换算，例如「1 提 五连包 = 5 包 单包」。';
+
+  @override
+  String get entityLinksSaved => '关联已保存';
+
+  @override
+  String get entityLinksDelete => '删除关联';
+
+  @override
+  String get entityLinksDeleteConfirm => '确定删除这条关联吗？删除后不再按该等式折算。';
+
+  @override
+  String get entityLinksDeleted => '关联已删除';
+
+  @override
+  String get entityLinksPending => '待审';
+
+  @override
+  String get entityLinksEdit => '编辑关联';
+
+  @override
+  String entityLinksReadOnlyScope(Object name) {
+    return '所属原料「$name」的关联（只读）';
+  }
+
+  @override
+  String get entityLinksCurrent => '当前';
+
+  @override
+  String get entityLinksProduct => '商品';
+
+  @override
+  String get entityLinksIngredient => '原料';
+
+  @override
+  String get entityLinksSearch => '搜索商品/原料';
+
+  @override
+  String get entityLinksQuantity => '数量';
+
+  @override
+  String get entityLinksUnit => '单位';
+
+  @override
+  String get entityLinksPreview => '预览';
+
+  @override
+  String get entityLinksNote => '说明（可选）';
+
+  @override
+  String get entityLinksNoPrice => '对方暂无价格，仅保存换算关系。';
+
+  @override
+  String entityLinksUnresolvable(Object unit, Object other) {
+    return '无法折算到克：请先给「$unit」或「$other」设置单位重量。';
+  }
+
+  @override
+  String get entityLinksTargetRequired => '请选择要关联的商品/原料';
+
+  @override
+  String get entityLinksQuantityInvalid => '两边的数量都必须大于 0';
+
+  @override
+  String get entityLinksUnitRequired => '两边的单位都不能为空';
+
+  @override
   String get unitsScreenTitle => '单位与密度';
 
   @override

@@ -1583,6 +1583,150 @@ abstract class AppLocalizations {
   /// **'饱和脂肪'**
   String get nutritionNutrientSaturatedFat;
 
+  /// No description provided for @entityLinksTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联与换算'**
+  String get entityLinksTitle;
+
+  /// No description provided for @entityLinksHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联不会合并商品/原料；有直接价格时仍用直接价格，缺价时按等式折算。例：1 提 = 5 包；3 kg 鲜香菇 = 1 kg 干香菇。'**
+  String get entityLinksHint;
+
+  /// No description provided for @entityLinksAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联'**
+  String get entityLinksAdd;
+
+  /// No description provided for @entityLinksEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有关联。点「关联」添加一条换算，例如「1 提 五连包 = 5 包 单包」。'**
+  String get entityLinksEmpty;
+
+  /// No description provided for @entityLinksSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联已保存'**
+  String get entityLinksSaved;
+
+  /// No description provided for @entityLinksDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除关联'**
+  String get entityLinksDelete;
+
+  /// No description provided for @entityLinksDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这条关联吗？删除后不再按该等式折算。'**
+  String get entityLinksDeleteConfirm;
+
+  /// No description provided for @entityLinksDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'关联已删除'**
+  String get entityLinksDeleted;
+
+  /// No description provided for @entityLinksPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'待审'**
+  String get entityLinksPending;
+
+  /// No description provided for @entityLinksEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑关联'**
+  String get entityLinksEdit;
+
+  /// No description provided for @entityLinksReadOnlyScope.
+  ///
+  /// In zh, this message translates to:
+  /// **'所属原料「{name}」的关联（只读）'**
+  String entityLinksReadOnlyScope(Object name);
+
+  /// No description provided for @entityLinksCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前'**
+  String get entityLinksCurrent;
+
+  /// No description provided for @entityLinksProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get entityLinksProduct;
+
+  /// No description provided for @entityLinksIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get entityLinksIngredient;
+
+  /// No description provided for @entityLinksSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索商品/原料'**
+  String get entityLinksSearch;
+
+  /// No description provided for @entityLinksQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'数量'**
+  String get entityLinksQuantity;
+
+  /// No description provided for @entityLinksUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'单位'**
+  String get entityLinksUnit;
+
+  /// No description provided for @entityLinksPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'预览'**
+  String get entityLinksPreview;
+
+  /// No description provided for @entityLinksNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'说明（可选）'**
+  String get entityLinksNote;
+
+  /// No description provided for @entityLinksNoPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方暂无价格，仅保存换算关系。'**
+  String get entityLinksNoPrice;
+
+  /// No description provided for @entityLinksUnresolvable.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法折算到克：请先给「{unit}」或「{other}」设置单位重量。'**
+  String entityLinksUnresolvable(Object unit, Object other);
+
+  /// No description provided for @entityLinksTargetRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择要关联的商品/原料'**
+  String get entityLinksTargetRequired;
+
+  /// No description provided for @entityLinksQuantityInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'两边的数量都必须大于 0'**
+  String get entityLinksQuantityInvalid;
+
+  /// No description provided for @entityLinksUnitRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'两边的单位都不能为空'**
+  String get entityLinksUnitRequired;
+
   /// No description provided for @unitsScreenTitle.
   ///
   /// In zh, this message translates to:

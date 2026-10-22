@@ -387,4 +387,30 @@ void main() {
       );
     });
   });
+
+  group('loadEntityUnitNames includeLinkUnits', () {
+    test('includeLinkUnits=true 时把关联当前单位并入下拉', () async {
+      final fake = _FakeRequest({
+        '/entities/product/42/units': [
+          {'unit_name': '包'},
+        ],
+        '/entities/product/42/quantity-links?include_prices=false': [
+          {
+            'current': {'unit': '提'},
+            'other': {'unit': '包'},
+          },
+        ],
+      });
+
+      final names = await loadEntityUnitNames(
+        entityType: 'product',
+        entityId: 42,
+        request: fake.call,
+        includeLinkUnits: true,
+      );
+
+      expect(names, ['包', '提']);
+      expect(fake.calls, contains('/entities/product/42/quantity-links?include_prices=false'));
+    });
+  });
 }

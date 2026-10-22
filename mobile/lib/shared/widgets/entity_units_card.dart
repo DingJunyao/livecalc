@@ -64,6 +64,8 @@ class EntityUnitsCard extends StatelessWidget {
   final Future<Object?> Function(int unitId) onDeleteUnit;
   final Future<Object?> Function(DensityWriteInput input) onAddDensity;
   final Future<Object?> Function(int densityId) onDeleteDensity;
+  /// 密度之后的附加区块（如「关联与换算」）。
+  final List<Widget> extraSections;
 
   const EntityUnitsCard({
     super.key,
@@ -83,6 +85,7 @@ class EntityUnitsCard extends StatelessWidget {
     required this.onDeleteUnit,
     required this.onAddDensity,
     required this.onDeleteDensity,
+    this.extraSections = const [],
   });
 
   double get _effectiveDensity {
@@ -349,6 +352,10 @@ class EntityUnitsCard extends StatelessWidget {
                     ],
                   ),
                 ),
+              if (extraSections.isNotEmpty) ...[
+                const Divider(height: 20),
+                ...extraSections,
+              ],
             ],
           ],
         ),

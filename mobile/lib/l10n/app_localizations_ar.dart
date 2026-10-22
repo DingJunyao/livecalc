@@ -785,6 +785,86 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => 'الدهون المشبعة';
 
   @override
+  String get entityLinksTitle => 'الربط والتحويل';
+
+  @override
+  String get entityLinksHint =>
+      'الربط لا يدمج المنتجات/المكونات. السعر المباشر له الأولوية، ويُستخدم الربط فقط عند غياب السعر. مثال: 1 عبوة من 5 = 5 عبوات مفردة؛ 3 كجم فطر طازج = 1 كجم فطر مجفف.';
+
+  @override
+  String get entityLinksAdd => 'ربط';
+
+  @override
+  String get entityLinksEmpty =>
+      'لا توجد روابط بعد. اضغط «ربط» لإضافة تحويل، مثل «1 عبوة من 5 = 5 عبوات مفردة».';
+
+  @override
+  String get entityLinksSaved => 'تم حفظ الربط';
+
+  @override
+  String get entityLinksDelete => 'حذف الربط';
+
+  @override
+  String get entityLinksDeleteConfirm =>
+      'حذف هذا الربط؟ لن يُستخدم في التحويل بعد الآن.';
+
+  @override
+  String get entityLinksDeleted => 'تم حذف الربط';
+
+  @override
+  String get entityLinksPending => 'بانتظار المراجعة';
+
+  @override
+  String get entityLinksEdit => 'تعديل الربط';
+
+  @override
+  String entityLinksReadOnlyScope(Object name) {
+    return 'روابط المكوّن «$name» (للقراءة فقط)';
+  }
+
+  @override
+  String get entityLinksCurrent => 'الحالي';
+
+  @override
+  String get entityLinksProduct => 'منتج';
+
+  @override
+  String get entityLinksIngredient => 'مكوّن';
+
+  @override
+  String get entityLinksSearch => 'ابحث عن منتج/مكوّن';
+
+  @override
+  String get entityLinksQuantity => 'الكمية';
+
+  @override
+  String get entityLinksUnit => 'الوحدة';
+
+  @override
+  String get entityLinksPreview => 'معاينة';
+
+  @override
+  String get entityLinksNote => 'ملاحظة (اختياري)';
+
+  @override
+  String get entityLinksNoPrice =>
+      'لا يوجد سعر للطرف الآخر؛ سيتم حفظ التحويل فقط.';
+
+  @override
+  String entityLinksUnresolvable(Object unit, Object other) {
+    return 'تعذر التحويل إلى غرام: اضبط وزن الوحدة لـ «$unit» أو «$other» أولاً.';
+  }
+
+  @override
+  String get entityLinksTargetRequired => 'اختر منتجاً/مكوّناً للربط';
+
+  @override
+  String get entityLinksQuantityInvalid => 'يجب أن تكون الكميتان أكبر من 0';
+
+  @override
+  String get entityLinksUnitRequired => 'الوحدتان مطلوبتان';
+
+  @override
   String get unitsScreenTitle => 'الوحدات والكثافات';
 
   @override

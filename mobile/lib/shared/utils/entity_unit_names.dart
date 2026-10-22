@@ -25,6 +25,7 @@ Future<List<String>> loadEntityUnitNames({
   int? ingredientId,
   ApiClient? client,
   EntityUnitsRequest? request,
+  bool includeLinkUnits = false,
 }) async {
   final fetch = request ?? _apiGet(client);
   final names = <String>[];
@@ -52,7 +53,33 @@ Future<List<String>> loadEntityUnitNames({
     }
   }
 
+  Future<void> collectLinkUnits(String type, int id) async {
+    final path = '/entities/$type/$id/quantity-links?include_prices=false';
+    final Object? data;
+    try {
+      data = await fetch(path);
+    } catch (error, stackTrace) {
+      log(
+        'loadEntityUnitNames: GET $path 失败（跳过关联单位）',
+        name: 'entity_unit_names',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return;
+    }
+    for (final row in _rowsOf(data)) {
+      if (row is! Map) continue;
+      final current = row['current'];
+      if (current is! Map) continue;
+      final name = current['unit']?.toString().trim() ?? '';
+      if (name.isNotEmpty && !names.contains(name)) names.add(name);
+    }
+  }
+
   await collect(entityType, entityId);
+  if (includeLinkUnits) {
+    await collectLinkUnits(entityType, entityId);
+  }
 
   if (entityType == 'product') {
     final linkedIngredientId =
