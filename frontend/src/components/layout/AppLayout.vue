@@ -45,7 +45,7 @@
 
       <v-list density="compact" nav>
         <v-list-item prepend-icon="mdi-silverware-fork-knife" :title="t('nav.today')" to="/" exact />
-        <v-list-item prepend-icon="mdi-currency-cny" :title="t('nav.prices')" to="/prices" />
+        <v-list-item prepend-icon="mdi-receipt-text-outline" :title="t('nav.prices')" to="/prices" />
         <v-list-item prepend-icon="mdi-book-open-variant" :title="t('nav.recipes')" to="/recipes" />
         <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" />
         <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" />
@@ -147,7 +147,7 @@
 
       <v-list density="compact" nav>
         <v-list-item prepend-icon="mdi-silverware-fork-knife" :title="t('nav.today')" to="/" exact @click="closeDrawer" />
-        <v-list-item prepend-icon="mdi-currency-cny" :title="t('nav.prices')" to="/prices" @click="closeDrawer" />
+        <v-list-item prepend-icon="mdi-receipt-text-outline" :title="t('nav.prices')" to="/prices" @click="closeDrawer" />
         <v-list-item prepend-icon="mdi-book-open-variant" :title="t('nav.recipes')" to="/recipes" @click="closeDrawer" />
         <v-list-item prepend-icon="mdi-package-variant" :title="t('nav.products')" to="/data/products" @click="closeDrawer" />
         <v-list-item prepend-icon="mdi-leaf" :title="t('nav.ingredients')" to="/data/ingredients" @click="closeDrawer" />
