@@ -250,6 +250,10 @@ class _IngredientDetailScreenState
                 padding: const EdgeInsets.all(16),
                 child: CostTrendChart(
                   points: state.chartPoints,
+                  computedPoints: state.computedPoints,
+                  includeComputed: state.includeComputed,
+                  showComputedSwitch: true,
+                  onIncludeComputedChange: notifier.setIncludeComputed,
                   loading: state.loadingChart,
                   userCurrency: userCurrency,
                   onRangeChange: (days) => notifier.reloadChart(days),

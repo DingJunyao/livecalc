@@ -578,6 +578,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get merchantLowest => '最低';
 
   @override
+  String get includeComputed => '含替代/从属';
+
+  @override
+  String get computedPrice => '替代/从属折算';
+
+  @override
+  String get computedSourceFallback => '回退/替代关系';
+
+  @override
+  String get computedSourceNameMatch => '同名商品匹配';
+
+  @override
+  String get computedSourceRecipe => '半成品制作菜谱';
+
+  @override
+  String get computedSourceContains => '从属子食材聚合';
+
+  @override
+  String get originalDirectPrice => '原直接价';
+
+  @override
   String get nutritionTitle => '营养成分';
 
   @override

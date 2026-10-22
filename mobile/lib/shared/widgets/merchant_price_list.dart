@@ -45,8 +45,9 @@ class MerchantPriceList extends StatelessWidget {
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: theme.colorScheme.outline)),
         const SizedBox(height: 8),
+        // 折算行会多出「区间 / 原直接价 / 来源」几行，高度略放大避免溢出
         SizedBox(
-          height: 124,
+          height: 152,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: prices.length,
@@ -83,21 +84,28 @@ class _MerchantPriceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // 陈旧记录（>30 天）不参与最低价比较：后端不会对陈旧记录标 isLowest，
     // 这里再防御一次，避免陈旧卡片误用最低价高亮。
-    final showLowest = price.isLowest && !price.isStale;
-    final containerColor = showLowest
-        ? theme.colorScheme.primary.withValues(alpha: 0.08)
-        : theme.colorScheme.onSurface.withValues(alpha: 0.04);
-    final contentOpacity = price.isStale ? 0.5 : 1.0;
+    final showLowest = price.isLowest && (!price.isStale || price.isDerived);
+    // 折算价（替代/回退/从属）不是「旧价」，不置灰：用紫色调与直接价区分，
+    // 与 Web 端 merchant-price-derived 同口径。
+    final derived = price.isDerived;
+    final containerColor = derived
+        ? const Color(0xFF7E57C2).withValues(alpha: 0.10)
+        : showLowest
+            ? theme.colorScheme.primary.withValues(alpha: 0.08)
+            : theme.colorScheme.onSurface.withValues(alpha: 0.04);
+    final contentOpacity = (!derived && price.isStale) ? 0.5 : 1.0;
     return Container(
       width: 116,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: containerColor,
         borderRadius: BorderRadius.circular(10),
-        border: showLowest
-            ? Border.all(
-                color: theme.colorScheme.primary.withValues(alpha: 0.35))
-            : null,
+        border: derived
+            ? Border.all(color: const Color(0xFF7E57C2).withValues(alpha: 0.4))
+            : showLowest
+                ? Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.35))
+                : null,
       ),
       child: Stack(
         children: [
@@ -107,9 +115,11 @@ class _MerchantPriceCard extends StatelessWidget {
               bottom: 0,
               child: Sparkline(
                 data: price.sparklineData!,
-                color: price.isStale
-                    ? theme.colorScheme.outline
-                    : theme.colorScheme.tertiary,
+                color: derived
+                    ? const Color(0xFF7E57C2)
+                    : price.isStale
+                        ? theme.colorScheme.outline
+                        : theme.colorScheme.tertiary,
                 width: 56,
                 height: 20,
               ),
@@ -140,6 +150,15 @@ class _MerchantPriceCard extends StatelessWidget {
                         : theme.colorScheme.onSurface,
                   ),
                 ),
+                if (derived && price.minPrice != null && price.maxPrice != null)
+                  Text(
+                    '${formatMoney(price.minPrice!, price.currency ?? userCurrency)}'
+                    ' ~ ${formatMoney(price.maxPrice!, price.currency ?? userCurrency)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.outline),
+                  ),
                 if (price.recordedAt != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 2),
@@ -150,6 +169,24 @@ class _MerchantPriceCard extends StatelessWidget {
                       style: theme.textTheme.labelSmall
                           ?.copyWith(color: theme.colorScheme.outline),
                     ),
+                  ),
+                // 直接价超期被关系折算替代：标明原直接价（红字，与 Web 一致）
+                if (derived && price.directStale && price.directPrice != null)
+                  Text(
+                    '${l10n.originalDirectPrice} '
+                    '${formatMoney(price.directPrice!, price.currency ?? userCurrency)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.error),
+                  ),
+                if (derived)
+                  Text(
+                    _computedSourceLabel(price.source, l10n),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: const Color(0xFF7E57C2)),
                   ),
                 if (price.currency != null &&
                     price.exchangeRate != null &&
@@ -180,6 +217,21 @@ class _MerchantPriceCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _computedSourceLabel(String source, AppLocalizations l10n) {
+    switch (source) {
+      case 'fallback':
+        return l10n.computedSourceFallback;
+      case 'name_match':
+        return l10n.computedSourceNameMatch;
+      case 'recipe':
+        return l10n.computedSourceRecipe;
+      case 'contains_aggregation':
+        return l10n.computedSourceContains;
+      default:
+        return l10n.computedPrice;
+    }
   }
 
   /// 记录时间（本地时区日期）；解析失败时原样展示，与详情页 _fmtDate 口径一致。

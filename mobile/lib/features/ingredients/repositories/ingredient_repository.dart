@@ -3,6 +3,7 @@ import '../../entities/repositories/entity_repository.dart';
 import '../../nutrition/models/usda_models.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
+import '../../../shared/models/computed_price_point.dart';
 import '../../../shared/models/ingredient_recipe.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../models/ingredient.dart';
@@ -235,17 +236,51 @@ class IngredientRepository {
   }
 
   /// 各商家最新价（GET /nutrition/ingredients/{id}/latest-price-by-merchant）。
-  Future<List<MerchantPrice>> getLatestPricesByMerchant(int id,
-      {int? regionId}) async {
+  ///
+  /// [includeRelations]：该商家没有直接价时，按替代/回退/从属折算补一条价。
+  /// [preferRelationsWhenStale]：该商家直接价超期（>30 天）时用折算价替代。
+  Future<List<MerchantPrice>> getLatestPricesByMerchant(
+    int id, {
+    int? regionId,
+    bool includeRelations = false,
+    bool preferRelationsWhenStale = false,
+  }) async {
     final response = await _client.dio.get(
       '/nutrition/ingredients/$id/latest-price-by-merchant',
-      queryParameters: {if (regionId != null) 'region_id': regionId},
+      queryParameters: {
+        if (regionId != null) 'region_id': regionId,
+        if (includeRelations) 'include_relations': true,
+        if (preferRelationsWhenStale) 'prefer_relations_when_stale': true,
+      },
     );
     final data = response.data;
     final list =
         (data is List) ? data : ((data['prices'] as List?) ?? const []);
     return list
         .map((e) => MerchantPrice.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// 原料逐日折算价（GET /nutrition/ingredients/{id}/price-series）。
+  ///
+  /// 与菜谱成本同一降级链（direct → fallback → name_match → recipe → contains），
+  /// 返回**每斤**价格（[ComputedPricePoint] 内部已从每克换算）。
+  Future<List<ComputedPricePoint>> getPriceSeries(
+    int id, {
+    int days = 30,
+    bool preferRelationsWhenStale = true,
+  }) async {
+    final response = await _client.dio.get(
+      '/nutrition/ingredients/$id/price-series',
+      queryParameters: {
+        'days': days,
+        if (preferRelationsWhenStale) 'prefer_relations_when_stale': true,
+      },
+    );
+    final data = response.data;
+    final list = data is List ? data : const [];
+    return list
+        .map((e) => ComputedPricePoint.fromJson(e as Map<String, dynamic>))
         .toList();
   }
 

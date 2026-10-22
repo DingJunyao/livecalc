@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/models/computed_price_point.dart';
 import '../../../shared/utils/smooth_path.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../repositories/recipe_repository.dart';
@@ -15,6 +16,16 @@ class CostTrendChart extends StatefulWidget {
   final ValueChanged<int>? onRangeChange;
   final String userCurrency;
 
+  /// 替代/回退/半成品/从属折算价（每斤），画紫色虚线 + 浅色区间带。
+  final List<ComputedPricePoint> computedPoints;
+
+  /// 「含替代/从属」开关状态（父组件持有；切换后父组件重新取数）
+  final bool includeComputed;
+
+  /// 是否显示「含替代/从属」开关（原料详情用）
+  final bool showComputedSwitch;
+  final ValueChanged<bool>? onIncludeComputedChange;
+
   const CostTrendChart({
     super.key,
     required this.points,
@@ -23,6 +34,10 @@ class CostTrendChart extends StatefulWidget {
     this.color = const Color(0xFFFF9800),
     this.onRangeChange,
     this.userCurrency = 'CNY',
+    this.computedPoints = const [],
+    this.includeComputed = true,
+    this.showComputedSwitch = false,
+    this.onIncludeComputedChange,
   });
 
   @override
@@ -61,6 +76,18 @@ class _CostTrendChartState extends State<CostTrendChart> {
                     ?.copyWith(fontWeight: FontWeight.bold),
               ),
             ),
+            if (widget.showComputedSwitch)
+              Tooltip(
+                message: l10n.includeComputed,
+                child: Transform.scale(
+                  scale: 0.75,
+                  child: Switch(
+                    key: const Key('include_computed_switch'),
+                    value: widget.includeComputed,
+                    onChanged: (v) => widget.onIncludeComputedChange?.call(v),
+                  ),
+                ),
+              ),
             const SizedBox(width: 8),
             _buildRangeToggle(),
           ],
@@ -148,6 +175,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
       touchIndex: _touchIndex,
       onTouch: (i) => setState(() => _touchIndex = i),
       userCurrency: widget.userCurrency,
+      computedPoints: widget.includeComputed ? widget.computedPoints : const [],
     );
   }
 }
@@ -158,6 +186,7 @@ class _Chart extends StatelessWidget {
   final int? touchIndex;
   final ValueChanged<int?> onTouch;
   final String userCurrency;
+  final List<ComputedPricePoint> computedPoints;
 
   const _Chart({
     required this.points,
@@ -165,6 +194,7 @@ class _Chart extends StatelessWidget {
     required this.touchIndex,
     required this.onTouch,
     required this.userCurrency,
+    this.computedPoints = const [],
   });
 
   @override
@@ -188,6 +218,7 @@ class _Chart extends StatelessWidget {
                 size: Size.infinite,
                 painter: _TrendPainter(
                   points: points,
+                  computedPoints: computedPoints,
                   color: color,
                   touchIndex: touchIndex,
                   gridColor: Theme.of(context).colorScheme.outlineVariant,
@@ -201,6 +232,7 @@ class _Chart extends StatelessWidget {
                   top: 0,
                   child: _Tooltip(
                       points: points,
+                      computedPoints: computedPoints,
                       index: touchIndex!,
                       color: color,
                       userCurrency: userCurrency),
@@ -230,11 +262,13 @@ class _Chart extends StatelessWidget {
 
 class _Tooltip extends StatelessWidget {
   final List<CostHistoryPoint> points;
+  final List<ComputedPricePoint> computedPoints;
   final int index;
   final Color color;
   final String userCurrency;
   const _Tooltip(
       {required this.points,
+      this.computedPoints = const [],
       required this.index,
       required this.color,
       required this.userCurrency});
@@ -244,6 +278,7 @@ class _Tooltip extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final p = points[index];
+    final computed = _computedForDate(p.date);
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -267,10 +302,46 @@ class _Tooltip extends StatelessWidget {
                 '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
+            if (computed != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                  '${l10n.computedPrice} ${formatMoney(computed.avg, userCurrency)}'
+                  '${computed.max > computed.min + 1e-9 ? ' (${formatMoney(computed.min, userCurrency)} ~ ${formatMoney(computed.max, userCurrency)})' : ''}',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      color: const Color(0xFFB39DDB),
+                      fontWeight: FontWeight.bold)),
+              if (computed.chain != null && computed.chain!.isNotEmpty)
+                Text(_computedSourceLabel(computed.source, l10n),
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onInverseSurface
+                            .withValues(alpha: 0.7))),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  ComputedPricePoint? _computedForDate(String date) {
+    for (final c in computedPoints) {
+      if (c.date == date) return c;
+    }
+    return null;
+  }
+}
+
+String _computedSourceLabel(String source, AppLocalizations l10n) {
+  switch (source) {
+    case 'fallback':
+      return l10n.computedSourceFallback;
+    case 'name_match':
+      return l10n.computedSourceNameMatch;
+    case 'recipe':
+      return l10n.computedSourceRecipe;
+    case 'contains_aggregation':
+      return l10n.computedSourceContains;
+    default:
+      return l10n.computedPrice;
   }
 }
 
@@ -280,6 +351,7 @@ class _TrendPainter extends CustomPainter {
   final int? touchIndex;
   final Color gridColor;
   final String userCurrency;
+  final List<ComputedPricePoint> computedPoints;
 
   _TrendPainter({
     required this.points,
@@ -287,6 +359,7 @@ class _TrendPainter extends CustomPainter {
     required this.touchIndex,
     required this.gridColor,
     required this.userCurrency,
+    this.computedPoints = const [],
   });
 
   @override
@@ -304,6 +377,11 @@ class _TrendPainter extends CustomPainter {
     for (final p in points) {
       if (p.minCost < minV) minV = p.minCost;
       if (p.maxCost > maxV) maxV = p.maxCost;
+    }
+    // 折算序列的区间也要落进同一坐标系，否则虚线/区间带会被裁在画布外
+    for (final c in computedPoints) {
+      if (c.min < minV) minV = c.min;
+      if (c.max > maxV) maxV = c.max;
     }
     if (maxV == minV) {
       maxV += 1;
@@ -376,6 +454,9 @@ class _TrendPainter extends CustomPainter {
         ..style = PaintingStyle.fill,
     );
 
+    // 折算序列（替代/回退/半成品/从属）：紫色浅色区间带 + 紫色虚线均价
+    _drawComputed(canvas, xAt, yAt);
+
     // min/max 虚线
     final dashPaint = Paint()
       ..color = color.withValues(alpha: 0.5)
@@ -424,6 +505,62 @@ class _TrendPainter extends CustomPainter {
     ]);
   }
 
+  /// 折算序列：按日期对齐到主序列的下标位置（同日期无点则跳过）。
+  void _drawComputed(
+      Canvas canvas, double Function(int) xAt, double Function(double) yAt) {
+    if (computedPoints.isEmpty) return;
+    final indexByDate = <String, int>{};
+    for (var i = 0; i < points.length; i++) {
+      indexByDate[points[i].date] = i;
+    }
+    final matched = <int, ComputedPricePoint>{};
+    for (final c in computedPoints) {
+      final idx = indexByDate[c.date];
+      if (idx != null) matched[idx] = c;
+    }
+    if (matched.isEmpty) return;
+    const purple = Color(0xFF7E57C2);
+    if (matched.length >= 2) {
+      final idxs = matched.keys.toList()..sort();
+      final band = Path();
+      appendSmoothSegments(
+        band,
+        [for (final i in idxs) Offset(xAt(i), yAt(matched[i]!.max))],
+        moveToFirst: true,
+      );
+      appendSmoothSegments(
+        band,
+        [for (final i in idxs.reversed) Offset(xAt(i), yAt(matched[i]!.min))],
+        moveToFirst: false,
+      );
+      band.close();
+      canvas.drawPath(
+        band,
+        Paint()
+          ..color = purple.withValues(alpha: 0.12)
+          ..style = PaintingStyle.fill,
+      );
+      final line = buildSmoothPath([
+        for (final i in idxs) Offset(xAt(i), yAt(matched[i]!.avg)),
+      ]);
+      _drawDashed(
+        canvas,
+        line,
+        Paint()
+          ..color = purple
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    } else {
+      final entry = matched.entries.first;
+      canvas.drawCircle(
+        Offset(xAt(entry.key), yAt(entry.value.avg)),
+        3,
+        Paint()..color = purple,
+      );
+    }
+  }
+
   void _drawDashed(Canvas canvas, Path path, Paint paint) {
     for (final metric in path.computeMetrics()) {
       double dist = 0;
@@ -446,6 +583,7 @@ class _TrendPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TrendPainter old) =>
       old.points != points ||
+      old.computedPoints != computedPoints ||
       old.touchIndex != touchIndex ||
       old.color != color ||
       old.userCurrency != userCurrency;

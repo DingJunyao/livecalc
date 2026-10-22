@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/ingredient_recipe.dart';
 import '../../../shared/models/merchant_price.dart';
+import '../../../shared/models/computed_price_point.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/models/nutrition.dart';
@@ -287,12 +288,19 @@ class IngredientDetailPageState {
   final Map<int, LatestPriceInfo> productPrices;
   final List<PriceRecord> records;
   final List<CostHistoryPoint> chartPoints;
+
+  /// 替代/回退/半成品/从属折算价（与 chartPoints 同一时间区间、每斤价）
+  final List<ComputedPricePoint> computedPoints;
+
+  /// 是否包含折算价（唯一开关，默认开；同时决定各商家价是否按关系折算）
+  final bool includeComputed;
   final bool loading;
   final bool loadingLatest;
   final bool loadingMerchants;
   final bool loadingProducts;
   final bool loadingRecords;
   final bool loadingChart;
+  final bool loadingComputed;
   final int recordsPage;
   final bool recordsHasMore;
   final NutritionInfo? nutrition;
@@ -301,6 +309,7 @@ class IngredientDetailPageState {
   final List<EntityUnit> units;
   final List<UnmappedUnit> unmappedUnits;
   final List<EntityDensity> densities;
+
   /// 可作为「重量单位」的全局质量/体积单位（单位表单下拉用）
   final List<GlobalUnitOption> globalUnitOptions;
   final bool loadingUnits;
@@ -326,12 +335,15 @@ class IngredientDetailPageState {
     this.productPrices = const {},
     this.records = const [],
     this.chartPoints = const [],
+    this.computedPoints = const [],
+    this.includeComputed = true,
     this.loading = false,
     this.loadingLatest = false,
     this.loadingMerchants = false,
     this.loadingProducts = false,
     this.loadingRecords = false,
     this.loadingChart = false,
+    this.loadingComputed = false,
     this.recordsPage = 1,
     this.recordsHasMore = false,
     this.nutrition,
@@ -364,12 +376,15 @@ class IngredientDetailPageState {
     Map<int, LatestPriceInfo>? productPrices,
     List<PriceRecord>? records,
     List<CostHistoryPoint>? chartPoints,
+    List<ComputedPricePoint>? computedPoints,
+    bool? includeComputed,
     bool? loading,
     bool? loadingLatest,
     bool? loadingMerchants,
     bool? loadingProducts,
     bool? loadingRecords,
     bool? loadingChart,
+    bool? loadingComputed,
     int? recordsPage,
     bool? recordsHasMore,
     Object? nutrition = _absent,
@@ -404,12 +419,15 @@ class IngredientDetailPageState {
       productPrices: productPrices ?? this.productPrices,
       records: records ?? this.records,
       chartPoints: chartPoints ?? this.chartPoints,
+      computedPoints: computedPoints ?? this.computedPoints,
+      includeComputed: includeComputed ?? this.includeComputed,
       loading: loading ?? this.loading,
       loadingLatest: loadingLatest ?? this.loadingLatest,
       loadingMerchants: loadingMerchants ?? this.loadingMerchants,
       loadingProducts: loadingProducts ?? this.loadingProducts,
       loadingRecords: loadingRecords ?? this.loadingRecords,
       loadingChart: loadingChart ?? this.loadingChart,
+      loadingComputed: loadingComputed ?? this.loadingComputed,
       recordsPage: recordsPage ?? this.recordsPage,
       recordsHasMore: recordsHasMore ?? this.recordsHasMore,
       nutrition: identical(nutrition, _absent)
@@ -453,6 +471,8 @@ class IngredientDetailPageNotifier
   final ProfileRepository _proposalRepo;
   final int ingredientId;
   int? _regionId;
+  // 趋势图当前区间天数（折算序列与图表同区间）
+  int _chartDays = 30;
   // 全局单位表缓存：质量/体积单位选项（单位表单下拉 + 显示口径）
   List<GlobalUnitOption> _weightUnitOptions = const [];
   bool _globalUnitsLoaded = false;
@@ -489,6 +509,7 @@ class IngredientDetailPageNotifier
         _loadProducts(),
         _loadRecords(),
         _loadChart(days: initialDays),
+        _loadComputed(),
         _loadNutrition(),
         _loadUnits(),
         _loadRecipes(),
@@ -521,11 +542,43 @@ class IngredientDetailPageNotifier
   Future<void> _loadMerchantPrices() async {
     state = state.copyWith(loadingMerchants: true);
     try {
-      final prices = await _ingRepo.getLatestPricesByMerchant(ingredientId,
-          regionId: _regionId);
+      // 与趋势图共用「含替代/从属」开关：开启时该商家没有直接价、
+      // 或直接价超期（>30 天）都会按替代/回退/从属折算展示。
+      final prices = await _ingRepo.getLatestPricesByMerchant(
+        ingredientId,
+        regionId: _regionId,
+        includeRelations: state.includeComputed,
+        preferRelationsWhenStale: state.includeComputed,
+      );
       state = state.copyWith(merchantPrices: prices, loadingMerchants: false);
     } on Exception {
       state = state.copyWith(loadingMerchants: false);
+    }
+  }
+
+  /// 切换「含替代/从属」：同时重取折算序列与各商家价（口径在后端，不能只切展示）。
+  Future<void> setIncludeComputed(bool value) async {
+    if (state.includeComputed == value) return;
+    state = state.copyWith(includeComputed: value);
+    await Future.wait([_loadComputed(), _loadMerchantPrices()]);
+  }
+
+  /// 逐日折算价（替代/回退/半成品/从属），区间与当前趋势图一致。
+  Future<void> _loadComputed() async {
+    if (!state.includeComputed) {
+      state = state.copyWith(computedPoints: const [], loadingComputed: false);
+      return;
+    }
+    state = state.copyWith(loadingComputed: true);
+    try {
+      final points = await _ingRepo.getPriceSeries(
+        ingredientId,
+        days: _chartDays,
+        preferRelationsWhenStale: true,
+      );
+      state = state.copyWith(computedPoints: points, loadingComputed: false);
+    } on Exception {
+      state = state.copyWith(computedPoints: const [], loadingComputed: false);
     }
   }
 
@@ -600,7 +653,10 @@ class IngredientDetailPageNotifier
     }
   }
 
-  Future<void> reloadChart(int days) => _loadChart(days: days);
+  Future<void> reloadChart(int days) async {
+    await _loadChart(days: days);
+    await _loadComputed();
+  }
 
   Future<void> _loadPendingProposals() async {
     try {
@@ -664,8 +720,7 @@ class IngredientDetailPageNotifier
               source: 'pending',
               isPending: true,
               weightUnitId: _toInt(data['weight_unit_id']),
-              weightUnitOverrideId:
-                  _toInt(data['weight_unit_override_id']),
+              weightUnitOverrideId: _toInt(data['weight_unit_override_id']),
             ),
           ];
         }
@@ -691,10 +746,9 @@ class IngredientDetailPageNotifier
               weightUnitId: data.containsKey('weight_unit_id')
                   ? _toInt(data['weight_unit_id'])
                   : unit.weightUnitId,
-              weightUnitOverrideId:
-                  data.containsKey('weight_unit_override_id')
-                      ? _toInt(data['weight_unit_override_id'])
-                      : unit.weightUnitOverrideId,
+              weightUnitOverrideId: data.containsKey('weight_unit_override_id')
+                  ? _toInt(data['weight_unit_override_id'])
+                  : unit.weightUnitOverrideId,
             )
           else
             unit,
@@ -790,6 +844,7 @@ class IngredientDetailPageNotifier
   }
 
   Future<void> _loadChart({required int days}) async {
+    _chartDays = days;
     state = state.copyWith(loadingChart: true);
     try {
       final startDate = _startDateFor(days);

@@ -593,6 +593,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get merchantLowest => 'Lowest';
 
   @override
+  String get includeComputed => 'Include fallback';
+
+  @override
+  String get computedPrice => 'Fallback/derived price';
+
+  @override
+  String get computedSourceFallback => 'Fallback/substitute relation';
+
+  @override
+  String get computedSourceNameMatch => 'Same-name product match';
+
+  @override
+  String get computedSourceRecipe => 'Semi-finished recipe';
+
+  @override
+  String get computedSourceContains => 'Child-ingredient aggregation';
+
+  @override
+  String get originalDirectPrice => 'Previous direct price';
+
+  @override
   String get nutritionTitle => 'Nutrition';
 
   @override

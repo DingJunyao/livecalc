@@ -1222,6 +1222,48 @@ abstract class AppLocalizations {
   /// **'最低'**
   String get merchantLowest;
 
+  /// No description provided for @includeComputed.
+  ///
+  /// In zh, this message translates to:
+  /// **'含替代/从属'**
+  String get includeComputed;
+
+  /// No description provided for @computedPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'替代/从属折算'**
+  String get computedPrice;
+
+  /// No description provided for @computedSourceFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'回退/替代关系'**
+  String get computedSourceFallback;
+
+  /// No description provided for @computedSourceNameMatch.
+  ///
+  /// In zh, this message translates to:
+  /// **'同名商品匹配'**
+  String get computedSourceNameMatch;
+
+  /// No description provided for @computedSourceRecipe.
+  ///
+  /// In zh, this message translates to:
+  /// **'半成品制作菜谱'**
+  String get computedSourceRecipe;
+
+  /// No description provided for @computedSourceContains.
+  ///
+  /// In zh, this message translates to:
+  /// **'从属子食材聚合'**
+  String get computedSourceContains;
+
+  /// No description provided for @originalDirectPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'原直接价'**
+  String get originalDirectPrice;
+
   /// No description provided for @nutritionTitle.
   ///
   /// In zh, this message translates to:

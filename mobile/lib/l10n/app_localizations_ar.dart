@@ -592,6 +592,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get merchantLowest => 'الأقل';
 
   @override
+  String get includeComputed => 'تضمين البديل';
+
+  @override
+  String get computedPrice => 'السعر المحتسب (بديل/مشتق)';
+
+  @override
+  String get computedSourceFallback => 'علاقة بديلة/احتياطية';
+
+  @override
+  String get computedSourceNameMatch => 'مطابقة منتج بالاسم';
+
+  @override
+  String get computedSourceRecipe => 'وصفة نصف مصنعة';
+
+  @override
+  String get computedSourceContains => 'تجميع المكونات التابعة';
+
+  @override
+  String get originalDirectPrice => 'السعر المباشر السابق';
+
+  @override
   String get nutritionTitle => 'القيم الغذائية';
 
   @override
