@@ -64,7 +64,7 @@ void main() {
     test('没有商家的记录被忽略（不会造出 #null 序列）', () {
       final records = [
         _rec(id: 1, merchantId: 1, day: '2026-10-01'),
-        PriceRecord(
+        const PriceRecord(
           id: 2,
           productId: 1,
           productName: '商品',

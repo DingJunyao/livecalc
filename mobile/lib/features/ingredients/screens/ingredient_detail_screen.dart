@@ -28,7 +28,10 @@ import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/ingredient.dart';
 import '../models/ingredient_category.dart';
 import '../repositories/ingredient_repository.dart'
-    show IngredientHierarchyData, IngredientRepository;
+    show
+        ExpandedIngredientRelations,
+        IngredientHierarchyData,
+        IngredientRepository;
 import '../widgets/hierarchy_graph.dart';
 import 'ingredient_form_screen.dart' show IngredientFormResult;
 import 'ingredient_hierarchy_screen.dart';
@@ -95,6 +98,27 @@ class _IngredientDetailScreenState
         ),
       );
     }
+  }
+
+  /// 只有真的存在替代/回退/从属关系（或已算出非 direct 折算价）时，
+  /// 才显示「含替代/从属」开关；胡萝卜这类没有任何关系的原料不该出现。
+  bool _showComputedSwitch(IngredientDetailPageState state) {
+    const relationTypes = {'fallback', 'substitutable', 'contains', 'recipe'};
+    final h = state.hierarchy;
+    final relations = <HierarchyRelation>[
+      ...?h?.parentRelations,
+      ...?h?.childRelations,
+      for (final e in (h?.expandedRelations ??
+          const <ExpandedIngredientRelations>[])) ...[
+        ...e.parentRelations,
+        ...e.childRelations,
+      ],
+    ];
+    if (relations.any((r) => relationTypes.contains(r.relationType))) {
+      return true;
+    }
+    // name_match 这类没有显式关系的命中：已经拿到非直接价时也保留开关
+    return state.computedPoints.any((p) => p.source != 'direct');
   }
 
   @override
@@ -252,7 +276,7 @@ class _IngredientDetailScreenState
                   points: state.chartPoints,
                   computedPoints: state.computedPoints,
                   includeComputed: state.includeComputed,
-                  showComputedSwitch: true,
+                  showComputedSwitch: _showComputedSwitch(state),
                   onIncludeComputedChange: notifier.setIncludeComputed,
                   merchantSeries: state.merchantSeries,
                   recordDays: state.chartRecordDays,

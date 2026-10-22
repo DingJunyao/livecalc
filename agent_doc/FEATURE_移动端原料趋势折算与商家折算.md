@@ -102,6 +102,22 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
   无商家记录被忽略、`priceRecordDays` 去重）+ 原有 4 例模型测试 → 7 passed；
   `test/features/ingredients + products + recipes/widgets` → 132 passed。
 
+## 追加 2：开关只在真有关系时出现；「综合/按商家」改为下拉
+
+用户反馈两条：
+
+1. **胡萝卜（无任何替代/从属关系）也显示了「含替代/从属」开关**：之前原料详情页写死
+   `showComputedSwitch: true`。改为 `_showComputedSwitch(state)`：
+   - 层级关系（`parentRelations` / `childRelations` / `expandedRelations`）里出现
+     `fallback` / `substitutable` / `contains` / `recipe` 才显示；
+   - 兜底：已经拿到 `source != 'direct'` 的折算点（例如 name_match 这种没有显式关系的命中）也显示。
+   胡萝卜没有这些 → 开关不出现。
+2. **「综合/按商家」要和区间一样做成下拉**：两枚 ChoiceChip 换成标题栏里的
+   `DropdownButton<TrendViewMode>`（`key: merchant_mode_dropdown`），与区间下拉同一形态、
+   同一行（≥2 家商家时出现）；商家多选 FilterChip 行保留在「按商家」模式下。
+
+验证：`flutter analyze` No issues found；商家序列 7 例 + 原料/商品 77 passed。
+
 
 
 - `flutter analyze`：仅剩 1 条**既有**提示（`test/features/products/screens/product_list_stale_search_test.dart`

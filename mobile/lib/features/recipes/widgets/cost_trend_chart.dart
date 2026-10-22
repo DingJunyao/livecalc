@@ -135,6 +135,11 @@ class _CostTrendChartState extends State<CostTrendChart> {
               ),
             ),
             const SizedBox(width: 8),
+            // 「综合 / 按商家」与时间区间一样做成下拉（≥2 家商家时出现）
+            if (_canCompareMerchants) ...[
+              _buildModeToggle(),
+              const SizedBox(width: 6),
+            ],
             _buildRangeToggle(),
           ],
         ),
@@ -171,53 +176,43 @@ class _CostTrendChartState extends State<CostTrendChart> {
               ),
             ),
           ),
-        // 「综合 / 按商家」：≥2 家商家时出现（对比同一食材/商品在不同超市的价格趋势）
-        if (_canCompareMerchants) ...[
+        // 「按商家」时选择要对比的商家（多选，默认记录数最多的前 3 家）
+        if (_canCompareMerchants && _viewMode == TrendViewMode.merchant) ...[
           const SizedBox(height: 6),
-          Row(
-            children: [
-              _buildModeChip(l10n.chartOverall, TrendViewMode.overall),
-              const SizedBox(width: 8),
-              _buildModeChip(l10n.chartByMerchant, TrendViewMode.merchant),
-            ],
-          ),
-          if (_viewMode == TrendViewMode.merchant) ...[
-            const SizedBox(height: 6),
-            SizedBox(
-              height: 34,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: widget.merchantSeries.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 6),
-                itemBuilder: (ctx, i) {
-                  final s = widget.merchantSeries[i];
-                  final selected = _selectedMerchants.contains(s.merchantId);
-                  final color =
-                      kMerchantLineColors[i % kMerchantLineColors.length];
-                  return FilterChip(
-                    selected: selected,
-                    showCheckmark: false,
-                    avatar: CircleAvatar(
-                      backgroundColor: selected ? color : Colors.transparent,
-                      radius: 6,
-                    ),
-                    label: Text(s.name, overflow: TextOverflow.ellipsis),
-                    labelStyle: theme.textTheme.labelSmall,
-                    onSelected: (v) {
-                      setState(() {
-                        if (v) {
-                          _selectedMerchants.add(s.merchantId);
-                        } else if (_selectedMerchants.length > 1) {
-                          // 至少留一家，避免整张图空白
-                          _selectedMerchants.remove(s.merchantId);
-                        }
-                      });
-                    },
-                  );
-                },
-              ),
+          SizedBox(
+            height: 34,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: widget.merchantSeries.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (ctx, i) {
+                final s = widget.merchantSeries[i];
+                final selected = _selectedMerchants.contains(s.merchantId);
+                final color =
+                    kMerchantLineColors[i % kMerchantLineColors.length];
+                return FilterChip(
+                  selected: selected,
+                  showCheckmark: false,
+                  avatar: CircleAvatar(
+                    backgroundColor: selected ? color : Colors.transparent,
+                    radius: 6,
+                  ),
+                  label: Text(s.name, overflow: TextOverflow.ellipsis),
+                  labelStyle: theme.textTheme.labelSmall,
+                  onSelected: (v) {
+                    setState(() {
+                      if (v) {
+                        _selectedMerchants.add(s.merchantId);
+                      } else if (_selectedMerchants.length > 1) {
+                        // 至少留一家，避免整张图空白
+                        _selectedMerchants.remove(s.merchantId);
+                      }
+                    });
+                  },
+                );
+              },
             ),
-          ],
+          ),
         ],
         const SizedBox(height: 8),
         SizedBox(
@@ -240,16 +235,29 @@ class _CostTrendChartState extends State<CostTrendChart> {
     );
   }
 
-  Widget _buildModeChip(String label, TrendViewMode mode) {
-    final theme = Theme.of(context);
-    final selected = _viewMode == mode;
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      showCheckmark: false,
-      labelStyle: theme.textTheme.labelSmall,
-      visualDensity: VisualDensity.compact,
-      onSelected: (_) => setState(() => _viewMode = mode),
+  /// 「综合 / 按商家」下拉：与时间区间下拉同一形态，避免窄屏两个 chips 撑爆标题行。
+  Widget _buildModeToggle() {
+    final l10n = AppLocalizations.of(context);
+    return DropdownButton<TrendViewMode>(
+      key: const Key('merchant_mode_dropdown'),
+      value: _viewMode,
+      isDense: true,
+      underline: const SizedBox.shrink(),
+      items: TrendViewMode.values
+          .map((m) => DropdownMenuItem(
+                value: m,
+                child: Text(
+                  m == TrendViewMode.overall
+                      ? l10n.chartOverall
+                      : l10n.chartByMerchant,
+                  style: Theme.of(context).textTheme.labelMedium,
+                ),
+              ))
+          .toList(),
+      onChanged: (m) {
+        if (m == null) return;
+        setState(() => _viewMode = m);
+      },
     );
   }
 
