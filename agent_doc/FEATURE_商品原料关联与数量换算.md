@@ -77,6 +77,7 @@ AuditMixin（created_at/updated_at/created_by/updated_by）
 - 后端新增 `tests/test_entity_quantity_links.py` 4 passed：折克（提→包→箱 1700 g）、因子、成本链（干/鲜 0.02 元/g）、API CRUD / 待审。
 - 相关回归：`test_ingredient_price_series` 5 passed、`test_ingredient_price_service`、`test_nested_unit_override`、`test_recipe_service`、`test_export_*`、`test_price_aggregator_recompute` 共 70 passed。
 - Web：`npm run build` ✓、`npm run test:utils` 70 passed、`check:i18n` / `check:i18n:sources` ✓。
+- 正式库 SQL（不使用 Alembic）：[SQLite](backend/scripts/sql/20261022_entity_quantity_links_sqlite.sql) / [MySQL](backend/scripts/sql/20261022_entity_quantity_links_mysql.sql) / [PostgreSQL](backend/scripts/sql/20261022_entity_quantity_links_postgresql.sql)；脚本含备份提示、执行后验证 SQL 与回滚语句。
 - 已知限制：本次链接不参与营养折算；本地模式暂未做 link-aware 的记录 standard_quantity 重算（成本链的原料关联可用）。
 
 ## 经验
