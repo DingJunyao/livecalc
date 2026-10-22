@@ -110,7 +110,9 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
    `showComputedSwitch: true`。改为 `_showComputedSwitch(state)`：
    - 层级关系（`parentRelations` / `childRelations` / `expandedRelations`）里出现
      `fallback` / `substitutable` / `contains` / `recipe` 才显示；
-   - 兜底：已经拿到 `source != 'direct'` 的折算点（例如 name_match 这种没有显式关系的命中）也显示。
+   - 兜底：已经拿到 `source != 'direct'` 的折算点（例如半成品/从属聚合命中）也显示。
+     注：后端已移除「同名商品匹配」（见 FEATURE_原料趋势替代从属折算.md 第六轮），
+     所以不会再出现 `name_match` 来源。
    胡萝卜没有这些 → 开关不出现。
 2. **「综合/按商家」要和区间一样做成下拉**：两枚 ChoiceChip 换成标题栏里的
    `DropdownButton<TrendViewMode>`（`key: merchant_mode_dropdown`），与区间下拉同一形态、
@@ -148,6 +150,20 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
 - 勾选实时生效、至少保留 1 家；点「完成」/点遮罩关闭后回写选中集合（遮罩取消不丢已勾选项）。
 
 验证：`flutter analyze` No issues found；原料+商品+模型相关 **91 passed**。
+
+## 追加 5：按商家显示价格区间带
+
+用户反馈：移动端「按商家」只有均价线，没有区间。
+
+- `buildPriceTrendPoints` 本来每天就有 `minCost/maxCost`（该商家当天各商品价的极值），
+  之前按商家模式只用了 `avgCost`；
+- 现在按商家模式：
+  - Y 轴范围按选中商家的 `minCost/maxCost` 计算（区间不会画出画布）；
+  - 每家在该商家「当天有区间跨度」的日子画同色低透明度区间带（≥2 个点才成带）；
+  - tooltip 该商家行追加 `(min ~ max)`；
+  - 仍只在真实记录日画点。
+
+验证：`flutter analyze` No issues found；商家序列/折算模型 8 passed。
 
 
 

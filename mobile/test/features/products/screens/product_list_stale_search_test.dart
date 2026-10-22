@@ -40,7 +40,8 @@ void main() {
     final repository = _FakeProductRepository();
     final container = ProviderContainer(
       overrides: [
-        productListProvider.overrideWith((ref) => ProductListNotifier(repository)),
+        productListProvider
+            .overrideWith((ref) => ProductListNotifier(repository)),
       ],
     );
     addTearDown(container.dispose);
@@ -60,10 +61,10 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: MaterialApp(
+        child: const MaterialApp(
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const ProductListScreen(),
+          home: ProductListScreen(),
         ),
       ),
     );

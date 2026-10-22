@@ -558,7 +558,9 @@ class _Tooltip extends StatelessWidget {
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
-                  '${s.name} ${formatMoney(point.avgCost, userCurrency)}',
+                  // 有区间时一并给出（该商家当天多个商品的 min~max）
+                  '${s.name} ${formatMoney(point.avgCost, userCurrency)}'
+                  '${point.maxCost > point.minCost + 1e-9 ? ' (${formatMoney(point.minCost, userCurrency)} ~ ${formatMoney(point.maxCost, userCurrency)})' : ''}',
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.labelSmall
                       ?.copyWith(color: theme.colorScheme.onInverseSurface),
@@ -682,8 +684,8 @@ class _TrendPainter extends CustomPainter {
     if (merchantMode) {
       for (final s in merchantSeries) {
         for (final p in s.points) {
-          if (p.avgCost < minV) minV = p.avgCost;
-          if (p.avgCost > maxV) maxV = p.avgCost;
+          if (p.minCost < minV) minV = p.minCost;
+          if (p.maxCost > maxV) maxV = p.maxCost;
         }
       }
       if (minV == double.infinity) {
@@ -743,16 +745,45 @@ class _TrendPainter extends CustomPainter {
           ..isAntiAlias = true;
         final idxs = <int>[];
         final pts = <Offset>[];
+        final bandPts = <(int, CostHistoryPoint)>[];
         for (final p in series.points) {
           final idx = dateIndex[p.date];
           if (idx == null) continue;
           idxs.add(idx);
           pts.add(Offset(xAt(idx), yAt(p.avgCost)));
+          // 该商家当天有多个商品（或价格区间）时记录区间点，稍后画淡色带
+          if (p.maxCost > p.minCost + 1e-9) bandPts.add((idx, p));
         }
         if (pts.length >= 2) {
           canvas.drawPath(buildSmoothPath(pts), linePaint);
         } else if (pts.length == 1) {
           canvas.drawCircle(pts.first, 3, Paint()..color = lineColor);
+        }
+        // 区间带：与该商家均价同色、低透明度（该商家当天有 min/max 跨度时才有）
+        if (bandPts.length >= 2) {
+          final bandPath = Path();
+          appendSmoothSegments(
+            bandPath,
+            [
+              for (final (i, p) in bandPts) Offset(xAt(i), yAt(p.maxCost)),
+            ],
+            moveToFirst: true,
+          );
+          appendSmoothSegments(
+            bandPath,
+            [
+              for (final (i, p) in bandPts.reversed)
+                Offset(xAt(i), yAt(p.minCost)),
+            ],
+            moveToFirst: false,
+          );
+          bandPath.close();
+          canvas.drawPath(
+            bandPath,
+            Paint()
+              ..color = lineColor.withValues(alpha: 0.12)
+              ..style = PaintingStyle.fill,
+          );
         }
         // 只在「该商家真有记录」的日子画点，as-of 携带日不画
         for (var k = 0; k < idxs.length; k++) {
