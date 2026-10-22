@@ -381,10 +381,17 @@ class _CostTrendChartState extends State<CostTrendChart> {
 
   Widget _buildBody(ThemeData theme) {
     final l10n = AppLocalizations.of(context);
+    final computed = widget.includeComputed
+        ? nonDirectComputedPoints(widget.computedPoints)
+        : const <ComputedPricePoint>[];
     if (widget.loading && widget.points.isEmpty) {
       return const Center(child: CircularProgressIndicator(strokeWidth: 2));
     }
-    if (widget.points.isEmpty) {
+    // 「有数据」= 直接价序列 **或** 折算序列任一存在：
+    // 猪肉这类没有直接商品记录、只靠从属聚合的原料，points 为空但
+    // computedPoints 有值，不能再显示「暂无成本历史数据」。
+    final hasAny = widget.points.isNotEmpty || computed.isNotEmpty;
+    if (!hasAny) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -398,15 +405,19 @@ class _CostTrendChartState extends State<CostTrendChart> {
         ),
       );
     }
+    // X 轴日期：优先用直接价序列；没有直接价时用折算点的日期当轴，
+    // 否则折算曲线没有可落笔的横坐标。
+    final dateAxis = widget.points.isNotEmpty
+        ? [for (final p in widget.points) p.date]
+        : [for (final c in computed) c.date];
     return _Chart(
       points: widget.points,
+      dateAxis: dateAxis,
       color: widget.color,
       touchIndex: _touchIndex,
       onTouch: (i) => setState(() => _touchIndex = i),
       userCurrency: widget.userCurrency,
-      computedPoints: widget.includeComputed
-          ? nonDirectComputedPoints(widget.computedPoints)
-          : const [],
+      computedPoints: computed,
       recordDays: widget.recordDays,
       merchantMode: _viewMode == TrendViewMode.merchant,
       merchantSeries: widget.merchantSeries
@@ -418,6 +429,9 @@ class _CostTrendChartState extends State<CostTrendChart> {
 
 class _Chart extends StatelessWidget {
   final List<CostHistoryPoint> points;
+
+  /// X 轴日期（升序）。points 为空时由折算点日期兜底。
+  final List<String> dateAxis;
   final Color color;
   final int? touchIndex;
   final ValueChanged<int?> onTouch;
@@ -429,6 +443,7 @@ class _Chart extends StatelessWidget {
 
   const _Chart({
     required this.points,
+    required this.dateAxis,
     required this.color,
     required this.touchIndex,
     required this.onTouch,
@@ -460,6 +475,7 @@ class _Chart extends StatelessWidget {
                 size: Size.infinite,
                 painter: _TrendPainter(
                   points: points,
+                  dateAxis: dateAxis,
                   computedPoints: computedPoints,
                   color: color,
                   touchIndex: touchIndex,
@@ -470,13 +486,14 @@ class _Chart extends StatelessWidget {
                   merchantSeries: merchantSeries,
                 ),
               ),
-              if (touchIndex != null && touchIndex! < points.length)
+              if (touchIndex != null && touchIndex! < dateAxis.length)
                 Positioned(
                   left: 0,
                   right: 0,
                   top: 0,
                   child: _Tooltip(
                       points: points,
+                      dateAxis: dateAxis,
                       computedPoints: computedPoints,
                       index: touchIndex!,
                       color: color,
@@ -492,17 +509,17 @@ class _Chart extends StatelessWidget {
   }
 
   void _handleTouch(Offset local, Size size) {
-    if (points.isEmpty) return;
+    if (dateAxis.isEmpty) return;
     // 只有一个数据点时没有横向插值可言，直接选中它（tooltip 仍能看到日期与价格）
-    if (points.length == 1) {
+    if (dateAxis.length == 1) {
       onTouch(0);
       return;
     }
     const plotLeft = 44.0;
     final plotW = size.width - plotLeft - 8;
-    final dx = plotW / (points.length - 1);
+    final dx = plotW / (dateAxis.length - 1);
     final rel = (local.dx - plotLeft) / dx;
-    final idx = rel.round().clamp(0, points.length - 1);
+    final idx = rel.round().clamp(0, dateAxis.length - 1);
     onTouch(idx);
   }
 }
@@ -515,6 +532,9 @@ class _Tooltip extends StatelessWidget {
   final String userCurrency;
   final bool merchantMode;
   final List<PriceMerchantSeries> merchantSeries;
+
+  /// X 轴日期（points 为空时由折算点日期兜底）
+  final List<String> dateAxis;
   const _Tooltip(
       {required this.points,
       this.computedPoints = const [],
@@ -522,23 +542,29 @@ class _Tooltip extends StatelessWidget {
       required this.color,
       required this.userCurrency,
       this.merchantMode = false,
-      this.merchantSeries = const []});
+      this.merchantSeries = const [],
+      this.dateAxis = const []});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    final p = points[index];
-    final computed = _computedForDate(p.date);
+    // 触摸下标对应轴上的日期；points 为空（仅折算）时轴就是折算点日期
+    final axisDate = index < dateAxis.length
+        ? dateAxis[index]
+        : (points.isNotEmpty ? points.first.date : '');
+    final hasDirect = index < points.length && points[index].date == axisDate;
+    final p = hasDirect ? points[index] : null;
+    final computed = _computedForDate(axisDate);
     // 按商家模式：逐行列出各选中商家在该日的均价
     final merchantRows = <Widget>[];
     if (merchantMode) {
       for (var i = 0; i < merchantSeries.length; i++) {
         final s = merchantSeries[i];
         final point = s.points.firstWhere(
-          (e) => e.date == p.date,
+          (e) => e.date == axisDate,
           orElse: () => CostHistoryPoint(
-              date: p.date,
+              date: axisDate,
               minCost: double.nan,
               maxCost: 0,
               avgCost: double.nan),
@@ -581,7 +607,7 @@ class _Tooltip extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_formatDate(p.date),
+            Text(_formatDate(axisDate),
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onInverseSurface)),
             if (merchantMode) ...[
@@ -592,16 +618,19 @@ class _Tooltip extends StatelessWidget {
                             .withValues(alpha: 0.7))),
               ...merchantRows,
             ] else ...[
-              const SizedBox(height: 2),
-              Text(
-                  '${l10n.recipeAverageLabel} ${formatMoney(p.avgCost, userCurrency)}',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                      color: theme.colorScheme.onInverseSurface,
-                      fontWeight: FontWeight.bold)),
-              Text(
-                  '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
-                  style: theme.textTheme.labelSmall
-                      ?.copyWith(color: theme.colorScheme.onInverseSurface)),
+              // 没有直接价（仅折算）时没有 avg/range 主序列行
+              if (p != null) ...[
+                const SizedBox(height: 2),
+                Text(
+                    '${l10n.recipeAverageLabel} ${formatMoney(p.avgCost, userCurrency)}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onInverseSurface,
+                        fontWeight: FontWeight.bold)),
+                Text(
+                    '${l10n.recipeRangeLabel} ${formatMoney(p.minCost, userCurrency)} ~ ${formatMoney(p.maxCost, userCurrency)}',
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onInverseSurface)),
+              ],
               if (computed != null) ...[
                 const SizedBox(height: 2),
                 Text(
@@ -648,6 +677,7 @@ String _computedSourceLabel(String source, AppLocalizations l10n) {
 
 class _TrendPainter extends CustomPainter {
   final List<CostHistoryPoint> points;
+  final List<String> dateAxis;
   final Color color;
   final int? touchIndex;
   final Color gridColor;
@@ -659,6 +689,7 @@ class _TrendPainter extends CustomPainter {
 
   _TrendPainter({
     required this.points,
+    required this.dateAxis,
     required this.color,
     required this.touchIndex,
     required this.gridColor,
@@ -671,7 +702,8 @@ class _TrendPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
+    // points 为空（仅折算序列）时也要画：轴由 dateAxis 兜底
+    if (dateAxis.isEmpty) return;
     const plotLeft = 44.0;
     const plotTop = 8.0;
     final plotRight = size.width - 8;
@@ -712,7 +744,9 @@ class _TrendPainter extends CustomPainter {
     maxV += pad;
     final yScale = plotH / (maxV - minV);
 
-    double xAt(int i) => plotLeft + (plotW / (points.length - 1)) * i;
+    double xAt(int i) =>
+        plotLeft +
+        (plotW / (dateAxis.length > 1 ? dateAxis.length - 1 : 1)) * i;
     double yAt(double v) => plotBottom - (v - minV) * yScale;
 
     final gridPaint = Paint()
@@ -732,8 +766,8 @@ class _TrendPainter extends CustomPainter {
     // ---- 按商家对比：每家一条均价线，只在真实记录日画点 ----
     if (merchantMode) {
       final dateIndex = <String, int>{};
-      for (var i = 0; i < points.length; i++) {
-        dateIndex[points[i].date] = i;
+      for (var i = 0; i < dateAxis.length; i++) {
+        dateIndex[dateAxis[i]] = i;
       }
       for (var m = 0; m < merchantSeries.length; m++) {
         final series = merchantSeries[m];
@@ -793,7 +827,7 @@ class _TrendPainter extends CustomPainter {
       }
       if (touchIndex != null &&
           touchIndex! >= 0 &&
-          touchIndex! < points.length) {
+          touchIndex! < dateAxis.length) {
         final x = xAt(touchIndex!);
         canvas.drawLine(
           Offset(x, plotTop),
@@ -803,89 +837,86 @@ class _TrendPainter extends CustomPainter {
             ..strokeWidth = 1,
         );
       }
-      final idxList = [0, (points.length / 2).floor(), points.length - 1];
+      final idxList = [0, (dateAxis.length / 2).floor(), dateAxis.length - 1];
       for (final i in idxList) {
-        final label = _formatDate(points[i].date, short: true);
+        final label = _formatDate(dateAxis[i], short: true);
         _text(canvas, label, Offset(xAt(i) - 12, plotBottom + 6), gridColor, 9);
       }
       return;
     }
 
-    // 只有一个数据点（实体只有一次价格记录、所选区间也拿不到更早的携带起点）：
-    // 折线与区间带都无从画起，但至少要把这个点画出来，否则整张图是空白。
-    if (points.length < 2) {
-      final centerX = (plotLeft + plotRight) / 2;
+    // 主序列（直接价）只有 1 个点：画出这个点即可，折算叠加照常进行
+    if (points.length == 1) {
       canvas.drawCircle(
-        Offset(centerX, yAt(points.first.avgCost)),
+        Offset(xAt(0), yAt(points.first.avgCost)),
         4,
         Paint()..color = color,
       );
-      _text(
-        canvas,
-        _formatDate(points.first.date, short: true),
-        Offset(centerX - 12, plotBottom + 6),
-        gridColor,
-        9,
-      );
-      return;
     }
 
-    // min/max 区间带
-    final bandPath = Path();
-    appendSmoothSegments(
-      bandPath,
-      [
-        for (var i = 0; i < points.length; i++)
-          Offset(xAt(i), yAt(points[i].maxCost)),
-      ],
-    );
-    appendSmoothSegments(
-      bandPath,
-      [
-        for (var i = points.length - 1; i >= 0; i--)
-          Offset(xAt(i), yAt(points[i].minCost)),
-      ],
-      moveToFirst: false,
-    );
-    bandPath.close();
-    canvas.drawPath(
-      bandPath,
-      Paint()
-        ..color = color.withValues(alpha: 0.15)
-        ..style = PaintingStyle.fill,
-    );
+    // min/max 区间带（points 为空 = 仅折算序列，主序列整体跳过）
+    if (points.length >= 2) {
+      final bandPath = Path();
+      appendSmoothSegments(
+        bandPath,
+        [
+          for (var i = 0; i < points.length; i++)
+            Offset(xAt(i), yAt(points[i].maxCost)),
+        ],
+      );
+      appendSmoothSegments(
+        bandPath,
+        [
+          for (var i = points.length - 1; i >= 0; i--)
+            Offset(xAt(i), yAt(points[i].minCost)),
+        ],
+        moveToFirst: false,
+      );
+      bandPath.close();
+      canvas.drawPath(
+        bandPath,
+        Paint()
+          ..color = color.withValues(alpha: 0.15)
+          ..style = PaintingStyle.fill,
+      );
 
-    // 折算序列（替代/回退/半成品/从属）：紫色浅色区间带 + 紫色虚线均价
-    _drawComputed(canvas, xAt, yAt);
+      // min/max 虚线
+      final dashPaint = Paint()
+        ..color = color.withValues(alpha: 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1;
+      _drawDashed(
+          canvas, _pathOf(points, xAt, (p) => p.minCost, yAt), dashPaint);
+      _drawDashed(
+          canvas, _pathOf(points, xAt, (p) => p.maxCost, yAt), dashPaint);
 
-    // min/max 虚线
-    final dashPaint = Paint()
-      ..color = color.withValues(alpha: 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-    _drawDashed(canvas, _pathOf(points, xAt, (p) => p.minCost, yAt), dashPaint);
-    _drawDashed(canvas, _pathOf(points, xAt, (p) => p.maxCost, yAt), dashPaint);
+      // 均价折线
+      final linePaint = Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..isAntiAlias = true;
+      canvas.drawPath(_pathOf(points, xAt, (p) => p.avgCost, yAt), linePaint);
 
-    // 均价折线
-    final linePaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..isAntiAlias = true;
-    canvas.drawPath(_pathOf(points, xAt, (p) => p.avgCost, yAt), linePaint);
-
-    // 只在真实记录日画点（as-of 携带日不画），与 Web 端口径一致
-    if (recordDays.isNotEmpty) {
-      final dotPaint = Paint()..color = color;
-      for (var i = 0; i < points.length; i++) {
-        if (!recordDays.contains(points[i].date)) continue;
-        canvas.drawCircle(
-            Offset(xAt(i), yAt(points[i].avgCost)), 2.6, dotPaint);
+      // 只在真实记录日画点（as-of 携带日不画），与 Web 端口径一致
+      if (recordDays.isNotEmpty) {
+        final dotPaint = Paint()..color = color;
+        for (var i = 0; i < points.length; i++) {
+          if (!recordDays.contains(points[i].date)) continue;
+          canvas.drawCircle(
+              Offset(xAt(i), yAt(points[i].avgCost)), 2.6, dotPaint);
+        }
       }
     }
 
-    // 触摸十字线 + 高亮点
-    if (touchIndex != null && touchIndex! >= 0 && touchIndex! < points.length) {
+    // 折算序列（替代/回退/半成品/从属）：紫色浅色区间带 + 紫色虚线均价。
+    // 放在主序列之外：points 为空（仅折算）时也要画。
+    _drawComputed(canvas, xAt, yAt);
+
+    // 触摸十字线 + 高亮点（仅折算时没有主序列高亮点）
+    if (touchIndex != null &&
+        touchIndex! >= 0 &&
+        touchIndex! < dateAxis.length) {
       final x = xAt(touchIndex!);
       canvas.drawLine(
         Offset(x, plotTop),
@@ -894,17 +925,19 @@ class _TrendPainter extends CustomPainter {
           ..color = gridColor.withValues(alpha: 0.8)
           ..strokeWidth = 1,
       );
-      canvas.drawCircle(
-        Offset(x, yAt(points[touchIndex!].avgCost)),
-        4,
-        Paint()..color = color,
-      );
+      if (touchIndex! < points.length) {
+        canvas.drawCircle(
+          Offset(x, yAt(points[touchIndex!].avgCost)),
+          4,
+          Paint()..color = color,
+        );
+      }
     }
 
     // X 轴日期（首/中/尾）
-    final idxList = [0, (points.length / 2).floor(), points.length - 1];
+    final idxList = [0, (dateAxis.length / 2).floor(), dateAxis.length - 1];
     for (final i in idxList) {
-      final label = _formatDate(points[i].date, short: true);
+      final label = _formatDate(dateAxis[i], short: true);
       _text(canvas, label, Offset(xAt(i) - 12, plotBottom + 6), gridColor, 9);
     }
   }
@@ -916,13 +949,13 @@ class _TrendPainter extends CustomPainter {
     ]);
   }
 
-  /// 折算序列：按日期对齐到主序列的下标位置（同日期无点则跳过）。
+  /// 折算序列：按日期对齐到轴的下标位置（同日期无点则跳过）。
   void _drawComputed(
       Canvas canvas, double Function(int) xAt, double Function(double) yAt) {
     if (computedPoints.isEmpty) return;
     final indexByDate = <String, int>{};
-    for (var i = 0; i < points.length; i++) {
-      indexByDate[points[i].date] = i;
+    for (var i = 0; i < dateAxis.length; i++) {
+      indexByDate[dateAxis[i]] = i;
     }
     final matched = <int, ComputedPricePoint>{};
     for (final c in computedPoints) {
@@ -994,6 +1027,7 @@ class _TrendPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _TrendPainter old) =>
       old.points != points ||
+      old.dateAxis != dateAxis ||
       old.computedPoints != computedPoints ||
       old.recordDays != recordDays ||
       old.merchantMode != merchantMode ||

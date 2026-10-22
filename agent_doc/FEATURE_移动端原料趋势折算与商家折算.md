@@ -165,6 +165,28 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
 
 验证：`flutter analyze` No issues found；商家序列/折算模型 8 passed。
 
+## 追加 6：仅折算序列也能画图（猪肉「暂无成本历史数据」）
+
+用户反馈：猪肉（0 条直接商品记录）在移动端提示「暂无成本历史数据」，打开含替代/从属也没用。
+
+根因：图表的「有数据」判定与 X 轴都只看直接价序列 `points`——
+`_buildBody` 在 `points.isEmpty` 时直接渲染空态；画布的横坐标也只由 `points` 的日期构成，
+即使把折算点传进去也没有可落笔的位置。Web 端是「直接价或折算任一存在就画」，移动端漏了。
+
+改动（`CostTrendChart`）：
+
+- 空态判定改为 `points.isEmpty && computed.isEmpty`（含替代/从属开着、有折算点 → 画图）；
+- 新增 `dateAxis`：优先直接价日期，points 为空时用折算点日期兜底；`xAt`、商家/折算的
+  日期对齐、触摸映射、X 轴首/中/尾标签全部改走 `dateAxis`；
+- 主序列（区间带/虚线/均价线/记录日圆点/单点）仅在 `points` 非空时绘制；
+  折算叠加与十字线、X 轴标签移出该守卫，仅折算时也执行；
+- tooltip 触摸日期取轴日期；仅折算时只显示日期 + 折算行（无主序列 avg/range 行）。
+
+验证：新增 widget 回归 2 例（仅折算→不显示「暂无成本历史数据」且开关在；两者皆无→仍显示空态）
+→ 10 passed；`flutter analyze` No issues found。另：`test/features/ingredients+products` 里
+7 个详情页测试 `pumpAndSettle` 超时**与本改动无关**（已用 stash 验证无本改动同样失败，
+为另一会话「关联与换算」引入），未纳入本次提交。
+
 
 
 - `flutter analyze`：仅剩 1 条**既有**提示（`test/features/products/screens/product_list_stale_search_test.dart`
