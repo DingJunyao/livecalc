@@ -4,6 +4,7 @@ import '../../../l10n/app_localizations.dart';
 import '../models/meal_recommendation.dart';
 import '../../../shared/utils/nutrition_display.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import 'nutrient_grid.dart';
 
 class MealCard extends StatelessWidget {
   final MealRecommendation meal;
@@ -148,8 +149,6 @@ class MealCard extends StatelessWidget {
   }) {
     final labelStyle =
         theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600);
-    final lineStyle =
-        theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -163,59 +162,46 @@ class MealCard extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 4),
-        _nutrientLine(
-          lineStyle,
-          l10n.plansCalories,
-          '${formatNumber(toDisplayCalorie(nutrients.energy, energyUnit))} '
-              '$energyUnit',
-          nrvPct('energy', nutrients.energy),
-        ),
-        _nutrientLine(
-          lineStyle,
-          l10n.plansProtein,
-          '${formatNumber(nutrients.protein, maximumFractionDigits: 1)} g',
-          nrvPct('protein', nutrients.protein),
-        ),
-        _nutrientLine(
-          lineStyle,
-          l10n.nutritionNutrientCarbohydrate,
-          '${formatNumber(nutrients.carbohydrate, maximumFractionDigits: 1)} g',
-          nrvPct('carbohydrate', nutrients.carbohydrate),
-        ),
-        _nutrientLine(
-          lineStyle,
-          l10n.plansFat,
-          '${formatNumber(nutrients.fat, maximumFractionDigits: 1)} g',
-          nrvPct('fat', nutrients.fat),
-        ),
+        // 四项营养素 2×2 宫格（NRV 单独一行），与 web 餐卡同口径
+        NutrientGrid(items: [
+          NutrientGridItem(
+            icon: Icons.local_fire_department,
+            label: l10n.plansCalories,
+            value:
+                '${formatNumber(toDisplayCalorie(nutrients.energy, energyUnit))} '
+                '$energyUnit',
+            nrv: _nrvSuffix('energy', nutrients.energy),
+          ),
+          NutrientGridItem(
+            icon: Icons.egg_outlined,
+            label: l10n.plansProtein,
+            value:
+                '${formatNumber(nutrients.protein, maximumFractionDigits: 1)} g',
+            nrv: _nrvSuffix('protein', nutrients.protein),
+          ),
+          NutrientGridItem(
+            icon: Icons.water_drop_outlined,
+            label: l10n.plansFat,
+            value: '${formatNumber(nutrients.fat, maximumFractionDigits: 1)} g',
+            nrv: _nrvSuffix('fat', nutrients.fat),
+          ),
+          NutrientGridItem(
+            icon: Icons.grain,
+            label: l10n.nutritionNutrientCarbohydrate,
+            value:
+                '${formatNumber(nutrients.carbohydrate, maximumFractionDigits: 1)} g',
+            nrv: _nrvSuffix('carbohydrate', nutrients.carbohydrate),
+          ),
+        ]),
       ],
     );
   }
 
-  Widget _nutrientLine(
-      TextStyle? style, String label, String value, double? pct) {
-    final suffix = pct == null
-        ? ''
-        : ' (NRV ${formatPercentValue(pct, maximumFractionDigits: 2)})';
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text('$label $value$suffix', style: style),
-    );
-  }
-
-  Widget _nutrientChip(IconData icon, String text, ThemeData theme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 14, color: theme.colorScheme.outline),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: theme.textTheme.bodySmall
-              ?.copyWith(color: theme.colorScheme.outline),
-        ),
-      ],
-    );
+  String? _nrvSuffix(String key, double value) {
+    final pct = nrvPct(key, value);
+    return pct == null
+        ? null
+        : 'NRV ${formatPercentValue(pct, maximumFractionDigits: 2)}%';
   }
 
   bool get _hasDishes => meal.dishes.isNotEmpty;
@@ -270,40 +256,53 @@ class MealCard extends StatelessWidget {
           else if (hasBody)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
-              child: Wrap(
-                spacing: 16,
-                runSpacing: 6,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   if (meal.estimatedCost != null)
-                    _nutrientChip(
-                      Icons.payments_outlined,
-                      formatMoney(meal.estimatedCost!, userCurrency),
-                      theme,
+                    Row(
+                      children: [
+                        Icon(Icons.payments_outlined,
+                            size: 16, color: theme.colorScheme.outline),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatMoney(meal.estimatedCost!, userCurrency),
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
                     ),
-                  if (meal.calories != null)
-                    _nutrientChip(
-                      Icons.local_fire_department,
-                      '${formatNumber(meal.calories!.round())} kcal',
-                      theme,
-                    ),
-                  if (meal.proteinG != null)
-                    _nutrientChip(
-                      Icons.egg_outlined,
-                      '${formatNumber(meal.proteinG!, maximumFractionDigits: 1)} g ${l10n.homeProtein}',
-                      theme,
-                    ),
-                  if (meal.carbsG != null)
-                    _nutrientChip(
-                      Icons.grain,
-                      '${formatNumber(meal.carbsG!, maximumFractionDigits: 1)} g ${l10n.homeCarbs}',
-                      theme,
-                    ),
-                  if (meal.fatG != null)
-                    _nutrientChip(
-                      Icons.water_drop_outlined,
-                      '${formatNumber(meal.fatG!, maximumFractionDigits: 1)} g ${l10n.homeFat}',
-                      theme,
-                    ),
+                  NutrientGrid(items: [
+                    if (meal.calories != null)
+                      NutrientGridItem(
+                        icon: Icons.local_fire_department,
+                        label: l10n.plansCalories,
+                        value:
+                            '${formatNumber(meal.calories!.round())} kcal',
+                      ),
+                    if (meal.proteinG != null)
+                      NutrientGridItem(
+                        icon: Icons.egg_outlined,
+                        label: l10n.homeProtein,
+                        value:
+                            '${formatNumber(meal.proteinG!, maximumFractionDigits: 1)} g',
+                      ),
+                    if (meal.fatG != null)
+                      NutrientGridItem(
+                        icon: Icons.water_drop_outlined,
+                        label: l10n.homeFat,
+                        value:
+                            '${formatNumber(meal.fatG!, maximumFractionDigits: 1)} g',
+                      ),
+                    if (meal.carbsG != null)
+                      NutrientGridItem(
+                        icon: Icons.grain,
+                        label: l10n.homeCarbs,
+                        value:
+                            '${formatNumber(meal.carbsG!, maximumFractionDigits: 1)} g',
+                      ),
+                  ]),
                 ],
               ),
             ),

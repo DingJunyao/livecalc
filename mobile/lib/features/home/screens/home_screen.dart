@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../models/meal_recommendation.dart';
 import '../providers/home_provider.dart';
 import '../widgets/meal_card.dart';
+import '../widgets/nutrient_grid.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 
@@ -93,65 +94,67 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       final pct = nrvPct(key, value);
       return pct == null
           ? ''
-          : ' (NRV ${formatNumber(pct, maximumFractionDigits: 2)}%)';
+          : 'NRV ${formatNumber(pct, maximumFractionDigits: 2)}%';
     }
 
-    // 用 Wrap（而非 Row）承载「标签 + 数值」：窄屏放不下时换行，不产生 RenderFlex 溢出
-    Widget item(IconData icon, String label, String value) => Padding(
-          padding: const EdgeInsets.only(right: 12, top: 2),
-          child: Wrap(
-            spacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Icon(icon, size: 14, color: theme.colorScheme.outline),
-              Text(
-                '$label ',
-                style: theme.textTheme.bodySmall
-                    ?.copyWith(color: theme.colorScheme.outline),
-              ),
-              Text(value, style: theme.textTheme.bodySmall),
-            ],
-          ),
-        );
-
+    // 营养汇总用 2×2 宫格（NutrientGrid）：窄屏放得下且各项对齐，不产生 RenderFlex 溢出
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Wrap(
-          spacing: 4,
-          runSpacing: 2,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            item(
-              Icons.payments_outlined,
-              l10n.mealsEstimatedToday,
-              formatMoney(numOf('cost'),
-                  (totals['currency'] as String?) ?? userCurrency),
+            // 预估成本：单独一行
+            Row(
+              children: [
+                Icon(Icons.payments_outlined,
+                    size: 16, color: theme.colorScheme.outline),
+                const SizedBox(width: 4),
+                Text(
+                  l10n.mealsEstimatedToday,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: theme.colorScheme.outline),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  formatMoney(numOf('cost'),
+                      (totals['currency'] as String?) ?? userCurrency),
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-            item(
-              Icons.local_fire_department,
-              l10n.plansCalories,
-              '${formatNumber(toDisplayCalorie(calories, energyUnit))} '
-                  '$energyUnit${nrv('energy', calories)}',
-            ),
-            item(
-              Icons.egg_outlined,
-              l10n.plansProtein,
-              '${formatNumber(protein, maximumFractionDigits: 1)} g'
-                  '${nrv('protein', protein)}',
-            ),
-            item(
-              Icons.grain,
-              l10n.nutritionNutrientCarbohydrate,
-              '${formatNumber(carbs, maximumFractionDigits: 1)} g'
-                  '${nrv('carbohydrate', carbs)}',
-            ),
-            item(
-              Icons.water_drop_outlined,
-              l10n.plansFat,
-              '${formatNumber(fat, maximumFractionDigits: 1)} g'
-                  '${nrv('fat', fat)}',
-            ),
+            const SizedBox(height: 8),
+            // 营养汇总：2×2 宫格，各带 NRV%
+            NutrientGrid(items: [
+              NutrientGridItem(
+                icon: Icons.local_fire_department,
+                label: l10n.plansCalories,
+                value:
+                    '${formatNumber(toDisplayCalorie(calories, energyUnit))} '
+                    '$energyUnit',
+                nrv: nrv('energy', calories),
+              ),
+              NutrientGridItem(
+                icon: Icons.egg_outlined,
+                label: l10n.plansProtein,
+                value: '${formatNumber(protein, maximumFractionDigits: 1)} g',
+                nrv: nrv('protein', protein),
+              ),
+              NutrientGridItem(
+                icon: Icons.water_drop_outlined,
+                label: l10n.plansFat,
+                value: '${formatNumber(fat, maximumFractionDigits: 1)} g',
+                nrv: nrv('fat', fat),
+              ),
+              NutrientGridItem(
+                icon: Icons.grain,
+                label: l10n.nutritionNutrientCarbohydrate,
+                value: '${formatNumber(carbs, maximumFractionDigits: 1)} g',
+                nrv: nrv('carbohydrate', carbs),
+              ),
+            ]),
           ],
         ),
       ),
