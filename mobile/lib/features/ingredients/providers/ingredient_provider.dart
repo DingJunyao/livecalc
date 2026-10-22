@@ -588,7 +588,12 @@ class IngredientDetailPageNotifier
         days: _chartDays,
         preferRelationsWhenStale: true,
       );
-      state = state.copyWith(computedPoints: points, loadingComputed: false);
+      // 接口每天都会返回（多为 direct）；只保留真正折算的日子，
+      // 否则没有替代/从属关系的原料（如胡萝卜）也会画出紫色虚线与区间带。
+      state = state.copyWith(
+        computedPoints: nonDirectComputedPoints(points),
+        loadingComputed: false,
+      );
     } on Exception {
       state = state.copyWith(computedPoints: const [], loadingComputed: false);
     }

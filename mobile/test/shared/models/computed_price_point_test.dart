@@ -37,6 +37,29 @@ void main() {
       expect(p.directStale, isFalse);
       expect(p.directAvg, isNull);
     });
+
+    test('nonDirectComputedPoints 过滤掉 direct 日（胡萝卜不该有折算线）', () {
+      final points = [
+        ComputedPricePoint.fromJson({
+          'date': '2026-10-20',
+          'source': 'direct',
+          'min_ppg': '0.01',
+          'max_ppg': '0.02',
+          'avg_ppg': '0.015',
+        }),
+        ComputedPricePoint.fromJson({
+          'date': '2026-10-21',
+          'source': 'contains_aggregation',
+          'min_ppg': '0.01',
+          'max_ppg': '0.03',
+          'avg_ppg': '0.02',
+        }),
+      ];
+      final filtered = nonDirectComputedPoints(points);
+      expect(filtered.length, 1);
+      expect(filtered.single.source, 'contains_aggregation');
+      expect(nonDirectComputedPoints([]), isEmpty);
+    });
   });
 
   group('MerchantPrice 折算字段', () {

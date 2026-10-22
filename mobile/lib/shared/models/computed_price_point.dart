@@ -52,3 +52,13 @@ class ComputedPricePoint {
     );
   }
 }
+
+/// 过滤出真正需要叠加到图表上的折算点。
+///
+/// `price-series` 会把**每一日**都返回（多数原料全是 `direct`），
+/// 直接全画会让「没有替代/从属关系」的原料也出现一条紫色虚线和区间带
+/// （胡萝卜就是这种情况）。与 Web 端一致：只在 `source != 'direct'` 的日子叠加。
+List<ComputedPricePoint> nonDirectComputedPoints(
+  List<ComputedPricePoint> points,
+) =>
+    points.where((p) => p.source != 'direct').toList(growable: false);

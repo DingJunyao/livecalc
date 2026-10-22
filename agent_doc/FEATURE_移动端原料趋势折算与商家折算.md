@@ -118,6 +118,24 @@ Web 端在「原料趋势图 / 各商家价格」上补齐了替代/回退/从�
 
 验证：`flutter analyze` No issues found；商家序列 7 例 + 原料/商品 77 passed。
 
+## 追加 3：无关系原料仍画折算线 / 下拉字号不一致
+
+用户反馈两点：
+
+1. **胡萝卜（无关系）图表里仍有「含替代/从属」的线和范围**。
+   根因不在开关显隐，而在数据：`price-series` 会返回**每一天**的点，多数原料每天都是
+   `source: direct`；移动端 provider 之前把整段都存进 `computedPoints`，图表又不过滤，
+   于是把 direct 的 min/max 当成「折算区间」画成了紫色虚线与区间带。
+   Web 端本来就有 `source !== 'direct'` 的过滤，移动端漏了。
+   - 新增 `nonDirectComputedPoints(points)`（`shared/models/computed_price_point.dart`）；
+   - provider 存折算序列时过滤；图表侧再过滤一次（双保险）；
+   - 现在胡萝卜 `computedPoints` 为空 → 不画线/带，开关也不出现（两者一致）。
+2. **「综合/按商家」下拉字号与时间区间下拉不一致**：模式下拉的 `DropdownMenuItem` 设了
+   `labelMedium`，区间下拉用默认样式。去掉自定义 `style`，两个下拉统一走
+   `DropdownButton` 默认字号。
+
+验证：新增 1 例 `nonDirectComputedPoints` 过滤测试（共 8）→ passed；`flutter analyze` No issues found。
+
 
 
 - `flutter analyze`：仅剩 1 条**既有**提示（`test/features/products/screens/product_list_stale_search_test.dart`

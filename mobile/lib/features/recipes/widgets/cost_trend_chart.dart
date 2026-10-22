@@ -250,7 +250,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
                   m == TrendViewMode.overall
                       ? l10n.chartOverall
                       : l10n.chartByMerchant,
-                  style: Theme.of(context).textTheme.labelMedium,
+                  // 不设自定义 style：与时间区间下拉保持同一字号（DropdownButton 默认样式）
                 ),
               ))
           .toList(),
@@ -324,7 +324,9 @@ class _CostTrendChartState extends State<CostTrendChart> {
       touchIndex: _touchIndex,
       onTouch: (i) => setState(() => _touchIndex = i),
       userCurrency: widget.userCurrency,
-      computedPoints: widget.includeComputed ? widget.computedPoints : const [],
+      computedPoints: widget.includeComputed
+          ? nonDirectComputedPoints(widget.computedPoints)
+          : const [],
       recordDays: widget.recordDays,
       merchantMode: _viewMode == TrendViewMode.merchant,
       merchantSeries: widget.merchantSeries
