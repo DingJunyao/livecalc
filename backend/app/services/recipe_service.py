@@ -337,7 +337,10 @@ def _get_ingredient_fallback_impl(db: Session, ingredient: Ingredient, user_id: 
 def _convert_record_to_price_per_gram(
     db: Session,
     record: ProductRecord,
-    ingredient_id: int
+    ingredient_id: int,
+    *,
+    entity_type: str = "ingredient",
+    entity_id: Optional[int] = None,
 ) -> Optional[Decimal]:
     """
     将价格记录转换为每克价格（元/克）
@@ -359,15 +362,21 @@ def _convert_record_to_price_per_gram(
     from app.services.price_region import record_price_in_user_currency
     unit_price = record_price_in_user_currency(record) / Decimal(str(record.standard_quantity))
 
+    # 转换为克：先找到「克」单位，避免依赖固定 id=3（测试库/导入库的自增 id 不保证）
+    gram_unit = unit_by_id(db, 3)
+    if gram_unit is None or str(getattr(gram_unit, "abbreviation", "")).lower() != "g":
+        gram_unit = db.query(Unit).filter(Unit.abbreviation == "g").first()
+
     # 如果已经是克单位，直接返回
-    if record.standard_unit_id is None or record.standard_unit_id == 3:
+    if record.standard_unit_id is None or (
+        gram_unit is not None and record.standard_unit_id == gram_unit.id
+    ):
         return unit_price
 
-    # 转换为克：先计算 1 个标准单位等于多少克，再用 unit_price 除以这个值
+    if gram_unit is None:
+        return None
     price_unit = unit_by_id(db, record.standard_unit_id)
-    gram_unit = unit_by_id(db, 3)
-
-    if not price_unit or not gram_unit:
+    if not price_unit:
         return None
 
     ucs = UnitConversionService(db)
@@ -375,8 +384,8 @@ def _convert_record_to_price_per_gram(
         Decimal("1"),
         price_unit.abbreviation,
         gram_unit.abbreviation,
-        entity_type="ingredient",
-        entity_id=ingredient_id,
+        entity_type=entity_type,
+        entity_id=entity_id if entity_id is not None else ingredient_id,
     )
     if converted:
         grams_per_unit = Decimal(str(converted[0]))
@@ -439,7 +448,15 @@ def _get_child_price_per_gram(
             if ppg is not None:
                 return ppg
 
-    # 2. 尝试 FALLBACK/SUBSTITUTABLE 回退
+    # 2. 商品/原料数量关联（带数量换算；缺直接价时才走）
+    linked = _linked_cost_range_ppg(
+        db, "ingredient", ingredient.id, user_id, as_of_date,
+        tz=tz, region_id=region_id,
+    )
+    if linked is not None:
+        return linked[2]
+
+    # 3. 尝试 FALLBACK/SUBSTITUTABLE 回退
     fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
         fallback_ingredient, fallback_price_record, _ = fallback_result
@@ -586,7 +603,15 @@ def _get_child_price_per_gram_range(
                 # 三档塌缩为唯一可用代表记录
                 return (avg_ppg, avg_ppg, avg_ppg)
 
-    # 2. 尝试 FALLBACK/SUBSTITUTABLE 回退
+    # 2. 商品/原料数量关联（带数量换算；缺直接价时才走）
+    linked = _linked_cost_range_ppg(
+        db, "ingredient", ingredient.id, user_id, as_of_date,
+        tz=tz, region_id=region_id,
+    )
+    if linked is not None:
+        return linked[:3]
+
+    # 3. 尝试 FALLBACK/SUBSTITUTABLE 回退
     # _get_ingredient_fallback 不接 as_of/tz，只给单条全局最新记录
     fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
@@ -1375,18 +1400,162 @@ def _records_cost_range_ppg(
     records,
     db: Session,
     ingredient_id: int,
+    *,
+    entity_type: str = "ingredient",
+    entity_id: Optional[int] = None,
 ) -> Optional[tuple[Decimal, Decimal, Decimal]]:
     """一组记录 → (min_ppg, max_ppg, avg_ppg) 元/克，过滤脏数据。池空返 None。
 
     avg 取记录 per_gram 简单平均；min/max 是同一记录集极值，故 min≤avg≤max 必然成立。
-    ingredient_id 用于 _convert_record_to_price_per_gram 的单位转换上下文（entity 级 override）。
+    ingredient_id 用于 _convert_record_to_price_per_gram 的单位转换上下文（entity 级 override）；
+    entity_type/entity_id 允许商品记录用商品上下文解析「提」这类关联单位。
     """
     ppgs: list[Decimal] = []
     for r in records or []:
         if _is_dirty_record(r):
             continue
-        ppgs.append(_convert_record_to_price_per_gram(db, r, ingredient_id))
+        ppgs.append(_convert_record_to_price_per_gram(
+            db, r, ingredient_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        ))
     return _ppgs_to_range(ppgs)
+
+
+def _entity_direct_cost_range_ppg(
+    db: Session,
+    entity_type: str,
+    entity_id: int,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+) -> Optional[tuple[Decimal, Decimal, Decimal]]:
+    """商品/原料自身真实记录的三档每克价（不走进任何回退链）。"""
+    if entity_type == "ingredient":
+        ingredient = db.get(Ingredient, entity_id)
+        if ingredient is None:
+            return None
+        return _direct_cost_range_ppg(
+            db, ingredient, user_id, as_of_date, tz, region_id=region_id,
+        )
+    product = (
+        db.query(Product)
+        .filter(Product.id == entity_id, Product.is_active == True)  # noqa: E712
+        .first()
+    )
+    if product is None:
+        return None
+    records = _get_price_records_with_fallback(
+        db=db, user_id=user_id, product_id=product.id,
+        as_of_date=as_of_date, tz=tz, region_id=region_id,
+    )
+    return _records_cost_range_ppg(
+        records or [], db, product.ingredient_id,
+        entity_type="product", entity_id=product.id,
+    )
+
+
+def _linked_cost_range_ppg(
+    db: Session,
+    entity_type: str,
+    entity_id: int,
+    user_id: int,
+    as_of_date: datetime,
+    tz: str = "UTC",
+    region_id: Optional[int] = None,
+    visited: Optional[set] = None,
+) -> Optional[tuple[Decimal, Decimal, Decimal, str]]:
+    """沿商品/原料数量关联取缺价折算三档 (min,max,avg) + chain。
+
+    直接价优先由调用方保证；本函数只在 direct 缺失时被调用。
+    原料层同时检查：
+      - 原料自己的关联（干/鲜香菇）；
+      - 该原料下商品的关联（包装规格）。
+    对方没有直接价时允许继续沿关联递归（多层包装），visited 防环。
+    """
+    from app.services.entity_link_service import (
+        entity_display_name,
+        format_link_sentence,
+        get_links_for_entity,
+        link_price_factor,
+        normalize_link,
+        resolve_unit_grams,
+    )
+
+    if visited is None:
+        visited = set()
+    key = (entity_type, entity_id)
+    if key in visited:
+        return None
+    visited = set(visited)
+    visited.add(key)
+
+    candidates: list[tuple[str, int, object]] = []
+    try:
+        for link in get_links_for_entity(db, entity_type, entity_id):
+            candidates.append((entity_type, entity_id, link))
+        if entity_type == "ingredient":
+            for product in active_products_for_ingredient(db, entity_id):
+                for link in get_links_for_entity(db, "product", product.id):
+                    candidates.append(("product", product.id, link))
+    except Exception:
+        # 兼容纯函数单测的 Fake DB / 未迁移库：没有关联数据时按「无 link 层」处理
+        return None
+    if not candidates:
+        return None
+
+    seen_links: set[int] = set()
+    for side_type, side_id, link in candidates:
+        if link.id in seen_links:
+            continue
+        seen_links.add(link.id)
+        norm = normalize_link(link, side_type, side_id)
+        if norm is None:
+            continue
+        grams_current = resolve_unit_grams(
+            db, side_type, side_id, norm["current_unit"],
+        )
+        grams_other = resolve_unit_grams(
+            db, norm["other_type"], norm["other_id"], norm["other_unit"],
+        )
+        factor = link_price_factor(
+            grams_current, norm["current_quantity"],
+            grams_other, norm["other_quantity"],
+        )
+        if factor is None or factor <= 0:
+            continue
+
+        other_rng = _entity_direct_cost_range_ppg(
+            db, norm["other_type"], norm["other_id"],
+            user_id, as_of_date, tz, region_id=region_id,
+        )
+        if other_rng is None:
+            other_rng = _linked_cost_range_ppg(
+                db, norm["other_type"], norm["other_id"],
+                user_id, as_of_date, tz, region_id=region_id,
+                visited=visited,
+            )
+        if other_rng is None:
+            continue
+
+        mn, mx, av = (value / factor for value in other_rng[:3])
+        current_name = entity_display_name(db, side_type, side_id)
+        other_name = entity_display_name(
+            db, norm["other_type"], norm["other_id"],
+        )
+        sentence = format_link_sentence(
+            current_name, norm["current_quantity"], norm["current_unit"],
+            other_name, norm["other_quantity"], norm["other_unit"],
+        )
+        if entity_type == "ingredient" and side_type == "product":
+            root_name = entity_display_name(db, "ingredient", entity_id)
+            chain = f"{root_name or entity_id} ← {other_name or '对方'}（{sentence}）"
+        else:
+            chain = f"{current_name or entity_id} ← {other_name or '对方'}（{sentence}）"
+        return (mn, mx, av, chain)
+
+    return None
 
 
 def _fallback_cost_range_ppg(
@@ -1470,7 +1639,16 @@ def _ingredient_cost_range(
         mn, mx, av = direct
         return (mn * qty_g, mx * qty_g, av * qty_g, "direct")
 
-    # 来源 2：fallback（含 substitutable）
+    # 来源 2：商品/原料数量关联（带数量换算；缺直接价时才走）
+    linked = _linked_cost_range_ppg(
+        db, "ingredient", ingredient.id, user_id, as_of_date,
+        tz=tz, region_id=region_id,
+    )
+    if linked is not None:
+        mn, mx, av, _chain = linked
+        return (mn * qty_g, mx * qty_g, av * qty_g, "entity_link")
+
+    # 来源 3：fallback（含 substitutable）
     fb = _fallback_cost_range_ppg(db, ingredient, user_id, as_of_date, tz, region_id=region_id)
     if fb is not None:
         mn, mx, av, _chain = fb
@@ -1478,7 +1656,6 @@ def _ingredient_cost_range(
 
     # 来源 3 已移除：name_match（按食材名匹配 product_name）——
     # 不同原料的同名商品不算本原料的价格（如「鸡胸肉」不应命中「鸡胸肉肠」）。
-
     # 来源 4：recipe 半成品递归（与 calculate_recipe_cost_as_of 对齐）
     rc = _get_cost_from_recipe_range(db, ingredient, user_id, as_of_date, visited, tz, region_id=region_id)
     if rc is not None:
@@ -1729,6 +1906,12 @@ def _relation_cost_range_ppg(
     不再做「同名商品匹配」：别的原料下的同名商品不是本原料的价格
     （例如「鸡胸肉」不能命中「鸡胸肉肠」的商品）。
     """
+    lk = _linked_cost_range_ppg(
+        db, "ingredient", ingredient.id, user_id, as_of_date,
+        tz=tz, region_id=region_id,
+    )
+    if lk is not None:
+        return (lk[:3], "entity_link", lk[3])
     fb = _fallback_cost_range_ppg(
         db, ingredient, user_id, as_of_date, tz, region_id=region_id,
     )

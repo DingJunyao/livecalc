@@ -148,6 +148,14 @@ interface LocalDB extends DBSchema {
     value: any
     indexes: { 'by_entity': [string, number] }
   }
+  'entity_quantity_links': {
+    key: number
+    value: any
+    indexes: {
+      'by_from': [string, number]
+      'by_to': [string, number]
+    }
+  }
   'usda_foods': {
     key: number
     value: any
@@ -208,7 +216,7 @@ type StoreName = keyof LocalDB
 // ============================================================
 
 const DB_NAME = 'livecalc'
-const DB_VERSION = 5
+const DB_VERSION = 6
 
 let dbInstance: IDBPDatabase<LocalDB> | null = null
 
@@ -360,6 +368,13 @@ export async function getDb(): Promise<IDBPDatabase<LocalDB>> {
       // v5: 试算方案（条目内嵌 items 数组）
       if (oldVersion < 5) {
         db.createObjectStore('meal_plans', { keyPath: 'id', autoIncrement: true })
+      }
+
+      // v6: 商品/原料数量关联（一条关联 = 一句等式）
+      if (oldVersion < 6) {
+        const linksStore = db.createObjectStore('entity_quantity_links', { keyPath: 'id', autoIncrement: true })
+        linksStore.createIndex('by_from', ['from_type', 'from_id'])
+        linksStore.createIndex('by_to', ['to_type', 'to_id'])
       }
     },
   })

@@ -51,6 +51,11 @@ _ENTITY_TYPE_LABELS: dict[str, dict[str, str]] = {
     "entity_density": {
         "zh-CN": "实体密度", "en-US": "Entity density", "ar": "كثافة الكيان",
     },
+    "entity_quantity_link": {
+        "zh-CN": "商品/原料关联",
+        "en-US": "Entity quantity link",
+        "ar": "ربط كمية الكيانات",
+    },
     "usda_ingredient_match": {
         "zh-CN": "USDA 原料匹配",
         "en-US": "USDA ingredient match",

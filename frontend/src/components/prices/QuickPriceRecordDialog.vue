@@ -81,6 +81,20 @@
             </v-col>
           </v-row>
 
+          <v-alert
+            v-if="linkEquivalents.length > 0"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            <div class="text-caption mb-1">{{ t('prices.linkedEquivalents') }}</div>
+            <div v-for="(eq, idx) in linkEquivalents" :key="idx" class="text-caption">
+              ≈ {{ formatMoney(eq.unitPrice, recordCurrency) }} / {{ eq.unit }}
+              <span class="text-medium-emphasis">（{{ eq.productName || '—' }}）</span>
+            </div>
+          </v-alert>
+
           <v-checkbox
             v-model="form.is_purchase"
             :label="t('prices.countExpense')"
@@ -134,9 +148,14 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { api } from '@/api'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { getLocalDateTimeString, formatToLocalDateTimeShort } from '@/utils/timezone'
-import { loadCurrencies } from '@/utils/currency'
+import { loadCurrencies, formatMoney } from '@/utils/currency'
 import { loadEntityUnitOptions, loadGlobalUnitOptions, fetchEntityDefaultUnitName } from '@/utils/entityUnits'
 import type { UnitOption } from '@/utils/entityUnits'
+import {
+  buildLinkEquivalents,
+  mergeLinkUnits,
+  type EntityQuantityLink,
+} from '@/utils/entityLinks'
 import { CHINESE_JIN_NAME, CHINESE_LIANG_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 
 const { t } = useI18n()
@@ -197,6 +216,16 @@ const form = ref({
 
 // 单位选项（从 API 动态加载）
 const unitOptions = ref<UnitOption[]>([])
+const entityLinks = ref<EntityQuantityLink[]>([])
+
+const linkEquivalents = computed(() =>
+  entityLinks.value.flatMap(link => buildLinkEquivalents(
+    link,
+    form.value.price,
+    form.value.original_quantity,
+    form.value.original_unit,
+  )),
+)
 
 // 基本单位列表（API 加载失败时的回退）
 const FALLBACK_UNITS = computed(() => [
@@ -237,8 +266,20 @@ const loadEntityUnits = async (productId: number | null) => {
   const sequence = ++entityUnitsSequence
   const base = await ensureBaseUnits()
   const options = await loadEntityUnitOptions('product', productId, { baseOptions: base })
+  let links: EntityQuantityLink[] = []
+  if (productId) {
+    try {
+      const res = await api.get(`/entities/product/${productId}/quantity-links`, {
+        params: { include_prices: true },
+      })
+      links = res?.items || []
+    } catch {
+      links = []
+    }
+  }
   if (sequence !== entityUnitsSequence) return
-  unitOptions.value = options
+  entityLinks.value = links
+  unitOptions.value = mergeLinkUnits(options, links)
 }
 
 // 选中商品（或带着商品打开对话框）后，把单位切到该商品（或其关联原料）的默认单位。

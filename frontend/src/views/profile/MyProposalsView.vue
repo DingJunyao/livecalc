@@ -292,6 +292,7 @@ function entityTypeLabel(t: string): string {
     ingredient: t('proposals.entity.ingredient'), nutrition: t('proposals.entity.nutrition'), unit: t('proposals.entity.unit'),
     merchant: t('proposals.entity.merchant'), product: t('proposals.entity.product'), recipe: t('proposals.entity.recipe'),
     entity_unit_override: t('proposals.entity.entity_unit_override'), entity_density: t('proposals.entity.entity_density'),
+    entity_quantity_link: t('proposals.entity.entity_quantity_link'),
     hierarchy: t('proposals.entity.hierarchy'), merchant_merge: t('proposals.entity.merchant_merge'),
     product_split: t('proposals.entity.product_split'), product_merge: t('proposals.entity.product_merge'),
     usda_ingredient_match: t('proposals.entity.usda_ingredient_match'), usda_product_match: t('proposals.entity.usda_product_match'),

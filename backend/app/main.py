@@ -26,6 +26,7 @@ from app.api import meal_plans  # 试算方案
 from app.api.deps import get_session_currency_override
 from app.api import ingredient_extended  # 新增的食材扩展API
 from app.api import products_entity  # 商品实体 API
+from app.api import entity_links  # 商品/原料数量关联 API
 from app.api import user_preferences  # 用户偏好 API
 from app.api import product_weight  # 商品价格权重覆盖 API
 from app.api import units  # 单位管理 API（含实体单位覆盖和密度路由）
@@ -811,6 +812,7 @@ app.include_router(ingredient_hierarchy.router, prefix="/api/v1", tags=["食材�
 app.include_router(ingredient_extended.router, prefix="/api/v1/ingredients", tags=["食材扩展"])
 # 商品实体路由必须在商品记录路由之前，避免 /products/entity 被 /products/{record_id} 匹配
 app.include_router(products_entity.router, prefix="/api/v1", dependencies=[Depends(get_session_currency_override)], tags=["商品实体"])
+app.include_router(entity_links.router, prefix="/api/v1", dependencies=[Depends(get_session_currency_override)], tags=["实体数量关联"])
 app.include_router(products.router, prefix="/api/v1/products", dependencies=[Depends(get_session_currency_override)], tags=["商品"])
 app.include_router(user_preferences.router, prefix="/api/v1", tags=["用户偏好"])
 app.include_router(product_weight.router, prefix="/api/v1", tags=["商品权重"])

@@ -24,6 +24,7 @@ from app.models.administrative_region import AdministrativeRegion
 from app.models.map_config import MapConfiguration
 from app.models.entity_unit_override import EntityUnitOverride
 from app.models.entity_density import EntityDensity
+from app.models.entity_quantity_link import EntityQuantityLink
 from app.models.usda import UsdaFood, UsdaFoodNutrient, TranslationConfig, UsdaTask
 from app.models.agent_session import AgentSession
 from app.models.agent_message import AgentMessage
@@ -65,6 +66,7 @@ __all__ = [
     "MapConfiguration",
     "EntityUnitOverride",
     "EntityDensity",
+    "EntityQuantityLink",
     "UsdaFood", "UsdaFoodNutrient", "TranslationConfig", "UsdaTask",
     "AgentSession", "AgentMessage", "AgentApproval",
     "UserMerchantProductOrder",

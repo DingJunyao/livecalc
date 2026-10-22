@@ -27,6 +27,7 @@ from app.models.entity_unit_override import EntityUnitOverride
 from app.models.product_entity import Product
 from app.models.product_barcode import ProductBarcode
 from app.models.product_ingredient_link import ProductIngredientLink
+from app.models.entity_quantity_link import EntityQuantityLink
 from app.models.product import ProductRecord
 from app.models.merchant import Merchant
 from app.models.user_place import UserPlace
@@ -259,6 +260,24 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
     products = _query(Product, es.product_ids)
     barcodes = _query(ProductBarcode, es.barcode_ids)
     links = _query(ProductIngredientLink, es.product_link_ids)
+    all_entity_links = (
+        db.query(EntityQuantityLink)
+        .filter(EntityQuantityLink.is_active.is_(True))
+        .all()
+    )
+    if es.full_mode:
+        entity_links = all_entity_links
+    else:
+        allowed = {
+            ("product", p.id) for p in products
+        } | {
+            ("ingredient", i.id) for i in ingredients
+        }
+        entity_links = [
+            link for link in all_entity_links
+            if (link.from_type, link.from_id) in allowed
+            and (link.to_type, link.to_id) in allowed
+        ]
     records = _query(ProductRecord, es.price_record_ids)
     merchants = _query(Merchant, es.merchant_ids)
     places = _query(UserPlace, es.user_place_ids)
@@ -392,6 +411,19 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
         lambda: [
             S.serialize_product_link(l, prod_id_to_name.get(l.product_id), ing_names.get(l.ingredient_id))
             for l in links
+        ],
+    )
+    entity_links_payload = _safe_build(
+        "entity_quantity_links",
+        lambda: [
+            S.serialize_entity_quantity_link(
+                l,
+                ing_names.get(l.from_id) if l.from_type == "ingredient"
+                else prod_id_to_name.get(l.from_id),
+                ing_names.get(l.to_id) if l.to_type == "ingredient"
+                else prod_id_to_name.get(l.to_id),
+            )
+            for l in entity_links
         ],
     )
 
@@ -574,7 +606,8 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             "howto_cook_compatible": ["recipes", "ingredients", "nutritions", "units"],
             "extended": ["unit_conversions", "ingredient_categories", "ingredient_hierarchy",
                          "entity_densities", "entity_unit_overrides", "products",
-                         "product_barcodes", "product_ingredient_links", "price_records",
+                         "product_barcodes", "product_ingredient_links",
+                         "entity_quantity_links", "price_records",
                          "merchants", "user_places", "user_favorites", "user_merchant_favorites",
                          "blacklist_groups", "user_ingredient_blacklist",
                          "blacklist_group_subscriptions"],
@@ -592,6 +625,7 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             "products": len(products_payload),
             "product_barcodes": len(barcodes_payload),
             "product_ingredient_links": len(links_payload),
+            "entity_quantity_links": len(entity_links_payload),
             "price_records": len(records_payload),
             "merchants": len(merchants_payload),
             "user_places": len(places_payload),
@@ -628,6 +662,7 @@ def build_export_zip(db: Session, user, scope: str) -> tuple[bytes, dict]:
             zf.writestr("products.json", json.dumps(products_payload, ensure_ascii=False, indent=2))
             zf.writestr("product_barcodes.json", json.dumps(barcodes_payload, ensure_ascii=False, indent=2))
             zf.writestr("product_ingredient_links.json", json.dumps(links_payload, ensure_ascii=False, indent=2))
+            zf.writestr("entity_quantity_links.json", json.dumps(entity_links_payload, ensure_ascii=False, indent=2))
             zf.writestr("price_records.json", json.dumps(records_payload, ensure_ascii=False, indent=2))
             zf.writestr("merchants.json", json.dumps(merchants_payload, ensure_ascii=False, indent=2))
             zf.writestr("user_places.json", json.dumps(places_payload, ensure_ascii=False, indent=2))

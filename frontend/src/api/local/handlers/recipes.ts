@@ -1014,6 +1014,10 @@ async function buildCostInput(recipeId: number, recipe: any, regionId: number | 
     original_quantity: ri.original_quantity,
   }))
 
+  // 加载商品/原料数量关联（缺价时按等式折算）
+  const allLinks = (await getAll('entity_quantity_links'))
+    .filter((l: any) => l.is_active !== false)
+
   return {
     recipe_id: recipeId,
     servings: recipe.servings || 1,
@@ -1039,6 +1043,7 @@ async function buildCostInput(recipeId: number, recipe: any, regionId: number | 
     overrides: allOverrides,
     densities: allDensities,
     hierarchies: allHierarchies,
+    links: allLinks,
     regionId: regionFilter.regionId,
     allowedRegionIds: regionFilter.allowedRegionIds,
     merchantRegions: regionFilter.merchantRegions,

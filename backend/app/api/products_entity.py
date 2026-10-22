@@ -588,6 +588,15 @@ def delete_product(
     if not db_product:
         raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
+    # 数量关联保护：删除会让关联另一端悬空，先要求解除
+    from app.services.entity_link_service import get_links_for_entity
+    if get_links_for_entity(db, "product", product_id, include_inactive=False):
+        raise LocalizedHTTPException(
+            status_code=400,
+            message='商品「{name}」已有关联，请先在单位与密度解除关联后再删除',
+            name=db_product.name,
+        )
+
     # 唯一商品检查（端点提交时；执行器 apply 时再查一次防审核期间变化）
     sibling_count = db.query(Product).filter(
         Product.ingredient_id == db_product.ingredient_id,

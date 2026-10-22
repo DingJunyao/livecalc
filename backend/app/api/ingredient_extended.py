@@ -1009,6 +1009,14 @@ async def soft_delete_ingredient(
         if not ingredient:
             raise LocalizedHTTPException(status_code=404, message='食材不存在')
 
+        # 数量关联保护：先解除再删除
+        from app.services.entity_link_service import get_links_for_entity
+        if get_links_for_entity(db, "ingredient", ingredient_id):
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='该食材已有关联，请先在单位与密度解除关联后再删除',
+            )
+
         # 菜谱引用检查（端点提交时；执行器 apply 时再查一次）
         recipe_count = db.query(RecipeIngredient).filter(
             RecipeIngredient.ingredient_id == ingredient_id
