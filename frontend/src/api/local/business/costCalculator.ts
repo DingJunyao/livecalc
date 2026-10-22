@@ -4,6 +4,12 @@ import {
   VAGUE_QUANTITY_GRAM_MAP,
 } from '../../../data/localValues.ts'
 import { resolveOverrideGramsPerUnit, type EntityOverride, type UnitInfo } from './unitConverter'
+import {
+  localLinkFactor,
+  normalizeLocalLink,
+  resolveLocalUnitGrams,
+  type LocalQuantityLink,
+} from './entityLinks'
 import { PRICE_STALE_DAYS } from '@/utils/priceAsOf'
 
 export interface CostCalcIngredient {
@@ -61,6 +67,7 @@ export interface CostInput {
   overrides: any[]
   densities: any[]
   hierarchies: CostCalcHierarchy[]
+  links?: LocalQuantityLink[]
   weight_overrides?: Array<{ product_id: number; weight: number }>
   regionId?: number | null
   allowedRegionIds?: number[] | null
@@ -73,7 +80,7 @@ export interface CostPerIngredient {
   cost: number
   quantity: string
   unit_price: number
-  source: 'direct' | 'fallback' | 'substitute' | 'contains' | 'zero'
+  source: 'direct' | 'fallback' | 'substitute' | 'contains' | 'link' | 'zero'
   source_ingredient_id?: number
   source_ingredient_ids?: number[]
   product_id?: number
@@ -231,6 +238,29 @@ export function calculateCost(input: CostInput): CostResult {
         })
         totalCost += ingredientCost
         continue
+      }
+    }
+
+    // 无直接商品价格：先走商品/原料数量关联（带换算），再走旧层级回退
+    const linkPrice = findLinkPrice(ing.ingredient_id, input, records)
+    if (linkPrice != null) {
+      const grams = ingredientQtyToGrams(effectiveQty, effectiveUnitId, input)
+      if (grams != null && Number.isFinite(grams)) {
+        const linkCost = grams * linkPrice.pricePerGram
+        if (Number.isFinite(linkCost)) {
+          perIngredient.push({
+            recipe_ingredient_id: ing.recipe_ingredient_id,
+            ingredient_id: ing.ingredient_id,
+            ingredient_name: ing.ingredient_name,
+            cost: linkCost,
+            quantity: String(grams),
+            unit_price: linkPrice.pricePerGram,
+            source: 'link',
+            source_ingredient_id: linkPrice.sourceIngredientId,
+          })
+          totalCost += linkCost
+          continue
+        }
       }
     }
 
@@ -410,12 +440,62 @@ function findFallbackPrice(
 }
 
 /**
- * CONTAINS aggregation: compute a weighted-average price-per-gram from child
- * ingredient prices. Mirrors cloud _aggregate_child_prices().
- *
- * For each CONTAINS child, get its direct weighted price (no fallback chain),
- * convert to per-gram, then weight by hierarchy strength.
+ * 商品/原料数量关联：当前原料缺直接价时，从对方原料的直converted每克价按因子折算。
+ * 只处理「原料 ↔ 原料」，商品包装链由单位折克负责。
  */
+function findLinkPrice(
+  ingredientId: number,
+  input: CostInput,
+  records: CostCalcPriceRecord[],
+): { pricePerGram: number; sourceIngredientId: number } | null {
+  const links = (input.links || []).filter(link => link.is_active !== false)
+  if (links.length === 0) return null
+  const gramUnit = input.units.find(u => u.name === CHINESE_GRAM_NAME)
+  if (!gramUnit || gramUnit.si_factor == null) return null
+
+  for (const link of links) {
+    const norm = normalizeLocalLink(link, 'ingredient', ingredientId)
+    if (!norm || norm.other.type !== 'ingredient') continue
+    const otherProducts = input.products.filter(p => p.ingredient_id === norm.other.id)
+    if (otherProducts.length === 0) continue
+    const weighted = calculateWeightedPrice(otherProducts, records, input.weight_overrides)
+    if (weighted == null) continue
+    const priceUnit = input.units.find(u => u.id === weighted.unit_id)
+    if (!priceUnit || priceUnit.unit_type !== 'mass' || priceUnit.si_factor == null) continue
+    const otherPpg = weighted.pricePerUnit * gramUnit.si_factor / priceUnit.si_factor
+    if (!Number.isFinite(otherPpg) || otherPpg <= 0) continue
+
+    const gramsCurrent = resolveLocalUnitGrams(
+      'ingredient', ingredientId, norm.current.unit,
+      input.units as any, input.overrides as any, input.densities as any, links as any,
+    )
+    const gramsOther = resolveLocalUnitGrams(
+      norm.other.type, norm.other.id, norm.other.unit,
+      input.units as any, input.overrides as any, input.densities as any, links as any,
+    )
+    const factor = localLinkFactor(
+      gramsCurrent, norm.current.quantity, gramsOther, norm.other.quantity,
+    )
+    if (factor == null || factor <= 0) continue
+    const currentPpg = otherPpg / factor
+    if (!Number.isFinite(currentPpg) || currentPpg <= 0) continue
+    return { pricePerGram: currentPpg, sourceIngredientId: norm.other.id }
+  }
+  return null
+}
+
+/** 质量单位用量 → 克；其他类型返回 null（关联价不臆估）。 */
+function ingredientQtyToGrams(
+  qty: number,
+  unitId: number,
+  input: CostInput,
+): number | null {
+  const unit = input.units.find(u => u.id === unitId)
+  const gramUnit = input.units.find(u => u.name === CHINESE_GRAM_NAME)
+  if (!unit || !gramUnit || unit.unit_type !== 'mass') return null
+  if (unit.si_factor == null || gramUnit.si_factor == null) return null
+  return qty * unit.si_factor / gramUnit.si_factor
+}
 function findContainsPrice(
   ingredientId: number,
   input: CostInput,

@@ -356,6 +356,28 @@ def serialize_product_link(link: Any, product_name: Optional[str], ingredient_na
     }
 
 
+def serialize_entity_quantity_link(
+    link: Any,
+    from_name: Optional[str],
+    to_name: Optional[str],
+) -> dict:
+    """EntityQuantityLink → entity_quantity_links.json 元素。"""
+    return {
+        "id": link.id,
+        "from_type": link.from_type,
+        "from_id": link.from_id,
+        "from_name": from_name,
+        "from_quantity": to_float(link.from_quantity),
+        "from_unit": link.from_unit,
+        "to_type": link.to_type,
+        "to_id": link.to_id,
+        "to_name": to_name,
+        "to_quantity": to_float(link.to_quantity),
+        "to_unit": link.to_unit,
+        "note": link.note,
+    }
+
+
 def serialize_price_record(
     pr: Any,
     product_name: Optional[str],
