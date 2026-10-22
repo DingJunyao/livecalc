@@ -24,6 +24,7 @@ export const PROPOSAL_ENTITY_KEYS: Record<string, string> = {
   recipe_edit: 'proposalEntityTypes.recipeEdit',
   entity_unit_override: 'proposalEntityTypes.unitOverride',
   entity_density: 'proposalEntityTypes.density',
+  entity_quantity_link: 'proposalEntityTypes.entityQuantityLink',
   hierarchy: 'proposalEntityTypes.hierarchy',
   usda_ingredient_match: 'proposalEntityTypes.usdaIngredientMatch',
   usda_product_match: 'proposalEntityTypes.usdaProductMatch',

@@ -60,7 +60,23 @@ class IngredientExecutor(CrudExecutorBase):
                 raise LocalizedHTTPException(status_code=400, message='缺少目标食材')
             if target_id in source_ids:
                 raise LocalizedHTTPException(status_code=400, message='目标食材不能同时是源食材')
+            from app.services.entity_link_service import get_links_for_entity
+            for iid in [*source_ids, target_id]:
+                if get_links_for_entity(db, "ingredient", iid):
+                    raise LocalizedHTTPException(
+                        status_code=400,
+                        message='原料 #{iid} 已有关联，请先在单位与密度解除关联后再合并',
+                        iid=iid,
+                    )
             return
+        if proposal.action == "delete":
+            from app.services.entity_link_service import get_links_for_entity
+            eid = proposal.entity_id
+            if eid is not None and get_links_for_entity(db, "ingredient", eid):
+                raise LocalizedHTTPException(
+                    status_code=400,
+                    message='原料已有关联，请先在单位与密度解除关联后再删除',
+                )
         # 其余走 CRUD 默认校验
         super().validate(db, proposal)
 

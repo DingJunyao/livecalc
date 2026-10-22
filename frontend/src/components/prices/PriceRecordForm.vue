@@ -93,6 +93,20 @@
             </v-col>
           </v-row>
 
+          <v-alert
+            v-if="linkEquivalents.length > 0"
+            type="info"
+            variant="tonal"
+            density="compact"
+            class="mb-4"
+          >
+            <div class="text-caption mb-1">{{ t('prices.linkedEquivalents') }}</div>
+            <div v-for="(eq, idx) in linkEquivalents" :key="idx" class="text-caption">
+              ≈ {{ formatMoney(eq.unitPrice, recordCurrency) }} / {{ eq.unit }}
+              <span class="text-medium-emphasis">（{{ eq.productName || '—' }}）</span>
+            </div>
+          </v-alert>
+
           <!-- 计入支出 -->
           <v-checkbox
             v-model="form.is_purchase"
@@ -138,10 +152,15 @@ import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { api } from '@/api'
 import type { PriceRecord } from '@/types'
 import { getLocalDateString } from '@/utils/timezone'
-import { loadCurrencies } from '@/utils/currency'
+import { loadCurrencies, formatMoney } from '@/utils/currency'
 import { fallbackPriceUnitValues, localizedUnitLabel } from '@/utils/localDisplay'
 import { loadEntityUnitOptions } from '@/utils/entityUnits'
 import type { UnitOption } from '@/utils/entityUnits'
+import {
+  buildLinkEquivalents,
+  mergeLinkUnits,
+  type EntityQuantityLink,
+} from '@/utils/entityLinks'
 
 const { t } = useI18n()
 
@@ -180,6 +199,16 @@ const formRef = ref()
 
 // 单位选项（从 API 动态加载）
 const units = ref<Array<{ title: string; value: string }>>([])
+const entityLinks = ref<EntityQuantityLink[]>([])
+
+const linkEquivalents = computed(() =>
+  entityLinks.value.flatMap(link => buildLinkEquivalents(
+    link,
+    form.price,
+    form.quantity,
+    form.unit,
+  )),
+)
 
 // 可用于加载自定义单位的商品 id（props 显式传入，或记录自带 product_id）
 const effectiveProductId = computed<number | null>(() => {
@@ -231,8 +260,20 @@ const loadEntityUnits = async (productId: number | null) => {
   const sequence = ++entityUnitsSequence
   const base = await ensureBaseUnits()
   const options = await loadEntityUnitOptions('product', productId, { baseOptions: base })
+  let links: EntityQuantityLink[] = []
+  if (productId) {
+    try {
+      const res = await api.get(`/entities/product/${productId}/quantity-links`, {
+        params: { include_prices: true },
+      })
+      links = res?.items || []
+    } catch {
+      links = []
+    }
+  }
   if (sequence !== entityUnitsSequence) return
-  units.value = options
+  entityLinks.value = links
+  units.value = mergeLinkUnits(options, links)
 }
 
 const loadMerchants = async () => {

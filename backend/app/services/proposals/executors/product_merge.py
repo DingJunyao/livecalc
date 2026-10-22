@@ -71,6 +71,16 @@ class ProductMergeExecutor(ProposalExecutor):
         if src.ingredient_id != tgt.ingredient_id:
             raise LocalizedHTTPException(status_code=400, message='只能合并同一原料下的商品')
 
+        # 数量关联保护：先解除再合并，避免关联端点悬空
+        from app.services.entity_link_service import get_links_for_entity
+        for product in (src, tgt):
+            if get_links_for_entity(db, "product", product.id):
+                raise LocalizedHTTPException(
+                    status_code=400,
+                    message='商品「{name}」已有关联，请先在单位与密度解除关联后再合并',
+                    name=product.name,
+                )
+
     def preview(self, db, proposal) -> dict:
         from app.models.product_entity import Product
         from app.models.product import ProductRecord

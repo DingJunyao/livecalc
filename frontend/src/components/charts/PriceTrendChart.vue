@@ -406,6 +406,7 @@ function updateChart() {
       case 'name_match': return t('charts.sourceNameMatch')
       case 'recipe': return t('charts.sourceRecipe')
       case 'contains_aggregation': return t('charts.sourceContains')
+      case 'entity_link': return t('charts.sourceEntityLink')
       default: return t('charts.sourceDirect')
     }
   }

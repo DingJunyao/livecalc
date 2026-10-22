@@ -242,6 +242,7 @@ def _invalidating_type_set():
     if _INVALIDATING_TYPES is None:
         from app.models.administrative_region import AdministrativeRegion
         from app.models.entity_density import EntityDensity
+        from app.models.entity_quantity_link import EntityQuantityLink
         from app.models.entity_unit_override import EntityUnitOverride
         from app.models.product_entity import Product
         from app.models.product_ingredient_link import ProductIngredientLink
@@ -252,6 +253,7 @@ def _invalidating_type_set():
 
         _INVALIDATING_TYPES = {
             Unit, EntityUnitOverride, EntityDensity,
+            EntityQuantityLink,
             AdministrativeRegion, Product, ProductIngredientLink,
             IngredientHierarchy, Recipe, Ingredient, ProductRecord,
         }

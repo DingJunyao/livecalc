@@ -1464,6 +1464,70 @@ async def get_ingredient_latest_price_by_merchant(
         # ② 按商家补齐替代/回退/从属折算（include_relations=true 时）
         # 某商家没有直接价、或直接价超期（>30 天）时，用该商家的替代/从属价替代。
         if include_relations:
+            # ① 商品/原料数量关联（带换算）优先于旧 fallback；只在缺直接价时补
+            try:
+                from app.services.entity_link_service import (
+                    entity_display_name,
+                    format_link_sentence,
+                    get_links_for_entity,
+                    link_price_factor,
+                    normalize_link,
+                    resolve_unit_grams,
+                )
+
+                for link in get_links_for_entity(db, "ingredient", ingredient.id):
+                    norm = normalize_link(link, "ingredient", ingredient.id)
+                    if norm is None:
+                        continue
+                    grams_current = resolve_unit_grams(
+                        db, "ingredient", ingredient.id, norm["current_unit"],
+                    )
+                    grams_other = resolve_unit_grams(
+                        db, norm["other_type"], norm["other_id"], norm["other_unit"],
+                    )
+                    factor = link_price_factor(
+                        grams_current, norm["current_quantity"],
+                        grams_other, norm["other_quantity"],
+                    )
+                    if factor is None or factor <= 0:
+                        continue
+                    if norm["other_type"] == "ingredient":
+                        other_ing = db.get(Ingredient, norm["other_id"])
+                        other_rows = _lookup_merchant_prices(other_ing) if other_ing else []
+                    else:
+                        other_product = (
+                            db.query(Product)
+                            .filter(
+                                Product.id == norm["other_id"],
+                                Product.is_active == True,  # noqa: E712
+                            )
+                            .first()
+                        )
+                        other_rows = _lookup_rows([other_product]) if other_product else []
+                    adjusted = []
+                    for row in other_rows:
+                        merged_row = dict(row)
+                        merged_row["price"] = round(
+                            float(merged_row["price"]) / float(factor), 2,
+                        )
+                        if quantity is not None and quantity > 0:
+                            merged_row["total_cost"] = round(
+                                merged_row["price"] * quantity, 2,
+                            )
+                        adjusted.append(merged_row)
+                    current_name = entity_display_name(db, "ingredient", ingredient.id)
+                    other_name = entity_display_name(
+                        db, norm["other_type"], norm["other_id"],
+                    )
+                    sentence = format_link_sentence(
+                        current_name, norm["current_quantity"], norm["current_unit"],
+                        other_name, norm["other_quantity"], norm["other_unit"],
+                    )
+                    _collect_relation_rows(adjusted, "entity_link", sentence)
+            except Exception:
+                # 关联折算失败不阻断直接价/旧回退展示
+                pass
+
             fb_result = _find_fallback_ingredient()
             if fb_result:
                 fb_ingredient, fb_chain = fb_result

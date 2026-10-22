@@ -431,6 +431,7 @@ class UnitConversionService:
         to_unit_abbr: str,
         entity_type: str = None,
         entity_id: int = None,
+        allow_links: bool = True,
     ) -> Optional[Tuple[Decimal, str]]:
         """
         统一换算入口
@@ -481,6 +482,23 @@ class UnitConversionService:
                             return (final, "entity_override")
                     else:
                         return (total_weight, "entity_override")
+
+        # 2.4 商品/原料数量关联：包装单位（如「提」）或计数单位可能只在关联里定义。
+        #     只处理「未知单位 / 计数单位 → 质量」；普通质量单位仍走下面的 si_factor，
+        #     避免一条无意义的 kg↔kg 关联覆盖正常换算。
+        if (
+            allow_links
+            and entity_type
+            and entity_id
+            and to_unit is not None
+            and to_unit.unit_type == "mass"
+            and (from_unit is None or from_unit.unit_type == "count")
+        ):
+            linked = self._convert_via_entity_link(
+                value, from_unit_abbr, to_unit, entity_type, entity_id,
+            )
+            if linked is not None:
+                return linked
 
         # from_unit 或 to_unit 不在全局单位表中且无实体覆盖
         if not from_unit or not to_unit:
@@ -559,6 +577,38 @@ class UnitConversionService:
     # ------------------------------------------------------------------ #
     #  实体单位列表
     # ------------------------------------------------------------------ #
+
+    def _convert_via_entity_link(
+        self,
+        value: Decimal,
+        from_unit_abbr: str,
+        to_unit: Unit,
+        entity_type: str,
+        entity_id: int,
+    ) -> Optional[Tuple[Decimal, str]]:
+        """通过商品/原料数量关联把「提/箱」等单位折成质量单位。
+
+        关联解析集中在 entity_link_service.resolve_unit_grams；这里只负责
+        把「总克数」再换算到目标单位。allow_links=False 的调用不会进入本方法，
+        因此不会递归。
+        """
+        if to_unit is None or to_unit.unit_type != "mass":
+            return None
+        from app.services.entity_link_service import resolve_unit_grams
+
+        grams_per_unit = resolve_unit_grams(
+            self.db, entity_type, entity_id, from_unit_abbr,
+        )
+        if grams_per_unit is None or grams_per_unit <= 0:
+            return None
+        gram_unit = self.get_unit_by_abbr("g")
+        if gram_unit is None:
+            return None
+        total_grams = grams_per_unit * value
+        final = self.convert_si(total_grams, gram_unit, to_unit)
+        if final is None:
+            return None
+        return (final, "entity_link")
 
     def get_entity_units(
         self, entity_type: str, entity_id: int

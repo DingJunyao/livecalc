@@ -523,6 +523,17 @@
                 <div class="text-caption text-medium-emphasis mt-1">{{ t('products.noDensity') }}</div>
               </div>
             </v-card-text>
+
+            <v-divider class="mx-4" />
+            <v-card-text>
+              <EntityQuantityLinksSection
+                entity-type="product"
+                :entity-id="product?.id || 0"
+                :entity-name="product?.name"
+                :ingredient-id="product?.ingredient_id"
+                :ingredient-name="product?.ingredient_name"
+              />
+            </v-card-text>
           </v-card>
         </div>
         <div class="group-mid-right">
@@ -1332,6 +1343,7 @@ import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
+import EntityQuantityLinksSection from '@/components/entities/EntityQuantityLinksSection.vue'
 import { NUTRITION_LABEL_MAP, ENGLISH_TO_CHINESE_MAP, nutrientLabel } from '@/utils/nutritionLabels'
 import {
   CORE_NUTRIENT_KEYS,

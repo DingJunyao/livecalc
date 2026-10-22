@@ -29,6 +29,7 @@ const EXPORT_STORES = [
   'ingredient_hierarchy',
   'entity_unit_overrides',
   'entity_densities',
+  'entity_quantity_links',
   'blacklist_groups',
   'blacklist_group_ingredients',
   'blacklist_subscriptions',
@@ -61,6 +62,7 @@ const FILE_STORE_MAP: Record<string, string> = {
   'ingredient_hierarchy.json': 'ingredient_hierarchy',
   'entity_unit_overrides.json': 'entity_unit_overrides',
   'entity_densities.json': 'entity_densities',
+  'entity_quantity_links.json': 'entity_quantity_links',
   'user_places.json': 'user_places',
   'blacklist_groups.json': 'blacklist_groups',
   'merchant_favorites.json': 'merchant_favorites',
@@ -356,6 +358,44 @@ export async function uploadImport(
             }
           }
         }
+      } else if (storeName === 'entity_quantity_links') {
+        // 云端导出带 from_name/to_name；按名字映射到本地 id，避免直接使用云 id。
+        const [localProducts, localIngredients] = await Promise.all([
+          getAll('products'),
+          getAll('ingredients'),
+        ])
+        const productByName = new Map<string, number>((localProducts as any[]).map(p => [p.name, p.id]))
+        const ingredientByName = new Map<string, number>((localIngredients as any[]).map(i => [i.name, i.id]))
+        const productIds = new Set<number>((localProducts as any[]).map(p => p.id))
+        const ingredientIds = new Set<number>((localIngredients as any[]).map(i => i.id))
+        const resolveSide = (type: string, id: any, name: any): number | null => {
+          const numeric = Number(id)
+          if (type === 'product') {
+            if (name && productByName.has(name)) return productByName.get(name) ?? null
+            return productIds.has(numeric) ? numeric : null
+          }
+          if (type === 'ingredient') {
+            if (name && ingredientByName.has(name)) return ingredientByName.get(name) ?? null
+            return ingredientIds.has(numeric) ? numeric : null
+          }
+          return null
+        }
+        normalized = items
+          .map((item: any) => {
+            const fromId = resolveSide(item.from_type, item.from_id, item.from_name)
+            const toId = resolveSide(item.to_type, item.to_id, item.to_name)
+            if (fromId == null || toId == null) return null
+            if (item.from_type === item.to_type && fromId === toId) return null
+            return {
+              ...item,
+              from_id: fromId,
+              to_id: toId,
+              from_quantity: Number(item.from_quantity ?? 1),
+              to_quantity: Number(item.to_quantity ?? 1),
+              is_active: item.is_active !== false,
+            }
+          })
+          .filter(Boolean)
       } else {
         normalized = items.map((item: any) => {
           const n = { ...item }

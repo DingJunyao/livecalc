@@ -15,6 +15,7 @@ from app.services.proposals.executors.merchant_merge import MerchantMergeExecuto
 from app.services.proposals.executors.recipe_edit import RecipeEditExecutor
 from app.services.proposals.executors.entity_unit_override import EntityUnitOverrideExecutor
 from app.services.proposals.executors.entity_density import EntityDensityExecutor
+from app.services.proposals.executors.entity_quantity_link import EntityQuantityLinkExecutor
 from app.services.proposals.executors.product import ProductExecutor
 from app.services.proposals.executors.product_split import ProductSplitExecutor
 from app.services.proposals.executors.product_merge import ProductMergeExecutor
@@ -69,6 +70,9 @@ def register_all(db=None) -> None:
 
     # 实体密度：全 manual
     ExecutorRegistry.register(EntityDensityExecutor(), default_policy="manual", default_risk="mid")
+
+    # 商品/原料数量关联：全 manual（影响单位折克与缺价折算）
+    ExecutorRegistry.register(EntityQuantityLinkExecutor(), default_policy="manual", default_risk="mid")
 
     # 商品实体：全 manual（update/delete 均需审核）
     ExecutorRegistry.register(ProductExecutor(), default_policy="manual", default_risk="mid")

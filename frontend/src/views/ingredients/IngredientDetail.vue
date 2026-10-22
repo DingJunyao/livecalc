@@ -1228,6 +1228,15 @@
             <div class="text-caption text-medium-emphasis mt-1">{{ t('ingredients.noDensity') }}</div>
           </div>
         </v-card-text>
+
+        <v-divider class="mx-4" />
+        <v-card-text>
+          <EntityQuantityLinksSection
+            entity-type="ingredient"
+            :entity-id="ingredientId"
+            :entity-name="ingredient?.name"
+          />
+        </v-card-text>
       </v-card>
         </div>
       </div>
@@ -2028,6 +2037,7 @@ import type { EntityDraftNutrient, EntityDraftUnit } from '@/utils/entityDraftPl
 import { lookupBarcode } from '@/utils/barcodeLookup'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import HierarchyGraph from '@/components/charts/HierarchyGraph.vue'
+import EntityQuantityLinksSection from '@/components/entities/EntityQuantityLinksSection.vue'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { usePageTitle } from '@/composables/usePageTitle'
 import QuickPriceRecordDialog from '@/components/prices/QuickPriceRecordDialog.vue'
@@ -3882,6 +3892,7 @@ const computedSourceLabel = (source?: string): string => {
     case 'name_match': return t('charts.sourceNameMatch')
     case 'recipe': return t('charts.sourceRecipe')
     case 'contains_aggregation': return t('charts.sourceContains')
+    case 'entity_link': return t('charts.sourceEntityLink')
     default: return t('charts.sourceDirect')
   }
 }

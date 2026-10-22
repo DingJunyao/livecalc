@@ -8,6 +8,7 @@ from typing import Optional
 
 from app.models.entity_density import EntityDensity
 from app.models.entity_unit_override import EntityUnitOverride
+from app.models.entity_quantity_link import EntityQuantityLink
 from app.models.ingredient_category import IngredientCategory
 from app.models.ingredient_hierarchy import IngredientHierarchy
 from app.models.blacklist_group import BlacklistGroup, BlacklistGroupIngredient
@@ -88,6 +89,8 @@ class ExportImporter(Importer):
             self._import_product_barcodes(collection)
             cb("导入商品关联", 0, 0, "正在导入商品关联…")
             self._import_product_links(collection)
+            cb("导入商品/原料关联", 0, 0, "正在导入商品/原料关联…")
+            self._import_entity_quantity_links(collection)
             cb("导入商家", 0, 0, "正在导入商家…")
             self._import_merchants(collection)
             cb("导入常用地点", 0, 0, "正在导入常用地点…")
@@ -631,6 +634,90 @@ class ExportImporter(Importer):
             ))
             imported += 1
         self.result.stats["product_links"] = imported
+
+    def _match_product_by_name(self, name: str) -> Optional[Product]:
+        name = (name or "").strip()
+        if not name:
+            return None
+        return (
+            self.db.query(Product)
+            .filter(Product.name == name, Product.is_active == True)  # noqa: E712
+            .first()
+        )
+
+    def _import_entity_quantity_links(self, collection):
+        data = self._load_json(collection, "entity_quantity_links.json")
+        if not data:
+            return
+        imported = 0
+        skipped = 0
+        for item in data:
+            from_type = item.get("from_type")
+            to_type = item.get("to_type")
+            if from_type not in ("product", "ingredient") or to_type not in ("product", "ingredient"):
+                skipped += 1
+                continue
+
+            def _resolve(entity_type, old_id, name):
+                if entity_type == "product":
+                    new_id = self.mapping.products.get(old_id)
+                    if not new_id:
+                        product = self._match_product_by_name(name)
+                        new_id = product.id if product else None
+                    return new_id
+                new_id = self.mapping.ingredients.get(old_id)
+                if not new_id:
+                    ing = self._match_ingredient_by_name(name)
+                    new_id = ing.id if ing else None
+                return new_id
+
+            from_id = _resolve(from_type, item.get("from_id"), item.get("from_name"))
+            to_id = _resolve(to_type, item.get("to_id"), item.get("to_name"))
+            if not from_id or not to_id or (from_type == to_type and from_id == to_id):
+                skipped += 1
+                self.result.warnings.append(
+                    f"关联 {item.get('id')} 缺少端点或指向自身，已跳过"
+                )
+                continue
+
+            existing = self.db.query(EntityQuantityLink).filter(
+                EntityQuantityLink.is_active.is_(True),
+                (
+                    (EntityQuantityLink.from_type == from_type)
+                    & (EntityQuantityLink.from_id == from_id)
+                    & (EntityQuantityLink.to_type == to_type)
+                    & (EntityQuantityLink.to_id == to_id)
+                ) | (
+                    (EntityQuantityLink.from_type == to_type)
+                    & (EntityQuantityLink.from_id == to_id)
+                    & (EntityQuantityLink.to_type == from_type)
+                    & (EntityQuantityLink.to_id == from_id)
+                ),
+            ).first()
+            if existing is not None:
+                skipped += 1
+                continue
+
+            self.db.add(EntityQuantityLink(
+                from_type=from_type,
+                from_id=from_id,
+                from_quantity=item.get("from_quantity") or 1,
+                from_unit=item.get("from_unit") or "",
+                to_type=to_type,
+                to_id=to_id,
+                to_quantity=item.get("to_quantity") or 1,
+                to_unit=item.get("to_unit") or "",
+                note=item.get("note"),
+                created_by=self.user_id,
+                updated_by=self.user_id,
+                is_active=True,
+            ))
+            imported += 1
+        self.result.stats["entity_quantity_links"] = imported
+        if skipped:
+            self.result.skipped["entity_quantity_links"] = (
+                self.result.skipped.get("entity_quantity_links", 0) + skipped
+            )
 
     def _import_merchants(self, collection):
         data = self._load_json(collection, "merchants.json")

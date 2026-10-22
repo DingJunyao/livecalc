@@ -147,6 +147,7 @@ export async function localDelete(url: string): Promise<any> {
 
 import * as auth from './handlers/auth'
 import * as units from './handlers/units'
+import * as links from './handlers/links'
 import * as products from './handlers/products'
 import * as ingredients from './handlers/ingredients'
 import * as merchants from './handlers/merchants'
@@ -313,6 +314,8 @@ addRoute('/admin/blacklist-groups', { get: blGroups.listGroups, post: blGroups.c
 	addRoute('/entities/:entityType/:entityId/units', { get: units.listEntityUnits, post: units.createEntityUnit })
 	addRoute('/entities/:entityType/:entityId/density/:densityId', { delete: units.deleteEntityDensity })
 	addRoute('/entities/:entityType/:entityId/density', { get: units.getEntityDensity, post: units.createEntityDensity })
+	addRoute('/entities/:entityType/:entityId/quantity-links/:linkId', { put: links.updateEntityLink, delete: links.deleteEntityLink })
+	addRoute('/entities/:entityType/:entityId/quantity-links', { get: links.listEntityLinks, post: links.createEntityLink })
 
 // ---- Recipes (exact sub-paths before param paths) ----
 addRoute('/recipes/batch-cost', { post: recipes.batchCost })
