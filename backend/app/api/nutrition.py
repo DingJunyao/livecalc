@@ -1169,8 +1169,7 @@ async def get_ingredient_price_series(
 ):
     """原料逐日 as-of 折算价（与菜谱成本同一降级链）。
 
-    降级链：direct → fallback（含 substitutable 替代）→ name_match（同名商品）
-    → recipe（半成品制作菜谱）→ contains（从属子食材按 strength 聚合）。
+    降级链：direct → fallback（含 substitutable 替代）→ recipe（半成品）→ contains（从属聚合）。
 
     用途：原料详情趋势图在「该原料自己没有直接商品价」的日子，
     用同一套菜谱成本口径显示折算结果（替代/回退/半成品/从属）。
@@ -1449,7 +1448,7 @@ async def get_ingredient_latest_price_by_merchant(
         direct_results = _lookup_merchant_prices(ingredient)
         fallback_chain = None
 
-        # 关系折算候选：mid -> row（回退优先，其次同名商品，最后从属聚合）
+        # 关系折算候选：mid -> row（回退优先，其次从属聚合）
         relation_rows: dict[int, dict] = {}
 
         def _collect_relation_rows(rows: list[dict], source: str, chain: OptType[str]) -> None:
@@ -1473,19 +1472,8 @@ async def get_ingredient_latest_price_by_merchant(
                 )
                 fallback_chain = fb_chain
 
-            # 同名商品匹配：排除自身与 contains 后代（口径与趋势图一致）
-            try:
-                from app.services.recipe_service import _contains_descendant_ids
-                excluded = set(_contains_descendant_ids(db, ingredient.id)) | {ingredient.id}
-            except Exception:
-                excluded = {ingredient.id}
-            nm_query = db.query(Product).filter(
-                Product.name.contains(ingredient.name),
-                Product.is_active == True,  # noqa: E712
-            )
-            if excluded:
-                nm_query = nm_query.filter(~Product.ingredient_id.in_(list(excluded)))
-            _collect_relation_rows(_lookup_rows(nm_query.all()), "name_match", None)
+            # 同名商品匹配已移除：别的原料下的同名商品不是本原料的价格
+            # （例：「鸡胸肉」不应命中「鸡胸肉肠」的商品）。
 
             # 从属聚合（按商家）：子食材在该商家的代表价按 strength 加权；
             # 区间取各子食材价格的极值（与趋势图 contains 区间同口径）。

@@ -1021,7 +1021,7 @@ async def calculate_recipe_cost(
     """计算菜谱成本，使用当天价格区间的平均值
 
     include_price_dates：为成本明细附加 price_recorded_at（所用价格记录的
-    最新时间，供前端提示「价格多久没更新」）。依赖 direct/fallback/name_match
+    最新时间，供前端提示「价格多久没更新」）。依赖 direct/fallback
     层的记录集查询（请求级缓存），仅详情页单菜谱路径开启，批量调用不开启。
     """
     recipe = db.get(Recipe, recipe_id)
@@ -1080,11 +1080,8 @@ async def calculate_recipe_cost(
             if fb_range is not None:
                 _fb_min, _fb_max, unit_price, fallback_chain = fb_range
 
-        # 名称匹配：与 range 版对齐，用 _name_match_cost_range_ppg
-        if unit_price is None:
-            nm_range = _name_match_cost_range_ppg(db, ingredient, user_id, now, tz, region_id=region_id)
-            if nm_range is not None:
-                _nm_min, _nm_max, unit_price = nm_range
+        # 名称匹配已移除（用户要求：不同原料的同名商品不该被当作本原料的价格，
+        # 例如「鸡胸肉」不能命中别的原料下「鸡胸肉肠」的商品）。
 
         # 尝试从制作菜谱推导成本（半成品，优先于子食材聚合）
         if unit_price is None:
@@ -1229,7 +1226,7 @@ def _latest_price_recorded_at(
     tz: str = "UTC",
     region_id: Optional[int] = None,
 ) -> Optional[datetime]:
-    """食材当前成本所用价格记录的最新时间（direct → fallback → name_match 链）。
+    """食材当前成本所用价格记录的最新时间（direct → fallback 链）。
 
     与 calculate_recipe_cost 的降级链同序，取实际参与计价那批记录的最新
     recorded_at；制作菜谱/子食材聚合推导出的价格无直接记录，调用方不进入本函数。
@@ -1267,13 +1264,8 @@ def _latest_price_recorded_at(
         if times:
             return max(times)
 
-    # name_match：前向填充锚点记录（与 _name_match_cost_range_ppg 同源）
-    anchor = _get_price_record_with_fallback(
-        db=db, user_id=user_id, product_name_contains=ingredient.name,
-        as_of_date=as_of_date, tz=tz, region_id=region_id,
-    )
-    if anchor is not None:
-        return anchor.recorded_at
+    # 名称匹配已移除：不同原料下的同名商品不能当成本原料的价格
+    # （例：「鸡胸肉」命中「鸡胸肉肠」的商品是错的）。
     return None
 
 
@@ -1450,65 +1442,6 @@ def _contains_descendant_ids(db: Session, ingredient_id: int) -> frozenset:
     return memoize_result(db, "contains_descendants", ingredient_id, _build)
 
 
-def _name_match_cost_range_ppg(
-    db: Session,
-    ingredient: Ingredient,
-    user_id: int,
-    as_of_date: datetime,
-    tz: str = "UTC",
-    region_id: Optional[int] = None,
-) -> Optional[tuple[Decimal, Decimal, Decimal]]:
-    """按食材名作 product_name_contains 匹配的记录集 (min,max,avg) ppg。
-
-    只匹配「非从属子食材」的商品：子食材价格由 contains 聚合负责，
-    否则「猪肉」会命中子食材「猪肉末」的商品，把整个类别短路成单品价
-    （价格恒定、区间塌缩，且跳过了五花肉/前腿肉等有记录的子食材）。
-
-    取「≤ as_of 的最新匹配日」全部同名记录（前向填充口径不变）。
-    """
-    from app.services.lookup_cache import memoize_result
-
-    # 排除自身 + 从属后代食材的商品：
-    # - 自身商品的价格由 direct 负责，同名匹配再命中一次只是把同一个旧价换个 source；
-    # - 子食材价格由 contains 聚合负责，否则「猪肉」会命中子食材「猪肉末」的商品。
-    excluded = _contains_descendant_ids(db, ingredient.id) | {ingredient.id}
-
-    def _build():
-        _days, day_records, timeline = _price_timeline_index(
-            db, product_name_contains=ingredient.name, tz=tz, region_id=region_id,
-        )
-        if not timeline:
-            return ([], {})
-        from app.models.product_entity import Product
-        product_ids = {r.product_id for r in timeline if r.product_id is not None}
-        pid_to_ing = dict(
-            db.query(Product.id, Product.ingredient_id)
-            .filter(Product.id.in_(product_ids))
-            .all()
-        ) if product_ids else {}
-        filtered: dict = {}
-        for day, recs in day_records.items():
-            keep = [
-                r for r in recs
-                if pid_to_ing.get(r.product_id) not in excluded
-            ]
-            if keep:
-                filtered[day] = keep
-        return (sorted(filtered.keys()), filtered)
-
-    days, by_day = memoize_result(
-        db, f"name_match_days:{region_id}", ingredient.id, _build,
-    )
-    if not days:
-        return None
-    as_of_day = utc_datetime_to_local_date(as_of_date, tz)
-    eligible = [d for d in days if d <= as_of_day]
-    if not eligible:
-        return None
-    recs = by_day.get(eligible[-1], [])
-    return _records_cost_range_ppg(recs, db, ingredient.id)
-
-
 def _ingredient_cost_range(
     db: Session,
     recipe_ingredient: RecipeIngredient,
@@ -1523,8 +1456,8 @@ def _ingredient_cost_range(
 
     全无价返 (0, 0, 0, "no_price")；无法归克返 (0, 0, 0, "no_quantity")。
     降级链与 calculate_recipe_cost_as_of 对齐：
-    direct → fallback → name_match → recipe → contains。
-    （direct/fallback/name_match 已接入；recipe/contains 在 Task 4/5 接入）
+    direct → fallback → recipe → contains。
+    （不做同名商品匹配：别的原料下的同名商品不算本原料的价格）
     """
     qty_decimal, qty_unit_id = _get_effective_quantity(recipe_ingredient)
     qty_g = _qty_unit_to_grams(db, ingredient, qty_decimal, qty_unit_id)
@@ -1543,11 +1476,8 @@ def _ingredient_cost_range(
         mn, mx, av, _chain = fb
         return (mn * qty_g, mx * qty_g, av * qty_g, "fallback")
 
-    # 来源 3：name_match（按食材名匹配 product_name）
-    nm = _name_match_cost_range_ppg(db, ingredient, user_id, as_of_date, tz, region_id=region_id)
-    if nm is not None:
-        mn, mx, av = nm
-        return (mn * qty_g, mx * qty_g, av * qty_g, "name_match")
+    # 来源 3 已移除：name_match（按食材名匹配 product_name）——
+    # 不同原料的同名商品不算本原料的价格（如「鸡胸肉」不应命中「鸡胸肉肠」）。
 
     # 来源 4：recipe 半成品递归（与 calculate_recipe_cost_as_of 对齐）
     rc = _get_cost_from_recipe_range(db, ingredient, user_id, as_of_date, visited, tz, region_id=region_id)
@@ -1582,7 +1512,7 @@ def calculate_recipe_cost_range_as_of(
     保证 min ≤ avg ≤ max（数学上：min/max 取记录极值、avg 取加权均价，
     两者源自同一批参与商品的有效记录，加权值必在极值闭区间内）。
     降级链与 calculate_recipe_cost_as_of 1:1 对齐：
-    direct → fallback → name_match → recipe → contains。
+    direct → fallback → recipe → contains。
 
     visited 为菜谱 ID 列表（循环检测，半成品递归用）。
     """
@@ -1687,8 +1617,8 @@ def calculate_recipe_cost_range_trend(
     计算菜谱的成本区间趋势
 
     对每一天统一调用 calculate_recipe_cost_range_as_of（单轨），min/max/avg
-    三档基于同一组价格源、走同一条 5 层降级链（direct → fallback →
-    name_match → recipe → contains），从数学上保证 min ≤ avg ≤ max。
+    三档基于同一组价格源、走同一条降级链（direct → fallback →
+    recipe → contains），从数学上保证 min ≤ avg ≤ max。
 
     Args:
         recipe_id: 菜谱ID
@@ -1791,21 +1721,19 @@ def _relation_cost_range_ppg(
     tz: str = "UTC",
     region_id: Optional[int] = None,
 ) -> Optional[tuple[tuple, str, Optional[str]]]:
-    """降级链中「非直接价」的几层：fallback → name_match → recipe → contains。
+    """降级链中「非直接价」的几层：fallback → recipe → contains。
 
     返回 ((min,max,avg), source, chain) 或 None。供折算序列在两种情形复用：
     ①自身没有直接商品价；②直接价超期且开启「超期优先关系折算」。
+
+    不再做「同名商品匹配」：别的原料下的同名商品不是本原料的价格
+    （例如「鸡胸肉」不能命中「鸡胸肉肠」的商品）。
     """
     fb = _fallback_cost_range_ppg(
         db, ingredient, user_id, as_of_date, tz, region_id=region_id,
     )
     if fb is not None:
         return (fb[:3], "fallback", fb[3])
-    nm = _name_match_cost_range_ppg(
-        db, ingredient, user_id, as_of_date, tz, region_id=region_id,
-    )
-    if nm is not None:
-        return (nm, "name_match", None)
     rc = _get_cost_from_recipe_range(
         db, ingredient, user_id, as_of_date, None, tz, region_id=region_id,
     )
@@ -1860,14 +1788,14 @@ def calculate_ingredient_price_series(
     """原料逐日 as-of 折算价（与菜谱成本完全同一降级链）。
 
     降级链（与 _ingredient_cost_range 1:1）：
-      direct → fallback（含 substitutable）→ name_match → recipe（半成品）→ contains（从属聚合）
+      direct → fallback（含 substitutable）→ recipe（半成品）→ contains（从属聚合）
 
     返回每克单价三档（元/克，已折算到用户币种），供原料详情趋势图在
     「该原料自己没有直接商品价」的日子按替代/回退/从属关系显示折算结果。
 
     prefer_relations_when_stale=True 时：若直接价的最近一条记录已超过
     INGREDIENT_PRICE_STALE_DAYS（30 天），且有可用的关系折算结果，则优先返回
-    关系结果（source 为 fallback/name_match/...），并带上 direct_ppg / direct_stale
+    关系结果（source 为 fallback/recipe/contains_aggregation 等），并带上 direct_ppg / direct_stale
     便于前端展示「直接价已超期、按关系折算」。关闭该开关即回到「直接价优先」。
 
     days 上限 366：逐日跑降级链成本较高，前端「全部」区间也只取近一年。
@@ -2415,7 +2343,7 @@ def calculate_recipe_cost_as_of(
                 # 下方单位转换走克路径（同 recipe_chain/aggregation_chain）
             else:
                 # dr_ppg 返回 None 时不做 iterate 回退——
-                # 让下方降级链 (fallback→name_match→recipe→contains) 统一处理，
+                # 让下方降级链 (fallback→recipe→contains) 统一处理，
                 # 与 range 版 _ingredient_cost_range 对齐
                 pass
 
@@ -2432,12 +2360,7 @@ def calculate_recipe_cost_as_of(
                 if fb_range is not None:
                     _fb_min, _fb_max, unit_price, fallback_chain = fb_range
 
-            # 名称匹配：与 range 版对齐，用 _name_match_cost_range_ppg
-            if unit_price is None:
-                nm_range = _name_match_cost_range_ppg(db, ingredient, user_id, as_of_date, tz, region_id=region_id)
-                if nm_range is not None:
-                    _nm_min, _nm_max, unit_price = nm_range
-                    # unit_price = avg_ppg，单位元/克
+            # 名称匹配已移除（不同原料的同名商品不算本原料的价格）
 
         # 尝试从制作菜谱推导成本（半成品，优先于子食材聚合）
         if not latest_record and unit_price is None:
