@@ -2369,7 +2369,6 @@
     "carbs": "Carbs",
     "fat": "Fat",
     "noData": "No data yet",
-    "calorieGoal": "Calorie target {amount} {unit}",
     "maintainRecipes": "Complete recipe data to get recommendations",
     "goAddRecipe": "Add a recipe",
     "noNutritionData": "This recipe has no nutrition data yet",

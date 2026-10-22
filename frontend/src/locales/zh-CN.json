@@ -2369,7 +2369,6 @@
     "carbs": "碳水",
     "fat": "脂肪",
     "noData": "暂无数据",
-    "calorieGoal": "热量目标 {amount} {unit}",
     "maintainRecipes": "请完整维护菜谱，以获取推荐信息",
     "goAddRecipe": "去添加菜谱",
     "noNutritionData": "该菜谱暂无营养数据",

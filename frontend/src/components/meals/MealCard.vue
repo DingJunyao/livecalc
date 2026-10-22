@@ -80,12 +80,7 @@
           <span>{{ t('plans.totalCost') }}</span>
           <span>{{ formatMoney(planView.totals?.cost ?? 0, planView.totals?.currency || userCurrency) }}</span>
         </div>
-        <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
-          <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(planView.totals?.calories ?? 0)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', planView.totals?.calories ?? 0) }}%）</span>
-          <span>{{ t('plans.protein') }} {{ formatNumber(planView.totals?.protein_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', planView.totals?.protein_g ?? 0) }}%）</span>
-          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(planView.totals?.carbs_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', planView.totals?.carbs_g ?? 0) }}%）</span>
-          <span>{{ t('plans.fat') }} {{ formatNumber(planView.totals?.fat_g ?? 0, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', planView.totals?.fat_g ?? 0) }}%）</span>
-        </div>
+        <NutrientSummaryGrid class="mt-2" :items="planNutrientItems" />
       </div>
     </template>
 
@@ -152,12 +147,7 @@
           <span>{{ t('plans.totalCost') }}</span>
           <span>{{ mealCostText }}</span>
         </div>
-        <div class="text-caption text-medium-emphasis mt-1 d-flex flex-column">
-          <span>{{ t('plans.calories') }} {{ formatNumber(toDisplayCalorie(mealNutrients.energy)) }} {{ energyUnit }}（NRV {{ nrvPct('energy', mealNutrients.energy) }}%）</span>
-          <span>{{ t('plans.protein') }} {{ formatNumber(mealNutrients.protein, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('protein', mealNutrients.protein) }}%）</span>
-          <span>{{ t('nutrients.carbohydrate') }} {{ formatNumber(mealNutrients.carbohydrate, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('carbohydrate', mealNutrients.carbohydrate) }}%）</span>
-          <span>{{ t('plans.fat') }} {{ formatNumber(mealNutrients.fat, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) }} {{ t('nutrientUnits.g') }}（NRV {{ nrvPct('fat', mealNutrients.fat) }}%）</span>
-        </div>
+        <NutrientSummaryGrid class="mt-2" :items="dishNutrientItems" />
       </div>
 
       <!-- 理由 / 偏好脚注 -->
@@ -224,20 +214,11 @@
       </v-card-item>
 
       <v-card-text class="pb-2">
-        <div class="d-flex align-center ga-3 flex-wrap">
-          <span class="text-caption text-medium-emphasis d-flex align-center ga-1">
-            <v-icon size="small">mdi-cash</v-icon>
-            {{ costText }}
-          </span>
-          <span
-            v-for="row in nutritionSummary"
-            :key="row.key"
-            class="text-caption text-medium-emphasis d-flex align-center ga-1"
-          >
-            <v-icon size="small">{{ row.icon }}</v-icon>
-            {{ row.label }} {{ row.text }}{{ row.nrv != null ? ` · NRV ${row.nrv}%` : '' }}
-          </span>
+        <div class="d-flex align-center ga-1 flex-wrap">
+          <v-icon size="small">mdi-cash</v-icon>
+          <span class="font-weight-medium">{{ costText }}</span>
         </div>
+        <NutrientSummaryGrid class="mt-2" :items="dishNutrientItems" />
         <div
           v-if="!recommendation.recipe!.nutrition_per_serving"
           class="text-caption text-disabled mt-1"
@@ -276,6 +257,7 @@ import { useI18n } from 'vue-i18n'
 import { useLocaleStore } from '@/stores/locale'
 import { RECIPE_CATEGORY_KEYS } from '@/data/recipeCategories'
 import { nrvPct } from '@/utils/nrv'
+import NutrientSummaryGrid from './NutrientSummaryGrid.vue'
 
 const router = useRouter()
 const { energyUnit, toDisplayCalorie } = useUserUnits()
@@ -362,10 +344,57 @@ const mealNutrients = computed(() => {
   return totals
 })
 
-function nrvSuffix(key: 'energy' | 'protein' | 'carbohydrate' | 'fat') {
-  const pct = nrvPct(key, mealNutrients.value[key])
-  return pct != null ? ` · NRV ${pct}%` : ''
+type NutrientTotals = { energy: number; protein: number; carbohydrate: number; fat: number }
+
+function nrvText(key: 'energy' | 'protein' | 'carbohydrate' | 'fat', value: number): string | undefined {
+  const pct = nrvPct(key, value)
+  return pct != null ? `NRV ${pct}%` : undefined
 }
+
+/** 四项营养素宫格条目（宽屏一行 4 列，窄屏 2×2），NRV 单独一行，与汇总条同格式 */
+function buildNutrientItems(n: NutrientTotals) {
+  const num = (v: number) =>
+    formatNumber(v, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 })
+  const g = t('nutrientUnits.g')
+  return [
+    {
+      icon: 'mdi-fire',
+      label: t('plans.calories'),
+      value: `${formatNumber(toDisplayCalorie(n.energy))} ${energyUnit.value}`,
+      nrv: nrvText('energy', n.energy),
+    },
+    {
+      icon: 'mdi-food-drumstick-outline',
+      label: t('plans.protein'),
+      value: `${num(n.protein)} ${g}`,
+      nrv: nrvText('protein', n.protein),
+    },
+    {
+      icon: 'mdi-oil',
+      label: t('plans.fat'),
+      value: `${num(n.fat)} ${g}`,
+      nrv: nrvText('fat', n.fat),
+    },
+    {
+      icon: 'mdi-grain',
+      label: t('nutrients.carbohydrate'),
+      value: `${num(n.carbohydrate)} ${g}`,
+      nrv: nrvText('carbohydrate', n.carbohydrate),
+    },
+  ]
+}
+
+const dishNutrientItems = computed(() => buildNutrientItems(mealNutrients.value))
+
+const planNutrientItems = computed(() => {
+  const totals = planView.value?.totals
+  return buildNutrientItems({
+    energy: Number(totals?.calories ?? 0),
+    protein: Number(totals?.protein_g ?? 0),
+    carbohydrate: Number(totals?.carbs_g ?? 0),
+    fat: Number(totals?.fat_g ?? 0),
+  })
+})
 
 function roleLabel(role: string): string {
   const map: Record<string, string> = {
