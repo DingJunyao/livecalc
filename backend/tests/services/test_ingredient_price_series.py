@@ -122,52 +122,29 @@ class _FakeDbWithInfo:
         return _FakeProductQuery(self._product_rows)
 
 
-def test_name_match_skips_descendant_ingredient_products(monkeypatch):
-    """「同名商品匹配」不能命中从属子食材的商品。
+def test_relation_chain_has_no_name_match(monkeypatch):
+    """「同名商品匹配」已彻底移除。
 
-    回归：猪肉本身 0 条记录，名字含「猪肉」的还有子食材「猪肉末」的商品；
-    旧逻辑直接拿猪肉末的单品价（恒定）短路，跳过了 11 个有记录的子食材。
-    修复后应只保留非后代商品的记录。
+    用户反馈：鸡胸肉（原料）不该命中别的原料下「鸡胸肉肠」的商品。
+    现在降级链只有 fallback → recipe → contains；函数本身也已删除。
     """
-    ingredient = SimpleNamespace(id=14, name="猪肉")
-    record_self = SimpleNamespace(
-        product_id=14, product_name="猪肉", recorded_at=datetime(2026, 10, 20, 3, 0),
-    )
-    record_child = SimpleNamespace(
-        product_id=59, product_name="猪肉末", recorded_at=datetime(2026, 10, 20, 4, 0),
-    )
-    record_other = SimpleNamespace(
-        product_id=60, product_name="猪肉脯", recorded_at=datetime(2026, 10, 20, 5, 0),
-    )
+    assert not hasattr(recipe_service, "_name_match_cost_range_ppg")
 
-    monkeypatch.setattr(
-        recipe_service, "_contains_descendant_ids", lambda db, iid: frozenset({59}),
+    for name in (
+        "_fallback_cost_range_ppg",
+        "_get_cost_from_recipe_range",
+        "_contains_cost_range_ppg",
+    ):
+        monkeypatch.setattr(recipe_service, name, lambda *a, **k: None)
+
+    result = recipe_service._relation_cost_range_ppg(
+        _FakeDb(),
+        SimpleNamespace(id=97, name="胡萝卜"),
+        1,
+        datetime(2026, 10, 21, 3, 0),
+        tz="UTC",
     )
-    monkeypatch.setattr(
-        recipe_service,
-        "_price_timeline_index",
-        lambda *args, **kwargs: (
-            [date(2026, 10, 20)],
-            {date(2026, 10, 20): [record_self, record_child, record_other]},
-            [record_self, record_child, record_other],
-        ),
-    )
-    captured = {}
-
-    def _records_range(recs, db, ingredient_id):
-        captured["product_ids"] = [r.product_id for r in recs]
-        return Decimal("0.01"), Decimal("0.02"), Decimal("0.015")
-
-    monkeypatch.setattr(recipe_service, "_records_cost_range_ppg", _records_range)
-
-    # 自身商品(14)与子食材商品(59)都应被排除，只保留无关商品(60)
-    db = _FakeDbWithInfo([(14, 14), (59, 59), (60, 60)])
-    result = recipe_service._name_match_cost_range_ppg(
-        db, ingredient, 1, datetime(2026, 10, 21, 3, 0), tz="UTC",
-    )
-
-    assert result == (Decimal("0.01"), Decimal("0.02"), Decimal("0.015"))
-    assert captured["product_ids"] == [60]
+    assert result is None
 
 
 def test_prefer_relations_when_direct_is_stale(monkeypatch):

@@ -253,6 +253,31 @@ direct（自身商品加权价）
 - 美道家梦之城店：6.58 → **15.57（从属聚合，猪油价格较高）**；
 - 美道家万达广场店：该商家没有子食材价格 → 保留 6.58 并标记超期。
 
+## 第六轮：彻底移除「同名商品匹配」（name_match）
+
+用户反馈：**不需要「同名商品匹配」**——例如「鸡胸肉（原料）」在赵一鸣零食文化宫店
+被匹配到别的原料下「鸡胸肉肠」的商品，这是错的：名字包含不等于同一食材。
+
+### 改动
+
+- 降级链统一为 **direct → fallback（含 substitutable）→ recipe（半成品）→ contains（从属聚合）**，
+  不再有 name_match：
+  - `_ingredient_cost_range`（菜谱成本明细/direct 逐项）
+  - `calculate_recipe_cost`（单菜谱成本）
+  - `calculate_ingredient_price_series` / `_relation_cost_range_ppg`（原料趋势折算）
+  - `calculate_recipe_cost_range_as_of` 内部同链
+  - `ingredient_latest_price_recorded_at`（最新记录时间提示）
+  - `GET /nutrition/ingredients/{id}/latest-price-by-merchant` 的按商家折算候选
+- 删除 `_name_match_cost_range_ppg()` 函数本体（不再保留死代码）。
+- 回归：`test_relation_chain_has_no_name_match` 断言函数已不存在、且关系链只剩三层时返回 None。
+
+### 影响
+
+- 「鸡胸肉」不再命中「鸡胸肉肠」的商品；它有自己的直接价时行为不变（实测 6 家商家全部 `direct`）。
+- 原来只能靠 name_match 出价的原料，现在会落到 recipe/contains 或 `no_price`
+  （这是预期：宁可没有价，也不要拿别的食材的价）。
+- 前端 `charts.sourceNameMatch` 文案保留但不会再出现。
+
 
 
 > 注意：HMR 只热替换模板时会出现 `Property "latestComputedPoint" was accessed during render but is
