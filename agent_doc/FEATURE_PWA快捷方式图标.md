@@ -6,11 +6,11 @@
 
 ## 方案
 
-用项目既有工具链（不引新依赖）从 MDI 字体提取侧边栏同款图标，渲染成「绿底白图标」PNG（与 logo 配色一致）：
+用项目既有工具链（不引新依赖）从 MDI 字体提取侧边栏同款图标，渲染成「透明底黑色图标」PNG：
 
 ```
-@mdi/font ttf  →  fontTools 提字形 path  →  SVG（按 bounds 居中）  →  sharp  →  96×96 PNG
-（已有）          （PEP 723 uv --with）        （配色对齐 logo）        （已有）
+@mdi/font ttf  →  fontTools 提字形 path  →  SVG（按 bounds 居中 + 65% 缩放）  →  sharp  →  96×96 PNG
+（已有）          （PEP 723 uv --with）        （透明底黑图标）                    （已有）
 ```
 
 新增 [scripts/generate_pwa_shortcuts.py](scripts/generate_pwa_shortcuts.py)：脚本自包含（PEP 723 声明 fontTools 依赖，`uv run` 直接跑、不污染 venv），改侧边栏图标时改这里重跑即可。
@@ -22,7 +22,7 @@ shortcuts 顺序、文件名、MDI 图标名与 [AppLayout.vue](frontend/src/com
 | shortcut | url | MDI 图标 | 文件 |
 |---|---|---|---|
 | 今日推荐 | / | mdi-silverware-fork-knife | today.png |
-| 价格记录 | /prices | mdi-currency-cny | prices.png |
+| 价格记录 | /prices | mdi-receipt-text-outline | prices.png |
 | 菜谱管理 | /recipes | mdi-book-open-variant | recipes.png |
 | 商品管理 | /data/products | mdi-package-variant | products.png |
 | 原料管理 | /data/ingredients | mdi-leaf | ingredients.png |
@@ -43,11 +43,15 @@ ty = SIZE/2 + (y_max + y_min)/2   # + 号因 scale(1,-1) 翻 y
 transform = translate(tx, ty) scale(1, -1)
 ```
 
-各字形保持原大不额外缩放——MDI 设计师已靠「内容多则 bounds 小」平衡视觉重量，原大渲染即与应用内 `<v-icon>` 视觉一致。
+所有字形统一按最长边缩放到画布 65%，避免不同 bounds 的字形在透明底上视觉大小不一致。
 
 ### 配色
 
-对齐 [logo](frontend/public/logo.svg) / vite.config.ts `theme_color`：背景 `#558B2F`（橄榄绿 primary），前景 `#FDFCF8`（温暖米白）。
+透明底（`BG_COLOR = "none"`）+ 黑色前景 `#000000`。平台会按系统主题给快捷方式图标叠加底色/反色，因此图标本身不带背景。
+
+### 价格记录图标去货币化
+
+2026-10-22 用户要求价格记录功能图标与特定货币无关（原侧栏用 `mdi-currency-cny`，即人民币符号）。侧栏两处与 PWA 快捷方式统一改为 `mdi-receipt-text-outline`（收据 + 文字行），对齐移动端价格页的 Material `receipt_long` / `receipt_long_outlined` 图标。
 
 ### SVG → PNG
 

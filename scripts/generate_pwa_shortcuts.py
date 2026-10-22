@@ -35,7 +35,7 @@ OUT_DIR = FRONTEND / "public" / "shortcuts"
 # shortcut 顺序、文件名、MDI 图标名（与 AppLayout.vue prepend-icon 对齐）
 SHORTCUTS = [
     ("today", "silverware-fork-knife"),       # 今日推荐
-    ("prices", "currency-cny"),               # 价格记录
+    ("prices", "receipt-text-outline"),       # 价格记录
     ("recipes", "book-open-variant"),         # 菜谱管理
     ("products", "package-variant"),          # 商品管理
     ("ingredients", "leaf"),                  # 原料管理
