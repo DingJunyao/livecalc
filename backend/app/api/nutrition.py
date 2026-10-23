@@ -1380,8 +1380,11 @@ async def get_ingredient_latest_price_by_merchant(
 
             return results
 
-        def _find_fallback_ingredient() -> OptType[tuple[Ingredient, str]]:
-            """回退链（fallback + substitutable 双向）里第一个「有价格记录」的食材。"""
+        def _find_fallback_ingredient() -> OptType[tuple[Ingredient, str, Decimal, Optional[str]]]:
+            """回退链（fallback + substitutable 双向）里第一个「有价格记录」的食材。
+
+            返回 (食材, 链描述, 每克价系数, 系数等式描述)；无系数时 factor=1。
+            """
             hierarchies = db.query(IngredientHierarchy).filter(
                 IngredientHierarchy.is_active == True,  # noqa: E712
                 IngredientHierarchy.relation_type.in_([
@@ -1407,7 +1410,7 @@ async def get_ingredient_latest_price_by_merchant(
 
             tried: set[int] = set()
 
-            def _find(ing_id: int) -> OptType[tuple[Ingredient, str]]:
+            def _find(ing_id: int) -> OptType[tuple[Ingredient, str, Decimal, Optional[str]]]:
                 if ing_id in tried:
                     return None
                 tried.add(ing_id)
@@ -1436,10 +1439,40 @@ async def get_ingredient_latest_price_by_merchant(
                     if has_price:
                         cur = fb_ingredients_map.get(ing_id)
                         chain = f"{cur.name if cur else ing_id} → {fb_ing.name}"
-                        return fb_ing, chain
+                        from app.services.entity_link_service import (
+                            hierarchy_price_factor,
+                            hierarchy_factor_sentence,
+                        )
+                        step = hierarchy_price_factor(db, h)
+                        factor = step if step is not None else Decimal(1)
+                        desc = None
+                        if step is not None:
+                            desc = hierarchy_factor_sentence(
+                                db, h,
+                                parent_name=fb_ing.name,
+                                child_name=cur.name if cur else None,
+                            )
+                        return fb_ing, chain, factor, desc
                     deeper = _find(fb_id)
                     if deeper:
-                        return deeper
+                        deeper_ing, deeper_chain, deeper_factor, deeper_desc = deeper
+                        from app.services.entity_link_service import (
+                            hierarchy_price_factor,
+                            hierarchy_factor_sentence,
+                        )
+                        cur = fb_ingredients_map.get(ing_id)
+                        step = hierarchy_price_factor(db, h)
+                        factor = deeper_factor * (step if step is not None else Decimal(1))
+                        desc = deeper_desc
+                        if step is not None:
+                            hop = hierarchy_factor_sentence(
+                                db, h,
+                                parent_name=fb_ing.name,
+                                child_name=cur.name if cur else None,
+                            )
+                            if hop:
+                                desc = f"{hop}；{deeper_desc}" if deeper_desc else hop
+                        return deeper_ing, deeper_chain, factor, desc
                 return None
 
             return _find(ingredient_id)
@@ -1530,10 +1563,21 @@ async def get_ingredient_latest_price_by_merchant(
 
             fb_result = _find_fallback_ingredient()
             if fb_result:
-                fb_ingredient, fb_chain = fb_result
-                _collect_relation_rows(
-                    _lookup_merchant_prices(fb_ingredient), "fallback", fb_chain,
-                )
+                fb_ingredient, fb_chain, fb_factor, fb_factor_desc = fb_result
+                if fb_factor != 1:
+                    fb_chain = f"{fb_chain}（{fb_factor_desc}）" if fb_factor_desc else fb_chain
+                adjusted_fb_rows = []
+                for row in _lookup_merchant_prices(fb_ingredient):
+                    merged_row = dict(row)
+                    merged_row["price"] = round(
+                        float(merged_row["price"]) * float(fb_factor), 2,
+                    )
+                    if quantity is not None and quantity > 0:
+                        merged_row["total_cost"] = round(
+                            merged_row["price"] * quantity, 2,
+                        )
+                    adjusted_fb_rows.append(merged_row)
+                _collect_relation_rows(adjusted_fb_rows, "fallback", fb_chain)
                 fallback_chain = fb_chain
 
             # 同名商品匹配已移除：别的原料下的同名商品不是本原料的价格

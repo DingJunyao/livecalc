@@ -21,13 +21,61 @@ from app.core.exceptions import LocalizedHTTPException
 router = APIRouter()
 
 # Pydantic 模型
-class HierarchyRelationCreate(BaseModel):
+class HierarchyFactorMixin(BaseModel):
+    """可选换算系数：factor_parent_quantity [unit] 父 = factor_child_quantity [unit] 子。
+
+    四个字段要么全空（1:1，与历史行为一致），要么全填且数量 > 0。
+    """
+
+    factor_parent_quantity: Optional[float] = None
+    factor_parent_unit: Optional[str] = None
+    factor_child_quantity: Optional[float] = None
+    factor_child_unit: Optional[str] = None
+
+    def normalized_factor(self) -> dict:
+        """归一化后的系数字段 dict；未设置时四个键均为 None。"""
+        qp = self.factor_parent_quantity
+        up = (self.factor_parent_unit or "").strip() or None
+        qc = self.factor_child_quantity
+        uc = (self.factor_child_unit or "").strip() or None
+        values = [qp, up, qc, uc]
+        if all(v is None for v in values):
+            return {
+                "factor_parent_quantity": None,
+                "factor_parent_unit": None,
+                "factor_child_quantity": None,
+                "factor_child_unit": None,
+            }
+        if any(v is None for v in values):
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='换算系数必须完整填写（两边数量与单位）',
+            )
+        if qp <= 0 or qc <= 0:
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='换算系数的两边数量都必须大于 0',
+            )
+        if len(up) > 50 or len(uc) > 50:
+            raise LocalizedHTTPException(
+                status_code=400,
+                message='换算系数的单位长度不能超过 50',
+            )
+        return {
+            "factor_parent_quantity": qp,
+            "factor_parent_unit": up,
+            "factor_child_quantity": qc,
+            "factor_child_unit": uc,
+        }
+
+
+class HierarchyRelationCreate(HierarchyFactorMixin):
     parent_id: int
     child_id: int
     relation_type: str  # "contains", "substitutable", "fallback"
     strength: Optional[int] = 50
 
-class HierarchyRelationResponse(BaseModel):
+class HierarchyRelationResponse(HierarchyFactorMixin):
     id: int
     parent_id: int
     parent_name: str
@@ -85,6 +133,22 @@ class MergeStatusResponse(BaseModel):
 
 
 # 食材层级关系管理接口
+def _factor_out(row) -> dict:
+    """ORM 行 → 响应的系数字段（Numeric → float）。"""
+    return {
+        "factor_parent_quantity": (
+            float(row.factor_parent_quantity)
+            if row.factor_parent_quantity is not None else None
+        ),
+        "factor_parent_unit": row.factor_parent_unit,
+        "factor_child_quantity": (
+            float(row.factor_child_quantity)
+            if row.factor_child_quantity is not None else None
+        ),
+        "factor_child_unit": row.factor_child_unit,
+    }
+
+
 @router.post("/ingredients/hierarchy", response_model=HierarchyRelationResponse)
 def create_hierarchy_relation(
     relation: HierarchyRelationCreate,
@@ -120,9 +184,18 @@ def create_hierarchy_relation(
         actual_child_id = relation.parent_id
         if actual_parent_id == actual_child_id:
             raise LocalizedHTTPException(status_code=400, message='不能创建自引用的回退关系')
+        # 系数跟随用户表单的 parent/child 一起交换，落库后始终描述「实际 parent = 实际 child」
+        factor = relation.normalized_factor()
+        factor = {
+            "factor_parent_quantity": factor["factor_child_quantity"],
+            "factor_parent_unit": factor["factor_child_unit"],
+            "factor_child_quantity": factor["factor_parent_quantity"],
+            "factor_child_unit": factor["factor_parent_unit"],
+        }
     else:
         actual_parent_id = relation.parent_id
         actual_child_id = relation.child_id
+        factor = relation.normalized_factor()
 
     # 检查是否已存在相同的关系（含关系类型）
     existing_relation = db.query(IngredientHierarchy).filter(
@@ -139,6 +212,7 @@ def create_hierarchy_relation(
         "child_id": actual_child_id,
         "relation_type": relation.relation_type,
         "strength": relation.strength,
+        **factor,
     }
 
     if current_user.is_admin:
@@ -161,6 +235,7 @@ def create_hierarchy_relation(
             relation_type=created.relation_type,
             strength=created.strength,
             created_at=created.created_at,
+            **_factor_out(created),
         )
 
     p = proposal_service.submit(
@@ -177,6 +252,7 @@ def create_hierarchy_relation(
         relation_type=relation.relation_type,
         strength=relation.strength or 50,
         created_at=p.created_at or datetime.utcnow(),
+        **factor,
     )
 
 
@@ -203,7 +279,8 @@ def get_ingredient_hierarchy(
                 child_name=child_ingredient.name,
                 relation_type=rel.relation_type,
                 strength=rel.strength,
-                created_at=rel.created_at
+                created_at=rel.created_at,
+                **_factor_out(rel),
             )
         return None
 
@@ -291,17 +368,33 @@ def get_ingredient_hierarchy(
 def update_hierarchy_relation(
     relation_id: int,
     strength: int = Body(..., embed=True, ge=1, le=100),
+    factor_parent_quantity: Optional[float] = Body(None, embed=True),
+    factor_parent_unit: Optional[str] = Body(None, embed=True),
+    factor_child_quantity: Optional[float] = Body(None, embed=True),
+    factor_child_unit: Optional[str] = Body(None, embed=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    修改层级关系的强度（分流：管理员直写 / 普通用户提议）。
+    修改层级关系的强度与可选换算系数（分流：管理员直写 / 普通用户提议）。
+
+    系数四字段全空 = 清除系数（回到 1:1）；全填 = 设置；部分填 = 400。
     """
     relation = db.query(IngredientHierarchy).filter(IngredientHierarchy.id == relation_id).first()
     if not relation:
         raise LocalizedHTTPException(status_code=404, message='层级关系不存在')
 
-    payload = {"strength": strength}
+    class _FactorIn(HierarchyFactorMixin):
+        pass
+
+    factor = _FactorIn(
+        factor_parent_quantity=factor_parent_quantity,
+        factor_parent_unit=factor_parent_unit,
+        factor_child_quantity=factor_child_quantity,
+        factor_child_unit=factor_child_unit,
+    ).normalized_factor()
+
+    payload = {"strength": strength, **factor}
 
     if current_user.is_admin:
         proposal_service.apply_as_admin(
@@ -328,6 +421,7 @@ def update_hierarchy_relation(
             relation_type=relation.relation_type,
             strength=relation.strength,
             created_at=relation.created_at,
+            **_factor_out(relation),
         )
 
     parent_ingredient = db.query(Ingredient).filter(Ingredient.id == relation.parent_id).first()
@@ -344,7 +438,8 @@ def update_hierarchy_relation(
         child_name=child_ingredient.name,
         relation_type=relation.relation_type,
         strength=relation.strength,
-        created_at=relation.created_at
+        created_at=relation.created_at,
+        **_factor_out(relation),
     )
 
 

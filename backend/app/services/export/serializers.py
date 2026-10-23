@@ -285,6 +285,16 @@ def serialize_hierarchy(h: Any, parent_name: Optional[str], child_name: Optional
         "child_name": child_name,
         "relation_type": h.relation_type,
         "strength": h.strength,
+        "factor_parent_quantity": (
+            float(h.factor_parent_quantity)
+            if getattr(h, "factor_parent_quantity", None) is not None else None
+        ),
+        "factor_parent_unit": getattr(h, "factor_parent_unit", None),
+        "factor_child_quantity": (
+            float(h.factor_child_quantity)
+            if getattr(h, "factor_child_quantity", None) is not None else None
+        ),
+        "factor_child_unit": getattr(h, "factor_child_unit", None),
     }
 
 
