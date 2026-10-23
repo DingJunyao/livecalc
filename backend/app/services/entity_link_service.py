@@ -244,6 +244,72 @@ def link_price_factor(
 
 
 # ------------------------------------------------------------------ #
+#  层级关系换算系数（干/鲜香菇这类替代/回退折算）
+# ------------------------------------------------------------------ #
+
+def hierarchy_factor_parts(relation) -> Optional[tuple[Decimal, str, Decimal, str]]:
+    """读取关系上的可选换算系数四元组。
+
+    返回 (parent_quantity, parent_unit, child_quantity, child_unit)；
+    任一字段缺失（= 未设置系数）返回 None，调用方按 1:1 处理。
+    """
+    if relation is None:
+        return None
+    q_p = _dec(getattr(relation, "factor_parent_quantity", None))
+    q_c = _dec(getattr(relation, "factor_child_quantity", None))
+    u_p = (getattr(relation, "factor_parent_unit", None) or "").strip()
+    u_c = (getattr(relation, "factor_child_unit", None) or "").strip()
+    if q_p is None or q_c is None or not u_p or not u_c:
+        return None
+    if q_p <= 0 or q_c <= 0:
+        return None
+    return q_p, u_p, q_c, u_c
+
+
+def hierarchy_price_factor(db: Session, relation) -> Optional[Decimal]:
+    """parent→child 的每克价系数。
+
+    语义：`q_p [u_p] 父 = q_c [u_c] 子` 时
+      ppg_child = ppg_parent × factor，factor = (q_p × g_p) / (q_c × g_c)
+    例：1 kg 干(父) = 3 kg 鲜(子) → factor = 1000/3000 = 1/3。
+    两端任一单位折克失败（未设单位重量等）返回 None，调用方按 1:1。
+    """
+    parts = hierarchy_factor_parts(relation)
+    if parts is None:
+        return None
+    q_p, u_p, q_c, u_c = parts
+    parent_id = getattr(relation, "parent_id", None)
+    child_id = getattr(relation, "child_id", None)
+    if parent_id is None or child_id is None:
+        return None
+    g_p = resolve_unit_grams(db, "ingredient", parent_id, u_p)
+    g_c = resolve_unit_grams(db, "ingredient", child_id, u_c)
+    if g_p is None or g_c is None:
+        return None
+    return link_price_factor(g_p, q_p, g_c, q_c)
+
+
+def hierarchy_factor_sentence(
+    db: Session,
+    relation,
+    parent_name: Optional[str] = None,
+    child_name: Optional[str] = None,
+) -> Optional[str]:
+    """「1 kg 干香菇 = 3 kg 鲜香菇」；无系数返回 None。"""
+    parts = hierarchy_factor_parts(relation)
+    if parts is None:
+        return None
+    q_p, u_p, q_c, u_c = parts
+    if parent_name is None and relation.parent_id is not None:
+        parent_name = entity_display_name(db, "ingredient", relation.parent_id)
+    if child_name is None and relation.child_id is not None:
+        child_name = entity_display_name(db, "ingredient", relation.child_id)
+    return format_link_sentence(
+        parent_name or "", q_p, u_p, child_name or "", q_c, u_c,
+    )
+
+
+# ------------------------------------------------------------------ #
 #  最新价（关联区展示用）
 # ------------------------------------------------------------------ #
 

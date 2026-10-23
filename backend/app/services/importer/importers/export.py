@@ -430,6 +430,11 @@ class ExportImporter(Importer):
                 parent_id=parent_id,
                 child_id=child_id,
                 relation_type=item.get("relation_type", "substitute"),
+                strength=item.get("strength", 50),
+                factor_parent_quantity=item.get("factor_parent_quantity"),
+                factor_parent_unit=item.get("factor_parent_unit"),
+                factor_child_quantity=item.get("factor_child_quantity"),
+                factor_child_unit=item.get("factor_child_unit"),
             ))
             imported += 1
         self.result.stats["ingredient_hierarchy"] = imported

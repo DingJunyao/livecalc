@@ -236,7 +236,7 @@ def _hierarchy_edges(db: Session, kind: str, node_id: int) -> list:
     return memoize_result(db, f"hier:{kind}", node_id, _build)
 
 
-def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, visited: Optional[List[int]] = None, region_id: Optional[int] = None) -> Optional[tuple[Ingredient, ProductRecord, str]]:
+def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, visited: Optional[List[int]] = None, region_id: Optional[int] = None) -> Optional[tuple[Ingredient, ProductRecord, str, Decimal, Optional[str]]]:
     """
     获取食材的回退链中的第一个有价格的食材
 
@@ -251,10 +251,13 @@ def _get_ingredient_fallback(db: Session, ingredient: Ingredient, user_id: int, 
         visited: 已访问的食材ID列表（避免循环）
 
     Returns:
-        (fallback_ingredient, price_record, fallback_chain) 或 None
+        (fallback_ingredient, price_record, fallback_chain, factor, factor_desc) 或 None
         - fallback_ingredient: 回退食材对象
         - price_record: 价格记录
         - fallback_chain: 回退链描述（如 "猪肉 → 里脊"）
+        - factor: 回退链累计的每克价系数（ppg_本 = ppg_回退 × factor）；
+          关系未设换算系数时为 1
+        - factor_desc: 系数等式描述（如 "1 kg 干 = 3 kg 鲜"），无系数为 None
     """
     if visited is None:
         if not ingredient:
@@ -318,18 +321,49 @@ def _get_ingredient_fallback_impl(db: Session, ingredient: Ingredient, user_id: 
             if latest_record:
                 # 找到了有价格的回退食材
                 fallback_chain = f"{ingredient.name} → {fallback_source.name}"
-                return fallback_source, latest_record, fallback_chain
+                from app.services.entity_link_service import (
+                    hierarchy_price_factor,
+                    hierarchy_factor_sentence,
+                )
+                step_factor = hierarchy_price_factor(db, hierarchy)
+                factor = step_factor if step_factor is not None else Decimal(1)
+                factor_desc = None
+                if step_factor is not None:
+                    factor_desc = hierarchy_factor_sentence(
+                        db, hierarchy,
+                        parent_name=fallback_source.name,
+                        child_name=ingredient.name,
+                    )
+                return (fallback_source, latest_record, fallback_chain,
+                        factor, factor_desc)
 
         # 如果当前回退源没有价格，继续向上查找
         result = _get_ingredient_fallback(db, fallback_source, user_id, visited, region_id=region_id)
         if result:
-            fallback_ingredient, price_record, chain = result
+            fallback_ingredient, price_record, chain, deeper_factor, deeper_desc = result
             # 如果回退链最终回到了原始食材，跳过此回退源（避免循环链）
             if fallback_ingredient.id == ingredient.id:
                 continue
+            from app.services.entity_link_service import (
+                hierarchy_price_factor,
+                hierarchy_factor_sentence,
+            )
+            step_factor = hierarchy_price_factor(db, hierarchy)
+            factor = deeper_factor * (step_factor if step_factor is not None else Decimal(1))
+            factor_desc = deeper_desc
+            if step_factor is not None:
+                hop_desc = hierarchy_factor_sentence(
+                    db, hierarchy,
+                    parent_name=fallback_source.name,
+                    child_name=ingredient.name,
+                )
+                if hop_desc:
+                    factor_desc = (
+                        f"{hop_desc}；{deeper_desc}" if deeper_desc else hop_desc
+                    )
             # 在回退链的开头添加当前食材
             fallback_chain = f"{ingredient.name} → {chain}"
-            return fallback_ingredient, price_record, fallback_chain
+            return fallback_ingredient, price_record, fallback_chain, factor, factor_desc
 
     return None
 
@@ -459,10 +493,10 @@ def _get_child_price_per_gram(
     # 3. 尝试 FALLBACK/SUBSTITUTABLE 回退
     fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
-        fallback_ingredient, fallback_price_record, _ = fallback_result
+        fallback_ingredient, fallback_price_record, _, factor, _desc = fallback_result
         ppg = _convert_record_to_price_per_gram(db, fallback_price_record, fallback_ingredient.id)
         if ppg is not None:
-            return ppg
+            return ppg * factor
 
     # 3. 尝试 CONTAINS 子食材聚合（递归）
     agg_result = _get_aggregated_cost_from_children(db, ingredient, user_id, as_of_date, visited, tz=tz, region_id=region_id)
@@ -615,12 +649,13 @@ def _get_child_price_per_gram_range(
     # _get_ingredient_fallback 不接 as_of/tz，只给单条全局最新记录
     fallback_result = _get_ingredient_fallback(db, ingredient, user_id, visited, region_id=region_id)
     if fallback_result:
-        fallback_ingredient, fallback_price_record, _ = fallback_result
+        fallback_ingredient, fallback_price_record, _, factor, _desc = fallback_result
         avg_ppg = _convert_record_to_price_per_gram(
             db, fallback_price_record, fallback_ingredient.id
         )
         if avg_ppg is not None:
             # 既有 fallback 只给单条（无 as_of 锚点日），三档塌缩
+            avg_ppg = avg_ppg * factor
             return (avg_ppg, avg_ppg, avg_ppg)
 
     # 3. 尝试 CONTAINS 子食材聚合（递归）
@@ -1276,7 +1311,7 @@ def _latest_price_recorded_at(
     # fallback（含 substitutable）：回退食材各商品锚点日记录集（与 _fallback_cost_range_ppg 同源）
     fb = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
     if fb:
-        fb_ingredient, _latest, _chain = fb
+        fb_ingredient, _latest, _chain, _factor, _desc = fb
         times = []
         for p in active_products_for_ingredient(db, fb_ingredient.id):
             recs = _get_price_records_with_fallback(
@@ -1576,7 +1611,7 @@ def _fallback_cost_range_ppg(
     fb = _get_ingredient_fallback(db, ingredient, user_id, region_id=region_id)
     if not fb:
         return None
-    fb_ingredient, _latest, chain = fb
+    fb_ingredient, _latest, chain, factor, factor_desc = fb
     products = active_products_for_ingredient(db, fb_ingredient.id)
     all_recs: list[ProductRecord] = []
     for p in products:
@@ -1590,6 +1625,11 @@ def _fallback_cost_range_ppg(
     if rng is None:
         return None
     mn, mx, av = rng
+    # 换算系数（如 1 kg 干 = 3 kg 鲜 → ppg_鲜 = ppg_干 × 1/3）；1:1 时 factor=1
+    if factor != 1:
+        mn, mx, av = mn * factor, mx * factor, av * factor
+        if factor_desc:
+            chain = f"{chain}（{factor_desc}）"
     return mn, mx, av, chain
 
 
