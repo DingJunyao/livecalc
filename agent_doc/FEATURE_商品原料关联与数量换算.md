@@ -23,6 +23,27 @@
 - 单位折克（让「提」能通过「1 提 = 5 包、1 包 = 85 g」算出 425 g）；
 - 缺价时的每克价补位（菜谱成本 / 原料折算价 / 各商家折算价）。
 
+## v2 收敛：原料折算归层级关系（2026-10-23）
+
+用户反馈：关联页的作用体现不出来；干/鲜香菇折算为什么不复用现有的替代/回退关系加系数？
+
+结论（用户确认）：**收敛**。
+
+- 干/鲜香菇这类「原料↔原料价格折算」，本质就是 `substitutable`/`fallback` 关系缺一个换算系数 →
+  给 `ingredient_hierarchies` 加可选系数四字段（NULL = 1:1，完全向后兼容）：
+  `factor_parent_quantity / factor_parent_unit / factor_child_quantity / factor_child_unit`，
+  语义 `q_p [u_p] 父 = q_c [u_c] 子`；折算 `ppg_子 = ppg_父 × (q_p×g_p)/(q_c×g_c)`
+  （复用 `entity_link_service.resolve_unit_grams / link_price_factor`，折克链也支持）。
+- 接入点：`_get_ingredient_fallback*` 返回累计 factor + 等式描述（多跳相乘），
+  `_fallback_cost_range_ppg`、`_get_child_price_per_gram[_range]`、按商家 `_find_fallback_ingredient`
+  全部乘系数；chain 追加等式，如 `鲜 → 干（1 kg 干 = 3 kg 鲜）`。
+- 关联页（entity_quantity_links）聚焦 **商品包装链**：单位折克、商品↔商品等价、记价单位下拉；
+  原料↔原料新建关联时 UI 提示改用替代/回退关系。
+- 「作用可见化」：详情页在生效来源非 direct 时展示当前折算链摘要（含系数等式）。
+
+配套迁移：`alembic/versions/20261023_0001_hierarchy_factor.py` +
+`backend/scripts/sql/20261023_hierarchy_factor_{sqlite,mysql,postgresql}.sql`（均含验证/回滚）。
+
 ## 数据模型
 
 `entity_quantity_links`：

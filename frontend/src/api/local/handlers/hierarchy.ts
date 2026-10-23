@@ -33,6 +33,11 @@ export async function getHierarchy(params: Record<string, string>, _query?: any)
     child_name: nameMap[r.child_id] || `#${r.child_id}`,
     relation_type: r.relation_type || r.relationship_type || 'contains',
     strength: r.strength ?? r.confidence ?? 100,
+    // 换算系数（可空，全空 = 1:1），与云端 GET 层级响应同形
+    factor_parent_quantity: r.factor_parent_quantity ?? null,
+    factor_parent_unit: r.factor_parent_unit ?? null,
+    factor_child_quantity: r.factor_child_quantity ?? null,
+    factor_child_unit: r.factor_child_unit ?? null,
     created_at: r.created_at,
   })
 

@@ -223,6 +223,18 @@
             </v-col>
           </v-row>
 
+          <v-alert
+            v-if="entityType === 'ingredient' && targetType === 'ingredient'"
+            type="warning"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            <div class="text-caption">
+              {{ t('ingredients.quantityLinksIngredientHint') }}
+            </div>
+          </v-alert>
+
           <v-alert type="info" variant="tonal" density="compact" class="mt-4">
             <div class="text-body-2">
               {{ t('ingredients.quantityLinksPreview') }}：

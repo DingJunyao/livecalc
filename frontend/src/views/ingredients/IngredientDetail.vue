@@ -236,6 +236,20 @@
         </v-card-title>
         <v-divider />
         <v-card-text class="py-6">
+          <!-- 当前生效来源摘要行：非 direct 时醒目提示折算来源与链路 -->
+          <v-alert
+            v-if="!showDirectAsPrimary && latestComputedPoint"
+            type="info"
+            variant="tonal"
+            density="compact"
+            icon="mdi-ray-start-arrow"
+            class="mb-4"
+          >
+            <div class="text-body-2">
+              {{ t('charts.computedSummaryLine', { name: ingredient?.name || '' }) }}
+              <strong v-if="latestComputedPoint.chain">{{ latestComputedPoint.chain }}</strong>
+            </div>
+          </v-alert>
           <div class="d-flex align-center ga-4 flex-wrap">
             <div class="text-h3 font-weight-bold text-tertiary">
               {{ formatMoney(
@@ -994,11 +1008,12 @@
                 <v-icon color="info" size="small" class="me-3">mdi-arrow-down-right</v-icon>
                 <div class="flex-grow-1">
                   <div class="text-body-2" v-html="getRelationListDisplayText(rel, 'child')"></div>
-                  <div class="text-caption text-medium-emphasis mt-1">
+                  <div class="text-caption text-medium-emphasis mt-1 d-flex align-center flex-wrap">
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
                     <span class="ms-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
+                    <span v-if="getRelationFactorText(rel)" class="ms-2 text-primary">{{ getRelationFactorText(rel) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -1035,11 +1050,12 @@
                 <v-icon color="success" size="small" class="me-3">mdi-arrow-up-right</v-icon>
                 <div class="flex-grow-1">
                   <div class="text-body-2" v-html="getRelationListDisplayText(rel, 'parent')"></div>
-                  <div class="text-caption text-medium-emphasis mt-1">
+                  <div class="text-caption text-medium-emphasis mt-1 d-flex align-center flex-wrap">
                     <v-chip size="x-small" :color="getRelationTypeColor(rel.relation_type)">
                       {{ getRelationTypeLabel(rel.relation_type) }}
                     </v-chip>
                     <span class="ms-2">{{ t('ingredients.strength', { value: Math.round(rel.strength) }) }}</span>
+                    <span v-if="getRelationFactorText(rel)" class="ms-2 text-primary">{{ getRelationFactorText(rel) }}</span>
                   </div>
                 </div>
                 <v-btn
@@ -1692,6 +1708,74 @@
               </template>
             </v-slider>
 
+            <!-- 换算系数（可选，默认折叠）：q父[unit] 父 = q子[unit] 子 -->
+            <v-expansion-panels class="mb-4">
+              <v-expansion-panel :title="t('ingredients.relationFactor')">
+                <v-expansion-panel-text>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis mb-1">{{ t('ingredients.relationFactorParentSide') }}</div>
+                      <div class="d-flex ga-2">
+                        <v-text-field
+                          v-model.number="relationForm.factor_parent_quantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          :label="t('ingredients.quantityLinksQuantity')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-0"
+                          style="max-width: 110px"
+                        />
+                        <v-combobox
+                          v-model="relationForm.factor_parent_unit"
+                          :items="unitNameOptions"
+                          :label="t('ingredients.quantityLinksUnit')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                      </div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis mb-1">{{ t('ingredients.relationFactorChildSide') }}</div>
+                      <div class="d-flex ga-2">
+                        <v-text-field
+                          v-model.number="relationForm.factor_child_quantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          :label="t('ingredients.quantityLinksQuantity')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-0"
+                          style="max-width: 110px"
+                        />
+                        <v-combobox
+                          v-model="relationForm.factor_child_unit"
+                          :items="unitNameOptions"
+                          :label="t('ingredients.quantityLinksUnit')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                      </div>
+                    </v-col>
+                  </v-row>
+                  <div v-if="addFactorPreview" class="text-caption mt-2">
+                    {{ addFactorPreview }}
+                  </div>
+                  <div v-else class="text-caption text-medium-emphasis mt-2">
+                    {{ t('ingredients.relationFactorHint') }}
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
+
             <!-- 关系预览 -->
             <v-alert
               v-if="selectedTargetIngredient && relationForm.relation_type"
@@ -1795,6 +1879,74 @@
                 <v-chip size="small">{{ formatNumber(Math.round(editRelationForm.strength), localeStore.effectiveFormatLocale) }}%</v-chip>
               </template>
             </v-slider>
+
+            <!-- 换算系数（可选）：留空 = 清除系数（按 1:1 折算） -->
+            <v-expansion-panels class="mt-4">
+              <v-expansion-panel :title="t('ingredients.relationFactor')">
+                <v-expansion-panel-text>
+                  <v-row dense>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis mb-1">{{ t('ingredients.relationFactorParentSide') }}</div>
+                      <div class="d-flex ga-2">
+                        <v-text-field
+                          v-model.number="editRelationForm.factor_parent_quantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          :label="t('ingredients.quantityLinksQuantity')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-0"
+                          style="max-width: 110px"
+                        />
+                        <v-combobox
+                          v-model="editRelationForm.factor_parent_unit"
+                          :items="unitNameOptions"
+                          :label="t('ingredients.quantityLinksUnit')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                      </div>
+                    </v-col>
+                    <v-col cols="12" sm="6">
+                      <div class="text-caption text-medium-emphasis mb-1">{{ t('ingredients.relationFactorChildSide') }}</div>
+                      <div class="d-flex ga-2">
+                        <v-text-field
+                          v-model.number="editRelationForm.factor_child_quantity"
+                          type="number"
+                          min="0"
+                          step="any"
+                          :label="t('ingredients.quantityLinksQuantity')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-0"
+                          style="max-width: 110px"
+                        />
+                        <v-combobox
+                          v-model="editRelationForm.factor_child_unit"
+                          :items="unitNameOptions"
+                          :label="t('ingredients.quantityLinksUnit')"
+                          variant="outlined"
+                          density="comfortable"
+                          hide-details
+                          class="flex-grow-1"
+                        />
+                      </div>
+                    </v-col>
+                  </v-row>
+                  <div v-if="editFactorPreview" class="text-caption mt-2">
+                    {{ editFactorPreview }}
+                  </div>
+                  <div v-else class="text-caption text-medium-emphasis mt-2">
+                    {{ t('ingredients.relationFactorHint') }}
+                  </div>
+                </v-expansion-panel-text>
+              </v-expansion-panel>
+            </v-expansion-panels>
           </v-form>
         </v-card-text>
         <v-card-actions class="pa-4 pt-0">
@@ -2071,6 +2223,7 @@ import { buildWeightedAsOfDailySeries, shouldLoadFullPriceHistory, toLocalDayKey
 import { formatUnitOptionLabel, normalizeWeightPerUnitForEdit } from '@/utils/entityUnits'
 import { overrideAmounts } from '@/utils/unitFactor'
 import { withoutShadowedGlobals } from '@/utils/unitOptions'
+import { hasCompleteFactorFields, hasEmptyFactorFields } from '@/utils/hierarchyFactor'
 import { useLocaleStore } from '@/stores/locale'
 
 const { ask } = useConfirmDialog()
@@ -2162,6 +2315,11 @@ interface HierarchyRelation {
   child_name: string
   relation_type: string
   strength: number
+  // 换算系数（可空，全空 = 1:1）：factor_parent_quantity [unit] 父 = factor_child_quantity [unit] 子
+  factor_parent_quantity?: number | null
+  factor_parent_unit?: string | null
+  factor_child_quantity?: number | null
+  factor_child_unit?: string | null
   created_at: string
 }
 
@@ -2891,7 +3049,11 @@ const selectedPriceProduct = ref<Product | null>(null)
 const relationForm = ref({
   target_ingredient_id: null as number | null,
   relation_type: 'contains',
-  strength: 50
+  strength: 50,
+  factor_parent_quantity: null as number | null,
+  factor_parent_unit: '',
+  factor_child_quantity: null as number | null,
+  factor_child_unit: ''
 })
 
 // 选中的原料对象（用于显示名称）
@@ -2901,11 +3063,87 @@ const selectedTargetIngredient = ref<Ingredient | null>(null)
 const editRelationRelation = ref<HierarchyRelation | null>(null)
 const editRelationForm = ref({
   relation_type: 'contains',
-  strength: 50
+  strength: 50,
+  factor_parent_quantity: null as number | null,
+  factor_parent_unit: '',
+  factor_child_quantity: null as number | null,
+  factor_child_unit: ''
 })
 
 // 待删除的关系
 const relationToDelete = ref<HierarchyRelation | null>(null)
+
+// === 换算系数（关系表单共用） ===
+const unitNameOptions = computed(() =>
+  (units.value as Array<{ name?: string }>).map(u => u.name).filter(Boolean) as string[],
+)
+
+/** 数量显示：去掉多余小数（1.0 → 1, 0.5 → 0.5） */
+const formatFactorQty = (q: number | null | undefined): string => {
+  if (q == null || !Number.isFinite(Number(q))) return '?'
+  return String(Number(q))
+}
+
+/** 等式文本：`1 kg 干香菇 = 3 kg 鲜香菇` */
+const buildFactorEquation = (
+  pq: number | null | undefined, pu: string | null | undefined, parentName: string,
+  cq: number | null | undefined, cu: string | null | undefined, childName: string,
+): string =>
+  `${formatFactorQty(pq)} ${String(pu || '').trim()} ${parentName} = ${formatFactorQty(cq)} ${String(cu || '').trim()} ${childName}`
+
+// 添加对话框预览（按表单视角的父/子：反向类型时父=目标原料）
+const addFactorPreview = computed(() => {
+  const f = relationForm.value
+  if (!hasCompleteFactorFields(f as any)) return ''
+  const option = relationTypeOptions.value.find(o => o.value === f.relation_type)
+  const isReverse = option?.reverse ?? false
+  const currentName = ingredient.value?.name || '?'
+  const targetName = selectedTargetIngredient.value?.name || '?'
+  return buildFactorEquation(
+    f.factor_parent_quantity, f.factor_parent_unit,
+    isReverse ? targetName : currentName,
+    f.factor_child_quantity, f.factor_child_unit,
+    isReverse ? currentName : targetName,
+  )
+})
+
+// 编辑对话框预览（关系记录自带 parent_name/child_name）
+const editFactorPreview = computed(() => {
+  const rel = editRelationRelation.value
+  const f = editRelationForm.value
+  if (!rel || !hasCompleteFactorFields(f as any)) return ''
+  return buildFactorEquation(
+    f.factor_parent_quantity, f.factor_parent_unit, rel.parent_name,
+    f.factor_child_quantity, f.factor_child_unit, rel.child_name,
+  )
+})
+
+// 关系列表行的紧凑等式（有系数才显示）
+const getRelationFactorText = (rel: HierarchyRelation): string => {
+  if (!hasCompleteFactorFields(rel)) return ''
+  return buildFactorEquation(
+    rel.factor_parent_quantity, rel.factor_parent_unit, rel.parent_name,
+    rel.factor_child_quantity, rel.factor_child_unit, rel.child_name,
+  )
+}
+
+// 从表单取 4 个 factor 字段（全填 → payload；全空 → 不带键；部分填 → null 由调用方报错）
+const buildRelationFactorPayload = (
+  f: { factor_parent_quantity: number | null; factor_parent_unit: string; factor_child_quantity: number | null; factor_child_unit: string },
+): { ok: boolean; payload: Record<string, number | string | null> | null } => {
+  if (hasEmptyFactorFields(f as any)) return { ok: true, payload: null }
+  if (!hasCompleteFactorFields(f as any)) return { ok: false, payload: null }
+  return {
+    ok: true,
+    payload: {
+      factor_parent_quantity: Number(f.factor_parent_quantity),
+      factor_parent_unit: String(f.factor_parent_unit).trim(),
+      factor_child_quantity: Number(f.factor_child_quantity),
+      factor_child_unit: String(f.factor_child_unit).trim(),
+    },
+  }
+}
+
 
 // 关系类型选项
 const relationTypeOptions = computed(() => [
@@ -4414,7 +4652,11 @@ const openAddRelationDialog = () => {
   relationForm.value = {
     target_ingredient_id: null,
     relation_type: 'contains',
-    strength: 50
+    strength: 50,
+    factor_parent_quantity: null,
+    factor_parent_unit: '',
+    factor_child_quantity: null,
+    factor_child_unit: ''
   }
   availableIngredients.value = []
   showAddRelationDialog.value = true
@@ -4443,11 +4685,20 @@ const addRelation = async () => {
     const parentId = isReverse ? relationForm.value.target_ingredient_id : ingredientId.value
     const childId = isReverse ? ingredientId.value : relationForm.value.target_ingredient_id
 
+    // 换算系数：全空 → 不带这 4 个键；全填 → 带上；部分填 → 阻止提交（后端会返回 400）
+    const factorResult = buildRelationFactorPayload(relationForm.value)
+    if (!factorResult.ok) {
+      showMessage(t('ingredients.relationFactorIncomplete'), 'error')
+      savingRelation.value = false
+      return
+    }
+
     await api.post('/ingredients/hierarchy', {
       parent_id: parentId,
       child_id: childId,
       relation_type: actualType,
-      strength: relationForm.value.strength
+      strength: relationForm.value.strength,
+      ...(factorResult.payload ? { ...factorResult.payload } : {})
     })
     if (userStore.user?.is_admin) {
       showMessage(t('ingredients.relationAdded'), 'success')
@@ -4471,7 +4722,11 @@ const openEditRelationDialog = (relation: HierarchyRelation) => {
   editRelationRelation.value = relation
   editRelationForm.value = {
     relation_type: relation.relation_type,
-    strength: Math.round(relation.strength)
+    strength: Math.round(relation.strength),
+    factor_parent_quantity: relation.factor_parent_quantity ?? null,
+    factor_parent_unit: relation.factor_parent_unit || '',
+    factor_child_quantity: relation.factor_child_quantity ?? null,
+    factor_child_unit: relation.factor_child_unit || ''
   }
   showEditRelationDialog.value = true
 }
@@ -4482,9 +4737,23 @@ const saveEditRelation = async () => {
 
   savingRelation.value = true
   try {
+    // 换算系数：PUT 始终带上 4 个字段（全空 = 清除系数，传 null）；部分填 → 阻止提交
+    const factorResult = buildRelationFactorPayload(editRelationForm.value)
+    if (!factorResult.ok) {
+      showMessage(t('ingredients.relationFactorIncomplete'), 'error')
+      savingRelation.value = false
+      return
+    }
+    const factorPayload = factorResult.payload ?? {
+      factor_parent_quantity: null,
+      factor_parent_unit: null,
+      factor_child_quantity: null,
+      factor_child_unit: null
+    }
     await api.put(`/ingredients/hierarchy/${editRelationRelation.value.id}`, {
       relation_type: editRelationForm.value.relation_type,
-      strength: editRelationForm.value.strength
+      strength: editRelationForm.value.strength,
+      ...factorPayload
     })
     if (userStore.user?.is_admin) {
       showMessage(t('ingredients.relationUpdated'), 'success')
