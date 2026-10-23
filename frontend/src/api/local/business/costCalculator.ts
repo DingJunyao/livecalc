@@ -11,6 +11,11 @@ import {
   type LocalQuantityLink,
 } from './entityLinks'
 import { PRICE_STALE_DAYS } from '@/utils/priceAsOf'
+import {
+  hasEmptyFactorFields,
+  hierarchyPriceFactor,
+  type HierarchyFactorFields,
+} from '@/utils/hierarchyFactor'
 
 export interface CostCalcIngredient {
   recipe_ingredient_id?: number
@@ -55,6 +60,11 @@ export interface CostCalcHierarchy {
   child_id: number
   relation_type: string  // 'FALLBACK' | 'SUBSTITUTABLE' | 'CONTAINS'
   strength: number       // 0-100
+  // 换算系数（本地导出导入按 JSON 原样存储，可为空 = 1:1）
+  factor_parent_quantity?: number | null
+  factor_parent_unit?: string | null
+  factor_child_quantity?: number | null
+  factor_child_unit?: string | null
 }
 
 export interface CostInput {
@@ -426,8 +436,27 @@ function findFallbackPrice(
     if (parentProducts.length > 0) {
       const price = calculateWeightedPrice(parentProducts, records, input.weight_overrides)
       if (price != null) {
+        // 换算系数：当前原料是子（child_id === ingredientId），从父取价 → 子价 = 父价 × factor
+        // factor = (q父×g父)/(q子×g子)；字段缺失或克重解析失败 → 1（1:1）。
+        // 本地回退只走 child→parent 方向（与后端 _get_ingredient_fallback_impl 一致），
+        // 不存在反向取数，因此无需取倒数。
+        let factor = 1
+        if (!hasEmptyFactorFields(h as Partial<HierarchyFactorFields>)) {
+          const gramsParent = resolveLocalUnitGrams(
+            'ingredient', h.parent_id, String(h.factor_parent_unit || ''),
+            input.units as any, input.overrides as any, input.densities as any, input.links || [],
+          )
+          const gramsChild = resolveLocalUnitGrams(
+            'ingredient', ingredientId, String(h.factor_child_unit || ''),
+            input.units as any, input.overrides as any, input.densities as any, input.links || [],
+          )
+          factor = hierarchyPriceFactor(
+            h.factor_parent_quantity, gramsParent,
+            h.factor_child_quantity, gramsChild,
+          )
+        }
         return {
-          pricePerUnit: price.pricePerUnit,
+          pricePerUnit: price.pricePerUnit * factor,
           unit_id: price.unit_id,
           sourceIngredientId: h.parent_id,
           productId: price.product_id,
