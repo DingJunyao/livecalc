@@ -122,6 +122,22 @@ class _IngredientDetailScreenState
     return state.computedPoints.any((p) => p.source != 'direct');
   }
 
+  /// 当前生效链摘要：优先取最新一个非 direct 折算点的链路，
+  /// 否则取任一商家的折算行链路；全是 direct 时为 null。
+  String? _activeFallbackChain(IngredientDetailPageState state) {
+    for (final point in state.computedPoints.reversed) {
+      final chain = point.chain;
+      if (chain != null && chain.isNotEmpty) return chain;
+    }
+    for (final price in state.merchantPrices) {
+      if (price.isDerived) {
+        final chain = price.chain;
+        if (chain != null && chain.isNotEmpty) return chain;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -268,6 +284,7 @@ class _IngredientDetailScreenState
               loadingLatest: state.loadingLatest,
               loadingMerchants: state.loadingMerchants,
               currency: userCurrency,
+              fallbackChain: _activeFallbackChain(state),
             ),
             const SizedBox(height: 16),
             Card(
@@ -938,12 +955,13 @@ class _IngredientDetailScreenState
           childId: input.targetId,
           relationType: input.relationType,
           strength: input.strength,
+          factor: input.factor,
           isAdmin: isAdmin,
         ),
-        onUpdateStrength: (relationId, strength) =>
-            notifier.updateHierarchyRelation(
-          relationId,
-          strength: strength,
+        onUpdateStrength: (input) => notifier.updateHierarchyRelation(
+          input.relationId,
+          strength: input.strength,
+          factor: input.factor,
           isAdmin: isAdmin,
         ),
         onDelete: notifier.deleteHierarchyRelation,
@@ -1100,12 +1118,16 @@ class _LatestPriceCard extends StatelessWidget {
   final bool loadingMerchants;
   final String currency;
 
+  /// 当前生效来源不是 direct 时的链路摘要（如「鲜 → 干（1 kg 干 = 3 kg 鲜）」）。
+  final String? fallbackChain;
+
   const _LatestPriceCard({
     required this.latest,
     required this.merchantPrices,
     required this.loadingLatest,
     required this.loadingMerchants,
     required this.currency,
+    this.fallbackChain,
   });
 
   @override
@@ -1129,6 +1151,31 @@ class _LatestPriceCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 16),
+            if (fallbackChain != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.alt_route,
+                        size: 16, color: theme.colorScheme.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        l10n.ingredientActiveFallbackSummary(fallbackChain!),
+                        style: theme.textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
             if (loadingLatest && latest == null)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),

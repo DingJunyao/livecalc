@@ -847,6 +847,16 @@ class IngredientDetailPageNotifier
         hierarchy,
         proposal.entityId,
         _toInt(proposal.payload['strength']),
+        factorParentQuantity: _toDouble(proposal.payload['factor_parent_quantity'] ??
+            proposal.snapshot['factor_parent_quantity']),
+        factorParentUnit: (proposal.payload['factor_parent_unit'] ??
+                proposal.snapshot['factor_parent_unit'])
+            ?.toString(),
+        factorChildQuantity: _toDouble(proposal.payload['factor_child_quantity'] ??
+            proposal.snapshot['factor_child_quantity']),
+        factorChildUnit: (proposal.payload['factor_child_unit'] ??
+                proposal.snapshot['factor_child_unit'])
+            ?.toString(),
       );
     }
 
@@ -1283,6 +1293,18 @@ class IngredientDetailPageNotifier
       relationType: payload['relation_type']?.toString() ?? 'substitutable',
       strength: _toInt(payload['strength']) ?? 50,
       isPending: true,
+      factorParentQuantity:
+          _toDouble(payload['factor_parent_quantity'] ??
+              snapshot['factor_parent_quantity']),
+      factorParentUnit: (payload['factor_parent_unit'] ??
+              snapshot['factor_parent_unit'])
+          ?.toString(),
+      factorChildQuantity:
+          _toDouble(payload['factor_child_quantity'] ??
+              snapshot['factor_child_quantity']),
+      factorChildUnit: (payload['factor_child_unit'] ??
+              snapshot['factor_child_unit'])
+          ?.toString(),
     );
   }
 
@@ -1327,8 +1349,12 @@ class IngredientDetailPageNotifier
   IngredientHierarchyData _updateHierarchyRelation(
     IngredientHierarchyData? data,
     int? relationId,
-    int? strength,
-  ) {
+    int? strength, {
+    double? factorParentQuantity,
+    String? factorParentUnit,
+    double? factorChildQuantity,
+    String? factorChildUnit,
+  }) {
     if (relationId == null || strength == null) {
       return data ?? const IngredientHierarchyData();
     }
@@ -1343,6 +1369,10 @@ class IngredientDetailPageNotifier
                 relationType: relation.relationType,
                 strength: strength,
                 isPending: true,
+                factorParentQuantity: factorParentQuantity,
+                factorParentUnit: factorParentUnit,
+                factorChildQuantity: factorChildQuantity,
+                factorChildUnit: factorChildUnit,
               )
             : relation;
     return IngredientHierarchyData(
@@ -1357,6 +1387,7 @@ class IngredientDetailPageNotifier
     required int childId,
     required String relationType,
     int strength = 50,
+    HierarchyFactorInput? factor,
     bool isAdmin = true,
   }) async {
     final result = await _ingRepo.createHierarchyRelation(
@@ -1364,6 +1395,10 @@ class IngredientDetailPageNotifier
       childId: childId,
       relationType: relationType,
       strength: strength,
+      factorParentQuantity: factor?.parentQuantity,
+      factorParentUnit: factor?.parentUnit,
+      factorChildQuantity: factor?.childQuantity,
+      factorChildUnit: factor?.childUnit,
       isAdmin: isAdmin,
     );
     await _refreshHierarchyAndPendingDrafts();
@@ -1373,11 +1408,16 @@ class IngredientDetailPageNotifier
   Future<Object?> updateHierarchyRelation(
     int relationId, {
     required int strength,
+    HierarchyFactorInput? factor,
     bool isAdmin = true,
   }) async {
     final result = await _ingRepo.updateHierarchyRelation(
       relationId,
       strength: strength,
+      factorParentQuantity: factor?.parentQuantity,
+      factorParentUnit: factor?.parentUnit,
+      factorChildQuantity: factor?.childQuantity,
+      factorChildUnit: factor?.childUnit,
       isAdmin: isAdmin,
     );
     await _refreshHierarchyAndPendingDrafts();

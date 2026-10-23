@@ -3171,4 +3171,38 @@ class AppLocalizationsAr extends AppLocalizations {
   String blacklistActionFailed(Object message) {
     return 'فشلت العملية: $message';
   }
+
+  @override
+  String get hierarchyFactorSection => 'معامل التحويل';
+
+  @override
+  String get hierarchyFactorDefaultHint => 'اتركه فارغًا للنسبة 1:1';
+
+  @override
+  String get hierarchyFactorParentQuantity => 'كمية الأب';
+
+  @override
+  String get hierarchyFactorParentUnit => 'وحدة الأب';
+
+  @override
+  String get hierarchyFactorChildQuantity => 'كمية الابن';
+
+  @override
+  String get hierarchyFactorChildUnit => 'وحدة الابن';
+
+  @override
+  String get hierarchyFactorPreview => 'معاينة المعادلة';
+
+  @override
+  String get hierarchyFactorIncomplete =>
+      'يجب ملء جميع حقول معامل التحويل أو تركها فارغة جميعها';
+
+  @override
+  String ingredientActiveFallbackSummary(Object chain) {
+    return 'لا يوجد سعر مباشر (أو انتهت صلاحيته)، جارٍ استخدام التحويل البديل: $chain';
+  }
+
+  @override
+  String get entityLinksIngredientHint =>
+      'للتحويل بين المكوّنات، يُفضَّل استخدام علاقات البديل/الاحتياط مع معامل تحويل (تُدار في صفحة العلاقات الهرمية)؛ الربط هنا مناسب لسلاسل تغليف المنتجات';
 }

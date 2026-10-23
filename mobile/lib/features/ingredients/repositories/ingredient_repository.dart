@@ -346,6 +346,10 @@ class IngredientRepository {
     required int childId,
     required String relationType,
     int strength = 50,
+    double? factorParentQuantity,
+    String? factorParentUnit,
+    double? factorChildQuantity,
+    String? factorChildUnit,
     bool isAdmin = true,
   }) async {
     final response = await _client.dio.post(
@@ -355,6 +359,16 @@ class IngredientRepository {
         'child_id': childId,
         'relation_type': relationType,
         'strength': strength,
+        // 换算系数：全填才带（后端契约：全空或全填，部分填 400）。
+        if (factorParentQuantity != null &&
+            (factorParentUnit ?? '').isNotEmpty &&
+            factorChildQuantity != null &&
+            (factorChildUnit ?? '').isNotEmpty) ...{
+          'factor_parent_quantity': factorParentQuantity,
+          'factor_parent_unit': factorParentUnit,
+          'factor_child_quantity': factorChildQuantity,
+          'factor_child_unit': factorChildUnit,
+        },
       },
     );
     final data = Map<String, dynamic>.from(response.data as Map);
@@ -370,11 +384,22 @@ class IngredientRepository {
   Future<EntityWriteResult<HierarchyRelation>> updateHierarchyRelation(
     int relationId, {
     required int strength,
+    double? factorParentQuantity,
+    String? factorParentUnit,
+    double? factorChildQuantity,
+    String? factorChildUnit,
     bool isAdmin = true,
   }) async {
     final response = await _client.dio.put(
       '/ingredients/hierarchy/$relationId',
-      data: {'strength': strength},
+      data: {
+        'strength': strength,
+        // 显式带上 4 个系数：全 null = 清除（后端契约）。
+        'factor_parent_quantity': factorParentQuantity,
+        'factor_parent_unit': factorParentUnit,
+        'factor_child_quantity': factorChildQuantity,
+        'factor_child_unit': factorChildUnit,
+      },
     );
     final data = Map<String, dynamic>.from(response.data as Map);
     final review = MutationReviewResult.fromJson(data);

@@ -291,7 +291,7 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
                 hierarchyData: null,
                 isAdmin: true,
                 onAdd: (_) async => null,
-                onUpdateStrength: (_, __) async => null,
+                onUpdateStrength: (_) async => null,
                 onDelete: (_) async => null,
               );
             },

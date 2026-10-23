@@ -2252,10 +2252,34 @@
       "message": {}
     }
   },
-  "blacklistActionFailed": "Operation failed: {message}",
+    "blacklistActionFailed": "Operation failed: {message}",
   "@blacklistActionFailed": {
     "placeholders": {
       "message": {}
     }
-  }
+  },
+  "hierarchyFactorSection": "Conversion factor",
+  "@hierarchyFactorSection": {},
+  "hierarchyFactorDefaultHint": "Leave empty for 1:1",
+  "@hierarchyFactorDefaultHint": {},
+  "hierarchyFactorParentQuantity": "Parent quantity",
+  "@hierarchyFactorParentQuantity": {},
+  "hierarchyFactorParentUnit": "Parent unit",
+  "@hierarchyFactorParentUnit": {},
+  "hierarchyFactorChildQuantity": "Child quantity",
+  "@hierarchyFactorChildQuantity": {},
+  "hierarchyFactorChildUnit": "Child unit",
+  "@hierarchyFactorChildUnit": {},
+  "hierarchyFactorPreview": "Equation preview",
+  "@hierarchyFactorPreview": {},
+  "hierarchyFactorIncomplete": "Fill in all factor fields or leave all empty",
+  "@hierarchyFactorIncomplete": {},
+  "ingredientActiveFallbackSummary": "No direct price (or stale), using fallback/conversion: {chain}",
+  "@ingredientActiveFallbackSummary": {
+    "placeholders": {
+      "chain": {}
+    }
+  },
+  "entityLinksIngredientHint": "For ingredient-to-ingredient conversion, prefer substitute/fallback relations with a conversion factor (maintained on the hierarchy page); links here suit product packaging chains",
+  "@entityLinksIngredientHint": {}
 }

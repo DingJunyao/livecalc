@@ -5951,6 +5951,66 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'操作失败：{message}'**
   String blacklistActionFailed(Object message);
+
+  /// No description provided for @hierarchyFactorSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'换算系数'**
+  String get hierarchyFactorSection;
+
+  /// No description provided for @hierarchyFactorDefaultHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空 = 1:1'**
+  String get hierarchyFactorDefaultHint;
+
+  /// No description provided for @hierarchyFactorParentQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'父数量'**
+  String get hierarchyFactorParentQuantity;
+
+  /// No description provided for @hierarchyFactorParentUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'父单位'**
+  String get hierarchyFactorParentUnit;
+
+  /// No description provided for @hierarchyFactorChildQuantity.
+  ///
+  /// In zh, this message translates to:
+  /// **'子数量'**
+  String get hierarchyFactorChildQuantity;
+
+  /// No description provided for @hierarchyFactorChildUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'子单位'**
+  String get hierarchyFactorChildUnit;
+
+  /// No description provided for @hierarchyFactorPreview.
+  ///
+  /// In zh, this message translates to:
+  /// **'等式预览'**
+  String get hierarchyFactorPreview;
+
+  /// No description provided for @hierarchyFactorIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'换算系数需全部填写或全部留空'**
+  String get hierarchyFactorIncomplete;
+
+  /// No description provided for @ingredientActiveFallbackSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'无直接价或直接价超期，正用替代/回退折算：{chain}'**
+  String ingredientActiveFallbackSummary(Object chain);
+
+  /// No description provided for @entityLinksIngredientHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料之间的换算建议改用替代/回退关系 + 换算系数（层级关系页维护）；此处关联适合商品包装链'**
+  String get entityLinksIngredientHint;
 }
 
 class _AppLocalizationsDelegate

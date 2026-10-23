@@ -315,6 +315,35 @@ class _EntityQuantityLinkEditPageState
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (widget.entityType == 'ingredient' &&
+              _targetType == 'ingredient') ...[
+            Container(
+              key: const ValueKey('entity-links-ingredient-hint'),
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline,
+                      size: 18, color: theme.colorScheme.onPrimaryContainer),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l10n.entityLinksIngredientHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           _SectionLabel(text: l10n.entityLinksCurrent),
           ListTile(
             contentPadding: EdgeInsets.zero,

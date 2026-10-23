@@ -15,11 +15,25 @@ class HierarchyWriteInput {
   final int targetId;
   final String relationType;
   final int strength;
+  final HierarchyFactorInput? factor;
 
   const HierarchyWriteInput({
     required this.targetId,
     required this.relationType,
     required this.strength,
+    this.factor,
+  });
+}
+
+class HierarchyUpdateInput {
+  final int relationId;
+  final int strength;
+  final HierarchyFactorInput? factor;
+
+  const HierarchyUpdateInput({
+    required this.relationId,
+    required this.strength,
+    this.factor,
   });
 }
 
@@ -30,7 +44,7 @@ class IngredientHierarchyArguments {
   final bool loading;
   final bool isAdmin;
   final Future<Object?> Function(HierarchyWriteInput input) onAdd;
-  final Future<Object?> Function(int relationId, int strength) onUpdateStrength;
+  final Future<Object?> Function(HierarchyUpdateInput input) onUpdateStrength;
   final Future<Object?> Function(int relationId) onDelete;
 
   const IngredientHierarchyArguments({
@@ -52,7 +66,7 @@ class IngredientHierarchyScreen extends StatefulWidget {
   final bool loading;
   final bool isAdmin;
   final Future<Object?> Function(HierarchyWriteInput input) onAdd;
-  final Future<Object?> Function(int relationId, int strength) onUpdateStrength;
+  final Future<Object?> Function(HierarchyUpdateInput input) onUpdateStrength;
   final Future<Object?> Function(int relationId) onDelete;
 
   const IngredientHierarchyScreen({
@@ -85,6 +99,11 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   bool _searching = false;
   bool _saving = false;
   bool _changed = false;
+  bool _factorExpanded = false;
+  final _factorParentQty = TextEditingController();
+  final _factorParentUnit = TextEditingController();
+  final _factorChildQty = TextEditingController();
+  final _factorChildUnit = TextEditingController();
 
   @override
   void initState() {
@@ -96,7 +115,80 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   void dispose() {
     _debounce?.cancel();
     _searchController.dispose();
+    _factorParentQty.dispose();
+    _factorParentUnit.dispose();
+    _factorChildQty.dispose();
+    _factorChildUnit.dispose();
     super.dispose();
+  }
+
+  /// 解析四个系数输入：全空返回 null（= 1:1 / 清除），不完整返回 false 标记。
+  ({HierarchyFactorInput? factor, bool incomplete}) _parseFactor() {
+    final parentQty = double.tryParse(_factorParentQty.text.trim());
+    final parentUnit = _factorParentUnit.text.trim();
+    final childQty = double.tryParse(_factorChildQty.text.trim());
+    final childUnit = _factorChildUnit.text.trim();
+    final anyFilled = parentQty != null ||
+        parentUnit.isNotEmpty ||
+        childQty != null ||
+        childUnit.isNotEmpty;
+    final allFilled = parentQty != null &&
+        parentQty > 0 &&
+        parentUnit.isNotEmpty &&
+        childQty != null &&
+        childQty > 0 &&
+        childUnit.isNotEmpty;
+    if (!anyFilled) return (factor: null, incomplete: false);
+    if (!allFilled) return (factor: null, incomplete: true);
+    return (
+      factor: HierarchyFactorInput(
+        parentQuantity: parentQty,
+        parentUnit: parentUnit,
+        childQuantity: childQty,
+        childUnit: childUnit,
+      ),
+      incomplete: false,
+    );
+  }
+
+  void _loadFactorFrom(HierarchyRelation relation) {
+    _factorParentQty.text = relation.factorParentQuantity == null
+        ? ''
+        : formatQuantity(relation.factorParentQuantity!);
+    _factorParentUnit.text = relation.factorParentUnit ?? '';
+    _factorChildQty.text = relation.factorChildQuantity == null
+        ? ''
+        : formatQuantity(relation.factorChildQuantity!);
+    _factorChildUnit.text = relation.factorChildUnit ?? '';
+    _factorExpanded = relation.hasFactor;
+  }
+
+  void _clearFactor() {
+    _factorParentQty.clear();
+    _factorParentUnit.clear();
+    _factorChildQty.clear();
+    _factorChildUnit.clear();
+  }
+
+  /// 等式实时预览：`1 kg 干 = 3 kg 鲜`（按当前填写的父/子，名称随表单选择）。
+  String? _factorPreview(AppLocalizations l10n) {
+    final parsed = _parseFactor();
+    if (parsed.factor != null) {
+      // 表单语义：当前原料为父、选中的目标为子（与 onAdd 的 parent/child 一致）。
+      final parentName = widget.ingredientName;
+      final childName = _editing != null
+          ? ingredientRelationEndpointDisplay(
+              storedName: _editing!.childName,
+              ingredientId: _editing!.childId,
+              fallbackName: l10n.ingredientRelationFallbackName,
+            )
+          : (_selected?.name ?? l10n.ingredientRelationFallbackName);
+      return '${formatQuantity(parsed.factor!.parentQuantity)} '
+          '${parsed.factor!.parentUnit} $parentName = '
+          '${formatQuantity(parsed.factor!.childQuantity)} '
+          '${parsed.factor!.childUnit} $childName';
+    }
+    return null;
   }
 
   void _onSearchChanged() {
@@ -133,8 +225,21 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
     final editing = _editing;
+    final parsedFactor = _parseFactor();
+    if (parsedFactor.incomplete) {
+      _toast(l10n.hierarchyFactorIncomplete);
+      return;
+    }
     if (editing != null) {
-      await _run(() => widget.onUpdateStrength(editing.id, _strength));
+      await _run(
+        () => widget.onUpdateStrength(
+          HierarchyUpdateInput(
+            relationId: editing.id,
+            strength: _strength,
+            factor: parsedFactor.factor,
+          ),
+        ),
+      );
       return;
     }
     final selected = _selected;
@@ -148,6 +253,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
           targetId: selected.id,
           relationType: _relationType,
           strength: _strength,
+          factor: parsedFactor.factor,
         ),
       ),
       onApplied: () {
@@ -155,6 +261,8 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
           _selected = null;
           _searchController.clear();
           _options = const [];
+          _clearFactor();
+          _factorExpanded = false;
         });
       },
     );
@@ -261,37 +369,42 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
                 _buildForm(),
                 const SizedBox(height: 16),
                 ..._relations().map(
-                  (relation) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(
-                      _relationPairLabel(context, relation, l10n),
-                    ),
-                    subtitle: Text(
-                      '${_relationLabel(relation.relationType, l10n)}'
-                      ' · ${l10n.journeyRelationStrength(formatNumber(relation.strength))}',
-                    ),
-                    trailing: relation.isPending
-                        ? Chip(label: Text(l10n.unitsPendingReview))
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                tooltip: l10n.journeyAdjustStrength,
-                                onPressed: () => setState(() {
-                                  _editing = relation;
-                                  _strength = relation.strength;
-                                }),
-                                icon: const Icon(Icons.tune),
-                              ),
-                              IconButton(
-                                tooltip: l10n.commonDelete,
-                                onPressed:
-                                    _saving ? null : () => _delete(relation),
-                                icon: const Icon(Icons.delete_outline),
-                              ),
-                            ],
-                          ),
-                  ),
+                  (relation) {
+                    final equation = relation.factorEquation();
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _relationPairLabel(context, relation, l10n),
+                      ),
+                      subtitle: Text(
+                        '${_relationLabel(relation.relationType, l10n)}'
+                        ' · ${l10n.journeyRelationStrength(formatNumber(relation.strength))}'
+                        '${equation == null ? '' : '\n$equation'}',
+                      ),
+                      trailing: relation.isPending
+                          ? Chip(label: Text(l10n.unitsPendingReview))
+                          : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  tooltip: l10n.journeyAdjustStrength,
+                                  onPressed: () => setState(() {
+                                    _editing = relation;
+                                    _strength = relation.strength;
+                                    _loadFactorFrom(relation);
+                                  }),
+                                  icon: const Icon(Icons.tune),
+                                ),
+                                IconButton(
+                                  tooltip: l10n.commonDelete,
+                                  onPressed:
+                                      _saving ? null : () => _delete(relation),
+                                  icon: const Icon(Icons.delete_outline),
+                                ),
+                              ],
+                            ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -337,7 +450,11 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
             if (_editing != null) ...[
               Text(_relationPairLabel(context, _editing!, l10n)),
               TextButton(
-                onPressed: () => setState(() => _editing = null),
+                onPressed: () => setState(() {
+                  _editing = null;
+                  _clearFactor();
+                  _factorExpanded = false;
+                }),
                 child: Text(l10n.ingredientChangeToAddRelation),
               ),
             ] else ...[
@@ -411,6 +528,7 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
               ),
             ],
             const SizedBox(height: 8),
+            _buildFactorSection(l10n, theme),
             Row(
               children: [
                 Text(l10n.journeyRelationStrength(formatNumber(_strength))),
@@ -430,6 +548,106 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// 换算系数区（默认收起）：父数量/父单位 = 子数量/子单位，实时等式预览。
+  Widget _buildFactorSection(AppLocalizations l10n, ThemeData theme) {
+    final preview = _factorPreview(l10n);
+    return ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(bottom: 8),
+      initiallyExpanded: _factorExpanded,
+      onExpansionChanged: (value) => _factorExpanded = value,
+      title: Text(
+        l10n.hierarchyFactorSection,
+        style: theme.textTheme.titleSmall,
+      ),
+      subtitle: Text(
+        preview ?? l10n.hierarchyFactorDefaultHint,
+        style: theme.textTheme.bodySmall
+            ?.copyWith(color: theme.colorScheme.outline),
+      ),
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: _factorParentQty,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: l10n.hierarchyFactorParentQuantity,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 4,
+              child: TextField(
+                controller: _factorParentUnit,
+                decoration: InputDecoration(
+                  labelText: l10n.hierarchyFactorParentUnit,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 6),
+          child: Icon(Icons.drag_handle, size: 20),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 3,
+              child: TextField(
+                controller: _factorChildQty,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: l10n.hierarchyFactorChildQuantity,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 4,
+              child: TextField(
+                controller: _factorChildUnit,
+                decoration: InputDecoration(
+                  labelText: l10n.hierarchyFactorChildUnit,
+                  border: const OutlineInputBorder(),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          ],
+        ),
+        if (preview != null)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(top: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              '${l10n.hierarchyFactorPreview}: $preview',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+      ],
     );
   }
 

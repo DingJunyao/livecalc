@@ -2252,10 +2252,34 @@
       "message": {}
     }
   },
-  "blacklistActionFailed": "فشلت العملية: {message}",
+    "blacklistActionFailed": "فشلت العملية: {message}",
   "@blacklistActionFailed": {
     "placeholders": {
       "message": {}
     }
-  }
+  },
+  "hierarchyFactorSection": "معامل التحويل",
+  "@hierarchyFactorSection": {},
+  "hierarchyFactorDefaultHint": "اتركه فارغًا للنسبة 1:1",
+  "@hierarchyFactorDefaultHint": {},
+  "hierarchyFactorParentQuantity": "كمية الأب",
+  "@hierarchyFactorParentQuantity": {},
+  "hierarchyFactorParentUnit": "وحدة الأب",
+  "@hierarchyFactorParentUnit": {},
+  "hierarchyFactorChildQuantity": "كمية الابن",
+  "@hierarchyFactorChildQuantity": {},
+  "hierarchyFactorChildUnit": "وحدة الابن",
+  "@hierarchyFactorChildUnit": {},
+  "hierarchyFactorPreview": "معاينة المعادلة",
+  "@hierarchyFactorPreview": {},
+  "hierarchyFactorIncomplete": "يجب ملء جميع حقول معامل التحويل أو تركها فارغة جميعها",
+  "@hierarchyFactorIncomplete": {},
+  "ingredientActiveFallbackSummary": "لا يوجد سعر مباشر (أو انتهت صلاحيته)، جارٍ استخدام التحويل البديل: {chain}",
+  "@ingredientActiveFallbackSummary": {
+    "placeholders": {
+      "chain": {}
+    }
+  },
+  "entityLinksIngredientHint": "للتحويل بين المكوّنات، يُفضَّل استخدام علاقات البديل/الاحتياط مع معامل تحويل (تُدار في صفحة العلاقات الهرمية)؛ الربط هنا مناسب لسلاسل تغليف المنتجات",
+  "@entityLinksIngredientHint": {}
 }

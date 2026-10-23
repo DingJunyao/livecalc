@@ -16,7 +16,7 @@ void main() {
         hierarchyData: const IngredientHierarchyData(),
         isAdmin: true,
         onAdd: (_) async => null,
-        onUpdateStrength: (_, __) async => null,
+        onUpdateStrength: (_) async => null,
         onDelete: (_) async => null,
       ),
     ));

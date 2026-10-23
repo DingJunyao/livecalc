@@ -3099,4 +3099,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String blacklistActionFailed(Object message) {
     return '操作失败：$message';
   }
+
+  @override
+  String get hierarchyFactorSection => '换算系数';
+
+  @override
+  String get hierarchyFactorDefaultHint => '留空 = 1:1';
+
+  @override
+  String get hierarchyFactorParentQuantity => '父数量';
+
+  @override
+  String get hierarchyFactorParentUnit => '父单位';
+
+  @override
+  String get hierarchyFactorChildQuantity => '子数量';
+
+  @override
+  String get hierarchyFactorChildUnit => '子单位';
+
+  @override
+  String get hierarchyFactorPreview => '等式预览';
+
+  @override
+  String get hierarchyFactorIncomplete => '换算系数需全部填写或全部留空';
+
+  @override
+  String ingredientActiveFallbackSummary(Object chain) {
+    return '无直接价或直接价超期，正用替代/回退折算：$chain';
+  }
+
+  @override
+  String get entityLinksIngredientHint =>
+      '原料之间的换算建议改用替代/回退关系 + 换算系数（层级关系页维护）；此处关联适合商品包装链';
 }

@@ -3190,4 +3190,38 @@ class AppLocalizationsEn extends AppLocalizations {
   String blacklistActionFailed(Object message) {
     return 'Operation failed: $message';
   }
+
+  @override
+  String get hierarchyFactorSection => 'Conversion factor';
+
+  @override
+  String get hierarchyFactorDefaultHint => 'Leave empty for 1:1';
+
+  @override
+  String get hierarchyFactorParentQuantity => 'Parent quantity';
+
+  @override
+  String get hierarchyFactorParentUnit => 'Parent unit';
+
+  @override
+  String get hierarchyFactorChildQuantity => 'Child quantity';
+
+  @override
+  String get hierarchyFactorChildUnit => 'Child unit';
+
+  @override
+  String get hierarchyFactorPreview => 'Equation preview';
+
+  @override
+  String get hierarchyFactorIncomplete =>
+      'Fill in all factor fields or leave all empty';
+
+  @override
+  String ingredientActiveFallbackSummary(Object chain) {
+    return 'No direct price (or stale), using fallback/conversion: $chain';
+  }
+
+  @override
+  String get entityLinksIngredientHint =>
+      'For ingredient-to-ingredient conversion, prefer substitute/fallback relations with a conversion factor (maintained on the hierarchy page); links here suit product packaging chains';
 }
