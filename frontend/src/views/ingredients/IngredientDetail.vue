@@ -702,7 +702,16 @@
             class="nutrition-row d-flex py-2"
             :class="{ 'border-bottom': item.key !== displayNutritionItems[displayNutritionItems.length - 1].key }"
           >
-            <div class="text-body-2 ps-4 flex-grow-1">{{ item.label }}</div>
+            <div class="text-body-2 ps-4 flex-grow-1 d-flex align-center">
+              {{ item.label }}
+              <!-- 按商品加权平均回填的营养素：与菜谱成本「按原料计算」同款 info 提示 -->
+              <v-tooltip v-if="item.fromProducts" location="top" max-width="320">
+                <template #activator="{ props }">
+                  <v-icon v-bind="props" size="x-small" color="info" class="ms-1">mdi-information</v-icon>
+                </template>
+                <span>{{ t('ingredients.nutritionFromProductsTooltip', { count: item.productsUsed ?? 0 }) }}</span>
+              </v-tooltip>
+            </div>
             <div class="text-body-2 text-end pe-4" style="min-width: 80px">
               {{ formatNutritionValue(getNutritionValue(item), getNutritionUnit(item) || item.unit) }}
             </div>
@@ -3820,7 +3829,9 @@ const displayNutritionItems = computed(() => {
       key: item.key,
       label: item.label,
       unit: (coreNutrients[item.key] as any).unit || item.unit,
-      isCore: true
+      isCore: true,
+      fromProducts: !!(coreNutrients[item.key] as any).from_products,
+      productsUsed: (coreNutrients[item.key] as any).products_used,
     }))
 
   if (!showAllNutrients.value) {
@@ -3846,7 +3857,9 @@ const displayNutritionItems = computed(() => {
         key: key,
         label: NUTRITION_LABEL_MAP[key] || key,
         unit: (allNutrients[key] as any).unit || '',
-        isCore: false
+        isCore: false,
+        fromProducts: !!(allNutrients[key] as any).from_products,
+        productsUsed: (allNutrients[key] as any).products_used,
       }
     })
 

@@ -1021,12 +1021,21 @@ class NutritionCalculator:
         for key, (weighted_sum, total_weight, used) in acc.items():
             if total_weight <= 0:
                 continue
-            result[key] = {
-                "value": round(weighted_sum / total_weight, 4),
-                "unit": self._CANONICAL_UNIT_BY_KEY.get(key, "mg"),
+            unit = self._CANONICAL_UNIT_BY_KEY.get(key, "mg")
+            value = round(weighted_sum / total_weight, 4)
+            info: dict = {
+                "value": value,
+                "unit": unit,
                 "from_products": True,
                 "products_used": used,
             }
+            # NRV 按每 100 g 口径计算（回填值本身就是每 100 g；0 值没有 NRV）
+            display_name = self.NUTRIENT_NAMES.get(key, key)
+            nrp = calc_nrv_pct(display_name, value, unit)
+            if nrp is not None:
+                info["nrp_pct"] = nrp
+                info["standard"] = "中国GB标准"
+            result[key] = info
         return result
 
     def _accumulate_nutrients(
