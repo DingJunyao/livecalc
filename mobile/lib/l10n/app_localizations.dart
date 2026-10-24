@@ -1589,6 +1589,12 @@ abstract class AppLocalizations {
   /// **'糖'**
   String get nutritionNutrientSugar;
 
+  /// No description provided for @nutritionFromProductsTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料未记录该营养素，按其下 {count} 个商品的营养信息加权平均计算'**
+  String nutritionFromProductsTooltip(int count);
+
   /// No description provided for @nutritionNutrientTransFat.
   ///
   /// In zh, this message translates to:

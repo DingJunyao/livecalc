@@ -11,6 +11,11 @@ class NutrientEntry {
   final double? nrvPct;
   final String? originalKey;
 
+  /// 该营养素原料自身未记录，由后端按其下商品的营养信息加权平均回填
+  /// （展示时加来源提示）。
+  final bool fromProducts;
+  final int? productsUsed;
+
   const NutrientEntry({
     required this.key,
     required this.label,
@@ -18,6 +23,8 @@ class NutrientEntry {
     required this.unit,
     this.nrvPct,
     this.originalKey,
+    this.fromProducts = false,
+    this.productsUsed,
   });
 
   factory NutrientEntry.fromJson(String key, dynamic json) {
@@ -32,6 +39,8 @@ class NutrientEntry {
       unit: json['unit'] as String? ?? '',
       nrvPct: _toDouble(json['nrp_pct']),
       originalKey: (json['original_key'] ?? json['key']) as String?,
+      fromProducts: json['from_products'] == true,
+      productsUsed: _toInt(json['products_used']),
     );
   }
 }
@@ -40,6 +49,12 @@ double? _toDouble(dynamic v) {
   if (v == null) return null;
   if (v is num) return v.toDouble();
   return double.tryParse(v.toString());
+}
+
+int? _toInt(dynamic v) {
+  if (v == null) return null;
+  if (v is num) return v.toInt();
+  return int.tryParse(v.toString());
 }
 
 /// 原料/商品营养数据。

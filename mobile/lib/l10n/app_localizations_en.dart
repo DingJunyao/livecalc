@@ -789,6 +789,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionNutrientSugar => 'Sugar';
 
   @override
+  String nutritionFromProductsTooltip(int count) {
+    return 'Not recorded on the ingredient — weighted average of $count product(s) nutrition below';
+  }
+
+  @override
   String get nutritionNutrientTransFat => 'Trans fat';
 
   @override

@@ -38,6 +38,42 @@ void main() {
     expect(merged.nutrients.single.value, 35);
   });
 
+  test('fallback nutrient entries carry from-products provenance', () {
+    final info = NutritionInfo.fromJson(const {
+      'ingredient_id': 729,
+      'ingredient_name': '浓汤宝',
+      'reference_amount': 100,
+      'reference_unit': 'g',
+      'nutrition': {
+        'core_nutrients': {
+          '钠': {
+            'value': 7709.57,
+            'unit': 'mg',
+            'nrp_pct': 385.48,
+            'from_products': true,
+            'products_used': 7,
+          },
+        },
+        'all_nutrients': {
+          '钠': {
+            'value': 7709.57,
+            'unit': 'mg',
+            'nrp_pct': 385.48,
+            'original_key': 'sodium',
+            'from_products': true,
+            'products_used': 7,
+          },
+        },
+      },
+    });
+
+    final entry = info.nutrients.single;
+    expect(entry.label, '钠');
+    expect(entry.nrvPct, 385.48);
+    expect(entry.fromProducts, isTrue);
+    expect(entry.productsUsed, 7);
+  });
+
   test('nutrition delete or malformed proposals keep official values', () {
     final info = NutritionInfo.fromJson(const {
       'product_id': 5,

@@ -532,6 +532,12 @@
   "@nutritionNutrientCholesterol": {},
   "nutritionNutrientSaturatedFat": "Saturated fat",
   "nutritionNutrientSugar": "Sugar",
+  "nutritionFromProductsTooltip": "Not recorded on the ingredient — weighted average of {count} product(s) nutrition below",
+  "@nutritionFromProductsTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "@nutritionNutrientSugar": {},
   "nutritionNutrientTransFat": "Trans fat",
   "@nutritionNutrientTransFat": {},

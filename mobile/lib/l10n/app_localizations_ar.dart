@@ -788,6 +788,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nutritionNutrientSugar => 'السكر';
 
   @override
+  String nutritionFromProductsTooltip(int count) {
+    return 'غير مسجّل في المكوّن — متوسط مرجّح لتغذية $count من المنتجات التابعة';
+  }
+
+  @override
   String get nutritionNutrientTransFat => 'الدهون المتحولة';
 
   @override

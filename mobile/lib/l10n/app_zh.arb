@@ -532,6 +532,12 @@
   "@nutritionNutrientCholesterol": {},
   "nutritionNutrientSaturatedFat": "饱和脂肪",
   "nutritionNutrientSugar": "糖",
+  "nutritionFromProductsTooltip": "原料未记录该营养素，按其下 {count} 个商品的营养信息加权平均计算",
+  "@nutritionFromProductsTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "@nutritionNutrientSugar": {},
   "nutritionNutrientTransFat": "反式脂肪",
   "@nutritionNutrientTransFat": {},

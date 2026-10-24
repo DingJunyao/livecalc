@@ -171,7 +171,7 @@ class _NutritionTableState extends State<_NutritionTable> {
             ],
           ),
         ),
-        ..._rows(theme, core, valueW, nrvW),
+        ..._rows(theme, l10n, core, valueW, nrvW),
         if (others.isNotEmpty)
           Align(
             alignment: AlignmentDirectional.centerStart,
@@ -191,7 +191,7 @@ class _NutritionTableState extends State<_NutritionTable> {
               ),
             ),
           ),
-        if (_showAll) ..._rows(theme, others, valueW, nrvW),
+        if (_showAll) ..._rows(theme, l10n, others, valueW, nrvW),
         const SizedBox(height: 8),
         Text(l10n.nutritionNrvExplanation,
             style: theme.textTheme.labelSmall
@@ -201,7 +201,8 @@ class _NutritionTableState extends State<_NutritionTable> {
   }
 
   List<Widget> _rows(
-      ThemeData theme, List<NutrientEntry> items, double valueW, double nrvW) {
+      ThemeData theme, AppLocalizations l10n, List<NutrientEntry> items,
+      double valueW, double nrvW) {
     return [
       for (var i = 0; i < items.length; i++)
         Container(
@@ -215,7 +216,25 @@ class _NutritionTableState extends State<_NutritionTable> {
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(
             children: [
-              Expanded(child: Text(items[i].label)),
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(child: Text(items[i].label)),
+                    // 按商品加权平均回填的营养素：与菜谱成本「按原料计算」同款来源提示
+                    if (items[i].fromProducts)
+                      Tooltip(
+                        message: l10n.nutritionFromProductsTooltip(
+                            items[i].productsUsed ?? 0),
+                        triggerMode: TooltipTriggerMode.longPress,
+                        child: Icon(
+                          Icons.info_outline,
+                          size: 14,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               SizedBox(
                 width: valueW,
                 child: Text(

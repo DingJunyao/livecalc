@@ -771,6 +771,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nutritionNutrientSugar => '糖';
 
   @override
+  String nutritionFromProductsTooltip(int count) {
+    return '原料未记录该营养素，按其下 $count 个商品的营养信息加权平均计算';
+  }
+
+  @override
   String get nutritionNutrientTransFat => '反式脂肪';
 
   @override

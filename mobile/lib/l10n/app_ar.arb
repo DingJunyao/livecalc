@@ -532,6 +532,12 @@
   "@nutritionNutrientCholesterol": {},
   "nutritionNutrientSaturatedFat": "الدهون المشبعة",
   "nutritionNutrientSugar": "السكر",
+  "nutritionFromProductsTooltip": "غير مسجّل في المكوّن — متوسط مرجّح لتغذية {count} من المنتجات التابعة",
+  "@nutritionFromProductsTooltip": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "@nutritionNutrientSugar": {},
   "nutritionNutrientTransFat": "الدهون المتحولة",
   "@nutritionNutrientTransFat": {},
