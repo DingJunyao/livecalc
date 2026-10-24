@@ -2213,7 +2213,7 @@ import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import { loadCurrencies } from '@/utils/currency'
-import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
+import { buildNutrientDefinitions, orderNutrientDefsDefaultsFirst } from '@/composables/nutrientDefinitions'
 import { useUserStore } from '@/stores/user'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
@@ -2516,7 +2516,8 @@ const showDraftNutritionDialog = ref(false)
 const draftUnits = ref<EntityDraftUnit[]>([])
 const draftNutrients = ref<EntityDraftNutrient[]>([])
 const draftNutrientCount = computed(() =>
-  draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0).length,
+  // 显式 0 也是有效记录（与「没填」区分），不能当空过滤掉
+  draftNutrients.value.filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) >= 0).length,
 )
 
 function resetProductDrafts() {
@@ -3027,14 +3028,14 @@ const loadNutritionBasisOptions = async () => {
   }
 }
 
-// 行内名称下拉可选列表（过滤已选的，保留当前行自身的 key）
+// 行内名称下拉可选列表（过滤已选的，保留当前行自身的 key；默认七项置顶）
 const getNutrientOptionsForRow = (currentKey: string) => {
   const usedKeys = new Set(
     nutritionEditItems.value
       .filter(i => i.key !== currentKey)
       .map(i => i.key)
   )
-  return getAllNutrientDefs().filter(n => !usedKeys.has(n.key))
+  return orderNutrientDefsDefaultsFirst(getAllNutrientDefs()).filter(n => !usedKeys.has(n.key))
 }
 
 
@@ -5246,7 +5247,8 @@ const saveNutritionEdit = async () => {
     const nutrients: { name: string; value: number; unit: string; key?: string }[] = []
 
     for (const entry of nutritionEditItems.value) {
-      if (entry.value != null && entry.value > 0 && entry.name.trim()) {
+      // 显式 0 是有效记录（「没有记录」≠「记录为 0」），只过滤未填/负数
+      if (entry.value != null && entry.value >= 0 && entry.name.trim()) {
         nutrients.push({
           name: entry.name,
           value: entry.value,

@@ -157,6 +157,11 @@ class NutritionCalculator:
         "fatty_acids_total_trans_monoenoic": "单烯反式脂肪酸",
         "fatty_acids_total_trans_polyenoic": "多烯反式脂肪酸",
 
+        # 糖 / 反式脂肪（编辑器保存键；USDA 导入键 total_sugars /
+        # fatty_acids_total_trans 仍在下方糖类/脂肪酸区）
+        "sugar": "糖",
+        "trans_fat": "反式脂肪",
+
         # 饱和脂肪酸（具体）
         "sfa_4:0": "丁酸",
         "sfa_6:0": "己酸",
@@ -319,20 +324,69 @@ class NutritionCalculator:
         from app.models.mixins import NutritionMixin
         nutrition = NutritionMixin.get_best_nutrition_data(self.db, ingredient_id)
 
-        if not nutrition:
-            return None
-
         # 转换单位到基准单位（g 或 ml）
         base_quantity = self._convert_to_base(quantity, unit, ingredient_id)
+
+        if not nutrition:
+            # 原料自己没有任何营养数据：整表从关联商品的自定义营养加权平均带出
+            # （每 100 g，再按请求量缩放）；商品也没有营养时保持 None（404 不变）。
+            fallback = self._products_weighted_average_nutrients(ingredient_id, own_keys=None)
+            if not fallback:
+                return None
+            scale_factor = base_quantity / 100.0 if base_quantity else 0.0
+            structured = {
+                "core_nutrients": {},
+                "all_nutrients": dict(fallback),
+                "nutrient_details": dict(fallback),
+            }
+            return {
+                "ingredient_id": ingredient_id,
+                "quantity": quantity,
+                "unit": unit,
+                "base_quantity": base_quantity,
+                "nutrition": self._calculate_scaled_nutrients(structured, scale_factor),
+            }
 
         # 计算缩放比例：基准也折算成克当量（基准可以是 mL、斤，或该原料的
         # 自定义单位，如「1 袋 = 250 g」），与请求量同一套换算。
         reference_base = self._reference_base_amount(nutrition, ingredient_id)
         scale_factor = base_quantity / reference_base if reference_base else 0.0
 
+        # 原料缺项的营养素：从关联商品的自定义营养加权平均回填（每 100 g 折算
+        # 到原料自己的基准再统一缩放）。「没有记录」与「记录为 0」是两回事：
+        # 只有原料确实没记的营养素才会回填。
+        structured = self._ensure_structured(nutrition.nutrients)
+        own_keys = {
+            self._canonical_nutrient_key(key)
+            for key in (structured.get("all_nutrients") or {}).keys()
+        }
+        fallback = self._products_weighted_average_nutrients(ingredient_id, own_keys=own_keys)
+        if fallback:
+            # 回填值是每 100 g 口径 → 折到原料基准，与自身营养同一缩放比
+            to_reference = reference_base / 100.0 if reference_base else 0.0
+            scaled_fallback = {
+                key: {**info, "value": round(info["value"] * to_reference, 6)}
+                for key, info in fallback.items()
+            }
+            structured = {
+                **structured,
+                "core_nutrients": {
+                    **(structured.get("core_nutrients") or {}),
+                    **self._core_entries_for(scaled_fallback),
+                },
+                "all_nutrients": {
+                    **(structured.get("all_nutrients") or {}),
+                    **scaled_fallback,
+                },
+                "nutrient_details": {
+                    **(structured.get("nutrient_details") or {}),
+                    **scaled_fallback,
+                },
+            }
+
         # 计算各营养素的值
         calculated_nutrients = self._calculate_scaled_nutrients(
-            nutrition.nutrients,
+            structured,
             scale_factor
         )
 
@@ -731,30 +785,7 @@ class NutritionCalculator:
         """
         计算按比例缩放后的营养值
         """
-        # 兼容旧版扁平格式：自定义编辑保存的格式是
-        # { "能量": {"value": 100, "unit": "kcal", "key": "energy"}, ... }
-        # 自动转为结构化格式
-        if isinstance(nutrients, dict) and nutrients:
-            has_structured = any(k in nutrients for k in ("core_nutrients", "all_nutrients", "nutrient_details"))
-            if not has_structured:
-                from app.services.nutrition_import_service import NutritionImportService
-                core_display_map = getattr(NutritionImportService, 'CORE_DISPLAY_MAP', {})
-                structured = {
-                    "core_nutrients": {},
-                    "all_nutrients": {},
-                    "nutrient_details": {}
-                }
-                for name, data in nutrients.items():
-                    if not isinstance(data, dict) or 'value' not in data:
-                        continue
-                    key = data.get('key', name)
-                    info = {"value": data.get('value', 0), "unit": data.get('unit', ''), "key": key}
-                    structured["all_nutrients"][key] = info
-                    structured["nutrient_details"][key] = info
-                    display_name = core_display_map.get(name)
-                    if display_name:
-                        structured["core_nutrients"][display_name] = {**info, "key": key}
-                nutrients = structured
+        nutrients = self._ensure_structured(nutrients)
 
         result = {
             "core_nutrients": {},
@@ -801,6 +832,192 @@ class NutritionCalculator:
             if "nrp_pct" in data:
                 result["nrp_totals"][name] = data["nrp_pct"]
 
+        return result
+
+    # ---- 原料营养缺项 → 关联商品自定义营养加权平均 ----
+
+    # 核心营养素显示名集合（回填值若是核心营养素，同时补进 core_nutrients）
+    _CORE_NUTRIENT_NAMES = frozenset({
+        "能量", "蛋白质", "脂肪", "碳水化合物", "膳食纤维",
+        "钙", "铁", "钠", "钾", "维生素A", "维生素C",
+        "维生素B1", "维生素B2", "维生素D", "维生素E", "维生素K", "维生素B12",
+    })
+
+    # 同义键归并：USDA 导入键与编辑器保存键不同名，按组视为同一营养素。
+    # 不收录维生素A 的 RAE/IU 变体（量纲不同，不臆估）。
+    _NUTRIENT_KEY_ALIASES = {
+        "sugar": ("sugar", "total_sugars"),
+        "trans_fat": ("trans_fat", "fatty_acids_total_trans"),
+        "saturated_fat": ("saturated_fat", "saturated"),
+        "monounsaturated_fat": ("monounsaturated_fat", "monounsaturated"),
+        "polyunsaturated_fat": ("polyunsaturated_fat", "polyunsaturated"),
+        "fiber": ("fiber", "dietary_fiber"),
+        "carbohydrate": ("carbohydrate", "carbs"),
+    }
+
+    # 加权平均的基准单位：能量统一 kcal，g 家族统一 g，μg 类维生素统一 μg，
+    # 其余（矿物质等）默认 mg。商品的单位换算不到基准单位时该行不参与。
+    _CANONICAL_UNIT_BY_KEY = {
+        "energy": "kcal",
+        "protein": "g", "fat": "g", "carbohydrate": "g", "sugar": "g",
+        "fiber": "g", "saturated_fat": "g", "monounsaturated_fat": "g",
+        "polyunsaturated_fat": "g", "trans_fat": "g",
+        "vitamin_a_rae": "μg", "vitamin_d": "μg", "vitamin_b12": "μg",
+        "vitamin_k": "μg", "folate": "μg", "selenium": "μg",
+    }
+
+    @classmethod
+    def _canonical_nutrient_key(cls, key: str) -> str:
+        k = (key or "").strip()
+        for canonical, aliases in cls._NUTRIENT_KEY_ALIASES.items():
+            if k in aliases:
+                return canonical
+        return k
+
+    @staticmethod
+    def _convert_nutrient_to_unit(value: float, unit: str, canonical: str):
+        """把 (值, 单位) 换算到基准单位；换算不了（IU/% 等）返回 None。"""
+        u = (unit or "").strip()
+        if canonical == "kcal":
+            if u == "kcal":
+                return value
+            if u in ("kJ", "kj"):
+                return value / 4.184
+            return None
+        # 质量类：先统一到 g，再换到目标量级
+        to_gram = {"g": 1.0, "mg": 0.001, "μg": 1e-6, "µg": 1e-6, "mcg": 1e-6}.get(u)
+        if to_gram is None:
+            return None
+        from_gram = {"g": 1.0, "mg": 1e3, "μg": 1e6, "µg": 1e6}.get(canonical)
+        if from_gram is None:
+            return None
+        return value * to_gram * from_gram
+
+    @classmethod
+    def _core_entries_for(cls, fallback: Dict[str, dict]) -> Dict[str, dict]:
+        """回填营养素里属于核心集的，转成 core_nutrients 的显示名条目。"""
+        entries = {}
+        for key, info in fallback.items():
+            display_name = cls.NUTRIENT_NAMES.get(key, key)
+            if display_name in cls._CORE_NUTRIENT_NAMES:
+                entries[display_name] = {**info, "key": key}
+        return entries
+
+    @staticmethod
+    def _ensure_structured(nutrients: Dict) -> Dict:
+        """旧版扁平格式 → 结构化格式；已是结构化（或空/非 dict）原样返回。"""
+        if isinstance(nutrients, dict) and nutrients:
+            has_structured = any(k in nutrients for k in ("core_nutrients", "all_nutrients", "nutrient_details"))
+            if not has_structured:
+                from app.services.nutrition_import_service import NutritionImportService
+                core_display_map = getattr(NutritionImportService, 'CORE_DISPLAY_MAP', {})
+                structured = {
+                    "core_nutrients": {},
+                    "all_nutrients": {},
+                    "nutrient_details": {}
+                }
+                for name, data in nutrients.items():
+                    if not isinstance(data, dict) or 'value' not in data:
+                        continue
+                    key = data.get('key', name)
+                    info = {"value": data.get('value', 0), "unit": data.get('unit', ''), "key": key}
+                    structured["all_nutrients"][key] = info
+                    structured["nutrient_details"][key] = info
+                    display_name = core_display_map.get(name)
+                    if display_name:
+                        structured["core_nutrients"][display_name] = {**info, "key": key}
+                return structured
+            return nutrients
+        return {} if not isinstance(nutrients, dict) else nutrients
+
+    def _products_weighted_average_nutrients(
+        self, ingredient_id: int, own_keys
+    ) -> Dict[str, dict]:
+        """原料缺失营养素 ← 关联商品自定义营养的加权平均（每 100 g）。
+
+        - 权重：商品价格权重 Product.price_weight（默认 50，≤0 不参与）；
+        - 「有记录（含显式 0）」才参与该营养素的平均，「没有记录」不算 0；
+        - 商品基准 reference_unit 为 g/克时按 reference_amount 归一到每 100 g，
+          其他单位不折算（与商品营养读取「不参与缩放」的既有口径一致）；
+        - 单位换算不到该营养素基准单位的商品行，该营养素跳过；
+        - [own_keys] 是原料已有的**归一化键**集合（None = 原料没有任何营养行）。
+        """
+        import json as _json
+
+        products = self.db.query(Product).filter(
+            Product.ingredient_id == ingredient_id,
+            Product.is_active == True,  # noqa: E712
+        ).all()
+
+        owned = own_keys if own_keys is not None else set()
+        acc: dict = {}
+        for product in products:
+            raw = getattr(product, 'custom_nutrition_data', None)
+            if isinstance(raw, str):
+                try:
+                    raw = _json.loads(raw)
+                except (TypeError, ValueError):
+                    raw = None
+            if not isinstance(raw, dict):
+                continue
+            entries = raw.get("all_nutrients")
+            if not isinstance(entries, dict) or not entries:
+                entries = raw.get("core_nutrients")
+            if not isinstance(entries, dict) or not entries:
+                continue
+
+            try:
+                weight = float(
+                    product.price_weight if product.price_weight is not None else 50
+                )
+            except (TypeError, ValueError):
+                weight = 50.0
+            if weight <= 0:
+                continue
+
+            try:
+                ref_amount = float(raw.get("reference_amount") or 100.0)
+            except (TypeError, ValueError):
+                ref_amount = 100.0
+            if ref_amount <= 0:
+                ref_amount = 100.0
+            ref_unit = str(raw.get("reference_unit") or "g").strip().lower()
+            # 基准为 g/克才归一；其他单位按「值即每 100 g」处理（不臆估换算）
+            ref_grams = ref_amount if ref_unit in ("", "g", "克") else 100.0
+
+            for key, data in entries.items():
+                if not isinstance(data, dict) or "value" not in data:
+                    continue
+                canonical = self._canonical_nutrient_key(str(key))
+                if canonical in owned:
+                    continue
+                try:
+                    value = float(data.get("value"))
+                except (TypeError, ValueError):
+                    continue
+                per100 = value * 100.0 / ref_grams
+                converted = self._convert_nutrient_to_unit(
+                    per100,
+                    str(data.get("unit") or ""),
+                    self._CANONICAL_UNIT_BY_KEY.get(canonical, "mg"),
+                )
+                if converted is None:
+                    continue
+                slot = acc.setdefault(canonical, [0.0, 0.0, 0])
+                slot[0] += converted * weight
+                slot[1] += weight
+                slot[2] += 1
+
+        result: Dict[str, dict] = {}
+        for key, (weighted_sum, total_weight, used) in acc.items():
+            if total_weight <= 0:
+                continue
+            result[key] = {
+                "value": round(weighted_sum / total_weight, 4),
+                "unit": self._CANONICAL_UNIT_BY_KEY.get(key, "mg"),
+                "from_products": True,
+                "products_used": used,
+            }
         return result
 
     def _accumulate_nutrients(

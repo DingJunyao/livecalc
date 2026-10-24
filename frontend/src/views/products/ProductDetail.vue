@@ -1375,7 +1375,7 @@ import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { loadCurrencies } from '@/utils/currency'
-import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
+import { buildNutrientDefinitions, orderNutrientDefsDefaultsFirst } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
 import { formatNumber, formatQuantity } from '@/utils/format'
@@ -1877,7 +1877,7 @@ const getNutrientOptionsForRow = (currentKey: string) => {
       .filter(i => i.key !== currentKey)
       .map(i => i.key)
   )
-  return getAllNutrientDefs().filter(n => !usedKeys.has(n.key))
+  return orderNutrientDefsDefaultsFirst(getAllNutrientDefs()).filter(n => !usedKeys.has(n.key))
 }
 
 const priceForm = ref({
@@ -3481,7 +3481,8 @@ const saveNutritionEdit = async () => {
     const nutrients: { name: string; value: number; unit: string; key?: string }[] = []
 
     for (const entry of nutritionEditItems.value) {
-      if (entry.value != null && entry.value > 0 && entry.name.trim()) {
+      // 显式 0 是有效记录（「没有记录」≠「记录为 0」），只过滤未填/负数
+      if (entry.value != null && entry.value >= 0 && entry.name.trim()) {
         nutrients.push({
           name: entry.name,
           value: entry.value,
