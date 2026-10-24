@@ -26,3 +26,6 @@ docker-compose.yml
 build/CMakeCache.txt
 build/.cmake/
 build/CMakeFiles/
+
+.mimosa/
+.AGENTS.md.*

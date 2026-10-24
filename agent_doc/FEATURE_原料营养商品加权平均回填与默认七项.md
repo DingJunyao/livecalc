@@ -2,7 +2,7 @@
 
 - **日期**：2026-10-24
 - **分支**：master（后端 `d78922c8` + web `4f6cb306`）；feat/mobile-app（移动端 `daaeacdd`，master 经 merge `7f2075bd` 合入）
-- **关联**：[FEATURE_营养基准与默认项.md](FEATURE_营养基准与默认项.md)（默认五项/基准缩放的前序）
+- **追加（同日）**：NRV 计算 + 来源 tooltip（master `3bb62b08` + `47f33bb9`；移动端 `d6eebeae`）——①回填值按**每 100 g 口径**过 `calc_nrv_pct` 算 NRV（无 NRV 标准的营养素如糖保持 0，与自身行一致）；②Web 原料详情营养行与移动端 `NutritionCard` 对 `from_products` 条目加 **info 图标 + tooltip**（「原料未记录该营养素，按其下 N 个商品的营养信息加权平均计算」，与菜谱成本「按原料计算」提示同款交互；web `ingredients.nutritionFromProductsTooltip`、移动端 arb 带 `count` 占位符三语）；移动端 `NutrientEntry` 解析 `from_products/products_used`。
 
 ## 需求（用户三条）
 
