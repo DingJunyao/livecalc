@@ -220,6 +220,47 @@ def test_alias_keys_and_unit_normalization(db_session, as_admin):
     assert "钙" not in nutrients
 
 
+def test_chinese_keys_and_per_block_reference(db_session, as_admin):
+    """移动端保存的商品营养键是中文显示名（key=中文标签），基准可以是
+    「每 10.7 g」这类非 100 g 量：键要归一、值要按基准折到每 100 g。"""
+    ing_id = _ingredient(db_session)
+    _product(db_session, ing_id, "中文键商品", price_weight=100, nutrition={
+        "reference_amount": 10.7,
+        "reference_unit": "g",
+        "all_nutrients": {
+            "能量": {"value": 74.0, "unit": "kJ", "key": "能量"},
+            "蛋白质": {"value": 0.6, "unit": "g", "key": "蛋白质"},
+            "钠": {"value": 887.0, "unit": "mg", "key": "钠"},
+        },
+    })
+    _product(db_session, ing_id, "第二商品", price_weight=100, nutrition={
+        "reference_amount": 21.4,
+        "reference_unit": "g",
+        "all_nutrients": {
+            "能量": {"value": 148.0, "unit": "kJ", "key": "能量"},
+            "蛋白质": {"value": 1.2, "unit": "g", "key": "蛋白质"},
+            "钠": {"value": 1774.0, "unit": "mg", "key": "钠"},
+        },
+    })
+
+    resp = client.get(f"/api/v1/nutrition/ingredients/{ing_id}/nutrition")
+    assert resp.status_code == 200, resp.text
+    nutrients = _all_nutrients(resp.json())
+
+    # 两个商品每 100 g 完全一致：能量 148/21.4×100 = 691.589 g→kcal；
+    # 74 kJ/10.7g = 691.589 kJ/100g = 165.29 kcal；蛋白质 5.607 g；钠 8289.7 mg
+    assert nutrients["能量"]["value"] == pytest.approx(165.29, abs=0.02)
+    assert nutrients["能量"]["unit"] == "kcal"
+    assert nutrients["蛋白质"]["value"] == pytest.approx(5.607, abs=0.01)
+    assert nutrients["蛋白质"]["unit"] == "g"
+    assert nutrients["钠"]["value"] == pytest.approx(8289.72, abs=0.5)
+    assert nutrients["钠"]["unit"] == "mg"
+    for name in ("能量", "蛋白质", "钠"):
+        assert nutrients[name]["from_products"] is True
+    # 核心营养素同时进 core_nutrients
+    assert resp.json()["nutrition"]["core_nutrients"]["能量"]["unit"] == "kcal"
+
+
 # ---------------------------------------------------------------- 0 值保存
 
 def test_save_explicit_zero_is_recorded(db_session, as_admin):
