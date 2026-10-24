@@ -335,7 +335,7 @@ class NutritionCalculator:
                 return None
             scale_factor = base_quantity / 100.0 if base_quantity else 0.0
             structured = {
-                "core_nutrients": {},
+                "core_nutrients": self._core_entries_for(fallback),
                 "all_nutrients": dict(fallback),
                 "nutrient_details": dict(fallback),
             }
@@ -866,9 +866,18 @@ class NutritionCalculator:
         "vitamin_k": "μg", "folate": "μg", "selenium": "μg",
     }
 
+    # 中文显示名 → 英文键：移动端编辑器保存的营养行 all_nutrients 键是
+    # 中文标签（key=中文），NUTRIENT_NAMES 反查归到英文键；同名多条时
+    # 先出现者优先（如 维生素A → vitamin_a_rae）。
+    _CHINESE_TO_ENGLISH_KEY: dict = {}
+    for _en, _zh in NUTRIENT_NAMES.items():
+        _CHINESE_TO_ENGLISH_KEY.setdefault(_zh, _en)
+
     @classmethod
     def _canonical_nutrient_key(cls, key: str) -> str:
         k = (key or "").strip()
+        if k in cls._CHINESE_TO_ENGLISH_KEY:
+            k = cls._CHINESE_TO_ENGLISH_KEY[k]
         for canonical, aliases in cls._NUTRIENT_KEY_ALIASES.items():
             if k in aliases:
                 return canonical
