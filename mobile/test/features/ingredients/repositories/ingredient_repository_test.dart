@@ -142,6 +142,86 @@ void main() {
     verifyNever(() => mockDio.get('/nutrition/ingredients/9/latest-price'));
   });
 
+  test('latest prices over 50 ids are fetched in chunks and merged', () async {
+    final ids = List<int>.generate(latestPriceBatchChunkSize + 5, (i) => i + 1);
+    final firstChunk = ids.sublist(0, latestPriceBatchChunkSize).join(',');
+    final secondChunk = ids.sublist(latestPriceBatchChunkSize).join(',');
+    Response batchResponse(Map<int, double> prices) => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {
+            'items': {
+              for (final entry in prices.entries)
+                '${entry.key}': {'average_price': entry.value, 'unit': '斤'},
+            }
+          },
+        );
+    when(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': firstChunk},
+        )).thenAnswer(
+        (_) async => batchResponse({
+              for (final id in ids.sublist(0, latestPriceBatchChunkSize))
+                id: 1.0,
+            }));
+    when(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': secondChunk},
+        )).thenAnswer(
+        (_) async => batchResponse({
+              for (final id in ids.sublist(latestPriceBatchChunkSize)) id: 2.0,
+            }));
+
+    final result = await repository.getLatestPrices(ids);
+
+    expect(result.length, ids.length);
+    expect(result[ids.first]?.price, 1.0);
+    expect(result[ids.last]?.price, 2.0);
+    verify(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': firstChunk},
+        )).called(1);
+    verify(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': secondChunk},
+        )).called(1);
+  });
+
+  test('a failed latest-price chunk keeps the other chunks', () async {
+    final ids = List<int>.generate(latestPriceBatchChunkSize + 2, (i) => i + 1);
+    final firstChunk = ids.sublist(0, latestPriceBatchChunkSize).join(',');
+    final secondChunk = ids.sublist(latestPriceBatchChunkSize).join(',');
+    when(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': firstChunk},
+        )).thenThrow(DioException(
+          requestOptions: RequestOptions(path: ''),
+          response: Response(
+            requestOptions: RequestOptions(path: ''),
+            statusCode: 400,
+          ),
+        ));
+    when(() => mockDio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': secondChunk},
+        )).thenAnswer((_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: {
+            'items': {
+              for (final id in ids.sublist(latestPriceBatchChunkSize))
+                '$id': {'average_price': 3.0, 'unit': '斤'},
+            }
+          },
+        ));
+
+    final result = await repository.getLatestPrices(ids);
+
+    expect(result.length, 2);
+    expect(result[ids[latestPriceBatchChunkSize]]?.price, 3.0);
+    expect(result.containsKey(ids.first), isFalse);
+  });
+
   test('non-admin hierarchy create recognizes placeholder as pending',
       () async {
     when(() => mockDio.post(

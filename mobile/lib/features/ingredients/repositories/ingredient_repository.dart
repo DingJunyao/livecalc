@@ -9,6 +9,9 @@ import '../../../shared/models/hierarchy_relation.dart';
 import '../models/ingredient.dart';
 import '../models/ingredient_category.dart';
 
+/// 后端 /nutrition/ingredients/latest-price/batch 单次最多 50 个 ID。
+const int latestPriceBatchChunkSize = 50;
+
 class IngredientPage {
   final List<Ingredient> items;
   final int total;
@@ -218,21 +221,36 @@ class IngredientRepository {
   }
 
   /// 批量最近一天平均价（GET /nutrition/ingredients/latest-price/batch）。
+  ///
+  /// 后端单次最多接受 50 个 ID（超出直接 400）；列表页无限滚动会把累计
+  /// 的全部 ID 一次传来，这里分块请求后合并，单块失败只丢该块。
   Future<Map<int, LatestPriceInfo>> getLatestPrices(List<int> ids) async {
     if (ids.isEmpty) return const {};
-    final response = await _client.dio.get(
-      '/nutrition/ingredients/latest-price/batch',
-      queryParameters: {'ingredient_ids': ids.join(',')},
-    );
-    final data = response.data as Map<String, dynamic>;
-    final items = data['items'] as Map<String, dynamic>? ?? {};
-    return {
-      for (final entry in items.entries)
-        if (int.tryParse(entry.key) != null)
-          int.parse(entry.key): LatestPriceInfo.fromJson(
-            entry.value as Map<String, dynamic>,
-          ),
-    };
+    final merged = <int, LatestPriceInfo>{};
+    for (var i = 0; i < ids.length; i += latestPriceBatchChunkSize) {
+      final end = (i + latestPriceBatchChunkSize) > ids.length
+          ? ids.length
+          : i + latestPriceBatchChunkSize;
+      try {
+        final response = await _client.dio.get(
+          '/nutrition/ingredients/latest-price/batch',
+          queryParameters: {'ingredient_ids': ids.sublist(i, end).join(',')},
+        );
+        final data = response.data as Map<String, dynamic>;
+        final items = data['items'] as Map<String, dynamic>? ?? {};
+        for (final entry in items.entries) {
+          final id = int.tryParse(entry.key);
+          if (id != null) {
+            merged[id] = LatestPriceInfo.fromJson(
+              entry.value as Map<String, dynamic>,
+            );
+          }
+        }
+      } on Exception {
+        // 单块失败不阻塞其余分块（列表页宁可部分展示）
+      }
+    }
+    return merged;
   }
 
   /// 各商家最新价（GET /nutrition/ingredients/{id}/latest-price-by-merchant）。

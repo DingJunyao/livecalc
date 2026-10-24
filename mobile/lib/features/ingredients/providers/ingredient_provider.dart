@@ -107,6 +107,7 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   final IngredientRepository _repo;
   Timer? _debounce;
   int _requestSequence = 0;
+  int _detailsSequence = 0;
 
   IngredientListNotifier([IngredientRepository? repository])
       : _repo = repository ?? IngredientRepository(),
@@ -233,22 +234,28 @@ class IngredientListNotifier extends StateNotifier<IngredientListState> {
   }
 
   /// 后台批量加载最新价与迷你图（与 Web 端 loadLatestPrices/Sparklines 对应）。
+  ///
+  /// 结果与已有数据**合并**而非整体替换：无限滚动翻页或某次请求部分失败时，
+  /// 已加载项的价格/迷你图不丢失（否则列表会停在最后一次全部成功的那一页）。
   Future<void> _loadDetails(List<Ingredient> items) async {
     if (items.isEmpty) return;
+    final detailsSequence = ++_detailsSequence;
     state = state.copyWith(loadingDetails: true);
     try {
-      final priceMap = await _repo.getLatestPrices(
-        items.map((i) => i.id).toList(),
-      );
-      final sparkMap = await _repo.getSparklines(
-        items.map((i) => i.id).toList(),
-      );
+      final basePrices = state.latestPrices;
+      final baseSparklines = state.sparklines;
+      final priceMap =
+          await _repo.getLatestPrices(items.map((i) => i.id).toList());
+      final sparkMap =
+          await _repo.getSparklines(items.map((i) => i.id).toList());
+      if (!mounted || detailsSequence != _detailsSequence) return;
       state = state.copyWith(
         loadingDetails: false,
-        latestPrices: priceMap,
-        sparklines: sparkMap,
+        latestPrices: {...basePrices, ...priceMap},
+        sparklines: {...baseSparklines, ...sparkMap},
       );
     } on Exception {
+      if (!mounted || detailsSequence != _detailsSequence) return;
       state = state.copyWith(loadingDetails: false);
     }
   }

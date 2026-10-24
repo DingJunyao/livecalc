@@ -113,6 +113,7 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
   final ProductRepository _repo;
   Timer? _debounce;
   int _requestSequence = 0;
+  int _detailsSequence = 0;
 
   ProductListNotifier(this._repo) : super(const ProductListState());
 
@@ -262,26 +263,49 @@ class ProductListNotifier extends StateNotifier<ProductListState> {
     await load();
   }
 
+  /// 后台逐项加载最新价与批量迷你图。
+  ///
+  /// 单项价格失败只跳过该项（原先 Future.wait 一个失败整轮作废，已加载
+  /// 的也会停在旧一轮）；结果与已有数据合并，翻页时已加载项不丢失。
   Future<void> _loadDetails(List<Product> items) async {
     if (items.isEmpty) return;
+    final detailsSequence = ++_detailsSequence;
     state = state.copyWith(loadingDetails: true);
     try {
+      final basePrices = state.latestPrices;
+      final baseSparklines = state.sparklines;
       final prices = await Future.wait(
-        items.map((p) => _repo.getLatestPrice(p.id)),
+        [for (final p in items) _safeLatestPrice(p.id)],
       );
       final priceMap = <int, LatestPriceInfo>{
-        for (var i = 0; i < items.length; i++) items[i].id: prices[i],
+        for (var i = 0; i < items.length; i++)
+          if (prices[i] != null) items[i].id: prices[i]!,
       };
-      final sparkMap = await _repo.getSparklines(
-        items.map((p) => p.id).toList(),
-      );
+      Map<int, List<double>> sparkMap;
+      try {
+        sparkMap = await _repo.getSparklines(
+          items.map((p) => p.id).toList(),
+        );
+      } on Exception {
+        sparkMap = const {};
+      }
+      if (!mounted || detailsSequence != _detailsSequence) return;
       state = state.copyWith(
         loadingDetails: false,
-        latestPrices: priceMap,
-        sparklines: sparkMap,
+        latestPrices: {...basePrices, ...priceMap},
+        sparklines: {...baseSparklines, ...sparkMap},
       );
     } on Exception {
+      if (!mounted || detailsSequence != _detailsSequence) return;
       state = state.copyWith(loadingDetails: false);
+    }
+  }
+
+  Future<LatestPriceInfo?> _safeLatestPrice(int id) async {
+    try {
+      return await _repo.getLatestPrice(id);
+    } on Exception {
+      return null;
     }
   }
 }
