@@ -280,7 +280,7 @@ import { formatMoney } from '@/utils/currency'
 import { useUserCurrency } from '@/composables/useUserCurrency'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { getErrorMessage } from '@/utils/errorHandler'
-import { loadEntityUnitOptions } from '@/utils/entityUnits'
+import { loadEntityUnitOptions, fetchEntityDefaultUnitName } from '@/utils/entityUnits'
 import {
   formatGramsSelfCheck,
   formatLinkSentence,
@@ -411,6 +411,22 @@ const unitValues = async (
   ).map(option => option.value)
 }
 
+/**
+ * 带出单位：实体「默认单位」优先（商品自身默认 > 关联原料默认）。
+ * 旧逻辑取单位列表第一项——商品自身的单位按创建顺序排列（如浓汤宝的
+ * 「块」排在「盒」前面），会把非默认的原料口径单位带出来。
+ */
+const pickUnitFor = async (
+  entityType: EntityLinkEntityType,
+  entityId: number,
+  ingredientId: number | null | undefined,
+  options: string[],
+) => {
+  const defaultUnit = await fetchEntityDefaultUnitName(entityType, entityId, ingredientId)
+  if (defaultUnit && options.includes(defaultUnit)) return defaultUnit
+  return options[0] || ''
+}
+
 const openAdd = async () => {
   editingLink.value = null
   targetType.value = props.entityType === 'product' ? 'product' : 'ingredient'
@@ -426,7 +442,9 @@ const openAdd = async () => {
     props.entityType, props.entityId, props.ingredientId, links.value,
   )
   otherUnitOptions.value = []
-  currentUnit.value = currentUnitOptions.value[0] || ''
+  currentUnit.value = await pickUnitFor(
+    props.entityType, props.entityId, props.ingredientId, currentUnitOptions.value,
+  )
   dialogOpen.value = true
 }
 
@@ -508,7 +526,9 @@ const onTargetChange = async (item: any) => {
     links.value,
   )
   if (!otherUnit.value || !otherUnitOptions.value.includes(otherUnit.value)) {
-    otherUnit.value = otherUnitOptions.value[0] || ''
+    otherUnit.value = await pickUnitFor(
+      targetType.value, item.id, item.ingredient_id, otherUnitOptions.value,
+    )
   }
 }
 
