@@ -2,7 +2,8 @@
 //
 // 无网络依赖，取数部分见 `entity_unit_names.dart` 的 loadNutritionBasisUnitNames。
 // 与 web 端 `frontend/src/utils/nutritionBasis.ts` 同口径：
-//   - 默认基准 100 g；新建时预填能量 kJ / 蛋白质 / 脂肪 / 碳水化合物 / 钠 mg；
+//   - 默认基准 100 g；新建时预填七项（能量随用户能量单位偏好、
+//     蛋白质/脂肪/饱和脂肪/碳水化合物/糖 g、钠 mg）；
 //   - 基准单位可以是全局质量/体积单位，也可以是本实体**可折算**的自定义单位
 //     （如「1 袋 = 250 g」）。折算不出来的单位不列出：后端缩放会退化成
 //     「按克」口径，让用户选它等于埋雷。
@@ -11,21 +12,25 @@
 const double kDefaultNutritionBasisAmount = 100;
 const String kDefaultNutritionBasisUnit = 'g';
 
-/// 新建营养时预填的营养素（营养成分表常见五项）。
+/// 新建营养时预填的营养素（营养成分表常见七项，顺序即预填顺序）。
 const List<String> kDefaultNutrientLabels = [
   '能量',
   '蛋白质',
   '脂肪',
+  '饱和脂肪',
   '碳水化合物',
+  '糖',
   '钠',
 ];
 
 /// 预填行的固定默认单位（**能量不在其中** —— 它跟随用户能量单位偏好，
-/// 见 [defaultNutrientUnit]）。
+/// 见 [defaultNutrientUnit]）。蛋白质/脂肪/饱和脂肪/碳水化合物/糖 g，钠 mg。
 const Map<String, String> kDefaultNutrientUnits = {
   '蛋白质': 'g',
   '脂肪': 'g',
+  '饱和脂肪': 'g',
   '碳水化合物': 'g',
+  '糖': 'g',
   '钠': 'mg',
 };
 

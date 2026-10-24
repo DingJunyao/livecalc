@@ -75,7 +75,8 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   bool get _isEdit => _editId != null;
 
   int get _draftNutrientCount => _draftNutrients
-      .where((entry) => entry.label.trim().isNotEmpty && entry.value > 0)
+      // 显式 0 也是有效记录（与「没填」区分）
+      .where((entry) => entry.label.trim().isNotEmpty && entry.value >= 0)
       .length;
 
   @override

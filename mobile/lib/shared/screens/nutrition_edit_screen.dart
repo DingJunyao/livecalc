@@ -115,9 +115,9 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     _rows.addAll([
       for (final nutrient in initialNutrients) _NutritionEditRow.from(nutrient),
     ]);
-    // 没有任何营养数据：预填营养成分表常见五项（能量随用户能量单位偏好、
-    // 蛋白质 / 脂肪 / 碳水化合物 g、钠 mg）。用户只是点进来看看的话，
-    // 保存时不会写任何数据。
+    // 没有任何营养数据：预填营养成分表常见七项（能量随用户能量单位偏好、
+    // 蛋白质 / 脂肪 / 饱和脂肪 / 碳水化合物 / 糖 g、钠 mg）。用户只是点进
+    // 来看看的话，保存时不会写任何数据。
     if (_rows.isEmpty) {
       final energyUnit = ref
           .read(authProvider)
@@ -133,10 +133,8 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
         ));
       }
     }
-    _hadNutritionData = _rows.any((row) {
-      final value = row.value;
-      return value != null && value > 0;
-    });
+    // 显式 0 也是有效记录（与「没填」区分）
+    _hadNutritionData = _rows.any((row) => row.value != null);
     _basis = widget.nutrition == null
         ? const NutritionBasis()
         : NutritionBasis(
@@ -283,7 +281,8 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     final entries = <NutrientEntry>[];
     for (final row in _rows) {
       final value = row.value;
-      if (row.label.isEmpty || value == null || value <= 0) continue;
+      // 显式 0 是有效记录（「没有记录」≠「记录为 0」），只过滤未填/负数
+      if (row.label.isEmpty || value == null || value < 0) continue;
       entries.add(NutrientEntry(
         key: row.label,
         label: row.label,
@@ -627,19 +626,28 @@ class _NutritionEditRow {
   double? get value => double.tryParse(controller.text.trim());
 }
 
+/// 营养素目录（与 web `BASE_DEFS` 同口径全量；默认七项始终置顶，
+/// 新建行从下拉补别的营养素）。
 const _nutrientOptions = <({String label, List<String> units})>[
+  // 默认七项（与 kDefaultNutrientLabels 同序）
   (label: '能量', units: ['kcal', 'kJ']),
-  (label: '蛋白质', units: ['g']),
-  (label: '脂肪', units: ['g']),
-  (label: '碳水化合物', units: ['g']),
-  (label: '膳食纤维', units: ['g']),
+  (label: '蛋白质', units: ['g', 'mg']),
+  (label: '脂肪', units: ['g', 'mg']),
+  (label: '饱和脂肪', units: ['g', 'mg']),
+  (label: '碳水化合物', units: ['g', 'mg']),
+  (label: '糖', units: ['g', 'mg']),
   (label: '钠', units: ['mg', 'g']),
   (label: '钾', units: ['mg', 'g']),
+  // 其余按 web 定义表顺序
+  (label: '膳食纤维', units: ['g']),
   (label: '钙', units: ['mg', 'g']),
   (label: '铁', units: ['mg', 'g']),
   (label: '锌', units: ['mg', 'g']),
   (label: '磷', units: ['mg', 'g']),
   (label: '镁', units: ['mg', 'g']),
+  (label: '铜', units: ['mg', 'g']),
+  (label: '锰', units: ['mg', 'g']),
+  (label: '硒', units: ['mg', 'g']),
   (label: '维生素A', units: ['µg', 'mg']),
   (label: '维生素C', units: ['mg', 'g']),
   (label: '维生素B1', units: ['mg']),
@@ -652,7 +660,9 @@ const _nutrientOptions = <({String label, List<String> units})>[
   (label: '叶酸', units: ['µg']),
   (label: '烟酸', units: ['mg']),
   (label: '胆固醇', units: ['mg']),
-  (label: '饱和脂肪', units: ['g']),
+  (label: '单不饱和脂肪', units: ['g', 'mg']),
+  (label: '多不饱和脂肪', units: ['g', 'mg']),
+  (label: '反式脂肪', units: ['g', 'mg']),
 ];
 
 String _nutrientDisplayLabel(String label, AppLocalizations l10n) {
@@ -682,6 +692,13 @@ String _nutrientDisplayLabel(String label, AppLocalizations l10n) {
     '烟酸' => l10n.nutritionNutrientNiacin,
     '胆固醇' => l10n.nutritionNutrientCholesterol,
     '饱和脂肪' => l10n.nutritionNutrientSaturatedFat,
+    '糖' => l10n.nutritionNutrientSugar,
+    '反式脂肪' => l10n.nutritionNutrientTransFat,
+    '单不饱和脂肪' => l10n.nutritionNutrientMonounsaturatedFat,
+    '多不饱和脂肪' => l10n.nutritionNutrientPolyunsaturatedFat,
+    '铜' => l10n.nutritionNutrientCopper,
+    '锰' => l10n.nutritionNutrientManganese,
+    '硒' => l10n.nutritionNutrientSelenium,
     _ => label,
   };
 }

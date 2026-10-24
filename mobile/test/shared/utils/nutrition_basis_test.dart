@@ -82,13 +82,15 @@ void main() {
     expect(withCurrentBasisUnit(options, 'g'), ['袋', 'g', 'mL']);
   });
 
-  test('新建默认行包含五项核心营养素', () {
+  test('新建默认行包含七项核心营养素', () {
     expect(kDefaultNutrientLabels,
-        ['能量', '蛋白质', '脂肪', '碳水化合物', '钠']);
+        ['能量', '蛋白质', '脂肪', '饱和脂肪', '碳水化合物', '糖', '钠']);
     expect(kDefaultNutrientUnits.containsKey('能量'), isFalse,
         reason: '能量不写死，走 defaultNutrientUnit 随偏好');
     expect(kDefaultNutrientUnits['钠'], 'mg');
     expect(kDefaultNutrientUnits['蛋白质'], 'g');
+    expect(kDefaultNutrientUnits['饱和脂肪'], 'g');
+    expect(kDefaultNutrientUnits['糖'], 'g');
   });
 
   test('能量默认单位跟随用户能量单位偏好，缺省 kcal', () {

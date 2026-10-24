@@ -768,6 +768,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => '饱和脂肪';
 
   @override
+  String get nutritionNutrientSugar => '糖';
+
+  @override
+  String get nutritionNutrientTransFat => '反式脂肪';
+
+  @override
+  String get nutritionNutrientMonounsaturatedFat => '单不饱和脂肪';
+
+  @override
+  String get nutritionNutrientPolyunsaturatedFat => '多不饱和脂肪';
+
+  @override
   String get entityLinksTitle => '关联与换算';
 
   @override

@@ -132,7 +132,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   bool get _isEdit => widget.product != null;
 
   int get _draftNutrientCount => _draftNutrients
-      .where((entry) => entry.label.trim().isNotEmpty && entry.value > 0)
+      // 显式 0 也是有效记录（与「没填」区分）
+      .where((entry) => entry.label.trim().isNotEmpty && entry.value >= 0)
       .length;
 
   @override

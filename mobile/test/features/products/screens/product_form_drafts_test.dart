@@ -400,14 +400,19 @@ void main() {
     await _tapDraftTile(tester, 'Nutrition');
     expect(find.text('USDA'), findsNothing);
 
-    // 新建营养预填五项（首行是能量）；基准行在营养素表之前
-    // （TextField 0 = 基准量，1 = 能量值）
+    // 新建营养预填七项（首行是能量）；基准行在营养素表之前
+    // （TextField 0 = 基准量，1 = 能量值）。钠是第 7 行：视口外未构建，
+    // 展开的选项又在 offstage 下拉里，用 skipOffstage + findsWidgets 只验证行存在。
     expect(find.text('Energy'), findsOneWidget);
-    expect(find.text('Sodium'), findsOneWidget);
+    expect(find.text('Sodium', skipOffstage: false), findsWidgets);
+
+    // 行数变多后前置滚动可能把基准行推出懒构建缓存，先回顶部再按位取字段
+    await tester.drag(find.byType(ListView).first, const Offset(0, 800));
+    await tester.pumpAndSettle();
 
     final valueField = find.byType(TextField).at(1);
-    await tester.ensureVisible(valueField);
-    await tester.pumpAndSettle();
+    // 注意：这里不能再 ensureVisible——它会把基准行再次滚出懒构建缓存，
+    // 让 .at(1)/.first 错位到下一行（默认行变多后首屏放不下全部行）。
     await tester.enterText(valueField, '10');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();

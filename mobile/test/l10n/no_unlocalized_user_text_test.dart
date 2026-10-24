@@ -36,6 +36,13 @@ const _canonicalNutrientHan = <String>{
   '烟酸',
   '胆固醇',
   '饱和脂肪',
+  '糖',
+  '铜',
+  '锰',
+  '硒',
+  '单不饱和脂肪',
+  '多不饱和脂肪',
+  '反式脂肪',
 };
 
 /// Provider names in map layer fallback data; localized display uses mapLayer*.

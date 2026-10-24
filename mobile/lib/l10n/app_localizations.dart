@@ -1583,6 +1583,30 @@ abstract class AppLocalizations {
   /// **'饱和脂肪'**
   String get nutritionNutrientSaturatedFat;
 
+  /// No description provided for @nutritionNutrientSugar.
+  ///
+  /// In zh, this message translates to:
+  /// **'糖'**
+  String get nutritionNutrientSugar;
+
+  /// No description provided for @nutritionNutrientTransFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'反式脂肪'**
+  String get nutritionNutrientTransFat;
+
+  /// No description provided for @nutritionNutrientMonounsaturatedFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'单不饱和脂肪'**
+  String get nutritionNutrientMonounsaturatedFat;
+
+  /// No description provided for @nutritionNutrientPolyunsaturatedFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'多不饱和脂肪'**
+  String get nutritionNutrientPolyunsaturatedFat;
+
   /// No description provided for @entityLinksTitle.
   ///
   /// In zh, this message translates to:

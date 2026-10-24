@@ -786,6 +786,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => 'Saturated fat';
 
   @override
+  String get nutritionNutrientSugar => 'Sugar';
+
+  @override
+  String get nutritionNutrientTransFat => 'Trans fat';
+
+  @override
+  String get nutritionNutrientMonounsaturatedFat => 'Monounsaturated fat';
+
+  @override
+  String get nutritionNutrientPolyunsaturatedFat => 'Polyunsaturated fat';
+
+  @override
   String get entityLinksTitle => 'Links & conversion';
 
   @override

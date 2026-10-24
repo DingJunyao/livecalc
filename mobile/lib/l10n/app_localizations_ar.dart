@@ -785,6 +785,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nutritionNutrientSaturatedFat => 'الدهون المشبعة';
 
   @override
+  String get nutritionNutrientSugar => 'السكر';
+
+  @override
+  String get nutritionNutrientTransFat => 'الدهون المتحولة';
+
+  @override
+  String get nutritionNutrientMonounsaturatedFat =>
+      'الدهون الأحادية غير المشبعة';
+
+  @override
+  String get nutritionNutrientPolyunsaturatedFat =>
+      'الدهون المتعددة غير المشبعة';
+
+  @override
   String get entityLinksTitle => 'الربط والتحويل';
 
   @override

@@ -128,7 +128,8 @@ class EntityDraftPersister {
 
     final entries = [
       for (final entry in nutrients)
-        if (entry.label.trim().isNotEmpty && entry.value > 0) entry,
+        // 显式 0 是有效记录（「没有记录」≠「记录为 0」），只过滤未填/负数
+        if (entry.label.trim().isNotEmpty && entry.value >= 0) entry,
     ];
     if (entries.isNotEmpty) {
       try {
