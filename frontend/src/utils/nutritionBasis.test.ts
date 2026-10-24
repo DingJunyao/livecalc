@@ -16,16 +16,20 @@ const DEFS = [
   { key: 'energy', label: '能量', units: ['kcal', 'kJ'], defaultUnit: 'kcal' },
   { key: 'protein', label: '蛋白质', units: ['g', 'mg'], defaultUnit: 'g' },
   { key: 'fat', label: '脂肪', units: ['g', 'mg'], defaultUnit: 'g' },
+  { key: 'saturated_fat', label: '饱和脂肪', units: ['g', 'mg'], defaultUnit: 'g' },
   { key: 'carbohydrate', label: '碳水化合物', units: ['g', 'mg'], defaultUnit: 'g' },
+  { key: 'sugar', label: '糖', units: ['g', 'mg'], defaultUnit: 'g' },
   { key: 'sodium', label: '钠', units: ['mg', 'g'], defaultUnit: 'mg' },
   { key: 'fiber', label: '膳食纤维', units: ['g'], defaultUnit: 'g' },
 ]
 
-test('默认行是五项核心营养素：能量随定义（偏好）、钠 mg', () => {
+test('默认行是七项：能量随定义（偏好）、蛋白质/脂肪/饱和脂肪/碳水/糖 g、钠 mg', () => {
   // DEFS 能量 defaultUnit='kcal'（偏好为 kcal 时 buildNutrientDefinitions 的产物）
   const rows = buildDefaultNutrientRows(DEFS)
-  assert.deepEqual(rows.map(r => r.key), ['energy', 'protein', 'fat', 'carbohydrate', 'sodium'])
-  assert.deepEqual(rows.map(r => r.unit), ['kcal', 'g', 'g', 'g', 'mg'])
+  assert.deepEqual(rows.map(r => r.key), [
+    'energy', 'protein', 'fat', 'saturated_fat', 'carbohydrate', 'sugar', 'sodium',
+  ])
+  assert.deepEqual(rows.map(r => r.unit), ['kcal', 'g', 'g', 'g', 'g', 'g', 'mg'])
   assert.ok(rows.every(r => r.value === null))
 
   // 偏好为 kJ 时能量行跟到 kJ

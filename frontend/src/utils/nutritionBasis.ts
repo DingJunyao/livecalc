@@ -17,13 +17,20 @@ export interface BasisUnitOption {
 /** 营养基准默认值：每 100 g。 */
 export const DEFAULT_NUTRITION_BASIS = { amount: 100, unit: 'g' }
 
-/** 新建营养时的默认营养素：能量/蛋白质/脂肪/碳水化合物/钠（中国营养成分表五项）。 */
-export const DEFAULT_NUTRIENT_KEYS = ['energy', 'protein', 'fat', 'carbohydrate', 'sodium'] as const
+/**
+ * 新建营养时的默认营养素（营养成分表常见七项，顺序即预填顺序）：
+ * 能量 / 蛋白质 / 脂肪 / 饱和脂肪 / 碳水化合物 / 糖 / 钠。
+ * 单位规则：能量随用户偏好，蛋白质/脂肪/饱和脂肪/碳水化合物/糖 g，其余 mg。
+ */
+export const DEFAULT_NUTRIENT_KEYS = [
+  'energy', 'protein', 'fat', 'saturated_fat', 'carbohydrate', 'sugar', 'sodium',
+] as const
 
 /**
  * 默认单位覆盖：钠给 mg（营养成分表通行写法）；**能量不在这里覆盖** —— 它跟随
  * 用户能量单位偏好（buildNutrientDefinitions 已把 def.defaultUnit 参数化为
- * kcal | kJ，缺省 kcal），没有单独写死。其余营养素用定义里的 defaultUnit。
+ * kcal | kJ，缺省 kcal）。蛋白质/脂肪/饱和脂肪/碳水化合物/糖的定义表
+ * defaultUnit 本就是 g，无需覆盖；其余营养素沿用定义表。
  */
 const DEFAULT_UNIT_OVERRIDES: Record<string, string> = {
   sodium: 'mg',

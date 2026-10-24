@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { buildNutrientDefinitions } from '@/composables/nutrientDefinitions'
+import { buildNutrientDefinitions, orderNutrientDefsDefaultsFirst } from '@/composables/nutrientDefinitions'
 import { useUserUnits } from '@/composables/useUserUnits'
 import type { EntityDraftNutrient } from '@/utils/entityDraftPlan'
 import NutritionBasisField from '@/components/nutrition/NutritionBasisField.vue'
@@ -134,7 +134,10 @@ interface DraftRow {
 
 const rows = ref<DraftRow[]>([])
 
-const defs = computed(() => buildNutrientDefinitions(energyUnit.value))
+// 营养素下拉：默认七项置顶，其余按定义表顺序
+const defs = computed(() =>
+  orderNutrientDefsDefaultsFirst(buildNutrientDefinitions(energyUnit.value)),
+)
 
 // 基准单位候选：草稿态实体还没有 id，商品草稿可借已选关联原料的自定义单位
 const basisOptions = ref<BasisUnitOption[]>([])

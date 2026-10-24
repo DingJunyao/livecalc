@@ -114,7 +114,8 @@ export async function persistEntityDrafts(
   }
 
   const payloadNutrients = (nutrients || [])
-    .filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) > 0)
+    // 显式 0 是有效记录（与「没填」区分），只过滤未填/负数
+    .filter(entry => entry.name.trim() && entry.value != null && Number(entry.value) >= 0)
     .map(entry => ({
       name: entry.name,
       value: Number(entry.value),

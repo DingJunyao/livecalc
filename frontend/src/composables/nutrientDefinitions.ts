@@ -34,6 +34,8 @@ const BASE_DEFS: Omit<NutrientDef, 'defaultUnit'>[] = [
   { key: 'selenium', label: 'nutrients.selenium', units: ['μg', 'mg'] },
   { key: 'cholesterol', label: 'nutrients.cholesterol', units: ['mg', 'g'] },
   { key: 'saturated_fat', label: 'nutrients.saturatedFat', units: ['g', 'mg'] },
+  { key: 'sugar', label: 'nutrients.sugar', units: ['g', 'mg'] },
+  { key: 'trans_fat', label: 'nutrients.transFat', units: ['g', 'mg'] },
   { key: 'folate', label: 'nutrients.folate', units: ['μg', 'mg'] },
   { key: 'phosphorus', label: 'nutrients.phosphorus', units: ['mg', 'g'] },
   { key: 'copper', label: 'nutrients.copper', units: ['mg', 'μg'] },
@@ -51,7 +53,7 @@ const DEFAULT_UNIT_BY_KEY: Record<string, string> = {
   vitamin_a_rae: 'μg', vitamin_c: 'mg', vitamin_b1: 'mg', vitamin_b2: 'mg',
   vitamin_b12: 'μg', vitamin_d: 'μg', vitamin_e: 'mg', vitamin_k: 'μg',
   magnesium: 'mg', zinc: 'mg', selenium: 'μg', cholesterol: 'mg',
-  saturated_fat: 'g', folate: 'μg', phosphorus: 'mg', copper: 'mg',
+  saturated_fat: 'g', sugar: 'g', trans_fat: 'g', folate: 'μg', phosphorus: 'mg', copper: 'mg',
   manganese: 'mg', vitamin_b6: 'mg', pantothenic_acid: 'mg',
   monounsaturated_fat: 'g', polyunsaturated_fat: 'g',
 }
@@ -63,4 +65,23 @@ export function buildNutrientDefinitions(energyUnit: 'kcal' | 'kJ' = 'kcal'): Nu
     defaultUnit: d.key === 'energy' ? energyUnit : DEFAULT_UNIT_BY_KEY[d.key],
   }))
 }
+
 import { t } from '@/plugins/i18n'
+import { DEFAULT_NUTRIENT_KEYS } from '@/utils/nutritionBasis'
+
+/**
+ * 行内营养素下拉的顺序：默认七项（DEFAULT_NUTRIENT_KEYS，即新建预填项）
+ * 始终排在最前，其余按定义表顺序。定义表里没有的默认键静默跳过。
+ */
+export function orderNutrientDefsDefaultsFirst<T extends { key: string }>(defs: T[]): T[] {
+  const byKey = new Map(defs.map(def => [def.key, def]))
+  const head: T[] = []
+  for (const key of DEFAULT_NUTRIENT_KEYS) {
+    const def = byKey.get(key)
+    if (def) {
+      head.push(def)
+      byKey.delete(key)
+    }
+  }
+  return [...head, ...byKey.values()]
+}
