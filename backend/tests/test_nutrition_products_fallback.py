@@ -135,6 +135,11 @@ def test_explicit_zero_participates_and_missing_does_not(db_session, as_admin):
     assert nutrients["糖"]["value"] == 4
     # 只有 B 记录了钠 → 用 B 的值
     assert nutrients["钠"]["value"] == 12
+    # NRV 按每 100 g 回填值计算：12mg / 2000mg × 100 = 0.6%
+    assert nutrients["钠"]["nrp_pct"] == pytest.approx(0.6)
+    assert nutrients["钠"]["standard"] == "中国GB标准"
+    # 糖不在 NRV 标准表里 → NRV 为 0（与自身行无标准时的行为一致）
+    assert nutrients["糖"]["nrp_pct"] == 0
     # 核心营养素（钠）同时补进 core_nutrients
     assert resp.json()["nutrition"]["core_nutrients"]["钠"]["value"] == 12
 
