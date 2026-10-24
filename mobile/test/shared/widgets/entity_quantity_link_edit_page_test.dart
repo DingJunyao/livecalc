@@ -78,6 +78,7 @@ void main() {
             unitNamesLoader: (type, id, ingredientId) async =>
                 type == 'product' && id == 1 ? ['提'] : ['包'],
             globalUnitNamesLoader: () async => ['kg'],
+            defaultUnitLoader: (type, id, ingredientId) async => null,
           ),
         ),
       ),
@@ -101,5 +102,68 @@ void main() {
     expect(find.text('包'), findsOneWidget);
     expect(find.byType(DropdownButtonFormField<String>), findsNWidgets(3));
     expect(repo.calls, contains('search:product:'));
+  });
+
+  testWidgets('带出实体默认单位而不是单位列表第一项（浓汤宝：盒优先于块）',
+      (tester) async {
+    final repo = _FakeEntityRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: EntityQuantityLinkEditPage(
+            repository: repo,
+            entityType: 'product',
+            entityId: 1,
+            entityName: '浓汤宝 4块装',
+            unitNamesLoader: (type, id, ingredientId) async => ['块', '盒'],
+            globalUnitNamesLoader: () async => const [],
+            defaultUnitLoader: (type, id, ingredientId) async => '盒',
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 当前侧：商品的默认单位「盒」（商品自身单位列表里「块」排在前面，
+    // 旧逻辑取第一项会带出原料口径的「块」）
+    expect(find.text('盒'), findsOneWidget);
+    expect(find.text('块'), findsNothing);
+
+    await tester.tap(find.text('选择商品/原料'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('单包'));
+    await tester.pumpAndSettle();
+
+    // 目标侧同样带出对方商品的默认单位「盒」，两侧各一个「盒」
+    expect(find.byType(BottomSheet), findsNothing);
+    expect(find.text('盒'), findsNWidgets(2));
+  });
+
+  testWidgets('没有默认单位时回退单位列表第一项', (tester) async {
+    final repo = _FakeEntityRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('zh'),
+          home: EntityQuantityLinkEditPage(
+            repository: repo,
+            entityType: 'product',
+            entityId: 1,
+            entityName: '无默认单位商品',
+            unitNamesLoader: (type, id, ingredientId) async => ['块', '盒'],
+            globalUnitNamesLoader: () async => const [],
+            defaultUnitLoader: (type, id, ingredientId) async => null,
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('块'), findsOneWidget);
   });
 }

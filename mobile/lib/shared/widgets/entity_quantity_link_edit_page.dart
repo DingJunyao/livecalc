@@ -30,6 +30,12 @@ class EntityQuantityLinkEditPage extends ConsumerStatefulWidget {
   )? unitNamesLoader;
   /// 测试注入：返回全局单位名。
   final Future<List<String>> Function()? globalUnitNamesLoader;
+  /// 测试注入：返回实体「默认单位」名（商品自身默认 > 关联原料默认）。
+  final Future<String?> Function(
+    String entityType,
+    int entityId,
+    int? ingredientId,
+  )? defaultUnitLoader;
 
   const EntityQuantityLinkEditPage({
     super.key,
@@ -41,6 +47,7 @@ class EntityQuantityLinkEditPage extends ConsumerStatefulWidget {
     this.repository,
     this.unitNamesLoader,
     this.globalUnitNamesLoader,
+    this.defaultUnitLoader,
   });
 
   @override
@@ -125,6 +132,22 @@ class _EntityQuantityLinkEditPageState
     return merged;
   }
 
+  /// 实体「默认单位」名：商品自身默认 > 关联原料默认（与单位解析链一致）。
+  Future<String?> _loadDefaultUnit(
+    String type,
+    int id,
+    int? ingredientId,
+  ) {
+    if (widget.defaultUnitLoader != null) {
+      return widget.defaultUnitLoader!(type, id, ingredientId);
+    }
+    return loadEntityDefaultUnitName(
+      entityType: type,
+      entityId: id,
+      ingredientId: ingredientId,
+    );
+  }
+
   Future<void> _loadCurrentUnits() async {
     try {
       final names = await _loadUnits(
@@ -132,10 +155,19 @@ class _EntityQuantityLinkEditPageState
         widget.entityId,
         ingredientId: widget.ingredientId,
       );
+      // 新增时没有已选单位：带出实体默认单位（商品的默认优先于原料默认），
+      // 而不是单位列表第一项（商品的「块」「盒」按创建顺序，块未必是默认）。
+      final preferred = (_fromUnit == null || _fromUnit!.isEmpty)
+          ? await _loadDefaultUnit(
+              widget.entityType,
+              widget.entityId,
+              widget.ingredientId,
+            )
+          : null;
       if (!mounted) return;
       setState(() {
         _fromUnits = names;
-        _fromUnit = _pickUnit(names, _fromUnit);
+        _fromUnit = _pickUnit(names, _fromUnit ?? preferred);
         _loadingFromUnits = false;
       });
     } catch (_) {
@@ -156,10 +188,17 @@ class _EntityQuantityLinkEditPageState
         id,
         ingredientId: (target['ingredient_id'] as num?)?.toInt(),
       );
+      final preferred = (_toUnit == null || _toUnit!.isEmpty)
+          ? await _loadDefaultUnit(
+              _targetType,
+              id,
+              (target['ingredient_id'] as num?)?.toInt(),
+            )
+          : null;
       if (!mounted) return;
       setState(() {
         _toUnits = names;
-        _toUnit = _pickUnit(names, _toUnit);
+        _toUnit = _pickUnit(names, _toUnit ?? preferred);
         _loadingToUnits = false;
       });
     } catch (_) {
