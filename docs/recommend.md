@@ -2,7 +2,7 @@
 
 生计能根据你的营养目标和预算，每天给你推荐三餐**套餐**（每餐 1-4 道菜，保证有主食）。这篇讲推荐怎么来、怎么换、怎么避过敏原。
 
-![今日推荐](img/recommend_desktop.png)
+![今日推荐](img/recommend_summary_grid.jpeg)
 
 ## 一餐的构成
 
