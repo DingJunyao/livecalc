@@ -1,10 +1,19 @@
 <template>
-  <v-container fluid>
-    <v-card elevation="0">
-      <v-card-title class="d-flex align-center">
-        <span class="me-auto">{{ t('admin.currency.title') }}</span>
-        <v-btn color="primary" prepend-icon="mdi-plus" @click="openCreateDialog">{{ t('admin.currency.create') }}</v-btn>
-      </v-card-title>
+  <!-- 顶部导航栏 -->
+  <v-app-bar elevation="0" color="background" density="comfortable" fixed>
+    <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
+    <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
+    <v-app-bar-title class="text-h6">{{ t('admin.currency.title') }}</v-app-bar-title>
+    <template #append>
+      <v-btn color="primary" variant="tonal" @click="openCreateDialog">
+        <v-icon start>mdi-plus</v-icon>
+        {{ t('admin.currency.create') }}
+      </v-btn>
+    </template>
+  </v-app-bar>
+
+  <v-container class="pa-4">
+    <v-card class="rounded-lg">
       <v-card-text>
         <v-table>
           <thead>
@@ -103,6 +112,8 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { formatNumber } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
 import {
@@ -113,9 +124,15 @@ import {
 } from '@/api/currencies'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 
+const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { notify } = useGlobalSnackbar()
 const { t } = useI18n()
 const localeStore = useLocaleStore()
+const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 const formatCount = (value: number) => formatNumber(value, localeStore.effectiveFormatLocale)
 
 const currencies = ref<any[]>([])
