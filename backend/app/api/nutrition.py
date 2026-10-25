@@ -1222,7 +1222,7 @@ async def get_ingredient_latest_price_by_merchant(
     """
     获取原料按商家分组的最新价格
 
-    返回每个商家的最新一条价格记录（已转换为原料默认单位）。
+    返回每个商家的最新一条价格记录（已转换为原料默认单位，并折算到用户币种）。
     按价格从低到高排序，并标注最低价；记录超过 30 天的陈旧商家价排到最后、
     置 is_stale=True 且不参与最低价比较（全部陈旧时不标注最低价）。
     可选传入 quantity + quantity_unit 来计算该食材在该商家的预估总价。
@@ -1233,7 +1233,12 @@ async def get_ingredient_latest_price_by_merchant(
         from app.models.merchant import Merchant
         from app.models.ingredient_hierarchy import IngredientHierarchy, HierarchyRelationType
         from app.services.unit_conversion_service import UnitConversionService
-        from app.services.price_region import apply_region_filter, is_stale_recorded_at
+        from app.services.price_region import (
+            apply_region_filter,
+            is_stale_recorded_at,
+            record_price_in_user_currency,
+        )
+        from app.services.currency_service import get_user_default_currency
         from datetime import datetime, timedelta
         from decimal import Decimal
         from typing import Optional as OptType
@@ -1250,6 +1255,8 @@ async def get_ingredient_latest_price_by_merchant(
 
         # 原料默认单位字段已迁移至用户级偏好，价格折算统一回退到「斤」
         target_unit_abbr = "斤"
+        # 展示币种：会话币种覆盖优先，否则用户默认币种；下方所有价格均已折算到它
+        display_currency = get_user_default_currency(db, current_user)
 
         def _lookup_merchant_prices(ing: Ingredient) -> list[dict]:
             """对单个食材查找各商家代表价（只按该食材自己的商品）。"""
@@ -1310,7 +1317,9 @@ async def get_ingredient_latest_price_by_merchant(
                 for pid, record in prod_records.items():
                     if record.price is None or record.original_quantity is None or record.original_quantity <= 0 or not record.original_unit:
                         continue
-                    total_price = float(record.price)
+                    # 原币 → 用户/会话币种（与原料加权综合价同口径）。
+                    # 不折算的话外币记录会以原值参与加权与展示（如 25750 IDR 当 25750 CNY）。
+                    total_price = float(record_price_in_user_currency(record))
                     original_quantity = float(record.original_quantity)
                     original_unit_abbr = record.original_unit.abbreviation
 
@@ -1368,6 +1377,7 @@ async def get_ingredient_latest_price_by_merchant(
                     "merchant_id": mid,
                     "merchant_name": sample_record.merchant.name if sample_record.merchant else f"商家#{mid}",
                     "price": merchant_price,
+                    "currency": display_currency,
                     "unit": ing_target or sample_record.original_unit.abbreviation,
                     "total_cost": total_cost,
                     "recorded_at": serialize_datetime(sample_record.recorded_at) if sample_record.recorded_at else None,

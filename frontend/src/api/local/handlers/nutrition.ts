@@ -3,6 +3,7 @@
 import { getAll, getById, putOne, getByIndex, getDb, paginate } from '../database'
 import { calcNRV } from '../business/nutritionAggregator'
 import { normalizeRecordToJin, MERCHANT_PRICE_STALE_MS, sortMerchantPrices } from '../business/priceNormalize'
+import { LOCAL_USER_CURRENCY } from '../business/staticRates'
 import { PRICE_STALE_DAYS, toLocalDayKey } from '@/utils/priceAsOf'
 import type { UnitInfo, EntityOverride, DensityInfo } from '../business/unitConverter'
 import { resolveImageUrl } from '@/utils/image'
@@ -272,6 +273,8 @@ export async function getLatestPrice(params: Record<string, string>, query?: any
 
 export async function getLatestPriceByMerchant(params: Record<string, string>, query?: any): Promise<any> {
   // 各商家最新一条价格（折算到斤，无法折算回退记录单价）。
+  // normalizeRecordToJin 已按 exchange_rate 折算到用户币种（与云端
+  // record_price_in_user_currency 同口径），currency 相应用用户币种而非记录原币。
   // 陈旧记录（>30 天）排到最后、置 is_stale 且不参与最低价比较（对齐云端端点语义）。
   const id = parseInt(params.id)
   if (!Number.isFinite(id)) return { prices: [], unit: null }
@@ -306,7 +309,7 @@ export async function getLatestPriceByMerchant(params: Record<string, string>, q
       merchant_id: r.merchant_id,
       merchant_name: r.merchant_name || '',
       price: Math.round((np.pricePerJin ?? np.rawUnitPrice) * 100) / 100,
-      currency: r.currency || 'CNY',
+      currency: LOCAL_USER_CURRENCY,
       unit: CHINESE_JIN_NAME,
       recorded_at: r.recorded_at ?? null,
       is_stale: Number.isFinite(ts) && ts < staleBefore,
