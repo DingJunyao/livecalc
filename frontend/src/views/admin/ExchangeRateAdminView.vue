@@ -1,20 +1,27 @@
 <template>
-  <v-container fluid>
-    <v-card elevation="0">
-      <v-card-title class="d-flex align-center">
-        <span class="me-auto">{{ t('admin.exchange.title') }}</span>
-        <v-btn color="primary" prepend-icon="mdi-pencil-plus-outline" @click="openManualDialog">
-          {{ t('admin.exchange.manualEntry') }}
-        </v-btn>
-      </v-card-title>
+  <!-- 顶部导航栏 -->
+  <v-app-bar elevation="0" color="background" density="comfortable" fixed>
+    <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
+    <v-btn icon="mdi-arrow-left" variant="text" @click="goBack" />
+    <v-app-bar-title class="text-h6">{{ t('admin.exchange.title') }}</v-app-bar-title>
+    <template #append>
+      <v-btn color="primary" variant="tonal" @click="openManualDialog">
+        <v-icon start>mdi-pencil-plus-outline</v-icon>
+        {{ t('admin.exchange.manualEntry') }}
+      </v-btn>
+      <v-btn icon="mdi-refresh" variant="text" :loading="loading" :title="t('admin.exchange.refreshNow')" @click="onRefresh" />
+    </template>
+  </v-app-bar>
+
+  <v-container class="pa-4">
+    <v-card class="rounded-lg">
       <v-card-text>
-        <v-alert type="info" variant="tonal" class="mb-4">
+        <v-alert type="info" variant="tonal">
           {{ t('admin.exchange.latestSnapshot', {
             time: status.latest ? formatToLocalDateTimeShort(status.latest) : t('statuses.none'),
             source: status.source || '-',
           }) }}
         </v-alert>
-        <v-btn color="primary" :loading="loading" @click="onRefresh">{{ t('admin.exchange.refreshNow') }}</v-btn>
       </v-card-text>
     </v-card>
 
@@ -61,12 +68,20 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
+import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { ratesStatus, refreshRates, manualRate } from '@/api/currencies'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { formatToLocalDateTimeShort } from '@/utils/timezone'
 
+const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { notify } = useGlobalSnackbar()
 const { t } = useI18n()
+const router = useRouter()
+
+const goBack = () => {
+  router.back()
+}
 
 const status = ref<{ latest: string | null; source: string | null }>({ latest: null, source: null })
 const loading = ref(false)
