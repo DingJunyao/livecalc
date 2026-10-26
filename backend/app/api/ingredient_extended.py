@@ -398,14 +398,34 @@ async def create_ingredient(
     aliases: Optional[List[str]] = Body(None),
     density: Optional[float] = Body(None),
     nutrition: Optional[dict] = Body(None, description="营养素数据，如 {protein: 10, fat: 5}"),
+    reuse_existing: bool = Body(False, description="同名原料已存在时直接复用（返回 reused=true）而不是报错"),
+    create_same_name_product: bool = Body(True, description="是否自动创建同名商品（新增商品页勾选「新增对应原料」时传 false，避免生成重复商品）"),
     db: Session = Depends(get_db),
     current_user = Depends(get_current_user)
 ):
     """创建食材"""
     try:
+        name = name.strip()
+        if not name:
+            raise LocalizedHTTPException(status_code=400, message='原料名称不能为空')
+
         existing = db.query(Ingredient).filter(Ingredient.name == name, Ingredient.is_active == True).first()
         if existing:
-            raise LocalizedHTTPException(status_code=400, message='食材已存在')
+            if not reuse_existing:
+                raise LocalizedHTTPException(status_code=400, message='食材已存在')
+            return {
+                "id": existing.id,
+                "name": existing.name,
+                "category_id": existing.category_id,
+                "aliases": existing.aliases or [],
+                "created_at": existing.created_at,
+                "reused": True,
+            }
+
+        if category_id is not None:
+            category = db.query(IngredientCategory).filter(IngredientCategory.id == category_id).first()
+            if not category:
+                raise LocalizedHTTPException(status_code=400, message='原料分类不存在')
 
         new_ingredient = Ingredient(
             name=name,
@@ -479,30 +499,32 @@ async def create_ingredient(
                 # 营养素数据创建失败不影响原料创建
                 print(f"Warning: Failed to create nutrition data for {name}: {str(e)}")
 
-        # 自动创建对应的同名商品
-        try:
-            from app.models.product_entity import Product
+        # 自动创建对应的同名商品（新增商品页勾选「新增对应原料」时跳过：
+        # 商品由调用方自己创建，避免同名商品重复）
+        if create_same_name_product:
+            try:
+                from app.models.product_entity import Product
 
-            # 检查是否已存在同名商品
-            existing_product = db.query(Product).filter(
-                Product.name == new_ingredient.name,
-                Product.is_active == True
-            ).first()
+                # 检查是否已存在同名商品
+                existing_product = db.query(Product).filter(
+                    Product.name == new_ingredient.name,
+                    Product.is_active == True
+                ).first()
 
-            if not existing_product:
-                # 创建商品
-                new_product = Product(
-                    name=new_ingredient.name,
-                    ingredient_id=new_ingredient.id,
-                    created_by=current_user.id,
-                    updated_by=current_user.id,
-                    is_active=True
-                )
-                db.add(new_product)
-                db.commit()
-        except Exception as e:
-            # 创建商品失败不影响原料创建
-            print(f"Warning: Failed to create product for ingredient {new_ingredient.name}: {str(e)}")
+                if not existing_product:
+                    # 创建商品
+                    new_product = Product(
+                        name=new_ingredient.name,
+                        ingredient_id=new_ingredient.id,
+                        created_by=current_user.id,
+                        updated_by=current_user.id,
+                        is_active=True
+                    )
+                    db.add(new_product)
+                    db.commit()
+            except Exception as e:
+                # 创建商品失败不影响原料创建
+                print(f"Warning: Failed to create product for ingredient {new_ingredient.name}: {str(e)}")
 
         # 加载 category_obj 以获取分类名
         ingredient_with_unit = db.query(Ingredient).options(
@@ -515,7 +537,8 @@ async def create_ingredient(
             "category_id": new_ingredient.category_id,
             "category": ingredient_with_unit.category_obj.display_name if ingredient_with_unit.category_obj else None,
             "aliases": new_ingredient.aliases or [],
-            "created_at": new_ingredient.created_at
+            "created_at": new_ingredient.created_at,
+            "reused": False,
         }
     except HTTPException:
         raise
