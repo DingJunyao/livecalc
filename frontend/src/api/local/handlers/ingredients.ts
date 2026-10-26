@@ -139,10 +139,23 @@ export async function getIngredient(params: Record<string, string>): Promise<any
 }
 
 export async function createIngredient(_params: Record<string, string>, data?: any): Promise<any> {
+  const name = String(data?.name ?? '').trim()
+  // 与后端同口径：reuse_existing=true 时同名原料直接复用（新增商品页「新增对应原料」用）
+  if (name && data?.reuse_existing) {
+    const all = await getAll('ingredients')
+    const existing = all.find(
+      (row: any) => row?.is_active !== false && String(row?.name ?? '').trim() === name,
+    )
+    if (existing) return existing
+  }
+  const payload: Record<string, any> = { ...(data || {}) }
+  delete payload.reuse_existing
+  delete payload.create_same_name_product
   const id = await addOne('ingredients', {
-    ...data,
+    ...payload,
+    name,
     is_active: true,
-    aliases: data?.aliases || [],
+    aliases: payload.aliases || [],
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   })
