@@ -63,8 +63,9 @@
 
 `mobile/lib/features/products/screens/product_form_screen.dart`（新增商品整页表单）：
 
-- 开关只在**新增态**显示（编辑态换绑原料走关联原料搜索下拉，开关没有意义）；开启时清空
-  `_selectedIngredient`、清空搜索框并取消 pending 搜索，隐藏关联原料下拉。
+- 开关只在**新增态**显示（编辑态换绑原料走关联原料搜索下拉，开关没有意义）；开启时记住并清空
+  `_selectedIngredient`、清空搜索框并取消 pending 搜索，隐藏关联原料下拉；关闭时恢复开启前的
+  关联原料（固定原料进入新增页时尤其需要，否则界面显示固定原料但保存被判为未选）。
 - 新增独立状态 `_newIngredientNameController` / `_newIngredientCategoryId` /
   `_newIngredientAliases`（不复用商品自身的 brand/aliases）；开启后展示：
   - 原料名称（label `ingredientName`，hint「留空则使用商品名称」）；
@@ -80,8 +81,9 @@
   行为不变。
 - l10n：`productCreateSameName` / `productCreateSameNameHint` / `productSelectIngredientOrCreate`
   三语改文案，新增 `productNewIngredientNameHint`，`flutter gen-l10n` 产物一并提交。
-- 测试：新增 `product_form_new_ingredient_test.dart` 3 例（不同名+分类+别名、留空→商品名、
-  开关关→提示且不创建原料）；适配 4 个既有测试的 Fake 签名/英文文案/懒构建滚动。
+- 测试：新增 `product_form_new_ingredient_test.dart` 4 例（不同名+分类+别名、留空→商品名、
+  开关关→提示且不创建原料、开关关掉后恢复固定原料）；适配 4 个既有测试的 Fake 签名/英文文案/
+  懒构建滚动。
 
 ## 5. 验证
 
@@ -89,8 +91,9 @@
   `npm run check:i18n:sources` ✓、`npm run test:utils` 73 ✓。
 - 后端：`compileall` ✓；新增 4 例 ✓；相关 `test_permissions_p0` 中 1 例既有失败
   （USDA 权限用例先返回 404，与本次无关）。
-- 移动端：`flutter analyze` No issues found；新增 3 例通过；
-  `flutter test test/features/products test/features/ingredients` 81 passed / 0 failed。
+- 移动端：`flutter analyze` No issues found；新增 4 例通过；
+  `flutter test test/features/products test/features/ingredients` 81 passed / 0 failed（第 4 例与
+  开关恢复修复后重跑）。
   其中既有「扫码命中已建档商品」用例因表单变长（新开关说明多一行）在
   `ensureVisible(条码按钮)` 后商品名称被 ListView 回收而找不到：已改为先滚回顶部再断言
   （断言内容不变），修复后全绿。
@@ -98,6 +101,6 @@
 ## 6. 分支与提交
 
 - Web + 后端：master `e474ac3`，合并到 feat/mobile-app `84bbbd0c`。
-- 移动端：feat/mobile-app `eb44a0f9`。
+- 移动端：feat/mobile-app `eb44a0f9` + `917aeb7a`（关闭开关恢复原关联原料）。
 - 本地模式补充（web `createIngredient` 支持 `reuse_existing` 同名复用、剥离协议字段）与本文档：
   master 后续提交，再合入 feat/mobile-app。
