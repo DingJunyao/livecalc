@@ -133,12 +133,24 @@ class IngredientRepository {
         .toList();
   }
 
+  /// 新建原料（POST /ingredients）。
+  ///
+  /// [reuseExisting]：同名原料已存在时直接复用（后端返回已有原料）而不是报错；
+  /// [createSameNameProduct]：是否让后端顺手创建一个同名商品。新增商品页勾选
+  /// 「新增对应原料」时用 `reuseExisting: true, createSameNameProduct: false`，
+  /// 避免同名报错与重复商品。两个默认值与后端默认值一致，旧调用方行为不变。
   Future<Ingredient> createIngredient({
     required String name,
     int? categoryId,
     List<String> aliases = const [],
+    bool reuseExisting = false,
+    bool createSameNameProduct = true,
   }) async {
-    final payload = <String, dynamic>{'name': name};
+    final payload = <String, dynamic>{
+      'name': name,
+      'reuse_existing': reuseExisting,
+      'create_same_name_product': createSameNameProduct,
+    };
     if (categoryId != null) payload['category_id'] = categoryId;
     if (aliases.isNotEmpty) payload['aliases'] = aliases;
     final response = await _client.dio.post('/ingredients', data: payload);

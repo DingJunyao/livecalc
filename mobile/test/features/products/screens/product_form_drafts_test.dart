@@ -100,12 +100,14 @@ class _FakeIngredientRepository extends IngredientRepository {
     );
   }
 
-  /// 「新建同名原料」路径会先建原料（id 故意与商品不同，用于断言落库层级）。
+  /// 「新增对应原料」路径会先建原料（id 故意与商品不同，用于断言落库层级）。
   @override
   Future<Ingredient> createIngredient({
     required String name,
     int? categoryId,
     List<String> aliases = const [],
+    bool reuseExisting = false,
+    bool createSameNameProduct = true,
   }) async =>
       Ingredient(id: 7, name: name);
 }
@@ -326,8 +328,17 @@ Future<void> _selectIngredient(WidgetTester tester) async {
 }
 
 /// 点表单里的草稿入口（可能在 ListView 折叠区外，先滚动到可见）。
+///
+/// 表单变长后（如「新增对应原料」展开的三项输入）草稿卡片可能落到 ListView
+/// 懒构建缓存之外，此时 finder 直接为空、ensureVisible 无从下手：先向下滚动
+/// 让卡片完成构建再定位。
 Future<void> _tapDraftTile(WidgetTester tester, String label) async {
-  final tile = find.widgetWithText(ListTile, label);
+  var tile = find.widgetWithText(ListTile, label);
+  for (var i = 0; i < 3 && tile.evaluate().isEmpty; i++) {
+    await tester.drag(find.byType(ListView).first, const Offset(0, -400));
+    await tester.pumpAndSettle();
+    tile = find.widgetWithText(ListTile, label);
+  }
   await tester.ensureVisible(tile);
   await tester.pumpAndSettle();
   await tester.tap(tile);

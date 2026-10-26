@@ -1681,11 +1681,14 @@ class AppLocalizationsAr extends AppLocalizations {
   String get productSearchIngredient => 'ابحث واختر مكوّنًا مرتبطًا *';
 
   @override
-  String get productCreateSameName => 'إنشاء مكوّن بنفس الاسم';
+  String get productCreateSameName => 'إضافة مكوّن مطابق';
 
   @override
   String get productCreateSameNameHint =>
-      'سيتم إنشاء مكوّن بنفس اسم هذا المنتج تلقائيًا';
+      'بعد التفعيل املأ اسم المكوّن وفئته وأسمائه البديلة أدناه؛ اترك الاسم فارغًا لاستخدام اسم المنتج.';
+
+  @override
+  String get productNewIngredientNameHint => 'اتركه فارغًا لاستخدام اسم المنتج';
 
   @override
   String get productBarcode => 'الرمز الشريطي';
@@ -1716,7 +1719,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get productSelectIngredientOrCreate =>
-      'اختر مكوّنًا مرتبطًا أو فعّل \"إنشاء مكوّن بنفس الاسم\".';
+      'اختر مكوّنًا مرتبطًا أو فعّل \"إضافة مكوّن مطابق\".';
 
   @override
   String get productCreateIngredientFailed => 'فشل إنشاء المكوّن';

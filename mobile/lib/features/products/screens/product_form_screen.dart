@@ -13,6 +13,7 @@ import '../../../shared/utils/draft_units.dart';
 import '../../../shared/widgets/alias_tags_field.dart';
 import '../../entities/repositories/entity_repository.dart';
 import '../../ingredients/models/ingredient.dart';
+import '../../ingredients/providers/ingredient_provider.dart';
 import '../../ingredients/repositories/ingredient_repository.dart';
 import '../../prices/providers/price_provider.dart';
 import '../models/product.dart';
@@ -96,6 +97,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
   bool _createNewIngredient = false;
+  // 「新增对应原料」的输入项：独立的原料名称 / 分类 / 别名，不复用商品自身的
+  // 品牌与别名状态（别名与商品别名含义不同）。
+  late final TextEditingController _newIngredientNameController;
+  int? _newIngredientCategoryId;
+  List<String> _newIngredientAliases = const [];
   bool _barcodeLoading = false;
   bool _searching = false;
   bool _loading = false;
@@ -154,6 +160,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       text: widget.prefill?.barcode ?? initialProduct?.barcode,
     );
     _ingredientSearchController = TextEditingController();
+    _newIngredientNameController = TextEditingController();
     _selectedIngredient = widget.fixedIngredient;
     _initialName = _nameController.text.trim();
     _initialIngredientId = initialProduct?.ingredientId ?? widget.fixedIngredient?.id;
@@ -172,6 +179,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     _brandController.dispose();
     _barcodeController.dispose();
     _ingredientSearchController.dispose();
+    _newIngredientNameController.dispose();
     _ingredientFocusNode.dispose();
     super.dispose();
   }
@@ -337,6 +345,59 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// 开关「新增对应原料」：开启后关联原料下拉隐藏，必须清掉已选原料，
+  /// 否则商品可能仍挂到旧原料上（与 web 行为一致）。
+  void _setCreateNewIngredient(bool enabled) {
+    setState(() {
+      _createNewIngredient = enabled;
+      if (enabled) {
+        _selectedIngredient = null;
+        _ingredientSearchController.clear();
+      }
+    });
+    if (enabled) _cancelPendingIngredientSearch();
+  }
+
+  /// 「新增对应原料」的分类下拉（与原料表单一致，默认「未分类」）。
+  Widget _buildNewIngredientCategoryField() {
+    final l10n = AppLocalizations.of(context);
+    final categoriesAsync = ref.watch(ingredientCategoriesProvider);
+    return categoriesAsync.when(
+      data: (categories) => DropdownButtonFormField<int?>(
+        initialValue: _newIngredientCategoryId,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: l10n.ingredientCategory,
+          border: const OutlineInputBorder(),
+        ),
+        items: [
+          DropdownMenuItem<int?>(
+            value: null,
+            child: Text(l10n.ingredientUncategorized),
+          ),
+          for (final category in categories)
+            DropdownMenuItem<int?>(
+              value: category.id,
+              child: Text(category.localizedDisplayName(l10n)),
+            ),
+        ],
+        onChanged: (value) => setState(() => _newIngredientCategoryId = value),
+      ),
+      loading: () => DropdownButtonFormField<int?>(
+        items: null,
+        // 与已加载分支一致：不加 isExpanded 时加载提示文字很长会把内部 Row 撑破
+        isExpanded: true,
+        disabledHint: Text(l10n.ingredientCategoriesLoading),
+        onChanged: null,
+        decoration: InputDecoration(
+          labelText: l10n.ingredientCategory,
+          border: const OutlineInputBorder(),
+        ),
+      ),
+      error: (_, __) => Text(l10n.ingredientCategoriesLoadFailed),
+    );
+  }
+
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context);
     final name = _nameController.text.trim();
@@ -348,12 +409,32 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       setState(() => _error = l10n.productSelectIngredientOrCreate);
       return;
     }
-    if (_selectedIngredient == null && _createNewIngredient) {
+    // 新增态勾选「新增对应原料」：先按填写的原料名（留空则商品名）创建原料。
+    // reuseExisting 避免同名原料已存在时报错；createSameNameProduct=false 避免
+    // 后端原料接口顺手补一个同名商品（商品由本页创建）。
+    if (!_isEdit && _createNewIngredient) {
+      final ingredientName = _newIngredientNameController.text.trim();
+      final targetName = ingredientName.isEmpty ? name : ingredientName;
       setState(() => _saving = true);
       try {
-        final ingredient =
-            await _ingredientRepository.createIngredient(name: name);
+        final previousIngredientId = _lastSelectedIngredientId;
+        final ingredient = await _ingredientRepository.createIngredient(
+          name: targetName,
+          categoryId: _newIngredientCategoryId,
+          aliases: _newIngredientAliases,
+          reuseExisting: true,
+          createSameNameProduct: false,
+        );
+        if (!mounted) return;
         _selectedIngredient = ingredient;
+        // 换成新建原料：草稿单位里引用旧原料独有单位的行先按同名改指向（与手动
+        // 选原料同口径；草稿为空时该调用直接返回，不会发请求）。
+        await _reconcileDraftUnitsForIngredient(
+          ingredient.id,
+          previousIngredientId,
+        );
+        if (!mounted) return;
+        _lastSelectedIngredientId = ingredient.id;
       } catch (e) {
         if (mounted) {
           setState(() {
@@ -972,14 +1053,37 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                     const SizedBox(height: 16),
                     if (!_createNewIngredient) _buildIngredientField(),
                     const SizedBox(height: 16),
-                    SwitchListTile(
-                      title: Text(l10n.productCreateSameName),
-                      subtitle: Text(l10n.productCreateSameNameHint),
-                      value: _createNewIngredient,
-                      onChanged: (v) =>
-                          setState(() => _createNewIngredient = v),
-                      contentPadding: EdgeInsets.zero,
-                    ),
+                    // 编辑态换绑原料走上面的搜索下拉；「新增对应原料」只在新增态有意义。
+                    if (!_isEdit) ...[
+                      SwitchListTile(
+                        title: Text(l10n.productCreateSameName),
+                        subtitle: Text(l10n.productCreateSameNameHint),
+                        value: _createNewIngredient,
+                        onChanged: _saving ? null : _setCreateNewIngredient,
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                      if (_createNewIngredient) ...[
+                        const SizedBox(height: 8),
+                        TextFormField(
+                          controller: _newIngredientNameController,
+                          initialValue: null,
+                          decoration: InputDecoration(
+                            labelText: l10n.ingredientName,
+                            hintText: l10n.productNewIngredientNameHint,
+                            border: const OutlineInputBorder(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildNewIngredientCategoryField(),
+                        const SizedBox(height: 16),
+                        AliasTagsField(
+                          label: l10n.ingredientAliases,
+                          initialTags: _newIngredientAliases,
+                          onTagsChanged: (aliases) =>
+                              _newIngredientAliases = aliases,
+                        ),
+                      ],
+                    ],
                     const SizedBox(height: 8),
                     TextFormField(
                       controller: _brandController,

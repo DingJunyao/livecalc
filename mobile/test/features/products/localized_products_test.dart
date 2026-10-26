@@ -350,7 +350,7 @@ void main() {
     expect(find.text('Product name *'), findsOneWidget);
     expect(find.text('Linked ingredient'), findsOneWidget);
     expect(find.text('Stored Ingredient Name'), findsOneWidget);
-    expect(find.text('Create ingredient with the same name'), findsOneWidget);
+    expect(find.text('Add corresponding ingredient'), findsOneWidget);
     expect(find.text('Barcode'), findsOneWidget);
 
     await tester.tap(find.text('Save'));

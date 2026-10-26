@@ -1688,11 +1688,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Search and select a linked ingredient *';
 
   @override
-  String get productCreateSameName => 'Create ingredient with the same name';
+  String get productCreateSameName => 'Add corresponding ingredient';
 
   @override
   String get productCreateSameNameHint =>
-      'Automatically creates an ingredient with the same name as this product';
+      'Fill in the ingredient name, category and aliases below; leave the name empty to use the product name.';
+
+  @override
+  String get productNewIngredientNameHint =>
+      'Leave empty to use the product name';
 
   @override
   String get productBarcode => 'Barcode';
@@ -1723,7 +1727,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productSelectIngredientOrCreate =>
-      'Select a linked ingredient or enable \"Create ingredient with the same name\".';
+      'Select a linked ingredient or enable \"Add corresponding ingredient\".';
 
   @override
   String get productCreateIngredientFailed => 'Failed to create ingredient';

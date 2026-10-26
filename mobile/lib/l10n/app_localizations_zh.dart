@@ -1646,10 +1646,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get productSearchIngredient => '搜索并选择关联原料 *';
 
   @override
-  String get productCreateSameName => '新建同名原料';
+  String get productCreateSameName => '新增对应原料';
 
   @override
-  String get productCreateSameNameHint => '开启后将自动创建与商品同名的原料';
+  String get productCreateSameNameHint => '开启后可在下方填写原料名称、分类与别名；名称留空则与商品同名';
+
+  @override
+  String get productNewIngredientNameHint => '留空则使用商品名称';
 
   @override
   String get productBarcode => '条码';
@@ -1678,7 +1681,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get productNameRequired => '请输入商品名称';
 
   @override
-  String get productSelectIngredientOrCreate => '请选择关联的原料，或开启“新建同名原料”';
+  String get productSelectIngredientOrCreate => '请选择关联的原料，或开启“新增对应原料”';
 
   @override
   String get productCreateIngredientFailed => '创建原料失败';

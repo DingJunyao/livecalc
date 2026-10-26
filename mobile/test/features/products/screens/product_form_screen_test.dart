@@ -327,6 +327,10 @@ void main() {
       ),
       findsOneWidget,
     );
+    // ensureVisible(条码按钮) 把表单滚下去了；表单变长后顶部的商品名称会被
+    // ListView 懒构建回收，先滚回顶部再取字段（断言内容不变）。
+    await tester.drag(find.byType(ListView), const Offset(0, 600));
+    await tester.pumpAndSettle();
     final nameField = tester.widget<TextField>(
       find.widgetWithText(TextField, 'Product name *'),
     );

@@ -3219,14 +3219,20 @@ abstract class AppLocalizations {
   /// No description provided for @productCreateSameName.
   ///
   /// In zh, this message translates to:
-  /// **'新建同名原料'**
+  /// **'新增对应原料'**
   String get productCreateSameName;
 
   /// No description provided for @productCreateSameNameHint.
   ///
   /// In zh, this message translates to:
-  /// **'开启后将自动创建与商品同名的原料'**
+  /// **'开启后可在下方填写原料名称、分类与别名；名称留空则与商品同名'**
   String get productCreateSameNameHint;
+
+  /// No description provided for @productNewIngredientNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空则使用商品名称'**
+  String get productNewIngredientNameHint;
 
   /// No description provided for @productBarcode.
   ///
@@ -3279,7 +3285,7 @@ abstract class AppLocalizations {
   /// No description provided for @productSelectIngredientOrCreate.
   ///
   /// In zh, this message translates to:
-  /// **'请选择关联的原料，或开启“新建同名原料”'**
+  /// **'请选择关联的原料，或开启“新增对应原料”'**
   String get productSelectIngredientOrCreate;
 
   /// No description provided for @productCreateIngredientFailed.

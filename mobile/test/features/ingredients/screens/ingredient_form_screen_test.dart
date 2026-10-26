@@ -18,6 +18,8 @@ class _FakeIngredientRepository extends IngredientRepository {
     required String name,
     int? categoryId,
     List<String> aliases = const [],
+    bool reuseExisting = false,
+    bool createSameNameProduct = true,
   }) async {
     lastName = name;
     lastCategoryId = categoryId;
