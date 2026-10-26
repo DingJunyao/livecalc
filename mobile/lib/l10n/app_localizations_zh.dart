@@ -521,6 +521,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get navFavorites => '收藏';
 
   @override
+  String get shortcutRecordPrice => '计价';
+
+  @override
+  String get shortcutDailyRecommendation => '每日推荐';
+
+  @override
+  String get shortcutRecipes => '菜谱';
+
+  @override
   String get aliasAddHelper => '输入后点击 + 添加';
 
   @override

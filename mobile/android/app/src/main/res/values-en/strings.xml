@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Home screen shortcuts (long-press the app icon). -->
+    <string name="shortcut_record_price_short">Record price</string>
+    <string name="shortcut_record_price_long">Record a price</string>
+    <string name="shortcut_daily_short">Daily picks</string>
+    <string name="shortcut_daily_long">View daily picks</string>
+    <string name="shortcut_recipes_short">Recipes</string>
+    <string name="shortcut_recipes_long">Browse recipes</string>
+</resources>

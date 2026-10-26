@@ -1120,6 +1120,24 @@ abstract class AppLocalizations {
   /// **'收藏'**
   String get navFavorites;
 
+  /// No description provided for @shortcutRecordPrice.
+  ///
+  /// In zh, this message translates to:
+  /// **'计价'**
+  String get shortcutRecordPrice;
+
+  /// No description provided for @shortcutDailyRecommendation.
+  ///
+  /// In zh, this message translates to:
+  /// **'每日推荐'**
+  String get shortcutDailyRecommendation;
+
+  /// No description provided for @shortcutRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱'**
+  String get shortcutRecipes;
+
   /// No description provided for @aliasAddHelper.
   ///
   /// In zh, this message translates to:

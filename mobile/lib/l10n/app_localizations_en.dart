@@ -536,6 +536,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navFavorites => 'Favorites';
 
   @override
+  String get shortcutRecordPrice => 'Record price';
+
+  @override
+  String get shortcutDailyRecommendation => 'Daily picks';
+
+  @override
+  String get shortcutRecipes => 'Recipes';
+
+  @override
   String get aliasAddHelper => 'Press + to add';
 
   @override

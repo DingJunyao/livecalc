@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  主屏快捷方式（长按应用图标弹出）：计价 / 每日推荐 / 菜谱。
+  标签与图标见 values*/strings.xml、drawable/ic_shortcut_*；点击后的 intent
+  extra com.a4ding.livecalc.SHORTCUT_ACTION 由 MainActivity 转给 Dart
+  （lib/core/shortcuts/app_shortcuts.dart）。
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="record_price"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_record_price"
+        android:shortcutShortLabel="@string/shortcut_record_price_short"
+        android:shortcutLongLabel="@string/shortcut_record_price_long">
+        <intent
+            android:action="com.a4ding.livecalc.SHORTCUT"
+            android:targetPackage="com.a4ding.livecalc"
+            android:targetClass="com.a4ding.livecalc.MainActivity">
+            <extra
+                android:name="com.a4ding.livecalc.SHORTCUT_ACTION"
+                android:value="record_price" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="daily_recommendation"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_daily"
+        android:shortcutShortLabel="@string/shortcut_daily_short"
+        android:shortcutLongLabel="@string/shortcut_daily_long">
+        <intent
+            android:action="com.a4ding.livecalc.SHORTCUT"
+            android:targetPackage="com.a4ding.livecalc"
+            android:targetClass="com.a4ding.livecalc.MainActivity">
+            <extra
+                android:name="com.a4ding.livecalc.SHORTCUT_ACTION"
+                android:value="daily_recommendation" />
+        </intent>
+    </shortcut>
+    <shortcut
+        android:shortcutId="recipes"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_recipes"
+        android:shortcutShortLabel="@string/shortcut_recipes_short"
+        android:shortcutLongLabel="@string/shortcut_recipes_long">
+        <intent
+            android:action="com.a4ding.livecalc.SHORTCUT"
+            android:targetPackage="com.a4ding.livecalc"
+            android:targetClass="com.a4ding.livecalc.MainActivity">
+            <extra
+                android:name="com.a4ding.livecalc.SHORTCUT_ACTION"
+                android:value="recipes" />
+        </intent>
+    </shortcut>
+</shortcuts>

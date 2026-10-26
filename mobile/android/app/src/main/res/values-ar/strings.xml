@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- اختصارات الشاشة الرئيسية (الضغط المطول على أيقونة التطبيق). -->
+    <string name="shortcut_record_price_short">تسجيل سعر</string>
+    <string name="shortcut_record_price_long">تسجيل سعر جديد</string>
+    <string name="shortcut_daily_short">اقتراحات اليوم</string>
+    <string name="shortcut_daily_long">عرض اقتراحات اليوم</string>
+    <string name="shortcut_recipes_short">الوصفات</string>
+    <string name="shortcut_recipes_long">تصفح الوصفات</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主屏快捷方式（长按应用图标） -->
+    <string name="shortcut_record_price_short">计价</string>
+    <string name="shortcut_record_price_long">记一笔价格</string>
+    <string name="shortcut_daily_short">每日推荐</string>
+    <string name="shortcut_daily_long">查看每日推荐</string>
+    <string name="shortcut_recipes_short">菜谱</string>
+    <string name="shortcut_recipes_long">浏览菜谱</string>
+</resources>

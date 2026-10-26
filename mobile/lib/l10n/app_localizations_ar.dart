@@ -535,6 +535,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get navFavorites => 'مفضلاتي';
 
   @override
+  String get shortcutRecordPrice => 'تسجيل سعر';
+
+  @override
+  String get shortcutDailyRecommendation => 'اقتراحات اليوم';
+
+  @override
+  String get shortcutRecipes => 'الوصفات';
+
+  @override
   String get aliasAddHelper => 'اضغط + للإضافة';
 
   @override
