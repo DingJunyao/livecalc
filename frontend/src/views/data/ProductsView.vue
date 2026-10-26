@@ -260,6 +260,43 @@
               :hint="t('products.newSameIngredientHint')"
               persistent-hint
             />
+            <!-- 勾选「新增对应原料」后，在这里填写要新建的原料（名称留空则与商品同名） -->
+            <v-expand-transition>
+              <div v-if="createNewIngredient" class="mt-4 mb-4">
+                <v-text-field
+                  v-model="newIngredient.name"
+                  :label="t('ingredients.ingredientName')"
+                  :placeholder="form.name.trim()"
+                  :hint="t('products.newIngredientNameHint')"
+                  persistent-hint
+                  variant="outlined"
+                  class="mb-4"
+                />
+                <v-select
+                  v-model="newIngredient.category_id"
+                  :items="categoryOptions"
+                  item-title="title"
+                  item-value="value"
+                  :label="t('ingredients.category')"
+                  variant="outlined"
+                  clearable
+                  :placeholder="t('ingredients.categoryPlaceholder')"
+                  class="mb-4"
+                />
+                <v-combobox
+                  v-model="newIngredient.aliases"
+                  :label="t('ingredients.aliases')"
+                  variant="outlined"
+                  multiple
+                  chips
+                  closable-chips
+                  hide-selected
+                  :placeholder="t('ingredients.aliasesPlaceholder')"
+                  :no-data-text="t('ingredients.aliasesNoData')"
+                  :delimiters="[',', '，', ' ']"
+                />
+              </div>
+            </v-expand-transition>
             <v-text-field
               v-model="form.brand"
               :label="t('products.brand')"
@@ -440,6 +477,17 @@ const form = ref({
   aliases: [] as string[],
   ingredient_id: null as number | null
 })
+
+// 「新增对应原料」要新建的原料：名称留空 / 与商品同名时按商品名称创建
+const newIngredient = ref({
+  name: '',
+  category_id: null as number | null,
+  aliases: [] as string[],
+})
+
+function resetNewIngredient() {
+  newIngredient.value = { name: '', category_id: null, aliases: [] }
+}
 
 // 新增商品时的「自定义单位 / 营养信息」草稿：商品创建成功后才落库
 const showDraftUnitsDialog = ref(false)
@@ -768,6 +816,11 @@ watch(selectedIngredient, (newIngredient) => {
   }
 }, { immediate: true })
 
+// 开启「新增对应原料」后关联原料下拉会被隐藏：清掉已选原料，避免商品仍挂到旧原料
+watch(createNewIngredient, (enabled) => {
+  if (enabled) selectedIngredient.value = null
+})
+
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
 
 const debouncedSearch = () => {
@@ -874,32 +927,50 @@ const onPriceSaved = () => {
 }
 
 const saveItem = async () => {
-  if (!form.value.name.trim()) return
-  if (createNewIngredient.value && !form.value.ingredient_id) {
-    try {
-      const resp = await api.post('/ingredients', { name: form.value.name.trim() })
-      form.value.ingredient_id = resp.id
-    } catch (e: any) {
-      notify(getErrorMessage(e, t('products.createIngredientFailed')), 'error')
-      return
-    }
-  }
-  if (!form.value.ingredient_id) {
-    notify(t('products.selectIngredientOrCreate'), 'info')
-    return
-  }
+  const productName = form.value.name.trim()
+  if (!productName) return
 
   saving.value = true
   try {
+    if (createNewIngredient.value) {
+      // 名称留空或与商品同名 → 仍按商品名称创建；否则按填写的名称创建「对应原料」
+      const ingredientName = newIngredient.value.name.trim() || productName
+      const payload: Record<string, any> = {
+        name: ingredientName,
+        reuse_existing: true,
+        // 商品由本页创建；不要让原料接口再自动生成一个同名商品
+        create_same_name_product: false,
+      }
+      if (newIngredient.value.category_id) payload.category_id = newIngredient.value.category_id
+      if (newIngredient.value.aliases.length > 0) payload.aliases = newIngredient.value.aliases
+      try {
+        const resp = await api.post('/ingredients', payload)
+        const previousIngredientId = lastSelectedIngredientId.value
+        form.value.ingredient_id = resp.id
+        // 换成新建原料：草稿单位里引用旧原料独有单位的行先按同名改指向（与手动选原料同口径）
+        await reconcileDraftUnitsForIngredient(resp.id, previousIngredientId)
+        lastSelectedIngredientId.value = resp.id
+        loadIngredients()
+      } catch (e: any) {
+        notify(getErrorMessage(e, t('products.createIngredientFailed')), 'error')
+        return
+      }
+    }
+    if (!form.value.ingredient_id) {
+      notify(t('products.selectIngredientOrCreate'), 'info')
+      return
+    }
+
     const response = await api.post('/products/entity', form.value)
-    // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库。
-    // 注意：即使勾选了「新建同名原料」，附加数据也写**商品层级**（原料只用于关联与引用）。
+    // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库，写**商品层级**
+    // （原料只用于关联与引用；勾选「新增对应原料」时也一样）
     const draftResult = await persistEntityDrafts('product', response.id, draftUnits.value, draftNutrients.value, draftNutritionBasis.value)
     items.value.unshift(response)
     total.value++
     showAddDialog.value = false
     createNewIngredient.value = false
     form.value = { name: '', brand: '', barcode: '', aliases: [], ingredient_id: null }
+    resetNewIngredient()
     selectedIngredient.value = null
     ingredientSearch.value = ''
     resetDrafts()

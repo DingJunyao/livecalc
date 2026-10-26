@@ -2642,7 +2642,7 @@ const saveProduct = async () => {
         aliases: productForm.value.aliases,
       })
       // 商品已创建（拿到 id）→ 把自定义单位 / 营养信息草稿一并落库。
-      // 即使勾选了「新建同名原料」，附加数据也写**商品层级**（原料只用于关联与引用）。
+      // 附加数据写**商品层级**（原料只用于关联与引用）。
       const draftResult = await persistEntityDrafts(
         'product',
         response.id,
