@@ -76,6 +76,7 @@ Future<void> _pumpForm(
   WidgetTester tester, {
   required _FakeProductRepository productRepository,
   required _FakeIngredientRepository ingredientRepository,
+  Ingredient? fixedIngredient,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
   tester.view.devicePixelRatio = 3.0;
@@ -95,6 +96,7 @@ Future<void> _pumpForm(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: ProductFormScreen(
+          fixedIngredient: fixedIngredient,
           repository: productRepository,
           ingredientRepository: ingredientRepository,
         ),
@@ -236,5 +238,31 @@ void main() {
       ),
       findsOneWidget,
     );
+  });
+
+  testWidgets('开关开启后再关掉：恢复原有固定原料并正常保存', (tester) async {
+    final productRepository = _FakeProductRepository();
+    final ingredientRepository = _FakeIngredientRepository();
+    await _pumpForm(
+      tester,
+      productRepository: productRepository,
+      ingredientRepository: ingredientRepository,
+      fixedIngredient: const Ingredient(id: 8, name: 'Flour'),
+    );
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      'Milk',
+    );
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+
+    await _save(tester);
+
+    expect(ingredientRepository.createCalls, 0);
+    expect(productRepository.createCalls, 1);
+    expect(productRepository.createdIngredientId, 8);
   });
 }

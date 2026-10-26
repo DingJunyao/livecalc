@@ -97,6 +97,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   List<String> _tags = const [];
   Ingredient? _selectedIngredient;
   bool _createNewIngredient = false;
+  /// 开启「新增对应原料」前的已选原料：关闭开关时恢复，避免固定原料场景
+  /// 界面还显示旧原料但保存时被判为「未选原料」。
+  Ingredient? _ingredientBeforeCreateNew;
   // 「新增对应原料」的输入项：独立的原料名称 / 分类 / 别名，不复用商品自身的
   // 品牌与别名状态（别名与商品别名含义不同）。
   late final TextEditingController _newIngredientNameController;
@@ -351,8 +354,15 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     setState(() {
       _createNewIngredient = enabled;
       if (enabled) {
+        _ingredientBeforeCreateNew = _selectedIngredient;
         _selectedIngredient = null;
         _ingredientSearchController.clear();
+      } else {
+        // 关掉开关：恢复开启前的选择（固定原料场景尤其需要）
+        _selectedIngredient =
+            _ingredientBeforeCreateNew ?? widget.fixedIngredient;
+        _ingredientSearchController.text = _selectedIngredient?.name ?? '';
+        _ingredientBeforeCreateNew = null;
       }
     });
     if (enabled) _cancelPendingIngredientSearch();
