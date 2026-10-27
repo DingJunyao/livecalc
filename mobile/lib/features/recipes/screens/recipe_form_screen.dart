@@ -433,12 +433,13 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     }
   }
 
+  /// 拖拽重排菜谱图片。
+  ///
+  /// 新 SDK 的 `onReorderItem` 已按「移除旧项后」的索引回调
+  /// （旧 `onReorder` 才需要手动在 newIndex > oldIndex 时减一）。
   void _reorderImages(int oldIndex, int newIndex) {
     if (oldIndex < 0 || oldIndex >= _images.length) return;
-    // ReorderableListView reports the target slot after removal when moving
-    // right, so its callback contract requires decrementing newIndex first.
-    if (newIndex > oldIndex) newIndex--;
-    newIndex = newIndex.clamp(0, _images.length);
+    newIndex = newIndex.clamp(0, _images.length - 1);
     if (newIndex == oldIndex) return;
 
     setState(() {
@@ -1120,7 +1121,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
                     scrollDirection: Axis.horizontal,
                     buildDefaultDragHandles: false,
                     itemCount: _images.length,
-                    onReorder: _reorderImages,
+                    onReorderItem: _reorderImages,
                     itemBuilder: (context, index) => Padding(
                       key: ValueKey('recipe-image-item-${_images[index]}'),
                       padding: const EdgeInsetsDirectional.only(end: 10),
