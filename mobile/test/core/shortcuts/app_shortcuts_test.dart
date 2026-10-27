@@ -28,10 +28,14 @@ void main() {
       expect(AppShortcut.fromId(null), isNull);
     });
 
-    test('三个快捷方式分别跳转计价 / 推荐 / 菜谱 tab', () {
-      expect(AppShortcut.recordPrice.route, '/prices');
+    test('计价直达新增价格记录页，其余跳各自 tab', () {
+      // 表单类入口：route 是表单页，baseRoute 是列表根页（保存/返回回列表）。
+      expect(AppShortcut.recordPrice.route, '/prices/record');
+      expect(AppShortcut.recordPrice.baseRoute, '/prices');
       expect(AppShortcut.dailyRecommendation.route, '/home');
+      expect(AppShortcut.dailyRecommendation.baseRoute, isNull);
       expect(AppShortcut.recipes.route, '/recipes');
+      expect(AppShortcut.recipes.baseRoute, isNull);
     });
 
     test('标题走 i18n，中文与产品文案一致', () {

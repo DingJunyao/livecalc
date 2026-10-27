@@ -4,7 +4,7 @@
 
 长按手机桌面上的「生计」图标时弹出快捷方式，直接进入三个常用入口：
 
-- **计价** → 价格记录列表
+- **计价** → 新增价格记录页（直接开表单，不是先到列表）
 - **查看每日推荐** → 首页今日推荐
 - **菜谱** → 菜谱列表
 
@@ -32,13 +32,18 @@ iOS、Android 两端都要支持，标题跟随界面语言（简体中文 / Eng
 
 ## 路由与图标
 
-| 动作 id | 页面路由 | Android 图标 | iOS 内置图标 |
+| 动作 id | 根页 → 目标路由 | Android 图标 | iOS 内置图标 |
 |---|---|---|---|
-| `record_price` | `/prices` | `ic_shortcut_record_price`（收据） | `.add` |
+| `record_price` | `/prices` → push `/prices/record` | `ic_shortcut_record_price`（收据） | `.add` |
 | `daily_recommendation` | `/home` | `ic_shortcut_daily`（房子） | `.home` |
 | `recipes` | `/recipes` | `ic_shortcut_recipes`（刀叉） | `.bookmark` |
 
-路由与 `app_router.dart` 中 tab 路径一致，点击后落在 tab 根页面（不直接开表单），与网页端 PWA shortcut 的行为对齐。
+**打开方式**：`AppShortcut.baseRoute` 为空的直接 `go`；「计价」是表单类入口，
+先 `go('/prices')` 落到价格列表，等这一帧生效后再 `push('/prices/record')`。
+这样新增价格表单在栈顶，保存成功 `pop(true)` / 返回会回到价格记录列表；
+若直接 `go` 表单，它就成了 shell 里的首屏页面，保存后无处可回。
+
+其余两条落在 tab 根页面，与网页端 PWA shortcut 的行为对齐。
 
 ## 冷启动 / 运行中点击
 
@@ -124,7 +129,7 @@ iOS：
 ## 验证
 
 - `flutter analyze`：No issues found
-- `flutter test test/core/shortcuts/app_shortcuts_test.dart test/app_localizations_test.dart test/l10n test/core/router`：41 passed
+- `flutter test test/core/shortcuts test/app_localizations_test.dart test/l10n test/core/router`：43 passed（含「计价」直达新增价格记录页且可返回列表的 widget 测试：push 后 `canPop` 为 true、当前页 `/prices/record`）
 - `flutter build apk --release`：通过（验证 AndroidManifest / shortcuts.xml / 矢量图标 / Kotlin 编译）
 - iOS：本机（Windows）无 Xcode，未编译；需在 macOS 上 `flutter build ios --no-codesign` 或 Xcode 真机验证长按菜单与点击跳转。
 

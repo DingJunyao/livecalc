@@ -1,12 +1,16 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:com_a4ding_livecalc/app.dart';
 import 'package:com_a4ding_livecalc/core/services/app_shortcuts_service.dart';
 import 'package:com_a4ding_livecalc/core/shortcuts/app_shortcuts.dart';
+import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/server_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
+import 'package:com_a4ding_livecalc/features/prices/screens/price_record_form_screen.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/startup_page_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -69,6 +73,41 @@ void main() {
       ['add', 'home', 'bookmark'],
     );
   });
+
+  testWidgets('点击「计价」快捷方式直达新增价格记录页，且可返回列表', (tester) async {
+    SharedPreferences.setMockInitialValues({'mobile.ui_locale': 'zh-CN'});
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (call) async {
+      if (call.method == 'ready') return 'record_price';
+      return null;
+    });
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          serverConfigProvider.overrideWith((_) => _NoopServerConfig()),
+          startupPageProvider.overrideWith((_) => _NoopStartupPage()),
+          authProvider.overrideWith((_) => _AuthedAuthNotifier()),
+        ],
+        child: const LiveCalcApp(),
+      ),
+    );
+    // bootstrap（locale / 快捷方式 / 认证）→ go('/prices') → 下一帧 push 表单。
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    final router = app.routerConfig! as GoRouter;
+
+    expect(find.byType(PriceRecordFormScreen), findsOneWidget);
+    // push 打开表单：当前页面是新增价格记录，且栈里有上一页（价格列表）。
+    expect(
+      router.routerDelegate.currentConfiguration.last.matchedLocation,
+      '/prices/record',
+    );
+    expect(router.canPop(), isTrue);
+  });
 }
 
 class _NoopServerConfig extends ServerConfigNotifier {
@@ -83,6 +122,18 @@ class _NoopStartupPage extends StartupPageNotifier {
 
 class _NoopAuthNotifier extends AuthNotifier {
   _NoopAuthNotifier() : super(AuthRepository());
+
+  @override
+  Future<void> checkAuth() async {}
+}
+
+class _AuthedAuthNotifier extends AuthNotifier {
+  _AuthedAuthNotifier() : super(AuthRepository()) {
+    state = const AuthState(
+      status: AuthStatus.authenticated,
+      user: User(id: 1, username: 'alice', email: 'a@test.com'),
+    );
+  }
 
   @override
   Future<void> checkAuth() async {}

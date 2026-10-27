@@ -8,12 +8,15 @@ import '../../l10n/app_localizations.dart';
 /// - iOS：动态注册的 `UIApplicationShortcutItem.type`（标题随界面语言，
 ///   由 [toChannelItem] 下发）。
 ///
-/// [route] 是目标路由（与 `app_router.dart` 中的路径一致）：快捷方式只做跳转，
+/// [route] 是最终目标路由（与 `app_router.dart` 中的路径一致）；
+/// [baseRoute] 非空表示目标是「表单类」二级页面：先 [go] 到根页再 [push]
+/// 表单，这样保存/返回能回到根页（否则作为首屏打开的表单无处可回）。
 /// 登录态判定交给 router 的 redirect，未登录时会先落到登录页。
 enum AppShortcut {
   recordPrice(
     id: 'record_price',
-    route: '/prices',
+    route: '/prices/record',
+    baseRoute: '/prices',
     iosIcon: 'add',
   ),
   dailyRecommendation(
@@ -31,13 +34,17 @@ enum AppShortcut {
     required this.id,
     required this.route,
     required this.iosIcon,
+    this.baseRoute,
   });
 
   /// 原生侧识别用的稳定 id，不要随意改（改了两端要同步）。
   final String id;
 
-  /// 点击快捷方式后跳转的路由。
+  /// 点击快捷方式后最终停留的路由。
   final String route;
+
+  /// 表单类入口的根页：先 go 到这里再 push [route]。
+  final String? baseRoute;
 
   /// iOS 内置快捷方式图标类型名（对应 `UIApplicationShortcutIconType`，
   /// 见 `ios/Runner/AppDelegate.swift` 中的映射）；Android 用矢量图资源。

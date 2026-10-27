@@ -92,7 +92,19 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     // 等当前帧结束再导航：可能正在 splash → 落地页的 redirect 过程中。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      _router.go(shortcut.route);
+      final baseRoute = shortcut.baseRoute;
+      if (baseRoute == null) {
+        _router.go(shortcut.route);
+        return;
+      }
+      // 表单类入口（「计价」→ 新增价格记录页）：先落到 tab 根页，等这一帧
+      // 生效后再 push 表单，保存/返回才会回到列表；直接 go 表单会作为首屏
+      // 打开、无处可回。
+      _router.go(baseRoute);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _router.push(shortcut.route);
+      });
     });
   }
 
