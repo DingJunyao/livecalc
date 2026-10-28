@@ -776,7 +776,9 @@ def get_product_latest_price(
         # 查询该商品的所有价格记录（P2：跨用户公开，不按 user_id 过滤）
         all_records = apply_region_filter(
             db.query(ProductRecord).filter(
-                ProductRecord.product_id == product_id
+                ProductRecord.product_id == product_id,
+                # 已软删的价格记录不参与最近价（与价格记录列表口径一致）
+                ProductRecord.is_active == True,  # noqa: E712
             ),
             db, region_id,
         ).order_by(ProductRecord.recorded_at.desc()).all()
@@ -899,7 +901,10 @@ def get_product_latest_price_by_merchant(
         ).filter(
             ProductRecord.product_id == product_id,
             ProductRecord.merchant_id.isnot(None),
-            Merchant.is_open == True
+            Merchant.is_open == True,  # noqa: E712
+            # 已软删的价格记录不参与（与价格记录列表 / 成本口径一致），
+            # 否则删除后的记录仍会以「各商家价格」形式出现在详情页。
+            ProductRecord.is_active == True,  # noqa: E712
         ).order_by(ProductRecord.recorded_at.desc()).all()
 
         # 按商家分组，每组只保留最新一条
