@@ -326,88 +326,6 @@
     </v-card>
 
     <!-- 退出登录按钮 -->
-    <!-- AI 推荐 / BYOK 设置（仅云端模式；本地模式在「设置 · AI 配置」里配置） -->
-    <v-card v-if="!isLocalMode" class="ma-4" elevation="0">
-      <v-card-title class="d-flex align-center pa-4 pb-2">
-        <v-icon class="me-2" size="20">mdi-creation-outline</v-icon>
-        <span class="text-h6">{{ t('profileAi.title') }}</span>
-      </v-card-title>
-      <v-card-text class="pt-0">
-        <v-row dense>
-          <v-col cols="12" sm="6" md="4">
-            <v-select
-              v-model="aiForm.method"
-              :items="aiMethodItems"
-              item-title="title"
-              item-value="value"
-              :label="t('profileAi.method')"
-              variant="outlined"
-              density="compact"
-              :hint="t('profileAi.methodHint')"
-              persistent-hint
-            />
-          </v-col>
-          <template v-if="aiForm.method === 'user_ai'">
-            <v-col cols="12" sm="6" md="4">
-              <v-select
-                v-model="aiForm.provider"
-                :items="['openai', 'anthropic']"
-                :label="t('profileAi.provider')"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" sm="6" md="4">
-              <v-text-field
-                v-model="aiForm.model"
-                :label="t('profileAi.model')"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" sm="6" v-if="aiPolicy.allow_custom_base_url">
-              <v-text-field
-                v-model="aiForm.base_url"
-                :label="t('profileAi.baseUrl')"
-                variant="outlined"
-                density="compact"
-              />
-            </v-col>
-            <v-col cols="12" sm="6">
-              <v-text-field
-                v-model="aiForm.api_key"
-                :label="t('profileAi.apiKey')"
-                type="password"
-                variant="outlined"
-                density="compact"
-                :placeholder="aiForm.has_api_key ? t('profileAi.apiKeyKeep') : ''"
-                persistent-placeholder
-              />
-              <div v-if="aiForm.has_api_key" class="text-caption text-medium-emphasis mt-1">
-                {{ t('profileAi.apiKeyCurrent') }}{{ aiForm.api_key_masked }}
-                <v-btn size="x-small" variant="text" color="error" @click="clearApiKey">
-                  {{ t('profileAi.apiKeyClear') }}
-                </v-btn>
-              </div>
-            </v-col>
-          </template>
-        </v-row>
-        <p v-if="aiForm.method === 'system_ai'" class="text-caption text-medium-emphasis mt-1">
-          {{ t('profileAi.systemAiHint') }}
-        </p>
-        <p class="text-caption text-disabled mt-1">{{ t('profileAi.privacyNote') }}</p>
-        <v-btn
-          color="primary"
-          class="mt-2"
-          :loading="aiSaving"
-          :disabled="!aiChanged"
-          @click="saveAiSettings"
-        >
-          {{ t('common.save') }}
-        </v-btn>
-      </v-card-text>
-    </v-card>
-
     <v-card v-if="!isLocalMode" class="ma-4" elevation="0">
       <v-btn block color="error" variant="text" @click="logout">
         <v-icon start>mdi-logout</v-icon>
@@ -643,8 +561,8 @@
     <!-- 头像裁剪对话框 -->
     <AvatarCropperDialog v-model="cropperDialog" :src="cropperSrc" @cropped="uploadCroppedAvatar" />
 
-    <!-- 饮食偏好对话框 -->
-    <v-dialog v-model="nutritionDialog" max-width="480">
+    <!-- 饮食偏好对话框（每日营养目标/预算 + AI 推荐方式） -->
+    <v-dialog v-model="nutritionDialog" max-width="560" scrollable>
       <v-card>
         <v-card-title class="d-flex align-center pa-4">
           <span class="text-h6">{{ t('profile.nutritionPreferences') }}</span>
@@ -712,7 +630,7 @@
             <v-col cols="12">
               <v-text-field
                 v-model.number="nutritionForm.daily_budget"
-                :label="t('profile.dailyBudget')"
+                :label="t('profile.dailyBudget', { currency: userCurrency || '' })"
                 type="number"
                 variant="outlined"
                 density="compact"
@@ -724,11 +642,83 @@
               />
             </v-col>
           </v-row>
+
+          <!-- AI 推荐方式（仅云端模式；本地模式在「设置 · AI 配置」里配置） -->
+          <template v-if="!isLocalMode">
+            <v-divider class="my-4" />
+            <div class="d-flex align-center">
+              <v-icon class="me-2" size="18">mdi-creation-outline</v-icon>
+              <span class="text-subtitle-1 font-weight-bold">{{ t('profileAi.title') }}</span>
+            </div>
+            <v-row dense class="mt-1">
+              <v-col cols="12" sm="6">
+                <v-select
+                  v-model="aiForm.method"
+                  :items="aiMethodItems"
+                  item-title="title"
+                  item-value="value"
+                  :label="t('profileAi.method')"
+                  variant="outlined"
+                  density="compact"
+                  :hint="t('profileAi.methodHint')"
+                  persistent-hint
+                />
+              </v-col>
+              <template v-if="aiForm.method === 'user_ai'">
+                <v-col cols="12" sm="6">
+                  <v-select
+                    v-model="aiForm.provider"
+                    :items="['openai', 'anthropic']"
+                    :label="t('profileAi.provider')"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12" sm="6">
+                  <v-text-field
+                    v-model="aiForm.model"
+                    :label="t('profileAi.model')"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col v-if="aiPolicy.allow_custom_base_url" cols="12">
+                  <v-text-field
+                    v-model="aiForm.base_url"
+                    :label="t('profileAi.baseUrl')"
+                    variant="outlined"
+                    density="compact"
+                  />
+                </v-col>
+                <v-col cols="12">
+                  <v-text-field
+                    v-model="aiForm.api_key"
+                    :label="t('profileAi.apiKey')"
+                    type="password"
+                    variant="outlined"
+                    density="compact"
+                    :placeholder="aiForm.has_api_key ? t('profileAi.apiKeyKeep') : ''"
+                    persistent-placeholder
+                  />
+                  <div v-if="aiForm.has_api_key" class="text-caption text-medium-emphasis mt-1">
+                    {{ t('profileAi.apiKeyCurrent') }}{{ aiForm.api_key_masked }}
+                    <v-btn size="x-small" variant="text" color="error" @click="clearApiKey">
+                      {{ t('profileAi.apiKeyClear') }}
+                    </v-btn>
+                  </div>
+                </v-col>
+              </template>
+            </v-row>
+            <p v-if="aiForm.method === 'system_ai'" class="text-caption text-medium-emphasis mt-1">
+              {{ t('profileAi.systemAiHint') }}
+            </p>
+            <p class="text-caption text-disabled mt-1 mb-0">{{ t('profileAi.privacyNote') }}</p>
+          </template>
         </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="nutritionDialog = false">{{ t('actions.cancel') }}</v-btn>
-          <v-btn color="primary" :loading="savingNutrition" @click="saveNutrition">
+          <v-btn color="primary" :loading="savingNutrition || aiSaving" @click="saveDietPreferences">
             {{ t('actions.save') }}
           </v-btn>
         </v-card-actions>
@@ -1266,10 +1256,12 @@ function openNutritionDialog() {
     daily_fat_target: u?.nutrition_goals?.daily_fat_target ?? 65,
     daily_budget: u?.daily_budget ?? null,
   }
+  // AI 推荐方式已并入本对话框：打开时刷新一次 AI 设置（仅云端模式）
+  if (!isLocalMode.value) loadAiSettings()
   nutritionDialog.value = true
 }
 
-async function saveNutrition() {
+async function saveDietPreferences() {
   savingNutrition.value = true
   try {
     await api.patch('/auth/me', {
@@ -1279,6 +1271,10 @@ async function saveNutrition() {
       daily_fat_target: nutritionForm.value.daily_fat_target || null,
       daily_budget: nutritionForm.value.daily_budget || null,
     })
+    // AI 推荐方式与营养目标同一按钮保存（仅云端模式，且确实改过时才提交）
+    if (!isLocalMode.value && aiChanged.value) {
+      await saveAiSettings()
+    }
     // 刷新 userStore 以同步最新值
     await userStore.fetchUser()
     nutritionDialog.value = false
