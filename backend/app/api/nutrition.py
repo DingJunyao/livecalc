@@ -1291,6 +1291,8 @@ async def get_ingredient_latest_price_by_merchant(
                 ProductRecord.product_id.in_(product_ids),
                 ProductRecord.merchant_id.isnot(None),
                 Merchant.is_open == True,  # noqa: E712
+                # 已软删的价格记录不参与（与价格记录列表 / 成本口径一致）
+                ProductRecord.is_active == True,  # noqa: E712
             ).order_by(ProductRecord.recorded_at.desc()).all()
 
             # 按 (商家, 商品) 各留最新一条 —— 同商家多商品都保留，后续按权重加权

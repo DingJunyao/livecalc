@@ -365,6 +365,9 @@ async def get_product_records(
             joinedload(ProductRecord.original_unit),
             joinedload(ProductRecord.standard_unit),
             joinedload(ProductRecord.merchant)
+        ).filter(
+            # 已软删的价格记录不参与列表（与默认分支口径一致）
+            ProductRecord.is_active == True,  # noqa: E712
         )
         query = apply_region_filter(query, db, region_id)
         if not ingredient_id and not product_id:
@@ -830,7 +833,9 @@ async def get_product_history(
             joinedload(ProductRecord.standard_unit),
             joinedload(ProductRecord.merchant)
         ).filter(
-            ProductRecord.product_name == product_name
+            ProductRecord.product_name == product_name,
+            # 已软删的价格记录不参与历史价格（与价格记录列表口径一致）
+            ProductRecord.is_active == True,  # noqa: E712
         ),
         db, region_id,
     ).order_by(ProductRecord.recorded_at.desc()).all()
