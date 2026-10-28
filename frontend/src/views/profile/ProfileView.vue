@@ -1271,8 +1271,8 @@ async function saveDietPreferences() {
       daily_fat_target: nutritionForm.value.daily_fat_target || null,
       daily_budget: nutritionForm.value.daily_budget || null,
     })
-    // AI 推荐方式与营养目标同一按钮保存（仅云端模式，且确实改过时才提交）
-    if (!isLocalMode.value && aiChanged.value) {
+    // AI 推荐方式与营养目标同一按钮保存（仅云端模式；设置没加载成功时不动 AI 配置）
+    if (!isLocalMode.value && aiLoaded.value && aiChanged.value) {
       await saveAiSettings()
     }
     // 刷新 userStore 以同步最新值
@@ -1688,6 +1688,8 @@ const aiForm = ref<any>({
   daily_limit_override: null,
 })
 const aiSaving = ref(false)
+// AI 设置是否成功拉取过：没拉到就不参与「饮食偏好」的一键保存，避免把空表单提交上去
+const aiLoaded = ref(false)
 const _aiInitial = ref('')
 
 const aiMethodItems = computed(() => {
@@ -1719,6 +1721,7 @@ async function loadAiSettings() {
       has_api_key: data.has_api_key, daily_limit_override: data.daily_limit_override,
     }
     _aiInitial.value = JSON.stringify({ ...aiForm.value, api_key: undefined })
+    aiLoaded.value = true
   } catch { /* 加载失败不阻塞个人中心 */ }
 }
 
