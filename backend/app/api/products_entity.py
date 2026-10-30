@@ -103,6 +103,13 @@ def create_product(
     current_user: User = Depends(get_current_user)
 ):
     """创建商品"""
+    # 空字符串归一化为 NULL：客户端（移动端）会把留空的条码/品牌以 "" 提交，
+    # barcode 有唯一约束，库里一旦存过一条 ''，任何其他商品保存都会撞唯一键 500。
+    if product.barcode is not None:
+        product.barcode = product.barcode.strip() or None
+    if product.brand is not None:
+        product.brand = product.brand.strip() or None
+
     # 检查条码唯一性
     if product.barcode:
         existing = db.query(Product).filter(Product.barcode == product.barcode).first()
@@ -520,6 +527,11 @@ def update_product(
         raise LocalizedHTTPException(status_code=404, message='商品不存在')
 
     update_data = product_update.model_dump(exclude_unset=True)
+
+    # 空字符串归一化为 NULL（原因同 create_product：barcode 唯一约束撞 '' 行）
+    for _field in ("barcode", "brand"):
+        if update_data.get(_field) is not None:
+            update_data[_field] = update_data[_field].strip() or None
 
     # 检查条码唯一性（端点提交时）
     if 'barcode' in update_data and update_data['barcode']:
