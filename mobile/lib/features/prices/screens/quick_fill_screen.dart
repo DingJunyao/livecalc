@@ -13,7 +13,18 @@ import '../../../shared/utils/entity_unit_names.dart';
 import '../../../l10n/app_localizations.dart';
 
 /// 快速填写每行单位菜单的兜底列表（全局单位拉取失败时使用）。
-const quickFillFallbackUnits = <String>['个', '斤', '克', '千克', '升', '毫升', '包', '瓶', '袋', '箱'];
+const quickFillFallbackUnits = <String>[
+  '个',
+  '斤',
+  '克',
+  '千克',
+  '升',
+  '毫升',
+  '包',
+  '瓶',
+  '袋',
+  '箱'
+];
 
 class QuickFillScreen extends ConsumerStatefulWidget {
   const QuickFillScreen({
@@ -58,8 +69,10 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   /// 每行商品的自定义单位缓存（key = productId）。
   /// 行数即商家历史商品数，网络请求不阻塞 UI，到达后 setState 让菜单可见。
   final Map<int, List<String>> _customUnitsByProduct = {};
+
   /// 已发起过自定义单位请求的商品 id（避免重复请求）。
   final Set<int> _unitsRequested = {};
+
   /// 全局单位基准（GET /units/）；为空时回退 [quickFillFallbackUnits]。
   List<String> _globalUnits = const [];
   bool _globalUnitsLoading = false;
@@ -206,8 +219,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     if (_globalUnits.isNotEmpty || _globalUnitsLoading) return;
     _globalUnitsLoading = true;
     try {
-      final names = await (widget.globalUnitNamesLoader?.call() ??
-          loadGlobalUnitNames());
+      final names =
+          await (widget.globalUnitNamesLoader?.call() ?? loadGlobalUnitNames());
       if (names.isNotEmpty && mounted) {
         setState(() => _globalUnits = names);
       }
@@ -278,7 +291,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     final custom = productId == null
         ? const <String>[]
         : (_customUnitsByProduct[productId] ?? const <String>[]);
-    final base = _globalUnits.isNotEmpty ? _globalUnits : quickFillFallbackUnits;
+    final base =
+        _globalUnits.isNotEmpty ? _globalUnits : quickFillFallbackUnits;
     return mergePriceUnitOptions(custom, base, current: row.unit);
   }
 
@@ -504,7 +518,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                   Text(l10n.quickFillUnitPriceHeader,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
-                                  const SizedBox(width: 80),
+                                  const SizedBox(width: 96),
                                 ],
                               ),
                             ),
@@ -529,8 +543,8 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                     row: _rows[i],
                                     currencySymbol: _currencySymbol,
                                     unitOptions: _unitOptionsFor(_rows[i]),
-                                    onUnitChanged: (u) => setState(
-                                        () => _rows[i].unit = u),
+                                    onUnitChanged: (u) =>
+                                        setState(() => _rows[i].unit = u),
                                     onShowKeypad: () => _showKeypad(_rows[i]),
                                   );
                                 },
@@ -554,13 +568,15 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     );
   }
 
-  void _showKeypad(_PriceRow row) {
-    showModalBottomSheet(
+  Future<void> _showKeypad(_PriceRow row) async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       builder: (ctx) =>
           _PriceInputSheet(row: row, currencySymbol: _currencySymbol),
     );
+    // 价格展示是纯文本（不再用 TextField 自带监听），键盘确认后手动刷新行
+    if (mounted) setState(() {});
   }
 }
 
@@ -593,53 +609,61 @@ class _PriceRowWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+    final theme = Theme.of(context);
+    final priceText = row.priceController.text.trim();
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              // 商品名占满剩余宽度：小一号字体 + 不限行数换行，
+              // 长名完整可见（此前 16px 字体被价格/单位挤到 3-4 行且行高松散）。
               Expanded(
                 child: row.productId != null
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        child: Text(
-                          row.nameController.text,
-                          style: Theme.of(context).textTheme.bodyLarge,
-                        ),
+                    ? Text(
+                        row.nameController.text,
+                        style: theme.textTheme.bodyMedium,
                       )
                     : TextField(
                         controller: row.nameController,
+                        style: theme.textTheme.bodyMedium,
                         decoration: InputDecoration(
-                          labelText: l10n.priceProductNameLabel,
                           hintText: l10n.quickFillNewProduct,
                           border: InputBorder.none,
-                          isDense: true,
+                          isCollapsed: true,
+                          contentPadding:
+                              const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
               ),
               const SizedBox(width: 8),
-              SizedBox(
-                width: 100,
-                child: GestureDetector(
-                  onTap: onShowKeypad,
-                  child: AbsorbPointer(
-                    child: TextField(
-                      controller: row.priceController,
-                      decoration: InputDecoration(
-                        labelText: l10n.priceLabel,
-                        border: InputBorder.none,
-                        isDense: true,
-                        prefixText: currencySymbol,
-                      ),
-                      keyboardType: TextInputType.none, // block system keyboard
+              // 价格：点击弹数字键盘（只读展示，占位「—」）
+              GestureDetector(
+                onTap: onShowKeypad,
+                child: Container(
+                  constraints: const BoxConstraints(minWidth: 56),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Directionality(
+                    textDirection: TextDirection.ltr,
+                    child: Text(
+                      priceText.isEmpty ? '—' : '$currencySymbol$priceText',
+                      style: priceText.isEmpty
+                          ? theme.textTheme.bodyMedium
+                              ?.copyWith(color: theme.colorScheme.outline)
+                          : theme.textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
               ),
+              const SizedBox(width: 4),
               PopupMenuButton<String>(
-                key: Key('quick-fill-unit-${row.productId ?? row.nameController.text}'),
+                key: Key(
+                    'quick-fill-unit-${row.productId ?? row.nameController.text}'),
                 onSelected: onUnitChanged,
                 itemBuilder: (_) => [
                   for (final u in unitOptions)
@@ -649,17 +673,25 @@ class _PriceRowWidget extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    border: Border.all(
-                        color: Theme.of(context).colorScheme.outline),
-                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: theme.colorScheme.outlineVariant),
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(row.unit),
+                  child: Text(
+                    row.unit,
+                    style: theme.textTheme.labelMedium,
+                  ),
                 ),
               ),
             ],
           ),
         ),
-      ),
+        const Divider(
+          height: 1,
+          thickness: 0.5,
+          indent: 16,
+          endIndent: 16,
+        ),
+      ],
     );
   }
 }

@@ -14,6 +14,7 @@ import '../../../l10n/app_localizations.dart';
 import '../providers/ingredient_provider.dart';
 import '../repositories/ingredient_repository.dart';
 import '../../../shared/widgets/save_action_button.dart';
+import '../../../shared/widgets/form_exit_guard.dart';
 import '../../profile/providers/save_button_position_provider.dart';
 
 class IngredientFormResult {
@@ -32,8 +33,10 @@ class IngredientFormScreen extends ConsumerStatefulWidget {
   final Ingredient? ingredient;
   final int? ingredientId;
   final IngredientRepository? repository;
+
   /// 测试注入：全局单位来源（缺省走真实接口）。
   final EntityRepository? entityRepository;
+
   /// 测试注入：草稿落库器。
   final EntityDraftPersister? draftPersister;
 
@@ -64,6 +67,7 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   // 新增原料时先填好的「自定义单位 / 营养信息」草稿：原料创建成功后才落库
   final List<EntityUnit> _draftUnits = [];
   List<NutrientEntry> _draftNutrients = const [];
+
   /// 草稿营养的基准（「每 X 单位」）：与营养素一起落库
   NutritionBasis _draftNutritionBasis = const NutritionBasis();
   List<GlobalUnitOption> _globalUnitOptions = const [];
@@ -73,6 +77,15 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   int? get _editId => widget.ingredient?.id ?? widget.ingredientId;
 
   bool get _isEdit => _editId != null;
+
+  /// 是否在新增态下写过任何信息（名称/别名/分类/单位与营养草稿任一非空）。
+  bool get _hasUnsavedInput =>
+      !_isEdit &&
+      (_nameController.text.trim().isNotEmpty ||
+          _aliases.isNotEmpty ||
+          _categoryId != null ||
+          _draftUnits.isNotEmpty ||
+          _draftNutrients.isNotEmpty);
 
   int get _draftNutrientCount => _draftNutrients
       // 显式 0 也是有效记录（与「没填」区分）
@@ -304,8 +317,8 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
     } else if (result.hasPending) {
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-              l10n.productDraftExtrasPending(l10n.productDraftTargetIngredient)),
+          content: Text(l10n
+              .productDraftExtrasPending(l10n.productDraftTargetIngredient)),
         ),
       );
     }
@@ -352,97 +365,101 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final savePosition = ref.watch(saveButtonPositionProvider);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
-        ),
-        actions: [
-          ...saveAppBarActions(
-            position: savePosition,
-            onSave: _saving ? null : _save,
-            label: _saving ? l10n.commonSaving : l10n.commonSave,
+    return FormExitGuard(
+      enabled: !_isEdit && !_saving,
+      isDirty: () => _hasUnsavedInput,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(
+            _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
           ),
-        ],
-      ),
-      bottomNavigationBar: saveBottomBar(
-        context: context,
-        position: savePosition,
-        onSave: _saving ? null : _save,
-        label: _saving ? l10n.commonSaving : l10n.commonSave,
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                TextFormField(
-                  controller: _nameController,
-                  initialValue: null,
-                  decoration: InputDecoration(
-                    labelText: l10n.ingredientName,
-                    border: const OutlineInputBorder(),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildCategoryField(),
-                const SizedBox(height: 16),
-                AliasTagsField(
-                  label: l10n.ingredientAliases,
-                  initialTags: _aliases,
-                  onTagsChanged: (aliases) => _aliases = aliases,
-                ),
-                if (!_isEdit) ...[
-                  const SizedBox(height: 16),
-                  // 自定义单位 / 营养信息：在这里先填好，保存原料时一并保存
-                  Card(
-                    margin: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: const Icon(Icons.straighten),
-                          title: Text(_draftUnits.isEmpty
-                              ? l10n.productDraftUnitsButton
-                              : l10n.productDraftUnitsButtonCount(
-                                  _draftUnits.length)),
-                          subtitle: Text(l10n.productDraftSavedTogether(
-                              l10n.productDraftTargetIngredient)),
-                          trailing: _loadingDraftUnits
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child:
-                                      CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.chevron_right),
-                          onTap: _saving ? null : _openDraftUnits,
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.food_bank_outlined),
-                          title: Text(_draftNutrientCount == 0
-                              ? l10n.productDraftNutritionButton
-                              : l10n.productDraftNutritionButtonCount(
-                                  _draftNutrientCount)),
-                          trailing: const Icon(Icons.chevron_right),
-                          onTap: _saving ? null : _openDraftNutrition,
-                        ),
-                      ],
+          actions: [
+            ...saveAppBarActions(
+              position: savePosition,
+              onSave: _saving ? null : _save,
+              label: _saving ? l10n.commonSaving : l10n.commonSave,
+            ),
+          ],
+        ),
+        bottomNavigationBar: saveBottomBar(
+          context: context,
+          position: savePosition,
+          onSave: _saving ? null : _save,
+          label: _saving ? l10n.commonSaving : l10n.commonSave,
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    initialValue: null,
+                    decoration: InputDecoration(
+                      labelText: l10n.ingredientName,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
-                ],
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 12),
-                    child: Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 16),
+                  _buildCategoryField(),
+                  const SizedBox(height: 16),
+                  AliasTagsField(
+                    label: l10n.ingredientAliases,
+                    initialTags: _aliases,
+                    onTagsChanged: (aliases) => _aliases = aliases,
+                  ),
+                  if (!_isEdit) ...[
+                    const SizedBox(height: 16),
+                    // 自定义单位 / 营养信息：在这里先填好，保存原料时一并保存
+                    Card(
+                      margin: EdgeInsets.zero,
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.straighten),
+                            title: Text(_draftUnits.isEmpty
+                                ? l10n.productDraftUnitsButton
+                                : l10n.productDraftUnitsButtonCount(
+                                    _draftUnits.length)),
+                            subtitle: Text(l10n.productDraftSavedTogether(
+                                l10n.productDraftTargetIngredient)),
+                            trailing: _loadingDraftUnits
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.chevron_right),
+                            onTap: _saving ? null : _openDraftUnits,
+                          ),
+                          const Divider(height: 1),
+                          ListTile(
+                            leading: const Icon(Icons.food_bank_outlined),
+                            title: Text(_draftNutrientCount == 0
+                                ? l10n.productDraftNutritionButton
+                                : l10n.productDraftNutritionButtonCount(
+                                    _draftNutrientCount)),
+                            trailing: const Icon(Icons.chevron_right),
+                            onTap: _saving ? null : _openDraftNutrition,
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-              ],
-            ),
+                  ],
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+      ),
     );
   }
 }

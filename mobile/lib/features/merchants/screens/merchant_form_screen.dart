@@ -10,6 +10,7 @@ import '../models/merchant.dart';
 import '../repositories/merchant_repository.dart';
 import '../widgets/map_point_picker.dart';
 import '../../../shared/widgets/save_action_button.dart';
+import '../../../shared/widgets/form_exit_guard.dart';
 import '../../profile/providers/save_button_position_provider.dart';
 
 class MerchantFormResult {
@@ -66,6 +67,9 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   String? _defaultCurrency;
   List<dynamic> _currencies = const [];
 
+  /// 新增态退出确认：进入页面时的字段快照（与当前值比对判断「写过信息」）。
+  late final LatLng? _initialCoordinate;
+
   @override
   void initState() {
     super.initState();
@@ -79,7 +83,18 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     if (merchant?.latitude != null && merchant?.longitude != null) {
       _coordinate = LatLng(merchant!.latitude!, merchant.longitude!);
     }
+    _initialCoordinate = _coordinate;
   }
+
+  /// 是否在新增态下写过任何信息（名字/地址/开关/地区/币种/坐标任一变化）。
+  bool get _hasUnsavedInput =>
+      widget.merchant == null &&
+      (_nameController.text.trim().isNotEmpty ||
+          _addressController.text.trim().isNotEmpty ||
+          _isOpen != true ||
+          _regionId != null ||
+          _defaultCurrency != null ||
+          _coordinate != _initialCoordinate);
 
   @override
   void dispose() {
@@ -184,107 +199,111 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     final l10n = AppLocalizations.of(context);
     final editing = widget.merchant != null;
     final savePosition = ref.watch(saveButtonPositionProvider);
-    final saveLabel =
-        editing ? l10n.commonSave : l10n.merchantCreateButton;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
-        actions: [
-          ...saveAppBarActions(
-            position: savePosition,
-            onSave: _saving ? null : _save,
-            label: _saving ? l10n.commonSaving : saveLabel,
-          ),
-        ],
-      ),
-      bottomNavigationBar: saveBottomBar(
-        context: context,
-        position: savePosition,
-        onSave: _saving ? null : _save,
-        label: _saving ? l10n.commonSaving : saveLabel,
-      ),
-      body: SafeArea(
-        top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextField(
-                controller: _nameController,
-                autofocus: !editing,
-                textInputAction: TextInputAction.next,
-                decoration: InputDecoration(
-                  labelText: l10n.merchantNameOptional,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _addressController,
-                textInputAction: TextInputAction.done,
-                decoration: InputDecoration(
-                  labelText: l10n.merchantAddress,
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.merchantIsOpen),
-                value: _isOpen,
-                onChanged:
-                    _saving ? null : (value) => setState(() => _isOpen = value),
-              ),
-              const SizedBox(height: 12),
-              RegionSelectField(
-                value: _regionId,
-                onChanged: (v) => setState(() => _regionId = v),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String?>(
-                initialValue: _defaultCurrency,
-                items: [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l10n.merchantCurrencyFollowRegion),
+    final saveLabel = editing ? l10n.commonSave : l10n.merchantCreateButton;
+    return FormExitGuard(
+      enabled: !editing && !_saving,
+      isDirty: () => _hasUnsavedInput,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
+          actions: [
+            ...saveAppBarActions(
+              position: savePosition,
+              onSave: _saving ? null : _save,
+              label: _saving ? l10n.commonSaving : saveLabel,
+            ),
+          ],
+        ),
+        bottomNavigationBar: saveBottomBar(
+          context: context,
+          position: savePosition,
+          onSave: _saving ? null : _save,
+          label: _saving ? l10n.commonSaving : saveLabel,
+        ),
+        body: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: _nameController,
+                  autofocus: !editing,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: l10n.merchantNameOptional,
+                    border: const OutlineInputBorder(),
                   ),
-                  for (final c in _currencies)
-                    DropdownMenuItem<String?>(
-                      value: c['code'] as String?,
-                      child: Text('${c['name']} ${c['code']}'),
-                    ),
-                ],
-                // 收起时只显示三字母代码（未选时显示「跟随地区」）
-                selectedItemBuilder: (context) => [
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l10n.merchantCurrencyFollowRegion),
-                  ),
-                  for (final c in _currencies)
-                    DropdownMenuItem<String?>(
-                      value: c['code'] as String?,
-                      child: Text(c['code'] as String),
-                    ),
-                ],
-                decoration: InputDecoration(
-                  labelText: l10n.merchantDefaultCurrency,
-                  border: const OutlineInputBorder(),
                 ),
-                onChanged: (v) => setState(() => _defaultCurrency = v),
-              ),
-              Text(
-                l10n.merchantLocationPickerTitle,
-                style: theme.textTheme.titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              MapPointPicker(
-                initialValue: _coordinate,
-                onChanged: _saving ? null : _onMapChanged,
-                tileProvider: widget.mapTileProvider,
-              ),
-            ],
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _addressController,
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: l10n.merchantAddress,
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(l10n.merchantIsOpen),
+                  value: _isOpen,
+                  onChanged: _saving
+                      ? null
+                      : (value) => setState(() => _isOpen = value),
+                ),
+                const SizedBox(height: 12),
+                RegionSelectField(
+                  value: _regionId,
+                  onChanged: (v) => setState(() => _regionId = v),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String?>(
+                  initialValue: _defaultCurrency,
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.merchantCurrencyFollowRegion),
+                    ),
+                    for (final c in _currencies)
+                      DropdownMenuItem<String?>(
+                        value: c['code'] as String?,
+                        child: Text('${c['name']} ${c['code']}'),
+                      ),
+                  ],
+                  // 收起时只显示三字母代码（未选时显示「跟随地区」）
+                  selectedItemBuilder: (context) => [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(l10n.merchantCurrencyFollowRegion),
+                    ),
+                    for (final c in _currencies)
+                      DropdownMenuItem<String?>(
+                        value: c['code'] as String?,
+                        child: Text(c['code'] as String),
+                      ),
+                  ],
+                  decoration: InputDecoration(
+                    labelText: l10n.merchantDefaultCurrency,
+                    border: const OutlineInputBorder(),
+                  ),
+                  onChanged: (v) => setState(() => _defaultCurrency = v),
+                ),
+                Text(
+                  l10n.merchantLocationPickerTitle,
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                MapPointPicker(
+                  initialValue: _coordinate,
+                  onChanged: _saving ? null : _onMapChanged,
+                  tileProvider: widget.mapTileProvider,
+                ),
+              ],
+            ),
           ),
         ),
       ),

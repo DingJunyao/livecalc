@@ -18,6 +18,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCancel => 'Cancel';
 
   @override
+  String get formExitUnsavedTitle => 'Discard unsaved changes?';
+
+  @override
+  String get formExitUnsavedBody =>
+      'What you filled in has not been saved and will be lost if you exit.';
+
+  @override
+  String get formExitDiscard => 'Discard and exit';
+
+  @override
   String get commonUserInitial => '?';
 
   @override

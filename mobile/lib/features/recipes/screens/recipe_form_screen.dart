@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../models/recipe_detail.dart';
 import '../repositories/recipe_repository.dart';
 import '../../../shared/widgets/save_action_button.dart';
+import '../../../shared/widgets/form_exit_guard.dart';
 import '../../profile/providers/save_button_position_provider.dart';
 
 class RecipeFormResult {
@@ -115,6 +116,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   bool _uploadingImage = false;
   bool _hasSectionSave = false;
   bool _hasPendingSection = false;
+
+  /// 退出确认对话框已弹出时忽略新的返回事件（避免连按弹两层）。
+  bool _confirmingExit = false;
   Map<String, dynamic> _basicBaseline = {};
   List<Map<String, dynamic>> _ingredientsBaseline = const [];
   List<Map<String, dynamic>> _stepsBaseline = const [];
@@ -543,6 +547,17 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     _tipsBaseline = _tipPayload();
   }
 
+  /// 新增态是否写过任何内容：各分区当前 payload 与进入页面时的基线比对。
+  bool get _hasUnsavedCreateInput {
+    if (_isEdit) return false;
+    return _changedBasicPayload().isNotEmpty ||
+        !_listJsonEquals(
+            [for (final input in _ingredientInputs()) input.toJson()],
+            _ingredientsBaseline) ||
+        jsonEncode(_stepPayload()) != jsonEncode(_stepsBaseline) ||
+        jsonEncode(_tipPayload()) != jsonEncode(_tipsBaseline);
+  }
+
   Map<String, dynamic> _changedBasicPayload() {
     final current = _basicPayload();
     return {
@@ -799,10 +814,9 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
   /// 编辑态且未指定分区时没有页面级保存（由各分区卡片自己的保存按钮负责）。
   bool get _hasPageSave => !_isEdit || widget.section != null;
 
-  bool get _pageSaveBusy =>
-      _isEdit && widget.section != null
-          ? (_savingSection != null || _uploadingImage)
-          : _saving;
+  bool get _pageSaveBusy => _isEdit && widget.section != null
+      ? (_savingSection != null || _uploadingImage)
+      : _saving;
 
   String _pageSaveLabel(AppLocalizations l10n) =>
       _isEdit && widget.section != null
@@ -822,6 +836,24 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
     return _saving ? null : _save;
   }
 
+  /// 返回（AppBar 返回键 / 系统返回手势）：新增态写过内容先弹确认。
+  Future<void> _handleBack() async {
+    if (_confirmingExit) return;
+    if (!_isEdit && _hasUnsavedCreateInput) {
+      _confirmingExit = true;
+      final discard = await confirmDiscardUnsavedChanges(context);
+      _confirmingExit = false;
+      if (!discard || !mounted) return;
+    }
+    Navigator.of(context).pop(
+      RecipeFormResult(
+        saved: _hasSectionSave,
+        pending: _hasPendingSection,
+        recipeId: _editId,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -831,13 +863,7 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) {
         if (didPop) return;
-        Navigator.of(context).pop(
-          RecipeFormResult(
-            saved: _hasSectionSave,
-            pending: _hasPendingSection,
-            recipeId: _editId,
-          ),
-        );
+        _handleBack();
       },
       child: Scaffold(
         appBar: AppBar(

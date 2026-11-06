@@ -16,6 +16,7 @@ import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/error_display.dart';
+import '../../../shared/widgets/form_exit_guard.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/sparkline.dart';
 import '../providers/planner_provider.dart';
@@ -622,77 +623,82 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_planId == null ? l10n.plansNewPlan : l10n.plansEdit),
-        leading: const AppBackButton(),
-        actions: [
-          const CalcContextMenuButton(),
-          ValueListenableBuilder<TextEditingValue>(
-            valueListenable: _nameController,
-            builder: (context, value, _) => IconButton(
-              icon: const Icon(Icons.save),
-              tooltip: l10n.commonSave,
-              onPressed: _saving || value.text.trim().isEmpty ? null : _save,
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.verified_outlined),
-            tooltip: l10n.plansSetToday,
-            onPressed: _saving ? null : _setToday,
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: _nameController,
-              decoration: InputDecoration(labelText: l10n.plansPlanName),
-            ),
-            const SizedBox(height: 12),
-            SegmentedButton<String>(
-              segments: [
-                ButtonSegment(value: 'meal', label: Text(l10n.plansKindMeal)),
-                ButtonSegment(value: 'day', label: Text(l10n.plansKindDay)),
-              ],
-              selected: {_kind},
-              onSelectionChanged: (v) {
-                setState(() => _kind = v.first);
-                _evaluate();
-              },
-            ),
-            const SizedBox(height: 16),
-            FilledButton.tonalIcon(
-              onPressed: () => _addEntity(_PlanEntityType.recipe),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.plansAddItem),
-            ),
-            const SizedBox(height: 8),
-            for (var index = 0; index < _items.length; index++)
-              _itemTile(theme, l10n, index),
-            if (_evaluation != null) ...[
-              const Divider(height: 24),
-              Text(l10n.plansTotals,
-                  style: theme.textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              PlanTotalsGrid(
-                totals: (_evaluation!['totals'] as Map<String, dynamic>?) ??
-                    const {},
-                targets: (_evaluation!['targets'] as Map<String, dynamic>?) ??
-                    const {},
-                userCurrency: userCurrency,
+    return FormExitGuard(
+      enabled: _planId == null && !_saving,
+      isDirty: () =>
+          _nameController.text.trim().isNotEmpty || _items.isNotEmpty,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_planId == null ? l10n.plansNewPlan : l10n.plansEdit),
+          leading: const AppBackButton(),
+          actions: [
+            const CalcContextMenuButton(),
+            ValueListenableBuilder<TextEditingValue>(
+              valueListenable: _nameController,
+              builder: (context, value, _) => IconButton(
+                icon: const Icon(Icons.save),
+                tooltip: l10n.commonSave,
+                onPressed: _saving || value.text.trim().isEmpty ? null : _save,
               ),
-              if (_evaluating)
-                const Padding(
-                  padding: EdgeInsets.only(top: 8),
-                  child: LinearProgressIndicator(minHeight: 2),
-                ),
-            ],
+            ),
+            IconButton(
+              icon: const Icon(Icons.verified_outlined),
+              tooltip: l10n.plansSetToday,
+              onPressed: _saving ? null : _setToday,
+            ),
           ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                controller: _nameController,
+                decoration: InputDecoration(labelText: l10n.plansPlanName),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<String>(
+                segments: [
+                  ButtonSegment(value: 'meal', label: Text(l10n.plansKindMeal)),
+                  ButtonSegment(value: 'day', label: Text(l10n.plansKindDay)),
+                ],
+                selected: {_kind},
+                onSelectionChanged: (v) {
+                  setState(() => _kind = v.first);
+                  _evaluate();
+                },
+              ),
+              const SizedBox(height: 16),
+              FilledButton.tonalIcon(
+                onPressed: () => _addEntity(_PlanEntityType.recipe),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.plansAddItem),
+              ),
+              const SizedBox(height: 8),
+              for (var index = 0; index < _items.length; index++)
+                _itemTile(theme, l10n, index),
+              if (_evaluation != null) ...[
+                const Divider(height: 24),
+                Text(l10n.plansTotals,
+                    style: theme.textTheme.titleSmall
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 8),
+                PlanTotalsGrid(
+                  totals: (_evaluation!['totals'] as Map<String, dynamic>?) ??
+                      const {},
+                  targets: (_evaluation!['targets'] as Map<String, dynamic>?) ??
+                      const {},
+                  userCurrency: userCurrency,
+                ),
+                if (_evaluating)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: LinearProgressIndicator(minHeight: 2),
+                  ),
+              ],
+            ],
+          ),
         ),
       ),
     );

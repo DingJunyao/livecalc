@@ -779,8 +779,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(copy.productHeader), findsOneWidget);
       expect(find.text(copy.unitPrice), findsOneWidget);
+      // 紧凑行不再有 labelText（对齐 web），手动行名称用 hint 标识
       final name = tester.widget<TextField>(
-        find.widgetWithText(TextField, copy.productNameLabel),
+        find.widgetWithText(TextField, copy.newProductHint),
       );
       expect(name.controller?.text, isEmpty);
       expect(name.decoration?.hintText, copy.newProductHint);

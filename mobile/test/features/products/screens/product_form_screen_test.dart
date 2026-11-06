@@ -154,7 +154,7 @@ void main() {
     const ingredient = Ingredient(id: 8, name: '面粉');
     final repo = _FakeProductRepository(const Product(id: 0, name: ''));
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: Builder(
@@ -217,7 +217,7 @@ void main() {
       tags: ['烘焙'],
     ));
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -258,7 +258,7 @@ void main() {
     final lookupCompleter = Completer<BarcodeLookupResult>();
     final repo = _ScanLookupRepository(lookupCompleter);
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -292,7 +292,7 @@ void main() {
     final lookupCompleter = Completer<BarcodeLookupResult>();
     final repo = _ScanLookupRepository(lookupCompleter);
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -345,7 +345,7 @@ void main() {
       Ingredient(id: 2, name: '砂糖', category: '调味'),
     ]);
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -406,7 +406,7 @@ void main() {
         source: 'override',
       );
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: ProductFormScreen(
@@ -544,5 +544,78 @@ void main() {
 
     expect(repo.lastCreatedName, '高筋粉');
     expect(priceList.loadRecordsCalls, 0);
+  });
+
+  testWidgets('新增态扫码 prefill 不算「写过信息」，返回不弹确认', (tester) async {
+    await useTallViewport(tester);
+    const ingredient = Ingredient(id: 8, name: '面粉');
+    final repo = _FakeProductRepository(const Product(id: 0, name: ''));
+    await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductFormScreen(
+                fixedIngredient: ingredient,
+                repository: repo,
+                prefill: const ProductFormPrefill(barcode: '6901234567890'),
+              ),
+            ),
+          ),
+          child: const Text('Open'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.text('Open'), findsOneWidget);
+  });
+
+  testWidgets('新增态写过名称后返回弹放弃确认', (tester) async {
+    await useTallViewport(tester);
+    const ingredient = Ingredient(id: 8, name: '面粉');
+    final repo = _FakeProductRepository(const Product(id: 0, name: ''));
+    await tester.pumpWidget(ProviderScope(
+        child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductFormScreen(
+                fixedIngredient: ingredient,
+                repository: repo,
+              ),
+            ),
+          ),
+          child: const Text('Open'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '高筋粉',
+    );
+    await tester.pump();
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.text('Discard unsaved changes?'), findsOneWidget);
+
+    await tester.tap(find.text('Discard and exit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open'), findsOneWidget);
   });
 }

@@ -18,6 +18,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get commonCancel => 'إلغاء';
 
   @override
+  String get formExitUnsavedTitle => 'تجاهل التغييرات غير المحفوظة؟';
+
+  @override
+  String get formExitUnsavedBody => 'ما أدخلته لم يتم حفظه وسيُفقد عند الخروج.';
+
+  @override
+  String get formExitDiscard => 'تجاهل والخروج';
+
+  @override
   String get commonUserInitial => '؟';
 
   @override

@@ -30,14 +30,17 @@ class NumericKeypad extends StatelessWidget {
 
   Widget _buildRow(List<String> keys) {
     return Row(
-      children: keys
-          .map((key) => _KeyButton(
-                label: key,
-                isAction: key == '⌫' || key == 'C' || key == '✓',
-                isConfirm: key == '✓',
-                onTap: () => onKeyTap(key),
-              ))
-          .toList(),
+      children: [
+        for (final key in keys)
+          Expanded(
+            child: _KeyButton(
+              label: key,
+              isAction: key == '⌫' || key == 'C' || key == '✓',
+              isConfirm: key == '✓',
+              onTap: () => onKeyTap(key),
+            ),
+          ),
+      ],
     );
   }
 
@@ -46,15 +49,15 @@ class NumericKeypad extends StatelessWidget {
       children: [
         Expanded(
             flex: 2, child: _KeyButton(label: '0', onTap: () => onKeyTap('0'))),
-        _KeyButton(label: '.', onTap: () => onKeyTap('.')),
+        Expanded(child: _KeyButton(label: '.', onTap: () => onKeyTap('.'))),
         Expanded(
-            flex: 1,
-            child: _KeyButton(
-              label: '✓',
-              isAction: true,
-              isConfirm: true,
-              onTap: onConfirm,
-            )),
+          child: _KeyButton(
+            label: '✓',
+            isAction: true,
+            isConfirm: true,
+            onTap: onConfirm,
+          ),
+        ),
       ],
     );
   }
@@ -84,24 +87,24 @@ class _KeyButton extends StatelessWidget {
     final fgColor =
         isConfirm ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface;
 
-    return Expanded(
-      child: AspectRatio(
-        aspectRatio: 1.3,
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Material(
-            color: bgColor,
+    // 注意：不要在这里再包一层 Expanded —— 父级 Row 已经用 Expanded 控制
+    // 弹性，双层 Expanded 会在 debug 模式下抛 ParentData 竞争断言。
+    return AspectRatio(
+      aspectRatio: 1.3,
+      child: Padding(
+        padding: const EdgeInsets.all(4),
+        child: Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(8),
+          child: InkWell(
             borderRadius: BorderRadius.circular(8),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: onTap,
-              child: Center(
-                child: Text(
-                  label,
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: fgColor,
-                  ),
+            onTap: onTap,
+            child: Center(
+              child: Text(
+                label,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: fgColor,
                 ),
               ),
             ),

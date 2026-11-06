@@ -335,4 +335,59 @@ void main() {
     expect(find.text('PLAN_DETAIL'), findsOneWidget);
     expect(router.routerDelegate.currentConfiguration.uri.path, '/plans/42');
   });
+
+  testWidgets('new plan with unsaved input asks before leaving via back',
+      (tester) async {
+    final previousAdapter = ApiClient.instance.dio.httpClientAdapter;
+    ApiClient.instance.dio.interceptors.clear();
+    ApiClient.instance.dio.httpClientAdapter = _PlannerApiAdapter();
+    addTearDown(() {
+      ApiClient.instance.dio.httpClientAdapter = previousAdapter;
+    });
+
+    // 表单挂在上一页之上：放弃退出后要能回到上一页
+    final router = GoRouter(
+      initialLocation: '/home',
+      routes: [
+        GoRoute(
+          path: '/home',
+          builder: (_, __) => Builder(
+            builder: (context) => TextButton(
+              onPressed: () => context.push('/plans/edit'),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/plans/edit',
+          builder: (_, __) => const PlannerEditScreen(),
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(_wrap(router: router));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    // 写入方案名 → 返回（AppBackButton 走 maybePop，被 FormExitGuard 拦截）
+    await tester.enterText(find.byType(TextField).first, 'New plan');
+    await tester.pump();
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsOneWidget);
+
+    // 取消 → 留在表单（AppBar 标题与方案名同为 'New plan'，此处只断言对话框已关）
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.text('Discard unsaved changes?'), findsNothing);
+    expect(find.text('Open'), findsNothing);
+
+    // 再返回 → 放弃并退出 → 回到上一页
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discard and exit'));
+    await tester.pumpAndSettle();
+    expect(find.text('Open'), findsOneWidget);
+  });
 }

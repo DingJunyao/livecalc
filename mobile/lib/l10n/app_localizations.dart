@@ -118,6 +118,24 @@ abstract class AppLocalizations {
   /// **'取消'**
   String get commonCancel;
 
+  /// No description provided for @formExitUnsavedTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃未保存的修改？'**
+  String get formExitUnsavedTitle;
+
+  /// No description provided for @formExitUnsavedBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'你已填写的内容尚未保存，退出后将丢失。'**
+  String get formExitUnsavedBody;
+
+  /// No description provided for @formExitDiscard.
+  ///
+  /// In zh, this message translates to:
+  /// **'放弃并退出'**
+  String get formExitDiscard;
+
   /// No description provided for @commonUserInitial.
   ///
   /// In zh, this message translates to:

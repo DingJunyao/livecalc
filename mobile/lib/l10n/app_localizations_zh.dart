@@ -18,6 +18,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonCancel => '取消';
 
   @override
+  String get formExitUnsavedTitle => '放弃未保存的修改？';
+
+  @override
+  String get formExitUnsavedBody => '你已填写的内容尚未保存，退出后将丢失。';
+
+  @override
+  String get formExitDiscard => '放弃并退出';
+
+  @override
   String get commonUserInitial => '?';
 
   @override
