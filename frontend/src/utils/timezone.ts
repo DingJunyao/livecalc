@@ -65,6 +65,17 @@ export function getLocalDateString(): string {
 }
 
 /**
+ * 将 UTC ISO 时间字符串转换为 datetime-local 输入框所需的本地时间格式
+ * （YYYY-MM-DDTHH:mm），用于编辑表单回填记录时间。
+ */
+export function utcToDatetimeLocalValue(isoStr: string): string {
+  const d = new Date(isoStr)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/**
  * 获取当前本地日期时间字符串（YYYY-MM-DDTHH:mm）
  * 用于 datetime-local input 的默认值
  *

@@ -1125,6 +1125,40 @@
               @update:model-value="onPriceMerchantChange"
             />
 
+            <!-- 商品名称（带自动完成，与价格记录页编辑对话框同款；可换绑商品） -->
+            <v-autocomplete
+              v-model="priceSelectedProduct"
+              :search="priceProductSearch"
+              @update:search="onPriceProductSearchUpdate"
+              :items="priceProductSuggestions"
+              :loading="priceProductLoading"
+              :item-title="(item: any) => item.display_name || item.name"
+              item-value="id"
+              :label="t('prices.productName')"
+              variant="outlined"
+              :rules="priceProductIdRules"
+              :no-data-text="priceProductSearch ? t('prices.noProductFoundCreate') : t('prices.inputProductSearch')"
+              clearable
+              auto-select-first
+              return-object
+              hide-selected
+              :custom-filter="() => true"
+              class="mb-4"
+            >
+              <template #item="{ props, item }">
+                <v-list-item v-bind="props">
+                  <template #subtitle>
+                    <span v-if="item.raw.matched_alias" class="text-caption">
+                      {{ t('prices.alias', { name: item.raw.matched_alias }) }}
+                    </span>
+                    <span v-else-if="item.raw.ingredient_name" class="text-caption">
+                      {{ item.raw.ingredient_name }}
+                    </span>
+                  </template>
+                </v-list-item>
+              </template>
+            </v-autocomplete>
+
             <!-- 价格（币种在价格右侧，显示三字母） -->
             <div class="d-flex align-center ga-2 mb-4">
               <v-text-field
@@ -1174,6 +1208,41 @@
                 />
               </v-col>
             </v-row>
+
+            <!-- 计入支出复选框（对齐价格记录页编辑对话框） -->
+            <v-checkbox
+              v-model="priceForm.is_purchase"
+              :label="t('prices.countExpense')"
+              color="primary"
+              density="comfortable"
+              class="mb-4"
+            >
+              <template #append>
+                <v-tooltip location="top">
+                  <template #activator="{ props }">
+                    <v-icon v-bind="props" size="small" color="grey">mdi-help-circle</v-icon>
+                  </template>
+                  <span>{{ t('prices.countExpenseTooltip') }}</span>
+                </v-tooltip>
+              </template>
+            </v-checkbox>
+
+            <!-- 记录时间 -->
+            <v-text-field
+              v-model="priceForm.recorded_at"
+              :label="t('prices.recordedAtOptional')"
+              variant="outlined"
+              type="datetime-local"
+              class="mb-4"
+            />
+
+            <!-- 备注 -->
+            <v-textarea
+              v-model="priceForm.notes"
+              :label="t('prices.notesOptional')"
+              variant="outlined"
+              rows="2"
+            />
           </v-form>
         </v-card-text>
         <v-card-actions class="pa-4 pt-0">
@@ -1334,6 +1403,7 @@ import { api, LONG_REQUEST_TIMEOUT } from '@/api'
 import { getProductMyWeight, setProductMyWeight, deleteProductMyWeight } from '@/api/productWeight'
 import { getErrorMessage } from '@/utils/errorHandler'
 import { useFavorites } from '@/composables/useFavorites'
+import { usePriceProductAutocomplete } from '@/composables/usePriceProductAutocomplete'
 import FavoriteButton from '@/components/common/FavoriteButton.vue'
 import BarcodeField from '@/components/common/BarcodeField.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
@@ -1368,7 +1438,7 @@ import { useUserStore } from '@/stores/user'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
 import { usePendingProposals } from '@/composables/usePendingProposals'
-import { formatToLocalDate, formatToLocalDateTimeShort } from '@/utils/timezone'
+import { formatToLocalDate, formatToLocalDateTimeShort, utcToDatetimeLocalValue } from '@/utils/timezone'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useUserUnits } from '@/composables/useUserUnits'
 import { useUserCurrency } from '@/composables/useUserCurrency'
@@ -1884,8 +1954,26 @@ const priceForm = ref({
   price: 0,
   quantity: 1,
   unit: priceUnitName.value,
-  merchant_id: null as number | null
+  merchant_id: null as number | null,
+  notes: '' as string | null,
+  recorded_at: '',
+  is_purchase: true
 })
+
+// 编辑价格对话框的商品自动完成（与价格记录页编辑对话框同款，可换绑商品）
+const {
+  productSearch: priceProductSearch,
+  productSuggestions: priceProductSuggestions,
+  productLoading: priceProductLoading,
+  selectedProduct: priceSelectedProduct,
+  onProductSearchUpdate: onPriceProductSearchUpdate,
+  selectProduct: selectPriceProduct,
+  resetProduct: resetPriceProduct
+} = usePriceProductAutocomplete()
+
+const priceProductIdRules = [
+  (v: number | null) => !!v || t('prices.chooseOrInputProduct')
+]
 
 // 价格对话框币种（对齐 QuickPriceRecordDialog / PriceRecordForm）
 const priceCurrencies = ref<any[]>([])
@@ -1912,8 +2000,17 @@ const openAddPriceDialog = () => {
     price: 0,
     quantity: 1,
     unit: priceUnitName.value,
-    merchant_id: null
+    merchant_id: null,
+    notes: '',
+    recorded_at: '',
+    is_purchase: true
   }
+  // 商品预填为当前商品（可搜索换绑，对齐价格记录页编辑对话框）
+  selectPriceProduct(
+    product.value
+      ? { id: productId.value, name: product.value.name || '' }
+      : null
+  )
   void applyPriceCurrency('CNY')
   showAddPriceDialog.value = true
 }
@@ -1925,8 +2022,18 @@ const openEditPriceDialog = (record: PriceRecord) => {
     price: Number(record.price),
     quantity: Number(record.original_quantity),
     unit: record.original_unit || priceUnitName.value,
-    merchant_id: null
+    merchant_id: (record as any).merchant_id || null,
+    notes: record.notes || '',
+    recorded_at: record.recorded_at
+      ? utcToDatetimeLocalValue(record.recorded_at)
+      : '',
+    is_purchase: (record as any).record_type !== 'price'
   }
+  selectPriceProduct(
+    record.product_id
+      ? { id: record.product_id, name: record.product_name || '' }
+      : null
+  )
   void applyPriceCurrency(record.currency || 'CNY')
   showAddPriceDialog.value = true
 }
@@ -3546,17 +3653,33 @@ const saveNutritionEdit = async () => {
 // 保存价格记录（新增或编辑）
 const savePriceRecord = async () => {
   if (!priceForm.value.price || !priceForm.value.quantity) return
+  // 商品必选（编辑可换绑；未点选时选择器已清空，阻止提交）
+  const selectedProductId = priceSelectedProduct.value?.id ?? null
+  if (!selectedProductId) {
+    showMessage(t('prices.chooseOrInputProduct'), 'error')
+    return
+  }
 
   savingPrice.value = true
   try {
+    // 通用字段：备注 / 记录时间 / 计入支出（对齐价格记录页编辑对话框）
+    const extra = {
+      notes: priceForm.value.notes || null,
+      record_type: priceForm.value.is_purchase ? 'purchase' : 'price'
+    }
+    if (priceForm.value.recorded_at) {
+      ;(extra as any).recorded_at = new Date(priceForm.value.recorded_at).toISOString()
+    }
     if (editingPriceRecord.value) {
       // 编辑模式
       await api.put(`/products/${editingPriceRecord.value.id}`, {
+        product_id: selectedProductId,
         price: priceForm.value.price,
         original_quantity: priceForm.value.quantity,
         original_unit: priceForm.value.unit,
         merchant_id: priceForm.value.merchant_id,
-        currency: priceCurrency.value
+        currency: priceCurrency.value,
+        ...extra
       })
       showAddPriceDialog.value = false
       editingPriceRecord.value = null
@@ -3566,17 +3689,27 @@ const savePriceRecord = async () => {
     } else {
       // 新增模式
       await api.post('/products', {
-        product_id: productId.value,
-        product_name: product.value?.name,
+        product_id: selectedProductId,
+        product_name: priceSelectedProduct.value?.name,
         price: priceForm.value.price,
         original_quantity: priceForm.value.quantity,
         original_unit: priceForm.value.unit,
         merchant_id: priceForm.value.merchant_id,
-        currency: priceCurrency.value
+        currency: priceCurrency.value,
+        ...extra
       })
       showAddPriceDialog.value = false
       // 重置表单
-      priceForm.value = { price: 0, quantity: 1, unit: priceUnitName.value, merchant_id: null }
+      priceForm.value = {
+        price: 0,
+        quantity: 1,
+        unit: priceUnitName.value,
+        merchant_id: null,
+        notes: '',
+        recorded_at: '',
+        is_purchase: true
+      }
+      resetPriceProduct()
       // 重新加载数据
       await loadData()
       refreshChart()
