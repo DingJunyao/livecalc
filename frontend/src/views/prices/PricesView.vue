@@ -1021,7 +1021,8 @@ const saveRecord = async () => {
     }
 
     if (isEditing.value && editingId.value) {
-      // 更新记录
+      // 更新记录（校验规则保证商品必选；换绑商品由后端同步商品名快照并重算标准量）
+      data.product_id = form.value.product_id
       await api.put(`/products/${editingId.value}`, data)
     } else {
       // 创建记录
