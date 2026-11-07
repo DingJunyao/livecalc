@@ -64,11 +64,9 @@ const priceRecordUnits = [
 class PriceRecordFormArguments {
   final List<Merchant> merchants;
   final List<ProductOption> products;
+  /// 初始商品（仅作为可搜索商品字段的回显种子，可被用户换绑）
   final int? fixedProductId;
   final String? fixedProductName;
-  /// 价格列表的编辑入口开放换绑商品（搜索选择已有商品）；商品/原料详情页
-  /// 的记录编辑保持商品固定，与 web 详情页对话框（无商品字段）一致。
-  final bool allowProductChange;
   final double? initialPrice;
   final double? initialQuantity;
   final String? initialUnit;
@@ -83,7 +81,6 @@ class PriceRecordFormArguments {
     this.products = const [],
     this.fixedProductId,
     this.fixedProductName,
-    this.allowProductChange = false,
     this.initialPrice,
     this.initialQuantity,
     this.initialUnit,
@@ -355,9 +352,9 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
       _toast(l10n.priceQuantityRequired);
       return;
     }
-    // 允许换绑商品时必须是确定商品：改了文本没点选 → 保存前必须重新选择
+    // 必须是确定商品：改了文本没点选 → 保存前必须重新选择
     //（编辑态不能像新增那样按名称自动建商品）。
-    if (widget.arguments.allowProductChange && _productId == null) {
+    if (_productId == null) {
       _toast(l10n.priceProductRequired);
       return;
     }
@@ -483,76 +480,40 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              if (args.allowProductChange) ...[
-                // 价格列表的编辑入口：可搜索换绑到已有商品（对齐 web 编辑对话框）。
-                TextField(
-                  controller: _productController,
-                  decoration: InputDecoration(
-                    labelText: l10n.priceProductLabel,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    suffixIcon: _searchingProduct
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : null,
+              // 商品：统一为可搜索字段（所有入口一致，可换绑到已有商品；
+              // 改文本未点选时保存会被拦截提示）。
+              TextField(
+                controller: _productController,
+                decoration: InputDecoration(
+                  labelText: l10n.priceProductLabel,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onChanged: _onProductTextChanged,
+                  suffixIcon: _searchingProduct
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : null,
                 ),
-                if (_productResults.isNotEmpty)
-                  Card(
-                    margin: const EdgeInsets.only(top: 8),
-                    child: Column(
-                      children: [
-                        for (final p in _productResults)
-                          ListTile(
-                            dense: true,
-                            title: Text(p.name),
-                            onTap: () => _selectProduct(p),
-                          ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 16),
-              ] else if (args.fixedProductName != null)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Text(
-                    args.fixedProductName!,
-                    style: theme.textTheme.bodyMedium
-                        ?.copyWith(color: theme.colorScheme.outline),
+                onChanged: _onProductTextChanged,
+              ),
+              if (_productResults.isNotEmpty)
+                Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: Column(
+                    children: [
+                      for (final p in _productResults)
+                        ListTile(
+                          dense: true,
+                          title: Text(p.name),
+                          onTap: () => _selectProduct(p),
+                        ),
+                    ],
                   ),
                 ),
-              if (!args.allowProductChange &&
-                  args.products.length > 1 &&
-                  args.fixedProductId == null)
-                DropdownButtonFormField<int>(
-                  key: ValueKey(_productId),
-                  initialValue: _productId,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: l10n.priceProductLabel,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  items: [
-                    for (final product in args.products)
-                      DropdownMenuItem(
-                        value: product.id,
-                        child: Text(product.name),
-                      ),
-                  ],
-                  onChanged: (value) => setState(() => _productId = value),
-                ),
-              if (!args.allowProductChange &&
-                  args.products.length > 1 &&
-                  args.fixedProductId == null)
-                const SizedBox(height: 16),
+              const SizedBox(height: 16),
               // 价格（带币种下拉，对齐新增页样式）
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,

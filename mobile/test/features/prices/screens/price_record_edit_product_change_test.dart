@@ -34,7 +34,6 @@ void main() {
                           merchants: [],
                           fixedProductId: 1,
                           fixedProductName: '苹果',
-                          allowProductChange: true,
                           initialPrice: 5,
                           initialQuantity: 1,
                           initialUnit: '斤',

@@ -397,6 +397,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         quantity: result.quantity,
         unit: result.unit,
         merchantId: result.merchantId,
+        productId: result.productId,
         recordType: result.recordType,
         recordedAt: result.recordedAt,
         notes: result.notes,
