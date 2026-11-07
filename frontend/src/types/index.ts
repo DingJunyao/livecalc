@@ -69,10 +69,13 @@ export interface Merchant {
 
 export interface PriceRecord {
   id: number
+  product_id?: number
   product_name: string
   price: number
   quantity: number
   unit: string
+  original_quantity?: number
+  original_unit?: string
   merchant_name?: string
   record_date: string
   created_at: string
@@ -80,6 +83,9 @@ export interface PriceRecord {
   exchange_rate: number
   user_currency: string
   merchant_id?: number | null
+  record_type?: string | null
+  recorded_at?: string
+  notes?: string | null
 }
 
 export interface Recipe {
