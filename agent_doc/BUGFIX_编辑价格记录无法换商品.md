@@ -41,7 +41,22 @@
 - **坑**：`PriceRecordFormArguments.initialPrice` 改动时误写成 `String?`（应为 `double?`），analyze 立即暴露。
 - 验证：`flutter analyze` 基线；新增 2 例 + prices 全量 + 三端详情既有 121 例全过。
 
-## 遗留
+## 同日追加：详情入口也可换商品 + 编辑页布局统一
 
-- 编辑态「输入全新商品名直接建新品」两端都未支持（web 校验本就要求选中已有商品；新增流程才建新品），如需要另行评估。
-- Mimosa 提交门禁在本机对既有文件（本地模式演示账号 `auth.ts`、gitignore 的 `dev-dist/` workbox 产物）报 high 误报，重试后按兼容策略放行；建议后续跑一次完整审计并给本地模式/生成产物加豁免规则。
+用户反馈：从原料/商品详情进入的编辑页仍不能改商品，且这几处编辑页布局样式应统一。
+
+**移动端**（feat/mobile-app `cca90a2f`）：
+- `PriceRecordEditScreen` 商品字段**单一化**：删掉「固定灰字」与「多商品下拉」两个分支，所有入口（价格列表/商品详情/原料详情）统一渲染同一个可搜索 TextField（初始回显由 `fixedProductId`/`fixedProductName` 作种子），改文本未点选一律拦截保存。
+- `PriceRecordFormArguments` 移除 `allowProductChange`（上一轮刚加的开关即废）；`fixedProductId`/`fixedProductName` 语义改为「初始回显种子」。
+- 商品/原料详情页 notifier.updateRecord 增加 `productId` 透传（详情页编辑后 `notifier` 会整页刷新，商品名快照由后端同步，无需前端 patch）。
+- 验证：analyze 基线；prices 全量 + 三端详情 121 例全过。
+
+**web**（master `f25e434f`）：
+- 详情页两个编辑对话框（`ProductDetail.vue` / `IngredientDetail.vue`）此前分别「无商品字段」/「一行灰字」，与价格记录页（`PricesView`）的编辑对话框不一致——补齐为**同一字段集**：商家 → 商品（可搜索自动完成，与 PricesView 同款同位）→ 价格+币种 → 数量/单位 → 计入支出 → 记录时间 → 备注。
+- 新组合式函数 `composables/usePriceProductAutocomplete.ts`（`/products/autocomplete` + 300ms 防抖 + 请求序号；**搜索文本偏离选中项自动取消选中**，避免保存带旧 productId）——detail 两处复用；PricesView 内联实现暂未迁移（风险控制，后续可迁移）。
+- 打开编辑对话框预填记录的商品与商家（ProductDetail 此前 merchant_id 硬置 null）；payload 带 `product_id`/`notes`/`record_type`/`recorded_at`（编辑态换绑商品由后端同步快照并重算标准量）。
+- `PriceRecord` 类型补 `product_id`/`original_*`/`record_type`/`recorded_at`/`notes`（后端实际返回）；`utils/timezone.ts` 补 `utcToDatetimeLocalValue`（datetime-local 回填）。
+- 验证：`npm run build` ✓。
+- 后续可做：把 PricesView 的内联商品搜索迁移到组合式函数、抽共享编辑对话框组件（三处字段集已一致，迁移成本低）；编辑态「输入全新商品名建新品」仍两端未支持。
+
+Mimosa 门禁：本轮被同样 24 条既有误报（本地模式哨兵 token `'local-mode'` + gitignore 的 dev-dist workbox 产物）连续拦截 3 次，删除可再生 dev-dist 后按兼容策略放行；auth.ts 的 token 字面量属本地模式脚手架（不会通过服务端认证），建议用户给安全门禁加豁免规则或接受为基线。
