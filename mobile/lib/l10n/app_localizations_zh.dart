@@ -1072,6 +1072,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get priceProductLabel => '商品';
 
   @override
+  String get priceProductRequired => '请选择商品';
+
+  @override
   String get priceLabel => '价格';
 
   @override

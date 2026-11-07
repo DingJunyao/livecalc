@@ -1096,6 +1096,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get priceProductLabel => 'المنتج';
 
   @override
+  String get priceProductRequired => 'اختر منتجًا';
+
+  @override
   String get priceLabel => 'السعر';
 
   @override

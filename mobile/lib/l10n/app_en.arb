@@ -780,6 +780,8 @@
   "@priceMerchantLabel": {},
   "priceProductLabel": "Product",
   "@priceProductLabel": {},
+  "priceProductRequired": "Choose a product",
+  "@priceProductRequired": {},
   "priceLabel": "Price",
   "@priceLabel": {},
   "priceCurrencyLabel": "Currency",

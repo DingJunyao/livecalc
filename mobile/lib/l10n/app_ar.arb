@@ -780,6 +780,8 @@
   "@priceMerchantLabel": {},
   "priceProductLabel": "المنتج",
   "@priceProductLabel": {},
+  "priceProductRequired": "اختر منتجًا",
+  "@priceProductRequired": {},
   "priceLabel": "السعر",
   "@priceLabel": {},
   "priceCurrencyLabel": "العملة",

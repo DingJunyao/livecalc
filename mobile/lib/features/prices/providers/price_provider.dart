@@ -210,6 +210,8 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
     required String unit,
     int? merchantId,
     String? merchantName,
+    int? productId,
+    String? productName,
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
@@ -222,6 +224,7 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         quantity: quantity,
         unit: unit,
         merchantId: merchantId,
+        productId: productId,
         recordType: recordType,
         recordedAt: recordedAt,
         notes: notes,
@@ -231,8 +234,8 @@ class PriceListNotifier extends StateNotifier<PriceListState> {
         if (r.id != id) return r;
         return PriceRecord(
           id: r.id,
-          productId: r.productId,
-          productName: r.productName,
+          productId: productId ?? r.productId,
+          productName: productName ?? r.productName,
           price: price,
           quantity: quantity,
           unit: unit,

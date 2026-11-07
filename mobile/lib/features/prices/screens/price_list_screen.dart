@@ -75,6 +75,9 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
         merchants: ref.read(merchantListProvider).items,
         fixedProductId: r.productId,
         fixedProductName: r.productName,
+        // 列表页编辑可搜索换绑商品（对齐 web 编辑对话框）；
+        // 商品/原料详情页入口不带此开关，保持商品固定。
+        allowProductChange: true,
         initialPrice: r.price,
         initialQuantity: r.quantity,
         initialUnit: r.unit,
@@ -104,6 +107,8 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             unit: result.unit,
             merchantId: result.merchantId,
             merchantName: merchantName,
+            productId: result.productId,
+            productName: result.productName,
             recordType: result.recordType,
             recordedAt: result.recordedAt,
             notes: result.notes,

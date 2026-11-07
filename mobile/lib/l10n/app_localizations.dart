@@ -2136,6 +2136,12 @@ abstract class AppLocalizations {
   /// **'商品'**
   String get priceProductLabel;
 
+  /// No description provided for @priceProductRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择商品'**
+  String get priceProductRequired;
+
   /// No description provided for @priceLabel.
   ///
   /// In zh, this message translates to:

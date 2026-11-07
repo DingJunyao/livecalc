@@ -105,6 +105,7 @@ class PriceRepository {
     required double quantity,
     required String unit,
     int? merchantId,
+    int? productId,
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,
@@ -118,6 +119,8 @@ class PriceRepository {
       'currency': currency,
     };
     if (merchantId != null) data['merchant_id'] = merchantId;
+    // 换绑商品：编辑表单保证非空才提交（后端同步商品名快照并重算标准量）
+    if (productId != null) data['product_id'] = productId;
     if (recordedAt != null) {
       data['recorded_at'] = recordedAt.toUtc().toIso8601String();
     }

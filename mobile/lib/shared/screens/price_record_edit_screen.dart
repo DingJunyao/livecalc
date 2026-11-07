@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/i18n/app_formatters.dart';
 import '../../features/merchants/models/merchant.dart';
 import '../../features/prices/repositories/price_repository.dart';
+import '../../features/products/models/product.dart';
+import '../../features/products/repositories/product_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../utils/currency_fmt.dart';
 import '../utils/entity_unit_names.dart';
@@ -15,6 +19,8 @@ class PriceRecordFormResult {
   final String unit;
   final int? merchantId;
   final int? productId;
+  /// 换绑后的商品名快照（未换绑/未选择时为 null，调用方沿用记录现值）
+  final String? productName;
   final String recordType; // 'purchase' | 'price'
   final DateTime recordedAt;
   final String? notes;
@@ -26,6 +32,7 @@ class PriceRecordFormResult {
     required this.unit,
     this.merchantId,
     this.productId,
+    this.productName,
     this.recordType = 'purchase',
     required this.recordedAt,
     this.notes,
@@ -59,6 +66,9 @@ class PriceRecordFormArguments {
   final List<ProductOption> products;
   final int? fixedProductId;
   final String? fixedProductName;
+  /// 价格列表的编辑入口开放换绑商品（搜索选择已有商品）；商品/原料详情页
+  /// 的记录编辑保持商品固定，与 web 详情页对话框（无商品字段）一致。
+  final bool allowProductChange;
   final double? initialPrice;
   final double? initialQuantity;
   final String? initialUnit;
@@ -73,6 +83,7 @@ class PriceRecordFormArguments {
     this.products = const [],
     this.fixedProductId,
     this.fixedProductName,
+    this.allowProductChange = false,
     this.initialPrice,
     this.initialQuantity,
     this.initialUnit,
@@ -92,6 +103,9 @@ class PriceRecordEditScreen extends ConsumerStatefulWidget {
   /// 测试注入，缺省用真实 repository。
   final PriceRepository? priceRepository;
 
+  /// 测试注入：商品搜索（缺省用真实 repository）。
+  final ProductRepository? productRepository;
+
   /// 测试注入：全局单位名加载器（缺省走 /units/）。
   final Future<List<String>> Function()? globalUnitNamesLoader;
 
@@ -102,6 +116,7 @@ class PriceRecordEditScreen extends ConsumerStatefulWidget {
     super.key,
     required this.arguments,
     this.priceRepository,
+    this.productRepository,
     this.globalUnitNamesLoader,
     this.unitNamesLoader,
   });
@@ -116,10 +131,18 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   late final TextEditingController _quantityController;
   late final TextEditingController _merchantController;
   late final TextEditingController _notesController;
+  late final TextEditingController _productController;
   late final PriceRepository _priceRepo;
+  late final ProductRepository _productRepo;
   late String _unit;
   int? _merchantId;
   int? _productId;
+  /// 允许换绑商品时的搜索态（对齐新增页：300ms 防抖 + 请求序号）
+  Product? _selectedProduct;
+  List<Product> _productResults = const [];
+  bool _searchingProduct = false;
+  Timer? _productSearchDebounce;
+  int _productSearchSeq = 0;
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
   /// 全局单位基准（服务端 /units/ 现拉；失败时回退硬编码常量）
@@ -151,6 +174,12 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     _merchantId = merchantName.isEmpty ? null : args.initialMerchantId;
     _merchantController = TextEditingController(text: merchantName);
     _productId = args.fixedProductId ?? args.products.firstOrNull?.id;
+    _productController = TextEditingController(
+      text: args.fixedProductName ??
+          args.products.where((p) => p.id == _productId).firstOrNull?.name ??
+          '',
+    );
+    _productRepo = widget.productRepository ?? ProductRepository();
     _isPurchase = args.initialRecordType == null
         ? true
         : args.initialRecordType != 'price';
@@ -204,7 +233,63 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     _quantityController.dispose();
     _merchantController.dispose();
     _notesController.dispose();
+    _productController.dispose();
+    _productSearchDebounce?.cancel();
     super.dispose();
+  }
+
+  /// 换绑商品搜索（对齐新增页：300ms 防抖 + 请求序号，防 IME 组合态重复触发）。
+  void _searchProducts(String query) {
+    final q = query.trim();
+    _productSearchDebounce?.cancel();
+    final seq = ++_productSearchSeq;
+    if (q.isEmpty) {
+      setState(() {
+        _productResults = const [];
+        _searchingProduct = false;
+      });
+      return;
+    }
+    setState(() => _searchingProduct = true);
+    _productSearchDebounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        final page = await _productRepo.search(search: q, limit: 10);
+        if (!mounted || seq != _productSearchSeq) return;
+        setState(() {
+          _productResults = page.items;
+          _searchingProduct = false;
+        });
+      } on Exception {
+        if (!mounted || seq != _productSearchSeq) return;
+        setState(() {
+          _productResults = const [];
+          _searchingProduct = false;
+        });
+      }
+    });
+  }
+
+  /// 用户手动编辑商品文本 → 撤销选中（编辑态必须有确定商品，保存前需重新点选）
+  void _onProductTextChanged(String value) {
+    if (_productId != null) {
+      setState(() {
+        _productId = null;
+        _selectedProduct = null;
+      });
+    } else {
+      setState(() => _selectedProduct = null);
+    }
+    _searchProducts(value);
+  }
+
+  void _selectProduct(Product p) {
+    _productController.text = p.name;
+    setState(() {
+      _selectedProduct = p;
+      _productId = p.id;
+      _productResults = const [];
+    });
+    _loadCustomUnits(p.id);
   }
 
   Future<void> _loadCurrencies() async {
@@ -270,6 +355,12 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
       _toast(l10n.priceQuantityRequired);
       return;
     }
+    // 允许换绑商品时必须是确定商品：改了文本没点选 → 保存前必须重新选择
+    //（编辑态不能像新增那样按名称自动建商品）。
+    if (widget.arguments.allowProductChange && _productId == null) {
+      _toast(l10n.priceProductRequired);
+      return;
+    }
     final notes = _notesController.text.trim();
     Navigator.of(context).pop(
       PriceRecordFormResult(
@@ -278,6 +369,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
         unit: _unit,
         merchantId: _merchantId,
         productId: _productId,
+        productName: _selectedProduct?.name,
         recordType: _isPurchase ? 'purchase' : 'price',
         recordedAt: _recordedAt,
         notes: notes.isEmpty ? null : notes,
@@ -391,7 +483,42 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              if (args.fixedProductName != null)
+              if (args.allowProductChange) ...[
+                // 价格列表的编辑入口：可搜索换绑到已有商品（对齐 web 编辑对话框）。
+                TextField(
+                  controller: _productController,
+                  decoration: InputDecoration(
+                    labelText: l10n.priceProductLabel,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    suffixIcon: _searchingProduct
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : null,
+                  ),
+                  onChanged: _onProductTextChanged,
+                ),
+                if (_productResults.isNotEmpty)
+                  Card(
+                    margin: const EdgeInsets.only(top: 8),
+                    child: Column(
+                      children: [
+                        for (final p in _productResults)
+                          ListTile(
+                            dense: true,
+                            title: Text(p.name),
+                            onTap: () => _selectProduct(p),
+                          ),
+                      ],
+                    ),
+                  ),
+                const SizedBox(height: 16),
+              ] else if (args.fixedProductName != null)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16),
                   child: Text(
@@ -400,7 +527,9 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                         ?.copyWith(color: theme.colorScheme.outline),
                   ),
                 ),
-              if (args.products.length > 1 && args.fixedProductId == null)
+              if (!args.allowProductChange &&
+                  args.products.length > 1 &&
+                  args.fixedProductId == null)
                 DropdownButtonFormField<int>(
                   key: ValueKey(_productId),
                   initialValue: _productId,
@@ -420,7 +549,9 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                   ],
                   onChanged: (value) => setState(() => _productId = value),
                 ),
-              if (args.products.length > 1 && args.fixedProductId == null)
+              if (!args.allowProductChange &&
+                  args.products.length > 1 &&
+                  args.fixedProductId == null)
                 const SizedBox(height: 16),
               // 价格（带币种下拉，对齐新增页样式）
               Row(

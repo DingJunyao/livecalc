@@ -780,6 +780,8 @@
   "@priceMerchantLabel": {},
   "priceProductLabel": "商品",
   "@priceProductLabel": {},
+  "priceProductRequired": "请选择商品",
+  "@priceProductRequired": {},
   "priceLabel": "价格",
   "@priceLabel": {},
   "priceCurrencyLabel": "币种",

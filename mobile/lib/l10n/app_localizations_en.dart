@@ -1099,6 +1099,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priceProductLabel => 'Product';
 
   @override
+  String get priceProductRequired => 'Choose a product';
+
+  @override
   String get priceLabel => 'Price';
 
   @override
