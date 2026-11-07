@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart';
 import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
-import '../../../shared/widgets/numeric_keypad.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/utils/entity_unit_names.dart';
 import '../../../l10n/app_localizations.dart';
@@ -60,7 +60,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   int? _selectedMerchantId;
   String _currency = 'CNY';
   String _currencySymbol = '¥';
-  List<dynamic> _currencies = const [];
 
   // Pricing rows
   final List<_PriceRow> _rows = [];
@@ -86,7 +85,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     _repo = widget.priceRepository ?? PriceRepository();
     _merchantRepo = widget.merchantRepository ?? MerchantRepository();
     _loadMerchants();
-    _loadCurrencies();
     _ensureGlobalUnits();
   }
 
@@ -152,30 +150,18 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     }
   }
 
+  /// 币种跟随商家（后端推导 effective_currency：商家显式币种 → 地区国家币种 →
+  /// CNY），无需用户显式选择。测试注入的商家可能缺字段，逐级回退。
   void _selectMerchant(Map<String, dynamic> merchant) {
     setState(() {
       _selectedMerchantId = merchant['id'] as int?;
-      final code = merchant['default_currency'] as String?;
+      final code = (merchant['effective_currency'] ?? merchant['default_currency']) as String?;
       if (code != null && code.isNotEmpty) {
         _currency = code;
         _currencySymbol = currencySymbol(code);
       }
     });
     _loadHistoryProducts();
-  }
-
-  Future<void> _loadCurrencies() async {
-    try {
-      final resp = await _repo.client.dio.get('/currencies');
-      final data = resp.data;
-      final list = (data is List)
-          ? data
-          : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
-      if (!mounted) return;
-      setState(() => _currencies = list);
-    } catch (_) {
-      // 币种加载失败保持默认 CNY
-    }
   }
 
   Future<void> _loadHistoryProducts() async {
@@ -439,46 +425,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                         style: theme.textTheme.titleSmall
                             ?.copyWith(color: theme.colorScheme.outline)),
                     const SizedBox(width: 12),
-                    PopupMenuButton<String>(
-                      onSelected: (code) {
-                        setState(() {
-                          _currency = code;
-                          _currencySymbol = currencySymbol(code);
-                        });
-                      },
-                      itemBuilder: (context) {
-                        if (_currencies.isEmpty) {
-                          return [
-                            PopupMenuItem(
-                                value: _currency, child: Text(_currency)),
-                          ];
-                        }
-                        return [
-                          for (final c in _currencies)
-                            PopupMenuItem(
-                              value: c['code'] as String,
-                              child: Text(
-                                '${c['name']} ${c['code']}',
-                              ),
-                            ),
-                        ];
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: theme.colorScheme.outline),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(_currency),
-                            const Icon(Icons.arrow_drop_down),
-                          ],
-                        ),
-                      ),
-                    ),
+                    Text(_currency,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                            color: theme.colorScheme.onSurface)),
                   ],
                 ),
               ],
@@ -518,7 +467,7 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                   Text(l10n.quickFillUnitPriceHeader,
                                       style: const TextStyle(
                                           fontWeight: FontWeight.bold)),
-                                  const SizedBox(width: 96),
+                                  const SizedBox(width: 140),
                                 ],
                               ),
                             ),
@@ -545,7 +494,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                     unitOptions: _unitOptionsFor(_rows[i]),
                                     onUnitChanged: (u) =>
                                         setState(() => _rows[i].unit = u),
-                                    onShowKeypad: () => _showKeypad(_rows[i]),
                                   );
                                 },
                               ),
@@ -567,17 +515,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
       ),
     );
   }
-
-  Future<void> _showKeypad(_PriceRow row) async {
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) =>
-          _PriceInputSheet(row: row, currencySymbol: _currencySymbol),
-    );
-    // 价格展示是纯文本（不再用 TextField 自带监听），键盘确认后手动刷新行
-    if (mounted) setState(() {});
-  }
 }
 
 class _PriceRow {
@@ -596,21 +533,18 @@ class _PriceRowWidget extends StatelessWidget {
   final String currencySymbol;
   final List<String> unitOptions;
   final ValueChanged<String> onUnitChanged;
-  final VoidCallback onShowKeypad;
 
   const _PriceRowWidget({
     required this.row,
     required this.currencySymbol,
     required this.unitOptions,
     required this.onUnitChanged,
-    required this.onShowKeypad,
   });
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final theme = Theme.of(context);
-    final priceText = row.priceController.text.trim();
     return Column(
       children: [
         Padding(
@@ -639,23 +573,31 @@ class _PriceRowWidget extends StatelessWidget {
                       ),
               ),
               const SizedBox(width: 8),
-              // 价格：点击弹数字键盘（只读展示，占位「—」）
-              GestureDetector(
-                onTap: onShowKeypad,
-                child: Container(
-                  constraints: const BoxConstraints(minWidth: 56),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                  alignment: AlignmentDirectional.centerEnd,
-                  child: Directionality(
-                    textDirection: TextDirection.ltr,
-                    child: Text(
-                      priceText.isEmpty ? '—' : '$currencySymbol$priceText',
-                      style: priceText.isEmpty
-                          ? theme.textTheme.bodyMedium
-                              ?.copyWith(color: theme.colorScheme.outline)
-                          : theme.textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
+              // 价格：系统数字键盘直接输入（对齐记价表单的 prefixText 风格；
+              // 币种前缀跟随商家地区推导）
+              SizedBox(
+                width: 96,
+                child: Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: TextField(
+                    controller: row.priceController,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [_PriceInputFormatter()],
+                    textAlign: TextAlign.end,
+                    textAlignVertical: TextAlignVertical.center,
+                    style: theme.textTheme.bodyMedium
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                    decoration: InputDecoration(
+                      hintText: '0.00',
+                      hintStyle: theme.textTheme.bodyMedium
+                          ?.copyWith(color: theme.colorScheme.outline),
+                      prefixText: currencySymbol,
+                      prefixStyle: theme.textTheme.bodyMedium,
+                      border: InputBorder.none,
+                      isCollapsed: true,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -696,75 +638,18 @@ class _PriceRowWidget extends StatelessWidget {
   }
 }
 
-class _PriceInputSheet extends StatefulWidget {
-  final _PriceRow row;
-  final String currencySymbol;
-  const _PriceInputSheet({required this.row, required this.currencySymbol});
+/// 价格输入格式化：只允许数字和一个小数点（个别输入法在数字键盘上仍可能给出
+/// 多个点或其他字符，保存前的 `double.tryParse` 只兜底不拦录入）。
+class _PriceInputFormatter extends TextInputFormatter {
+  static final RegExp _decimalExp = RegExp(r'^\d*\.?\d*$');
 
   @override
-  State<_PriceInputSheet> createState() => _PriceInputSheetState();
-}
-
-class _PriceInputSheetState extends State<_PriceInputSheet> {
-  late String _display;
-
-  @override
-  void initState() {
-    super.initState();
-    _display = widget.row.priceController.text;
-  }
-
-  void _onKeyTap(String key) {
-    setState(() {
-      if (key == '⌫') {
-        if (_display.isNotEmpty) {
-          _display = _display.substring(0, _display.length - 1);
-        }
-      } else if (key == 'C') {
-        _display = '';
-      } else if (key == '✓') {
-        widget.row.priceController.text = _display;
-        Navigator.of(context).pop();
-      } else if (key == '.') {
-        if (!_display.contains('.')) _display += '.';
-      } else {
-        if (_display == '0' && key != '.') _display = '';
-        _display += key;
-      }
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding:
-          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            alignment: AlignmentDirectional.centerEnd,
-            child: Directionality(
-              textDirection: TextDirection.ltr,
-              child: Text(
-                '${widget.currencySymbol}$_display',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-            ),
-          ),
-          NumericKeypad(
-            onKeyTap: _onKeyTap,
-            onConfirm: () {
-              widget.row.priceController.text = _display;
-              Navigator.of(context).pop();
-            },
-          ),
-        ],
-      ),
-    );
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    if (text.isEmpty || _decimalExp.hasMatch(text)) return newValue;
+    return oldValue;
   }
 }

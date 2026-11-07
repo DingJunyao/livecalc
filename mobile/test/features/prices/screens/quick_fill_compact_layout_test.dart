@@ -22,7 +22,7 @@ class _FakeMerchantRepository extends MerchantRepository {
   }
 }
 
-/// 快速填写行 UI 压缩回归：行高收紧、长商品名完整可见、价格经数字键盘写入后回显。
+/// 快速填写行 UI 压缩回归：行高收紧、长商品名完整可见、价格经系统数字键盘输入后行内回显。
 void main() {
   Future<void> pumpQuickFill(
     WidgetTester tester, {
@@ -94,25 +94,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('点击价格区弹数字键盘，确认后价格回显在行内', (tester) async {
+  testWidgets('价格用系统数字键盘（TextField）输入，行内实时回显且拦截多个小数点', (tester) async {
     await pumpQuickFill(tester, history: [row(id: 7, name: '鸡蛋')]);
 
-    // 点价格区（「—」占位）
-    await tester.tap(find.text('—'));
-    await tester.pumpAndSettle();
+    // 价格字段：带货币前缀的 TextField（系统键盘），不再是自定义 NumericKeypad 弹层
+    final priceFieldFinder = find.byWidgetPredicate(
+      (w) => w is TextField && w.decoration?.prefixText == '¥',
+    );
+    expect(priceFieldFinder, findsOneWidget);
+    final field = tester.widget<TextField>(priceFieldFinder);
+    expect(
+      field.keyboardType,
+      const TextInputType.numberWithOptions(decimal: true),
+    );
 
-    // 数字键盘输入 12.5 并确认（底部弹层上的数字）
-    await tester.tap(find.text('1').last);
+    await tester.enterText(priceFieldFinder, '12.5');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('2').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('.').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('5').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('✓').last);
-    await tester.pumpAndSettle();
+    expect(find.text('¥'), findsOneWidget);
+    expect(find.text('12.5'), findsOneWidget);
 
-    expect(find.text('¥12.5'), findsOneWidget);
+    // 第二个小数点被输入格式化拦截
+    await tester.enterText(priceFieldFinder, '12.5.5');
+    await tester.pumpAndSettle();
+    expect(field.controller!.text, '12.5');
   });
 }

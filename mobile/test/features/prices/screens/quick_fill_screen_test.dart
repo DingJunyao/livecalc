@@ -33,6 +33,7 @@ void main() {
   Future<void> pumpQuickFill(
     WidgetTester tester, {
     required List<MerchantProductPrice> history,
+    List<Map<String, dynamic>>? merchants,
     Future<List<String>> Function(int productId, int? ingredientId)?
         unitNamesLoader,
     Future<List<String>> Function()? globalUnitNamesLoader,
@@ -47,9 +48,11 @@ void main() {
       supportedLocales: AppLocalizations.supportedLocales,
       home: QuickFillScreen(
         merchantRepository: _FakeMerchantRepository(history),
-        merchantsLoader: () async => [
-          {'id': 1, 'name': '超市'},
-        ],
+        merchantsLoader: () async =>
+            merchants ??
+            [
+              {'id': 1, 'name': '超市'},
+            ],
         unitNamesLoader: unitNamesLoader,
         globalUnitNamesLoader: globalUnitNamesLoader ?? () async => const [],
       ),
@@ -63,7 +66,9 @@ void main() {
     );
     await tester.enterText(merchantField, '超');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('超市').last);
+    final merchantName =
+        merchants == null ? '超市' : merchants.first['name'] as String;
+    await tester.tap(find.text(merchantName).last);
     await tester.pumpAndSettle();
   }
 
@@ -139,5 +144,31 @@ void main() {
 
     expect(find.text('把'), findsOneWidget);
     expect(find.text('桶'), findsNothing);
+  });
+
+  testWidgets('币种跟随商家地区（effective_currency），价格前缀同步，无需显式选择', (tester) async {
+    await pumpQuickFill(
+      tester,
+      history: [_historyRow(productId: 9, name: '大米')],
+      merchants: [
+        {'id': 2, 'name': '印尼超市', 'effective_currency': 'IDR'},
+      ],
+    );
+
+    // 币种只读展示为商家地区推导币种
+    expect(find.text('IDR'), findsOneWidget);
+    // 价格输入前缀用 IDR 的货币符号 Rp（跟随商家，不再是 ¥）
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.prefixText == 'Rp',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is TextField && w.decoration?.prefixText == '¥',
+      ),
+      findsNothing,
+    );
   });
 }
