@@ -403,10 +403,17 @@ export async function updateRecord(params: Record<string, string>, data?: any): 
   const id = parseInt(params.id)
   const existing = await getById('product_records', id)
   if (!existing) throw localError('priceRecordNotFound', 404, { id })
+  // 换绑商品：同步商品名快照（product_name 是记录上的冗余展示字段）
+  const patch: any = { ...data }
+  if (patch.product_id != null && patch.product_id !== existing.product_id) {
+    const product = await getById('products', patch.product_id)
+    if (!product) throw localError('productNotFound', 404, { id: patch.product_id })
+    patch.product_name = product.name
+  }
   const currency = data?.currency || existing?.currency || DEFAULT_CURRENCY
   await putOne('product_records', {
     ...existing,
-    ...data,
+    ...patch,
     id,
     currency,
     exchange_rate: exchangeRateToUserCurrency(currency),

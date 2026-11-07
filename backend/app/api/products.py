@@ -664,25 +664,52 @@ async def update_product_record(
         if db_record.user_id != current_user.id and not current_user.is_admin:
             raise LocalizedHTTPException(status_code=403, message='无权修改此价格记录')
 
+        # 更新字段
+        update_data = record.model_dump(exclude_unset=True)
+
+        # 换绑商品：不允许置空；商品必须存在（活跃）；商品名快照随商品同步
+        new_product = None
+        product_changed = False
+        if "product_id" in update_data:
+            if update_data.get("product_id") is None:
+                raise LocalizedHTTPException(status_code=400, message='商品不能为空')
+            new_product = db.query(Product).filter(
+                Product.id == update_data["product_id"],
+                Product.is_active == True
+            ).first()
+            if not new_product:
+                raise LocalizedHTTPException(
+                    status_code=404, message='商品ID {product_id} 不存在',
+                    product_id=update_data["product_id"])
+            product_changed = new_product.id != db_record.product_id
+
         # 更新单位（如果需要）
+        # matcher 无条件创建：换绑商品即使未传单位，也要重算标准量
+        matcher = UnitMatcher(db)
         if record.original_unit:
-            matcher = UnitMatcher(db)
             original_unit_obj = matcher.match_or_create_unit(record.original_unit)
         else:
             original_unit_obj = db_record.original_unit
 
-        # 单位转换：优先使用新的 UnitConversionService
-        if record.original_quantity and record.original_unit:
+        # 参与换算的数量/单位：优先本次请求，否则沿用记录现值
+        conv_quantity = record.original_quantity if record.original_quantity is not None else db_record.original_quantity
+        conv_unit_abbr = record.original_unit or (
+            original_unit_obj.abbreviation if original_unit_obj else "")
+
+        # 单位转换：数量/单位有更新，或换绑了商品（自定义单位换算按商品挂靠，
+        # 换绑后需按新商品上下文重算）；优先 UnitConversionService，回退旧转换器
+        effective_product_id = new_product.id if new_product is not None else db_record.product_id
+        if (record.original_quantity is not None and record.original_unit) or product_changed:
             standard_quantity = None
             standard_unit_obj = None
-            if original_unit_obj:
+            if original_unit_obj and conv_unit_abbr:
                 conversion_service = UnitConversionService(db)
                 result = conversion_service.convert(
-                    Decimal(str(record.original_quantity)),
-                    original_unit_obj.abbreviation,
+                    Decimal(str(conv_quantity)),
+                    conv_unit_abbr,
                     "g",
-                    "product" if db_record.product_id else None,
-                    db_record.product_id,
+                    "product" if effective_product_id else None,
+                    effective_product_id,
                 )
                 if result:
                     standard_quantity, _ = result
@@ -691,17 +718,14 @@ async def update_product_record(
                         standard_unit_obj = g_unit
             if standard_quantity is None:
                 sq, su_str = convert_to_standard(
-                    record.original_quantity,
-                    record.original_unit
+                    conv_quantity,
+                    conv_unit_abbr
                 )
                 standard_quantity = sq
                 standard_unit_obj = matcher.match_or_create_unit(su_str)
         else:
             standard_quantity = db_record.standard_quantity
             standard_unit_obj = db_record.standard_unit
-
-        # 更新字段
-        update_data = record.model_dump(exclude_unset=True)
 
         # 商家必填：显式置空拒绝（在应用 update_data 前，避免把 merchant_id 置空绕过必填）
         if "merchant_id" in update_data and update_data.get("merchant_id") is None:
@@ -715,6 +739,10 @@ async def update_product_record(
         for key, value in update_data.items():
             if key not in ['original_unit', 'original_quantity']:  # 单位需要特殊处理
                 setattr(db_record, key, value)
+
+        # 换绑商品后同步商品名快照（product_name 是记录上的冗余展示字段）
+        if product_changed and new_product is not None:
+            db_record.product_name = new_product.name
 
         # 更新数量和单位相关字段（original_quantity 被 exclude 跳过，需单独赋值）
         if record.original_quantity is not None:
