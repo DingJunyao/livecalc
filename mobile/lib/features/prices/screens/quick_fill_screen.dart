@@ -381,14 +381,12 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                     }
                   },
           ),
-          // 保存入口固定在右上角：列表长时无需滚到底部才能保存
-          Padding(
-            padding: const EdgeInsetsDirectional.only(start: 4, end: 12),
-            child: FilledButton(
-              onPressed:
-                  _selectedMerchantId == null || _loading ? null : _saveAll,
-              child: Text(l10n.quickFillSaveAll),
-            ),
+          // 保存入口固定在右上角（图标）：列表长时无需滚到底部才能保存
+          IconButton(
+            icon: const Icon(Icons.save),
+            tooltip: l10n.quickFillSaveAll,
+            onPressed:
+                _selectedMerchantId == null || _loading ? null : _saveAll,
           ),
         ],
       ),

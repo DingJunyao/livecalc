@@ -48,7 +48,7 @@
 
 ## 同日追加：保存按钮右上角 + 不显示币种
 
-- 「保存所有价格」从底部 `SafeArea > FilledButton` 移到 **AppBar actions**（粘贴按钮右侧，`EdgeInsetsDirectional(start:4, end:12)`）；未选商家/加载中禁用——此前按钮在商家未选时整段不渲染，移到常驻的 AppBar 后需显式 guard（与粘贴按钮同条件 `_selectedMerchantId == null || _loading`）。
+- 「保存所有价格」从底部 `SafeArea > FilledButton` 改为 **AppBar 右上角保存图标**（`Icons.save`，与 planner 页一致；tooltip 复用 `quickFillSaveAll`）；未选商家/加载中禁用——此前按钮在商家未选时整段不渲染，移到常驻的 AppBar 后需显式 guard（与粘贴按钮同条件 `_selectedMerchantId == null || _loading`）。
 - 删除「币种: XXX」只读展示行；**价格输入前缀（¥/Rp）成为唯一币种提示**。`priceCurrencyLabel` 仍被记价表单/记价编辑使用，l10n 键保留。
 - 底部按钮删除后无需补 SafeArea：`ListView` 默认用 `MediaQuery.padding` 做滚动 padding，末行（添加商品按钮）可滚出底部导航条区域。
 - 测试：币种用例改断言 `find.text('IDR') findsNothing` + Rp 前缀；`localized_prices_test` 移除币种标签断言；quick fill/compact/localized/price_list 4 套件 30 例全过，analyze 无新增。
