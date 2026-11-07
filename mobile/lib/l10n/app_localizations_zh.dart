@@ -666,11 +666,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nutritionEditTitle => '编辑营养成分';
 
   @override
-  String nutritionEditTitleWithName(Object name) {
-    return '$name · 营养';
-  }
-
-  @override
   String get nutritionClearCustom => '清空自定义';
 
   @override
@@ -1519,9 +1514,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ingredientConditionNoProduct => '无下属商品';
 
   @override
-  String get ingredientChip => '原料';
-
-  @override
   String get ingredientMakingSource => '制作来源';
 
   @override
@@ -1644,9 +1636,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get productAllBrands => '全部品牌';
-
-  @override
-  String get productChip => '商品';
 
   @override
   String get productEditBasicInfo => '编辑基本信息';
@@ -1834,9 +1823,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get merchantUnnamed => '未命名商家';
-
-  @override
-  String get merchantChip => '商家';
 
   @override
   String get merchantShowMap => '显示地图';

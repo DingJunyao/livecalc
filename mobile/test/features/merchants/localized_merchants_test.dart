@@ -302,7 +302,8 @@ void main() {
       ],
     );
 
-    expect(find.text('Merchant'), findsOneWidget);
+    // 标题 chip 已移除，AppBar 标题直接显示实体名
+    expect(find.text('Stored Merchant'), findsWidgets);
     expect(find.text('Basic information'), findsOneWidget);
     expect(find.text('Name'), findsOneWidget);
     expect(find.text('Stored Merchant'), findsWidgets);
@@ -327,7 +328,7 @@ void main() {
       ],
     );
 
-    expect(find.text('متجر'), findsOneWidget);
+    expect(find.text('Stored Merchant'), findsWidgets);
     expect(find.text('المعلومات الأساسية'), findsOneWidget);
     expect(find.text('الاسم'), findsOneWidget);
     expect(find.text('Stored Merchant'), findsWidgets);

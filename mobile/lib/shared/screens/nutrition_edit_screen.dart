@@ -372,15 +372,10 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
         _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave;
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.entityName == null
-            ? l10n.nutritionEditTitle
-            : l10n.nutritionEditTitleWithName(widget.entityName!)),
+        // 标题固定为「编辑营养成分」：实体名和「清空自定义」放不下标题区
+        // （en/ar 文案 + 动态名会把标题挤没），分别移到 body 顶部与底部。
+        title: Text(l10n.nutritionEditTitle),
         actions: [
-          if (widget.allowClear && !_usdaMode)
-            TextButton(
-              onPressed: _saving ? null : _clearCustom,
-              child: Text(l10n.nutritionClearCustom),
-            ),
           ...saveAppBarActions(
             position: savePosition,
             onSave: _saving
@@ -400,16 +395,33 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
       ),
       body: Column(
         children: [
+          if (widget.entityName != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  widget.entityName!,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
           if (widget.allowUsda)
-            SegmentedButton<bool>(
-              segments: [
-                ButtonSegment(
-                    value: false, label: Text(l10n.nutritionManualEdit)),
-                const ButtonSegment(value: true, label: Text('USDA')),
-              ],
-              selected: {_usdaMode},
-              onSelectionChanged: (values) =>
-                  setState(() => _usdaMode = values.first),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: SegmentedButton<bool>(
+                segments: [
+                  ButtonSegment(
+                      value: false, label: Text(l10n.nutritionManualEdit)),
+                  const ButtonSegment(value: true, label: Text('USDA')),
+                ],
+                selected: {_usdaMode},
+                onSelectionChanged: (values) =>
+                    setState(() => _usdaMode = values.first),
+              ),
             ),
           Expanded(
             child: _usdaMode ? _buildUsdaPane(theme) : _buildManualPane(theme),
@@ -503,6 +515,20 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
             label: Text(l10n.nutritionAddNutrient),
           ),
         ),
+        // 「清空自定义」是低频危险操作，放表单底部；放 AppBar 会把
+        // en/ar 标题挤到只剩几十像素。
+        if (widget.allowClear)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: _saving ? null : _clearCustom,
+              icon: const Icon(Icons.delete_outline),
+              style: TextButton.styleFrom(
+                foregroundColor: Theme.of(context).colorScheme.error,
+              ),
+              label: Text(l10n.nutritionClearCustom),
+            ),
+          ),
       ],
     );
   }

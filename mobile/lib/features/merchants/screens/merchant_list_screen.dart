@@ -175,19 +175,13 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       appBar: AppBar(
         title: Text(l10n.merchantTitle),
         leading: const AppBackButton(),
+        // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         actions: [
           const CalcContextMenuButton(),
           IconButton(
             icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
             tooltip: _showMap ? l10n.merchantHideMap : l10n.merchantShowMap,
             onPressed: () => setState(() => _showMap = !_showMap),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l10n.journeyRefresh,
-            onPressed: state.loading
-                ? null
-                : () => ref.read(merchantListProvider.notifier).load(),
           ),
         ],
       ),

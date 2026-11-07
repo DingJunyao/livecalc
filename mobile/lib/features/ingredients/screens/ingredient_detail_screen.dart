@@ -192,27 +192,10 @@ class _IngredientDetailScreenState
     };
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(ingredient.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(l10n.ingredientChip,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
-        ),
+        // 标题只放实体名（AppBar 自动单行省略），类型 chip 与基本信息重复、
+        // 会挤压长原料名，故不再放在标题里。
+        title: Text(ingredient.name,
+            maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           IconButton(
             icon: Icon(
@@ -252,12 +235,7 @@ class _IngredientDetailScreenState
               ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l10n.journeyRefresh,
-            onPressed:
-                state.loading ? null : () => notifier.load(initialDays: 30),
-          ),
+          // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         ],
       ),
       body: RefreshIndicator(

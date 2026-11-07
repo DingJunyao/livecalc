@@ -685,11 +685,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nutritionEditTitle => 'Edit nutrition';
 
   @override
-  String nutritionEditTitleWithName(Object name) {
-    return '$name - Nutrition';
-  }
-
-  @override
   String get nutritionClearCustom => 'Clear custom nutrition';
 
   @override
@@ -1558,9 +1553,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ingredientConditionNoProduct => 'No child product';
 
   @override
-  String get ingredientChip => 'Ingredient';
-
-  @override
   String get ingredientMakingSource => 'Made from';
 
   @override
@@ -1600,7 +1592,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ingredientCreated => 'Ingredient created';
 
   @override
-  String get ingredientManageRelations => 'Manage ingredient relations';
+  String get ingredientManageRelations => 'Manage relations';
 
   @override
   String get ingredientRelationGraph => 'Relation graph';
@@ -1686,9 +1678,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get productAllBrands => 'All brands';
-
-  @override
-  String get productChip => 'Product';
 
   @override
   String get productEditBasicInfo => 'Edit basic information';
@@ -1881,9 +1870,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get merchantUnnamed => 'Unnamed merchant';
-
-  @override
-  String get merchantChip => 'Merchant';
 
   @override
   String get merchantShowMap => 'Show map';
@@ -2493,7 +2479,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get recipeBasicInfoTitle => 'Basic information';
 
   @override
-  String get recipeEditBasicInfo => 'Edit basic information';
+  String get recipeEditBasicInfo => 'Edit basic info';
 
   @override
   String get recipeCostEstimate => 'Cost estimate';
