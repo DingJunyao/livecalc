@@ -192,10 +192,29 @@ class _IngredientDetailScreenState
     };
     return Scaffold(
       appBar: AppBar(
-        // 标题只放实体名（AppBar 自动单行省略），类型 chip 与基本信息重复、
-        // 会挤压长原料名，故不再放在标题里。
-        title: Text(ingredient.name,
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+        // 标题 = 原料名（可省略）+ 类型标签；名称必须包在 Flexible 里，
+        // 否则长名会把 chip 挤出工具栏。
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(ingredient.name,
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(l10n.ingredientChip,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: Icon(

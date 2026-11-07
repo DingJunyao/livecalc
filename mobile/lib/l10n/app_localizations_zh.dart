@@ -1463,6 +1463,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get ingredientTitle => '原料';
 
   @override
+  String get ingredientChip => '原料';
+
+  @override
+  String get productChip => '商品';
+
+  @override
   String get ingredientSearch => '搜索原料...';
 
   @override

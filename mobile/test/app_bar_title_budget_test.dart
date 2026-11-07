@@ -113,10 +113,12 @@ Future<void> main() async {
     _Spec('planner_form', back: true, icons: 3,
         titles: () => [zh.plansNewPlan, en.plansNewPlan, ar.plansNewPlan,
               zh.plansEdit, en.plansEdit, ar.plansEdit]),
-    // ── 详情页：标题是动态实体名，改为断言最少汉字容量 ──
-    // product/ingredient_detail：收藏 + 记价 + ⋮（recipe/merchant 同型）
-    _Spec('product_detail', back: true, icons: 3, dynamicCjk: 7),
-    _Spec('ingredient_detail', back: true, icons: 3, dynamicCjk: 7),
+    // ── 详情页：标题是动态实体名，改为断言最少容量（汉字数）──
+    // product/ingredient_detail：收藏 + 记价 + ⋮；标题带类型标签
+    _Spec('product_detail', back: true, icons: 3, dynamicCjk: 5,
+        chip: () => [zh.productChip, en.productChip, ar.productChip]),
+    _Spec('ingredient_detail', back: true, icons: 3, dynamicCjk: 5,
+        chip: () => [zh.ingredientChip, en.ingredientChip, ar.ingredientChip]),
     _Spec('merchant_detail', back: true, icons: 1, dynamicCjk: 8),
     _Spec('plan_detail', back: true, icons: 2, dynamicCjk: 8),
     _Spec('recipe_detail', back: true, icons: 3, dynamicCjk: 7),
@@ -223,14 +225,19 @@ Future<void> main() async {
           reason: '${spec.name} 动态标题预算不足 '
               '${spec.dynamicCjk} 个汉字（实际 ${budget.toStringAsFixed(0)}px）',
         );
-        // chip 页额外断言：扣除 chip 后仍有容量
+        // chip 页额外断言：扣除 chip 后按该语言字宽仍有容量
+        //（汉字 22px/字，拉丁/阿拉伯 ≈11.5px/字）。
         if (spec.chip != null) {
           for (final chipText in spec.chip!()) {
             final isLatin =
                 !chipText.codeUnits.any((c) => c >= 0x2E80 && c <= 0x9FFF);
             final chipWidth = measureChip(chipText, latin: isLatin);
-            expect(budget - chipWidth - 8, greaterThanOrEqualTo(220.0),
-                reason: '${spec.name} 扣除 chip「$chipText」后动态标题容量不足');
+            final unit = isLatin ? 11.5 : 22.0;
+            expect(budget - chipWidth - 8,
+                greaterThanOrEqualTo(spec.dynamicCjk! * unit),
+                reason: '${spec.name} 扣除 chip「$chipText」后动态标题容量不足 '
+                    '${spec.dynamicCjk} 字（实际 '
+                    '${(budget - chipWidth - 8).toStringAsFixed(0)}px）');
           }
         }
         return;

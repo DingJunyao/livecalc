@@ -1497,6 +1497,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get ingredientTitle => 'Ingredients';
 
   @override
+  String get ingredientChip => 'Ingredient';
+
+  @override
+  String get productChip => 'Product';
+
+  @override
   String get ingredientSearch => 'Search ingredients...';
 
   @override

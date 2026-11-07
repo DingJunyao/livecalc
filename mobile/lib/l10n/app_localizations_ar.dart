@@ -1494,6 +1494,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientTitle => 'المكوّنات';
 
   @override
+  String get ingredientChip => 'مكوّن';
+
+  @override
+  String get productChip => 'منتج';
+
+  @override
   String get ingredientSearch => 'ابحث عن المكوّنات...';
 
   @override

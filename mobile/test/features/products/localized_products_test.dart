@@ -280,7 +280,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // 标题 chip 已移除，AppBar 标题直接显示实体名
+    // AppBar 标题 = 实体名 + 类型标签
     expect(find.text('Stored Product Name'), findsWidgets);
     expect(find.text('Basic information'), findsOneWidget);
     expect(find.text('Latest price'), findsOneWidget);

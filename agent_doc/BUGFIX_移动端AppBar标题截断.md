@@ -65,3 +65,13 @@ IconButton（含 PopupMenuButton）= 48/个；TextButton = max(64, 24 + labelLar
 - 受影响页面既有测试：plan_detail / price_list / quick_fill×2 / merchant_list+detail / product_list+detail / ingredient_detail / nutrition_edit 共 43 例全过。
 - localized 三语测试 8 处断言更新（详情页 chip 断言改为断言 AppBar 标题显示 mock 实体名；两处改名文案同步）后全过。
 - 无后端 / 迁移改动；分支 feat/mobile-app。
+
+## 同日追加：原料/商品详情标题恢复类型标签
+
+用户确认：原料和商品详情的标题**需要**带上类型标签（商家详情未要求，维持纯名称）。
+
+- `ingredientChip` / `productChip` key 三语加回（zh 原料/商品、en Ingredient/Product、ar مكوّن/منتج）+ gen-l10n。
+- 标题恢复为 `Row[Flexible(名称, 单行省略) + chip]`——名称必须包 Flexible，否则长名会把 chip 挤出工具栏。
+- 恢复后的名称容量（预算 160px = 360 − 56 − 3×48）：zh ≈114px ≈ **5 汉字**、en ≈91px ≈ 15 字符、ar ≈106px；比治理前（4 actions 时代 66px ≈ 3 汉字）仍多 2 字。
+- 预算测试同步：`_specs` 中 product/ingredient_detail 加 chip；chip 后容量断言从硬编码 220px 改为**按语言字宽折算**（汉字 22px/字、拉丁/阿拉伯 ≈11.5px/字），避免阿语 chip 偏宽造成误报。
+- 如需进一步加长名称容量，下一档杠杆是把「收藏」移进 ⋮ 菜单（2 icons → 预算 208px，zh ≈7 汉字），本次未做。

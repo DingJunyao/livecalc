@@ -2862,6 +2862,18 @@ abstract class AppLocalizations {
   /// **'原料'**
   String get ingredientTitle;
 
+  /// No description provided for @ingredientChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get ingredientChip;
+
+  /// No description provided for @productChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get productChip;
+
   /// No description provided for @ingredientSearch.
   ///
   /// In zh, this message translates to:
