@@ -75,3 +75,14 @@ IconButton（含 PopupMenuButton）= 48/个；TextButton = max(64, 24 + labelLar
 - 恢复后的名称容量（预算 160px = 360 − 56 − 3×48）：zh ≈114px ≈ **5 汉字**、en ≈91px ≈ 15 字符、ar ≈106px；比治理前（4 actions 时代 66px ≈ 3 汉字）仍多 2 字。
 - 预算测试同步：`_specs` 中 product/ingredient_detail 加 chip；chip 后容量断言从硬编码 220px 改为**按语言字宽折算**（汉字 22px/字、拉丁/阿拉伯 ≈11.5px/字），避免阿语 chip 偏宽造成误报。
 - 如需进一步加长名称容量，下一档杠杆是把「收藏」移进 ⋮ 菜单（2 icons → 预算 208px，zh ≈7 汉字），本次未做。
+
+## 同日追加 2：长按标题看全名
+
+用户提议「按住标题显示完整标题」：省略号兜底升级为可查看全名。
+
+- 新组件 `shared/widgets/app_title_tooltip.dart`（`AppTitleTooltip`）：`Tooltip(triggerMode: longPress, showDuration: 4s)` 包标题，缺省渲染单行省略 `Text(message)`，带 chip 的标题传 `child: Row[...]`、`message` 仍传全名。
+- 接入全部动态实体名标题页（7 处）：商品/原料详情（名称+标签）、商家详情、试算方案详情、菜谱详情（SliverAppBar 带图/无图两个变体）、菜谱分析（名称+「分析」标签）。静态标题页不接（预算测试保证不截断，无需气泡）。
+- Tooltip 气泡自动换行，超长名也能看全；RTL 下位置自适应；`Semantics(tooltip:)` 附带无障碍读屏播报。
+- **SDK 坑**：Flutter 3.47 起 `AppBar` 构造函数不再是 const（`SliverAppBar` 仍 const）——`const MaterialApp(home: Scaffold(appBar: AppBar(...)))` 会编译报错，测试里需先建非 const 的 appBar 变量；`prefer_const_constructors` lint 对此会误报（它还认为 AppBar 可 const），对 `AppTitleTooltip` 这类自身 const 的子组件照常加 const 即可。
+- 测试 `test/shared/widgets/app_title_tooltip_test.dart` 2 例：长按后 `find.text(全名)` 1→2 份（标题本体 + 气泡）；child 渲染与缺省渲染各验一次。
+- 验证：`flutter analyze` 回到基线（仅存续 1 条既有 info）；tooltip 2 例 + 预算 38 例 + plan_detail / recipes / 三端详情既有测试共 157 例全过。

@@ -6,6 +6,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/app_back_button.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -175,9 +176,10 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        // 方案名是动态标题，操作全部收进 ⋮ 菜单，避免挤压标题。
-        title: Text(plan?['name'] as String? ?? l10n.navPlans,
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+        // 方案名是动态标题，操作全部收进 ⋮ 菜单，避免挤压标题；长按看全名。
+        title: AppTitleTooltip(
+          message: plan?['name'] as String? ?? l10n.navPlans,
+        ),
         leading: const AppBackButton(),
         actions: [
           const CalcContextMenuButton(),

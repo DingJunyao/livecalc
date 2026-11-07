@@ -7,6 +7,7 @@ import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/latest_price.dart';
 import '../../../shared/models/merchant_price.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/entity_units_card.dart';
@@ -144,28 +145,32 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     };
     return Scaffold(
       appBar: AppBar(
-        // 标题 = 商品名（可省略）+ 类型标签；名称必须包在 Flexible 里，
-        // 否则长名会把 chip 挤出工具栏。
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(product.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+        // 标题 = 商品名（可省略，长按看全名）+ 类型标签；名称必须包在
+        // Flexible 里，否则长名会把 chip 挤出工具栏。
+        title: AppTitleTooltip(
+          message: product.name,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(product.name,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
-              child: Text(l10n.productChip,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(l10n.productChip,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(

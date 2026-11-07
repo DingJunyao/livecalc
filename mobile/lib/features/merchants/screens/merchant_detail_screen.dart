@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/directional_icons.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -74,12 +75,11 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     final notifier = ref.read(merchantDetailPageProvider(widget.id).notifier);
     return Scaffold(
       appBar: AppBar(
-        // 标题只放实体名（AppBar 自动单行省略），类型 chip 与基本信息重复、
-        // 会挤压长商家名，故不再放在标题里。
-        title: Text(
-          merchant.name.trim().isEmpty ? l10n.merchantUnnamed : merchant.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+        // 标题只放商家名（AppBar 自动单行省略，长按看全名）。
+        title: AppTitleTooltip(
+          message: merchant.name.trim().isEmpty
+              ? l10n.merchantUnnamed
+              : merchant.name,
         ),
         // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         actions: [
