@@ -381,6 +381,15 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                     }
                   },
           ),
+          // 保存入口固定在右上角：列表长时无需滚到底部才能保存
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 4, end: 12),
+            child: FilledButton(
+              onPressed:
+                  _selectedMerchantId == null || _loading ? null : _saveAll,
+              child: Text(l10n.quickFillSaveAll),
+            ),
+          ),
         ],
       ),
       body: Column(
@@ -418,22 +427,9 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                     );
                   },
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Text(l10n.priceCurrencyLabel,
-                        style: theme.textTheme.titleSmall
-                            ?.copyWith(color: theme.colorScheme.outline)),
-                    const SizedBox(width: 12),
-                    Text(_currency,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.onSurface)),
-                  ],
-                ),
               ],
             ),
           ),
-
           if (_selectedMerchantId != null)
             Expanded(
               child: _loading
@@ -496,16 +492,6 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
                                         setState(() => _rows[i].unit = u),
                                   );
                                 },
-                              ),
-                            ),
-                            // Submit button
-                            SafeArea(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: FilledButton(
-                                  onPressed: _saveAll,
-                                  child: Text(l10n.quickFillSaveAll),
-                                ),
                               ),
                             ),
                           ],

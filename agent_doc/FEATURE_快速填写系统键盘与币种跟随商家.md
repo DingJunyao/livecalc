@@ -45,3 +45,10 @@
 - 价格录入从「点一下弹计算器键盘 → ✓ 确认」变为**直接行内输入**（系统数字键盘，实输实显）。
 - 快速填写不再提供手动换币种；记价币种完全由商家（显式 `default_currency` 或地区）决定。web 记价表单 `PriceRecordForm` / 快速记价对话框 `QuickPriceRecordDialog` 的币种选择**保留**——那里商家可选可不选，显式币种仍是需求。
 - 分支：master `30f700e0` → 合入 feat/mobile-app（merge `6345eccb`，`.gitignore` 冲突取 feat 侧：`mobile/` 在 feat 是被跟踪源码目录不能加入忽略）。
+
+## 同日追加：保存按钮右上角 + 不显示币种
+
+- 「保存所有价格」从底部 `SafeArea > FilledButton` 移到 **AppBar actions**（粘贴按钮右侧，`EdgeInsetsDirectional(start:4, end:12)`）；未选商家/加载中禁用——此前按钮在商家未选时整段不渲染，移到常驻的 AppBar 后需显式 guard（与粘贴按钮同条件 `_selectedMerchantId == null || _loading`）。
+- 删除「币种: XXX」只读展示行；**价格输入前缀（¥/Rp）成为唯一币种提示**。`priceCurrencyLabel` 仍被记价表单/记价编辑使用，l10n 键保留。
+- 底部按钮删除后无需补 SafeArea：`ListView` 默认用 `MediaQuery.padding` 做滚动 padding，末行（添加商品按钮）可滚出底部导航条区域。
+- 测试：币种用例改断言 `find.text('IDR') findsNothing` + Rp 前缀；`localized_prices_test` 移除币种标签断言；quick fill/compact/localized/price_list 4 套件 30 例全过，analyze 无新增。

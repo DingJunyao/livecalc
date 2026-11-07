@@ -155,9 +155,9 @@ void main() {
       ],
     );
 
-    // 币种只读展示为商家地区推导币种
-    expect(find.text('IDR'), findsOneWidget);
-    // 价格输入前缀用 IDR 的货币符号 Rp（跟随商家，不再是 ¥）
+    // 币种不单独展示（无币种标签），价格输入前缀用 IDR 的货币符号 Rp
+    // （跟随商家地区推导，不再是 ¥）
+    expect(find.text('IDR'), findsNothing);
     expect(
       find.byWidgetPredicate(
         (w) => w is TextField && w.decoration?.prefixText == 'Rp',
