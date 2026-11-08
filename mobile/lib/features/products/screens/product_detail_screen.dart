@@ -277,6 +277,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               entityId: widget.id,
               entityName: product.name,
               nutrition: state.nutrition,
+              // 编辑器只预填商品自身数据：展示用 nutrition 是合并值（含原料继承）
+              editorNutrition: state.nutritionForEdit,
               loading: state.loadingNutrition,
               saving: state.savingNutrition,
               allowClear: true,

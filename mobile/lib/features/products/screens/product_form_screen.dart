@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:developer';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/entity_unit.dart';
@@ -113,7 +114,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   bool _searching = false;
   bool _loading = false;
   bool _saving = false;
-  String? _error;
+
+  /// 点选原料后的保护窗口：窗口期内 `onChanged` 不清空已选原料。
+  ///
+  /// 程序化赋值（onSelected 设置文本）不会触发 `TextField.onChanged`，但输入法
+  /// 在点选后仍可能补发滞留的组合态/上屏回声（时序相关、概率出现），文本与所选
+  /// 原料名不一致时会把刚选好的原料静默清空，保存时误报「请选择关联的原料」。
+  bool _ignoreIngredientTextChanges = false;
+  Timer? _ingredientSelectionGuardTimer;
   // 我的权重覆盖（仅编辑态显示；个人偏好不走审核）
   bool _myWeightEnabled = false;
   int _myWeight = 50;
@@ -209,6 +217,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   @override
   void dispose() {
     _cancelPendingIngredientSearch();
+    _ingredientSelectionGuardTimer?.cancel();
     _nameController.dispose();
     _brandController.dispose();
     _barcodeController.dispose();
@@ -254,10 +263,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       });
     } catch (_) {
       if (mounted) {
-        setState(() {
-          _loading = false;
-          _error = l10n.productLoadFailed;
-        });
+        setState(() => _loading = false);
+        _showError(l10n.productLoadFailed);
       }
     }
   }
@@ -380,6 +387,38 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// 表单错误统一走 SnackBar（与商家/记价表单一致），
+  /// 不再用页面底部的内联红字。
+  void _showError(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// 后端错误里可读的 detail（如「条码已存在」）；取不到返回 null，
+  /// 由调用方落到通用的「保存失败，请重试」。
+  static String? _serverErrorDetail(Object error) {
+    if (error is DioException) {
+      final data = error.response?.data;
+      if (data is Map) {
+        final detail = data['detail'];
+        if (detail is String && detail.trim().isNotEmpty) {
+          return detail.trim();
+        }
+      }
+    }
+    return null;
+  }
+
+  /// 点选原料后开启保护窗口：窗口期内忽略 `onChanged` 的清空判定，
+  /// 吸收输入法补发的组合态/上屏回声（见 `_ignoreIngredientTextChanges`）。
+  void _armIngredientSelectionGuard() {
+    _ingredientSelectionGuardTimer?.cancel();
+    _ignoreIngredientTextChanges = true;
+    _ingredientSelectionGuardTimer = Timer(const Duration(milliseconds: 300), () {
+      _ignoreIngredientTextChanges = false;
+    });
+  }
+
   /// 开关「新增对应原料」：开启后关联原料下拉隐藏，必须清掉已选原料，
   /// 否则商品可能仍挂到旧原料上（与 web 行为一致）。
   void _setCreateNewIngredient(bool enabled) {
@@ -444,11 +483,11 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
     final l10n = AppLocalizations.of(context);
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      setState(() => _error = l10n.productNameRequired);
+      _showError(l10n.productNameRequired);
       return;
     }
     if (_selectedIngredient == null && !_createNewIngredient) {
-      setState(() => _error = l10n.productSelectIngredientOrCreate);
+      _showError(l10n.productSelectIngredientOrCreate);
       return;
     }
     // 新增态勾选「新增对应原料」：先按填写的原料名（留空则商品名）创建原料。
@@ -479,17 +518,14 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         _lastSelectedIngredientId = ingredient.id;
       } catch (e) {
         if (mounted) {
-          setState(() {
-            _error = l10n.productCreateIngredientFailed;
-            _saving = false;
-          });
+          setState(() => _saving = false);
+          _showError(l10n.productCreateIngredientFailed);
         }
         return;
       }
     }
     setState(() {
       _saving = true;
-      _error = null;
     });
     try {
       Product? createdProduct;
@@ -570,12 +606,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           message: result.message,
         ),
       );
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() {
-          _saving = false;
-          _error = l10n.commonSaveFailedRetry;
-        });
+        setState(() => _saving = false);
+        // 后端给得出具体原因（如「条码已存在」）时直接展示，别只剩笼统的
+        // 「保存失败，请重试」让用户猜。
+        _showError(
+            _serverErrorDetail(error) ?? l10n.commonSaveFailedRetry);
       }
     }
   }
@@ -589,8 +626,9 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   /// 否则一次网络抖动会让本轮表单永远带不出关联原料的自定义单位。
   Future<void> _ensureDraftUnitReference() async {
     final ingredientId = _selectedIngredient?.id;
-    if (_draftUnitsLoaded && _draftReferenceIngredientId == ingredientId)
+    if (_draftUnitsLoaded && _draftReferenceIngredientId == ingredientId) {
       return;
+    }
     if (mounted) setState(() => _loadingDraftUnits = true);
     var globals = <GlobalUnitOption>[];
     var inherited = <EntityUnit>[];
@@ -990,6 +1028,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         final previousIngredientId = _lastSelectedIngredientId;
         _lastSelectedIngredientId = ingredient.id;
         _ingredientSearchController.text = ingredient.name;
+        // 吸收输入法在点选后补发的组合态/上屏回声，别让刚选好的原料被清空
+        _armIngredientSelectionGuard();
         setState(() {
           _selectedIngredient = ingredient;
           _searching = false;
@@ -1047,6 +1087,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           onSubmitted: (_) => onFieldSubmitted(),
           onChanged: (value) {
             // 文本被改动后不再信任原选择；要保留必须重新点选。
+            // 两个例外（防输入法回声把刚选好的原料静默清空）：
+            // 1. 组合态未上屏的文本不动选择，上屏后自然走到下面的判定；
+            // 2. 点选后的保护窗口期内忽略（见 _armIngredientSelectionGuard）。
+            if (_ingredientSearchController.value.composing != TextRange.empty) {
+              return;
+            }
+            if (_ignoreIngredientTextChanges) return;
             if (_selectedIngredient != null &&
                 _selectedIngredient!.name != value.trim()) {
               setState(() => _selectedIngredient = null);
@@ -1251,16 +1298,6 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
                             ],
                           ),
                       ],
-                      if (_error != null)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(
-                            _error!,
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
           ),

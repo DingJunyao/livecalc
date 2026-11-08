@@ -71,6 +71,13 @@ class NutritionInfo {
   final List<NutrientEntry> nutrients;
   final EntityPendingProposal? pendingProposal;
 
+  /// 商品自身的自定义营养（来自响应的 custom_nutrition_data），**不含**沿原料
+  /// fallback 链继承来的值。商品响应里 nutrients 是合并值（展示用），编辑器
+  /// 预填必须用这一份，否则商品没填营养时会带出原料的值并被保存成商品数据
+  /// （与 web 端 startEditNutrition 的「mixin 模式：不显示从原料继承的」同口径）。
+  /// 原料响应里 nutrients 本就是自身数据，此字段不被消费。
+  final List<NutrientEntry> ownNutrients;
+
   const NutritionInfo({
     required this.entityId,
     this.entityName,
@@ -79,6 +86,7 @@ class NutritionInfo {
     this.source,
     this.nutrients = const [],
     this.pendingProposal,
+    this.ownNutrients = const [],
   });
 
   bool get hasData => nutrients.isNotEmpty;
@@ -109,7 +117,18 @@ class NutritionInfo {
           ? EntityPendingProposal.fromJson(
               json['pending_proposal'] as Map<String, dynamic>)
           : null,
+      ownNutrients: _parseNutrients(
+        _stringKeyMap(_customNutritionData(json)['core_nutrients']),
+        _stringKeyMap(_customNutritionData(json)['all_nutrients']),
+      ),
     );
+  }
+
+  /// 商品自定义营养原始数据（SQLite JSON 列已在后端反序列化为对象；
+  /// 待审 payload 顶层的 `nutrients` 是同结构别名，保持与基准读取同回退）。
+  static Map<String, dynamic> _customNutritionData(Map json) {
+    final custom = json['custom_nutrition_data'] ?? json['nutrients'];
+    return custom is Map ? _stringKeyMap(custom) : const {};
   }
 
   /// Builds a proposer's manual draft when no official nutrition table exists.

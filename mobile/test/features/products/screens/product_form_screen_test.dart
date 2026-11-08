@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient.dart';
@@ -618,4 +619,104 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Open'), findsOneWidget);
   });
+
+  testWidgets('保存失败透出后端 detail（SnackBar，不再用页底内联文字）',
+      (tester) async {
+    await useTallViewport(tester);
+    const ingredient = Ingredient(id: 8, name: '面粉');
+    final repo = _FailingProductRepository(
+      DioException(
+        requestOptions: RequestOptions(path: '/products/entity'),
+        type: DioExceptionType.badResponse,
+        response: Response<Map<String, dynamic>>(
+          requestOptions: RequestOptions(path: '/products/entity'),
+          statusCode: 400,
+          data: {'detail': '条码已存在'},
+        ),
+      ),
+    );
+    await tester.pumpWidget(_formLauncher(ingredient, repo));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '高筋粉',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('条码已存在'), findsOneWidget,
+        reason: '后端给得出具体原因时直接展示，别只剩笼统的「保存失败」');
+    expect(find.text('Save failed. Try again.'), findsNothing);
+  });
+
+  testWidgets('保存失败无后端 detail 时落回通用文案', (tester) async {
+    await useTallViewport(tester);
+    const ingredient = Ingredient(id: 8, name: '面粉');
+    final repo = _FailingProductRepository(
+      DioException(
+        requestOptions: RequestOptions(path: '/products/entity'),
+        type: DioExceptionType.connectionError,
+      ),
+    );
+    await tester.pumpWidget(_formLauncher(ingredient, repo));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '高筋粉',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(find.text('Save failed. Try again.'), findsOneWidget);
+  });
+}
+
+/// 复用本文件的启动器样式：表单挂在导航栈上，固定关联原料省去下拉选择。
+Widget _formLauncher(Ingredient ingredient, ProductRepository repo) {
+  return ProviderScope(
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductFormScreen(
+                fixedIngredient: ingredient,
+                repository: repo,
+              ),
+            ),
+          ),
+          child: const Text('Open'),
+        ),
+      ),
+    ),
+  );
+}
+
+/// createProduct 必定抛错的仓库：模拟后端 4xx/网络错误。
+class _FailingProductRepository extends ProductRepository {
+  _FailingProductRepository(this.error);
+
+  final Object error;
+
+  @override
+  Future<Product> createProduct({
+    required String name,
+    required int ingredientId,
+    String? brand,
+    String? barcode,
+    List<String> aliases = const [],
+    List<String> tags = const [],
+  }) async {
+    throw error;
+  }
 }

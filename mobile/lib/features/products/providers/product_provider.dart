@@ -342,6 +342,10 @@ class ProductDetailPageState {
   final int recordsPage;
   final bool recordsHasMore;
   final NutritionInfo? nutrition;
+
+  /// 营养编辑器预填数据：商品**自身**的自定义营养（不含原料继承的合并值）。
+  /// null = 商品没填过，编辑器走「默认七项」预填。
+  final NutritionInfo? nutritionForEdit;
   final bool loadingNutrition;
   final bool savingNutrition;
   final List<EntityUnit> units;
@@ -377,6 +381,7 @@ class ProductDetailPageState {
     this.recordsPage = 1,
     this.recordsHasMore = false,
     this.nutrition,
+    this.nutritionForEdit,
     this.loadingNutrition = false,
     this.savingNutrition = false,
     this.units = const [],
@@ -408,6 +413,7 @@ class ProductDetailPageState {
     int? recordsPage,
     bool? recordsHasMore,
     Object? nutrition = _absent,
+    Object? nutritionForEdit = _absent,
     bool? loadingNutrition,
     bool? savingNutrition,
     List<EntityUnit>? units,
@@ -443,6 +449,9 @@ class ProductDetailPageState {
       nutrition: identical(nutrition, _absent)
           ? this.nutrition
           : nutrition as NutritionInfo?,
+      nutritionForEdit: identical(nutritionForEdit, _absent)
+          ? this.nutritionForEdit
+          : nutritionForEdit as NutritionInfo?,
       loadingNutrition: loadingNutrition ?? this.loadingNutrition,
       savingNutrition: savingNutrition ?? this.savingNutrition,
       units: units ?? this.units,
@@ -803,7 +812,26 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     } on Exception {
       // Official data remains visible if USDA draft enrichment fails.
     }
-    state = state.copyWith(nutrition: merged, loadingNutrition: false);
+    state = state.copyWith(
+      nutrition: merged,
+      nutritionForEdit: _officialOwnNutrition(info),
+      loadingNutrition: false,
+    );
+  }
+
+  /// 编辑器预填数据：只取商品**自身**的自定义营养（ownNutrients），不带沿原料
+  /// fallback 链继承来的合并值，也不混入待审草案 —— 与 web 端
+  /// `startEditNutrition`（只读 custom_nutrition_data）同口径。商品没填时为
+  /// null，编辑器自然落到「默认七项」预填。基准沿用响应的 reference 字段
+  /// （后端：商品自定义 → 原料 → 100g，web 编辑器同样接受这一继承）。
+  NutritionInfo? _officialOwnNutrition(NutritionInfo? info) {
+    if (info == null || info.ownNutrients.isEmpty) return null;
+    return NutritionInfo(
+      entityId: productId,
+      baseQuantity: info.baseQuantity,
+      baseUnit: info.baseUnit,
+      nutrients: info.ownNutrients,
+    );
   }
 
   Future<void> refreshNutrition() => _loadNutrition();

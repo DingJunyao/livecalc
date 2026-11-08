@@ -9,6 +9,11 @@ import '../screens/nutrition_edit_screen.dart';
 /// 营养成分卡片（原料/商品共用），支持编辑与（商品）清空自定义数据。
 class NutritionCard extends StatelessWidget {
   final NutritionInfo? nutrition;
+
+  /// 编辑器预填数据；缺省用 [nutrition]。商品详情传「商品自身自定义营养」：
+  /// 展示用的 [nutrition] 是合并值（含原料继承），拿去预填会让编辑器带出原料
+  /// 的营养并被保存成商品数据。
+  final NutritionInfo? editorNutrition;
   final bool loading;
   final bool saving;
   final bool allowClear;
@@ -22,6 +27,7 @@ class NutritionCard extends StatelessWidget {
   const NutritionCard({
     super.key,
     required this.nutrition,
+    this.editorNutrition,
     required this.loading,
     required this.saving,
     this.allowClear = false,
@@ -112,7 +118,7 @@ class NutritionCard extends StatelessWidget {
         entityType: entityType,
         entityId: entityId,
         entityName: entityName,
-        nutrition: nutrition,
+        nutrition: editorNutrition ?? nutrition,
         allowClear: allowClear,
         onRefresh: onRefresh,
         onSave: onSave,

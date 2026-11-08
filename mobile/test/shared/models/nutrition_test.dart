@@ -118,4 +118,62 @@ void main() {
     expect(info.nutrients.single.label, '蛋白质');
     expect(info.nutrients.single.value, 4);
   });
+
+  test('product merged response: ownNutrients carries only custom data', () {
+    // GET /nutrition/products/{id} 的 nutrients 是「商品自定义 → 原料继承」
+    // 的合并值；编辑器预填必须用 custom_nutrition_data（商品自身），否则
+    // 商品没填营养时会带出原料的值。
+    final info = NutritionInfo.fromJson(const {
+      'product_id': 42,
+      'source': 'merged',
+      'custom_nutrition_data': {
+        'core_nutrients': {
+          '能量': {'value': 100, 'unit': 'kcal'},
+        },
+        'all_nutrients': {
+          '能量': {'value': 100, 'unit': 'kcal'},
+          '钠': {'value': 50, 'unit': 'mg'},
+        },
+      },
+      'nutrition': {
+        'core_nutrients': {
+          '能量': {'value': 88, 'unit': 'kcal'},
+          '蛋白质': {'value': 9, 'unit': 'g'},
+        },
+        'all_nutrients': {
+          '能量': {'value': 88, 'unit': 'kcal'},
+          '蛋白质': {'value': 9, 'unit': 'g'},
+        },
+      },
+    });
+
+    expect(info.nutrients.map((e) => e.label), contains('蛋白质'),
+        reason: '展示用 nutrients 是合并值（含原料继承）');
+    expect(info.ownNutrients.map((e) => e.label), isNot(contains('蛋白质')),
+        reason: 'ownNutrients 不含原料继承的营养素');
+    expect(info.ownNutrients.map((e) => e.label), containsAll(['能量', '钠']));
+    final energy =
+        info.ownNutrients.firstWhere((e) => e.label == '能量');
+    expect(energy.value, 100);
+  });
+
+  test('product without custom data: ownNutrients empty', () {
+    // 商品没填营养时响应里只有原料继承值，ownNutrients 必须为空，
+    // 编辑器据此落到「默认七项」预填而不是带出原料值。
+    final info = NutritionInfo.fromJson(const {
+      'product_id': 42,
+      'source': 'merged',
+      'nutrition': {
+        'core_nutrients': {
+          '能量': {'value': 88, 'unit': 'kcal'},
+        },
+        'all_nutrients': {
+          '能量': {'value': 88, 'unit': 'kcal'},
+        },
+      },
+    });
+
+    expect(info.nutrients, isNotEmpty);
+    expect(info.ownNutrients, isEmpty);
+  });
 }

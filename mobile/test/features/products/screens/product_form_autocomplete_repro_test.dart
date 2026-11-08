@@ -2,12 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/models/ingredient.dart';
 import 'package:com_a4ding_livecalc/features/ingredients/repositories/ingredient_repository.dart';
+import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class _FakeProductRepository extends ProductRepository {}
+
+/// 记录创建商品时携带的关联原料 id（回声用例断言保存成功且原料未被清空）。
+class _RecordingProductRepository extends ProductRepository {
+  int? createdIngredientId;
+
+  @override
+  Future<Product> createProduct({
+    required String name,
+    required int ingredientId,
+    String? brand,
+    String? barcode,
+    List<String> aliases = const [],
+    List<String> tags = const [],
+  }) async {
+    createdIngredientId = ingredientId;
+    return Product(id: 1, name: name);
+  }
+}
 
 class _LatencyIngredientRepository extends IngredientRepository {
   _LatencyIngredientRepository(this.items, {this.latency = Duration.zero});
@@ -66,6 +85,38 @@ Future<void> pumpApp(WidgetTester tester, ProductFormScreen screen) async {
     home: screen,
   )));
   await tester.pumpAndSettle();
+}
+
+/// 表单挂在导航栈上（而不是 home）：保存成功后的 pop 才有上一页可回。
+Future<void> pumpLauncherApp(
+  WidgetTester tester,
+  IngredientRepository ingredientRepo,
+  ProductRepository productRepo,
+) async {
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 3.0;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+  await tester.pumpWidget(ProviderScope(
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(
+        builder: (context) => TextButton(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ProductFormScreen(
+                repository: productRepo,
+                ingredientRepository: ingredientRepo,
+              ),
+            ),
+          ),
+          child: const Text('Open'),
+        ),
+      ),
+    ),
+  ));
+  await tester.pump();
 }
 
 Finder get ingredientField => find.widgetWithText(
@@ -210,5 +261,91 @@ void main() {
 
     expect(find.widgetWithText(ListTile, '牛奶'), findsWidgets,
         reason: 'IME 组合输入后提交「牛奶」，最后一次查询的结果应显示');
+  });
+
+  testWidgets('点选原料后的输入法回声不清空选择，保存成功', (tester) async {
+    // 真机复现：点选下拉项后，输入法补发滞留的组合态/上屏回声，
+    // 文本与所选原料名不一致 → onChanged 把刚选好的原料静默清空 →
+    // 保存误报「请选择关联的原料」。点选后的保护窗口内必须忽略这些回声。
+    final productRepo = _RecordingProductRepository();
+    await pumpLauncherApp(
+      tester,
+      _LatencyIngredientRepository(_milkLikeIngredients),
+      productRepo,
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(ingredientField, '牛奶');
+    await tester.pump(const Duration(milliseconds: 400)); // 防抖 300ms + 搜索返回
+    await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
+    await tester.pump(const Duration(milliseconds: 50));
+
+    // 回声 1：输入法补发组合态（文本带拼音尾巴，组合态未上屏）
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '牛奶n',
+      selection: TextSelection.collapsed(offset: 3),
+      composing: TextRange(start: 2, end: 3),
+    ));
+    await tester.pump(const Duration(milliseconds: 30));
+    // 回声 2：滞留拼音上屏提交（组合态已清，文本仍与所选原料名不一致）
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '牛奶牛',
+      selection: TextSelection.collapsed(offset: 3),
+      composing: TextRange.empty,
+    ));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '鲜牛奶',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(productRepo.createdIngredientId, 81,
+        reason: '回声不应清空刚点选的原料，保存必须带上 ingredient_id=81');
+    expect(find.text('Open'), findsOneWidget, reason: '保存成功后应返回上一页');
+  });
+
+  testWidgets('保护窗口结束后的正常编辑仍会清空选择（对照）', (tester) async {
+    final productRepo = _RecordingProductRepository();
+    await pumpLauncherApp(
+      tester,
+      _LatencyIngredientRepository(_milkLikeIngredients),
+      productRepo,
+    );
+
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(ingredientField, '牛奶');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
+    // 等保护窗口（300ms）过期，再输入新关键词 → 应清空选择
+    await tester.pump(const Duration(milliseconds: 400));
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '牛',
+      selection: TextSelection.collapsed(offset: 1),
+      composing: TextRange.empty,
+    ));
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Product name *'),
+      '鲜牛奶',
+    );
+    await tester.ensureVisible(find.text('Save'));
+    await tester.tap(find.text('Save'));
+    await tester.pump();
+
+    expect(productRepo.createdIngredientId, isNull, reason: '选择已清空，不应发起创建');
+    expect(
+      find.byType(SnackBar),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Select a linked ingredient'), findsOneWidget);
   });
 }
