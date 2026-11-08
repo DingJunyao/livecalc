@@ -94,15 +94,9 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       appBar: AppBar(
         title: Text(l10n.ingredientTitle),
         leading: const AppBackButton(),
-        actions: [
-          const CalcContextMenuButton(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l10n.journeyRefresh,
-            onPressed: state.loading
-                ? null
-                : () => ref.read(ingredientListProvider.notifier).load(),
-          ),
+        // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
+        actions: const [
+          CalcContextMenuButton(),
         ],
       ),
       body: Column(

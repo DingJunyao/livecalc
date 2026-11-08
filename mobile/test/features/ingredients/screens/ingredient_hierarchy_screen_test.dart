@@ -22,8 +22,7 @@ void main() {
     ));
 
     expect(find.byType(AlertDialog), findsNothing);
-    expect(find.widgetWithText(AppBar, 'Manage ingredient relations'),
-        findsOneWidget);
+    expect(find.widgetWithText(AppBar, 'Manage relations'), findsOneWidget);
     expect(find.text('Relation graph'), findsOneWidget);
     expect(find.text('Relation list'), findsOneWidget);
     expect(find.text('Search ingredient *'), findsOneWidget);

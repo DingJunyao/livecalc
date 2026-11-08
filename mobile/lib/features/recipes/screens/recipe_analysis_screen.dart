@@ -8,6 +8,7 @@ import '../widgets/nutrition_source_grid.dart';
 import '../widgets/merchant_cost_cards.dart';
 import '../widgets/merchant_price_matrix.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 
@@ -67,26 +68,31 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(detail.name,
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(10),
+        // 标题 = 菜谱名（可省略，长按看全名）+ 「分析」标签。
+        title: AppTitleTooltip(
+          message: detail.name,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(detail.name,
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
-              child: Text(l10n.recipeAnalysisChip,
-                  style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onPrimaryContainer,
-                      fontWeight: FontWeight.w600)),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(l10n.recipeAnalysisChip,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
         ),
       ),
       body: SingleChildScrollView(

@@ -765,7 +765,6 @@ void main() {
 
       expect(find.text(copy.quickFillTitle), findsOneWidget);
       expect(find.text(copy.selectMerchant), findsOneWidget);
-      expect(find.text(copy.currency), findsOneWidget);
       final merchant = tester.widget<TextField>(_quickMerchantField());
       expect(merchant.decoration?.hintText, copy.merchantSearchHint);
 

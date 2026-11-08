@@ -204,13 +204,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
         appBar: AppBar(
           title: Text(l10n.navFavorites),
           leading: const AppBackButton(),
-          actions: [
-            const CalcContextMenuButton(),
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: l10n.journeyRefresh,
-              onPressed: _loading ? null : _load,
-            ),
+          // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
+          actions: const [
+            CalcContextMenuButton(),
           ],
           bottom: TabBar(
             isScrollable: true,

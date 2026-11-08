@@ -241,7 +241,8 @@ void main() {
       ],
     );
 
-    expect(find.text('Ingredient'), findsOneWidget);
+    // AppBar 标题 = 实体名 + 类型标签
+    expect(find.text('Stored Ingredient Name'), findsWidgets);
     expect(find.text('Basic information'), findsOneWidget);
     expect(find.text('Category'), findsOneWidget);
     expect(find.text('Vegetables'), findsOneWidget);
@@ -280,7 +281,7 @@ void main() {
       ],
     );
 
-    expect(find.text('مكوّن'), findsOneWidget);
+    expect(find.text('Stored Ingredient Name'), findsWidgets);
     expect(find.text('المعلومات الأساسية'), findsOneWidget);
     expect(find.text('الفئة'), findsOneWidget);
     expect(find.text('الخضروات'), findsOneWidget);
@@ -394,7 +395,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Manage ingredient relations'), findsOneWidget);
+    expect(find.text('Manage relations'), findsOneWidget);
     expect(find.text('Relation graph'), findsOneWidget);
     expect(find.text('Relation list'), findsOneWidget);
     expect(find.text('Add hierarchy relation'), findsOneWidget);
@@ -440,7 +441,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('إدارة علاقات المكوّنات'), findsOneWidget);
+    expect(find.text('إدارة العلاقات'), findsOneWidget);
     expect(find.text('مخطط العلاقات'), findsOneWidget);
     expect(find.text('قائمة العلاقات'), findsOneWidget);
     expect(find.text('إضافة علاقة تسلسل هرمي'), findsOneWidget);

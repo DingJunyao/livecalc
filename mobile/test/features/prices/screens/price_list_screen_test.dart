@@ -47,6 +47,7 @@ class _FakePriceRepository extends PriceRepository {
     required double quantity,
     required String unit,
     int? merchantId,
+    int? productId,
     String recordType = 'purchase',
     DateTime? recordedAt,
     String? notes,

@@ -280,7 +280,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Product'), findsOneWidget);
+    // AppBar 标题 = 实体名 + 类型标签
+    expect(find.text('Stored Product Name'), findsWidgets);
     expect(find.text('Basic information'), findsOneWidget);
     expect(find.text('Latest price'), findsOneWidget);
     expect(find.text('No price data'), findsOneWidget);
@@ -312,7 +313,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('منتج'), findsOneWidget);
+    expect(find.text('Stored Product Name'), findsWidgets);
     expect(find.text('المعلومات الأساسية'), findsOneWidget);
     expect(find.text('أحدث سعر'), findsOneWidget);
     expect(find.text('لا توجد بيانات أسعار'), findsOneWidget);

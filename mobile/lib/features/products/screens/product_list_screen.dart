@@ -115,15 +115,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
       appBar: AppBar(
         title: Text(l10n.productTitle),
         leading: const AppBackButton(),
-        actions: [
-          const CalcContextMenuButton(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: l10n.journeyRefresh,
-            onPressed: state.loading
-                ? null
-                : () => ref.read(productListProvider.notifier).load(),
-          ),
+        // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
+        actions: const [
+          CalcContextMenuButton(),
         ],
       ),
       body: Column(

@@ -12,6 +12,7 @@ import '../../../shared/repositories/favorites_repository.dart';
 import '../utils/nutrition_labels.dart';
 import '../widgets/cost_trend_chart.dart';
 import 'recipe_form_screen.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/pending_change_banner.dart';
@@ -151,7 +152,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
             SliverAppBar(
               expandedHeight: 260,
               pinned: true,
-              title: Text(detail.name),
+              title: AppTitleTooltip(message: detail.name),
               actions: appBarActions,
               flexibleSpace: FlexibleSpaceBar(
                 background: GestureDetector(
@@ -196,7 +197,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
           else
             SliverAppBar(
               pinned: true,
-              title: Text(detail.name),
+              title: AppTitleTooltip(message: detail.name),
               actions: appBarActions,
             ),
           SliverToBoxAdapter(

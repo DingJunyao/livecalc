@@ -682,11 +682,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get nutritionEditTitle => 'تعديل القيم الغذائية';
 
   @override
-  String nutritionEditTitleWithName(Object name) {
-    return '$name - القيم الغذائية';
-  }
-
-  @override
   String get nutritionClearCustom => 'مسح القيم المخصصة';
 
   @override
@@ -1101,6 +1096,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get priceProductLabel => 'المنتج';
 
   @override
+  String get priceProductRequired => 'اختر منتجًا';
+
+  @override
   String get priceLabel => 'السعر';
 
   @override
@@ -1499,6 +1497,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientTitle => 'المكوّنات';
 
   @override
+  String get ingredientChip => 'مكوّن';
+
+  @override
+  String get productChip => 'منتج';
+
+  @override
   String get ingredientSearch => 'ابحث عن المكوّنات...';
 
   @override
@@ -1553,9 +1557,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientConditionNoProduct => 'لا يوجد منتج فرعي';
 
   @override
-  String get ingredientChip => 'مكوّن';
-
-  @override
   String get ingredientMakingSource => 'مصدر التحضير';
 
   @override
@@ -1594,7 +1595,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get ingredientCreated => 'تم إنشاء المكوّن';
 
   @override
-  String get ingredientManageRelations => 'إدارة علاقات المكوّنات';
+  String get ingredientManageRelations => 'إدارة العلاقات';
 
   @override
   String get ingredientRelationGraph => 'مخطط العلاقات';
@@ -1679,9 +1680,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get productAllBrands => 'كل العلامات التجارية';
-
-  @override
-  String get productChip => 'منتج';
 
   @override
   String get productEditBasicInfo => 'تعديل المعلومات الأساسية';
@@ -1872,9 +1870,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get merchantUnnamed => 'متجر بدون اسم';
-
-  @override
-  String get merchantChip => 'متجر';
 
   @override
   String get merchantShowMap => 'عرض الخريطة';
@@ -2477,7 +2472,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get recipeBasicInfoTitle => 'المعلومات الأساسية';
 
   @override
-  String get recipeEditBasicInfo => 'تعديل المعلومات الأساسية';
+  String get recipeEditBasicInfo => 'تعديل المعلومات';
 
   @override
   String get recipeCostEstimate => 'تقدير التكلفة';

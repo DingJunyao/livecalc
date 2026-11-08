@@ -20,6 +20,7 @@ class ProductRecordCreate(BaseModel):
 
 
 class ProductRecordUpdate(BaseModel):
+    product_id: Optional[int] = None  # 换绑到已有商品（不允许置空；商品名快照随商品同步）
     merchant_id: Optional[int] = None
     price: Optional[Decimal] = Field(None, gt=0, decimal_places=2)
     currency: Optional[str] = "CNY"

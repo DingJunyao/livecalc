@@ -1390,12 +1390,6 @@ abstract class AppLocalizations {
   /// **'编辑营养成分'**
   String get nutritionEditTitle;
 
-  /// No description provided for @nutritionEditTitleWithName.
-  ///
-  /// In zh, this message translates to:
-  /// **'{name} · 营养'**
-  String nutritionEditTitleWithName(Object name);
-
   /// No description provided for @nutritionClearCustom.
   ///
   /// In zh, this message translates to:
@@ -2142,6 +2136,12 @@ abstract class AppLocalizations {
   /// **'商品'**
   String get priceProductLabel;
 
+  /// No description provided for @priceProductRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请选择商品'**
+  String get priceProductRequired;
+
   /// No description provided for @priceLabel.
   ///
   /// In zh, this message translates to:
@@ -2868,6 +2868,18 @@ abstract class AppLocalizations {
   /// **'原料'**
   String get ingredientTitle;
 
+  /// No description provided for @ingredientChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get ingredientChip;
+
+  /// No description provided for @productChip.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get productChip;
+
   /// No description provided for @ingredientSearch.
   ///
   /// In zh, this message translates to:
@@ -2969,12 +2981,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无下属商品'**
   String get ingredientConditionNoProduct;
-
-  /// No description provided for @ingredientChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'原料'**
-  String get ingredientChip;
 
   /// No description provided for @ingredientMakingSource.
   ///
@@ -3215,12 +3221,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'全部品牌'**
   String get productAllBrands;
-
-  /// No description provided for @productChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'商品'**
-  String get productChip;
 
   /// No description provided for @productEditBasicInfo.
   ///
@@ -3539,12 +3539,6 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'未命名商家'**
   String get merchantUnnamed;
-
-  /// No description provided for @merchantChip.
-  ///
-  /// In zh, this message translates to:
-  /// **'商家'**
-  String get merchantChip;
 
   /// No description provided for @merchantShowMap.
   ///

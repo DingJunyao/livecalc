@@ -69,20 +69,6 @@
                   hide-details
                   class="fill-row__price"
                 />
-                <v-menu :close-on-content-click="true" location="bottom">
-                  <template #activator="{ props: menuProps }">
-                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
-                  </template>
-                  <v-list density="compact">
-                    <v-list-item
-                      v-for="c in currencies"
-                      :key="c.code"
-                      :title="`${c.display_name || c.name} ${c.code}`"
-                      :active="recordCurrency === c.code"
-                      @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                    />
-                  </v-list>
-                </v-menu>
                 <span class="fill-row__sep">/</span>
                 <template v-if="row.isEditingQuantity">
                   <v-text-field
@@ -183,20 +169,6 @@
                   hide-details
                   class="fill-row__price"
                 />
-                <v-menu :close-on-content-click="true" location="bottom">
-                  <template #activator="{ props: menuProps }">
-                    <v-btn variant="text" size="x-small" class="pa-0" v-bind="menuProps" :aria-label="t('prices.selectCurrency')">{{ recordCurrency }}</v-btn>
-                  </template>
-                  <v-list density="compact">
-                    <v-list-item
-                      v-for="c in currencies"
-                      :key="c.code"
-                      :title="`${c.display_name || c.name} ${c.code}`"
-                      :active="recordCurrency === c.code"
-                      @click="recordCurrency = c.code; currencySymbolText = c.symbol || symbolFromIntl(c.code)"
-                    />
-                  </v-list>
-                </v-menu>
                 <span class="fill-row__sep">/</span>
                 <template v-if="row.isEditingQuantity">
                   <v-text-field
@@ -287,7 +259,7 @@ import { api } from '@/api'
 import PasteImportDialog from '@/components/prices/PasteImportDialog.vue'
 import BarcodeScannerDialog from '@/components/common/BarcodeScannerDialog.vue'
 import { lookupBarcode } from '@/utils/barcodeLookup'
-import { loadCurrencies, currencySymbol, symbolFromIntl } from '@/utils/currency'
+import { currencySymbol, symbolFromIntl } from '@/utils/currency'
 import { CHINESE_JIN_NAME, CHINESE_PIECE_NAME } from '@/data/localValues'
 import { formatQuantity } from '@/utils/format'
 import { useLocaleStore } from '@/stores/locale'
@@ -372,7 +344,6 @@ function addHiddenItems(merchantId: number, productIds: number[]) {
 
 // --- 状态 ---
 const merchants = ref<Merchant[]>([])
-const currencies = ref<any[]>([])
 const recordCurrency = ref<string>('CNY')
 const currencySymbolText = ref<string>('¥')
 const selectedMerchantId = ref<number | null>(null)
@@ -528,15 +499,25 @@ const loadMerchants = async () => {
   } catch {
     merchants.value = []
   }
+  // 草稿恢复直接写 selectedMerchantId（不触发 onMerchantChange），商家到位后补一次币种同步
+  if (selectedMerchantId.value) {
+    applyMerchantCurrency(merchants.value.find((x) => x.id === selectedMerchantId.value))
+  }
+}
+
+// --- 币种跟随商家（商家显式币种 → 地区国家币种 → CNY），无需用户显式选择 ---
+const applyMerchantCurrency = (m?: Merchant) => {
+  recordCurrency.value = m?.effective_currency || m?.default_currency || 'CNY'
+  currencySymbol(recordCurrency.value)
+    .then((s) => { currencySymbolText.value = s })
+    .catch(() => { currencySymbolText.value = symbolFromIntl(recordCurrency.value) })
 }
 
 // --- 商家切换 -> 加载历史商品 ---
 const onMerchantChange = async (val: number | null) => {
   historyRows.value = []
   if (!val) return
-  const m = merchants.value.find((x) => x.id === val)
-  recordCurrency.value = m?.default_currency || m?.effective_currency || 'CNY'
-  currencySymbolText.value = await currencySymbol(recordCurrency.value).catch(() => symbolFromIntl(recordCurrency.value))
+  applyMerchantCurrency(merchants.value.find((x) => x.id === val))
   loading.value = true
   try {
     const res = await api.get(`/merchants/${val}/product-prices`, {
@@ -913,7 +894,6 @@ onMounted(() => {
   restoreDraft()
   loadMerchants()
   loadUnits()
-  loadCurrencies().then((list) => { currencies.value = list }).catch(() => {})
   consumeProductReturn()
 })
 </script>

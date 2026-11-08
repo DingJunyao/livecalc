@@ -104,6 +104,8 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
             unit: result.unit,
             merchantId: result.merchantId,
             merchantName: merchantName,
+            productId: result.productId,
+            productName: result.productName,
             recordType: result.recordType,
             recordedAt: result.recordedAt,
             notes: result.notes,
@@ -187,19 +189,13 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.journeyPriceRecords),
+        // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         actions: [
           const CalcContextMenuButton(),
           IconButton(
             icon: const Icon(Icons.bolt),
             tooltip: l10n.quickFillTitle,
             onPressed: () => context.push('/prices/quick-fill'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: state.loading
-                ? null
-                : () => ref.read(priceListProvider.notifier).loadRecords(),
-            tooltip: l10n.journeyRefresh,
           ),
         ],
       ),

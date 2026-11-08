@@ -6,6 +6,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/app_back_button.dart';
+import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
@@ -175,24 +176,53 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(plan?['name'] as String? ?? l10n.navPlans),
+        // 方案名是动态标题，操作全部收进 ⋮ 菜单，避免挤压标题；长按看全名。
+        title: AppTitleTooltip(
+          message: plan?['name'] as String? ?? l10n.navPlans,
+        ),
         leading: const AppBackButton(),
         actions: [
           const CalcContextMenuButton(),
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: l10n.plansEdit,
-            onPressed: _loading ? null : _editPlan,
-          ),
-          IconButton(
-            icon: const Icon(Icons.verified_outlined),
-            tooltip: l10n.plansSetToday,
-            onPressed: _busy ? null : _setToday,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            tooltip: l10n.commonDelete,
-            onPressed: _busy ? null : _delete,
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (v) {
+              if (v == 'edit') {
+                _editPlan();
+              } else if (v == 'setToday') {
+                _setToday();
+              } else if (v == 'delete') {
+                _delete();
+              }
+            },
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'edit',
+                enabled: !_loading,
+                child: ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: Text(l10n.plansEdit),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'setToday',
+                enabled: !_busy,
+                child: ListTile(
+                  leading: const Icon(Icons.verified_outlined),
+                  title: Text(l10n.plansSetToday),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                enabled: !_busy,
+                child: ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: Text(l10n.commonDelete),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
