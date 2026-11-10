@@ -56,11 +56,12 @@ X-Region 会话覆盖机制本身完好：`client.ts`（web）与移动端 `api_
 
 ## 各端情况
 
-- **web 服务端模式**：`client.ts` 全局注入 X-Region → 纯后端修复即覆盖，前端零改动。
-- **移动端服务端模式**：`api_client.dart` 拦截器注入 X-Region + 同一套 `/meal-plans` 端点 → 同样纯后端覆盖。
+- **web 服务端模式**：`client.ts` 全局注入 X-Region（`scope === ''` → `all`）→ 纯后端修复即覆盖，前端零改动。
+- **移动端服务端模式**：同一套 `/meal-plans` 端点；但拦截器原本只在 `effectiveRegionId != null` 时发 X-Region——而会话选「全部地区」时 `_resolveEffectiveRegion` 正好返回 null → 头被省略 → 后端回退用户默认范围，「全部地区」选了等于没选。修复（feat/mobile-app）：`CalcContextInterceptor` 对齐 web `client.ts`，`scope == ''` 显式发 `X-Region: all`；新测 `test/core/calc_context_interceptor_test.dart` 3 例（假 Adapter 捕获请求头：默认不注入 / all 显式注入 / X-Currency 注入与 scope null 不注入）。
 - **本地模式（web + 移动端）**：本地 handler（`api/local/handlers/mealPlans.ts` 等）目前完全没有计算范围的输入通道——`proxy.ts` 分发不透传会话上下文，菜谱本地 handler 虽接受 `region_id` 参数但所有调用方都传 null（本地模式整体是全局聚合，不止试算）。属既有结构性缺口，与本次回归无关，未在本次处理。
 
 ## 分支与部署
 
-- master `78a265cf`（后端 + 测试）→ 合入 feat/mobile-app；移动端无代码改动。
-- 外部环境待部署后复核（线上 admin 账号切范围对比试算合计）。
+- 后端：master `78a265cf`（fix）+ `bea86555`（docs）→ 已合入 feat/mobile-app。
+- 移动端：feat/mobile-app 拦截器修复（仅 `scope == ''` 分支新增，默认路径不变）。
+- 外部环境待部署后复核（线上 admin 账号切范围对比试算合计；移动端切「全部地区」后列表/试算价应回到全量口径）。

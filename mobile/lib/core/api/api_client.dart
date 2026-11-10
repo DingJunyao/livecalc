@@ -52,7 +52,11 @@ class CalcContextInterceptor extends Interceptor {
     if (ctx.currency != null && ctx.currency!.isNotEmpty) {
       options.headers['X-Currency'] = ctx.currency;
     }
-    if (ctx.effectiveRegionId != null) {
+    // 「全部地区」是一次明确的会话覆盖，不能省略请求头：省略会让后端回退到
+    // 用户保存的默认计算范围。与 web client.ts 相同，用 all 保留这个语义。
+    if (ctx.scope == '') {
+      options.headers['X-Region'] = 'all';
+    } else if (ctx.effectiveRegionId != null) {
       options.headers['X-Region'] = '${ctx.effectiveRegionId}';
     }
     handler.next(options);
