@@ -11,6 +11,9 @@
   营养 = NutritionCalculator.calculate_ingredient_nutrition（与原料营养详情页同口径：
   best 营养数据 + 缺项从关联商品加权平均回填 + 数量按原料自身换算链折算）。
 - product 项：商品最新有效记录的单价 × 数量换算；无营养。
+- 计算范围：evaluate / cost-trend 均按 resolve_region_param 取地区范围
+  （会话 X-Region 覆盖优先，其次用户默认计算范围），对菜谱/原料/商品三条
+  成本链路统一按商家地区子树过滤价格记录；None = 全部地区。
 """
 import datetime
 import logging
@@ -24,7 +27,9 @@ from app.models.meal_plan import MealPlan, MealPlanItem
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.user import User
+from app.services.calc_scope import resolve_region_param
 from app.services.ingredient_price_service import get_weighted_ingredient_price
+from app.services.price_region import apply_region_filter
 from app.services.nutrition_reference import (
     KEY_BY_NAME,
     NAME_BY_KEY,
@@ -135,8 +140,12 @@ def _build_plan_nutrition(items_info: List[Dict]) -> Dict:
 
 async def _item_cost_nutrition(
     db: Session, user: User, item: MealPlanItem, tz: str,
+    region_id: Optional[int] = None,
 ) -> Dict:
-    """单个条目的 {name, cost, currency, nutrition}。计算失败不抛出，返回 None 值。"""
+    """单个条目的 {name, cost, currency, nutrition}。计算失败不抛出，返回 None 值。
+
+    region_id：计算范围（商家地区子树过滤）；None 表示全部地区。
+    """
     out: Dict = {
         "item_id": item.id,
         "item_type": item.item_type,
@@ -160,6 +169,7 @@ async def _item_cost_nutrition(
             cost = await calculate_recipe_cost(
                 recipe.id, user.id, db,
                 tz=tz, servings_override=servings_override,
+                region_id=region_id,
             )
             if cost and cost.get("cost_per_serving") is not None:
                 out["cost"] = _round2(float(cost["cost_per_serving"]))
@@ -194,6 +204,7 @@ async def _item_cost_nutrition(
             weighted = get_weighted_ingredient_price(
                 db, ingredient.id, as_of_date=now,
                 user_id=user.id, target_unit_abbr=unit_abbr, tz=tz,
+                region_id=region_id,
             )
             unit_price = weighted.get("unit_price")
             price_unit = weighted.get("unit") or unit_abbr
@@ -252,15 +263,14 @@ async def _item_cost_nutrition(
             return out
         out["name"] = product.name
         quantity = float(item.quantity or 0)
-        record = (
-            db.query(ProductRecord)
-            .filter(
+        record_query = apply_region_filter(
+            db.query(ProductRecord).filter(
                 ProductRecord.product_id == product.id,
                 ProductRecord.is_active == True,  # noqa: E712
-            )
-            .order_by(ProductRecord.recorded_at.desc())
-            .first()
+            ),
+            db, region_id,
         )
+        record = record_query.order_by(ProductRecord.recorded_at.desc()).first()
         unit_abbr = item.unit.abbreviation if item.unit else None
         if unit_abbr is None and record is not None:
             # 未显式选单位时，商品沿用最新有效价格记录的标准单位，
@@ -405,11 +415,14 @@ async def _evaluate_stub_items(
 ) -> Dict:
     from app.services.meal_recommender import MEAL_RATIOS
 
+    # 计算范围：会话 X-Region 覆盖优先，其次用户默认计算范围（region + default_calc_scope）
+    region_id = resolve_region_param(db, user, None)
+
     eval_items = []
     totals = {"cost": 0.0, "currency": None,
               "calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
     for item in items:
-        info = await _item_cost_nutrition(db, user, item, tz)
+        info = await _item_cost_nutrition(db, user, item, tz, region_id=region_id)
         eval_items.append(info)
         if info.get("cost") is not None:
             if info["cost"] != 0:
@@ -460,6 +473,9 @@ def plan_cost_trend(
 
     from app.services.recipe_service import calculate_recipe_cost_range_trend
 
+    # 计算范围：与会话 X-Region / 用户默认计算范围同口径（与 evaluate 一致）
+    region_id = resolve_region_param(db, user, None)
+
     end = datetime.datetime.now(datetime.timezone.utc) - timedelta(days=offset_days)
     start = end - timedelta(days=days - 1)
 
@@ -479,6 +495,7 @@ def plan_cost_trend(
         try:
             trend = calculate_recipe_cost_range_trend(
                 item.recipe_id, user.id, db, days=days, offset_days=offset_days, tz=tz,
+                region_id=region_id,
             )
             for point in trend:
                 day = point.get("date")
@@ -512,6 +529,7 @@ def plan_cost_trend(
                     weighted = get_weighted_ingredient_price(
                         db, item.ingredient_id, as_of_date=as_of,
                         user_id=user.id, target_unit_abbr=unit_abbr, tz=tz,
+                        region_id=region_id,
                     )
                     unit_price = weighted.get("unit_price")
                     if unit_price is not None:
@@ -525,15 +543,14 @@ def plan_cost_trend(
                     continue
         elif item.item_type == "product":
             try:
-                record = (
-                    db.query(ProductRecord)
-                    .filter(
+                record_query = apply_region_filter(
+                    db.query(ProductRecord).filter(
                         ProductRecord.product_id == item.product_id,
                         ProductRecord.is_active == True,  # noqa: E712
-                    )
-                    .order_by(ProductRecord.recorded_at.desc())
-                    .first()
+                    ),
+                    db, region_id,
                 )
+                record = record_query.order_by(ProductRecord.recorded_at.desc()).first()
             except Exception:
                 record = None
             if record is None or record.price is None:
@@ -581,16 +598,15 @@ def plan_cost_trend(
                 conditions.append(ProductRecord.product_id.in_(product_ids))
             if ingredient_ids:
                 conditions.append(Product.ingredient_id.in_(ingredient_ids))
-            rows = (
+            rows = apply_region_filter(
                 db.query(ProductRecord.recorded_at)
                 .join(Product, Product.id == ProductRecord.product_id)
                 .filter(
                     or_(*conditions),
                     ProductRecord.is_active == True,  # noqa: E712
-                )
-                .distinct()
-                .all()
-            )
+                ),
+                db, region_id,
+            ).distinct().all()
             for (recorded_at,) in rows:
                 if recorded_at is None:
                     continue
