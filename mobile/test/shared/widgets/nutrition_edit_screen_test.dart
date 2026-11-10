@@ -56,7 +56,7 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -86,7 +86,7 @@ void main() {
     addTearDown(tester.view.reset);
 
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -109,6 +109,51 @@ void main() {
     expect(find.text('饱和脂肪'), findsOneWidget);
   });
 
+  testWidgets('新行选择营养素时套用默认单位（钾 → mg）', (tester) async {
+    // 用户要求：除能量/蛋白质/脂肪/饱和脂肪/反式脂肪/碳水化合物/糖/膳食纤维
+    // 外，其余营养素默认单位统一 mg（含此前默认 g 的钾、钙等）。
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: NutritionEditScreen(
+          basisUnitsLoader: () async => const [],
+          initialNutrients: const [
+            NutrientEntry(
+              key: 'energy',
+              label: '能量',
+              value: 120,
+              unit: 'kcal',
+            ),
+          ],
+          onSave: (rows, basis) async => null,
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('添加营养素'));
+    await tester.tap(find.text('添加营养素'));
+    await tester.pumpAndSettle();
+
+    // 新行的营养素下拉（labelText「营养素」；基准单位也是同类型下拉，不能按序号取）
+    final nutrientDropdowns = find.byWidgetPredicate(
+      (widget) =>
+          widget is DropdownButtonFormField<String> &&
+          widget.decoration.labelText == '营养素',
+    );
+    await tester.tap(nutrientDropdowns.last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('钾').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('mg'), findsOneWidget, reason: '新行选「钾」后默认单位应为 mg');
+  });
+
   testWidgets('新建营养预填五项（能量随偏好 / 钠 mg），空保存不写数据', (tester) async {
     // 用户要求：新建原料/商品添加营养时默认带出能量、蛋白质、脂肪、碳水化合物、
     // 钠，能量默认**跟随能量单位偏好**（无偏好回退 kcal）、钠默认 mg；
@@ -119,7 +164,7 @@ void main() {
     List<NutrientEntry>? saved;
     var saveCalls = 0;
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -164,17 +209,17 @@ void main() {
       ),
     );
     await tester.pumpWidget(ProviderScope(
-      overrides: [authProvider.overrideWith((_) => notifier)],
-      child: MaterialApp(
-      locale: const Locale('zh', 'CN'),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: NutritionEditScreen(
-        entityType: 'ingredient',
-        entityId: 0,
-        basisUnitsLoader: () async => const [],
-      ),
-    )));
+        overrides: [authProvider.overrideWith((_) => notifier)],
+        child: MaterialApp(
+          locale: const Locale('zh', 'CN'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: NutritionEditScreen(
+            entityType: 'ingredient',
+            entityId: 0,
+            basisUnitsLoader: () async => const [],
+          ),
+        )));
     await tester.pumpAndSettle();
 
     expect(find.text('kJ'), findsWidgets);
@@ -188,7 +233,7 @@ void main() {
     List<NutrientEntry>? saved;
     NutritionBasis? savedBasis;
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -213,9 +258,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // 填钠（钠在最后一行，按行内 Column 定位其数值输入框）
-    final sodiumRow = find
-        .ancestor(of: find.text('钠'), matching: find.byType(Column))
-        .first;
+    final sodiumRow =
+        find.ancestor(of: find.text('钠'), matching: find.byType(Column)).first;
     await tester.enterText(
       find.descendant(of: sodiumRow, matching: find.byType(TextField)),
       '480',
@@ -232,7 +276,7 @@ void main() {
 
   testWidgets('已有数据全清空时仍提示至少填一项（不静默丢弃）', (tester) async {
     await tester.pumpWidget(ProviderScope(
-      child: MaterialApp(
+        child: MaterialApp(
       locale: const Locale('zh', 'CN'),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,

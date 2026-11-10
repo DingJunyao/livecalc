@@ -87,11 +87,14 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   String _currencySymbol = '¥';
   List<dynamic> _currencies = const [];
   String _unit = '斤';
+
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
+
   /// 全局单位基准（GET /units/）；为空时回退 [priceRecordUnits] 常量
   List<String> _globalUnits = const [];
   bool _globalUnitsLoading = false;
+
   /// 已按其加载过自定义单位的商品 id，避免重复请求
   int? _unitsLoadedForProductId;
   int _unitsSeq = 0;
@@ -248,13 +251,14 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
   /// 选中商品后把单位下拉切到该商品（或其关联原料）的「默认单位」
   /// （单位编辑里的「设为默认」）。没有默认单位 / 读取失败时保持原值。
   Future<void> _applyEntityDefaultUnit(int productId, int? ingredientId) async {
-    final unit = await (widget.defaultUnitLoader?.call(productId, ingredientId) ??
-        loadEntityDefaultUnitName(
-          entityType: 'product',
-          entityId: productId,
-          ingredientId: ingredientId,
-          request: widget.entityUnitsRequest,
-        ));
+    final unit =
+        await (widget.defaultUnitLoader?.call(productId, ingredientId) ??
+            loadEntityDefaultUnitName(
+              entityType: 'product',
+              entityId: productId,
+              ingredientId: ingredientId,
+              request: widget.entityUnitsRequest,
+            ));
     if (!mounted || unit == null || unit.isEmpty) return;
     // 期间可能又换了商品：只在本商品仍是当前选中时落地
     if (_selectedProduct?.id != productId) return;
@@ -298,14 +302,15 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
       return;
     }
     final seq = ++_unitsSeq;
-    final names = await (widget.unitNamesLoader?.call(productId, ingredientId) ??
-        loadEntityUnitNames(
-          entityType: 'product',
-          entityId: productId,
-          ingredientId: ingredientId,
-          request: widget.entityUnitsRequest,
-          includeLinkUnits: true,
-        ));
+    final names =
+        await (widget.unitNamesLoader?.call(productId, ingredientId) ??
+            loadEntityUnitNames(
+              entityType: 'product',
+              entityId: productId,
+              ingredientId: ingredientId,
+              request: widget.entityUnitsRequest,
+              includeLinkUnits: true,
+            ));
     if (!mounted || seq != _unitsSeq) return;
     setState(() {
       _customUnits = names;
@@ -520,6 +525,10 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                     _currencyTouched = false;
                     _applyMerchantCurrency(m);
                   });
+                  // Autocomplete 选中后只收起选项面板、输入框仍保留焦点；
+                  // 接着扫码/选日期等不抢焦点的操作，回到表单时焦点恢复会让
+                  // 下拉重新弹出（表现为「商家下拉一直显示」）。选中即释放焦点。
+                  FocusManager.instance.primaryFocus?.unfocus();
                 },
                 fieldViewBuilder:
                     (ctx, controller, focusNode, onFieldSubmitted) {

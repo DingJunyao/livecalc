@@ -605,6 +605,26 @@ void main() {
     expect(repo.lastMerchantId, 1);
   });
 
+  testWidgets('选中商家后释放焦点，避免下拉面板随焦点恢复常驻', (tester) async {
+    await pumpForm(tester);
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    final focusNode = tester.widget<TextField>(merchantField).focusNode;
+    expect(focusNode?.hasFocus, isTrue, reason: '输入时应持有焦点');
+
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    // Autocomplete 选中只收起面板、焦点仍在输入框；接着扫码/选日期等不抢焦点
+    // 的操作回来时会随焦点恢复重新弹出。选中后应主动释放焦点。
+    expect(focusNode?.hasFocus, isFalse);
+  });
+
   testWidgets('不选商家（文本空）保存，merchantId 为 null', (tester) async {
     final repo = _FakePriceRepository();
     await pumpForm(tester, priceRepo: repo);

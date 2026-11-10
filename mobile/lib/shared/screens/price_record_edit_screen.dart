@@ -19,6 +19,7 @@ class PriceRecordFormResult {
   final String unit;
   final int? merchantId;
   final int? productId;
+
   /// 换绑后的商品名快照（未换绑/未选择时为 null，调用方沿用记录现值）
   final String? productName;
   final String recordType; // 'purchase' | 'price'
@@ -64,6 +65,7 @@ const priceRecordUnits = [
 class PriceRecordFormArguments {
   final List<Merchant> merchants;
   final List<ProductOption> products;
+
   /// 初始商品（仅作为可搜索商品字段的回显种子，可被用户换绑）
   final int? fixedProductId;
   final String? fixedProductName;
@@ -134,14 +136,17 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   late String _unit;
   int? _merchantId;
   int? _productId;
+
   /// 允许换绑商品时的搜索态（对齐新增页：300ms 防抖 + 请求序号）
   Product? _selectedProduct;
   List<Product> _productResults = const [];
   bool _searchingProduct = false;
   Timer? _productSearchDebounce;
   int _productSearchSeq = 0;
+
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
+
   /// 全局单位基准（服务端 /units/ 现拉；失败时回退硬编码常量）
   List<String> _baseUnits = const [];
   int _unitsSeq = 0;
@@ -202,8 +207,8 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   /// 硬编码常量只作兜底：它缺 桶/把/条/块/颗 以及大写 mL 等，
   /// 曾导致用这些单位记下的价格记录在编辑页里选不回来。
   Future<void> _loadGlobalUnits() async {
-    final names = await (widget.globalUnitNamesLoader?.call() ??
-        loadGlobalUnitNames());
+    final names =
+        await (widget.globalUnitNamesLoader?.call() ?? loadGlobalUnitNames());
     if (!mounted) return;
     setState(() {
       _baseUnits = mergePriceUnitOptions(names, priceRecordUnits);
@@ -449,6 +454,9 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                       _currencySymbol = currencySymbol(code);
                     }
                   });
+                  // 选中即释放焦点：否则后续扫码/选日期等操作回来时，
+                  // Autocomplete 会随焦点恢复重新弹出商家下拉。
+                  FocusManager.instance.primaryFocus?.unfocus();
                 },
                 fieldViewBuilder: (
                   context,

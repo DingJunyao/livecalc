@@ -414,17 +414,28 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
   void _armIngredientSelectionGuard() {
     _ingredientSelectionGuardTimer?.cancel();
     _ignoreIngredientTextChanges = true;
-    _ingredientSelectionGuardTimer = Timer(const Duration(milliseconds: 300), () {
+    _ingredientSelectionGuardTimer =
+        Timer(const Duration(milliseconds: 300), () {
       _ignoreIngredientTextChanges = false;
     });
   }
 
   /// 开关「新增对应原料」：开启后关联原料下拉隐藏，必须清掉已选原料，
   /// 否则商品可能仍挂到旧原料上（与 web 行为一致）。
+  ///
+  /// 关联原料里只输入了文字、还没匹配到具体原料时，把这段文字带到
+  /// 「新原料名称」；已匹配到已有原料时不复制（那是已有原料的名字）。
   void _setCreateNewIngredient(bool enabled) {
+    final typed = _ingredientSearchController.text.trim();
+    final hadMatchedIngredient = _selectedIngredient != null;
     setState(() {
       _createNewIngredient = enabled;
       if (enabled) {
+        if (!hadMatchedIngredient &&
+            typed.isNotEmpty &&
+            _newIngredientNameController.text.trim().isEmpty) {
+          _newIngredientNameController.text = typed;
+        }
         _ingredientBeforeCreateNew = _selectedIngredient;
         _selectedIngredient = null;
         _ingredientSearchController.clear();
@@ -611,8 +622,7 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
         setState(() => _saving = false);
         // 后端给得出具体原因（如「条码已存在」）时直接展示，别只剩笼统的
         // 「保存失败，请重试」让用户猜。
-        _showError(
-            _serverErrorDetail(error) ?? l10n.commonSaveFailedRetry);
+        _showError(_serverErrorDetail(error) ?? l10n.commonSaveFailedRetry);
       }
     }
   }
@@ -1090,7 +1100,8 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
             // 两个例外（防输入法回声把刚选好的原料静默清空）：
             // 1. 组合态未上屏的文本不动选择，上屏后自然走到下面的判定；
             // 2. 点选后的保护窗口期内忽略（见 _armIngredientSelectionGuard）。
-            if (_ingredientSearchController.value.composing != TextRange.empty) {
+            if (_ingredientSearchController.value.composing !=
+                TextRange.empty) {
               return;
             }
             if (_ignoreIngredientTextChanges) return;

@@ -72,10 +72,35 @@ class _FakeIngredientRepository extends IngredientRepository {
   }
 }
 
+/// 下拉搜索有结果的原料仓库：用于「输入文字但未匹配」与「已匹配」两种场景。
+class _SearchableIngredientRepository extends IngredientRepository {
+  _SearchableIngredientRepository(this.items);
+
+  final List<Ingredient> items;
+
+  @override
+  Future<IngredientPage> search({
+    String? search,
+    List<int>? categoryIds,
+    List<String>? conditions,
+    int skip = 0,
+    int limit = 20,
+    String sortBy = 'price_records',
+    bool favoritesOnly = false,
+    bool favoritesFirst = false,
+  }) async {
+    final query = (search ?? '').trim();
+    final filtered = items
+        .where((item) => query.isEmpty || item.name.contains(query))
+        .toList();
+    return IngredientPage(items: filtered, total: filtered.length);
+  }
+}
+
 Future<void> _pumpForm(
   WidgetTester tester, {
   required _FakeProductRepository productRepository,
-  required _FakeIngredientRepository ingredientRepository,
+  required IngredientRepository ingredientRepository,
   Ingredient? fixedIngredient,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -264,5 +289,64 @@ void main() {
     expect(ingredientRepository.createCalls, 0);
     expect(productRepository.createCalls, 1);
     expect(productRepository.createdIngredientId, 8);
+  });
+
+  testWidgets('关联原料只输入未匹配文字时，开启开关自动带入新原料名称', (tester) async {
+    await _pumpForm(
+      tester,
+      productRepository: _FakeProductRepository(),
+      ingredientRepository: _SearchableIngredientRepository(const []),
+    );
+
+    final ingredientField = find.widgetWithText(
+      TextField,
+      'Search and select a linked ingredient *',
+    );
+    await tester.enterText(ingredientField, 'Milk powder');
+    await tester.pump(const Duration(milliseconds: 400));
+
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+
+    final newNameField = find.descendant(
+      of: find.widgetWithText(TextFormField, 'Ingredient name'),
+      matching: find.byType(TextField),
+    );
+    expect(
+      tester.widget<TextField>(newNameField).controller?.text,
+      'Milk powder',
+      reason: '未匹配到已有原料时，输入的关联原料文字应带到新原料名称',
+    );
+  });
+
+  testWidgets('关联原料已匹配到已有原料时，开启开关不复制名称', (tester) async {
+    await _pumpForm(
+      tester,
+      productRepository: _FakeProductRepository(),
+      ingredientRepository: _SearchableIngredientRepository(
+          const [Ingredient(id: 81, name: '牛奶')]),
+    );
+
+    final ingredientField = find.widgetWithText(
+      TextField,
+      'Search and select a linked ingredient *',
+    );
+    await tester.enterText(ingredientField, '牛奶');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
+    await tester.pump(const Duration(milliseconds: 50));
+
+    await tester.tap(find.byType(SwitchListTile).first);
+    await tester.pumpAndSettle();
+
+    final newNameField = find.descendant(
+      of: find.widgetWithText(TextFormField, 'Ingredient name'),
+      matching: find.byType(TextField),
+    );
+    expect(
+      tester.widget<TextField>(newNameField).controller?.text,
+      isEmpty,
+      reason: '已匹配到已有原料时不应把它的名字复制成新原料名称',
+    );
   });
 }

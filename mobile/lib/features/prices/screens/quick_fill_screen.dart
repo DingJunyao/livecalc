@@ -155,12 +155,16 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
   void _selectMerchant(Map<String, dynamic> merchant) {
     setState(() {
       _selectedMerchantId = merchant['id'] as int?;
-      final code = (merchant['effective_currency'] ?? merchant['default_currency']) as String?;
+      final code = (merchant['effective_currency'] ??
+          merchant['default_currency']) as String?;
       if (code != null && code.isNotEmpty) {
         _currency = code;
         _currencySymbol = currencySymbol(code);
       }
     });
+    // 选中即释放焦点：否则操作下面的行（不抢焦点）回来时，
+    // Autocomplete 会随焦点恢复重新弹出商家下拉。
+    FocusManager.instance.primaryFocus?.unfocus();
     _loadHistoryProducts();
   }
 
@@ -580,8 +584,7 @@ class _PriceRowWidget extends StatelessWidget {
                       prefixStyle: theme.textTheme.bodyMedium,
                       border: InputBorder.none,
                       isCollapsed: true,
-                      contentPadding:
-                          const EdgeInsets.symmetric(vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),

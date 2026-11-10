@@ -55,12 +55,14 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
   final NutritionInfo? nutrition;
   final List<NutrientEntry> initialNutrients;
   final bool allowClear;
+
   /// 是否允许切到 USDA 匹配：USDA 匹配直接写服务端，草稿（商品还没创建）时必须关掉。
   final bool allowUsda;
   final Future<void> Function()? onRefresh;
   final Future<Object?> Function(List<NutrientEntry>, NutritionBasis)? onSave;
   final Future<Object?> Function()? onClear;
   final UsdaRepository? usdaRepository;
+
   /// 基准单位的可注入取数缝（测试用）：缺省走 /units/ + 本实体自定义单位。
   final Future<List<String>> Function()? basisUnitsLoader;
 
@@ -81,7 +83,8 @@ class NutritionEditScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NutritionEditScreen> createState() => _NutritionEditScreenState();
+  ConsumerState<NutritionEditScreen> createState() =>
+      _NutritionEditScreenState();
 }
 
 class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
@@ -96,6 +99,9 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
   bool _saving = false;
   bool _usdaMode = false;
 
+  /// 用户能量单位偏好（kcal | kJ）：新建能量行 / 下拉选「能量」时跟随。
+  String? _energyUnit;
+
   /// 营养基准（「每 X 单位」）：默认 100 g，可改成包装标签上的量/单位
   /// （单位候选含本实体可折算的自定义单位）。
   NutritionBasis _basis = const NutritionBasis();
@@ -103,6 +109,7 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     text: formatBasisAmount(kDefaultNutritionBasisAmount),
   );
   List<String> _basisUnits = const ['g', 'mL'];
+
   /// 进入编辑时是否已有营养数据：空保存时「不记录」还是「至少填一项」看它
   bool _hadNutritionData = false;
 
@@ -118,14 +125,10 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     // 没有任何营养数据：预填营养成分表常见七项（能量随用户能量单位偏好、
     // 蛋白质 / 脂肪 / 饱和脂肪 / 碳水化合物 / 糖 g、钠 mg）。用户只是点进
     // 来看看的话，保存时不会写任何数据。
+    _energyUnit = ref.read(authProvider).user?.unitPreferences?.energyUnit;
     if (_rows.isEmpty) {
-      final energyUnit = ref
-          .read(authProvider)
-          .user
-          ?.unitPreferences
-          ?.energyUnit;
       for (final label in kDefaultNutrientLabels) {
-        final unit = defaultNutrientUnit(label, energyUnit: energyUnit);
+        final unit = defaultNutrientUnit(label, energyUnit: _energyUnit);
         _rows.add(_NutritionEditRow(
           label: label,
           unit: unit,
@@ -368,8 +371,7 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final savePosition = ref.watch(saveButtonPositionProvider);
-    final saveLabel =
-        _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave;
+    final saveLabel = _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave;
     return Scaffold(
       appBar: AppBar(
         // 标题固定为「编辑营养成分」：实体名和「清空自定义」放不下标题区
@@ -378,9 +380,8 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
         actions: [
           ...saveAppBarActions(
             position: savePosition,
-            onSave: _saving
-                ? null
-                : (_usdaMode ? _confirmUsdaMatch : _saveManual),
+            onSave:
+                _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),
             label: _saving ? l10n.commonSaving : saveLabel,
           ),
         ],
@@ -388,9 +389,7 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
       bottomNavigationBar: saveBottomBar(
         context: context,
         position: savePosition,
-        onSave: _saving
-            ? null
-            : (_usdaMode ? _confirmUsdaMatch : _saveManual),
+        onSave: _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),
         label: _saving ? l10n.commonSaving : saveLabel,
       ),
       body: Column(
@@ -471,8 +470,8 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
                 onChanged: (value) {
                   if (value == null) return;
                   setState(() => _basis = NutritionBasis(
-                        amount: normalizeBasisAmount(
-                            _basisAmountController.text),
+                        amount:
+                            normalizeBasisAmount(_basisAmountController.text),
                         unit: value,
                       ));
                 },
@@ -503,6 +502,7 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
             padding: const EdgeInsets.only(bottom: 8),
             child: _NutritionEditorRow(
               row: _rows[i],
+              energyUnit: _energyUnit,
               onDelete:
                   _rows.length > 1 ? () => setState(() => _removeRow(i)) : null,
             ),
@@ -654,6 +654,9 @@ class _NutritionEditRow {
 
 /// 营养素目录（与 web `BASE_DEFS` 同口径全量；默认七项始终置顶，
 /// 新建行从下拉补别的营养素）。
+///
+/// 单位候选顺序即默认顺序：除能量（随偏好）、蛋白质/脂肪/饱和脂肪/
+/// 反式脂肪/碳水化合物/糖/膳食纤维（g）外，其余营养素默认 mg。
 const _nutrientOptions = <({String label, List<String> units})>[
   // 默认七项（与 kDefaultNutrientLabels 同序）
   (label: '能量', units: ['kcal', 'kJ']),
@@ -674,20 +677,20 @@ const _nutrientOptions = <({String label, List<String> units})>[
   (label: '铜', units: ['mg', 'g']),
   (label: '锰', units: ['mg', 'g']),
   (label: '硒', units: ['mg', 'g']),
-  (label: '维生素A', units: ['µg', 'mg']),
+  (label: '维生素A', units: ['mg', 'µg']),
   (label: '维生素C', units: ['mg', 'g']),
   (label: '维生素B1', units: ['mg']),
   (label: '维生素B2', units: ['mg']),
   (label: '维生素B6', units: ['mg']),
-  (label: '维生素B12', units: ['µg']),
-  (label: '维生素D', units: ['µg']),
+  (label: '维生素B12', units: ['mg', 'µg']),
+  (label: '维生素D', units: ['mg', 'µg']),
   (label: '维生素E', units: ['mg']),
-  (label: '维生素K', units: ['µg']),
-  (label: '叶酸', units: ['µg']),
+  (label: '维生素K', units: ['mg', 'µg']),
+  (label: '叶酸', units: ['mg', 'µg']),
   (label: '烟酸', units: ['mg']),
-  (label: '胆固醇', units: ['mg']),
-  (label: '单不饱和脂肪', units: ['g', 'mg']),
-  (label: '多不饱和脂肪', units: ['g', 'mg']),
+  (label: '胆固醇', units: ['mg', 'g']),
+  (label: '单不饱和脂肪', units: ['mg', 'g']),
+  (label: '多不饱和脂肪', units: ['mg', 'g']),
   (label: '反式脂肪', units: ['g', 'mg']),
 ];
 
@@ -745,9 +748,16 @@ String _formatDisplayAmount(double value) => formatQuantity(value);
 
 class _NutritionEditorRow extends StatefulWidget {
   final _NutritionEditRow row;
+
+  /// 用户能量单位偏好：下拉选「能量」时默认单位跟随（kcal | kJ）。
+  final String? energyUnit;
   final VoidCallback? onDelete;
 
-  const _NutritionEditorRow({required this.row, this.onDelete});
+  const _NutritionEditorRow({
+    required this.row,
+    this.energyUnit,
+    this.onDelete,
+  });
 
   @override
   State<_NutritionEditorRow> createState() => _NutritionEditorRowState();
@@ -789,9 +799,17 @@ class _NutritionEditorRowState extends State<_NutritionEditorRow> {
           onChanged: (value) {
             if (value == null) return;
             setState(() {
+              final wasEmpty = row.label.isEmpty;
               row.label = value;
               row.units = _unitsFor(value, row.unit);
-              if (!row.units.contains(row.unit)) row.unit = row.units.first;
+              // 空行选营养素 = 新建：用该营养素的默认单位（除 8 项外均为 mg）；
+              // 已有行换营养素时，旧单位仍可用就保留，避免静默改变已填数值的量纲。
+              if (wasEmpty || !row.units.contains(row.unit)) {
+                row.unit = defaultNutrientUnit(
+                  value,
+                  energyUnit: widget.energyUnit,
+                );
+              }
             });
           },
         ),

@@ -23,14 +23,17 @@ const List<String> kDefaultNutrientLabels = [
   '钠',
 ];
 
-/// 预填行的固定默认单位（**能量不在其中** —— 它跟随用户能量单位偏好，
-/// 见 [defaultNutrientUnit]）。蛋白质/脂肪/饱和脂肪/碳水化合物/糖 g，钠 mg。
+/// 非 mg 默认单位（宏量营养素）：蛋白质/脂肪/饱和脂肪/反式脂肪/碳水化合物/
+/// 糖/膳食纤维 g；钠显式写 mg（与营养成分表通行写法一致）。
+/// **能量不在其中** —— 它跟随用户能量单位偏好，见 [defaultNutrientUnit]。
 const Map<String, String> kDefaultNutrientUnits = {
   '蛋白质': 'g',
   '脂肪': 'g',
   '饱和脂肪': 'g',
+  '反式脂肪': 'g',
   '碳水化合物': 'g',
   '糖': 'g',
+  '膳食纤维': 'g',
   '钠': 'mg',
 };
 
@@ -39,14 +42,14 @@ const Map<String, String> kDefaultNutrientUnits = {
 String normalizeEnergyUnit(String? raw) =>
     (raw ?? '').trim().toLowerCase() == 'kj' ? 'kJ' : 'kcal';
 
-/// 新建默认行的单位：能量跟随用户能量单位偏好（kcal | kJ，缺省 kcal），
-/// 钠 mg，其余 g。返回值一定在对应营养素的可选单位列表里
-/// （能量的可选单位是 ['kcal', 'kJ']）。
+/// 新建/新选营养素时的默认单位：能量跟随用户能量单位偏好（kcal | kJ，缺省
+/// kcal），宏量营养素 g，其余营养素统一 mg。返回值一定在对应营养素的可选
+/// 单位列表里（能量的可选单位是 ['kcal', 'kJ']）。
 String defaultNutrientUnit(String label, {String? energyUnit}) {
   if (label == '能量') {
     return normalizeEnergyUnit(energyUnit);
   }
-  return kDefaultNutrientUnits[label] ?? 'g';
+  return kDefaultNutrientUnits[label] ?? 'mg';
 }
 
 /// 营养基准（「每 X 单位」）。

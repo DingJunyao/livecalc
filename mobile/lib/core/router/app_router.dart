@@ -655,6 +655,24 @@ int _tabIndexFor(List<_Tab> tabs, String location) {
   return -1;
 }
 
+/// 全屏表单路由：新增/编辑原料、商品、菜谱、商家、方案时隐藏底栏/侧栏 tab。
+///
+/// 这些页面里误触 tab 会直接切走并丢掉未保存内容（返回键另有 FormExitGuard
+/// 二次确认），因此整页不再显示 tab；返回后自动恢复。
+bool _isFullScreenFormRoute(String location) {
+  const exact = <String>{
+    '/ingredients/new',
+    '/products/new',
+    '/recipes/new',
+    '/merchants/new',
+    '/plans/edit',
+  };
+  if (exact.contains(location)) return true;
+  return RegExp(
+    r'^/(ingredients|products|recipes|merchants|plans)/\d+/edit(/.*)?$',
+  ).hasMatch(location);
+}
+
 /// 路由位置在桌面版 tab 顺序中的索引（用于计算 tab 间滑动方向）。
 int _tabRouteIndex(String location) {
   for (var i = 0; i < _desktopTabs.length; i++) {
@@ -717,6 +735,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
   Widget build(BuildContext context) {
     final location = GoRouterState.of(context).matchedLocation;
     final wide = MediaQuery.of(context).size.width >= 600;
+    final fullScreenForm = _isFullScreenFormRoute(location);
     final tabs = wide ? _desktopTabs : _mobileTabs;
     final selectedIndex = _tabIndexFor(tabs, location);
     final l10n = AppLocalizations.of(context);
@@ -724,7 +743,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
     return Scaffold(
       body: Row(
         children: [
-          if (wide)
+          if (wide && !fullScreenForm)
             NavigationRail(
               selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
               onDestinationSelected: (i) =>
@@ -742,8 +761,9 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
           Expanded(child: widget.child),
         ],
       ),
-      bottomNavigationBar:
-          wide ? null : _buildBottomNav(context, selectedIndex),
+      bottomNavigationBar: wide || fullScreenForm
+          ? null
+          : _buildBottomNav(context, selectedIndex),
     );
   }
 

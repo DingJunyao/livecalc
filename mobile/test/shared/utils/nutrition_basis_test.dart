@@ -20,7 +20,8 @@ void main() {
 
   test('从营养响应读基准：统一字段优先，其次自定义数据，最后 base_*', () {
     expect(
-      readNutritionBasisFromJson({'reference_amount': 250, 'reference_unit': 'mL'}),
+      readNutritionBasisFromJson(
+          {'reference_amount': 250, 'reference_unit': 'mL'}),
       const NutritionBasis(amount: 250, unit: 'mL'),
     );
     expect(
@@ -52,8 +53,18 @@ void main() {
   test('可折算自定义单位：嵌套引用跟随被引用方，悬空引用看本行重量', () {
     final rows = <Map>[
       {'id': 1, 'unit_name': '袋', 'weight_per_unit': 250},
-      {'id': 2, 'unit_name': '箱', 'weight_per_unit': 12, 'weight_unit_override_id': 1},
-      {'id': 3, 'unit_name': '悬空箱', 'weight_per_unit': 12, 'weight_unit_override_id': 99},
+      {
+        'id': 2,
+        'unit_name': '箱',
+        'weight_per_unit': 12,
+        'weight_unit_override_id': 1
+      },
+      {
+        'id': 3,
+        'unit_name': '悬空箱',
+        'weight_per_unit': 12,
+        'weight_unit_override_id': 99
+      },
       {'id': 4, 'unit_name': '环', 'weight_unit_override_id': 4},
     ];
     // 箱：引用「袋」可折算；悬空箱：引用不存在但本行另有重量 → 后端退化为「12 g」，同样可用；
@@ -77,14 +88,13 @@ void main() {
     final options = mergeBasisUnitOptions(const ['g', 'mL', '袋'], const ['袋']);
     expect(options, ['袋', 'g', 'mL']);
     // 当前值不在候选里也要能回显
-    expect(withCurrentBasisUnit(options, '已删除的单位'),
-        ['已删除的单位', '袋', 'g', 'mL']);
+    expect(withCurrentBasisUnit(options, '已删除的单位'), ['已删除的单位', '袋', 'g', 'mL']);
     expect(withCurrentBasisUnit(options, 'g'), ['袋', 'g', 'mL']);
   });
 
   test('新建默认行包含七项核心营养素', () {
-    expect(kDefaultNutrientLabels,
-        ['能量', '蛋白质', '脂肪', '饱和脂肪', '碳水化合物', '糖', '钠']);
+    expect(
+        kDefaultNutrientLabels, ['能量', '蛋白质', '脂肪', '饱和脂肪', '碳水化合物', '糖', '钠']);
     expect(kDefaultNutrientUnits.containsKey('能量'), isFalse,
         reason: '能量不写死，走 defaultNutrientUnit 随偏好');
     expect(kDefaultNutrientUnits['钠'], 'mg');
@@ -102,5 +112,49 @@ void main() {
     // 其余营养素不受偏好影响
     expect(defaultNutrientUnit('钠', energyUnit: 'kJ'), 'mg');
     expect(defaultNutrientUnit('蛋白质'), 'g');
+  });
+
+  test('除 8 项外其余营养素默认单位统一 mg', () {
+    // 用户要求：能量/蛋白质/脂肪/饱和脂肪/反式脂肪/碳水化合物/糖/膳食纤维
+    // 保持原默认，其余营养成分默认单位一律 mg。
+    for (final label in [
+      '蛋白质',
+      '脂肪',
+      '饱和脂肪',
+      '反式脂肪',
+      '碳水化合物',
+      '糖',
+      '膳食纤维',
+    ]) {
+      expect(defaultNutrientUnit(label), 'g', reason: label);
+    }
+    for (final label in [
+      '钠',
+      '钾',
+      '钙',
+      '铁',
+      '锌',
+      '磷',
+      '镁',
+      '铜',
+      '锰',
+      '硒',
+      '维生素A',
+      '维生素C',
+      '维生素B1',
+      '维生素B2',
+      '维生素B6',
+      '维生素B12',
+      '维生素D',
+      '维生素E',
+      '维生素K',
+      '叶酸',
+      '烟酸',
+      '胆固醇',
+      '单不饱和脂肪',
+      '多不饱和脂肪',
+    ]) {
+      expect(defaultNutrientUnit(label), 'mg', reason: label);
+    }
   });
 }

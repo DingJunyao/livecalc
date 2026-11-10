@@ -38,6 +38,9 @@ GoRouter _router({String initial = '/home'}) {
               path: '/products',
               builder: (_, __) => const Scaffold(body: Text('商品页'))),
           GoRoute(
+              path: '/products/new',
+              builder: (_, __) => const Scaffold(body: Text('新增商品页'))),
+          GoRoute(
               path: '/merchants',
               builder: (_, __) => const Scaffold(body: Text('商家页'))),
           GoRoute(
@@ -132,6 +135,25 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('计价页'), findsOneWidget);
     expect(find.byIcon(Icons.receipt_long), findsOneWidget);
+  });
+
+  testWidgets('表单页（/products/new）隐藏底栏 tab，避免误触丢失填写内容', (tester) async {
+    await pump(tester, initial: '/products/new');
+
+    expect(find.text('新增商品页'), findsOneWidget);
+    expect(find.byKey(const ValueKey('tab-计价')), findsNothing);
+    expect(find.text('更多'), findsNothing);
+  });
+
+  testWidgets('表单页（/products/new）在宽屏下也隐藏侧栏 tab', (tester) async {
+    await pump(
+      tester,
+      initial: '/products/new',
+      size: const Size(900, 1200),
+    );
+
+    expect(find.text('新增商品页'), findsOneWidget);
+    expect(find.byType(NavigationRail), findsNothing);
   });
 
   testWidgets('桌面 rail 显示全部 7 项，无更多', (tester) async {
