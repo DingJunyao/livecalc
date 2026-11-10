@@ -655,6 +655,11 @@ int _tabIndexFor(List<_Tab> tabs, String location) {
   return -1;
 }
 
+/// 编辑态表单路径：/<实体>/<id>/edit（菜谱另有 /edit/<section>）。
+final _editFormPathPattern = RegExp(
+  r'^/(ingredients|products|recipes|merchants|plans)/\d+/edit(/.*)?$',
+);
+
 /// 全屏表单路由：新增/编辑原料、商品、菜谱、商家、方案时隐藏底栏/侧栏 tab。
 ///
 /// 这些页面里误触 tab 会直接切走并丢掉未保存内容（返回键另有 FormExitGuard
@@ -668,9 +673,7 @@ bool _isFullScreenFormRoute(String location) {
     '/plans/edit',
   };
   if (exact.contains(location)) return true;
-  return RegExp(
-    r'^/(ingredients|products|recipes|merchants|plans)/\d+/edit(/.*)?$',
-  ).hasMatch(location);
+  return _editFormPathPattern.hasMatch(location);
 }
 
 /// 路由位置在桌面版 tab 顺序中的索引（用于计算 tab 间滑动方向）。
