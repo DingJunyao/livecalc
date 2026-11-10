@@ -8,41 +8,14 @@
     </v-app-bar-title>
     <template #append>
       <CalcContextMenu />
-      <template v-if="editor.id">
-        <v-menu v-if="editor.kind === 'meal'">
-          <template #activator="{ props: menuProps }">
-            <v-btn
-              icon="mdi-clipboard-check-outline"
-              variant="text"
-              :loading="settingToday"
-              :title="t('plans.setToday')"
-              v-bind="menuProps"
-            />
-          </template>
-          <v-list density="compact">
-            <v-list-item
-              v-for="mt in mealTypeOptions"
-              :key="mt.value"
-              :title="mt.title"
-              @click="onSetToday(mt.value)"
-            />
-          </v-list>
-        </v-menu>
-        <v-btn
-          v-else
-          icon="mdi-clipboard-check-outline"
-          variant="text"
-          :loading="settingToday"
-          :title="t('plans.setToday')"
-          @click="onSetToday()"
-        />
-        <v-btn
-          icon="mdi-delete-outline"
-          variant="text"
-          color="error"
-          @click="onDelete"
-        />
-      </template>
+      <!-- 设为今日只在列表页提供：本页是新增/编辑态，避免与保存按钮混淆 -->
+      <v-btn
+        v-if="editor.id"
+        icon="mdi-delete-outline"
+        variant="text"
+        color="error"
+        @click="onDelete"
+      />
     </template>
   </v-app-bar>
 
@@ -320,7 +293,7 @@ import { formatMoney } from '@/utils/currency'
 import { formatNumber } from '@/utils/format'
 import {
   getPlan, createPlan, updatePlan, deletePlan,
-  evaluatePlan, getPlanCostTrend, setPlanAsRecommendation,
+  evaluatePlan, getPlanCostTrend,
   type PlanKind, type PlanItemInput, type PlanEvaluation, type PlanItemType,
 } from '@/api/mealPlans'
 
@@ -345,7 +318,6 @@ const planId = computed<number | null>(() => {
 
 const loading = ref(false)
 const saving = ref(false)
-const settingToday = ref(false)
 const evaluation = ref<PlanEvaluation | null>(null)
 /** 成本走势数据（交给 CostTrendAnalysis 渲染：平均线 + 价格区间带） */
 const trendPoints = ref<any[]>([])
@@ -381,13 +353,6 @@ const editor = ref<{
   kind: PlanKind
   items: (PlanItemInput & { name?: string | null })[]
 }>({ id: null, name: '', kind: 'meal', items: [] })
-
-/** 一顿方案设为今日时的目标餐次（早餐/午餐/晚餐） */
-const mealTypeOptions = computed(() => [
-  { title: t('meals.breakfast'), value: 'breakfast' },
-  { title: t('meals.lunch'), value: 'lunch' },
-  { title: t('meals.dinner'), value: 'dinner' },
-])
 
 const groupItems = computed(() => [
   { title: t('meals.breakfast'), value: 'breakfast' },
@@ -703,19 +668,6 @@ async function onDelete() {
     await router.push('/plans')
   } catch (e: any) {
     notify(e.userMessage || t('plans.deleteFailed'), 'error')
-  }
-}
-
-async function onSetToday(mealType?: 'breakfast' | 'lunch' | 'dinner') {
-  if (!editor.value.id) return
-  settingToday.value = true
-  try {
-    await setPlanAsRecommendation(editor.value.id, mealType)
-    notify(t('plans.setTodayDone', { name: editor.value.name }), 'success')
-  } catch (e: any) {
-    notify(e.userMessage || t('plans.setTodayFailed'), 'error')
-  } finally {
-    settingToday.value = false
   }
 }
 
