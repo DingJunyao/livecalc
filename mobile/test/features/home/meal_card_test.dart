@@ -62,6 +62,9 @@ void main() {
     expect(find.text('7.94 CNY'), findsOneWidget);
     expect(find.textContaining('NRV'), findsNWidgets(4));
     expect(find.textContaining('1,098 kcal'), findsOneWidget);
+    // NRV 只有一个百分号（formatPercentValue 自带 %，不能重复拼接）
+    expect(find.text('NRV 54.9%'), findsOneWidget);
+    expect(find.textContaining('%%'), findsNothing);
   });
 
   testWidgets('方案来源餐：方案名与条目可点，块尾补碳水与 NRV', (tester) async {

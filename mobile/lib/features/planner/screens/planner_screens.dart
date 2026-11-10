@@ -538,24 +538,6 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
     }
   }
 
-  Future<void> _setToday() async {
-    final l10n = AppLocalizations.of(context);
-    if (_planId == null) await _save();
-    if (_planId == null) return;
-    try {
-      await _repo.setPlan(_planId!);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.plansSetTodayDone)),
-      );
-    } on Exception {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l10n.plansSetTodayFailed)),
-      );
-    }
-  }
-
   Future<void> _addEntity(_PlanEntityType type) async {
     final selected = await _showEntityPicker(type);
     if (selected == null) return;
@@ -641,11 +623,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
                 onPressed: _saving || value.text.trim().isEmpty ? null : _save,
               ),
             ),
-            IconButton(
-              icon: const Icon(Icons.verified_outlined),
-              tooltip: l10n.plansSetToday,
-              onPressed: _saving ? null : _setToday,
-            ),
+            // 「设为今日」只在列表行与详情页提供：新增/编辑态与保存按钮相邻易混淆
           ],
         ),
         body: SingleChildScrollView(

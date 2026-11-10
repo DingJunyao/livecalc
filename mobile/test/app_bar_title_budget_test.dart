@@ -109,8 +109,8 @@ Future<void> main() async {
         titles: () => [zh.navFavorites, en.navFavorites, ar.navFavorites]),
     _Spec('planner_list', back: true, icons: 1,
         titles: () => [zh.navPlans, en.navPlans, ar.navPlans]),
-    // 试算新建/编辑（planner_screens.dart）：⋮ + 保存 + 设为今日
-    _Spec('planner_form', back: true, icons: 3,
+    // 试算新建/编辑（planner_screens.dart）：⋮ + 保存（设为今日只在列表/详情）
+    _Spec('planner_form', back: true, icons: 2,
         titles: () => [zh.plansNewPlan, en.plansNewPlan, ar.plansNewPlan,
               zh.plansEdit, en.plansEdit, ar.plansEdit]),
     // ── 详情页：标题是动态实体名，改为断言最少容量（汉字数）──

@@ -199,9 +199,10 @@ class MealCard extends StatelessWidget {
 
   String? _nrvSuffix(String key, double value) {
     final pct = nrvPct(key, value);
+    // formatPercentValue 已带「%」，不要再拼一个（否则显示 NRV xx%%）
     return pct == null
         ? null
-        : 'NRV ${formatPercentValue(pct, maximumFractionDigits: 2)}%';
+        : 'NRV ${formatPercentValue(pct, maximumFractionDigits: 2)}';
   }
 
   bool get _hasDishes => meal.dishes.isNotEmpty;
