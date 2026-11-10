@@ -816,9 +816,16 @@ watch(selectedIngredient, (newIngredient) => {
   }
 }, { immediate: true })
 
-// 开启「新增对应原料」后关联原料下拉会被隐藏：清掉已选原料，避免商品仍挂到旧原料
+// 开启「新增对应原料」后关联原料下拉会被隐藏：清掉已选原料，避免商品仍挂到旧原料。
+// 若关联原料里只输入了文字、还没匹配到具体原料，则把这段文字带到「新原料名称」，
+// 省得用户重打一遍；已匹配到已有原料时不复制（那是已有原料的名字）。
 watch(createNewIngredient, (enabled) => {
-  if (enabled) selectedIngredient.value = null
+  if (!enabled) return
+  const typed = ingredientSearch.value.trim()
+  if (!selectedIngredient.value && typed && !newIngredient.value.name.trim()) {
+    newIngredient.value.name = typed
+  }
+  selectedIngredient.value = null
 })
 
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
