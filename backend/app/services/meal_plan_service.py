@@ -8,7 +8,8 @@
 - recipe 项：calculate_recipe_cost(servings_override=servings) 的 cost_per_serving；
   营养 = calculate_recipe_nutrition 的 per_serving（与推荐 totals 同口径）。
 - ingredient 项：原料加权价（get_weighted_ingredient_price）× 数量（按目标单位换算）；
-  营养按 nutrition_data（reference_amount 基准）× 折算克数 / 100。
+  营养 = NutritionCalculator.calculate_ingredient_nutrition（与原料营养详情页同口径：
+  best 营养数据 + 缺项从关联商品加权平均回填 + 数量按原料自身换算链折算）。
 - product 项：商品最新有效记录的单价 × 数量换算；无营养。
 """
 import datetime
@@ -20,7 +21,6 @@ from sqlalchemy.orm import Session
 
 from app.models.nutrition import Ingredient
 from app.models.meal_plan import MealPlan, MealPlanItem
-from app.models.nutrition_data import NutritionData
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.user import User
@@ -211,57 +211,37 @@ async def _item_cost_nutrition(
                     out["currency"] = weighted.get("currency")
         except Exception:
             logger.debug(f"试算：原料 {ingredient.id} 加权价失败", exc_info=True)
-        # 营养：nutrition_data.nutrients（all_nutrients 标准 key，reference 基准）
-        # 折算 = 数量换算成克 / 基准量换算成克
+        # 营养：与原料营养详情页同口径（NutritionCalculator）——best 营养数据
+        # （custom > USDA > 已验证）、缺项从关联商品自定义营养加权平均回填、
+        # 数量按原料自身换算链折算（如火腿肠「2 根」= 120 g）。
+        # 此前手读 nutrition_data 首行 + 手工换算克数：原料自己没有营养记录
+        # （靠商品回填）或数量单位挂在商品换算链上时，整项营养会静默为空。
         try:
-            mapping = (
-                db.query(NutritionData)
-                .filter(NutritionData.ingredient_id == ingredient.id)
-                .first()
+            from app.services.nutrition_calculator import NutritionCalculator
+
+            result = NutritionCalculator(db).calculate_ingredient_nutrition(
+                ingredient.id, quantity, unit_abbr
             )
-            if mapping is not None and mapping.nutrients:
-                all_nutrients = (mapping.nutrients or {}).get("all_nutrients") or {}
-
-                def _nutrient(key: str) -> float:
-                    data = all_nutrients.get(key)
-                    if isinstance(data, dict):
-                        return float(data.get("value", 0) or 0)
-                    if isinstance(data, (int, float)):
-                        return float(data)
-                    return 0.0
-
-                converter = UnitConversionService(db)
-
-                def _to_grams(value: float, abbr: str) -> Optional[float]:
-                    converted = converter.convert(
-                        Decimal(str(value)), abbr, "g",
-                        entity_type="ingredient", entity_id=ingredient.id,
-                    )
-                    if converted:
-                        return float(converted[0])
-                    if ingredient.density:
-                        converted_ml = converter.convert(
-                            Decimal(str(value)), abbr, "mL",
-                            entity_type="ingredient", entity_id=ingredient.id,
-                        )
-                        if converted_ml:
-                            return float(converted_ml[0]) * float(ingredient.density)
-                    return None
-
-                ref_amount = float(mapping.reference_amount or 100.0) or 100.0
-                ref_unit = mapping.reference_unit or "g"
-                qty_grams = _to_grams(quantity, unit_abbr)
-                ref_grams = _to_grams(ref_amount, ref_unit)
-                if qty_grams is not None and ref_grams:
-                    factor = qty_grams / ref_grams
-                    out["nutrition"] = {
-                        "calories": _round2(_nutrient("energy") * factor),
-                        "protein_g": _round2(_nutrient("protein") * factor),
-                        "carbs_g": _round2(_nutrient("carbohydrate") * factor),
-                        "fat_g": _round2(_nutrient("fat") * factor),
-                    }
-                    out["nutrient_values"] = _nutrient_values_from_all_nutrients(
-                        all_nutrients, factor)
+            all_nutrients = ((result or {}).get("nutrition") or {}).get("all_nutrients") or {}
+            values: Dict[str, float] = {}
+            for display_name, raw in all_nutrients.items():
+                if not isinstance(raw, dict):
+                    continue
+                key = raw.get("original_key") or KEY_BY_NAME.get(display_name)
+                if not key or raw.get("value") is None:
+                    continue
+                number = float(raw["value"])
+                if key == "energy":
+                    number = energy_to_kcal(number, raw.get("unit"))
+                values[key] = number
+            if values:
+                out["nutrient_values"] = values
+                out["nutrition"] = {
+                    "calories": _round2(values.get("energy", 0.0)),
+                    "protein_g": _round2(values.get("protein", 0.0)),
+                    "carbs_g": _round2(values.get("carbohydrate", 0.0)),
+                    "fat_g": _round2(values.get("fat", 0.0)),
+                }
         except Exception:
             logger.debug(f"试算：原料 {ingredient.id} 营养折算失败", exc_info=True)
         return out
