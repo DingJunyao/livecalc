@@ -1,7 +1,8 @@
 // composables/nutrientDefinitions.ts
 // 营养素定义公共模块（DRY）：从 ProductDetail/IngredientDetail 抽离。
 // 能量行的 defaultUnit 由 buildNutrientDefinitions 参数化，跟随用户能量单位偏好；
-// 其它营养素保持各自习惯单位（蛋白质 g、钙 mg、硒 μg…）。
+// 除宏量营养素（蛋白质/脂肪/饱和脂肪/反式脂肪/碳水/糖/膳食纤维，默认 g）外，
+// 其余营养素默认单位统一为 mg（单位候选里 mg 也排在最前）。
 
 export interface NutrientDef {
   key: string
@@ -21,48 +22,60 @@ const BASE_DEFS: Omit<NutrientDef, 'defaultUnit'>[] = [
   { key: 'iron', label: 'nutrients.iron', units: ['mg', 'μg'] },
   { key: 'sodium', label: 'nutrients.sodium', units: ['mg', 'g'] },
   { key: 'potassium', label: 'nutrients.potassium', units: ['mg', 'g'] },
-  { key: 'vitamin_a_rae', label: 'nutrients.vitaminA', units: ['μg', 'IU', 'mg'] },
+  { key: 'vitamin_a_rae', label: 'nutrients.vitaminA', units: ['mg', 'μg', 'IU'] },
   { key: 'vitamin_c', label: 'nutrients.vitaminC', units: ['mg', 'g'] },
   { key: 'vitamin_b1', label: 'nutrients.vitaminB1', units: ['mg', 'μg'] },
   { key: 'vitamin_b2', label: 'nutrients.vitaminB2', units: ['mg', 'μg'] },
-  { key: 'vitamin_b12', label: 'nutrients.vitaminB12', units: ['μg', 'mg'] },
-  { key: 'vitamin_d', label: 'nutrients.vitaminD', units: ['μg', 'IU'] },
+  { key: 'vitamin_b12', label: 'nutrients.vitaminB12', units: ['mg', 'μg'] },
+  { key: 'vitamin_d', label: 'nutrients.vitaminD', units: ['mg', 'μg', 'IU'] },
   { key: 'vitamin_e', label: 'nutrients.vitaminE', units: ['mg', 'IU'] },
-  { key: 'vitamin_k', label: 'nutrients.vitaminK', units: ['μg', 'mg'] },
+  { key: 'vitamin_k', label: 'nutrients.vitaminK', units: ['mg', 'μg'] },
   { key: 'magnesium', label: 'nutrients.magnesium', units: ['mg', 'g'] },
   { key: 'zinc', label: 'nutrients.zinc', units: ['mg', 'μg'] },
-  { key: 'selenium', label: 'nutrients.selenium', units: ['μg', 'mg'] },
+  { key: 'selenium', label: 'nutrients.selenium', units: ['mg', 'μg'] },
   { key: 'cholesterol', label: 'nutrients.cholesterol', units: ['mg', 'g'] },
   { key: 'saturated_fat', label: 'nutrients.saturatedFat', units: ['g', 'mg'] },
   { key: 'sugar', label: 'nutrients.sugar', units: ['g', 'mg'] },
   { key: 'trans_fat', label: 'nutrients.transFat', units: ['g', 'mg'] },
-  { key: 'folate', label: 'nutrients.folate', units: ['μg', 'mg'] },
+  { key: 'folate', label: 'nutrients.folate', units: ['mg', 'μg'] },
   { key: 'phosphorus', label: 'nutrients.phosphorus', units: ['mg', 'g'] },
   { key: 'copper', label: 'nutrients.copper', units: ['mg', 'μg'] },
   { key: 'manganese', label: 'nutrients.manganese', units: ['mg', 'μg'] },
   { key: 'vitamin_b6', label: 'nutrients.vitaminB6', units: ['mg', 'μg'] },
   { key: 'pantothenic_acid', label: 'nutrients.vitaminB5', units: ['mg'] },
-  { key: 'monounsaturated_fat', label: 'nutrients.monounsaturatedFat', units: ['g', 'mg'] },
-  { key: 'polyunsaturated_fat', label: 'nutrients.polyunsaturatedFat', units: ['g', 'mg'] },
+  { key: 'monounsaturated_fat', label: 'nutrients.monounsaturatedFat', units: ['mg', 'g'] },
+  { key: 'polyunsaturated_fat', label: 'nutrients.polyunsaturatedFat', units: ['mg', 'g'] },
 ]
 
-const DEFAULT_UNIT_BY_KEY: Record<string, string> = {
-  energy: 'kcal',
-  protein: 'g', fat: 'g', carbohydrate: 'g', fiber: 'g',
-  calcium: 'mg', iron: 'mg', sodium: 'mg', potassium: 'mg',
-  vitamin_a_rae: 'μg', vitamin_c: 'mg', vitamin_b1: 'mg', vitamin_b2: 'mg',
-  vitamin_b12: 'μg', vitamin_d: 'μg', vitamin_e: 'mg', vitamin_k: 'μg',
-  magnesium: 'mg', zinc: 'mg', selenium: 'μg', cholesterol: 'mg',
-  saturated_fat: 'g', sugar: 'g', trans_fat: 'g', folate: 'μg', phosphorus: 'mg', copper: 'mg',
-  manganese: 'mg', vitamin_b6: 'mg', pantothenic_acid: 'mg',
-  monounsaturated_fat: 'g', polyunsaturated_fat: 'g',
+/** 默认单位保持克的营养素（含常见英文别名）；其余非能量营养素默认 mg。 */
+const GRAM_DEFAULT_KEYS = new Set([
+  'protein',
+  'fat', 'total_fat',
+  'carbohydrate', 'carbs',
+  'fiber', 'dietary_fiber',
+  'saturated', 'saturated_fat',
+  'trans', 'trans_fat', 'fatty_acids_total_trans',
+  'sugar', 'sugars', 'total_sugars',
+])
+
+/**
+ * 营养素默认单位：能量随用户偏好（kcal | kJ），宏量营养素（蛋白质/脂肪/
+ * 饱和脂肪/反式脂肪/碳水/糖/膳食纤维）为 g，其余统一 mg。
+ * 供静态定义表与动态（USDA 扩展键）定义共用，保证两端口径一致。
+ */
+export function defaultUnitForNutrientKey(
+  key: string,
+  energyUnit: 'kcal' | 'kJ' = 'kcal',
+): string {
+  if (key === 'energy') return energyUnit
+  return GRAM_DEFAULT_KEYS.has(key) ? 'g' : 'mg'
 }
 
 export function buildNutrientDefinitions(energyUnit: 'kcal' | 'kJ' = 'kcal'): NutrientDef[] {
   return BASE_DEFS.map(d => ({
     ...d,
     label: t(d.label),
-    defaultUnit: d.key === 'energy' ? energyUnit : DEFAULT_UNIT_BY_KEY[d.key],
+    defaultUnit: defaultUnitForNutrientKey(d.key, energyUnit),
   }))
 }
 

@@ -1445,7 +1445,7 @@ import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import PriceWithConvert from '@/components/prices/PriceWithConvert.vue'
 import { loadCurrencies } from '@/utils/currency'
-import { buildNutrientDefinitions, orderNutrientDefsDefaultsFirst } from '@/composables/nutrientDefinitions'
+import { buildNutrientDefinitions, defaultUnitForNutrientKey, orderNutrientDefsDefaultsFirst } from '@/composables/nutrientDefinitions'
 import { normalizeRecordToJin } from '@/api/local/business/priceNormalize'
 import type { UnitInfo, EntityOverride, DensityInfo } from '@/api/local/business/unitConverter'
 import { formatNumber, formatQuantity } from '@/utils/format'
@@ -1837,8 +1837,9 @@ const buildDynamicDef = (key: string) => {
     const label = zhName
     const isEnergy = key.startsWith('energy_') || key === 'energy'
     const isIUvitamin = /^vitamin_(a|d|e)/.test(key)
-    const units = isEnergy ? ['kcal', 'kJ'] : isIUvitamin ? ['μg', 'mg', 'IU'] : ['g', 'mg', 'μg']
-    const defaultUnit = isEnergy ? 'kcal' : isIUvitamin ? 'μg' : 'g'
+    // 默认单位与静态定义表同口径：能量随偏好、宏量营养素 g，其余 mg
+    const units = isEnergy ? ['kcal', 'kJ'] : isIUvitamin ? ['mg', 'μg', 'IU'] : ['mg', 'g', 'μg']
+    const defaultUnit = isEnergy ? 'kcal' : defaultUnitForNutrientKey(key)
     return { key, label, units, defaultUnit }
   }
   const allNutrients = nutritionData.value?.nutrition?.all_nutrients
@@ -3554,10 +3555,13 @@ const onNutrientKeyChange = (index: number, newKey: string) => {
   if (!def) return
   const item = nutritionEditItems.value[index]
   const oldUnit = item.unit
+  const wasEmpty = !item.key
   item.key = newKey
   item.name = def.label
   item.units = [...def.units]
-  if (!def.units.includes(oldUnit)) {
+  // 空行选营养素 = 新建：用该营养素的默认单位（其余营养素默认 mg）；
+  // 已有行换营养素时，旧单位仍可用就保留，避免静默改变已填数值的量纲。
+  if (wasEmpty || !def.units.includes(oldUnit)) {
     item.unit = def.defaultUnit
   }
 }
