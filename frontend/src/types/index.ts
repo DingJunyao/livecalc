@@ -39,8 +39,18 @@ export interface User {
   region_id: number | null
   default_currency: string | null
   default_calc_scope: string | null
+  default_calc_scope_id: number | null
   locale: string | null
   format_locale: string | null
+}
+
+/** 用户自定义计算范围（多地区组合，层级可混合） */
+export interface UserCalcScope {
+  id: number
+  name: string
+  region_ids: number[]
+  regions: Array<{ id: number; name: string; display_name: string; level: number }>
+  is_default: boolean
 }
 
 export interface LoginRequest {

@@ -114,3 +114,81 @@ def test_session_currency_factor_in_record_price(db):
         assert record_price_in_user_currency(R()) == Decimal("1440")
     finally:
         reset_session_currency()
+
+
+# ---- 多地区组合（自定义计算范围）----
+
+def _build_two_cities(db):
+    """中国(46) -> 河南(100) -> 三门峡(1100) -> 湖滨区(1951)；广东(200) -> 深圳(300)。"""
+    _region(db, 46, "CN", "中国", 0, "CN")
+    _region(db, 100, "410000", "河南省", 1, "CN/410000")
+    _region(db, 1100, "411200", "三门峡市", 2, "CN/410000/411200")
+    _region(db, 1951, "411202", "湖滨区", 3, "CN/410000/411200/411202")
+    _region(db, 200, "440000", "广东省", 1, "CN/440000")
+    _region(db, 300, "440300", "深圳市", 2, "CN/440000/440300")
+
+
+def test_region_subtree_ids_multi_union_dedup(db):
+    """多地区组合 = 各子树并集去重：市 + 其下辖县不重复；空元组 → 空列表。"""
+    _build_two_cities(db)
+    _merchant(db, 1, 1951)
+    db.commit()
+
+    from app.services.price_region import region_subtree_ids
+    merged = region_subtree_ids(db, (1100, 1951))
+    assert sorted(merged) == sorted(set(merged))  # 无重复
+    assert 1951 in merged and 1100 in merged
+    # 与逐个展开的并集一致
+    assert sorted(merged) == sorted(set(region_subtree_ids(db, 1100)) | set(region_subtree_ids(db, 1951)))
+    assert region_subtree_ids(db, ()) == []
+
+
+def test_apply_region_filter_multi_region_union(db):
+    """组合过滤：两城市子树并集内的商家计入 + 未分配地区商家计入，别处排除。"""
+    _build_two_cities(db)
+    _merchant(db, 1, 1951)   # 三门峡湖滨区
+    _merchant(db, 2, 300)    # 深圳
+    _merchant(db, 3, 999)    # 别处（无子树覆盖）
+    _merchant(db, 4, None)   # 未分配地区
+    _record(db, 11, 1)
+    _record(db, 12, 2)
+    _record(db, 13, 3)
+    _record(db, 14, 4)
+    db.commit()
+
+    from app.models.product import ProductRecord as PR
+    q = db.query(PR)
+    rows = apply_region_filter(q, db, (1100, 300)).all()
+    assert sorted(r.merchant_id for r in rows) == [1, 2, 4]
+
+    # 单 id 与等价单元素元组结果一致（X-Region 兼容性）
+    single = apply_region_filter(db.query(PR), db, (1100,)).all()
+    assert sorted(r.merchant_id for r in single) == [1, 4]
+
+
+def test_apply_region_filter_empty_tuple_filters_all(db):
+    """空元组 = 无有效地区 → 全部过滤（与单 id 空子树同语义）。"""
+    _build_two_cities(db)
+    _merchant(db, 1, 1951)
+    _record(db, 11, 1)
+    db.commit()
+
+    from app.models.product import ProductRecord as PR
+    assert apply_region_filter(db.query(PR), db, ()).all() == []
+
+
+def test_session_region_override_accepts_tuple(db):
+    """会话地区覆盖（X-Region 多 id）支持元组并透传。"""
+    from app.services.session_context import reset_session_region, set_session_region
+    _build_two_cities(db)
+    db.commit()
+
+    class User:
+        region_id = None
+        default_calc_scope = None
+
+    try:
+        set_session_region((1100, 300))
+        assert resolve_region_param(db, User(), None) == (1100, 300)
+    finally:
+        reset_session_region()

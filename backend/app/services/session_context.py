@@ -29,18 +29,19 @@ def get_session_rate() -> Optional[float]:
     return _session_rate.get()
 
 
-_session_region: ContextVar[Optional[int]] = ContextVar("session_region", default=None)
+_session_region: ContextVar = ContextVar("session_region", default=None)
 # None 同时可能表示“没有覆盖”和“明确选择全部地区”，故单独记录是否有覆盖。
 _session_region_overridden: ContextVar[bool] = ContextVar("session_region_overridden", default=False)
 
 
-def set_session_region(region_id: Optional[int]) -> None:
-    """设置会话地区覆盖（None 表示明确选择“全部地区”）。"""
+def set_session_region(region_id) -> None:
+    """设置会话地区覆盖：None（明确选择“全部地区”）/ 单个地区 id /
+    多地区 id 元组（自定义计算范围，见 calc_scope.ScopeResult）。"""
     _session_region.set(region_id)
     _session_region_overridden.set(True)
 
 
-def get_session_region() -> Optional[int]:
+def get_session_region():
     return _session_region.get()
 
 

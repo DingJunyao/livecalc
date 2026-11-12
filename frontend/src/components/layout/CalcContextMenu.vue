@@ -33,6 +33,7 @@
               <v-select v-if="i === 0 || regionSelections[i - 1]" v-model="regionSelections[i]"
                 :items="regionItems[i]" item-title="name" item-value="id" :label="level.label"
                 variant="outlined" density="compact" class="region-select flex-grow-1"
+                :disabled="isCustomScope"
                 :loading="regionLoading[i]" hide-details="auto" clearable
                 @update:model-value="onRegionChange(i)" />
             </template>
@@ -81,6 +82,8 @@ const calcContext = useCalcContextStore()
 const dialog = ref(false)
 const saving = ref(false)
 const currencies = ref<any[]>([])
+// 自定义计算范围（会话切换器附加选项，打开时拉取）
+const customScopes = ref<Array<{ id: number; name: string; region_ids: number[] }>>([])
 
 const scopeOptions = computed(() => [
   { title: t('scope.all'), value: '' },
@@ -88,7 +91,15 @@ const scopeOptions = computed(() => [
   { title: t('scope.province'), value: 'province' },
   { title: t('scope.city'), value: 'city' },
   { title: t('scope.county'), value: 'county' },
+  ...customScopes.value.map(s => ({ title: s.name, value: `custom:${s.id}` })),
 ])
+
+const isCustomScope = computed(() => scopeValue.value.startsWith('custom:'))
+
+function selectedCustomRegionIds(): number[] {
+  const id = Number(scopeValue.value.slice('custom:'.length))
+  return customScopes.value.find(s => s.id === id)?.region_ids || []
+}
 
 // 地区级联
 const regionLevels = computed(() => [
@@ -108,7 +119,9 @@ const currencyValue = ref<string | null>(null)
 
 // 当前展示：会话覆盖优先，否则个人配置
 const scopeLabel = computed(() => {
-  const scope = calcContext.scope ?? userStore.user?.default_calc_scope
+  const scope = calcContext.scope ?? (userStore.user?.default_calc_scope_id != null
+    ? `custom:${userStore.user.default_calc_scope_id}`
+    : userStore.user?.default_calc_scope)
   return scopeOptions.value.find(o => o.value === scope)?.title || t('region.country')
 })
 
@@ -180,13 +193,23 @@ async function ensureCurrencyOptions() {
   } catch { /* keep the code-only fallback */ }
 }
 
+async function loadCustomScopes() {
+  try {
+    const list = await api.get('/calc-scopes')
+    customScopes.value = Array.isArray(list) ? list : []
+  } catch { /* 范围接口不可用时仅缺少自定义选项 */ }
+}
+
 async function open() {
   initialRegionId = calcContext.regionId ?? userStore.user?.region_id ?? null
-  scopeValue.value = calcContext.scope ?? userStore.user?.default_calc_scope ?? 'country'
+  scopeValue.value = calcContext.scope ?? (userStore.user?.default_calc_scope_id != null
+    ? `custom:${userStore.user.default_calc_scope_id}`
+    : (userStore.user?.default_calc_scope ?? 'country'))
   currencyValue.value = calcContext.currency ?? userStore.user?.default_currency ?? null
   regionSelections.value = [null, null, null, null]
   regionItems.value = [[], [], [], []]
   await ensureCurrencyOptions()
+  void loadCustomScopes()
   if (!regionItems.value[0].length) await loadRegionLevel(0, null)
   if (initialRegionId) {
     try {
@@ -219,11 +242,21 @@ function currentChain(): Array<{ id: number; level: number }> {
 async function save() {
   saving.value = true
   try {
-    calcContext.apply({
-      regionId: selectedRegionId(),
-      scope: scopeValue.value,
-      currency: currencyValue.value || null,
-    }, currentChain())
+    if (isCustomScope.value) {
+      // 自定义范围：地区即范围地区列表，X-Region 发逗号分隔多 id
+      calcContext.apply({
+        regionId: null,
+        scope: scopeValue.value,
+        currency: currencyValue.value || null,
+        regionIds: selectedCustomRegionIds(),
+      })
+    } else {
+      calcContext.apply({
+        regionId: selectedRegionId(),
+        scope: scopeValue.value,
+        currency: currencyValue.value || null,
+      }, currentChain())
+    }
     dialog.value = false
     window.location.reload()
   } finally {

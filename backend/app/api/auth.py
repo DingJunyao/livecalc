@@ -303,6 +303,8 @@ def _user_to_response(user: "User", db: Session) -> UserResponse:
         region_id=user.region_id,
         default_currency=user.default_currency,
         default_calc_scope=user.default_calc_scope,
+        # 测试用的 FakeUser 占位对象没有该属性，getattr 兜底
+        default_calc_scope_id=getattr(user, "default_calc_scope_id", None),
         locale=user.locale,
         format_locale=user.format_locale,
         effective_currency=_user_effective_currency(db, user),
@@ -358,6 +360,26 @@ async def patch_me(
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
+
+    # 默认计算范围：自定义范围（default_calc_scope_id）与层级档位
+    # （default_calc_scope）互斥写入——设一方清另一方。
+    if "default_calc_scope_id" in update_data:
+        scope_id = update_data["default_calc_scope_id"]
+        if scope_id is not None:
+            from app.models.user_calc_scope import UserCalcScope
+            scope_row = db.query(UserCalcScope).filter(
+                UserCalcScope.id == scope_id,
+                UserCalcScope.user_id == user.id,
+            ).first()
+            if not scope_row:
+                raise LocalizedHTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    message='自定义计算范围不存在',
+                )
+            update_data["default_calc_scope"] = None
+    elif "default_calc_scope" in update_data:
+        # 显式设置层级档位（含空串=全部地区）→ 清自定义范围
+        update_data["default_calc_scope_id"] = None
 
     from app.services.currency_service import get_user_default_currency
     old_currency = get_user_default_currency(db, user)

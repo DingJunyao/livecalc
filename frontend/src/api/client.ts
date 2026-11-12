@@ -34,6 +34,10 @@ api.interceptors.request.use(
         // “全部地区”是一次明确的会话覆盖，不能简单省略请求头：省略会让
         // 后端回退到用户保存的默认计算范围。用 all 保留这个语义。
         if (ctx.scope === '') config.headers['X-Region'] = 'all'
+        else if (Array.isArray(ctx.effectiveRegionIds) && ctx.effectiveRegionIds.length) {
+          // 自定义计算范围：多地区逗号分隔，后端按子树并集过滤
+          config.headers['X-Region'] = ctx.effectiveRegionIds.join(',')
+        }
         else if (ctx.effectiveRegionId != null) config.headers['X-Region'] = String(ctx.effectiveRegionId)
       }
     } catch { /* ignore */ }
