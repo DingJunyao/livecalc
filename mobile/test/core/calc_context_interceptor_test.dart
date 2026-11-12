@@ -88,4 +88,45 @@ void main() {
     // scope 为 null（跟随配置）且 effectiveRegionId 为空 → 仍不注入 X-Region
     expect(adapter.captured.last.headers.containsKey('X-Region'), isFalse);
   });
+
+  test('自定义计算范围注入逗号分隔多 id X-Region', () async {
+    CalcContextNotifier().clear();
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await container.read(calcContextProvider.notifier).apply(
+          regionId: null,
+          scope: 'custom:5',
+          currency: null,
+          customRegionIds: const [12, 34, 12],
+        );
+
+    final adapter = _CaptureAdapter();
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(CalcContextInterceptor());
+
+    await dio.get('/ping');
+
+    expect(adapter.captured.single.headers['X-Region'], '12,34');
+  });
+
+  test('自定义范围未带 customRegionIds 时不注入 X-Region（回退用户默认）', () async {
+    CalcContextNotifier().clear();
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    await container.read(calcContextProvider.notifier).apply(
+          regionId: null,
+          scope: 'custom:5',
+          currency: null,
+        );
+
+    final adapter = _CaptureAdapter();
+    final dio = Dio(BaseOptions(baseUrl: 'http://localhost'))
+      ..httpClientAdapter = adapter
+      ..interceptors.add(CalcContextInterceptor());
+
+    await dio.get('/ping');
+
+    expect(adapter.captured.single.headers.containsKey('X-Region'), isFalse);
+  });
 }

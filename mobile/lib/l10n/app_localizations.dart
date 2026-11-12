@@ -652,6 +652,150 @@ abstract class AppLocalizations {
   /// **'区县'**
   String get profileCalcScopeCounty;
 
+  /// No description provided for @profileCustomCalcScopes.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义计算范围'**
+  String get profileCustomCalcScopes;
+
+  /// No description provided for @profileCustomCalcScopesSubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'组合多个地区参与成本计算'**
+  String get profileCustomCalcScopesSubtitle;
+
+  /// No description provided for @calcScopeListTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义计算范围'**
+  String get calcScopeListTitle;
+
+  /// No description provided for @calcScopeAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建范围'**
+  String get calcScopeAdd;
+
+  /// No description provided for @calcScopeEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑范围'**
+  String get calcScopeEdit;
+
+  /// No description provided for @calcScopeNameLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'范围名称'**
+  String get calcScopeNameLabel;
+
+  /// No description provided for @calcScopeNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'如：老家周边'**
+  String get calcScopeNameHint;
+
+  /// No description provided for @calcScopeNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入范围名称'**
+  String get calcScopeNameRequired;
+
+  /// No description provided for @calcScopeRegionsLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选地区（可混合层级）'**
+  String get calcScopeRegionsLabel;
+
+  /// No description provided for @calcScopeAddRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加当前地区'**
+  String get calcScopeAddRegion;
+
+  /// No description provided for @calcScopeRegionAdded.
+  ///
+  /// In zh, this message translates to:
+  /// **'已添加'**
+  String get calcScopeRegionAdded;
+
+  /// No description provided for @calcScopeNoRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未选择地区'**
+  String get calcScopeNoRegion;
+
+  /// No description provided for @calcScopeEmptyTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'还没有自定义范围'**
+  String get calcScopeEmptyTitle;
+
+  /// No description provided for @calcScopeEmptySubtitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击右下角按钮新建一个范围'**
+  String get calcScopeEmptySubtitle;
+
+  /// No description provided for @calcScopeDefaultBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get calcScopeDefaultBadge;
+
+  /// No description provided for @calcScopeSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认计算范围'**
+  String get calcScopeSetDefault;
+
+  /// No description provided for @calcScopeDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除自定义范围'**
+  String get calcScopeDeleteTitle;
+
+  /// No description provided for @calcScopeDeleteMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除「{name}」吗？使用该范围的默认设置将回退。'**
+  String calcScopeDeleteMessage(Object name);
+
+  /// No description provided for @calcScopeSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存'**
+  String get calcScopeSaved;
+
+  /// No description provided for @calcScopeDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除'**
+  String get calcScopeDeleted;
+
+  /// No description provided for @calcScopeDefaultSet.
+  ///
+  /// In zh, this message translates to:
+  /// **'已设为默认计算范围'**
+  String get calcScopeDefaultSet;
+
+  /// No description provided for @calcScopeRegionRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'至少选择一个地区'**
+  String get calcScopeRegionRequired;
+
+  /// No description provided for @calcScopeMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get calcScopeMoreActions;
+
+  /// No description provided for @calcScopeOperationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作失败，请重试'**
+  String get calcScopeOperationFailed;
+
   /// No description provided for @profileUnitPreferences.
   ///
   /// In zh, this message translates to:

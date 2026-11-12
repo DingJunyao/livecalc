@@ -287,6 +287,80 @@ class AppLocalizationsZh extends AppLocalizations {
   String get profileCalcScopeCounty => '区县';
 
   @override
+  String get profileCustomCalcScopes => '自定义计算范围';
+
+  @override
+  String get profileCustomCalcScopesSubtitle => '组合多个地区参与成本计算';
+
+  @override
+  String get calcScopeListTitle => '自定义计算范围';
+
+  @override
+  String get calcScopeAdd => '新建范围';
+
+  @override
+  String get calcScopeEdit => '编辑范围';
+
+  @override
+  String get calcScopeNameLabel => '范围名称';
+
+  @override
+  String get calcScopeNameHint => '如：老家周边';
+
+  @override
+  String get calcScopeNameRequired => '请输入范围名称';
+
+  @override
+  String get calcScopeRegionsLabel => '已选地区（可混合层级）';
+
+  @override
+  String get calcScopeAddRegion => '添加当前地区';
+
+  @override
+  String get calcScopeRegionAdded => '已添加';
+
+  @override
+  String get calcScopeNoRegion => '尚未选择地区';
+
+  @override
+  String get calcScopeEmptyTitle => '还没有自定义范围';
+
+  @override
+  String get calcScopeEmptySubtitle => '点击右下角按钮新建一个范围';
+
+  @override
+  String get calcScopeDefaultBadge => '默认';
+
+  @override
+  String get calcScopeSetDefault => '设为默认计算范围';
+
+  @override
+  String get calcScopeDeleteTitle => '删除自定义范围';
+
+  @override
+  String calcScopeDeleteMessage(Object name) {
+    return '确定删除「$name」吗？使用该范围的默认设置将回退。';
+  }
+
+  @override
+  String get calcScopeSaved => '已保存';
+
+  @override
+  String get calcScopeDeleted => '已删除';
+
+  @override
+  String get calcScopeDefaultSet => '已设为默认计算范围';
+
+  @override
+  String get calcScopeRegionRequired => '至少选择一个地区';
+
+  @override
+  String get calcScopeMoreActions => '更多操作';
+
+  @override
+  String get calcScopeOperationFailed => '操作失败，请重试';
+
+  @override
   String get profileUnitPreferences => '单位偏好';
 
   @override

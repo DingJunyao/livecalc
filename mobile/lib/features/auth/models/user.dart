@@ -64,6 +64,9 @@ class User {
   final UnitPreferences? unitPreferences;
   final String? defaultCurrency;
   final String? defaultCalcScope;
+
+  /// 自定义计算范围 id（user_calc_scopes.id）；设置时优先于 defaultCalcScope。
+  final int? defaultCalcScopeId;
   final String? effectiveCurrency;
   final int? regionId;
   final String? locale;
@@ -82,6 +85,7 @@ class User {
     this.unitPreferences,
     this.defaultCurrency,
     this.defaultCalcScope,
+    this.defaultCalcScopeId,
     this.effectiveCurrency,
     this.regionId,
     this.locale,
@@ -112,6 +116,7 @@ class User {
           : null,
       defaultCurrency: json['default_currency'] as String?,
       defaultCalcScope: json['default_calc_scope'] as String?,
+      defaultCalcScopeId: (json['default_calc_scope_id'] as num?)?.toInt(),
       effectiveCurrency: json['effective_currency'] as String?,
       regionId: (json['region_id'] as num?)?.toInt(),
       locale: json['locale'] as String?,

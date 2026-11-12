@@ -54,8 +54,12 @@ class CalcContextInterceptor extends Interceptor {
     }
     // 「全部地区」是一次明确的会话覆盖，不能省略请求头：省略会让后端回退到
     // 用户保存的默认计算范围。与 web client.ts 相同，用 all 保留这个语义。
+    // 自定义计算范围：多地区逗号分隔，后端按子树并集过滤。
     if (ctx.scope == '') {
       options.headers['X-Region'] = 'all';
+    } else if (ctx.effectiveRegionIds != null &&
+        ctx.effectiveRegionIds!.isNotEmpty) {
+      options.headers['X-Region'] = ctx.effectiveRegionIds!.join(',');
     } else if (ctx.effectiveRegionId != null) {
       options.headers['X-Region'] = '${ctx.effectiveRegionId}';
     }

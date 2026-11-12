@@ -29,6 +29,8 @@ import '../../features/merchants/screens/merchant_form_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/profile/screens/my_proposals_screen.dart';
 import '../../features/profile/screens/my_places_screen.dart';
+import '../../features/calc_scope/screens/calc_scope_list_screen.dart';
+import '../../features/calc_scope/screens/calc_scope_form_screen.dart';
 import '../../features/profile/screens/blacklist_screen.dart';
 import '../../features/profile/screens/user_place_form_screen.dart';
 import '../../features/profile/screens/unit_preferences_screen.dart';
@@ -511,6 +513,31 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             name: 'nutrition-goals',
             builder: (_, __) => const NutritionGoalsScreen(),
           ),
+          GoRoute(
+            path: '/profile/calc-scopes',
+            name: 'calc-scopes',
+            builder: (_, __) => const CalcScopeListScreen(),
+          ),
+          GoRoute(
+            path: '/profile/calc-scopes/new',
+            name: 'calc-scope-form',
+            builder: (_, state) {
+              final args = state.extra;
+              return CalcScopeFormScreen(
+                scope: args is CalcScopeFormArguments ? args.scope : null,
+              );
+            },
+          ),
+          GoRoute(
+            path: '/profile/calc-scopes/:id/edit',
+            name: 'calc-scope-edit',
+            builder: (_, state) {
+              final args = state.extra;
+              return CalcScopeFormScreen(
+                scope: args is CalcScopeFormArguments ? args.scope : null,
+              );
+            },
+          ),
         ],
       ),
     ],
@@ -660,6 +687,9 @@ final _editFormPathPattern = RegExp(
   r'^/(ingredients|products|recipes|merchants|plans)/\d+/edit(/.*)?$',
 );
 
+/// 自定义计算范围编辑页（/profile 前缀，不在实体正则内）。
+final _calcScopeEditFormPathPattern = RegExp(r'^/profile/calc-scopes/\d+/edit$');
+
 /// 全屏表单路由：新增/编辑原料、商品、菜谱、商家、方案时隐藏底栏/侧栏 tab。
 ///
 /// 这些页面里误触 tab 会直接切走并丢掉未保存内容（返回键另有 FormExitGuard
@@ -671,9 +701,11 @@ bool _isFullScreenFormRoute(String location) {
     '/recipes/new',
     '/merchants/new',
     '/plans/edit',
+    '/profile/calc-scopes/new',
   };
   if (exact.contains(location)) return true;
-  return _editFormPathPattern.hasMatch(location);
+  return _editFormPathPattern.hasMatch(location) ||
+      _calcScopeEditFormPathPattern.hasMatch(location);
 }
 
 /// 路由位置在桌面版 tab 顺序中的索引（用于计算 tab 间滑动方向）。

@@ -302,6 +302,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileCalcScopeCounty => 'County';
 
   @override
+  String get profileCustomCalcScopes => 'Custom calculation scopes';
+
+  @override
+  String get profileCustomCalcScopesSubtitle =>
+      'Combine multiple regions for cost calculation';
+
+  @override
+  String get calcScopeListTitle => 'Custom calculation scopes';
+
+  @override
+  String get calcScopeAdd => 'New scope';
+
+  @override
+  String get calcScopeEdit => 'Edit scope';
+
+  @override
+  String get calcScopeNameLabel => 'Scope name';
+
+  @override
+  String get calcScopeNameHint => 'e.g. Around my hometown';
+
+  @override
+  String get calcScopeNameRequired => 'Please enter a scope name';
+
+  @override
+  String get calcScopeRegionsLabel => 'Selected regions (mixed levels allowed)';
+
+  @override
+  String get calcScopeAddRegion => 'Add selected region';
+
+  @override
+  String get calcScopeRegionAdded => 'Added';
+
+  @override
+  String get calcScopeNoRegion => 'No region selected yet';
+
+  @override
+  String get calcScopeEmptyTitle => 'No custom scopes yet';
+
+  @override
+  String get calcScopeEmptySubtitle => 'Tap the button below to create one';
+
+  @override
+  String get calcScopeDefaultBadge => 'Default';
+
+  @override
+  String get calcScopeSetDefault => 'Set as default calculation scope';
+
+  @override
+  String get calcScopeDeleteTitle => 'Delete custom scope';
+
+  @override
+  String calcScopeDeleteMessage(Object name) {
+    return 'Delete \"$name\"? Defaults using this scope will fall back.';
+  }
+
+  @override
+  String get calcScopeSaved => 'Saved';
+
+  @override
+  String get calcScopeDeleted => 'Deleted';
+
+  @override
+  String get calcScopeDefaultSet => 'Set as default calculation scope';
+
+  @override
+  String get calcScopeRegionRequired => 'Select at least one region';
+
+  @override
+  String get calcScopeMoreActions => 'More actions';
+
+  @override
+  String get calcScopeOperationFailed => 'Operation failed. Try again.';
+
+  @override
   String get profileUnitPreferences => 'Unit preferences';
 
   @override

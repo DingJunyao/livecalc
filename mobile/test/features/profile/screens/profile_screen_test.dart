@@ -73,6 +73,39 @@ class _CurrenciesAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
+/// 测试用：`/calc-scopes` 返回一个自定义范围（验证默认范围对话框的自定义选项）。
+class _CalcScopesAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    final payload = [
+      {
+        'id': 5,
+        'name': '老家周边',
+        'region_ids': [12, 34],
+        'regions': [
+          {'id': 12, 'name': '灵宝市', 'display_name': '灵宝市', 'level': 3},
+          {'id': 34, 'name': '三门峡市', 'display_name': '三门峡市', 'level': 2},
+        ],
+        'is_default': false,
+      },
+    ];
+    return ResponseBody.fromString(
+      jsonEncode(payload),
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 void main() {
   late AuthNotifier notifier;
 
@@ -253,11 +286,24 @@ void main() {
     expect(prefs.getString('startup_page'), 'prices');
   });
 
-  testWidgets('默认计算范围对话框：省份/城市/区县表述统一', (tester) async {
+  testWidgets('默认计算范围对话框：省份/城市/区县表述统一 + 自定义范围选项', (tester) async {
     notifier.state = const AuthState(
       status: AuthStatus.authenticated,
       user: User(id: 1, username: 'alice', email: 'a@test.com'),
     );
+    // 让 /calc-scopes 返回一个自定义范围（对话框应追加为附加选项）
+    // AuthInterceptor 依赖 secure storage 平台通道，测试里 mock 掉才不会挂起
+    const storageChannel =
+        MethodChannel('plugins.it_nomads.com/flutter_secure_storage');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, (call) async => null);
+    addTearDown(() => TestDefaultBinaryMessengerBinding
+        .instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(storageChannel, null));
+    final dio = ApiClient.instance.dio;
+    final originalAdapter = dio.httpClientAdapter;
+    dio.httpClientAdapter = _CalcScopesAdapter();
+    addTearDown(() => dio.httpClientAdapter = originalAdapter);
     await tester.pumpWidget(ProviderScope(
       overrides: [authProvider.overrideWith((ref) => notifier)],
       child: const MaterialApp(
@@ -279,6 +325,9 @@ void main() {
     expect(find.text('省级'), findsNothing);
     expect(find.text('地级'), findsNothing);
     expect(find.text('县级'), findsNothing);
+    // 自定义范围作为附加选项出现（value = custom:<id>，名称 + 地区摘要）
+    expect(find.text('老家周边'), findsOneWidget);
+    expect(find.text('灵宝市、三门峡市'), findsOneWidget);
   });
 
   testWidgets('默认币种对话框：列表显示「名称 代码」', (tester) async {

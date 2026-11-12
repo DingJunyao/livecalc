@@ -38,7 +38,10 @@ class CalcContextMenuButton extends ConsumerWidget {
         padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
         child: CalcContextSheet(
           initialRegionId: ctx.regionId ?? user?.regionId,
-          initialScope: ctx.scope ?? user?.defaultCalcScope ?? 'country',
+          initialScope: ctx.scope ??
+              (user?.defaultCalcScopeId != null
+                  ? 'custom:${user!.defaultCalcScopeId}'
+                  : (user?.defaultCalcScope ?? 'country')),
           initialCurrency: ctx.currency ?? user?.defaultCurrency,
         ),
       ),
@@ -80,6 +83,9 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
   late String _scope;
   late String? _currency;
   List<Map<String, dynamic>> _currencies = const [];
+
+  /// 自定义计算范围（打开时拉取）：value 形如 custom:<id>，与 web 一致
+  List<Map<String, dynamic>> _customScopes = const [];
   bool _saving = false;
 
   @override
@@ -89,6 +95,42 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
     _scope = widget.initialScope;
     _currency = widget.initialCurrency;
     _loadCurrencies();
+    _loadCustomScopes();
+  }
+
+  bool get _isCustomScope => _scope.startsWith('custom:');
+
+  List<int> _selectedCustomRegionIds() {
+    final id = int.tryParse(_scope.substring('custom:'.length));
+    if (id == null) return const [];
+    for (final scope in _customScopes) {
+      if ((scope['id'] as num?)?.toInt() == id) {
+        final ids = scope['region_ids'];
+        return [
+          if (ids is List)
+            for (final v in ids)
+              if (v is num) v.toInt(),
+        ];
+      }
+    }
+    return const [];
+  }
+
+  Future<void> _loadCustomScopes() async {
+    try {
+      final resp = await ApiClient.instance.dio.get('/calc-scopes');
+      final data = resp.data;
+      final list = (data is List)
+          ? data
+          : ((data is Map) ? (data['items'] as List?) : null) ?? const [];
+      if (!mounted) return;
+      setState(() => _customScopes = [
+            for (final item in list)
+              if (item is Map) Map<String, dynamic>.from(item),
+          ]);
+    } catch (_) {
+      // 范围接口不可用时仅缺少自定义选项
+    }
   }
 
   Future<void> _loadCurrencies() async {
@@ -117,9 +159,11 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
     try {
       // 会话级临时覆盖：仅当前会话有效，不修改用户配置
       await ref.read(calcContextProvider.notifier).apply(
-            regionId: _regionId,
+            regionId: _isCustomScope ? null : _regionId,
             scope: _scope,
             currency: _currency,
+            customRegionIds:
+                _isCustomScope ? _selectedCustomRegionIds() : null,
           );
       if (mounted) {
         Navigator.of(context).pop();
@@ -175,9 +219,15 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
               const SizedBox(height: 8),
               Text(l10n.authRegion, style: theme.textTheme.titleSmall),
               const SizedBox(height: 8),
-              RegionSelectField(
-                value: _regionId,
-                onChanged: (v) => setState(() => _regionId = v),
+              AbsorbPointer(
+                absorbing: _isCustomScope,
+                child: Opacity(
+                  opacity: _isCustomScope ? 0.5 : 1,
+                  child: RegionSelectField(
+                    value: _regionId,
+                    onChanged: (v) => setState(() => _regionId = v),
+                  ),
+                ),
               ),
               const SizedBox(height: 16),
               Text(l10n.profileDefaultCalcScope,
@@ -191,11 +241,19 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
                       value: value,
                       child: Text(_scopeLabel(value, l10n)),
                     ),
+                  for (final scope in _customScopes)
+                    DropdownMenuItem(
+                      value: 'custom:${scope['id']}',
+                      child: Text(scope['name']?.toString() ?? ''),
+                    ),
                 ],
                 decoration: _inputDecoration,
                 menuMaxHeight: 320,
-                onChanged: (value) =>
-                    setState(() => _scope = value ?? 'country'),
+                onChanged: (value) => setState(() {
+                  _scope = value ?? 'country';
+                  // 自定义范围的地区即范围地区列表，地区级联不参与
+                  if (_isCustomScope) _regionId = null;
+                }),
               ),
               const SizedBox(height: 16),
               Text(l10n.profileDefaultCurrency,

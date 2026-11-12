@@ -52,13 +52,18 @@ class AuthRepository {
   }
 
   /// Update user locale settings (default currency / calculation scope).
+  /// [defaultCalcScopeId] 为自定义计算范围；与 [defaultCalcScope] 互斥，
+  /// 后端互为清空（设一方清另一方）。
   Future<User> updateSettings({
     String? defaultCurrency,
     String? defaultCalcScope,
+    int? defaultCalcScopeId,
   }) async {
     final body = <String, dynamic>{
       if (defaultCurrency != null) 'default_currency': defaultCurrency,
       if (defaultCalcScope != null) 'default_calc_scope': defaultCalcScope,
+      if (defaultCalcScopeId != null)
+        'default_calc_scope_id': defaultCalcScopeId,
     };
     return updateMe(body);
   }

@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
+import '../../calc_scope/models/calc_scope.dart';
+import '../../calc_scope/repositories/calc_scope_repository.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/i18n/locale_settings.dart';
 import '../providers/startup_page_provider.dart';
@@ -95,9 +97,17 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.public),
               title: Text(l10n.profileDefaultCalcScope),
-              subtitle:
-                  Text(_calcScopeDisplayName(user?.defaultCalcScope, l10n)),
+              subtitle: Text(user?.defaultCalcScopeId != null
+                  ? l10n.profileCustomCalcScopes
+                  : _calcScopeDisplayName(user?.defaultCalcScope, l10n)),
               onTap: () => _showDefaultCalcScopeDialog(context, ref),
+            ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.layers_outlined),
+              title: Text(l10n.profileCustomCalcScopes),
+              subtitle: Text(l10n.profileCustomCalcScopesSubtitle),
+              onTap: () => context.push('/profile/calc-scopes'),
             ),
             const Divider(height: 1),
             ListTile(
@@ -483,8 +493,14 @@ Future<void> _showDefaultCurrencyDialog(
 
 Future<void> _showDefaultCalcScopeDialog(
     BuildContext context, WidgetRef ref) async {
-  final current = ref.read(authProvider).user?.defaultCalcScope ?? 'country';
+  final user = ref.read(authProvider).user;
   final l10n = AppLocalizations.of(context);
+  // 自定义范围也参与选择（value 形如 custom:<id>，与 web 一致）
+  final scopes = await _fetchCalcScopes();
+  final current = user?.defaultCalcScopeId != null
+      ? 'custom:${user!.defaultCalcScopeId}'
+      : (user?.defaultCalcScope ?? 'country');
+  if (!context.mounted) return;
   final selected = await showDialog<String>(
     context: context,
     builder: (ctx) => SimpleDialog(
@@ -507,6 +523,15 @@ Future<void> _showDefaultCalcScopeDialog(
                   value: 'city', title: Text(l10n.profileCalcScopeCity)),
               RadioListTile<String>(
                   value: 'county', title: Text(l10n.profileCalcScopeCounty)),
+              for (final scope in scopes)
+                RadioListTile<String>(
+                  value: 'custom:${scope.id}',
+                  title: Text(scope.name),
+                  subtitle: scope.regionsSummary.isEmpty
+                      ? null
+                      : Text(scope.regionsSummary,
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
             ],
           ),
         ),
@@ -515,7 +540,24 @@ Future<void> _showDefaultCalcScopeDialog(
   );
   if (selected == null || selected == current) return;
   if (!context.mounted) return;
-  await _saveLocaleSettings(context, ref, defaultCalcScope: selected);
+  if (selected.startsWith('custom:')) {
+    await _saveLocaleSettings(
+      context,
+      ref,
+      defaultCalcScopeId: int.parse(selected.substring('custom:'.length)),
+    );
+  } else {
+    await _saveLocaleSettings(context, ref, defaultCalcScope: selected);
+  }
+}
+
+/// 拉取当前用户的自定义计算范围（接口不可用时静默降级为仅内置档位）。
+Future<List<CalcScope>> _fetchCalcScopes() async {
+  try {
+    return await CalcScopeRepository().listScopes();
+  } catch (_) {
+    return const [];
+  }
 }
 
 Future<void> _showLanguageDialog(BuildContext context, WidgetRef ref) async {
@@ -612,12 +654,14 @@ Future<void> _saveLocaleSettings(
   WidgetRef ref, {
   String? defaultCurrency,
   String? defaultCalcScope,
+  int? defaultCalcScopeId,
 }) async {
   final l10n = AppLocalizations.of(context);
   try {
     final user = await AuthRepository().updateSettings(
       defaultCurrency: defaultCurrency,
       defaultCalcScope: defaultCalcScope,
+      defaultCalcScopeId: defaultCalcScopeId,
     );
     ref.read(authProvider.notifier).applyUser(user);
     if (context.mounted) {

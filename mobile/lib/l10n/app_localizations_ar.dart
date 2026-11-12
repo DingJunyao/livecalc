@@ -300,6 +300,81 @@ class AppLocalizationsAr extends AppLocalizations {
   String get profileCalcScopeCounty => 'الحي';
 
   @override
+  String get profileCustomCalcScopes => 'نطاقات الحساب المخصصة';
+
+  @override
+  String get profileCustomCalcScopesSubtitle =>
+      'دمج مناطق متعددة في حساب التكلفة';
+
+  @override
+  String get calcScopeListTitle => 'نطاقات الحساب المخصصة';
+
+  @override
+  String get calcScopeAdd => 'نطاق جديد';
+
+  @override
+  String get calcScopeEdit => 'تعديل النطاق';
+
+  @override
+  String get calcScopeNameLabel => 'اسم النطاق';
+
+  @override
+  String get calcScopeNameHint => 'مثال: محيط مسقط الرأس';
+
+  @override
+  String get calcScopeNameRequired => 'يرجى إدخال اسم النطاق';
+
+  @override
+  String get calcScopeRegionsLabel => 'المناطق المحددة (يسمح بمزيج المستويات)';
+
+  @override
+  String get calcScopeAddRegion => 'إضافة المنطقة المحددة';
+
+  @override
+  String get calcScopeRegionAdded => 'تمت الإضافة';
+
+  @override
+  String get calcScopeNoRegion => 'لم يتم تحديد منطقة بعد';
+
+  @override
+  String get calcScopeEmptyTitle => 'لا توجد نطاقات مخصصة بعد';
+
+  @override
+  String get calcScopeEmptySubtitle => 'انقر الزر أسفل الشاشة للإنشاء';
+
+  @override
+  String get calcScopeDefaultBadge => 'افتراضي';
+
+  @override
+  String get calcScopeSetDefault => 'تعيين كنطاق الحساب الافتراضي';
+
+  @override
+  String get calcScopeDeleteTitle => 'حذف النطاق المخصص';
+
+  @override
+  String calcScopeDeleteMessage(Object name) {
+    return 'حذف \"$name\"؟ سترتد الإعدادات الافتراضية التي تستخدم هذا النطاق.';
+  }
+
+  @override
+  String get calcScopeSaved => 'تم الحفظ';
+
+  @override
+  String get calcScopeDeleted => 'تم الحذف';
+
+  @override
+  String get calcScopeDefaultSet => 'تم التعيين كنطاق حساب افتراضي';
+
+  @override
+  String get calcScopeRegionRequired => 'حدد منطقة واحدة على الأقل';
+
+  @override
+  String get calcScopeMoreActions => 'إجراءات أخرى';
+
+  @override
+  String get calcScopeOperationFailed => 'فشلت العملية، حاول مجددًا';
+
+  @override
   String get profileUnitPreferences => 'تفضيلات الوحدات';
 
   @override

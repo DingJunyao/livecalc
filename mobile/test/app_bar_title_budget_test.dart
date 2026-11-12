@@ -190,6 +190,12 @@ Future<void> main() async {
         titles: () => [zh.profileMyProposals, en.profileMyProposals, ar.profileMyProposals]),
     _Spec('my_places', back: true, icons: 0,
         titles: () => [zh.profileMyPlaces, en.profileMyPlaces, ar.profileMyPlaces]),
+    // 自定义计算范围：列表（返回键，FAB 在 body）+ 表单（返回键 + 保存 TextButton）
+    _Spec('calc_scope_list', back: true, icons: 0,
+        titles: () => [zh.calcScopeListTitle, en.calcScopeListTitle, ar.calcScopeListTitle]),
+    _Spec('calc_scope_form', back: true, icons: 0, button: () => zh.commonSave,
+        titles: () => [zh.calcScopeEdit, en.calcScopeEdit, ar.calcScopeEdit,
+              zh.calcScopeAdd, en.calcScopeAdd, ar.calcScopeAdd]),
     _Spec('blacklist', back: true, icons: 0,
         titles: () => [zh.blacklistTitle, en.blacklistTitle, ar.blacklistTitle]),
     _Spec('paste_import', back: true, icons: 0,
