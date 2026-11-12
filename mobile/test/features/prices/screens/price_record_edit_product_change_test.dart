@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
+import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart'
+    show ProductFormPrefill, ProductFormResult;
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/screens/price_record_edit_screen.dart';
 
@@ -138,6 +141,111 @@ void main() {
 
     expect(tester.widget<TextField>(merchantField).controller?.text, '超');
   });
+
+  testWidgets('换绑搜索无结果显示新增商品入口，创建返回后自动选中', (tester) async {
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    ProductFormPrefill? pushedPrefill;
+    final router = GoRouter(
+      initialLocation: '/host',
+      routes: [
+        GoRoute(
+          path: '/host',
+          builder: (_, __) => Center(
+            child: Builder(
+              builder: (ctx) => TextButton(
+                onPressed: () => ctx.push('/edit'),
+                child: const Text('Open'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/edit',
+          builder: (_, __) => PriceRecordEditScreen(
+            arguments: const PriceRecordFormArguments(
+              merchants: [],
+              fixedProductId: 1,
+              fixedProductName: '苹果',
+              initialPrice: 5,
+              initialQuantity: 1,
+              initialUnit: '斤',
+              initialRecordType: 'purchase',
+              initialCurrency: 'CNY',
+            ),
+            // 恒返回空：任何搜索都无命中
+            productRepository: _FakeProductRepository(const []),
+          ),
+        ),
+        GoRoute(
+          path: '/products/new',
+          builder: (_, state) {
+            pushedPrefill = state.extra as ProductFormPrefill?;
+            return const _StubProductCreatePage();
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(ProviderScope(
+      child: MaterialApp.router(
+        locale: const Locale('zh'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
+    ));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    // 初始回显「苹果」但未编辑过商品文本 → 不显示未找到入口
+    expect(find.text('未找到「苹果」，点此新增商品'), findsNothing);
+
+    // 编辑商品文本，防抖搜索无结果 → 显示新增入口
+    await tester.enterText(find.widgetWithText(TextField, '商品'), '不存在商品');
+    await tester.pump(const Duration(milliseconds: 350));
+    await tester.pumpAndSettle();
+    expect(find.text('未找到「不存在商品」，点此新增商品'), findsOneWidget);
+
+    await tester.tap(find.text('未找到「不存在商品」，点此新增商品'));
+    await tester.pumpAndSettle();
+    expect(pushedPrefill?.name, '不存在商品');
+
+    // 存根页模拟创建成功返回 → 自动选中新商品
+    await tester.tap(find.text('返回结果'));
+    await tester.pumpAndSettle();
+
+    final field = tester.widget<TextField>(
+      find.widgetWithText(TextField, '商品'),
+    );
+    expect(field.controller?.text, '新建商品');
+    expect(find.text('未找到「不存在商品」，点此新增商品'), findsNothing);
+  });
+}
+
+/// /products/new 的存根页：模拟创建成功后带结果 pop（与真实商品表单一致）
+class _StubProductCreatePage extends StatelessWidget {
+  const _StubProductCreatePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('新增商品')),
+      body: Center(
+        child: TextButton(
+          onPressed: () => Navigator.of(context).pop(const ProductFormResult(
+            saved: true,
+            pending: false,
+            message: 'ok',
+            product: Product(id: 77, name: '新建商品'),
+          )),
+          child: const Text('返回结果'),
+        ),
+      ),
+    );
+  }
 }
 
 class _FakeProductRepository extends ProductRepository {

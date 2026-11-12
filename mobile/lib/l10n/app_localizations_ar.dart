@@ -1272,6 +1272,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get priceBarcodeSearching => 'جارٍ البحث عن معلومات المنتج...';
 
   @override
+  String priceNoProductFoundCreate(String name) {
+    return 'لم يتم العثور على «$name»، انقر لإضافة منتج';
+  }
+
+  @override
   String get quickFillTitle => 'تعبئة سريعة';
 
   @override

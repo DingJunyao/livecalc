@@ -901,6 +901,12 @@
   "@priceBarcodeLookupFailed": {},
   "priceBarcodeSearching": "正在查询商品信息…",
   "@priceBarcodeSearching": {},
+  "priceNoProductFoundCreate": "未找到「{name}」，点此新增商品",
+  "@priceNoProductFoundCreate": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
   "quickFillTitle": "快速填写",
   "@quickFillTitle": {},
   "quickFillSelectMerchant": "选择商家",

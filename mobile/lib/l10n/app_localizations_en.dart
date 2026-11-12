@@ -1274,6 +1274,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get priceBarcodeSearching => 'Looking up product info...';
 
   @override
+  String priceNoProductFoundCreate(String name) {
+    return 'No match for \"$name\" — tap to create a product';
+  }
+
+  @override
   String get quickFillTitle => 'Quick fill';
 
   @override

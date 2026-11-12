@@ -901,6 +901,7 @@
   "@priceBarcodeLookupFailed": {},
   "priceBarcodeSearching": "جارٍ البحث عن معلومات المنتج...",
   "@priceBarcodeSearching": {},
+  "priceNoProductFoundCreate": "لم يتم العثور على «{name}»، انقر لإضافة منتج",
   "quickFillTitle": "تعبئة سريعة",
   "@quickFillTitle": {},
   "quickFillSelectMerchant": "اختيار المتجر",

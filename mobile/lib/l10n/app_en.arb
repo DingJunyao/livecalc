@@ -901,6 +901,7 @@
   "@priceBarcodeLookupFailed": {},
   "priceBarcodeSearching": "Looking up product info...",
   "@priceBarcodeSearching": {},
+  "priceNoProductFoundCreate": "No match for \"{name}\" — tap to create a product",
   "quickFillTitle": "Quick fill",
   "@quickFillTitle": {},
   "quickFillSelectMerchant": "Select merchant",

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/features/merchants/providers/merchant_provider.dart';
 import 'package:com_a4ding_livecalc/features/merchants/repositories/merchant_repository.dart';
@@ -12,6 +13,8 @@ import 'package:com_a4ding_livecalc/features/prices/repositories/price_repositor
 import 'package:com_a4ding_livecalc/features/products/models/barcode_lookup.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
+import 'package:com_a4ding_livecalc/features/products/screens/product_form_screen.dart'
+    show ProductFormPrefill, ProductFormResult;
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/shared/utils/entity_unit_names.dart';
 import 'package:com_a4ding_livecalc/shared/widgets/loading_overlay.dart';
@@ -146,6 +149,29 @@ class _FormHost extends StatelessWidget {
             ),
             child: const Text('打开表单'),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// /products/new 的存根页：模拟创建成功后带结果 pop（与真实商品表单一致）
+class _StubProductCreatePage extends StatelessWidget {
+  const _StubProductCreatePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('新增商品')),
+      body: Center(
+        child: TextButton(
+          onPressed: () => Navigator.of(context).pop(const ProductFormResult(
+            saved: true,
+            pending: false,
+            message: 'ok',
+            product: Product(id: 77, name: '新建商品'),
+          )),
+          child: const Text('返回结果'),
         ),
       ),
     );
@@ -883,5 +909,84 @@ void main() {
       find.widgetWithText(TextField, '商品名称'),
     );
     expect(nameField.controller?.text, '伊利枕装纯牛奶 240mL');
+  });
+
+  testWidgets('搜索无结果显示新增商品入口，创建返回后自动选中', (tester) async {
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    ProductFormPrefill? pushedPrefill;
+    // 表单与新增商品页都走 go_router（真实 app 的路由形态，
+    // 保障 context.push('/products/new') 正确压栈）。
+    final router = GoRouter(
+      initialLocation: '/host',
+      routes: [
+        GoRoute(
+          path: '/host',
+          builder: (_, __) => Center(
+            child: Builder(
+              builder: (ctx) => TextButton(
+                onPressed: () => ctx.push('/prices/record'),
+                child: const Text('打开表单'),
+              ),
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/prices/record',
+          builder: (_, __) => PriceRecordFormScreen(
+            priceRepository: _FakePriceRepository(),
+            // 恒返回空：任何搜索都无命中
+            productRepository: _FakeProductRepository(const []),
+          ),
+        ),
+        GoRoute(
+          path: '/products/new',
+          builder: (_, state) {
+            pushedPrefill = state.extra as ProductFormPrefill?;
+            return const _StubProductCreatePage();
+          },
+        ),
+      ],
+    );
+
+    await tester.pumpWidget(ProviderScope(
+      overrides: [
+        merchantListProvider.overrideWith(
+          (ref) => MerchantListNotifier(_FakeMerchantRepository()),
+        ),
+      ],
+      child: MaterialApp.router(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: router,
+      ),
+    ));
+    await tester.tap(find.text('打开表单'));
+    await tester.pumpAndSettle();
+
+    // 输入不存在的商品名，防抖搜索完成无结果 → 显示新增入口
+    await tester.enterText(
+        find.widgetWithText(TextField, '商品名称'), '不存在商品');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(find.text('未找到「不存在商品」，点此新增商品'), findsOneWidget);
+
+    await tester.tap(find.text('未找到「不存在商品」，点此新增商品'));
+    await tester.pumpAndSettle();
+
+    // 跳转新增商品页带预填名称；存根页模拟创建成功返回
+    expect(pushedPrefill?.name, '不存在商品');
+    await tester.tap(find.text('返回结果'));
+    await tester.pumpAndSettle();
+
+    // 返回后自动选中：名称回填为新商品，入口卡片消失
+    final nameField = tester.widget<TextField>(
+      find.widgetWithText(TextField, '商品名称'),
+    );
+    expect(nameField.controller?.text, '新建商品');
+    expect(find.text('未找到「不存在商品」，点此新增商品'), findsNothing);
   });
 }

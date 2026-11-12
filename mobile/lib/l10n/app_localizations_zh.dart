@@ -1244,6 +1244,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get priceBarcodeSearching => '正在查询商品信息…';
 
   @override
+  String priceNoProductFoundCreate(String name) {
+    return '未找到「$name」，点此新增商品';
+  }
+
+  @override
   String get quickFillTitle => '快速填写';
 
   @override

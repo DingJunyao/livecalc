@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/i18n/app_formatters.dart';
 import '../../features/merchants/models/merchant.dart';
 import '../../features/prices/repositories/price_repository.dart';
 import '../../features/products/models/product.dart';
 import '../../features/products/repositories/product_repository.dart';
+import '../../features/products/screens/product_form_screen.dart'
+    show ProductFormPrefill, ProductFormResult;
 import '../../l10n/app_localizations.dart';
 import '../utils/currency_fmt.dart';
 import '../utils/entity_unit_names.dart';
@@ -144,6 +147,10 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
   Timer? _productSearchDebounce;
   int _productSearchSeq = 0;
 
+  /// 用户本轮编辑过商品文本：区分「打开时的初始回显」与「真的搜索过且无结果」，
+  /// 避免刚进页面就误显示「未找到，新增商品」入口
+  bool _productSearchEdited = false;
+
   /// 当前商品（及其关联原料）的自定义单位名，价格单位下拉里排在最前
   List<String> _customUnits = const [];
 
@@ -273,6 +280,7 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
 
   /// 用户手动编辑商品文本 → 撤销选中（编辑态必须有确定商品，保存前需重新点选）
   void _onProductTextChanged(String value) {
+    _productSearchEdited = value.trim().isNotEmpty;
     if (_productId != null) {
       setState(() {
         _productId = null;
@@ -292,6 +300,19 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
       _productResults = const [];
     });
     _loadCustomUnits(p.id);
+  }
+
+  /// 换绑搜索无结果：带名称跳新增商品页，返回自动选中新商品
+  Future<void> _createProductFromName() async {
+    final name = _productController.text.trim();
+    if (name.isEmpty) return;
+    final saved = await context.push<ProductFormResult>(
+      '/products/new',
+      extra: ProductFormPrefill(name: name),
+    );
+    if (saved?.product != null && mounted) {
+      _selectProduct(saved!.product!);
+    }
   }
 
   Future<void> _loadCurrencies() async {
@@ -529,6 +550,25 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                           onTap: () => _selectProduct(p),
                         ),
                     ],
+                  ),
+                ),
+              // 搜索无结果且未选中商品：提供「新增商品」入口（预填名称，返回自动选中）
+              if (_productSearchEdited &&
+                  _selectedProduct == null &&
+                  !_searchingProduct &&
+                  _productResults.isEmpty &&
+                  _productController.text.trim().isNotEmpty)
+                Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.add_business_outlined),
+                    title: Text(
+                      l10n.priceNoProductFoundCreate(
+                        _productController.text.trim(),
+                      ),
+                    ),
+                    onTap: _createProductFromName,
                   ),
                 ),
               const SizedBox(height: 16),

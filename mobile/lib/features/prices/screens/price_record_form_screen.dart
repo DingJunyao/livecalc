@@ -401,6 +401,19 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     }
   }
 
+  /// 手动搜索无结果：带名称跳新增商品页（与扫码未命中同一闭环），返回自动选中
+  Future<void> _createProductFromName() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) return;
+    final saved = await context.push<ProductFormResult>(
+      '/products/new',
+      extra: ProductFormPrefill(name: name),
+    );
+    if (saved?.product != null && mounted) {
+      _selectProduct(saved!.product!);
+    }
+  }
+
   Future<void> _pickRecordedAt() async {
     final date = await showDatePicker(
       context: context,
@@ -610,6 +623,25 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
                           onTap: () => _selectProduct(p),
                         ),
                     ],
+                  ),
+                ),
+              // 搜索无结果且未选中商品：提供「新增商品」入口（预填名称，返回自动选中）
+              if (!_lockProduct &&
+                  _selectedProduct == null &&
+                  !_searching &&
+                  _searchResults.isEmpty &&
+                  _nameController.text.trim().isNotEmpty)
+                Card(
+                  margin: const EdgeInsets.only(top: 8),
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.add_business_outlined),
+                    title: Text(
+                      l10n.priceNoProductFoundCreate(
+                        _nameController.text.trim(),
+                      ),
+                    ),
+                    onTap: _createProductFromName,
                   ),
                 ),
               const SizedBox(height: 16),

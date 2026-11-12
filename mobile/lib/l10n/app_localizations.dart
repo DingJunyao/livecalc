@@ -2472,6 +2472,12 @@ abstract class AppLocalizations {
   /// **'正在查询商品信息…'**
   String get priceBarcodeSearching;
 
+  /// No description provided for @priceNoProductFoundCreate.
+  ///
+  /// In zh, this message translates to:
+  /// **'未找到「{name}」，点此新增商品'**
+  String priceNoProductFoundCreate(String name);
+
   /// No description provided for @quickFillTitle.
   ///
   /// In zh, this message translates to:
