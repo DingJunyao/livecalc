@@ -44,6 +44,7 @@ from app.api import blacklist  # 用户原料黑名单
 from app.api import proposals  # 通用提议-审核 API
 from app.api import email_config  # 邮件配置 API
 from app.api import regions  # 行政区划 API
+from app.api import calc_scopes  # 用户自定义计算范围（多地区组合）API
 from app.api import exchange_rates  # 币种汇率 API
 from app.api import storage_config  # 图片存储配置 API
 from app.api import barcode_config  # 条码服务配置 API
@@ -835,6 +836,7 @@ app.include_router(blacklist_groups.blacklist_group_public_router, prefix="/api/
 app.include_router(proposals.router, prefix="/api/v1", tags=["变更提议"])
 app.include_router(email_config.router, prefix="/api/v1", tags=["邮件配置"])
 app.include_router(regions.router, prefix="/api/v1", tags=["行政区划"])
+app.include_router(calc_scopes.router, prefix="/api/v1/calc-scopes", tags=["自定义计算范围"])
 app.include_router(exchange_rates.router, prefix="/api/v1", tags=["币种汇率"])
 app.include_router(storage_config.router, prefix="/api/v1")
 app.include_router(barcode_config.router, prefix="/api/v1")

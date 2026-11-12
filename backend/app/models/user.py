@@ -35,7 +35,10 @@ class User(Base):
     # 默认币种（NULL = 跟随所在地区国家币种）
     default_currency = Column(String(3), nullable=True)
     # 默认计算范围：country/province/city/county
+    # 与 default_calc_scope_id 互斥写入（设一方清另一方，见 patch_me）
     default_calc_scope = Column(String(10), nullable=True)
+    # 默认计算范围：自定义多地区组合（user_calc_scopes.id），设置时优先于 default_calc_scope
+    default_calc_scope_id = Column(Integer, ForeignKey("user_calc_scopes.id"), nullable=True)
     # 所属行政区划
     region_id = Column(Integer, ForeignKey("administrative_regions.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

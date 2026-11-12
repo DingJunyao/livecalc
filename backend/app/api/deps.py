@@ -73,20 +73,28 @@ async def get_session_currency_override(
             if rate is None:
                 raise LocalizedHTTPException(status_code=400, message='无法获取 {user_currency} → {code} 汇率，请稍后重试', user_currency=user_currency, code=code)
         set_session_currency(code, float(rate))
-    # 会话级地区覆盖（X-Region）：前端已解析到生效节点；all 表示明确不筛选。
+    # 会话级地区覆盖（X-Region）：all 表示明确不筛选；单 id 为既有形式；
+    # 逗号分隔多 id（≤20 个）为自定义计算范围，过滤按各子树并集。
     region_override = None
     if region_raw:
         if region_raw != "all":
             from app.models.administrative_region import AdministrativeRegion
-            if not region_raw.isdigit():
+            parts = [p.strip() for p in region_raw.split(",") if p.strip()]
+            if not parts or len(parts) > 20:
                 raise LocalizedHTTPException(status_code=400, message='无效地区 X-Region')
-            rnode = db.query(AdministrativeRegion).filter(
-                AdministrativeRegion.id == int(region_raw),
-                AdministrativeRegion.is_active == True,  # noqa: E712
-            ).first()
-            if not rnode:
-                raise LocalizedHTTPException(status_code=400, message='未知地区')
-            region_override = rnode.id
+            ids = []
+            for part in parts:
+                if not part.isdigit():
+                    raise LocalizedHTTPException(status_code=400, message='无效地区 X-Region')
+                rnode = db.query(AdministrativeRegion).filter(
+                    AdministrativeRegion.id == int(part),
+                    AdministrativeRegion.is_active == True,  # noqa: E712
+                ).first()
+                if not rnode:
+                    raise LocalizedHTTPException(status_code=400, message='未知地区')
+                ids.append(rnode.id)
+            # 多值规范化为 tuple（可哈希，recipe_service 用 region_id 作缓存键）
+            region_override = ids[0] if len(ids) == 1 else tuple(ids)
     from app.services.session_context import set_session_region
     if region_raw:
         set_session_region(region_override)

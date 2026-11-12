@@ -13,6 +13,8 @@ interface CalcContext {
   scope: string | null
   currency: string | null
   effectiveRegionId: number | null
+  // 自定义计算范围（scope 以 custom: 开头）解析出的地区 id 列表，X-Region 用逗号拼接
+  effectiveRegionIds: number[] | null
 }
 
 function readSaved(): CalcContext {
@@ -25,22 +27,25 @@ function readSaved(): CalcContext {
         scope: d.scope ?? null,
         currency: d.currency ?? null,
         effectiveRegionId: d.effectiveRegionId ?? null,
+        effectiveRegionIds: Array.isArray(d.effectiveRegionIds) ? d.effectiveRegionIds : null,
       }
     }
   } catch { /* ignore */ }
-  return { regionId: null, scope: null, currency: null, effectiveRegionId: null }
+  return { regionId: null, scope: null, currency: null, effectiveRegionId: null, effectiveRegionIds: null }
 }
 
 export const useCalcContextStore = defineStore('calcContext', () => {
   const saved = readSaved()
   // 用户选择的地区（展示/编辑用）
   const regionId = ref<number | null>(saved.regionId)
-  // 计算范围：'' 全部地区 / country / province / city / county / null 跟随配置
+  // 计算范围：'' 全部地区 / country / province / city / county / custom:<id> / null 跟随配置
   const scope = ref<string | null>(saved.scope)
   // 会话币种覆盖：null = 跟随用户配置
   const currency = ref<string | null>(saved.currency)
-  // 已解析的生效地区节点（发给后端 X-Region）
+  // 已解析的生效地区节点（发给后端 X-Region，单节点）
   const effectiveRegionId = ref<number | null>(saved.effectiveRegionId)
+  // 自定义计算范围的地区 id 列表（发给后端 X-Region，逗号分隔多 id）
+  const effectiveRegionIds = ref<number[] | null>(saved.effectiveRegionIds)
 
   function persist() {
     try {
@@ -49,6 +54,7 @@ export const useCalcContextStore = defineStore('calcContext', () => {
         scope: scope.value,
         currency: currency.value,
         effectiveRegionId: effectiveRegionId.value,
+        effectiveRegionIds: effectiveRegionIds.value,
       }))
     } catch { /* ignore */ }
   }
@@ -56,6 +62,13 @@ export const useCalcContextStore = defineStore('calcContext', () => {
   /** 解析 地区 + 计算范围 -> 生效地区节点。chain 可传入级联选择器已有的祖先链，避免重复请求。 */
   async function resolveEffective(chain?: Array<{ id: number; level: number }>) {
     const id = regionId.value
+    // 自定义范围：regionIds 由调用方直接给出（范围即地区列表，无需按层级截取）
+    if (scope.value != null && scope.value.startsWith('custom:')) {
+      effectiveRegionId.value = null
+      persist()
+      return
+    }
+    effectiveRegionIds.value = null
     if (id == null) { effectiveRegionId.value = null; persist(); return }
     const target = scope.value == null || scope.value === '' ? -1 : (SCOPE_LEVEL[scope.value] ?? 0)
     if (target < 0) { effectiveRegionId.value = null; persist(); return }
@@ -79,10 +92,12 @@ export const useCalcContextStore = defineStore('calcContext', () => {
     persist()
   }
 
-  function apply(values: Partial<Pick<CalcContext, 'regionId' | 'scope' | 'currency'>>, chain?: Array<{ id: number; level: number }>) {
+  function apply(values: Partial<Pick<CalcContext, 'regionId' | 'scope' | 'currency'>> & { regionIds?: number[] | null }, chain?: Array<{ id: number; level: number }>) {
     if ('regionId' in values) regionId.value = values.regionId ?? null
     if ('scope' in values) scope.value = values.scope ?? null
     if ('currency' in values) currency.value = values.currency ?? null
+    // 自定义范围直接携带地区列表；其余分支由 resolveEffective 清空
+    effectiveRegionIds.value = Array.isArray(values.regionIds) && values.regionIds.length ? values.regionIds : null
     persist()
     void resolveEffective(chain)
   }
@@ -93,6 +108,7 @@ export const useCalcContextStore = defineStore('calcContext', () => {
     scope.value = null
     currency.value = null
     effectiveRegionId.value = null
+    effectiveRegionIds.value = null
     persist()
   }
 
@@ -101,5 +117,5 @@ export const useCalcContextStore = defineStore('calcContext', () => {
     void resolveEffective()
   }
 
-  return { regionId, scope, currency, effectiveRegionId, apply, clear }
+  return { regionId, scope, currency, effectiveRegionId, effectiveRegionIds, apply, clear }
 })

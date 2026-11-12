@@ -43,6 +43,7 @@ from app.models.image_tracking import ImageTracking
 from app.models.barcode_lookup_cache import BarcodeLookupCache
 from app.models.currency import Currency
 from app.models.exchange_rate_snapshot import ExchangeRateSnapshot
+from app.models.user_calc_scope import UserCalcScope
 
 __all__ = [
     "User", "UserPlace", "Merchant", "ProductRecord", "RecordType",
@@ -84,4 +85,5 @@ __all__ = [
     "ImageTracking",
     "BarcodeLookupCache",
     "Currency", "ExchangeRateSnapshot",
+    "UserCalcScope",
 ]

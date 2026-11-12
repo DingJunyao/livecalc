@@ -1,7 +1,7 @@
 """价格计算用的地区过滤与币种折算 helper。"""
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
-from typing import Optional
+from typing import List, Optional, Tuple, Union
 
 from sqlalchemy import or_
 from sqlalchemy.orm import Session, Query, aliased
@@ -9,6 +9,10 @@ from sqlalchemy.orm import Session, Query, aliased
 from app.models.administrative_region import AdministrativeRegion
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
+
+# 地区过滤入参：单个地区 id，或多地区组合（自定义计算范围，子树并集去重）。
+# 多值规范化为 tuple（可哈希，lookup_cache 以 region_id 作 dict key）。
+RegionSpec = Union[int, Tuple[int, ...], List[int]]
 
 # 与 app.services.lookup_cache.clear 共用的子树缓存 key（写 AdministrativeRegion 时一并失效）
 _REGION_SUBTREE_CACHE_KEY = "_livecalc_region_subtree_cache"
@@ -29,13 +33,29 @@ def is_stale_recorded_at(recorded_at: Optional[datetime]) -> bool:
     return datetime.now(timezone.utc) - aware > timedelta(days=MERCHANT_PRICE_STALE_DAYS)
 
 
-def region_subtree_ids(db: Session, region_id: int) -> list[int]:
-    """地区子树 id 列表（含自身）。请求级缓存：成本/趋势计算会对同一 region_id
-    调用上万次 apply_region_filter，子树为准静态数据，挂在 db.info 上随请求失效。"""
+def region_subtree_ids(db: Session, region_id: RegionSpec) -> list[int]:
+    """地区子树 id 列表（含自身）。region_id 为单 id 时返回其子树；为多地区
+    组合（tuple/list，自定义计算范围）时返回各子树的并集去重——选了地级市又
+    选其下辖县不会重复计数。请求级缓存：成本/趋势计算会对同一 region 反复
+    调用 apply_region_filter，子树为准静态数据，挂在 db.info 上随请求失效。"""
     cache = db.info.get(_REGION_SUBTREE_CACHE_KEY)
     if cache is None:
         cache = {}
         db.info[_REGION_SUBTREE_CACHE_KEY] = cache
+    if isinstance(region_id, (tuple, list)):
+        key = tuple(region_id)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        merged: list[int] = []
+        seen: set[int] = set()
+        for rid in key:
+            for rid_expanded in region_subtree_ids(db, rid):
+                if rid_expanded not in seen:
+                    seen.add(rid_expanded)
+                    merged.append(rid_expanded)
+        cache[key] = merged
+        return merged
     if region_id in cache:
         return cache[region_id]
 
@@ -58,7 +78,7 @@ def region_subtree_ids(db: Session, region_id: int) -> list[int]:
     return ids
 
 
-def apply_region_filter(query: Query, db: Session, region_id: Optional[int]) -> Query:
+def apply_region_filter(query: Query, db: Session, region_id: Optional[RegionSpec]) -> Query:
     if region_id is None:
         return query
     ids = region_subtree_ids(db, region_id)

@@ -139,6 +139,17 @@
           </template>
         </v-list-item>
 
+        <v-list-item v-if="!isLocalMode" @click="calcScopeManagerOpen = true">
+          <template #prepend>
+            <v-icon>mdi-vector-square-plus</v-icon>
+          </template>
+          <v-list-item-title>{{ t('profile.customCalcScopes') }}</v-list-item-title>
+          <v-list-item-subtitle>{{ t('profile.customCalcScopesSubtitle') }}</v-list-item-subtitle>
+          <template #append>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
+          </template>
+        </v-list-item>
+
         <v-list-item v-if="mapEnabled" @click="router.push('/profile/places')">
           <template #prepend>
             <v-icon>mdi-map-marker-multiple</v-icon>
@@ -557,6 +568,7 @@
 
     <!-- 黑名单对话框 -->
     <BlacklistDialog v-model="blacklistDialog" />
+    <CalcScopeManagerDialog v-if="!isLocalMode" v-model="calcScopeManagerOpen" @changed="onCalcScopesChanged" />
 
     <!-- 头像裁剪对话框 -->
     <AvatarCropperDialog v-model="cropperDialog" :src="cropperSrc" @cropped="uploadCroppedAvatar" />
@@ -953,6 +965,8 @@ import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { api } from '@/api'
 import { ImportUploadDialog } from '@/components/import'
 import BlacklistDialog from '@/components/blacklist/BlacklistDialog.vue'
+import CalcScopeManagerDialog from '@/components/profile/CalcScopeManagerDialog.vue'
+import type { UserCalcScope } from '@/types'
 import AvatarCropperDialog from '@/components/profile/AvatarCropperDialog.vue'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { useUserUnits } from '@/composables/useUserUnits'
@@ -1068,16 +1082,36 @@ async function saveLocale() {
 const currencyDialog = ref(false)
 const scopeDialog = ref(false)
 const currencyValue = ref<string | null>(null)
-const scopeValue = ref<string>('country') // 默认国家/地区（全量）；空串 = 全部地区
+const scopeValue = ref<string>('country') // 默认国家/地区（全量）；空串 = 全部地区；custom:<id> = 自定义范围
 const currencies = ref<any[]>([])
+// 自定义计算范围（云端模式）：默认范围选择器里作为附加选项
+const customScopes = ref<UserCalcScope[]>([])
+const calcScopeManagerOpen = ref(false)
 const scopeOptions = computed(() => [
   { title: t('scope.all'), value: '' },
   { title: t('scope.country'), value: 'country' },
   { title: t('scope.province'), value: 'province' },
   { title: t('scope.city'), value: 'city' },
   { title: t('scope.county'), value: 'county' },
+  ...customScopes.value.map(s => ({ title: s.name, value: `custom:${s.id}` })),
 ])
-const scopeLabel = computed(() => scopeOptions.value.find(o => o.value === userStore.user?.default_calc_scope)?.title || t('region.country'))
+
+async function loadCustomScopes() {
+  if (isLocalMode.value) return
+  try {
+    const list = await api.get('/calc-scopes')
+    customScopes.value = Array.isArray(list) ? list : []
+  } catch { /* 范围接口不可用时仅缺少自定义选项 */ }
+}
+
+const scopeLabel = computed(() => {
+  const customId = userStore.user?.default_calc_scope_id
+  if (customId != null) {
+    const hit = customScopes.value.find(s => s.id === customId)
+    if (hit) return hit.name
+  }
+  return scopeOptions.value.find(o => o.value === userStore.user?.default_calc_scope)?.title || t('region.country')
+})
 
 function openCurrencyDialog() {
   currencyValue.value = userStore.user?.default_currency ?? null
@@ -1088,7 +1122,10 @@ function openCurrencyDialog() {
 }
 
 function openScopeDialog() {
-  scopeValue.value = userStore.user?.default_calc_scope ?? 'country'
+  scopeValue.value = userStore.user?.default_calc_scope_id != null
+    ? `custom:${userStore.user.default_calc_scope_id}`
+    : (userStore.user?.default_calc_scope ?? 'country')
+  void loadCustomScopes()
   scopeDialog.value = true
 }
 
@@ -1099,9 +1136,21 @@ async function saveCurrency() {
 }
 
 async function saveScope() {
-  await api.patch('/auth/me', { default_calc_scope: scopeValue.value })
+  if (scopeValue.value.startsWith('custom:')) {
+    // 自定义范围：后端互斥写入（清 default_calc_scope）
+    await api.patch('/auth/me', { default_calc_scope_id: Number(scopeValue.value.slice('custom:'.length)) })
+  } else {
+    // 层级档位（含空串=全部地区）：后端互斥写入（清 default_calc_scope_id）
+    await api.patch('/auth/me', { default_calc_scope: scopeValue.value })
+  }
   scopeDialog.value = false
   await userStore.fetchUser()
+}
+
+// 自定义范围管理对话框变更后：刷新范围列表与用户配置（默认标记/当前值回显）
+function onCalcScopesChanged() {
+  void loadCustomScopes()
+  void userStore.fetchUser()
 }
 
 // 所在地区编辑（本地模式专用对话框）
@@ -1752,6 +1801,7 @@ onMounted(() => {
   loadStats()
   loadBlacklistCount()
   loadAiSettings()
+  loadCustomScopes()
   loadCurrencies()
     .then(list => { currencies.value = list })
     .catch(() => { /* 忽略本地模式无币种路由 */ })
