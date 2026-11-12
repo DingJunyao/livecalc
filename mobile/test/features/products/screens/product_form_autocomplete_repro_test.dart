@@ -266,7 +266,9 @@ void main() {
   testWidgets('点选原料后的输入法回声不清空选择，保存成功', (tester) async {
     // 真机复现：点选下拉项后，输入法补发滞留的组合态/上屏回声，
     // 文本与所选原料名不一致 → onChanged 把刚选好的原料静默清空 →
-    // 保存误报「请选择关联的原料」。点选后的保护窗口内必须忽略这些回声。
+    // 保存误报「请选择关联的原料」。选中即释放焦点后 IME 连接已关闭，
+    // 回声在框架侧按失效 client 丢弃；保护窗口保留作纵深防御。
+    // 两种机制下选择都必须完好、保存成功。
     final productRepo = _RecordingProductRepository();
     await pumpLauncherApp(
       tester,
@@ -281,6 +283,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400)); // 防抖 300ms + 搜索返回
     await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
     await tester.pump(const Duration(milliseconds: 50));
+
+    expect(
+      tester.widget<TextField>(ingredientField).focusNode?.hasFocus,
+      isFalse,
+      reason: '选中即释放焦点（对齐商家下拉，避免扫码/选日期返回下拉重现）',
+    );
 
     // 回声 1：输入法补发组合态（文本带拼音尾巴，组合态未上屏）
     tester.testTextInput.updateEditingValue(const TextEditingValue(
@@ -326,6 +334,9 @@ void main() {
     await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
     // 等保护窗口（300ms）过期，再输入新关键词 → 应清空选择
     await tester.pump(const Duration(milliseconds: 400));
+    // 选中即释放焦点后需重新聚焦（真机用户点输入框），IME 才重新接管
+    await tester.tap(ingredientField);
+    await tester.pump();
     tester.testTextInput.updateEditingValue(const TextEditingValue(
       text: '牛',
       selection: TextSelection.collapsed(offset: 1),
@@ -347,5 +358,28 @@ void main() {
       findsOneWidget,
     );
     expect(find.textContaining('Select a linked ingredient'), findsOneWidget);
+  });
+
+  testWidgets('点选原料后释放焦点，避免扫码/选日期返回时下拉重现', (tester) async {
+    // SDK 在重新获得焦点且 options 非空时会直接把面板重新弹出（不重跑
+    // optionsBuilder）；本页有条码扫码，进出扫码页焦点恢复就会重现旧结果。
+    final repo = _LatencyIngredientRepository(_milkLikeIngredients);
+    await pumpApp(tester, await buildScreen(tester, repo));
+
+    await tester.enterText(ingredientField, '牛奶');
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      tester.widget<TextField>(ingredientField).focusNode?.hasFocus,
+      isTrue,
+      reason: '输入时应持有焦点',
+    );
+
+    await tester.tap(find.widgetWithText(ListTile, '牛奶').first);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(ingredientField).focusNode?.hasFocus,
+      isFalse,
+    );
   });
 }

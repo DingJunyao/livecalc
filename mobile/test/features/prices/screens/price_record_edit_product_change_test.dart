@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:com_a4ding_livecalc/features/merchants/models/merchant.dart';
 import 'package:com_a4ding_livecalc/features/products/models/product.dart';
 import 'package:com_a4ding_livecalc/features/products/repositories/product_repository.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
@@ -14,6 +15,7 @@ void main() {
   Future<PriceRecordFormResult? Function()> pumpEditScreen(
     WidgetTester tester, {
     required List<Product> searchItems,
+    List<Merchant> merchants = const [],
   }) async {
     PriceRecordFormResult? popped;
     await tester.pumpWidget(
@@ -30,8 +32,8 @@ void main() {
                     popped = await Navigator.of(ctx)
                         .push<PriceRecordFormResult>(MaterialPageRoute(
                       builder: (_) => PriceRecordEditScreen(
-                        arguments: const PriceRecordFormArguments(
-                          merchants: [],
+                        arguments: PriceRecordFormArguments(
+                          merchants: merchants,
                           fixedProductId: 1,
                           fixedProductName: '苹果',
                           initialPrice: 5,
@@ -105,6 +107,36 @@ void main() {
     expect(getPopped(), isNull);
     expect(find.byType(PriceRecordEditScreen), findsOneWidget);
     expect(find.text('请选择商品'), findsOneWidget);
+  });
+
+  testWidgets('选中商家后删改文本不被还原成旧商家名（局部删除生效）', (tester) async {
+    // 与 price_record_form_screen 同一份 fieldViewBuilder 同步逻辑：
+    // postFrame 预填同步在 rebuild 后不得把用户编辑回退成旧商家名。
+    await pumpEditScreen(
+      tester,
+      searchItems: const [],
+      merchants: const [Merchant(id: 1, name: '超市')],
+    );
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    // 重新聚焦后模拟局部删除（updateEditingValue 与真机 IME 删除路径一致）
+    await tester.tap(merchantField);
+    await tester.pumpAndSettle();
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '超',
+      selection: TextSelection.collapsed(offset: 1),
+    ));
+    await tester.pumpAndSettle(); // 让 rebuild 后的 postFrame 同步执行完
+
+    expect(tester.widget<TextField>(merchantField).controller?.text, '超');
   });
 }
 

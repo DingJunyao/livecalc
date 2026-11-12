@@ -755,7 +755,13 @@ class _IngredientDetailScreenState
                 Autocomplete<Ingredient>(
                   displayStringForOption: (i) => i.name,
                   optionsBuilder: (value) => searchIngredients(value.text),
-                  onSelected: (i) => setDialogState(() => target = i),
+                  onSelected: (i) {
+                    setDialogState(() => target = i);
+                    // 选中即释放焦点：防抖搜索是异步 optionsBuilder，点选后
+                    // 未完成的请求一完成就会因焦点仍挂在输入框而把刚收起的
+                    // 下拉重新弹出（SDK _updateOptionsViewVisibility）。
+                    FocusManager.instance.primaryFocus?.unfocus();
+                  },
                   fieldViewBuilder: (
                     ctx,
                     controller,

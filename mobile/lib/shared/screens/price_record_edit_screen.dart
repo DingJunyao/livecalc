@@ -480,6 +480,16 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
                     ),
                     onSubmitted: (_) => onFieldSubmitted(),
                     onChanged: (value) {
+                      // 回写镜像：上方 postFrame 每次 rebuild 都会把
+                      // _merchantController 推回输入框。用户编辑只落在内部
+                      // controller 上时，下一帧就被旧商家名整体还原（光标跳到
+                      // 末尾，表现为「选中部分文本删不掉、退格只从末尾删」）。
+                      // 两边保持一致，postFrame 比较相等便不会回写。
+                      if (_merchantController.text != value) {
+                        _merchantController.text = value;
+                      }
+                      // 文本被改动后不再信任 _merchantId；要保留必须重新点选
+                      // （onSelected 程序化赋值不会走 onChanged，选中流程不受影响）
                       if (_merchantId != null) {
                         setState(() => _merchantId = null);
                       }

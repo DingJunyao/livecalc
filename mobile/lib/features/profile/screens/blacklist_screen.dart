@@ -281,6 +281,10 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
                         onSelected: (ingredient) {
                           _searchController.clear();
                           _addIngredient(ingredient);
+                          // 选中即释放焦点：收起键盘让新加的 chip 可见，也避免
+                          // 之后再有任何路由进出时焦点恢复把旧搜索结果面板
+                          // 重新弹出（对齐商家/原料下拉的处理）。
+                          FocusManager.instance.primaryFocus?.unfocus();
                         },
                         fieldViewBuilder: (
                           ctx,

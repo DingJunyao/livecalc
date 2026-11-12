@@ -1050,6 +1050,10 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
           ingredient.id,
           previousIngredientId,
         ));
+        // 选中即释放焦点：SDK 在重新获得焦点且 options 非空时会直接把面板
+        // 重新弹出（不重跑 optionsBuilder），本页有条码扫码，进出扫码页焦点
+        // 恢复就会重现旧搜索结果（同 price_record_form 商家下拉的处理）。
+        FocusManager.instance.primaryFocus?.unfocus();
       },
       optionsViewBuilder: (ctx, onSelected, options) {
         return Align(

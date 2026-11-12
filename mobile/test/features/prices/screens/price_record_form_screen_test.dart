@@ -663,6 +663,42 @@ void main() {
     expect(repo.lastMerchantId, isNull);
   });
 
+  testWidgets('选中商家后删改文本不被还原成旧商家名（局部删除生效）', (tester) async {
+    final repo = _FakePriceRepository();
+    await pumpForm(tester, priceRepo: repo);
+
+    final merchantField = find.descendant(
+      of: find.byWidgetPredicate((w) => w is Autocomplete<Merchant>),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(merchantField, '超');
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('超市'));
+    await tester.pumpAndSettle();
+
+    // 用户重新聚焦并删除部分文本（IME updateEditingValue 与真机删除路径
+    // 一致；enterText 是整段替换，模拟不了「选中部分文本再删」）。
+    await tester.tap(merchantField);
+    await tester.pumpAndSettle();
+    tester.testTextInput.updateEditingValue(const TextEditingValue(
+      text: '超',
+      selection: TextSelection.collapsed(offset: 1),
+    ));
+    await tester.pumpAndSettle(); // 让 rebuild 后的 postFrame 同步执行完
+
+    // 修复前：fieldViewBuilder 每次 rebuild 的 postFrame 会把 _merchantController
+    // 里的旧商家名「超市」推回输入框——局部删除被整体还原、光标跳到末尾，
+    // 后续退格表现为只从末尾删。修复后应保留用户的编辑结果。
+    expect(tester.widget<TextField>(merchantField).controller?.text, '超');
+
+    // 编辑后商家选择失效（防 stale id），保存不带 merchantId
+    await tester.enterText(find.widgetWithText(TextField, '商品名称'), '番茄');
+    await tester.enterText(find.widgetWithText(TextField, '价格'), '2.5');
+    await tester.tap(find.widgetWithText(TextButton, '保存'));
+    await tester.pumpAndSettle();
+    expect(repo.lastMerchantId, isNull);
+  });
+
   testWidgets('双击保存只创建一次（在途守卫）', (tester) async {
     final repo = _FakePriceRepository();
     await pumpForm(tester, priceRepo: repo);
