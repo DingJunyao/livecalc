@@ -254,17 +254,29 @@
               </template>
             </v-autocomplete>
 
-            <!-- 如果没有选择现有商品，显示新商品名称输入框 -->
-            <v-text-field
+            <!-- 未选择现有商品且有搜索词：提示将按名称创建，并提供「新增商品」入口（补全品牌/关联原料等信息） -->
+            <v-alert
               v-if="!form.product_id && productSearch"
-              :model-value="productSearch"
-              :label="t('prices.newProductName')"
-              variant="outlined"
               density="compact"
-              disabled
-              :hint="t('prices.willCreateProduct')"
+              type="info"
+              variant="tonal"
               class="mb-4"
-            />
+            >
+              <template #text>
+                {{ t('prices.willCreateProductNamed', { name: productSearch }) }}
+              </template>
+              <template #append>
+                <v-btn
+                  size="small"
+                  variant="tonal"
+                  color="primary"
+                  :aria-label="t('prices.createProduct')"
+                  @click="goCreateProductByName"
+                >
+                  {{ t('prices.createProduct') }}
+                </v-btn>
+              </template>
+            </v-alert>
 
             <!-- 价格（币种在价格右侧，显示三字母） -->
             <div class="d-flex align-center ga-2 mb-4">
@@ -508,6 +520,16 @@ function goCreateProduct() {
   router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices' } })
 }
 
+// 手动搜索无结果时：带名称跳到新增商品页（与扫码未命中同一闭环），返回后自动选中
+function goCreateProductByName() {
+  const name = normalizeProductSearch(productSearch.value)
+  if (!name) return
+  const prefill = { barcode: '', name, brand: '' }
+  sessionStorage.setItem('barcode-new-product', JSON.stringify(prefill))
+  closeDialog()
+  router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices' } })
+}
+
 const snackbar = ref({ show: false, message: '', color: 'error' })
 function showSnackbar(message: string, color: string = 'error') {
   snackbar.value = { show: true, message, color }
@@ -615,6 +637,8 @@ function normalizeProductSearch(value: any): string {
 function onProductSearchUpdate(value: any) {
   const normalized = normalizeProductSearch(value)
   productSearch.value = normalized
+  // 新增时「输入名称」可替代选择商品，名称变化即清旧校验错误（保存时会重新校验）
+  if (!isEditing.value) formRef.value?.resetValidation()
 }
 
 // 获取当前时间的本地格式 (YYYY-MM-DDTHH:mm)
@@ -696,8 +720,14 @@ const loadEntityUnits = async (productId: number | null, ingredientId?: number |
 }
 
 // 表单验证规则
+// 新增时「选中商品」或「输入商品名称」其一即可（保存后按名称创建商品+同名原料）；
+// 编辑态必须选中商品（换绑需要真实商品 id，不支持按名建）。
 const productIdRules = [
-  (v: number | null) => !!v || t('prices.chooseOrInputProduct')
+  (v: ProductSuggestion | null) => {
+    if (v) return true
+    if (!isEditing.value && normalizeProductSearch(productSearch.value)) return true
+    return t('prices.chooseOrInputProduct')
+  }
 ]
 
 const priceRules = [
@@ -1001,7 +1031,9 @@ const consumeReturnedProduct = async () => {
 }
 
 const saveRecord = async () => {
-  if (!formRef.value?.validate()) return
+  // Vuetify 3 validate() 返回 Promise，需 await 后判 valid（旧写法恒 truthy 拦不住）
+  const validation = await formRef.value?.validate()
+  if (validation && !validation.valid) return
 
   saving.value = true
   try {

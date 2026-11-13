@@ -154,7 +154,18 @@
                 @update:search="onNewRowSearch(i, $event)"
               >
                 <template #no-data>
-                  {{ row.searchText ? t('prices.noProductFoundCreate') : t('prices.inputProductSearch') }}
+                  <div v-if="row.searchText" class="fill-row__no-data">
+                    <span>{{ t('prices.noProductFoundCreate') }}</span>
+                    <v-btn
+                      size="small"
+                      color="primary"
+                      variant="tonal"
+                      @click="goCreateProductForRow(row)"
+                    >
+                      {{ t('prices.goCreateProductNamed', { name: row.searchText }) }}
+                    </v-btn>
+                  </div>
+                  <span v-else>{{ t('prices.inputProductSearch') }}</span>
                 </template>
               </v-autocomplete>
               <div class="fill-row__inputs">
@@ -638,6 +649,16 @@ function goCreateProduct() {
   void router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices/quick-fill' } })
 }
 
+// 搜索无结果时：带行内已输入名称跳到新增商品页（与扫码未命中同一闭环）
+function goCreateProductForRow(row: FillRow) {
+  const name = (row.searchText || '').trim()
+  if (!name) return
+  saveDraft()
+  const prefill = { barcode: '', name, brand: '' }
+  sessionStorage.setItem(NEW_PRODUCT_KEY, JSON.stringify(prefill))
+  void router.push({ path: '/data/products', query: { ...prefill, returnTo: '/prices/quick-fill' } })
+}
+
 function consumeProductReturn() {
   const raw = sessionStorage.getItem(PRODUCT_RETURN_KEY)
   if (!raw) return
@@ -645,7 +666,17 @@ function consumeProductReturn() {
   sessionStorage.removeItem(DRAFT_KEY)
   try {
     const product = JSON.parse(raw) as { id?: number; name?: string }
-    if (product.id && product.name) appendProductRow({ id: product.id, name: product.name })
+    if (!product.id || !product.name) return
+    // 优先回填到草稿里同名的未选中行（保留已填价格/数量）；没有则追加新行
+    const pendingRow = newRows.value.find(
+      r => r.isNew && !getRowProductId(r) && (r.searchText || '').trim() === product.name!.trim()
+    )
+    if (pendingRow) {
+      pendingRow.productId = { id: product.id, name: product.name }
+      pendingRow.productName = product.name
+    } else {
+      appendProductRow({ id: product.id, name: product.name })
+    }
   } catch {
     /* ignore malformed returns */
   }
@@ -940,6 +971,14 @@ onMounted(() => {
 }
 .fill-row__edit-text:hover { background: rgba(0,0,0,0.06); }
 .fill-list { background: transparent; }
+.fill-row__no-data {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+}
 /* 解除 v-list-item 的 overflow 限制，避免 autocomplete 下拉被裁剪 */
 .fill-list :deep(.v-list-item) { overflow: visible; }
 .fill-list :deep(.v-list-item__content) { overflow: visible; }
