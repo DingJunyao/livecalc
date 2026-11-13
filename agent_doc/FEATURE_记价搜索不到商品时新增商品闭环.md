@@ -1,6 +1,6 @@
 # 记价搜索不到商品时新增商品闭环
 
-日期：2026-11-13　分支：web master（待提交）／移动端 feat/mobile-app `e94c21c4`
+日期：2026-11-13　分支：web master `b577cc1f`／移动端 feat/mobile-app `e94c21c4`
 
 ## 用户报告
 
@@ -16,7 +16,7 @@
 - **Web 校验矛盾（既有 bug）**：`productIdRules` 标红「请选择或输入商品名称」，但 `saveRecord` 里 `if (!formRef.value?.validate()) return` 因 Vuetify 3 `validate()` 返回 Promise（truthy）而拦不住提交——显示校验错误却保存成功。
 - 快速填写（web）显式拦死「新行必须有商品」（`saveAll` L764-769），按名回退是死代码；移动端快速填写无搜索下拉（历史商品行），不涉及。
 
-## Web（master，待提交）
+## Web（master `b577cc1f`）
 
 ### PricesView.vue（主记价表单，新增/编辑共用）
 
@@ -71,9 +71,9 @@
 3. **测试里 go_router push 的栈序**：裸 `Navigator.push` 的页面在栈顶时，go_router 的 push 页面会插到它下面（router 页面栈与命令式路由混用）。测试 harness 要让表单本身也经 go_router 路由进入。
 4. **快速填写回填行**：跨页跳转前 `saveDraft()` 存的是整页草稿，返回后 `restoreDraft` 恢复旧行——不把新商品回填进同名行而是盲追加新行，会留下无 productId 的死行卡死批量保存。
 5. **check:i18n:sources 会查「源码引用了但 locale 缺失」的 key**（本例 `common.edit`），keys 模式只查语料间一致性，两把都要跑。
-6. **web 提交被 Mimosa 钩子拦截**：14 个 high 全为既有文件（本地模式哨兵 token `auth.ts` + gitignore 内的 `dev-dist/` 生成物），与本次改动无关；用户确认前不擅自绕过闸门，web 改动暂存为 stash 后恢复，提交待用户处置。
+6. **web 提交被 Mimosa 钩子拦截**：14 个 high 全为既有文件（本地模式哨兵 token `auth.ts` + gitignore 内的 `dev-dist/` 生成物），与本次改动无关；经用户放行后以 `--no-verify` 提交，提交说明注明「人工复核为既有误报」。完整审计仍待安排。
 
 ## 分支
 
 - 移动端 feat/mobile-app `e94c21c4`（11 文件）。
-- Web master 改动**已完成并验证但未提交**：git commit 被 Mimosa 钩子强制拦截（见坑 6），改动已恢复在工作区，待用户确认处置方式后提交并合并 feat/mobile-app。
+- Web master `b577cc1f` → 合入 feat/mobile-app（`fcd5686a`）。
