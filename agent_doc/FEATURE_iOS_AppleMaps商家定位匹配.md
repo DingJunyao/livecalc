@@ -64,5 +64,6 @@
 ## 验证与已知限制
 
 - `flutter analyze` 0 issue；三个新测试文件 25 例全过；全量测试与基线一致（存量失败与本次无关）。
+- iOS CI 编译（GitHub Actions Mac runner，Xcode 26.6 / Release-iphoneos）：首跑失败——AppDelegate.swift 原本只 `import Flutter/UIKit`，新增 MapKit/CoreLocation 代码未补 import，报 MKLocalSearch/CLGeocoder/CLLocation/MKErrorDomain/kCLErrorDomain 等 cannot find in scope（闭包参数推断失败为连带）。修复：文件头补 `import CoreLocation` + `import MapKit`。
 - **真机定标待办**（Windows 无法验证 iOS 行为）：① `MKLocalSearch` 中国大陆返回坐标是否 GCJ-02（当前按 CN→折算实现，与选点 `_appleNeedsGcj02` 同一待定标点）；② POI 命中质量与候选排序；③ 区划名称匹配率（Apple 对区县名的措辞，如「XX区」是否带后缀）。在 Mac VM/真机跑通后按结果调整折算开关。构建链路参照 [BUILD_iOS_无签名IPA与MacVM.md](BUILD_iOS_无签名IPA与MacVM.md)。
 - MKLocalSearch 结果语言跟随设备语言（无 locale API）；en/ar 设备下中文区划匹配可能降级停在省级（国家仍按 isoCountryCode 命中）——逆编码路径已用 zh_CN locale 消除此问题，搜索路径无解属平台限制。

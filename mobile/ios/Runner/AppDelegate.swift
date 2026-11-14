@@ -1,4 +1,6 @@
+import CoreLocation
 import Flutter
+import MapKit
 import UIKit
 
 @main
