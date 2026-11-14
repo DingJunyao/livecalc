@@ -54,6 +54,19 @@ const _fakePlace = ApplePlace(
   thoroughfare: '玄武路',
 );
 
+const _fakePlace2 = ApplePlace(
+  name: '蜜雪冰城（鼓楼路店）',
+  address: '江苏省南京市玄武区鼓楼路2号',
+  latitude: 32.05,
+  longitude: 118.80,
+  country: '中国',
+  countryCode: 'CN',
+  administrativeArea: '江苏省',
+  locality: '南京市',
+  subLocality: '玄武区',
+  thoroughfare: '鼓楼路',
+);
+
 /// 内存瓦片：消除测试里真实网络请求的噪音。
 class _MemoryTileProvider extends TileProvider {
   @override
@@ -237,6 +250,52 @@ void main() {
         findsNothing);
     expect(find.textContaining('32.040000'), findsOneWidget);
     expect(find.text('玄武区'), findsOneWidget);
+  });
+
+  testWidgets('连续点选候选：上次匹配写入的坐标被新匹配覆盖', (tester) async {
+    appleMaps.results = const [_fakePlace, _fakePlace2];
+    await pumpForm(tester);
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    await tester.tap(find.text('蜜雪冰城（玄武路店）'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('32.040000'), findsOneWidget);
+
+    // 改一个字触发重新搜索（同文本 enterText 不触发 onChanged）。
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城 ');
+    await tester.tap(find.text('蜜雪冰城（鼓楼路店）'));
+    await tester.pumpAndSettle();
+
+    // 坐标为上次匹配写入（非用户手设），被本次匹配覆盖并居中重绘。
+    expect(find.textContaining('32.040000'), findsNothing);
+    expect(find.textContaining('32.050000'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '蜜雪冰城（鼓楼路店）'), findsOneWidget);
+  });
+
+  testWidgets('地图选点后点选候选：坐标保留，名称/地址仍写入', (tester) async {
+    await pumpForm(tester);
+
+    // 直接触发地图 onTap（避免手势模拟的落点不确定性），落点偏离默认中心。
+    final options =
+        tester.widget<FlutterMap>(find.byType(FlutterMap)).options;
+    options.onTap!(
+      const TapPosition(Offset.zero, Offset.zero),
+      const LatLng(39.85, 116.35),
+    );
+    await tester.pumpAndSettle();
+    final coordText =
+        tester.widget<Text>(find.textContaining('纬度')).data!;
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    await tester.tap(find.text('蜜雪冰城（玄武路店）'));
+    await tester.pumpAndSettle();
+
+    // 名称/地址为显式点选写入；坐标为用户选点结果，不被候选覆盖。
+    expect(find.widgetWithText(TextField, '蜜雪冰城（玄武路店）'), findsOneWidget);
+    expect(find.widgetWithText(TextField, '江苏省南京市玄武区玄武路1号'),
+        findsOneWidget);
+    expect(find.textContaining(coordText), findsOneWidget);
+    expect(find.textContaining('32.040000'), findsNothing);
   });
 
   testWidgets('非 iOS 平台（默认服务）不出候选', (tester) async {

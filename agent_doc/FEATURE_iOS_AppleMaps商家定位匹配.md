@@ -46,7 +46,9 @@
 `merchant_form_screen.dart`：
 
 - 名称/地址 TextField `onChanged`（仅 `isAvailable` 时挂）→ 300ms 防抖 + 各自请求序号守卫（`price_record_form_screen.dart` 同款模式）→ 字段下方候选列表（`_buildAppleCandidates`：标题行 l10n `appleMapsMatches`「苹果地图匹配」+ ListTile 名称/地址副标题，maxHeight 200）。纯 TextField + 自绘列表，**不用 `Autocomplete`**（避开本仓已记录的焦点重现/IME 回声坑）。
-- `_applyCandidate`：名称流**显式写入**官方名称与官方地址（非空才写）；坐标（`isPlaceholderCoordinate` 才填）、区划（`matchRegionId`，`_regionId != null` 直接跳过）只填空/占位；地址流同坐标/区划规则、地址永不回写。程序化赋值不触发 onChanged，无二次搜索循环。点选后清候选并作废在途请求序号。
+- `_applyCandidate`：名称流**显式写入**官方名称与官方地址（非空才写）；坐标/区划按「只填空字段/占位值/匹配来源」规则写入；地址流同坐标/区划规则、地址永不回写。程序化赋值不触发 onChanged，无二次搜索循环。点选后清候选并作废在途请求序号。
+- 点选候选后**地图相机居中到该点**（点级缩放 `kPointZoom`）：两个选点组件（`AppleMapPicker` animateCamera / `MapPointPicker` `MapController.move`，postFrame+try 兜底地图未挂载）在 `didUpdateWidget` 里用 `_lastEmitted` 区分来源——自身 tap/定位来源不重复动画（避免重置用户缩放），外部来源（候选带出）才居中。
+- 匹配来源标记 `_coordinateFromMatch`/`_regionFromMatch`：候选写入的坐标/区划允许被下一次匹配覆盖（选错分店再选对的场景）；用户选点/定位/手选区划置回 false，仍受「已有不覆盖」保护。真机反馈修正：首版名称/地址不回写不符合同类搜索选择惯例。
 - `_onMapChanged`（选点→区划）：iOS 先走 `reverseGeocodeForWgs84` + `matchRegionId`，失败/null 回退既有后端 `repository.geocode`（Android 路径不变）；选点语义保留「区划跟随点」（移动选点即意图变更区划，与匹配流的「不覆盖」规则不同）。
 - `RegionSelectField` 补传 `repository: widget.repository`（与表单共用注入实例，测试可 mock；行为不变）。
 - 构造参数新增 `appleMapsService`（默认 `AppleMapsService()`），测试注入假服务。

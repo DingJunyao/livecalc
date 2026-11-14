@@ -60,6 +60,10 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
 
   /// 选中点（WGS84）。
   LatLng? _wgs;
+
+  /// 本组件最后一次回调给外部的值：didUpdateWidget 收到相同值视为自身
+  /// tap/定位来源（不重复动画），不同值视为外部来源（匹配候选带出）。
+  LatLng? _lastEmitted;
   MapLayerOption? _layer;
 
   @override
@@ -87,6 +91,23 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialValue != widget.initialValue) {
       _wgs = widget.initialValue;
+      // 外部来源（匹配候选带出）→ 相机居中到该点；自身 tap/定位来源不
+      // 重复动画（tap 不重置用户缩放，定位按钮自带 move）。postFrame 等
+      // 地图挂载；配置加载中地图未建时忽略（move 会断言未就绪）。
+      if (_lastEmitted != widget.initialValue) {
+        final target = widget.initialValue;
+        if (target != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            try {
+              _controller.move(_toDisplay(target), kPointZoom);
+            } catch (_) {
+              // 地图尚未就绪，忽略本次居中。
+            }
+          });
+        }
+      }
+      _lastEmitted = null;
     }
     final config = ref.read(mapConfigProvider);
     final layer = _layer;
@@ -127,11 +148,13 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
   void _handleTap(TapPosition tapPosition, LatLng latLng) {
     final wgs = _toWgs84(latLng);
     setState(() => _wgs = wgs);
+    _lastEmitted = wgs;
     widget.onChanged?.call(wgs);
   }
 
   void _selectLocated(LatLng point) {
     setState(() => _wgs = point);
+    _lastEmitted = point;
     widget.onChanged?.call(point);
     _controller.move(_toDisplay(point), kPointZoom);
   }

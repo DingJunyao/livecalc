@@ -81,6 +81,11 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   Timer? _addressDebounce;
   int _addressSeq = 0;
   int _mapRegionSeq = 0;
+
+  /// 坐标/区划是否来自上一次匹配候选（用户选点/定位/手选区划则置 false）：
+  /// 匹配来源的值允许被下一次匹配覆盖，手动设置的仍受「已有不覆盖」保护。
+  bool _coordinateFromMatch = false;
+  bool _regionFromMatch = false;
   List<ApplePlace> _nameCandidates = const [];
   List<ApplePlace> _addressCandidates = const [];
 
@@ -209,14 +214,16 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
           _addressController.text = place.address;
         }
       }
-      // 坐标已有（非占位）则保留；null/占位值由匹配结果覆盖。
-      if (!_hasCoordinate &&
-          place.latitude != null &&
-          place.longitude != null) {
+      // 坐标：用户已设（非占位且非上次匹配写入）则保留；null/占位/上次
+      // 匹配写入的值由本次匹配结果覆盖。
+      if (place.latitude != null &&
+          place.longitude != null &&
+          (!_hasCoordinate || _coordinateFromMatch)) {
         _coordinate = LatLng(place.latitude!, place.longitude!);
+        _coordinateFromMatch = true;
       }
     });
-    if (_regionId != null) return;
+    if (_regionId != null && !_regionFromMatch) return;
     final regionId = await matchRegionId(
       repository,
       countryCode: place.countryCode,
@@ -225,13 +232,22 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       locality: place.locality,
       subLocality: place.subLocality,
     );
-    if (regionId != null && mounted && _regionId == null) {
-      setState(() => _regionId = regionId);
+    if (regionId != null &&
+        mounted &&
+        (_regionId == null || _regionFromMatch)) {
+      setState(() {
+        _regionId = regionId;
+        _regionFromMatch = true;
+      });
     }
   }
 
   Future<void> _onMapChanged(LatLng value) async {
-    setState(() => _coordinate = value);
+    setState(() {
+      _coordinate = value;
+      // 选点/定位是用户动作，坐标回到「用户已设」保护。
+      _coordinateFromMatch = false;
+    });
     final repository = widget.repository ?? MerchantRepository();
     // 选点序号守卫：快速连点时旧点的逆编码结果（含取消后的后端回退）作废。
     final seq = ++_mapRegionSeq;
@@ -253,7 +269,10 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
             subLocality: place.subLocality,
           );
           if (rid != null && mounted && seq == _mapRegionSeq) {
-            setState(() => _regionId = rid);
+            setState(() {
+              _regionId = rid;
+              _regionFromMatch = false;
+            });
             return;
           }
         }
@@ -268,7 +287,10 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
         longitude: value.longitude,
       );
       if (rid != null && mounted && seq == _mapRegionSeq) {
-        setState(() => _regionId = rid);
+        setState(() {
+          _regionId = rid;
+          _regionFromMatch = false;
+        });
       }
     } catch (_) {
       // Region reverse lookup is best-effort.
