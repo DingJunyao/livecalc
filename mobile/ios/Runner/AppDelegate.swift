@@ -237,7 +237,7 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
       // "[MKMapItem]?? has no member 'prefix'"（CI 四轮实证）。
       let mapItems = response?.mapItems ?? []
       let items = mapItems.prefix(10).map { item in
-        self?.placeDict(item.name, subtitle: item.subtitle, placemark: item.placemark) ?? [:]
+        self?.placeDict(item.name, placemark: item.placemark) ?? [:]
       }
       result(items)
     }
@@ -278,25 +278,26 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
         return
       }
       // escaping 闭包里 weak self 必须显式解包。
-      result(self?.placeDict(placemark.name, subtitle: nil, placemark: placemark) ?? [:])
+      result(self?.placeDict(placemark.name, placemark: placemark) ?? [:])
     }
   }
 
   // MARK: - Helpers
 
   /// MKMapItem / CLPlacemark → Flutter dict（与 Dart 侧 ApplePlace 同构）。
+  /// MKMapItem 没有 subtitle/address 属性（CI 五轮实证），地址统一由
+  /// CLPlacemark 行政区划组件按中文习惯（省→市→区→街道门牌）无缝拼接；
   /// 坐标缺失时省略键，Dart 侧按 null 处理。
   private func placeDict(
     _ name: String?,
-    subtitle: String?,
     placemark: CLPlacemark
   ) -> [String: Any] {
     let coordinate = placemark.location?.coordinate
     var dict: [String: Any] = [
       "name": name ?? "",
-      // MKMapItem 的 subtitle 是格式化地址；逆编码没有，用组件拼接兜底。
-      "address": subtitle ?? [placemark.administrativeArea, placemark.locality,
-                              placemark.subLocality, placemark.thoroughfare]
+      "address": [placemark.administrativeArea, placemark.locality,
+                  placemark.subLocality, placemark.thoroughfare,
+                  placemark.subThoroughfare]
           .compactMap { $0 }.joined(),
       "country": placemark.country ?? "",
       "countryCode": placemark.isoCountryCode ?? "",
