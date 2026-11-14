@@ -232,8 +232,12 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
         }
         return
       }
-      let items = (response?.mapItems ?? []).prefix(10).map { item in
-        self.placeDict(item.name, subtitle: item.subtitle, placemark: item.placemark)
+      // 先落成独立语句再链式操作：`(response?.mapItems ?? []).prefix(...)`
+      // 与后续 .map 连写时，Swift 会把 `?? []` 推断成双重可选导致
+      // "[MKMapItem]?? has no member 'prefix'"（CI 四轮实证）。
+      let mapItems = response?.mapItems ?? []
+      let items = mapItems.prefix(10).map { item in
+        self?.placeDict(item.name, subtitle: item.subtitle, placemark: item.placemark) ?? [:]
       }
       result(items)
     }
