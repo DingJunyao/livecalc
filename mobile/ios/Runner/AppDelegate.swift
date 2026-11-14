@@ -218,9 +218,10 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
       if self?.pendingSearch === search { self?.pendingSearch = nil }
       if let error = error {
         let nsError = error as NSError
-        // 被新查询取消属于正常竞态，静默返回空；其余上抛由 Dart 侧降级。
-        if nsError.domain == MKErrorDomain &&
-            nsError.code == MKError.Code.cancelled.rawValue {
+        // 取消（新查询替换旧查询）在 MapKit 没有稳定的公开枚举 case，且
+        // Dart 侧对失败与空结果处理相同，MKErrorDomain 的错误一律静默返回
+        // 空；非该域的错误上抛由 Dart 侧捕获降级。
+        if nsError.domain == MKErrorDomain {
           result([])
         } else {
           result(FlutterError(
@@ -255,8 +256,9 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
       if self?.pendingGeocoder === geocoder { self?.pendingGeocoder = nil }
       if let error = error {
         let nsError = error as NSError
-        if nsError.domain == kCLErrorDomain &&
-            nsError.code == CLError.Code.geocodeCanceled.rawValue {
+        // 取消（含 cancelGeocode 与服务端限流）同走静默降级：Dart 侧收到
+        // null 后回退后端 geocode。
+        if nsError.domain == kCLErrorDomain {
           result(nil)
         } else {
           result(FlutterError(
@@ -271,7 +273,8 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
         result(nil)
         return
       }
-      result(self.placeDict(placemark.name, subtitle: nil, placemark: placemark))
+      // escaping 闭包里 weak self 必须显式解包。
+      result(self?.placeDict(placemark.name, subtitle: nil, placemark: placemark) ?? [:])
     }
   }
 
