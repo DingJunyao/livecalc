@@ -155,7 +155,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('名称输入 → 候选 → 点选带出空地址/空坐标/空区划', (tester) async {
+  testWidgets('名称输入 → 候选 → 点选写入名称/地址并带出空坐标/空区划', (tester) async {
     await pumpForm(tester);
 
     await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
@@ -166,7 +166,8 @@ void main() {
     await tester.tap(find.text('蜜雪冰城（玄武路店）'));
     await tester.pumpAndSettle();
 
-    // 地址回填（候选清空后，仅地址 TextField 含该文本）。
+    // 名称补全为官方全名；地址写入（候选清空后仅 TextField 含该文本）。
+    expect(find.widgetWithText(TextField, '蜜雪冰城（玄武路店）'), findsOneWidget);
     expect(find.widgetWithText(TextField, '江苏省南京市玄武区玄武路1号'),
         findsOneWidget);
     // 坐标带出（选点组件显示折算后 WGS84）。
@@ -177,7 +178,7 @@ void main() {
     expect(find.text('苹果地图匹配'), findsNothing);
   });
 
-  testWidgets('名称流：已有地址与真实坐标不覆盖', (tester) async {
+  testWidgets('名称流：点选覆盖名称与地址草稿，已有真实坐标保留', (tester) async {
     await pumpForm(
       tester,
       merchant: const Merchant(
@@ -192,10 +193,10 @@ void main() {
     await tester.tap(find.text('蜜雪冰城（玄武路店）'));
     await tester.pumpAndSettle();
 
-    // 地址保留原文；坐标保留原值。
-    expect(find.widgetWithText(TextField, '原地址'), findsOneWidget);
+    // 名称/地址为显式点选结果，覆盖草稿；坐标为已设真实值，保留。
+    expect(find.widgetWithText(TextField, '蜜雪冰城（玄武路店）'), findsOneWidget);
     expect(find.widgetWithText(TextField, '江苏省南京市玄武区玄武路1号'),
-        findsNothing);
+        findsOneWidget);
     expect(find.textContaining('31.230000'), findsOneWidget);
     expect(find.textContaining('32.040000'), findsNothing);
   });

@@ -6,10 +6,10 @@
 
 本次在 iOS 上改用系统自带 MapKit（即 iOS 的 Apple Maps SDK）：`MKLocalSearch` 做名称/地址→地点搜索，`CLGeocoder` 做坐标→行政区划逆编码。**无需任何地图服务 API key、无新 pub 依赖、无需改 Info.plist（不需要定位权限）**，iOS 端对地图服务的依赖降为零（后端高德 geocode 仅作失败回退）。
 
-交互规则（用户指定）：
-- 填名称 → 带出**地址、坐标、行政区划**
+交互规则（用户指定 + 真机反馈修正）：
+- 填名称 → 候选点选后**官方名称补全名称字段**（名称视为搜索词，同价格表单选商品 `_nameController.text = p.name` 惯例）、带出**地址、坐标、行政区划**
 - 填地址 → 带出**坐标、行政区划**（地址本身是搜索源，永不回写）
-- **已有值的字段一律不覆盖**；坐标的**占位值不算「已有」**（null、`(0,0)`、地图默认中心 `(39.9042,116.4074)` 可被覆盖）
+- 名称/地址为用户**显式点选**结果：直接写入（结果为空串时不写，避免清空已输入）；坐标/行政区划维持「只填空字段/占位值」——**占位坐标不算「已有」**（null、`(0,0)`、地图默认中心 `(39.9042,116.4074)` 可被覆盖），用户已设的真实选点与手动选的区划不覆盖
 - 同名连锁店候选多且默认排序可能在外市，不做静默自动填顶层结果：沿用本项目搜索惯例（输入停止 → 300ms 防抖 + 请求序号 → 字段下方候选列表 → 用户点选）
 
 分支：feat/mobile-app（仅 mobile/ 目录，无后端/迁移/web 改动）。
@@ -46,7 +46,7 @@
 `merchant_form_screen.dart`：
 
 - 名称/地址 TextField `onChanged`（仅 `isAvailable` 时挂）→ 300ms 防抖 + 各自请求序号守卫（`price_record_form_screen.dart` 同款模式）→ 字段下方候选列表（`_buildAppleCandidates`：标题行 l10n `appleMapsMatches`「苹果地图匹配」+ ListTile 名称/地址副标题，maxHeight 200）。纯 TextField + 自绘列表，**不用 `Autocomplete`**（避开本仓已记录的焦点重现/IME 回声坑）。
-- `_applyCandidate`：**只填空字段/占位值**——名称流回填地址（仅当前空白时；程序化赋值不触发 onChanged，无二次搜索循环）、坐标（`isPlaceholderCoordinate` 才填）、区划（`matchRegionId`，`_regionId != null` 直接跳过）；地址流同坐标/区划规则、地址永不回写。点选后清候选并作废在途请求序号。
+- `_applyCandidate`：名称流**显式写入**官方名称与官方地址（非空才写）；坐标（`isPlaceholderCoordinate` 才填）、区划（`matchRegionId`，`_regionId != null` 直接跳过）只填空/占位；地址流同坐标/区划规则、地址永不回写。程序化赋值不触发 onChanged，无二次搜索循环。点选后清候选并作废在途请求序号。
 - `_onMapChanged`（选点→区划）：iOS 先走 `reverseGeocodeForWgs84` + `matchRegionId`，失败/null 回退既有后端 `repository.geocode`（Android 路径不变）；选点语义保留「区划跟随点」（移动选点即意图变更区划，与匹配流的「不覆盖」规则不同）。
 - `RegionSelectField` 补传 `repository: widget.repository`（与表单共用注入实例，测试可 mock；行为不变）。
 - 构造参数新增 `appleMapsService`（默认 `AppleMapsService()`），测试注入假服务。

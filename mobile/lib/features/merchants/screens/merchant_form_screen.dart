@@ -181,10 +181,11 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     });
   }
 
-  /// 点选匹配候选：只填空字段/占位值，已有值一律不覆盖。
-  ///
-  /// 名称流带出地址+坐标+行政区划；地址流带出坐标+行政区划（地址本身
-  /// 就是搜索源，永不回写）。程序化赋值不触发 onChanged，无二次搜索循环。
+  /// 点选匹配候选：名称流把官方名称/官方地址显式写入字段（名称视为搜索
+  /// 词、点选即用官方名称补全，同价格表单选商品惯例；结果为空串时不写，
+  /// 避免清空已输入内容）；坐标/行政区划仍只填空字段/占位值（用户已设
+  /// 的选点/区划不覆盖）。地址流的地址本身是搜索源，永不回写。
+  /// 程序化赋值不触发 onChanged，无二次搜索循环。
   Future<void> _applyCandidate(ApplePlace place, {required bool fromName}) async {
     final repository = widget.repository ?? MerchantRepository();
     if (fromName) {
@@ -200,10 +201,13 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       } else {
         _addressCandidates = const [];
       }
-      if (fromName &&
-          _addressController.text.trim().isEmpty &&
-          place.address.isNotEmpty) {
-        _addressController.text = place.address;
+      if (fromName) {
+        if (place.name.isNotEmpty) {
+          _nameController.text = place.name;
+        }
+        if (place.address.isNotEmpty) {
+          _addressController.text = place.address;
+        }
       }
       // 坐标已有（非占位）则保留；null/占位值由匹配结果覆盖。
       if (!_hasCoordinate &&
