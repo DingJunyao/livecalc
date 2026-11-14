@@ -80,6 +80,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   int _nameSeq = 0;
   Timer? _addressDebounce;
   int _addressSeq = 0;
+  int _mapRegionSeq = 0;
   List<ApplePlace> _nameCandidates = const [];
   List<ApplePlace> _addressCandidates = const [];
 
@@ -228,6 +229,8 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   Future<void> _onMapChanged(LatLng value) async {
     setState(() => _coordinate = value);
     final repository = widget.repository ?? MerchantRepository();
+    // 选点序号守卫：快速连点时旧点的逆编码结果（含取消后的后端回退）作废。
+    final seq = ++_mapRegionSeq;
     // iOS：原生 MapKit 逆编码（CLGeocoder），后端高德仅作失败回退。
     if (_appleMaps.isAvailable) {
       try {
@@ -235,6 +238,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
           value.latitude,
           value.longitude,
         );
+        if (!mounted || seq != _mapRegionSeq) return;
         if (place != null) {
           final rid = await matchRegionId(
             repository,
@@ -244,7 +248,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
             locality: place.locality,
             subLocality: place.subLocality,
           );
-          if (rid != null && mounted) {
+          if (rid != null && mounted && seq == _mapRegionSeq) {
             setState(() => _regionId = rid);
             return;
           }
@@ -252,13 +256,14 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       } catch (_) {
         // 原生逆编码失败，继续走后端回退。
       }
+      if (!mounted || seq != _mapRegionSeq) return;
     }
     try {
       final rid = await repository.geocode(
         latitude: value.latitude,
         longitude: value.longitude,
       );
-      if (rid != null && mounted) {
+      if (rid != null && mounted && seq == _mapRegionSeq) {
         setState(() => _regionId = rid);
       }
     } catch (_) {

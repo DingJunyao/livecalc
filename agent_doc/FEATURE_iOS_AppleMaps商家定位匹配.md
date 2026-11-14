@@ -19,7 +19,7 @@
 `mobile/ios/Runner/AppDelegate.swift` 末尾新增 `AppleMapsPlugin`（沿用 AppShortcutsPlugin 的文件内插件模式——本工程 pbxproj 未开文件系统同步组，新建 .swift 文件需要改 pbxproj，文件内零工程文件风险）。通道 `com.a4ding.livecalc/apple_maps`：
 
 - `searchPlaces`：`{query, centerLat?, centerLng?, radiusMeters?}` → `MKLocalSearch.Request`（有 center 设 region 偏置 50km）→ `prefix(10)` 数组，每项 `{name, address(subtitle 优先，缺省拼 placemark 组件), latitude, longitude, country, countryCode, administrativeArea, locality, subLocality, thoroughfare}`。新请求前 cancel 旧请求；`MKError.cancelled` 静默回空，其余回 `FlutterError(searchFailed)`。
-- `reverseGeocode`：`{latitude, longitude}` → `CLGeocoder.reverseGeocodeLocation` → 同构 dict 或 null；错误回 `FlutterError(reverseFailed)`。**固定 `locale = zh_CN`**：行政区划名称匹配走中文库（`AdministrativeRegion.name`），不受设备语言影响；国际地名只按 isoCountryCode 匹配国家，不受影响。
+- `reverseGeocode`：`{latitude, longitude}` → `CLGeocoder.reverseGeocodeLocation` → 同构 dict 或 null；错误回 `FlutterError(reverseFailed)`。新请求前 `cancelGeocode()` 旧请求，`CLError.Code.geocodeCanceled` 静默回 null。**无公开 locale API**：结果语言跟随设备语言，区划匹配的国家走 isoCountryCode 不受影响，division 名称失配由 Dart 侧 best-effort 降级。
 
 在 `didInitializeImplicitFlutterEngine` 中与 AppShortcutsPlugin 并列注册。
 
@@ -64,6 +64,6 @@
 ## 验证与已知限制
 
 - `flutter analyze` 0 issue；三个新测试文件 25 例全过；全量测试与基线一致（存量失败与本次无关）。
-- iOS CI 编译（GitHub Actions Mac runner，Xcode 26.6 / Release-iphoneos）：首跑失败——AppDelegate.swift 原本只 `import Flutter/UIKit`，新增 MapKit/CoreLocation 代码未补 import，报 MKLocalSearch/CLGeocoder/CLLocation/MKErrorDomain/kCLErrorDomain 等 cannot find in scope（闭包参数推断失败为连带）。修复：文件头补 `import CoreLocation` + `import MapKit`。
+- iOS CI 编译（GitHub Actions Mac runner，Xcode 26.6 / Release-iphoneos）：首跑失败——AppDelegate.swift 原本只 `import Flutter/UIKit`，新增 MapKit/CoreLocation 代码未补 import，报 MKLocalSearch/CLGeocoder/CLLocation/MKErrorDomain/kCLErrorDomain 等 cannot find in scope（闭包参数推断失败为连带）。修复：文件头补 `import CoreLocation` + `import MapKit`。二跑失败——Swift 对 C/ObjC 枚举改名导入：`MKError.cancelled` 不存在（NS_ERROR_ENUM 导入为嵌套 `MKError.Code.cancelled`）；`kCLErrorCancelled` 不存在（导入为 `CLError.Code.geocodeCanceled`，逆编码取消的正确码）；`CLGeocoder.locale` 属性不存在（误记，已删）。三处均已按此修正。
 - **真机定标待办**（Windows 无法验证 iOS 行为）：① `MKLocalSearch` 中国大陆返回坐标是否 GCJ-02（当前按 CN→折算实现，与选点 `_appleNeedsGcj02` 同一待定标点）；② POI 命中质量与候选排序；③ 区划名称匹配率（Apple 对区县名的措辞，如「XX区」是否带后缀）。在 Mac VM/真机跑通后按结果调整折算开关。构建链路参照 [BUILD_iOS_无签名IPA与MacVM.md](BUILD_iOS_无签名IPA与MacVM.md)。
-- MKLocalSearch 结果语言跟随设备语言（无 locale API）；en/ar 设备下中文区划匹配可能降级停在省级（国家仍按 isoCountryCode 命中）——逆编码路径已用 zh_CN locale 消除此问题，搜索路径无解属平台限制。
+- MKLocalSearch 与 CLGeocoder 结果语言都跟随设备语言（均无公开 locale API）；en/ar 设备下中文区划匹配可能降级停在省级（国家仍按 isoCountryCode 命中），属平台限制。另注意 CLGeocoder 有服务端限流（kCLErrorDomain code 2 = geocodeFoundNoResult），连点地图触发限流时走后端回退，可接受。

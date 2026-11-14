@@ -219,7 +219,8 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
       if let error = error {
         let nsError = error as NSError
         // 被新查询取消属于正常竞态，静默返回空；其余上抛由 Dart 侧降级。
-        if nsError.domain == MKErrorDomain && nsError.code == MKError.cancelled.rawValue {
+        if nsError.domain == MKErrorDomain &&
+            nsError.code == MKError.Code.cancelled.rawValue {
           result([])
         } else {
           result(FlutterError(
@@ -245,16 +246,17 @@ final class AppleMapsPlugin: NSObject, FlutterPlugin {
       result(nil)
       return
     }
+    // CLGeocoder 无公开 locale API，结果语言跟随设备语言；区划匹配的国家
+    // 走 isoCountryCode 不受影响，division 名称失配由 Dart 侧 best-effort 降级。
+    pendingGeocoder?.cancelGeocode()
     let geocoder = CLGeocoder()
-    // 固定 zh_CN：行政区划名称匹配走中文库（AdministrativeRegion.name），
-    // 不受设备语言影响；国际地名只按 isoCountryCode 匹配国家，不受影响。
-    geocoder.locale = Locale(identifier: "zh_CN")
     pendingGeocoder = geocoder
     geocoder.reverseGeocodeLocation(CLLocation(latitude: lat, longitude: lng)) { [weak self] placemarks, error in
       if self?.pendingGeocoder === geocoder { self?.pendingGeocoder = nil }
       if let error = error {
         let nsError = error as NSError
-        if nsError.domain == kCLErrorDomain && nsError.code == kCLErrorCancelled.rawValue {
+        if nsError.domain == kCLErrorDomain &&
+            nsError.code == CLError.Code.geocodeCanceled.rawValue {
           result(nil)
         } else {
           result(FlutterError(
