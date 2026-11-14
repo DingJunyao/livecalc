@@ -1514,6 +1514,8 @@
   "@merchantNameOptional": {},
   "merchantAddress": "地址",
   "@merchantAddress": {},
+  "appleMapsMatches": "苹果地图匹配",
+  "@appleMapsMatches": {},
   "merchantDefaultCurrency": "默认币种",
   "@merchantDefaultCurrency": {},
   "merchantCurrencyFollowRegion": "跟随地区",

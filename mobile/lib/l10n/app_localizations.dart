@@ -3918,6 +3918,12 @@ abstract class AppLocalizations {
   /// **'地址'**
   String get merchantAddress;
 
+  /// No description provided for @appleMapsMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'苹果地图匹配'**
+  String get appleMapsMatches;
+
   /// No description provided for @merchantDefaultCurrency.
   ///
   /// In zh, this message translates to:

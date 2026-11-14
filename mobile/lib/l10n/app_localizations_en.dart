@@ -2079,6 +2079,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get merchantAddress => 'Address';
 
   @override
+  String get appleMapsMatches => 'Apple Maps matches';
+
+  @override
   String get merchantDefaultCurrency => 'Default currency';
 
   @override

@@ -1514,6 +1514,8 @@
   "@merchantNameOptional": {},
   "merchantAddress": "Address",
   "@merchantAddress": {},
+  "appleMapsMatches": "Apple Maps matches",
+  "@appleMapsMatches": {},
   "merchantDefaultCurrency": "Default currency",
   "@merchantDefaultCurrency": {},
   "merchantCurrencyFollowRegion": "Follow region",
