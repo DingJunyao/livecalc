@@ -38,6 +38,10 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
   static const LatLng _defaultCenter = LatLng(39.9042, 116.4074);
 
   LatLng? _wgs;
+
+  /// 本组件最后一次回调给外部的值：didUpdateWidget 收到相同值视为自身
+  /// tap/定位来源（不重复动画），不同值视为外部来源（匹配候选带出）。
+  LatLng? _lastEmitted;
   apple.MapType _mapType = apple.MapType.standard;
   apple.AppleMapController? _mapController;
 
@@ -58,6 +62,12 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialValue != widget.initialValue) {
       _wgs = widget.initialValue;
+      // 外部来源（匹配候选带出）→ 相机居中到该点；自身 tap/定位来源不
+      // 重复动画（tap 不重置用户缩放，定位按钮自带动画）。
+      if (_lastEmitted != widget.initialValue) {
+        _animateToPoint(widget.initialValue);
+      }
+      _lastEmitted = null;
     }
   }
 
@@ -79,16 +89,25 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
   void _onTap(apple.LatLng pos) {
     final wgs = _toWgs84(LatLng(pos.latitude, pos.longitude));
     setState(() => _wgs = wgs);
+    _lastEmitted = wgs;
     widget.onChanged?.call(wgs);
   }
 
   void _selectLocated(LatLng point) {
     setState(() => _wgs = point);
+    _lastEmitted = point;
     widget.onChanged?.call(point);
-    _mapController?.animateCamera(
+    _animateToPoint(point);
+  }
+
+  /// 相机居中到选点（点级缩放）；地图未创建时忽略。
+  void _animateToPoint(LatLng? wgs) {
+    final controller = _mapController;
+    if (wgs == null || controller == null) return;
+    controller.animateCamera(
       apple.CameraUpdate.newCameraPosition(
         apple.CameraPosition(
-          target: _toApple(_toDisplay(point)),
+          target: _toApple(_toDisplay(wgs)),
           zoom: kPointZoom,
         ),
       ),

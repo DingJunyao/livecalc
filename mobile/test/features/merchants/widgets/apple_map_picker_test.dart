@@ -155,4 +155,44 @@ void main() {
     expect(map.gestureRecognizers, isNotNull);
     expect(map.gestureRecognizers, isNotEmpty);
   });
+
+  testWidgets('外部更新 initialValue（匹配候选带出）不抛错并更新标注', (tester) async {
+    await tester.pumpWidget(const MaterialApp(
+      locale: Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 400,
+            height: 300,
+            child: AppleMapPicker(),
+          ),
+        ),
+      ),
+    ));
+
+    // 同位置重挂组件触发 didUpdateWidget（外部 initialValue 变更路径）。
+    await tester.pumpWidget(const MaterialApp(
+      locale: Locale('zh', 'CN'),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Scaffold(
+        body: Center(
+          child: SizedBox(
+            width: 400,
+            height: 300,
+            child: AppleMapPicker(
+              initialValue: LatLng(31.25, 121.5),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final map = tester.widget<apple.AppleMap>(find.byType(apple.AppleMap));
+    expect(map.annotations, isNotNull);
+    expect(map.annotations, hasLength(1));
+  });
 }

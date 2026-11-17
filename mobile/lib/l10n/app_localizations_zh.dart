@@ -2032,6 +2032,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get merchantAddress => '地址';
 
   @override
+  String get appleMapsMatches => '苹果地图匹配';
+
+  @override
   String get merchantDefaultCurrency => '默认币种';
 
   @override

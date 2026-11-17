@@ -1,4 +1,6 @@
+import CoreLocation
 import Flutter
+import MapKit
 import UIKit
 
 @main
@@ -15,6 +17,10 @@ import UIKit
     // 主屏快捷方式（长按应用图标）桥接，见文件末尾 AppShortcutsPlugin。
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AppShortcutsPlugin") {
       AppShortcutsPlugin.register(with: registrar)
+    }
+    // Apple Maps（MapKit）地理编码桥接，见文件末尾 AppleMapsPlugin。
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AppleMapsPlugin") {
+      AppleMapsPlugin.register(with: registrar)
     }
   }
 }
@@ -141,5 +147,169 @@ final class AppShortcutsPlugin: NSObject, FlutterPlugin, FlutterSceneLifeCycleDe
     default:
       return UIApplicationShortcutIcon(type: .add)
     }
+  }
+}
+
+/// iOS Apple Maps（MapKit）地理编码桥接：商家名称搜索 + 坐标逆编码。
+///
+/// 用系统自带能力给商家表单提供两类查询（无需任何地图服务 API key）：
+/// - `searchPlaces`：MKLocalSearch 按名称/地址搜地点（POI + 地址），
+///   返回坐标与行政区划组件，Dart 侧据此回填表单并匹配行政区划。
+/// - `reverseGeocode`：CLGeocoder 坐标 → 行政区划组件（地图选点后回填）。
+///
+/// Dart 侧封装：`lib/core/services/apple_maps_service.dart`。
+/// 注意：MapKit 在中国大陆返回 GCJ-02 坐标，折算统一由 Dart 侧处理。
+final class AppleMapsPlugin: NSObject, FlutterPlugin {
+  /// 与 Dart 侧 AppleMapsService 使用同一个通道名。
+  private static let channelName = "com.a4ding.livecalc/apple_maps"
+
+  private let channel: FlutterMethodChannel
+  /// 进行中的查询，替换时取消旧查询（降低 MKLocalSearch/CLGeocoder 限流概率）。
+  private var pendingSearch: MKLocalSearch?
+  private var pendingGeocoder: CLGeocoder?
+
+  private init(channel: FlutterMethodChannel) {
+    self.channel = channel
+    super.init()
+  }
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(
+      name: channelName,
+      binaryMessenger: registrar.messenger()
+    )
+    let instance = AppleMapsPlugin(channel: channel)
+    registrar.addMethodCallDelegate(instance, channel: channel)
+  }
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    switch call.method {
+    case "searchPlaces":
+      searchPlaces(call.arguments as? [String: Any] ?? [:], result: result)
+    case "reverseGeocode":
+      reverseGeocode(call.arguments as? [String: Any] ?? [:], result: result)
+    default:
+      result(FlutterMethodNotImplemented)
+    }
+  }
+
+  // MARK: - searchPlaces（MKLocalSearch：名称/地址 → 坐标 + 行政区划）
+
+  private func searchPlaces(_ args: [String: Any], result: @escaping FlutterResult) {
+    guard let query = args["query"] as? String,
+          !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+      result([])
+      return
+    }
+    let request = MKLocalSearch.Request()
+    request.naturalLanguageQuery = query
+    if let lat = args["centerLat"] as? Double, let lng = args["centerLng"] as? Double {
+      let radius = (args["radiusMeters"] as? Double) ?? 50_000
+      request.region = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: lat, longitude: lng),
+        latitudinalMeters: radius,
+        longitudinalMeters: radius
+      )
+    }
+    pendingSearch?.cancel()
+    let search = MKLocalSearch(request: request)
+    pendingSearch = search
+    search.start { [weak self] response, error in
+      if self?.pendingSearch === search { self?.pendingSearch = nil }
+      if let error = error {
+        let nsError = error as NSError
+        // 取消（新查询替换旧查询）在 MapKit 没有稳定的公开枚举 case，且
+        // Dart 侧对失败与空结果处理相同，MKErrorDomain 的错误一律静默返回
+        // 空；非该域的错误上抛由 Dart 侧捕获降级。
+        if nsError.domain == MKErrorDomain {
+          result([])
+        } else {
+          result(FlutterError(
+            code: "searchFailed",
+            message: error.localizedDescription,
+            details: nil
+          ))
+        }
+        return
+      }
+      // 先落成独立语句再链式操作：`(response?.mapItems ?? []).prefix(...)`
+      // 与后续 .map 连写时，Swift 会把 `?? []` 推断成双重可选导致
+      // "[MKMapItem]?? has no member 'prefix'"（CI 四轮实证）。
+      let mapItems = response?.mapItems ?? []
+      let items = mapItems.prefix(10).map { item in
+        self?.placeDict(item.name, placemark: item.placemark) ?? [:]
+      }
+      result(items)
+    }
+  }
+
+  // MARK: - reverseGeocode（CLGeocoder：坐标 → 行政区划）
+
+  private func reverseGeocode(_ args: [String: Any], result: @escaping FlutterResult) {
+    guard let lat = args["latitude"] as? Double,
+          let lng = args["longitude"] as? Double else {
+      result(nil)
+      return
+    }
+    // CLGeocoder 无公开 locale API，结果语言跟随设备语言；区划匹配的国家
+    // 走 isoCountryCode 不受影响，division 名称失配由 Dart 侧 best-effort 降级。
+    pendingGeocoder?.cancelGeocode()
+    let geocoder = CLGeocoder()
+    pendingGeocoder = geocoder
+    geocoder.reverseGeocodeLocation(CLLocation(latitude: lat, longitude: lng)) { [weak self] placemarks, error in
+      if self?.pendingGeocoder === geocoder { self?.pendingGeocoder = nil }
+      if let error = error {
+        let nsError = error as NSError
+        // 取消（含 cancelGeocode 与服务端限流）同走静默降级：Dart 侧收到
+        // null 后回退后端 geocode。
+        if nsError.domain == kCLErrorDomain {
+          result(nil)
+        } else {
+          result(FlutterError(
+            code: "reverseFailed",
+            message: error.localizedDescription,
+            details: nil
+          ))
+        }
+        return
+      }
+      guard let placemark = placemarks?.first else {
+        result(nil)
+        return
+      }
+      // escaping 闭包里 weak self 必须显式解包。
+      result(self?.placeDict(placemark.name, placemark: placemark) ?? [:])
+    }
+  }
+
+  // MARK: - Helpers
+
+  /// MKMapItem / CLPlacemark → Flutter dict（与 Dart 侧 ApplePlace 同构）。
+  /// MKMapItem 没有 subtitle/address 属性（CI 五轮实证），地址统一由
+  /// CLPlacemark 行政区划组件按中文习惯（省→市→区→街道门牌）无缝拼接；
+  /// 坐标缺失时省略键，Dart 侧按 null 处理。
+  private func placeDict(
+    _ name: String?,
+    placemark: CLPlacemark
+  ) -> [String: Any] {
+    let coordinate = placemark.location?.coordinate
+    var dict: [String: Any] = [
+      "name": name ?? "",
+      "address": [placemark.administrativeArea, placemark.locality,
+                  placemark.subLocality, placemark.thoroughfare,
+                  placemark.subThoroughfare]
+          .compactMap { $0 }.joined(),
+      "country": placemark.country ?? "",
+      "countryCode": placemark.isoCountryCode ?? "",
+      "administrativeArea": placemark.administrativeArea ?? "",
+      "locality": placemark.locality ?? "",
+      "subLocality": placemark.subLocality ?? "",
+      "thoroughfare": placemark.thoroughfare ?? "",
+    ]
+    if let coordinate = coordinate {
+      dict["latitude"] = coordinate.latitude
+      dict["longitude"] = coordinate.longitude
+    }
+    return dict
   }
 }

@@ -2074,6 +2074,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get merchantAddress => 'العنوان';
 
   @override
+  String get appleMapsMatches => 'مطابقة خرائط Apple';
+
+  @override
   String get merchantDefaultCurrency => 'العملة الافتراضية';
 
   @override
