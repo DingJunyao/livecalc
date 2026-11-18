@@ -1332,7 +1332,13 @@
     "mealRefreshLimit": "تم تحديث هذه الوجبة {max} مرات اليوم. عد غداً!",
     "mealDishNotInRecommendation": "هذا الطبق ليس في التوصية الحالية",
     "mealNoCandidates": "لا توجد وصفات متاحة لهذه الوجبة",
-    "planNotFound": "الخطة غير موجودة",    "invalidIdList": "قائمة معرفات غير صالحة",    "idListRequired": "مطلوب معرف واحد على الأقل",    "idListTooLong": "{limit} كحد أقصى في كل مرة",    "comparisonEntityTypeInvalid": "entity_type غير صالح"  },
+    "planNotFound": "الخطة غير موجودة",
+    "invalidIdList": "قائمة معرفات غير صالحة",
+    "idListRequired": "مطلوب معرف واحد على الأقل",
+    "idListTooLong": "{limit} كحد أقصى في كل مرة",
+    "comparisonEntityTypeInvalid": "entity_type غير صالح",
+    "heatmapEntityRequired": "اختر مادة أو منتجًا للخريطة الحرارية"
+  },
   "localValues": {
     "newNameSuffix": " (جديد)",
     "unknownIngredientName": "مكوّن غير معروف",
@@ -2016,7 +2022,15 @@
     "metricFat": "الدهون (غ)",
     "dimensionCurrent": "الحالي",
     "regionCol": "المنطقة",
-    "planTrendTitle": "اتجاه التكلفة حسب المنطقة"
+    "planTrendTitle": "اتجاه التكلفة حسب المنطقة",
+    "tabHeatmap": "الخريطة الحرارية",
+    "heatmapModeItem": "أسعار عنصر",
+    "heatmapModeOverall": "المستوى العام للأسعار",
+    "heatmapPickEntity": "اختر مادة أو منتجًا",
+    "heatmapOverallNote": "بدون عنصر واحد — يُلوَّن كل تاجر حسب مؤشر سلة أسعاره (الوسيط = 100)",
+    "heatmapEmpty": "لا توجد أسعار تجار بإحداثيات في المناطق المحددة",
+    "staleHint": "السعر قديم",
+    "sampleCountUnit": "منتجات"
   },
   "plans": {
     "title": "الحاسبة",

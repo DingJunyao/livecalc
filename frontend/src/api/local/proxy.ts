@@ -361,6 +361,7 @@ addRoute('/comparison/recipe-cost-trend', { get: comparison.getComparisonRecipeC
 addRoute('/comparison/plan-evaluate-regions', { post: comparison.getComparisonPlanEvaluateRegions })
 addRoute('/comparison/plan-costs', { get: comparison.getComparisonPlanCosts })
 addRoute('/comparison/plan-cost-trend', { get: comparison.getComparisonPlanCostTrend })
+addRoute('/comparison/heatmap', { get: comparison.getComparisonHeatmap })
 
 // ---- Agent ----
 addRoute('/agent/task-types', { get: agents.getTaskTypes })

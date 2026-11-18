@@ -679,3 +679,153 @@ export async function getComparisonPlanCostTrend(_params: Record<string, string>
   }
   return { regions: out }
 }
+
+// ==================== 三期：商家物价热力图 ====================
+
+/** GET /comparison/heatmap — 商家物价热力图（单品/整体两模式，口径与后端一致）。
+ * 单品：每 (商家,商品) 最新记录 → ¥/斤 归一 → 同商家权重加权。
+ * 整体：篮子=基准地区近一年有记录商品（上限 50），price_index 以全部商家价中位数=100。 */
+export async function getComparisonHeatmap(_params: Record<string, string>, query?: any): Promise<any> {
+  const mode = String(query?.mode || 'item') === 'overall' ? 'overall' : 'item'
+  const regionIds = parseIds(query?.region_ids, MAX_REGIONS)
+  const entityType = String(query?.entity_type || 'ingredient')
+  const ctx = await loadContext()
+
+  // 商家全集（营业中 + 有坐标 + 落在任一子树；无地区商家不渲染——后端 heatmap 不计入）
+  const merchantList = ctx.merchants.filter((m: any) =>
+    m.is_open !== false && m.latitude != null && m.longitude != null && m.region_id != null)
+  const subtreeSets: Set<number>[] = []
+  for (const rid of regionIds) {
+    const allowed = await regionSubtreeIds(rid)
+    subtreeSets.push(new Set(allowed ?? []))
+  }
+  const merchants = merchantList.filter((m: any) =>
+    subtreeSets.some(set => set.has(Number(m.region_id))))
+  if (!merchants.length) {
+    return { mode, currency: DEFAULT_USER_CURRENCY, unit: CHINESE_JIN_NAME, items: [], buckets: {} }
+  }
+  const merchantById = new Map(merchants.map((m: any) => [Number(m.id), m]))
+
+  // 商品集合
+  let productIds: number[]
+  if (mode === 'item') {
+    const entityId = parseInt(String(query?.entity_id || ''), 10)
+    if (!Number.isFinite(entityId) || entityId <= 0) throw localError('heatmapEntityRequired')
+    if (entityType === 'ingredient') {
+      productIds = ctx.products
+        .filter((p: any) => Number(p.ingredient_id) === entityId && p.is_active !== false)
+        .map((p: any) => Number(p.id))
+    } else {
+      productIds = [entityId]
+    }
+  } else {
+    // 篮子：基准地区近一年有记录的商品（上限 50）
+    const dayMs = 24 * 60 * 60 * 1000
+    const cutoffMs = Date.parse(ctx.todayDay) - BASKET_WINDOW_DAYS * dayMs
+    const baseRecords = recordsInRegion(ctx, subtreeSets[0])
+    const seen = new Set<number>()
+    productIds = []
+    for (const r of baseRecords) {
+      const pid = Number(r.product_id)
+      const ms = Date.parse(toLocalDayKey(r.recorded_at) || '')
+      if (!seen.has(pid) && Number.isFinite(ms) && ms >= cutoffMs) {
+        seen.add(pid)
+        productIds.push(pid)
+        if (productIds.length >= 50) break
+      }
+    }
+  }
+  if (!productIds.length) {
+    return { mode, currency: DEFAULT_USER_CURRENCY, unit: CHINESE_JIN_NAME, items: [], buckets: {} }
+  }
+  const pidSet = new Set(productIds)
+  const weights = weightMap(ctx, productIds)
+  const entIdByPid = new Map<number, number>()
+  for (const p of ctx.products) {
+    if (p?.id != null) entIdByPid.set(Number(p.id), p.ingredient_id ?? Number(p.id))
+  }
+
+  // 每 (商家,商品) 的 ¥/斤 价样本（同商品多条记录取均价，权重加权得商家代表价）
+  const byMerchantProduct: Map<number, Map<number, number[]>> = new Map()
+  for (const r of ctx.records) {
+    const pid = Number(r.product_id)
+    if (!pidSet.has(pid)) continue
+    const mid = r.merchant_id == null ? null : Number(r.merchant_id)
+    if (mid == null || !merchantById.has(mid)) continue
+    const np = normalizeRecordToJin(r, ctx.units, ctx.overrides, ctx.densities, 'ingredient', entIdByPid.get(pid) ?? pid)
+    const price = np.pricePerJin
+    if (price == null || !isFinite(price)) continue
+    if (!byMerchantProduct.has(mid)) byMerchantProduct.set(mid, new Map())
+    const prodMap = byMerchantProduct.get(mid)!
+    const arr = prodMap.get(pid) || []
+    arr.push(price)
+    prodMap.set(pid, arr)
+  }
+
+  const merchantPrices = new Map<number, number>()
+  const sampleCounts = new Map<number, number>()
+  const latestByMerchant = new Map<number, number>() // ms
+  for (const [mid, prodMap] of byMerchantProduct) {
+    let num = 0
+    let den = 0
+    for (const [pid, prices] of prodMap) {
+      const w = weights.get(pid) ?? 50
+      if (w <= 0) continue
+      const avg = prices.reduce((a, b) => a + b, 0) / prices.length
+      num += avg * w
+      den += w
+    }
+    if (den <= 0) continue
+    merchantPrices.set(mid, Math.round((num / den) * 100) / 100)
+    sampleCounts.set(mid, prodMap.size)
+    // 该商家最新记录时间（用于陈旧判定）
+    let latest = 0
+    for (const r of ctx.records) {
+      if (Number(r.merchant_id) !== mid) continue
+      const ms = Date.parse(r.recorded_at || '')
+      if (Number.isFinite(ms) && ms > latest) latest = ms
+    }
+    latestByMerchant.set(mid, latest)
+  }
+
+  const STALE_MS = STALE_DAYS * 24 * 60 * 60 * 1000
+  const nowMs = Date.now()
+  const freshPrices = [...merchantPrices.entries()]
+    .filter(([mid]) => nowMs - (latestByMerchant.get(mid) || 0) <= STALE_MS)
+    .map(([, p]) => p)
+  const allPrices = freshPrices.length ? freshPrices : [...merchantPrices.values()]
+  const s = [...allPrices].sort((a, b) => a - b)
+  const pct = (q: number) => s.length ? s[Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * q)))] : null
+  const buckets = s.length
+    ? { p25: pct(0.25), p50: pct(0.50), p75: pct(0.75), p90: pct(0.90) }
+    : {}
+  const median = (buckets as any).p50 ?? null
+
+  const items = [...merchantPrices.entries()].map(([mid, price]) => {
+    const m = merchantById.get(mid)!
+    return {
+      merchant_id: mid,
+      name: m.name,
+      latitude: Number(m.latitude),
+      longitude: Number(m.longitude),
+      is_open: m.is_open !== false,
+      region_id: m.region_id ?? null,
+      price,
+      is_stale: nowMs - (latestByMerchant.get(mid) || 0) > STALE_MS,
+      sample_count: sampleCounts.get(mid) ?? 0,
+      ...(mode === 'overall'
+        ? { price_index: median && median > 0 ? Math.round(price / median * 1000) / 10 : null }
+        : {}),
+    }
+  })
+
+  return {
+    mode,
+    currency: DEFAULT_USER_CURRENCY,
+    unit: CHINESE_JIN_NAME,
+    ...(mode === 'item' ? { entity_type: entityType, entity_id: parseInt(String(query?.entity_id || ''), 10) || null } : {}),
+    ...(mode === 'overall' ? { basket_size: productIds.length } : {}),
+    buckets,
+    items,
+  }
+}

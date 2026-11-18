@@ -4,6 +4,7 @@
       <v-tab value="overview">{{ t('compare.tabOverview') }}</v-tab>
       <v-tab value="prices">{{ t('compare.tabPrices') }}</v-tab>
       <v-tab value="recipes">{{ t('compare.tabRecipes') }}</v-tab>
+      <v-tab value="heatmap">{{ t('compare.tabHeatmap') }}</v-tab>
     </v-tabs>
     <v-divider />
 
@@ -266,6 +267,64 @@
           </v-card-text>
         </v-card>
       </v-tabs-window-item>
+
+      <!-- ============ 热力图 ============ -->
+      <v-tabs-window-item value="heatmap">
+        <v-card variant="outlined" class="mb-4">
+          <v-card-text>
+            <div class="d-flex align-center flex-wrap ga-3">
+              <v-btn-toggle v-model="heatmapMode" mandatory density="compact" variant="outlined" divided>
+                <v-btn value="item">{{ t('compare.heatmapModeItem') }}</v-btn>
+                <v-btn value="overall">{{ t('compare.heatmapModeOverall') }}</v-btn>
+              </v-btn-toggle>
+              <template v-if="heatmapMode === 'item'">
+                <v-btn-toggle v-model="heatmapEntityType" mandatory density="compact" variant="outlined" divided>
+                  <v-btn value="ingredient">{{ t('compare.entityTypeIngredient') }}</v-btn>
+                  <v-btn value="product">{{ t('compare.entityTypeProduct') }}</v-btn>
+                </v-btn-toggle>
+                <v-autocomplete
+                  v-model="heatmapEntityId"
+                  :items="heatmapEntityOptions"
+                  :loading="heatmapEntitySearching"
+                  v-model:search="heatmapEntitySearch"
+                  :custom-filter="() => true"
+                  density="compact"
+                  variant="outlined"
+                  hide-details
+                  clearable
+                  :label="t('compare.heatmapPickEntity')"
+                  :placeholder="t('compare.searchEntityPlaceholder')"
+                  item-title="name"
+                  item-value="id"
+                  :no-data-text="t('compare.noEntityMatch')"
+                  style="max-width: 320px"
+                />
+              </template>
+              <span v-else class="text-caption text-medium-emphasis">
+                {{ t('compare.heatmapOverallNote') }}
+              </span>
+              <span v-if="regionIds.length < 1" class="text-caption text-warning">
+                {{ t('compare.needTwoRegions') }}
+              </span>
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <div v-if="heatmapLoading" class="text-center py-8">
+          <v-progress-circular indeterminate size="24" />
+        </div>
+        <HeatMapCanvas
+          v-else-if="regionIds.length >= 1"
+          :items="heatmapItems"
+          :buckets="heatmapBuckets"
+          :mode="heatmapMode"
+          :empty-text="t('compare.heatmapEmpty')"
+          class="mb-2"
+        />
+        <div v-if="heatmapData?.basket_size" class="text-caption text-medium-emphasis">
+          {{ t('compare.basketNote', { count: heatmapData.basket_size }) }}
+        </div>
+      </v-tabs-window-item>
     </v-tabs-window>
   </v-container>
 </template>
@@ -280,6 +339,7 @@ import { useUserCurrency } from '@/composables/useUserCurrency'
 import { formatMoney } from '@/utils/currency'
 import RegionMultiSelect from '@/components/common/RegionMultiSelect.vue'
 import RegionPriceMatrix from '@/components/compare/RegionPriceMatrix.vue'
+import HeatMapCanvas from '@/components/compare/HeatMapCanvas.vue'
 import SimpleBarChart from '@/components/charts/SimpleBarChart.vue'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
 import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
@@ -290,8 +350,10 @@ import {
   getComparisonRecipeCosts,
   getComparisonRecipeCostTrend,
   getComparisonPlanCosts,
+  getComparisonHeatmap,
   type ComparisonSummary,
   type EntityPricesResponse,
+  type HeatmapResponse,
   type RecipeCostsResponse,
   type RecipeCostTrendPoint,
   type PlanCostRow,
@@ -325,9 +387,9 @@ interface MatrixRow {
 }
 
 // ---- URL 同步 ----
-const tab = ref<'overview' | 'prices' | 'recipes'>(
-  ['prices', 'recipes'].includes(route.query.tab as string)
-    ? (route.query.tab as 'prices' | 'recipes')
+const tab = ref<'overview' | 'prices' | 'recipes' | 'heatmap'>(
+  ['prices', 'recipes', 'heatmap'].includes(route.query.tab as string)
+    ? (route.query.tab as 'prices' | 'recipes' | 'heatmap')
     : 'overview',
 )
 const regionIds = ref<number[]>([])
@@ -730,6 +792,88 @@ function formatPlanMetric(
   if (metric.key === 'cost') return formatMoney(Number(v), userCurrency.value)
   return String(Math.round(Number(v) * 10) / 10)
 }
+
+// ==================== 热力图 tab ====================
+const heatmapMode = ref<'item' | 'overall'>('item')
+const heatmapEntityType = ref<'ingredient' | 'product'>('ingredient')
+const heatmapEntityId = ref<number | null>(null)
+const heatmapEntityOptions = ref<Array<{ id: number; name: string }>>([])
+const heatmapEntitySearching = ref(false)
+const heatmapEntitySearch = ref('')
+const heatmapData = ref<HeatmapResponse | null>(null)
+const heatmapLoading = ref(false)
+let heatmapEntitySearchSeq = 0
+let heatmapEntitySearchTimer: ReturnType<typeof setTimeout> | null = null
+let heatmapSeq = 0
+
+// 单品模式的实体搜索：与原料·商品 tab 共用搜索实现，但独立状态（两 tab 可各自保留选择）
+watch(heatmapEntitySearch, (kw) => {
+  if (heatmapEntitySearchTimer) clearTimeout(heatmapEntitySearchTimer)
+  const keyword = (kw || '').trim()
+  heatmapEntitySearchTimer = setTimeout(() => {
+    const seq = ++heatmapEntitySearchSeq
+    heatmapEntitySearching.value = true
+    const url = heatmapEntityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
+    const params: Record<string, any> = { limit: 20 }
+    if (keyword) params.q = keyword
+    api.get(url, { params }).then((res: any) => {
+      if (seq !== heatmapEntitySearchSeq) return
+      heatmapEntityOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
+    }).catch(() => {
+      if (seq === heatmapEntitySearchSeq) heatmapEntityOptions.value = []
+    }).finally(() => {
+      if (seq === heatmapEntitySearchSeq) heatmapEntitySearching.value = false
+    })
+  }, 300)
+})
+
+watch(heatmapEntityType, () => {
+  heatmapEntityId.value = null
+  heatmapEntityOptions.value = []
+  heatmapEntitySearch.value = ''
+  void fetchHeatmapEntityOptions('')
+})
+
+function fetchHeatmapEntityOptions(keyword: string) {
+  const seq = ++heatmapEntitySearchSeq
+  heatmapEntitySearching.value = true
+  const url = heatmapEntityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
+  const params: Record<string, any> = { limit: 20 }
+  if (keyword) params.q = keyword
+  api.get(url, { params }).then((res: any) => {
+    if (seq !== heatmapEntitySearchSeq) return
+    heatmapEntityOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
+  }).catch(() => {
+    if (seq === heatmapEntitySearchSeq) heatmapEntityOptions.value = []
+  }).finally(() => {
+    if (seq === heatmapEntitySearchSeq) heatmapEntitySearching.value = false
+  })
+}
+
+onMounted(() => { void fetchHeatmapEntityOptions('') })
+
+// 取数：模式/地区/实体变化时重新拉（item 模式必须选了实体）
+watch([heatmapMode, heatmapEntityType, heatmapEntityId, regionIds], async () => {
+  heatmapData.value = null
+  const rids = regionIds.value
+  if (!rids.length) return
+  if (heatmapMode.value === 'item' && heatmapEntityId.value == null) return
+  const seq = ++heatmapSeq
+  heatmapLoading.value = true
+  try {
+    const res = await getComparisonHeatmap(heatmapMode.value, rids, {
+      entityType: heatmapEntityType.value,
+      entityId: heatmapEntityId.value ?? undefined,
+    })
+    if (seq === heatmapSeq) heatmapData.value = res
+  } catch { /* 静默 */ }
+  finally {
+    if (seq === heatmapSeq) heatmapLoading.value = false
+  }
+}, { immediate: true })
+
+const heatmapItems = computed(() => heatmapData.value?.items || [])
+const heatmapBuckets = computed(() => heatmapData.value?.buckets || null)
 </script>
 
 <style scoped>

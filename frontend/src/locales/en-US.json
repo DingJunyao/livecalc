@@ -1332,7 +1332,13 @@
     "mealRefreshLimit": "This meal has been refreshed {max} times today. Come back tomorrow!",
     "mealDishNotInRecommendation": "That dish is not in the current recommendation",
     "mealNoCandidates": "No available recipes for this meal",
-    "planNotFound": "Plan not found",    "invalidIdList": "Invalid ID list",    "idListRequired": "At least one ID is required",    "idListTooLong": "At most {limit} at a time",    "comparisonEntityTypeInvalid": "Invalid entity_type"  },
+    "planNotFound": "Plan not found",
+    "invalidIdList": "Invalid ID list",
+    "idListRequired": "At least one ID is required",
+    "idListTooLong": "At most {limit} at a time",
+    "comparisonEntityTypeInvalid": "Invalid entity_type",
+    "heatmapEntityRequired": "Pick an ingredient or product for item heatmap"
+  },
   "localValues": {
     "newNameSuffix": " (new)",
     "unknownIngredientName": "Unknown ingredient",
@@ -2016,7 +2022,15 @@
     "metricFat": "Fat (g)",
     "dimensionCurrent": "Current",
     "regionCol": "Region",
-    "planTrendTitle": "Cost trend by region"
+    "planTrendTitle": "Cost trend by region",
+    "tabHeatmap": "Heatmap",
+    "heatmapModeItem": "Item prices",
+    "heatmapModeOverall": "Overall price level",
+    "heatmapPickEntity": "Pick an ingredient or product",
+    "heatmapOverallNote": "No single item — each merchant colored by its basket price index (median = 100)",
+    "heatmapEmpty": "No geocoded merchant prices in the selected regions",
+    "staleHint": "Price is stale",
+    "sampleCountUnit": "items"
   },
   "plans": {
     "title": "Planner",
