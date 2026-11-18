@@ -6491,6 +6491,54 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'脂肪 (g)'**
   String get compareMetricFat;
+
+  /// No description provided for @compareTabHeatmap.
+  ///
+  /// In zh, this message translates to:
+  /// **'热力图'**
+  String get compareTabHeatmap;
+
+  /// No description provided for @compareHeatmapModeItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'单品物价'**
+  String get compareHeatmapModeItem;
+
+  /// No description provided for @compareHeatmapModeOverall.
+  ///
+  /// In zh, this message translates to:
+  /// **'整体物价'**
+  String get compareHeatmapModeOverall;
+
+  /// No description provided for @compareHeatmapPickEntity.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择原料或商品'**
+  String get compareHeatmapPickEntity;
+
+  /// No description provided for @compareHeatmapOverallNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'按共同商品篮子显示每个商家的物价指数（中位数=100）'**
+  String get compareHeatmapOverallNote;
+
+  /// No description provided for @compareHeatmapEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选地区暂无有坐标的商家价格数据'**
+  String get compareHeatmapEmpty;
+
+  /// No description provided for @compareStaleHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'价格已超期'**
+  String get compareStaleHint;
+
+  /// No description provided for @compareSampleCountUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'种商品'**
+  String get compareSampleCountUnit;
 }
 
 class _AppLocalizationsDelegate

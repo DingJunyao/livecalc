@@ -2449,5 +2449,21 @@
   "compareMetricProtein": "البروتين (غ)",
   "@compareMetricProtein": {},
   "compareMetricFat": "الدهون (غ)",
-  "@compareMetricFat": {}
+  "@compareMetricFat": {},
+  "compareTabHeatmap": "الخريطة الحرارية",
+  "@compareTabHeatmap": {},
+  "compareHeatmapModeItem": "أسعار عنصر",
+  "@compareHeatmapModeItem": {},
+  "compareHeatmapModeOverall": "المستوى العام للأسعار",
+  "@compareHeatmapModeOverall": {},
+  "compareHeatmapPickEntity": "اختر مادة أو منتجًا",
+  "@compareHeatmapPickEntity": {},
+  "compareHeatmapOverallNote": "يُلوَّن كل تاجر حسب مؤشر سلة أسعاره (الوسيط = 100)",
+  "@compareHeatmapOverallNote": {},
+  "compareHeatmapEmpty": "لا توجد أسعار تجار بإحداثيات في المناطق المحددة",
+  "@compareHeatmapEmpty": {},
+  "compareStaleHint": "السعر قديم",
+  "@compareStaleHint": {},
+  "compareSampleCountUnit": "منتجات",
+  "@compareSampleCountUnit": {}
 }

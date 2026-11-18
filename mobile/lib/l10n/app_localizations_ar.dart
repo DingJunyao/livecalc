@@ -3464,4 +3464,30 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compareMetricFat => 'الدهون (غ)';
+
+  @override
+  String get compareTabHeatmap => 'الخريطة الحرارية';
+
+  @override
+  String get compareHeatmapModeItem => 'أسعار عنصر';
+
+  @override
+  String get compareHeatmapModeOverall => 'المستوى العام للأسعار';
+
+  @override
+  String get compareHeatmapPickEntity => 'اختر مادة أو منتجًا';
+
+  @override
+  String get compareHeatmapOverallNote =>
+      'يُلوَّن كل تاجر حسب مؤشر سلة أسعاره (الوسيط = 100)';
+
+  @override
+  String get compareHeatmapEmpty =>
+      'لا توجد أسعار تجار بإحداثيات في المناطق المحددة';
+
+  @override
+  String get compareStaleHint => 'السعر قديم';
+
+  @override
+  String get compareSampleCountUnit => 'منتجات';
 }

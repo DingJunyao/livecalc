@@ -192,4 +192,66 @@ void main() {
     expect(ingredients.map((e) => e.name), ['鸡蛋', '白菜']);
     expect(products.single.name, '鸡蛋 30 枚装');
   });
+
+  test('getHeatmap 单品模式带 entity 参数并透传原始值', () async {
+    when(() => dio.get('/comparison/heatmap', queryParameters: any(
+            named: 'queryParameters', that: isA<Map<String, dynamic>>())))
+        .thenAnswer((inv) async {
+      final params = inv.namedArguments[#queryParameters] as Map<String, dynamic>;
+      expect(params['mode'], 'item');
+      expect(params['entity_type'], 'ingredient');
+      expect(params['entity_id'], 7);
+      expect(params['region_ids'], '1,2');
+      return Response(
+        requestOptions: RequestOptions(path: ''),
+        data: {
+          'mode': 'item',
+          'currency': 'CNY',
+          'unit': '斤',
+          'buckets': {'p25': '9.5', 'p50': 12, 'p75': 15.0, 'p90': null},
+          'items': [
+            {
+              'merchant_id': 3,
+              'name': '盒马',
+              'latitude': '34.77',
+              'longitude': 113.42,
+              'price': '11.2',
+              'is_stale': false,
+              'sample_count': 2,
+            },
+          ],
+        },
+      );
+    });
+
+    final data = await repository.getHeatmap(
+      mode: 'item',
+      regionIds: [1, 2],
+      entityType: 'ingredient',
+      entityId: 7,
+    );
+
+    final buckets = data['buckets'] as Map;
+    expect(buckets['p25'], '9.5'); // 原样透传（数值解析在 widget 层）
+    final item = (data['items'] as List).first as Map;
+    expect(item['name'], '盒马');
+    expect(item['latitude'], '34.77');
+  });
+
+  test('getHeatmap 整体模式不带 entity 参数', () async {
+    when(() => dio.get('/comparison/heatmap', queryParameters: any(
+            named: 'queryParameters', that: isA<Map<String, dynamic>>())))
+        .thenAnswer((inv) async {
+      final params = inv.namedArguments[#queryParameters] as Map<String, dynamic>;
+      expect(params['mode'], 'overall');
+      expect(params.containsKey('entity_id'), isFalse);
+      return Response(
+        requestOptions: RequestOptions(path: ''),
+        data: {'mode': 'overall', 'items': [], 'buckets': {}, 'basket_size': 3},
+      );
+    });
+
+    final data = await repository.getHeatmap(mode: 'overall', regionIds: [1]);
+    expect(data['basket_size'], 3);
+  });
 }

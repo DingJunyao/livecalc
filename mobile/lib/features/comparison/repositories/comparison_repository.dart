@@ -413,6 +413,25 @@ class ComparisonRepository {
         .map((e) => e as Map<String, dynamic>)
         .toList();
   }
+
+  /// 商家物价热力图（mode=item 需 entity_type+entity_id；overall 全商家的篮子指数）。
+  Future<Map<String, dynamic>> getHeatmap({
+    required String mode,
+    required List<int> regionIds,
+    String entityType = 'ingredient',
+    int? entityId,
+  }) async {
+    final response = await _client.dio.get('/comparison/heatmap',
+        queryParameters: {
+          'mode': mode,
+          'region_ids': regionIds.join(','),
+          if (mode == 'item') ...{
+            'entity_type': entityType,
+            'entity_id': entityId,
+          },
+        });
+    return response.data as Map<String, dynamic>;
+  }
 }
 
 /// 实体搜索选项（原料/商品共用）。

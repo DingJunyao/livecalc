@@ -3388,4 +3388,28 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get compareMetricFat => '脂肪 (g)';
+
+  @override
+  String get compareTabHeatmap => '热力图';
+
+  @override
+  String get compareHeatmapModeItem => '单品物价';
+
+  @override
+  String get compareHeatmapModeOverall => '整体物价';
+
+  @override
+  String get compareHeatmapPickEntity => '选择原料或商品';
+
+  @override
+  String get compareHeatmapOverallNote => '按共同商品篮子显示每个商家的物价指数（中位数=100）';
+
+  @override
+  String get compareHeatmapEmpty => '所选地区暂无有坐标的商家价格数据';
+
+  @override
+  String get compareStaleHint => '价格已超期';
+
+  @override
+  String get compareSampleCountUnit => '种商品';
 }

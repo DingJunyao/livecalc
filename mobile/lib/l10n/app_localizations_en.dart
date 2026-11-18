@@ -3484,4 +3484,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compareMetricFat => 'Fat (g)';
+
+  @override
+  String get compareTabHeatmap => 'Heatmap';
+
+  @override
+  String get compareHeatmapModeItem => 'Item prices';
+
+  @override
+  String get compareHeatmapModeOverall => 'Overall price level';
+
+  @override
+  String get compareHeatmapPickEntity => 'Pick an ingredient or product';
+
+  @override
+  String get compareHeatmapOverallNote =>
+      'Each merchant colored by its basket price index (median = 100)';
+
+  @override
+  String get compareHeatmapEmpty =>
+      'No geocoded merchant prices in the selected regions';
+
+  @override
+  String get compareStaleHint => 'Price is stale';
+
+  @override
+  String get compareSampleCountUnit => 'items';
 }

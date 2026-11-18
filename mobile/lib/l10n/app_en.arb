@@ -2449,5 +2449,21 @@
   "compareMetricProtein": "Protein (g)",
   "@compareMetricProtein": {},
   "compareMetricFat": "Fat (g)",
-  "@compareMetricFat": {}
+  "@compareMetricFat": {},
+  "compareTabHeatmap": "Heatmap",
+  "@compareTabHeatmap": {},
+  "compareHeatmapModeItem": "Item prices",
+  "@compareHeatmapModeItem": {},
+  "compareHeatmapModeOverall": "Overall price level",
+  "@compareHeatmapModeOverall": {},
+  "compareHeatmapPickEntity": "Pick an ingredient or product",
+  "@compareHeatmapPickEntity": {},
+  "compareHeatmapOverallNote": "Each merchant colored by its basket price index (median = 100)",
+  "@compareHeatmapOverallNote": {},
+  "compareHeatmapEmpty": "No geocoded merchant prices in the selected regions",
+  "@compareHeatmapEmpty": {},
+  "compareStaleHint": "Price is stale",
+  "@compareStaleHint": {},
+  "compareSampleCountUnit": "items",
+  "@compareSampleCountUnit": {}
 }

@@ -2449,5 +2449,21 @@
   "compareMetricProtein": "蛋白质 (g)",
   "@compareMetricProtein": {},
   "compareMetricFat": "脂肪 (g)",
-  "@compareMetricFat": {}
+  "@compareMetricFat": {},
+  "compareTabHeatmap": "热力图",
+  "@compareTabHeatmap": {},
+  "compareHeatmapModeItem": "单品物价",
+  "@compareHeatmapModeItem": {},
+  "compareHeatmapModeOverall": "整体物价",
+  "@compareHeatmapModeOverall": {},
+  "compareHeatmapPickEntity": "选择原料或商品",
+  "@compareHeatmapPickEntity": {},
+  "compareHeatmapOverallNote": "按共同商品篮子显示每个商家的物价指数（中位数=100）",
+  "@compareHeatmapOverallNote": {},
+  "compareHeatmapEmpty": "所选地区暂无有坐标的商家价格数据",
+  "@compareHeatmapEmpty": {},
+  "compareStaleHint": "价格已超期",
+  "@compareStaleHint": {},
+  "compareSampleCountUnit": "种商品",
+  "@compareSampleCountUnit": {}
 }

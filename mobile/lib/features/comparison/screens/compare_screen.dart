@@ -16,7 +16,10 @@ import '../../recipes/widgets/cost_trend_chart.dart';
 import '../../prices/utils/price_trend.dart' show PriceMerchantSeries;
 import '../providers/comparison_provider.dart';
 import '../repositories/comparison_repository.dart';
+import '../widgets/heatmap_canvas.dart';
 import '../widgets/region_price_matrix.dart';
+
+final ComparisonRepository _heatmapRepo = ComparisonRepository();
 
 const int _maxRegions = 6;
 
@@ -51,7 +54,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notifier = ref.read(comparisonProvider.notifier);
       notifier.loadCandidates();
@@ -109,6 +112,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
             Tab(text: l10n.compareTabOverview),
             Tab(text: l10n.compareTabPrices),
             Tab(text: l10n.compareTabRecipes),
+            Tab(text: l10n.compareTabHeatmap),
           ],
         ),
       ),
@@ -118,6 +122,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
           _OverviewTab(state: state, onPickRegions: _openRegionPicker, maxRegions: _maxRegions),
           _PricesTab(state: state, maxRegions: _maxRegions),
           const _RecipesTab(),
+          const _HeatmapTab(),
         ],
       ),
     );
@@ -1071,6 +1076,258 @@ class _SimpleSearchPickerSheetState extends State<_SimpleSearchPickerSheet> {
                       }
                     });
                   },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ 热力图（三期） ============
+
+class _HeatmapTab extends ConsumerStatefulWidget {
+  const _HeatmapTab();
+
+  @override
+  ConsumerState<_HeatmapTab> createState() => _HeatmapTabState();
+}
+
+class _HeatmapTabState extends ConsumerState<_HeatmapTab> {
+  String _mode = 'item'; // 'item' | 'overall'
+  String _entityType = 'ingredient';
+  EntityOption? _selectedEntity;
+  List<HeatmapPoint> _points = const [];
+  HeatmapBuckets? _buckets;
+  bool _loading = false;
+  String? _error;
+  int _seq = 0;
+  int _searchSeq = 0;
+  List<EntityOption> _entityOptions = const [];
+  String _lastRegionSignature = '';
+  bool _initialLoaded = false;
+
+  Future<void> _load() async {
+    final state = ref.read(comparisonProvider);
+    final rids = state.selectedRegionIds;
+    if (rids.isEmpty) return;
+    if (_mode == 'item' && _selectedEntity == null) {
+      setState(() { _points = const []; _buckets = null; });
+      return;
+    }
+    final seq = ++_seq;
+    setState(() { _loading = true; _error = null; });
+    try {
+      final data = await _heatmapRepo.getHeatmap(
+        mode: _mode,
+        regionIds: rids,
+        entityType: _entityType,
+        entityId: _selectedEntity?.id,
+      );
+      final points = ((data['items'] as List?) ?? const [])
+          .map((e) => HeatmapPoint.fromJson(e as Map<String, dynamic>))
+          .toList();
+      final rawBuckets = (data['buckets'] as Map?) ?? const {};
+      final buckets = HeatmapBuckets.fromJson(
+          rawBuckets.map((k, v) => MapEntry(k.toString(), v)));
+      if (seq == _seq && mounted) {
+        setState(() { _points = points; _buckets = buckets; _loading = false; });
+      }
+    } catch (e) {
+      if (seq == _seq && mounted) {
+        setState(() { _points = const []; _buckets = null; _loading = false; _error = '$e'; });
+      }
+    }
+  }
+
+  Future<void> _searchEntities(String keyword) async {
+    final seq = ++_searchSeq;
+    try {
+      final options = await _heatmapRepo.searchEntities(
+        entityType: _entityType, keyword: keyword);
+      if (seq == _searchSeq && mounted) setState(() => _entityOptions = options);
+    } catch (_) {
+      if (seq == _searchSeq && mounted) setState(() => _entityOptions = const []);
+    }
+  }
+
+  Future<void> _openEntityPicker() async {
+    await _searchEntities('');
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<EntityOption>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _EntityOptionPickerSheet(
+        options: _entityOptions,
+        onSearch: (kw) => _searchEntities(kw),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _selectedEntity = picked);
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final state = ref.watch(comparisonProvider);
+    final userCurrency = ref.watch(displayCurrencyProvider);
+
+    // 地区变化（或首次进入 tab 地区已就绪）时重拉；overall 模式无需选实体
+    final regionSignature = state.selectedRegionIds.join(',');
+    if (regionSignature.isNotEmpty && regionSignature != _lastRegionSignature) {
+      _lastRegionSignature = regionSignature;
+      if (_mode == 'overall' || _selectedEntity != null) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _load();
+        });
+      }
+    } else if (!_initialLoaded && regionSignature.isNotEmpty) {
+      _initialLoaded = true;
+    }
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // 模式切换：下拉（与趋势图模式切换同形态，窄屏不溢出）
+              DropdownButton<String>(
+                value: _mode,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                items: [
+                  DropdownMenuItem(value: 'item', child: Text(l10n.compareHeatmapModeItem)),
+                  DropdownMenuItem(value: 'overall', child: Text(l10n.compareHeatmapModeOverall)),
+                ],
+                onChanged: (v) {
+                  if (v == null || v == _mode) return;
+                  setState(() {
+                    _mode = v;
+                    _points = const [];
+                    _buckets = null;
+                    _error = null;
+                  });
+                  _load();
+                },
+              ),
+              if (_mode == 'item') ...[
+                DropdownButton<String>(
+                  value: _entityType,
+                  isDense: true,
+                  underline: const SizedBox.shrink(),
+                  items: [
+                    DropdownMenuItem(value: 'ingredient', child: Text(l10n.compareEntityTypeIngredient)),
+                    DropdownMenuItem(value: 'product', child: Text(l10n.compareEntityTypeProduct)),
+                  ],
+                  onChanged: (v) {
+                    if (v == null || v == _entityType) return;
+                    setState(() {
+                      _entityType = v;
+                      _selectedEntity = null;
+                      _entityOptions = const [];
+                      _points = const [];
+                      _buckets = null;
+                      _error = null;
+                    });
+                  },
+                ),
+                OutlinedButton.icon(
+                  onPressed: _openEntityPicker,
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(
+                    _selectedEntity?.name ?? l10n.compareHeatmapPickEntity,
+                    style: theme.textTheme.labelMedium,
+                  ),
+                ),
+              ] else
+                Text(
+                  l10n.compareHeatmapOverallNote,
+                  style: theme.textTheme.labelSmall
+                      ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: HeatmapCanvas(
+            points: _points,
+            buckets: _buckets,
+            loading: _loading,
+            overallMode: _mode == 'overall',
+            userCurrency: userCurrency,
+          ),
+        ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text(_error!,
+                style: theme.textTheme.bodySmall
+                    ?.copyWith(color: theme.colorScheme.error)),
+          ),
+      ],
+    );
+  }
+}
+
+/// 单品选择弹层（搜索 + 单选）。
+class _EntityOptionPickerSheet extends StatefulWidget {
+  final List<EntityOption> options;
+  final ValueChanged<String>? onSearch;
+
+  const _EntityOptionPickerSheet({required this.options, this.onSearch});
+
+  @override
+  State<_EntityOptionPickerSheet> createState() =>
+      _EntityOptionPickerSheetState();
+}
+
+class _EntityOptionPickerSheetState extends State<_EntityOptionPickerSheet> {
+  String _keyword = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = widget.options
+        .where((o) => _keyword.isEmpty || o.name.contains(_keyword))
+        .toList();
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: TextField(
+              autofocus: true,
+              decoration: const InputDecoration(
+                isDense: true,
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (v) {
+                setState(() => _keyword = v.trim());
+                widget.onSearch?.call(v.trim());
+              },
+            ),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: filtered.length,
+              itemBuilder: (ctx, i) {
+                final o = filtered[i];
+                return ListTile(
+                  title: Text(o.name),
+                  onTap: () => Navigator.pop(ctx, o),
                 );
               },
             ),
