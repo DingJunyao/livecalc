@@ -585,6 +585,7 @@
     "average": "平均",
     "overall": "综合",
     "byMerchant": "按商家",
+    "byRegion": "按地区",
     "computedPrice": "替代/从属折算",
     "includeComputed": "含替代/从属",
     "staleDirectReplaced": "直接价已超期，按关系折算（原直接价 {price}）",
@@ -954,8 +955,7 @@
     "admin": "后台管理",
     "logout": "退出登录",
     "theme": "外观主题",
-    "plans": "试算"
-  },
+    "plans": "试算",    "compare": "物价对比"  },
   "routes": {
     "login": "登录",
     "register": "注册",
@@ -993,8 +993,7 @@
     "adminEmailConfig": "邮件配置",
     "adminImagesUnused": "未使用图片清理",
     "adminStorage": "图片存储",
-    "plans": "试算"
-  },
+    "plans": "试算",    "compare": "物价对比"  },
   "detailTypes": {
     "recipe": "菜谱",
     "product": "商品",
@@ -1333,8 +1332,7 @@
     "mealRefreshLimit": "今天{meal_type}推荐已经刷新 {max} 次了，明天再来吧～",
     "mealDishNotInRecommendation": "该菜不在当前推荐中",
     "mealNoCandidates": "该餐类暂无可用菜谱",
-    "planNotFound": "方案不存在"
-  },
+    "planNotFound": "方案不存在",    "invalidIdList": "ID 列表格式无效",    "idListRequired": "至少需要一个 ID",    "idListTooLong": "一次最多 {limit} 个",    "comparisonEntityTypeInvalid": "entity_type 无效"  },
   "localValues": {
     "newNameSuffix": "(新)",
     "unknownIngredientName": "未知原料",
@@ -1955,8 +1953,7 @@
     "perBasis": "（每 {amount}{unit}）",
     "nutritionBasis": "营养基准",
     "nutritionBasisUnit": "基准单位",
-    "nutritionBasisHint": "可按包装标签填写（单位支持自定义单位，如 1 袋 = 250 g）"
-  },
+    "nutritionBasisHint": "可按包装标签填写（单位支持自定义单位，如 1 袋 = 250 g）",    "regionPrices": "各地区价格"  },
   "favorites": {
     "title": "我的收藏",
     "favorite": "收藏",
@@ -1972,6 +1969,35 @@
     "tabProducts": "商品",
     "tabRecipes": "菜谱",
     "tabMerchants": "商家"
+  },
+  "compare": {
+    "tabOverview": "概览",
+    "tabPrices": "原料·商品",
+    "regionSelector": "选择对比地区",
+    "baseRegionNote": "{base} 为基准地区（物价指数 = 100）",
+    "needTwoRegions": "选择至少两个地区开始对比",
+    "lowestIndex": "指数最低",
+    "priceIndexUnit": "物价指数",
+    "recordCount": "{count} 条价格记录",
+    "entityCount": "{count} 种商品",
+    "priceIndexTitle": "物价指数（{base} = 100）",
+    "basketNote": "篮子含 {count} 种商品（基准地区近一年有记录的商品）",
+    "basketTrendTitle": "篮子均价趋势",
+    "trendUnitJin": "斤",
+    "noBasketData": "暂无篮子价格数据",
+    "entityTypeIngredient": "原料",
+    "entityTypeProduct": "商品",
+    "selectEntities": "选择原料或商品",
+    "searchEntityPlaceholder": "搜索名称",
+    "noEntityMatch": "没有匹配项",
+    "matrixTitle": "各地区价格对比",
+    "matrixUnitNote": "每标准单位价，最低绿色加粗",
+    "noMatrixData": "选择地区与实体后展示比价矩阵",
+    "matrixEntityCol": "实体",
+    "unassignedMerchantsNote": "未分配地区的商家计入所有地区",
+    "staleRecord": "最近记录 {days} 天前",
+    "noRegionData": "所选地区暂无该实体价格",
+    "unknownRegion": "未知地区"
   },
   "plans": {
     "title": "试算",
@@ -2319,8 +2345,7 @@
     "presetCookingOil": "食用油",
     "presetSoySauce": "酱油",
     "presetHoney": "蜂蜜",
-    "perBasis": "（每 {amount}{unit}）"
-  },
+    "perBasis": "（每 {amount}{unit}）",    "regionPrices": "各地区价格"  },
   "merchants": {
     "title": "商家管理",
     "detail": "商家详情",

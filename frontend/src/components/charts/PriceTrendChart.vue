@@ -4,7 +4,7 @@
       <v-icon start :color="iconColor">{{ icon }}</v-icon>
       {{ chartTitle }}
       <v-spacer />
-      <!-- 对比模式切换：仅在传入 ≥2 条商家序列时显示 -->
+      <!-- 对比模式切换：仅在传入 ≥2 条对比序列时显示 -->
       <v-btn-toggle
         v-if="hasComparison"
         v-model="viewMode"
@@ -15,7 +15,7 @@
         class="filter-buttons me-2"
       >
         <v-btn value="avg" size="small">{{ t('charts.overall') }}</v-btn>
-        <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
+        <v-btn value="merchant" size="small">{{ compareLabel || t('charts.byMerchant') }}</v-btn>
       </v-btn-toggle>
       <!-- 折算序列开关（替代/回退/半成品/从属）：
            开 = 显示关系折算价，且直接价超期时优先用关系结果；关 = 只看直接价。
@@ -148,9 +148,10 @@ interface DataPoint {
   directAvg?: number | null
 }
 
-/** 按商家对比：一条商家序列（与主序列同口径的逐日 as-of 数据） */
+/** 对比序列：一条序列（与主序列同口径的逐日 as-of 数据）。
+ * merchantId 泛化为序列标识：商家对比传商家 id，地区对比传地区 id。 */
 export interface MerchantSeries {
-  merchantId: number | null
+  merchantId: number | string | null
   name: string
   data: DataPoint[]
 }
@@ -166,8 +167,10 @@ const props = withDefaults(defineProps<{
   color?: string
   avgLabel?: string
   countLabel?: string
-  /** 商家对比序列；≥2 条时显示「综合/按商家」切换 */
+  /** 对比序列；≥2 条时显示「综合/对比」切换（维度由 compareLabel 说明） */
   comparisonSeries?: MerchantSeries[]
+  /** 对比维度名（默认按商家；地区对比传 charts.byRegion 文案） */
+  compareLabel?: string
   /**
    * 按菜谱成本降级链折算出来的价格（替代/回退/半成品/从属）。
    * 只用于「该原料自己没有直接商品价」的日子；非空时显示「含替代/从属」开关（默认开）。
@@ -189,6 +192,7 @@ const props = withDefaults(defineProps<{
   loading: false,
   color: '#42b883',
   comparisonSeries: () => [],
+  compareLabel: undefined,
   computedSeries: () => [],
   computedTitle: undefined,
   includeComputed: true,

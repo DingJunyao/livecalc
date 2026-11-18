@@ -585,6 +585,7 @@
     "average": "المتوسط",
     "overall": "الإجمالي",
     "byMerchant": "حسب المتجر",
+    "byRegion": "حسب المنطقة",
     "computedPrice": "السعر المحتسب (بديل/مشتق)",
     "includeComputed": "تضمين البديل",
     "staleDirectReplaced": "السعر المباشر قديم؛ يُستخدم البديل (كان {price})",
@@ -954,8 +955,7 @@
     "admin": "الإدارة",
     "logout": "تسجيل الخروج",
     "theme": "المظهر",
-    "plans": "الحاسبة"
-  },
+    "plans": "الحاسبة",    "compare": "مقارنة الأسعار"  },
   "routes": {
     "login": "تسجيل الدخول",
     "register": "التسجيل",
@@ -993,8 +993,7 @@
     "adminEmailConfig": "إعدادات البريد",
     "adminImagesUnused": "الصور غير المستخدمة",
     "adminStorage": "تخزين الصور",
-    "plans": "الحاسبة"
-  },
+    "plans": "الحاسبة",    "compare": "مقارنة الأسعار"  },
   "detailTypes": {
     "recipe": "وصفة",
     "product": "منتج",
@@ -1333,8 +1332,7 @@
     "mealRefreshLimit": "تم تحديث هذه الوجبة {max} مرات اليوم. عد غداً!",
     "mealDishNotInRecommendation": "هذا الطبق ليس في التوصية الحالية",
     "mealNoCandidates": "لا توجد وصفات متاحة لهذه الوجبة",
-    "planNotFound": "الخطة غير موجودة"
-  },
+    "planNotFound": "الخطة غير موجودة",    "invalidIdList": "قائمة معرفات غير صالحة",    "idListRequired": "مطلوب معرف واحد على الأقل",    "idListTooLong": "{limit} كحد أقصى في كل مرة",    "comparisonEntityTypeInvalid": "entity_type غير صالح"  },
   "localValues": {
     "newNameSuffix": " (جديد)",
     "unknownIngredientName": "مكوّن غير معروف",
@@ -1955,8 +1953,7 @@
     "perBasis": "(لكل {amount}{unit})",
     "nutritionBasis": "الأساس",
     "nutritionBasisUnit": "وحدة الأساس",
-    "nutritionBasisHint": "طابق الملصق (الوحدات المخصصة مدعومة، مثل 1 كيس = 250 غ)"
-  },
+    "nutritionBasisHint": "طابق الملصق (الوحدات المخصصة مدعومة، مثل 1 كيس = 250 غ)",    "regionPrices": "الأسعار حسب المنطقة"  },
   "favorites": {
     "title": "مفضلاتي",
     "favorite": "إضافة للمفضلة",
@@ -1972,6 +1969,35 @@
     "tabProducts": "المنتجات",
     "tabRecipes": "الوصفات",
     "tabMerchants": "المتاجر"
+  },
+  "compare": {
+    "tabOverview": "نظرة عامة",
+    "tabPrices": "المواد والمنتجات",
+    "regionSelector": "المناطق المقارَنة",
+    "baseRegionNote": "{base} هي المنطقة المرجعية (مؤشر الأسعار = 100)",
+    "needTwoRegions": "اختر منطقتين على الأقل لبدء المقارنة",
+    "lowestIndex": "أدنى مؤشر",
+    "priceIndexUnit": "مؤشر الأسعار",
+    "recordCount": "{count} سجل أسعار",
+    "entityCount": "{count} منتج",
+    "priceIndexTitle": "مؤشر الأسعار ({base} = 100)",
+    "basketNote": "السلة تغطي {count} منتج له أسعار في المنطقة المرجعية خلال سنة",
+    "basketTrendTitle": "اتجاه متوسط سعر السلة",
+    "trendUnitJin": "جين (500 غ)",
+    "noBasketData": "لا توجد بيانات أسعار للسلة بعد",
+    "entityTypeIngredient": "المواد",
+    "entityTypeProduct": "المنتجات",
+    "selectEntities": "اختر المواد أو المنتجات",
+    "searchEntityPlaceholder": "ابحث بالاسم",
+    "noEntityMatch": "لا توجد نتائج",
+    "matrixTitle": "مقارنة الأسعار حسب المنطقة",
+    "matrixUnitNote": "لكل وحدة قياسية، الأدنى بالخط العريض الأخضر",
+    "noMatrixData": "اختر المناطق والعناصر لعرض المقارنة",
+    "matrixEntityCol": "العنصر",
+    "unassignedMerchantsNote": "التجار بدون منطقة تُحتسب في كل منطقة",
+    "staleRecord": "آخر سجل قبل {days} يوم",
+    "noRegionData": "لا توجد بيانات أسعار في المناطق المحددة",
+    "unknownRegion": "منطقة غير معروفة"
   },
   "plans": {
     "title": "الحاسبة",
@@ -2319,8 +2345,7 @@
     "presetCookingOil": "زيت طهي",
     "presetSoySauce": "صلصة صويا",
     "presetHoney": "عسل",
-    "perBasis": "(لكل {amount}{unit})"
-  },
+    "perBasis": "(لكل {amount}{unit})",    "regionPrices": "الأسعار حسب المنطقة"  },
   "merchants": {
     "title": "إدارة المتاجر",
     "detail": "تفاصيل المتجر",

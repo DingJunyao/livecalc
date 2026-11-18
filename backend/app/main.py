@@ -32,6 +32,7 @@ from app.api import product_weight  # 商品价格权重覆盖 API
 from app.api import units  # 单位管理 API（含实体单位覆盖和密度路由）
 from app.api import ingredient_hierarchy  # 食材层级关系 API
 from app.api import sparklines  # 迷你图数据 API
+from app.api import comparison  # 跨地区物价对比 API
 from app.api import export  # 数据导出 API
 from app.api import usda  # USDA 食材搜索/详情 API
 from app.api import usda_admin  # USDA 管理 API（下载/上传/任务/统计，admin only）
@@ -820,6 +821,8 @@ app.include_router(product_weight.router, prefix="/api/v1", tags=["商品权重"
 app.include_router(units.router, prefix="/api/v1", tags=["单位管理"])
 # 迷你图数据 API（独立于主列表，避免超时）
 app.include_router(sparklines.router, prefix="/api/v1", dependencies=[Depends(get_session_currency_override)], tags=["迷你图"])
+# 跨地区物价对比 API
+app.include_router(comparison.router, prefix="/api/v1/comparison", dependencies=[Depends(get_session_currency_override)], tags=["跨地区对比"])
 
 # 注册实体单位覆盖和密度路由
 app.include_router(units.entities_unit_router, prefix="/api/v1", tags=["实体单位覆盖"])

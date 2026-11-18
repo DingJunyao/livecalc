@@ -372,7 +372,13 @@ export async function listRecords(_params: Record<string, string>, query?: any):
     }
     if (r.merchant_name === undefined && r.merchant_id != null) {
       const m = merchantMap.get(r.merchant_id)
-      if (m) r.merchant_name = m.name
+      if (m) {
+        r.merchant_name = m.name
+        r.merchant_region_id = m.region_id ?? null
+      }
+    } else if (r.merchant_region_id === undefined && r.merchant_id != null) {
+      const m = merchantMap.get(r.merchant_id)
+      r.merchant_region_id = m?.region_id ?? null
     }
   }
 

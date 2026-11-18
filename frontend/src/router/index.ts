@@ -114,6 +114,12 @@ const router = createRouter({
           meta: { titleKey: 'routes.plans' },
         },
         {
+          path: 'compare',
+          name: 'compare',
+          component: () => import('@/views/compare/CompareView.vue'),
+          meta: { titleKey: 'routes.compare' },
+        },
+        {
           path: 'plans/new',
           name: 'plan-new',
           component: () => import('@/views/plans/PlanDetailView.vue'),
