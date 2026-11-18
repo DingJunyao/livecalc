@@ -19,7 +19,7 @@
 from collections import defaultdict
 from datetime import datetime, timedelta
 from statistics import median
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import desc, func
@@ -42,17 +42,30 @@ from app.services.ingredient_price_service import (
     INGREDIENT_PRICE_STALE_DAYS,
     _product_unit_price,
 )
+from app.services.meal_plan_service import evaluate_items, evaluate_plan, plan_cost_trend
+from app.services.recipe_service import (
+    calculate_recipe_cost_as_of,
+    calculate_recipe_cost_range_trend,
+)
 from app.services.price_region import apply_region_filter
 from app.models.administrative_region import AdministrativeRegion
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
 from app.models.product_entity import Product
 from app.models.nutrition import Ingredient
+from app.models.recipe import Recipe
 from app.schemas.comparison import (
     ComparisonSummaryResponse,
     EntityPriceRow,
     EntityPricesResponse,
     EntityRegionPrice,
+    PlanEvaluateRegionsBody,
+    PlanEvaluateRegionsResponse,
+    PlanRegionTotals,
+    RecipeBreakdownItem,
+    RecipeCostRow,
+    RecipeCostsResponse,
+    RecipeRegionCost,
     RegionCandidate,
     RegionCandidatesResponse,
     RegionMeta,
@@ -64,6 +77,8 @@ router = APIRouter(tags=["跨地区对比"])
 
 MAX_COMPARISON_REGIONS = 6
 MAX_COMPARISON_ENTITIES = 50
+MAX_COMPARISON_RECIPES = 10
+MAX_COMPARISON_PLANS = 10
 # 卡片价/篮子的取数窗口：近一年有记录才参与（趋势携带起点必然落在窗口内）
 BASKET_WINDOW_DAYS = 365
 
@@ -488,3 +503,239 @@ async def comparison_entity_prices(
         raise
     except Exception as e:
         raise LocalizedHTTPException(status_code=500, message="获取对比矩阵失败: {error}", error=str(e))
+
+
+# ==================== 二期：菜谱 / 试算成本对比 ====================
+
+
+def _parse_plan_ids(raw: str) -> List[int]:
+    return _parse_entity_ids(raw, limit=MAX_COMPARISON_PLANS)
+
+
+def _load_owned_plans(db: Session, user, ids: List[int]) -> Dict[int, "MealPlan"]:
+    from sqlalchemy.orm import joinedload
+
+    from app.models.meal_plan import MealPlan
+
+    rows = db.query(MealPlan).options(joinedload(MealPlan.items)).filter(
+        MealPlan.id.in_(ids),
+        MealPlan.user_id == user.id,
+    ).all()
+    return {p.id: p for p in rows}
+
+
+@router.get("/comparison/recipe-costs", response_model=RecipeCostsResponse)
+async def comparison_recipe_costs(
+    request: Request,
+    recipe_ids: str = Query(..., description="菜谱 ID 列表，逗号分隔（≤10）"),
+    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """菜谱×地区成本矩阵：每格 = 总成本/每份成本 + 明细（与菜谱成本同一降级链）。
+
+    明细里 cost=None 的行即该地区缺价的食材（missing_ingredients 汇总），
+    供菜谱分析页「按地区」模式的覆盖提示与比价矩阵复用。
+    """
+    try:
+        rids = _parse_region_ids(region_ids)
+        rids_recipes = _parse_entity_ids(recipe_ids, limit=MAX_COMPARISON_RECIPES)
+        currency = get_user_default_currency(db, current_user)
+        regions_by_id = _load_regions(db, rids)
+        locale = request_locale(request)
+        name_by_id = {
+            rid: name
+            for rid, name in db.query(Recipe.id, Recipe.name).filter(
+                Recipe.id.in_(rids_recipes)
+            ).all()
+        }
+        now = datetime.utcnow()
+        rows: Dict[int, RecipeCostRow] = {
+            rid_: RecipeCostRow(
+                recipe_id=rid_,
+                name=name_by_id.get(rid_, str(rid_)),
+                regions={str(r): None for r in rids},
+            )
+            for rid_ in rids_recipes
+        }
+        for rid in rids:
+            for recipe_id in rids_recipes:
+                try:
+                    cost = calculate_recipe_cost_as_of(
+                        recipe_id, current_user.id, now, db, tz=tz, region_id=rid,
+                    )
+                except Exception:
+                    cost = None
+                if not cost or cost.get("total_cost") is None:
+                    continue
+                breakdown_raw = cost.get("cost_breakdown") or []
+                breakdown = [
+                    RecipeBreakdownItem(
+                        ingredient_name=b.get("ingredient_name"),
+                        ingredient_id=b.get("ingredient_id"),
+                        quantity=b.get("quantity"),
+                        cost=b.get("cost"),
+                        fallback_chain=b.get("fallback_chain"),
+                        aggregation_chain=b.get("aggregation_chain"),
+                        price_recorded_at=str(b["price_recorded_at"]) if b.get("price_recorded_at") is not None else None,
+                    )
+                    for b in breakdown_raw
+                ]
+                rows[recipe_id].regions[str(rid)] = RecipeRegionCost(
+                    total_cost=cost.get("total_cost"),
+                    cost_per_serving=cost.get("cost_per_serving"),
+                    currency=cost.get("currency"),
+                    missing_ingredients=[
+                        b.ingredient_name for b in breakdown
+                        if b.cost is None and b.ingredient_name
+                    ],
+                    breakdown=breakdown,
+                )
+        region_metas = [
+            RegionMeta(
+                region_id=rid,
+                name=regions_by_id[rid].name,
+                display_name=region_display_name(regions_by_id[rid], locale),
+                level=regions_by_id[rid].level,
+            )
+            for rid in rids
+            if rid in regions_by_id
+        ]
+        return RecipeCostsResponse(
+            currency=currency,
+            regions=region_metas,
+            recipes=[rows[r] for r in rids_recipes],
+        )
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="获取菜谱成本对比失败: {error}", error=str(e))
+
+
+@router.get("/comparison/recipe-cost-trend")
+async def comparison_recipe_cost_trend(
+    recipe_id: int = Query(..., description="菜谱 ID（单选，多地区趋势）"),
+    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    days: int = Query(30, ge=7, le=90, description="趋势天数"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """单菜谱的多地区成本趋势（每地区一条序列，键为 region_id 字符串）。"""
+    try:
+        rids = _parse_region_ids(region_ids)
+        out: Dict[str, List[Dict]] = {}
+        for rid in rids:
+            try:
+                trend = calculate_recipe_cost_range_trend(
+                    recipe_id, current_user.id, db, days=days, tz=tz, region_id=rid,
+                )
+            except Exception:
+                trend = []
+            out[str(rid)] = trend or []
+        return {"regions": out}
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="获取菜谱趋势对比失败: {error}", error=str(e))
+
+
+@router.post("/comparison/plan-evaluate-regions", response_model=PlanEvaluateRegionsResponse)
+async def comparison_plan_evaluate_regions(
+    body: PlanEvaluateRegionsBody,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """同一组试算条目（草稿/未保存均可）在 N 个地区分别求值。
+
+    试算详情页「合计卡口径切换」的数据源：每地区返回 evaluate 的 totals
+    （cost / calories / protein_g / carbs_g / fat_g）。显式逐地区传 region_id，
+    不走会话 X-Region。
+    """
+    try:
+        rids = _parse_region_ids(",".join(str(r) for r in body.region_ids))
+        item_dicts = [item.model_dump() for item in body.items]
+        regions = []
+        for rid in rids:
+            result = await evaluate_items(
+                db, current_user, item_dicts,
+                kind=body.kind, meal_type=body.meal_type, tz=tz,
+                region_id=rid,
+            )
+            regions.append(PlanRegionTotals(region_id=rid, totals=result.get("totals") or {}))
+        return PlanEvaluateRegionsResponse(regions=regions)
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="试算分地区求值失败: {error}", error=str(e))
+
+
+@router.get("/comparison/plan-costs")
+async def comparison_plan_costs(
+    request: Request,
+    plan_ids: str = Query(..., description="试算方案 ID 列表，逗号分隔（≤10）"),
+    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """已保存方案×地区合计对照：每格 = evaluate 的 totals（成本+四项营养）。"""
+    try:
+        rids = _parse_region_ids(region_ids)
+        ids = _parse_plan_ids(plan_ids)
+        plans = _load_owned_plans(db, current_user, ids)
+        out = []
+        for pid in ids:
+            plan = plans.get(pid)
+            row: Dict[str, Any] = {
+                "plan_id": pid,
+                "name": plan.name if plan else str(pid),
+                "regions": {str(r): None for r in rids},
+            }
+            if plan is not None:
+                for rid in rids:
+                    try:
+                        result = await evaluate_plan(
+                            db, current_user, plan, tz=tz, region_id=rid,
+                        )
+                        row["regions"][str(rid)] = result.get("totals") or {}
+                    except Exception:
+                        row["regions"][str(rid)] = None
+            out.append(row)
+        return {"plans": out, "regions": rids}
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="获取试算对比失败: {error}", error=str(e))
+
+
+@router.get("/comparison/plan-cost-trend")
+async def comparison_plan_cost_trend(
+    plan_id: int = Query(..., description="试算方案 ID（单选，多地区趋势）"),
+    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    days: int = Query(30, ge=7, le=90, description="趋势天数"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """单方案的多地区成本趋势（每地区一条序列，复用 plan_cost_trend 显式 region）。"""
+    try:
+        rids = _parse_region_ids(region_ids)
+        plans = _load_owned_plans(db, current_user, [plan_id])
+        plan = plans.get(plan_id)
+        if plan is None:
+            raise LocalizedHTTPException(status_code=404, message="方案不存在")
+        out: Dict[str, List[Dict]] = {}
+        for rid in rids:
+            try:
+                trend = plan_cost_trend(db, current_user, plan, days=days, tz=tz, region_id=rid)
+            except Exception:
+                trend = []
+            out[str(rid)] = trend or []
+        return {"regions": out}
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="获取试算趋势对比失败: {error}", error=str(e))

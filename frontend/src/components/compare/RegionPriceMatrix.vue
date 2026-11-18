@@ -26,7 +26,12 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in rows" :key="row.id">
+              <tr
+                v-for="row in rows"
+                :key="row.id"
+                :class="{ 'row-clickable': clickableRows }"
+                @click="clickableRows && emit('row-click', row.id)"
+              >
                 <td class="sticky-col" style="min-width:140px">
                   <span class="font-weight-medium">{{ row.label }}</span>
                   <span v-if="row.unit" class="qty-badge">/ {{ row.unit }}</span>
@@ -95,6 +100,8 @@ const props = withDefaults(defineProps<{
   title?: string
   unitNote?: string
   emptyText?: string
+  /** 行可点击（选中实体看多地区趋势） */
+  clickableRows?: boolean
 }>(), {
   columns: () => [],
   rows: () => [],
@@ -102,7 +109,10 @@ const props = withDefaults(defineProps<{
   title: '',
   unitNote: '',
   emptyText: '',
+  clickableRows: false,
 })
+
+const emit = defineEmits<{ (e: 'row-click', id: number | string): void }>()
 
 function cell(row: RegionMatrixRow, colId: number | string): RegionMatrixCell | null {
   return row.cells[String(colId)] ?? null
@@ -181,6 +191,12 @@ function isLowest(row: RegionMatrixRow, colId: number | string): boolean {
 }
 .price-missing {
   color: #ccc;
+}
+.row-clickable {
+  cursor: pointer;
+}
+.row-clickable:hover {
+  background: rgba(0, 0, 0, 0.03);
 }
 .text-end {
   text-align: end;

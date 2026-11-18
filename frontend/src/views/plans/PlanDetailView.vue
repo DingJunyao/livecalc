@@ -180,10 +180,46 @@
         </v-col>
       </v-row>
 
-      <!-- 合计 vs 目标 -->
+      <!-- 合计 vs 目标（口径切换：当前 | 各地区对比；有 ≥2 个有数据地区时出现） -->
       <v-card v-if="evaluation" elevation="0" class="mb-4 pa-3">
-        <div class="text-subtitle-2 mb-2">{{ t('plans.totals') }}</div>
-        <v-row dense>
+        <div class="d-flex align-center mb-2">
+          <div class="text-subtitle-2">{{ t('plans.totals') }}</div>
+          <v-spacer />
+          <v-btn-toggle
+            v-if="hasRegionComparison"
+            v-model="totalsDimension"
+            mandatory
+            density="compact"
+            variant="outlined"
+            divided
+          >
+            <v-btn value="current" size="small">{{ t('compare.dimensionCurrent') }}</v-btn>
+            <v-btn value="region" size="small">{{ t('charts.byRegion') }}</v-btn>
+          </v-btn-toggle>
+        </div>
+        <!-- 各地区对比：每地区一行合计（成本最低地区绿色高亮） -->
+        <v-table v-if="totalsDimension === 'region'" density="compact">
+          <thead>
+            <tr>
+              <th class="text-left">{{ t('compare.regionCol') }}</th>
+              <th v-for="col in regionTotalsCols" :key="col.key" class="text-end">{{ col.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in regionTotalsRows" :key="r.region_id">
+              <td>{{ r.name }}</td>
+              <td
+                v-for="col in regionTotalsCols"
+                :key="col.key"
+                class="text-end"
+                :class="{ 'text-success font-weight-bold': col.key === 'cost' && r.isLowestCost }"
+              >
+                {{ col.format(r.totals) }}
+              </td>
+            </tr>
+          </tbody>
+        </v-table>
+        <v-row v-else dense>
           <v-col v-for="row in totalsRows" :key="row.key" cols="6" sm="3">
             <div class="text-caption text-medium-emphasis">{{ row.label }}</div>
             <div class="text-body-1 font-weight-bold" :class="row.over ? 'text-error' : 'text-success'">
@@ -217,13 +253,26 @@
           />
         </v-col>
         <v-col cols="12" md="6">
-          <!-- 成本走势：与「食材成本占比」同一套卡片样式（复用菜谱详情的图表，自带价格区间） -->
+          <!-- 成本走势：当前口径走 CostTrendAnalysis（会话范围）；地区口径走多地区叠加（仅已保存方案） -->
           <CostTrendAnalysis
-            v-if="editor.id"
+            v-if="editor.id && totalsDimension !== 'region'"
             :recipe-id="editor.id"
             :cost-history="trendPoints"
             :loading="trendLoading"
             @filter-change="onTrendFilterChange"
+          />
+          <PriceTrendChart
+            v-else-if="editor.id && totalsDimension === 'region'"
+            :title="t('compare.planTrendTitle')"
+            icon="mdi-chart-line"
+            icon-color="tertiary"
+            :unit="t('compare.trendUnitJin')"
+            :empty-text="t('compare.noBasketData')"
+            :data="planTrendBaseData"
+            :comparison-series="planTrendSeries"
+            :compare-label="t('charts.byRegion')"
+            :loading="planTrendLoading"
+            @filter-change="onPlanRegionTrendFilterChange"
           />
         </v-col>
       </v-row>
@@ -282,7 +331,10 @@ import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import CostProportionChart from '@/components/recipes/CostProportionChart.vue'
 import CostTrendAnalysis from '@/components/recipes/CostTrendAnalysis.vue'
 import NutritionSourceGrid from '@/components/recipes/NutritionSourceGrid.vue'
+import PriceTrendChart from '@/components/charts/PriceTrendChart.vue'
 import { api } from '@/api'
+import { postComparisonPlanEvaluateRegions, getComparisonPlanCostTrend } from '@/api/comparison'
+import { fetchPricedRegions } from '@/composables/useRegionPrices'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useConfirmDialog } from '@/composables/useConfirmDialog'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
@@ -566,6 +618,150 @@ const totalsRows = computed(() => {
       target: `${formatNumber(tg.fat_g, localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 })} ${t('nutrientUnits.g')}`,
       over: n.fat_g > tg.fat_g },
   ]
+})
+
+// ==================== 跨地区对比（合计卡口径切换：当前 | 各地区对比） ====================
+// 对比态走 postComparisonPlanEvaluateRegions（草稿也可用，显式逐地区传 region_id，
+// 不受会话 X-Region 干扰）；趋势列在对比态换成多地区叠加图（仅已保存方案）。
+const totalsDimension = ref<'current' | 'region'>('current')
+const planRegionCandidates = ref<Array<{ region_id: number; display_name: string }>>([])
+const regionTotalsData = ref<Array<{ region_id: number; totals: Record<string, any> }>>([])
+const regionTotalsLoading = ref(false)
+
+const hasRegionComparison = computed(() => planRegionCandidates.value.length >= 2)
+
+async function ensurePlanRegionCandidates() {
+  if (planRegionCandidates.value.length === 0) {
+    try {
+      planRegionCandidates.value = await fetchPricedRegions()
+    } catch {
+      planRegionCandidates.value = []
+    }
+  }
+  return planRegionCandidates.value
+}
+
+watch(totalsDimension, (dim) => {
+  if (dim === 'region') void loadRegionTotals()
+})
+
+async function loadRegionTotals() {
+  if (!evaluation.value || !editor.value.items.length) return
+  const candidates = await ensurePlanRegionCandidates()
+  if (candidates.length < 2) return
+  regionTotalsLoading.value = true
+  try {
+    const res = await postComparisonPlanEvaluateRegions(
+      editor.value.items.map((i, idx) => ({
+        group: i.group, item_type: i.item_type,
+        recipe_id: i.recipe_id, ingredient_id: i.ingredient_id, product_id: i.product_id,
+        servings: i.servings, quantity: i.quantity, unit_id: i.unit_id, sort_order: idx,
+      })),
+      candidates.slice(0, 6).map(r => r.region_id),
+      editor.value.kind,
+      evalMealType.value,
+    )
+    regionTotalsData.value = res.regions
+  } catch {
+    regionTotalsData.value = []
+  } finally {
+    regionTotalsLoading.value = false
+  }
+}
+
+const regionTotalsCols = computed(() => [
+  { key: 'cost', label: t('compare.metricCost'), format: (x: any) => x?.cost != null ? formatMoney(Number(x.cost), x.currency || userCurrency.value) : '—' },
+  { key: 'calories', label: t('compare.metricCalories'), format: (x: any) => x?.calories != null ? formatNumber(Number(x.calories), localeStore.effectiveFormatLocale, { maximumFractionDigits: 0 }) : '—' },
+  { key: 'protein_g', label: t('compare.metricProtein'), format: (x: any) => x?.protein_g != null ? formatNumber(Number(x.protein_g), localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) : '—' },
+  { key: 'carbs_g', label: t('compare.metricCarbs'), format: (x: any) => x?.carbs_g != null ? formatNumber(Number(x.carbs_g), localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) : '—' },
+  { key: 'fat_g', label: t('compare.metricFat'), format: (x: any) => x?.fat_g != null ? formatNumber(Number(x.fat_g), localeStore.effectiveFormatLocale, { maximumFractionDigits: 1 }) : '—' },
+])
+
+const regionTotalsRows = computed(() => {
+  const valid = regionTotalsData.value.filter(r => r.totals?.cost != null)
+  const minCost = valid.length >= 2 ? Math.min(...valid.map(r => Number(r.totals.cost))) : null
+  return regionTotalsData.value.map(r => ({
+    region_id: r.region_id,
+    name: planRegionCandidates.value.find(c => c.region_id === r.region_id)?.display_name || String(r.region_id),
+    totals: r.totals,
+    isLowestCost: minCost != null && Number(r.totals.cost) === minCost,
+  }))
+})
+
+// ---- 对比态趋势（已保存方案，多地区叠加） ----
+const planTrendDays = ref(30)
+const planTrend = ref<Record<string, Array<Record<string, any>>> | null>(null)
+const planTrendLoading = ref(false)
+let planTrendSeq = 0
+
+const planTrendRegionNames = computed(() => {
+  const map = new Map<number, string>()
+  for (const r of planRegionCandidates.value) map.set(r.region_id, r.display_name)
+  return map
+})
+
+const planTrendBaseData = computed(() => {
+  const map = planTrend.value || {}
+  const keys = Object.keys(map)
+  if (!keys.length) return []
+  // 主序列 = 基准地区（列表第一个有数据的）
+  const base = map[keys[0]] || []
+  return base.map(p => ({
+    date: p.date,
+    min: Number(p.min_cost ?? p.avg_cost ?? 0),
+    max: Number(p.max_cost ?? p.avg_cost ?? 0),
+    avg: Number(p.avg_cost ?? 0),
+    count: 1,
+    recorded: p.has_record !== false,
+  }))
+})
+
+const planTrendSeries = computed(() => {
+  const map = planTrend.value || {}
+  return Object.entries(map).map(([rid, points]) => ({
+    merchantId: rid,
+    name: planTrendRegionNames.value.get(Number(rid)) || rid,
+    data: points.map(p => ({
+      date: p.date,
+      min: Number(p.min_cost ?? p.avg_cost ?? 0),
+      max: Number(p.max_cost ?? p.avg_cost ?? 0),
+      avg: Number(p.avg_cost ?? 0),
+      count: 1,
+      recorded: p.has_record !== false,
+    })),
+  })).filter(s => s.data.length > 0)
+})
+
+async function loadPlanRegionTrend() {
+  if (!editor.value.id) return
+  const candidates = await ensurePlanRegionCandidates()
+  if (candidates.length < 2) return
+  const seq = ++planTrendSeq
+  planTrendLoading.value = true
+  try {
+    const res = await getComparisonPlanCostTrend(
+      editor.value.id,
+      candidates.slice(0, 6).map(r => r.region_id),
+      planTrendDays.value,
+    )
+    if (seq === planTrendSeq) planTrend.value = res.regions
+  } catch {
+    if (seq === planTrendSeq) planTrend.value = null
+  } finally {
+    if (seq === planTrendSeq) planTrendLoading.value = false
+  }
+}
+
+function onPlanRegionTrendFilterChange(filter: string) {
+  const daysMap: Record<string, number> = { week: 7, month: 30, quarter: 90, year: 365, all: 3650 }
+  planTrendDays.value = daysMap[filter] || 30
+  void loadPlanRegionTrend()
+}
+
+// 对比态且已保存方案时拉趋势；退出对比态清空
+watch([totalsDimension, () => editor.value.id], ([dim, id]) => {
+  if (dim === 'region' && id) void loadPlanRegionTrend()
+  else planTrend.value = null
 })
 
 // ---- 加载 / 保存 / 删除 ----

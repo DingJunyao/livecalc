@@ -18,7 +18,7 @@
 import datetime
 import logging
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from sqlalchemy.orm import Session
 
@@ -47,6 +47,10 @@ from app.services.unit_conversion_service import UnitConversionService
 logger = logging.getLogger("meal_plan_service")
 
 _EMPTY_NUTRITION = {"calories": 0.0, "protein_g": 0.0, "carbs_g": 0.0, "fat_g": 0.0}
+
+# 显式计算范围的哨兵：区分「未传（按会话/用户默认解析）」与「显式 None（全部地区）」。
+# 跨地区对比逐地区求值时必须显式传 region_id，绕过会话 X-Region。
+_REGION_UNSET = object()
 
 
 def _round2(v: float) -> float:
@@ -354,8 +358,13 @@ async def _item_cost_nutrition(
 async def evaluate_items(
     db: Session, user: User, items: List[Dict],
     kind: str = "meal", meal_type: str = "lunch", tz: str = "UTC",
+    region_id: Any = _REGION_UNSET,
 ) -> Dict:
-    """评估一组未落库的条目（草稿）。items 为 schema dict。"""
+    """评估一组未落库的条目（草稿）。items 为 schema dict。
+
+    region_id：显式计算范围（跨地区对比逐地区求值用）；未传时按会话/用户默认解析。
+    哨兵 _REGION_UNSET 区分「未传」与「显式 None=全部地区」。
+    """
     stub_items: List[MealPlanItem] = []
     for order, it in enumerate(items):
         stub_items.append(MealPlanItem(
@@ -386,13 +395,14 @@ async def evaluate_items(
         if stub.unit_id:
             stub.unit = db.query(Unit).get(stub.unit_id)
 
-    return await _evaluate_stub_items(db, user, stub_items, kind, meal_type, tz)
+    return await _evaluate_stub_items(db, user, stub_items, kind, meal_type, tz, region_id=region_id)
 
 
 async def evaluate_plan(
     db: Session, user: User, plan: MealPlan, tz: str = "UTC",
     meal_type: str = "lunch",
     group: Optional[str] = None,
+    region_id: Any = _REGION_UNSET,
 ) -> Dict:
     """评估已落库方案（plan.items 已在 session）。
 
@@ -406,17 +416,19 @@ async def evaluate_plan(
         items = [it for it in items if it.group == group]
         kind = "meal"
         target_meal = group if group in ("breakfast", "lunch", "dinner") else "lunch"
-    return await _evaluate_stub_items(db, user, items, kind, target_meal, tz)
+    return await _evaluate_stub_items(db, user, items, kind, target_meal, tz, region_id=region_id)
 
 
 async def _evaluate_stub_items(
     db: Session, user: User, items: List[MealPlanItem],
     kind: str, meal_type: str, tz: str,
+    region_id: Any = _REGION_UNSET,
 ) -> Dict:
     from app.services.meal_recommender import MEAL_RATIOS
 
-    # 计算范围：会话 X-Region 覆盖优先，其次用户默认计算范围（region + default_calc_scope）
-    region_id = resolve_region_param(db, user, None)
+    # 计算范围：显式传入（跨地区对比）优先；否则会话 X-Region 覆盖，其次用户默认计算范围
+    if region_id is _REGION_UNSET:
+        region_id = resolve_region_param(db, user, None)
 
     eval_items = []
     totals = {"cost": 0.0, "currency": None,
@@ -466,15 +478,20 @@ async def _evaluate_stub_items(
 def plan_cost_trend(
     db: Session, user: User, plan: MealPlan,
     days: int = 90, offset_days: int = 0, tz: str = "UTC",
+    region_id: Any = _REGION_UNSET,
 ) -> List[Dict]:
     """方案成本 as-of 逐日走势：菜谱项走 calculate_recipe_cost_range_trend 的
-    avg 档（逐日、前向填充），原料/商品项按天取加权价 / 最新有效记录。"""
+    avg 档（逐日、前向填充），原料/商品项按天取加权价 / 最新有效记录。
+
+    region_id：显式计算范围（跨地区对比逐地区走势用）；未传时按会话/用户默认解析。
+    """
     from datetime import timedelta
 
     from app.services.recipe_service import calculate_recipe_cost_range_trend
 
-    # 计算范围：与会话 X-Region / 用户默认计算范围同口径（与 evaluate 一致）
-    region_id = resolve_region_param(db, user, None)
+    # 计算范围：显式传入优先；否则与会话 X-Region / 用户默认计算范围同口径（与 evaluate 一致）
+    if region_id is _REGION_UNSET:
+        region_id = resolve_region_param(db, user, None)
 
     end = datetime.datetime.now(datetime.timezone.utc) - timedelta(days=offset_days)
     start = end - timedelta(days=days - 1)

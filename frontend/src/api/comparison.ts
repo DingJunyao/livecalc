@@ -96,3 +96,116 @@ export async function getComparisonEntityPrices(
     },
   }) as EntityPricesResponse
 }
+
+// ==================== 二期：菜谱 / 试算成本对比 ====================
+
+export interface RecipeBreakdownItem {
+  ingredient_name: string | null
+  ingredient_id: number | null
+  quantity: number | null
+  cost: number | null
+  fallback_chain: string | null
+  aggregation_chain: string | null
+  price_recorded_at: string | null
+}
+
+export interface RecipeRegionCost {
+  total_cost: number | null
+  cost_per_serving: number | null
+  currency: string | null
+  missing_ingredients: string[]
+  breakdown: RecipeBreakdownItem[]
+}
+
+export interface RecipeCostRow {
+  recipe_id: number
+  name: string
+  /** 键为 region_id 字符串；该地区无数据时为 null */
+  regions: Record<string, RecipeRegionCost | null>
+}
+
+export interface RecipeCostsResponse {
+  currency: string
+  regions: RegionMeta[]
+  recipes: RecipeCostRow[]
+}
+
+export interface RecipeCostTrendPoint {
+  date: string
+  min_cost?: number
+  max_cost?: number
+  avg_cost: number
+  has_record?: boolean
+}
+
+/** 菜谱×地区成本矩阵（明细里 cost=null 的行即该地区缺价食材）。 */
+export async function getComparisonRecipeCosts(
+  recipeIds: number[],
+  regionIds: number[],
+): Promise<RecipeCostsResponse> {
+  return await api.get('/comparison/recipe-costs', {
+    params: { recipe_ids: recipeIds.join(','), region_ids: regionIds.join(',') },
+  }) as RecipeCostsResponse
+}
+
+/** 单菜谱的多地区成本趋势（键为 region_id 字符串）。 */
+export async function getComparisonRecipeCostTrend(
+  recipeId: number,
+  regionIds: number[],
+  days = 30,
+): Promise<{ regions: Record<string, RecipeCostTrendPoint[]> }> {
+  return await api.get('/comparison/recipe-cost-trend', {
+    params: { recipe_id: recipeId, region_ids: regionIds.join(','), days },
+  })
+}
+
+export interface PlanRegionTotals {
+  region_id: number
+  totals: {
+    cost?: number
+    currency?: string | null
+    calories?: number
+    protein_g?: number
+    carbs_g?: number
+    fat_g?: number
+  }
+}
+
+/** 同一组试算条目在 N 个地区分别求值（试算详情合计卡口径切换）。 */
+export async function postComparisonPlanEvaluateRegions(
+  items: Array<Record<string, any>>,
+  regionIds: number[],
+  kind = 'meal',
+  mealType = 'lunch',
+): Promise<{ regions: PlanRegionTotals[] }> {
+  return await api.post('/comparison/plan-evaluate-regions', {
+    kind, meal_type: mealType, items, region_ids: regionIds,
+  })
+}
+
+export interface PlanCostRow {
+  plan_id: number
+  name: string
+  regions: Record<string, PlanRegionTotals['totals'] | null>
+}
+
+/** 已保存方案×地区合计对照（试算对比 tab）。 */
+export async function getComparisonPlanCosts(
+  planIds: number[],
+  regionIds: number[],
+): Promise<{ plans: PlanCostRow[]; regions: number[] }> {
+  return await api.get('/comparison/plan-costs', {
+    params: { plan_ids: planIds.join(','), region_ids: regionIds.join(',') },
+  })
+}
+
+/** 单方案的多地区成本趋势（键为 region_id 字符串，点为 plan_cost_trend 结构）。 */
+export async function getComparisonPlanCostTrend(
+  planId: number,
+  regionIds: number[],
+  days = 30,
+): Promise<{ regions: Record<string, RecipeCostTrendPoint[]> }> {
+  return await api.get('/comparison/plan-cost-trend', {
+    params: { plan_id: planId, region_ids: regionIds.join(','), days },
+  })
+}

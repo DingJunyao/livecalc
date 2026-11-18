@@ -3,6 +3,7 @@
     <v-tabs v-model="tab" density="comfortable" color="primary">
       <v-tab value="overview">{{ t('compare.tabOverview') }}</v-tab>
       <v-tab value="prices">{{ t('compare.tabPrices') }}</v-tab>
+      <v-tab value="recipes">{{ t('compare.tabRecipes') }}</v-tab>
     </v-tabs>
     <v-divider />
 
@@ -137,6 +138,134 @@
           :empty-text="t('compare.noMatrixData')"
         />
       </v-tabs-window-item>
+
+      <!-- ============ 菜谱·试算 ============ -->
+      <v-tabs-window-item value="recipes">
+        <!-- 菜谱成本 -->
+        <v-card variant="outlined" class="mb-4">
+          <v-card-text>
+            <div class="d-flex align-center flex-wrap ga-3">
+              <span class="text-subtitle-2 text-medium-emphasis">{{ t('compare.recipesSection') }}</span>
+              <v-autocomplete
+                v-model="recipeIds"
+                :items="recipeOptions"
+                :loading="recipeSearching"
+                v-model:search="recipeSearch"
+                :custom-filter="() => true"
+                multiple
+                chips
+                closable-chips
+                density="compact"
+                variant="outlined"
+                hide-details
+                :label="t('compare.selectRecipes')"
+                :placeholder="t('compare.searchEntityPlaceholder')"
+                item-title="name"
+                item-value="id"
+                :no-data-text="t('compare.noEntityMatch')"
+                style="max-width: 420px"
+              />
+              <span v-if="regionIds.length < 2" class="text-caption text-warning">
+                {{ t('compare.needTwoRegions') }}
+              </span>
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <RegionPriceMatrix
+          :title="t('compare.recipeMatrixTitle')"
+          :unit-note="t('compare.recipeMatrixUnitNote')"
+          :columns="matrixColumns"
+          :rows="recipeMatrixRows"
+          :loading="recipeMatrixLoading"
+          :empty-text="t('compare.noMatrixData')"
+          clickable-rows
+          @row-click="(id: number | string) => (trendRecipeId = Number(id))"
+        />
+
+        <PriceTrendChart
+          v-if="trendRecipeId != null"
+          :key="trendRecipeId"
+          :title="t('compare.recipeTrendTitle', { name: trendRecipeName })"
+          icon="mdi-chart-line"
+          icon-color="tertiary"
+          :unit="t('compare.trendUnitJin')"
+          :empty-text="t('compare.noBasketData')"
+          :data="recipeTrendBaseData"
+          :comparison-series="recipeTrendSeries"
+          :compare-label="t('charts.byRegion')"
+          :loading="recipeTrendLoading"
+          class="mt-4"
+        />
+
+        <v-divider class="my-4" />
+
+        <!-- 试算合计 -->
+        <v-card variant="outlined" class="mb-4">
+          <v-card-text>
+            <div class="d-flex align-center flex-wrap ga-3">
+              <span class="text-subtitle-2 text-medium-emphasis">{{ t('compare.plansSection') }}</span>
+              <v-autocomplete
+                v-model="planIds"
+                :items="planOptions"
+                :loading="planSearching"
+                multiple
+                chips
+                closable-chips
+                density="compact"
+                variant="outlined"
+                hide-details
+                :label="t('compare.selectPlans')"
+                item-title="name"
+                item-value="id"
+                :no-data-text="t('compare.noEntityMatch')"
+                style="max-width: 420px"
+              />
+            </div>
+          </v-card-text>
+        </v-card>
+
+        <RegionPriceMatrix
+          :title="t('compare.planMatrixTitle')"
+          :unit-note="t('compare.planMatrixUnitNote')"
+          :columns="matrixColumns"
+          :rows="planMatrixRows"
+          :loading="planMatrixLoading"
+          :empty-text="t('compare.noMatrixData')"
+          clickable-rows
+          @row-click="(id: number | string) => (nutrientPlanId = Number(id))"
+        />
+
+        <!-- 单方案各地区营养对照 -->
+        <v-card v-if="nutrientPlanRow" variant="outlined" class="mt-4">
+          <v-card-text>
+            <div class="text-subtitle-2 text-medium-emphasis mb-2">
+              {{ t('compare.planNutrientTitle', { name: nutrientPlanRow.name }) }}
+            </div>
+            <v-table density="compact">
+              <thead>
+                <tr>
+                  <th class="text-left">{{ t('compare.matrixEntityCol') }}</th>
+                  <th v-for="c in matrixColumns" :key="String(c.id)" class="text-end">{{ c.label }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="metric in planNutrientMetrics" :key="metric.key">
+                  <td>{{ metric.label }}</td>
+                  <td
+                    v-for="c in matrixColumns"
+                    :key="String(c.id)"
+                    class="text-end"
+                    :class="{ 'text-success font-weight-bold': isPlanNutrientBest(nutrientPlanRow, c.id, metric.key) }"
+                  >
+                    {{ formatPlanMetric(nutrientPlanRow.regions[String(c.id)], metric) }}
+                  </td>
+                </tr>
+              </tbody>
+            </v-table>
+          </v-card-text>
+        </v-card>
+      </v-tabs-window-item>
     </v-tabs-window>
   </v-container>
 </template>
@@ -147,6 +276,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useUserCurrency } from '@/composables/useUserCurrency'
+import { formatMoney } from '@/utils/currency'
 import RegionMultiSelect from '@/components/common/RegionMultiSelect.vue'
 import RegionPriceMatrix from '@/components/compare/RegionPriceMatrix.vue'
 import SimpleBarChart from '@/components/charts/SimpleBarChart.vue'
@@ -156,14 +287,21 @@ import {
   getComparisonRegions,
   getComparisonSummary,
   getComparisonEntityPrices,
+  getComparisonRecipeCosts,
+  getComparisonRecipeCostTrend,
+  getComparisonPlanCosts,
   type ComparisonSummary,
   type EntityPricesResponse,
+  type RecipeCostsResponse,
+  type RecipeCostTrendPoint,
+  type PlanCostRow,
   type RegionCandidate,
   type RegionSummaryItem,
 } from '@/api/comparison'
 import { api } from '@/api'
 
 const { t } = useI18n()
+const { currency: userCurrency } = useUserCurrency()
 const route = useRoute()
 const router = useRouter()
 
@@ -187,7 +325,11 @@ interface MatrixRow {
 }
 
 // ---- URL 同步 ----
-const tab = ref<'overview' | 'prices'>((route.query.tab as string) === 'prices' ? 'prices' : 'overview')
+const tab = ref<'overview' | 'prices' | 'recipes'>(
+  ['prices', 'recipes'].includes(route.query.tab as string)
+    ? (route.query.tab as 'prices' | 'recipes')
+    : 'overview',
+)
 const regionIds = ref<number[]>([])
 
 const queryRegionIds = computed<number[]>(() => {
@@ -217,6 +359,8 @@ onMounted(async () => {
       regionIds.value = candidates.value.slice(0, 3).map(r => r.region_id)
     }
   } catch { /* 候选加载失败时保持手动选择 */ }
+  // 试算下拉的全量选项（端点无分页/搜索，一次拉全 + 客户端过滤）
+  void loadPlanOptions()
 })
 
 const baseRegionName = computed(() => {
@@ -375,6 +519,217 @@ const matrixRows = computed<MatrixRow[]>(() => {
     ),
   }))
 })
+
+// ==================== 菜谱·试算 tab ====================
+
+// ---- 菜谱 ----
+const recipeIds = ref<number[]>([])
+const recipeOptions = ref<Array<{ id: number; name: string }>>([])
+const recipeSearching = ref(false)
+const recipeSearch = ref('')
+let recipeSearchSeq = 0
+let recipeSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+function fetchRecipeOptions(keyword: string) {
+  const seq = ++recipeSearchSeq
+  recipeSearching.value = true
+  const params: Record<string, any> = { limit: 20 }
+  if (keyword) params.search = keyword
+  api.get('/recipes', { params }).then((res: any) => {
+    if (seq !== recipeSearchSeq) return
+    recipeOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
+  }).catch(() => {
+    if (seq === recipeSearchSeq) recipeOptions.value = []
+  }).finally(() => {
+    if (seq === recipeSearchSeq) recipeSearching.value = false
+  })
+}
+
+watch(recipeSearch, (kw) => {
+  if (recipeSearchTimer) clearTimeout(recipeSearchTimer)
+  recipeSearchTimer = setTimeout(() => fetchRecipeOptions((kw || '').trim()), 300)
+})
+
+const recipeMatrixData = ref<RecipeCostsResponse | null>(null)
+const recipeMatrixLoading = ref(false)
+let recipeMatrixSeq = 0
+
+watch([recipeIds, regionIds], async () => {
+  recipeMatrixData.value = null
+  trendRecipeId.value = null
+  const rids = regionIds.value
+  const ridsRec = recipeIds.value
+  if (!rids.length || !ridsRec.length) return
+  const seq = ++recipeMatrixSeq
+  recipeMatrixLoading.value = true
+  try {
+    const res = await getComparisonRecipeCosts(ridsRec, rids)
+    if (seq === recipeMatrixSeq) recipeMatrixData.value = res
+  } catch { /* 静默 */ }
+  finally {
+    if (seq === recipeMatrixSeq) recipeMatrixLoading.value = false
+  }
+}, { immediate: true, deep: true })
+
+const recipeMatrixRows = computed<MatrixRow[]>(() => {
+  const data = recipeMatrixData.value
+  if (!data) return []
+  return data.recipes.map(r => ({
+    id: r.recipe_id,
+    label: r.name,
+    unit: null,
+    cells: Object.fromEntries(
+      Object.entries(r.regions).map(([rid, cell]) => [
+        rid,
+        cell ? { price: cell.cost_per_serving ?? cell.total_cost, isStale: false } : null,
+      ]),
+    ),
+  }))
+})
+
+// 单菜谱多地区趋势（点矩阵行进入）
+const trendRecipeId = ref<number | null>(null)
+const recipeTrend = ref<Record<string, RecipeCostTrendPoint[]> | null>(null)
+const recipeTrendLoading = ref(false)
+let recipeTrendSeq = 0
+
+const trendRecipeName = computed(() =>
+  recipeMatrixData.value?.recipes.find(r => r.recipe_id === trendRecipeId.value)?.name || '',
+)
+
+watch([trendRecipeId, regionIds], async () => {
+  recipeTrend.value = null
+  const rid = trendRecipeId.value
+  const rids = regionIds.value
+  if (rid == null || !rids.length) return
+  const seq = ++recipeTrendSeq
+  recipeTrendLoading.value = true
+  try {
+    const res = await getComparisonRecipeCostTrend(rid, rids, 30)
+    if (seq === recipeTrendSeq) recipeTrend.value = res.regions
+  } catch { /* 静默 */ }
+  finally {
+    if (seq === recipeTrendSeq) recipeTrendLoading.value = false
+  }
+}, { immediate: true })
+
+function trendPointsToData(points: RecipeCostTrendPoint[]): TrendSeries['data'] {
+  return points.map(p => ({
+    date: p.date,
+    min: p.min_cost ?? p.avg_cost,
+    max: p.max_cost ?? p.avg_cost,
+    avg: p.avg_cost,
+    count: 1,
+    recorded: p.has_record !== false,
+  }))
+}
+
+const recipeTrendBaseData = computed(() => {
+  const base = recipeMatrixData.value?.regions.find(r => r.region_id === regionIds.value[0])
+  const key = base ? String(base.region_id) : Object.keys(recipeTrend.value || {})[0]
+  return trendPointsToData((recipeTrend.value || {})[key] || [])
+})
+
+const recipeTrendSeries = computed<TrendSeries[]>(() =>
+  Object.entries(recipeTrend.value || {}).map(([rid, points]) => ({
+    merchantId: rid,
+    name: matrixColumns.value.find(c => String(c.id) === rid)?.label || rid,
+    data: trendPointsToData(points),
+  })).filter(s => s.data.length > 0),
+)
+
+// ---- 试算 ----
+const planIds = ref<number[]>([])
+const planOptions = ref<Array<{ id: number; name: string }>>([])
+const planSearching = ref(false)
+
+async function loadPlanOptions() {
+  planSearching.value = true
+  try {
+    const res: any = await api.get('/meal-plans')
+    planOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
+  } catch {
+    planOptions.value = []
+  } finally {
+    planSearching.value = false
+  }
+}
+
+const planMatrixData = ref<{ plans: PlanCostRow[] } | null>(null)
+const planMatrixLoading = ref(false)
+let planMatrixSeq = 0
+
+watch([planIds, regionIds], async () => {
+  planMatrixData.value = null
+  nutrientPlanId.value = null
+  const pids = planIds.value
+  const rids = regionIds.value
+  if (!rids.length || !pids.length) return
+  const seq = ++planMatrixSeq
+  planMatrixLoading.value = true
+  try {
+    const res = await getComparisonPlanCosts(pids, rids)
+    if (seq === planMatrixSeq) planMatrixData.value = res
+  } catch { /* 静默 */ }
+  finally {
+    if (seq === planMatrixSeq) planMatrixLoading.value = false
+  }
+}, { immediate: true, deep: true })
+
+const planMatrixRows = computed<MatrixRow[]>(() => {
+  const data = planMatrixData.value
+  if (!data) return []
+  return data.plans.map(p => ({
+    id: p.plan_id,
+    label: p.name,
+    unit: null,
+    cells: Object.fromEntries(
+      Object.entries(p.regions).map(([rid, totals]) => [
+        rid,
+        totals ? { price: totals.cost ?? null, isStale: false } : null,
+      ]),
+    ),
+  }))
+})
+
+// 单方案各地区营养对照（点矩阵行进入；营养与地区无关但成本随地区）
+const nutrientPlanId = ref<number | null>(null)
+const nutrientPlanRow = computed(() =>
+  planMatrixData.value?.plans.find(p => p.plan_id === nutrientPlanId.value) || null,
+)
+
+const planNutrientMetrics = computed(() => [
+  { key: 'cost', label: t('compare.metricCost'), best: 'min' as const },
+  { key: 'calories', label: t('compare.metricCalories'), best: null },
+  { key: 'protein_g', label: t('compare.metricProtein'), best: null },
+  { key: 'carbs_g', label: t('compare.metricCarbs'), best: null },
+  { key: 'fat_g', label: t('compare.metricFat'), best: null },
+])
+
+function isPlanNutrientBest(
+  row: PlanCostRow,
+  colId: number | string,
+  key: string,
+): boolean {
+  if (key !== 'cost') return false
+  const values = matrixColumns.value
+    .map(c => row.regions[String(c.id)]?.cost)
+    .filter((v): v is number => v != null)
+  if (values.length < 2) return false
+  const mine = row.regions[String(colId)]?.cost
+  if (mine == null) return false
+  return mine <= Math.min(...values)
+}
+
+function formatPlanMetric(
+  totals: PlanCostRow['regions'][string] | null,
+  metric: { key: string },
+): string {
+  const v = (totals as any)?.[metric.key]
+  if (v == null || !Number.isFinite(Number(v))) return '—'
+  if (metric.key === 'cost') return formatMoney(Number(v), userCurrency.value)
+  return String(Math.round(Number(v) * 10) / 10)
+}
 </script>
 
 <style scoped>

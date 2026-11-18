@@ -356,6 +356,11 @@ addRoute('/sparklines/ingredients', { get: sparklines.getIngredientSparklines })
 addRoute('/comparison/regions', { get: comparison.getComparisonRegions })
 addRoute('/comparison/summary', { get: comparison.getComparisonSummary })
 addRoute('/comparison/entity-prices', { get: comparison.getComparisonEntityPrices })
+addRoute('/comparison/recipe-costs', { get: comparison.getComparisonRecipeCosts })
+addRoute('/comparison/recipe-cost-trend', { get: comparison.getComparisonRecipeCostTrend })
+addRoute('/comparison/plan-evaluate-regions', { post: comparison.getComparisonPlanEvaluateRegions })
+addRoute('/comparison/plan-costs', { get: comparison.getComparisonPlanCosts })
+addRoute('/comparison/plan-cost-trend', { get: comparison.getComparisonPlanCostTrend })
 
 // ---- Agent ----
 addRoute('/agent/task-types', { get: agents.getTaskTypes })

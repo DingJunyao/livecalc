@@ -337,3 +337,184 @@ def test_comparison_region_ids_validation():
     with pytest.raises(LocalizedHTTPException):
         _parse_region_ids("1,2,3,4,5,6,7")
     assert _parse_region_ids("3,1,1,2") == [3, 1, 2]  # 去重保序
+
+
+# ==================== 二期：菜谱 / 试算成本对比 ====================
+
+
+def _build_recipe_fixture(db_session, fx):
+    """在既有地区夹具上建菜谱（1 份，含该原料 500g）。
+
+    条目单位用 id=3 的「克」（get-or-create）：`_qty_unit_to_grams` 硬编码
+    unit_id==3 短路视为克，避免内存测试库单位 id 不定导致归克失败。
+    """
+    from app.models.recipe import Recipe, RecipeIngredient
+    from app.models.unit import Unit
+
+    gram3 = db_session.get(Unit, 3)
+    if gram3 is None:
+        gram3 = Unit(
+            id=3, name="克(test)", abbreviation="g_test", unit_type="mass",
+            si_factor=0.001, is_active=True,
+        )
+        db_session.add(gram3)
+        db_session.flush()
+
+    recipe = Recipe(
+        name=f"测试菜谱-{fx['suffix']}", servings=1, user_id=FakeUser.id,
+        is_public=False, is_active=True,
+    )
+    db_session.add(recipe)
+    db_session.flush()
+    db_session.add(RecipeIngredient(
+        recipe_id=recipe.id, ingredient_id=fx["ingredient"].id,
+        quantity=str(STD_QTY), unit_id=gram3.id, ai_inferred=False,
+    ))
+    db_session.commit()
+    return recipe
+
+
+def _cleanup_recipe(db_session, recipe):
+    from app.models.recipe import Recipe, RecipeIngredient
+
+    db_session.query(RecipeIngredient).filter(
+        RecipeIngredient.recipe_id == recipe.id
+    ).delete(synchronize_session=False)
+    db_session.query(Recipe).filter(Recipe.id == recipe.id).delete(
+        synchronize_session=False
+    )
+    db_session.commit()
+
+
+def test_comparison_recipe_costs_by_region(db_session):
+    """菜谱×地区成本：A 地取本地价（10 元/斤 × 1 斤 = 10），B 地取贵价。"""
+    from app.api.comparison import comparison_recipe_costs
+
+    fx = _build_fixture(db_session)
+    recipe = _build_recipe_fixture(db_session, fx)
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        res = asyncio.run(comparison_recipe_costs(
+            request=_fake_request(), recipe_ids=str(recipe.id), region_ids=rids,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        assert len(res.recipes) == 1
+        row = res.recipes[0]
+        cell_a = row.regions[str(fx["cities"]["A"].id)]
+        cell_b = row.regions[str(fx["cities"]["B"].id)]
+        assert cell_a is not None and cell_b is not None
+        assert cell_a.total_cost == pytest.approx(PRICE_A)
+        assert cell_b.total_cost == pytest.approx(PRICE_B)
+        # 1 份 → 每份成本 = 总成本
+        assert cell_a.cost_per_serving == pytest.approx(PRICE_A)
+        assert cell_a.missing_ingredients == []
+        # 明细行有原料名与成本（供分析页地区比价矩阵复用）
+        assert cell_a.breakdown[0].ingredient_name.startswith("测试原料")
+        assert cell_a.breakdown[0].cost == pytest.approx(PRICE_A)
+    finally:
+        _cleanup_recipe(db_session, recipe)
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_recipe_cost_trend_by_region(db_session):
+    """单菜谱多地区趋势：A 地整窗 ≈10，B 地 ≈100（前向填充）。"""
+    from app.api.comparison import comparison_recipe_cost_trend
+
+    fx = _build_fixture(db_session)
+    recipe = _build_recipe_fixture(db_session, fx)
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        res = asyncio.run(comparison_recipe_cost_trend(
+            recipe_id=recipe.id, region_ids=rids, days=7,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        trend_a = res["regions"][str(fx["cities"]["A"].id)]
+        trend_b = res["regions"][str(fx["cities"]["B"].id)]
+        assert trend_a and trend_b
+        assert trend_a[-1]["avg_cost"] == pytest.approx(PRICE_A)
+        assert trend_b[-1]["avg_cost"] == pytest.approx(PRICE_B)
+    finally:
+        _cleanup_recipe(db_session, recipe)
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_plan_evaluate_regions_explicit_override(db_session):
+    """分地区求值：显式 region_id 优先于会话 X-Region（对比不受会话范围干扰）。"""
+    from app.api.comparison import comparison_plan_evaluate_regions
+    from app.schemas.comparison import PlanEvaluateRegionsBody, PlanItemBody
+    from app.services.session_context import reset_session_region, set_session_region
+
+    fx = _build_fixture(db_session)
+    body = PlanEvaluateRegionsBody(
+        kind="meal", meal_type="dinner",
+        items=[PlanItemBody(
+            group="dinner", item_type="product",
+            product_id=fx["product"].id, quantity=STD_QTY,
+            unit_id=fx["gram"].id,
+        )],
+        region_ids=[fx["cities"]["A"].id, fx["cities"]["B"].id],
+    )
+    try:
+        # 会话范围故意指向城市C（无数据）：显式 region_ids 必须生效
+        set_session_region(fx["cities"]["C"].id)
+        try:
+            res = asyncio.run(comparison_plan_evaluate_regions(
+                body, db=db_session, current_user=FakeUser(), tz="UTC",
+            ))
+        finally:
+            reset_session_region()
+        by_id = {r.region_id: r for r in res.regions}
+        assert by_id[fx["cities"]["A"].id].totals["cost"] == pytest.approx(PRICE_A)
+        assert by_id[fx["cities"]["B"].id].totals["cost"] == pytest.approx(PRICE_B)
+    finally:
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_plan_costs_and_trend_by_region(db_session):
+    """已保存方案×地区：合计对照 + 多地区趋势（显式 region 覆写生效）。"""
+    from app.api.comparison import comparison_plan_costs, comparison_plan_cost_trend
+    from app.models.meal_plan import MealPlan, MealPlanItem
+
+    fx = _build_fixture(db_session)
+    plan = MealPlan(
+        user_id=FakeUser.id, name=f"测试方案-{fx['suffix']}",
+        kind="meal", note=None,
+    )
+    db_session.add(plan)
+    db_session.flush()
+    db_session.add(MealPlanItem(
+        plan_id=plan.id, group="other", item_type="product",
+        product_id=fx["product"].id, quantity=STD_QTY,
+        unit_id=fx["gram"].id, sort_order=0,
+    ))
+    db_session.commit()
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        res = asyncio.run(comparison_plan_costs(
+            request=_fake_request(), plan_ids=str(plan.id), region_ids=rids,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        row = res["plans"][0]
+        assert row["plan_id"] == plan.id
+        assert row["regions"][str(fx["cities"]["A"].id)]["cost"] == pytest.approx(PRICE_A)
+        assert row["regions"][str(fx["cities"]["B"].id)]["cost"] == pytest.approx(PRICE_B)
+
+        trend = asyncio.run(comparison_plan_cost_trend(
+            plan_id=plan.id, region_ids=rids, days=7,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        trend_a = trend["regions"][str(fx["cities"]["A"].id)]
+        trend_b = trend["regions"][str(fx["cities"]["B"].id)]
+        assert trend_a and trend_b
+        assert trend_a[-1]["total_cost"] == pytest.approx(PRICE_A)
+        assert trend_b[-1]["total_cost"] == pytest.approx(PRICE_B)
+        assert any(p["has_record"] for p in trend_a)
+    finally:
+        db_session.query(MealPlanItem).filter(
+            MealPlanItem.plan_id == plan.id
+        ).delete(synchronize_session=False)
+        db_session.query(MealPlan).filter(MealPlan.id == plan.id).delete(
+            synchronize_session=False
+        )
+        db_session.commit()
+        _cleanup_fixture(db_session, fx)

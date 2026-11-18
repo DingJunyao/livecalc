@@ -1,5 +1,5 @@
 """跨地区物价对比的响应 schema。"""
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
 
@@ -77,3 +77,73 @@ class EntityPricesResponse(BaseModel):
     trend_unit: str = "斤"
     regions: List[RegionMeta] = []
     entities: List[EntityPriceRow]
+
+
+# ==================== 二期：菜谱 / 试算成本对比 ====================
+
+
+class RecipeBreakdownItem(BaseModel):
+    """菜谱成本明细行（calculate_recipe_cost_as_of 的 cost_breakdown 裁剪版）。"""
+
+    ingredient_name: Optional[str] = None
+    ingredient_id: Optional[int] = None
+    quantity: Optional[float] = None
+    cost: Optional[float] = None
+    fallback_chain: Optional[str] = None
+    aggregation_chain: Optional[str] = None
+    price_recorded_at: Optional[str] = None
+
+
+class RecipeRegionCost(BaseModel):
+    """单菜谱×单地区：总成本/每份成本 + 明细（cost=None 的行即该地区缺价的食材）。"""
+
+    total_cost: Optional[float] = None
+    cost_per_serving: Optional[float] = None
+    currency: Optional[str] = None
+    missing_ingredients: List[str] = []
+    breakdown: List[RecipeBreakdownItem] = []
+
+
+class RecipeCostRow(BaseModel):
+    recipe_id: int
+    name: str
+    # 键为 region_id 字符串；该地区计算失败/无数据时值为 None
+    regions: Dict[str, Optional[RecipeRegionCost]]
+
+
+class RecipeCostsResponse(BaseModel):
+    currency: str
+    regions: List[RegionMeta] = []
+    recipes: List[RecipeCostRow]
+
+
+class PlanRegionTotals(BaseModel):
+    region_id: int
+    # evaluate 的 totals：cost / calories / protein_g / carbs_g / fat_g / currency
+    totals: Dict[str, Any]
+
+
+class PlanEvaluateRegionsResponse(BaseModel):
+    regions: List[PlanRegionTotals]
+
+
+class PlanItemBody(BaseModel):
+    """试算条目（与 meal_plans.PlanItemIn 同形，避免跨 API 模块耦合）。"""
+
+    group: str = "other"
+    item_type: str
+    recipe_id: Optional[int] = None
+    ingredient_id: Optional[int] = None
+    product_id: Optional[int] = None
+    servings: Optional[float] = None
+    quantity: Optional[float] = None
+    unit_id: Optional[int] = None
+    sort_order: int = 0
+    note: Optional[str] = None
+
+
+class PlanEvaluateRegionsBody(BaseModel):
+    kind: str = "meal"
+    meal_type: str = "lunch"
+    items: List[PlanItemBody] = []
+    region_ids: List[int] = []

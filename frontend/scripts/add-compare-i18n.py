@@ -22,6 +22,7 @@ COMPARE_NS = {
     "zh-CN": {
         "tabOverview": "概览",
         "tabPrices": "原料·商品",
+        "tabRecipes": "菜谱·试算",
         "regionSelector": "选择对比地区",
         "baseRegionNote": "{base} 为基准地区（物价指数 = 100）",
         "needTwoRegions": "选择至少两个地区开始对比",
@@ -47,10 +48,29 @@ COMPARE_NS = {
         "staleRecord": "最近记录 {days} 天前",
         "noRegionData": "所选地区暂无该实体价格",
         "unknownRegion": "未知地区",
+        "recipesSection": "菜谱成本",
+        "selectRecipes": "选择菜谱",
+        "recipeMatrixTitle": "各地区菜谱成本对比",
+        "recipeMatrixUnitNote": "每份成本，最低绿色加粗；点击行看多地区趋势",
+        "recipeTrendTitle": "{name} 的各地区成本趋势",
+        "plansSection": "试算合计",
+        "selectPlans": "选择试算方案",
+        "planMatrixTitle": "各地区试算成本对比",
+        "planMatrixUnitNote": "合计成本，最低绿色加粗；点击行看营养对照",
+        "planNutrientTitle": "{name} 的各地区合计对照",
+        "metricCost": "成本",
+        "metricCalories": "热量 (kcal)",
+        "metricProtein": "蛋白质 (g)",
+        "metricCarbs": "碳水 (g)",
+        "metricFat": "脂肪 (g)",
+        "dimensionCurrent": "当前",
+        "regionCol": "地区",
+        "planTrendTitle": "各地区成本趋势",
     },
     "en-US": {
         "tabOverview": "Overview",
         "tabPrices": "Ingredients & products",
+        "tabRecipes": "Recipes & plans",
         "regionSelector": "Regions to compare",
         "baseRegionNote": "{base} is the base region (price index = 100)",
         "needTwoRegions": "Pick at least two regions to start comparing",
@@ -76,10 +96,29 @@ COMPARE_NS = {
         "staleRecord": "Last record {days} days ago",
         "noRegionData": "No price data in the selected regions",
         "unknownRegion": "Unknown region",
+        "recipesSection": "Recipe costs",
+        "selectRecipes": "Select recipes",
+        "recipeMatrixTitle": "Recipe costs by region",
+        "recipeMatrixUnitNote": "per serving, lowest in bold green; click a row for trends",
+        "recipeTrendTitle": "Cost trend of {name} by region",
+        "plansSection": "Plan totals",
+        "selectPlans": "Select plans",
+        "planMatrixTitle": "Plan costs by region",
+        "planMatrixUnitNote": "total cost, lowest in bold green; click a row for nutrients",
+        "planNutrientTitle": "Totals of {name} by region",
+        "metricCost": "Cost",
+        "metricCalories": "Calories (kcal)",
+        "metricProtein": "Protein (g)",
+        "metricCarbs": "Carbs (g)",
+        "metricFat": "Fat (g)",
+        "dimensionCurrent": "Current",
+        "regionCol": "Region",
+        "planTrendTitle": "Cost trend by region",
     },
     "ar": {
         "tabOverview": "نظرة عامة",
         "tabPrices": "المواد والمنتجات",
+        "tabRecipes": "الوصفات والخطط",
         "regionSelector": "المناطق المقارَنة",
         "baseRegionNote": "{base} هي المنطقة المرجعية (مؤشر الأسعار = 100)",
         "needTwoRegions": "اختر منطقتين على الأقل لبدء المقارنة",
@@ -105,6 +144,24 @@ COMPARE_NS = {
         "staleRecord": "آخر سجل قبل {days} يوم",
         "noRegionData": "لا توجد بيانات أسعار في المناطق المحددة",
         "unknownRegion": "منطقة غير معروفة",
+        "recipesSection": "تكلفة الوصفات",
+        "selectRecipes": "اختر الوصفات",
+        "recipeMatrixTitle": "تكلفة الوصفات حسب المنطقة",
+        "recipeMatrixUnitNote": "لكل حصة، الأدنى بالخط العريض الأخضر؛ انقر صفًا لعرض الاتجاه",
+        "recipeTrendTitle": "اتجاه تكلفة {name} حسب المنطقة",
+        "plansSection": "إجماليات الخطط",
+        "selectPlans": "اختر الخطط",
+        "planMatrixTitle": "تكلفة الخطط حسب المنطقة",
+        "planMatrixUnitNote": "التكلفة الإجمالية، الأدنى بالخط العريض الأخضر؛ انقر صفًا لعرض العناصر الغذائية",
+        "planNutrientTitle": "إجماليات {name} حسب المنطقة",
+        "metricCost": "التكلفة",
+        "metricCalories": "السعرات (kcal)",
+        "metricProtein": "البروتين (غ)",
+        "metricCarbs": "الكربوهيدرات (غ)",
+        "metricFat": "الدهون (غ)",
+        "dimensionCurrent": "الحالي",
+        "regionCol": "المنطقة",
+        "planTrendTitle": "اتجاه التكلفة حسب المنطقة",
     },
 }
 
@@ -150,44 +207,62 @@ def insert_into_block(lines: list[str], block_key: str, new_key: str, new_value:
     return len(lines)
 
 
+def merge_into_compare_block(lines: list[str], ns: dict) -> int:
+    """向已存在的顶层 compare 块末尾插入缺失键（保持其余行不动）。返回插入数。"""
+    start = next(i for i, l in enumerate(lines) if l.rstrip("\n") == '  "compare": {')
+    end = next(i for i in range(start + 1, len(lines)) if lines[i].rstrip("\n") == "  },")
+    existing = set()
+    for l in lines[start + 1:end]:
+        s = l.strip()
+        if s.startswith('"') and '":' in s:
+            existing.add(s[1:s.index('"', 1)])
+    added = 0
+    for key, value in ns.items():
+        if key in existing:
+            continue
+        line = f'    "{key}": {json.dumps(value, ensure_ascii=False)}'
+        # 插入位置：end（即 "  }," 前），并把前一行补逗号
+        last_idx = end - 1 + added
+        if not lines[last_idx].rstrip("\n").endswith(","):
+            lines[last_idx] = lines[last_idx].rstrip("\n") + ",\n"
+        lines.insert(last_idx + 1, line + ",\n")
+        added += 1
+        end = end  # end 相对插入点随 added 偏移，用 last_idx 推进即可
+    # 最后插入的键行不需要逗号（块尾）
+    if added:
+        tail_idx = end - 1 + added
+        lines[tail_idx] = lines[tail_idx].rstrip("\n").rstrip(",") + "\n"
+    return added
+
+
 def main() -> int:
     for locale, path in LOCALES.items():
         text = path.read_text(encoding="utf-8")
-        if '"compare": {' in text and '"byRegion"' in text:
-            print(f"[skip] {locale}: keys already present")
-        else:
-            lines = text.splitlines(keepends=True)
+        lines = text.splitlines(keepends=True)
 
-            # 1) charts.byRegion（byMerchant 行自带逗号）
+        # 0) compare 命名空间：不存在则整体插入；存在则合并缺失键（二期新增）
+        if '  "compare": {' in text:
+            added = merge_into_compare_block(lines, COMPARE_NS[locale])
+            print(f"[merge] {locale}: +{added} compare keys")
+        else:
             idx = next(i for i, l in enumerate(lines) if '"byMerchant"' in l)
             lines.insert(idx + 1, f'    "byRegion": "{CHARTS_BY_REGION[locale]}",\n')
-
-            # 2) nav.compare / routes.compare（两块的末键都是 plans）
             insert_into_block(lines, "nav", "compare", NAV_COMPARE[locale])
             insert_into_block(lines, "routes", "compare", ROUTES_COMPARE[locale])
-
-            # 3) 顶层 compare 命名空间（插在顶层 "plans" 前）
             plans_idx = next(i for i, l in enumerate(lines) if l.rstrip("\n") == '  "plans": {')
             ns_json = json.dumps({"compare": COMPARE_NS[locale]}, ensure_ascii=False, indent=2)
-            ns_lines = ns_json.splitlines()[1:-1]  # 去掉外层 { 与 }
-            ns_lines[-1] = ns_lines[-1] + ","      # "  }" → "  },"
+            ns_lines = ns_json.splitlines()[1:-1]
+            ns_lines[-1] = ns_lines[-1] + ","
             lines[plans_idx:plans_idx] = [l + "\n" for l in ns_lines]
-
-            path.write_text("".join(lines), encoding="utf-8")
             print(f"[ok] {locale}: compare namespace inserted")
 
+        text = "".join(lines)
         # localErrors 键（幂等逐个补）
-        lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+        lines = text.splitlines(keepends=True)
         for key, value in LOCAL_ERRORS[locale].items():
             if f'"{key}"' in "".join(lines):
                 continue
             insert_into_block(lines, "localErrors", key, value)
-        # ingredients/products.regionPrices
-        for ns in ("ingredients", "products"):
-            if f'"{REGION_PRICES[locale]}"' in "".join(lines) and any(
-                '"regionPrices"' in l for l in lines
-            ):
-                pass  # 粗判已有
         if not any('"regionPrices"' in l for l in lines):
             insert_into_block(lines, "ingredients", "regionPrices", REGION_PRICES[locale])
             insert_into_block(lines, "products", "regionPrices", REGION_PRICES[locale])
