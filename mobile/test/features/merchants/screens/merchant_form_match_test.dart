@@ -18,6 +18,7 @@ class _FakeAppleMaps extends AppleMapsService {
   _FakeAppleMaps() : super();
 
   final searches = <String>[];
+  final centers = <LatLng?>[];
   List<ApplePlace> results = const [];
 
   @override
@@ -30,6 +31,7 @@ class _FakeAppleMaps extends AppleMapsService {
     double radiusMeters = 50000,
   }) async {
     searches.add(query);
+    centers.add(center);
     return results;
   }
 
@@ -67,6 +69,9 @@ const _fakePlace2 = ApplePlace(
   thoroughfare: '鼓楼路',
 );
 
+/// 注入的「设备当前位置」，与默认中心/候选坐标均不同。
+const _currentPosition = LatLng(34.77, 111.2);
+
 /// 内存瓦片：消除测试里真实网络请求的噪音。
 class _MemoryTileProvider extends TileProvider {
   @override
@@ -76,6 +81,7 @@ class _MemoryTileProvider extends TileProvider {
 
 /// 商家表单苹果地图匹配：名称/地址输入 → 候选 → 点选按规则带出
 /// （只填空字段/占位值，已有值不覆盖；地址流永不回写地址）。
+/// 偏置中心：用户手设/商家既有坐标 > 设备当前位置 > 匹配写入坐标 > 不偏置。
 void main() {
   late _MockRepo repo;
   late _FakeAppleMaps appleMaps;
@@ -127,6 +133,7 @@ void main() {
     WidgetTester tester, {
     Merchant? merchant,
     bool injectAppleMaps = true,
+    Future<LatLng?> Function()? currentLocationResolver,
   }) async {
     await tester.pumpWidget(ProviderScope(
       overrides: [
@@ -146,6 +153,7 @@ void main() {
                   repository: repo,
                   mapTileProvider: _MemoryTileProvider(),
                   appleMapsService: injectAppleMaps ? appleMaps : null,
+                  currentLocationResolver: currentLocationResolver,
                 ),
               ),
             ),
@@ -310,5 +318,95 @@ void main() {
 
     expect(find.text('苹果地图匹配'), findsNothing);
     expect(appleMaps.searches, isEmpty);
+  });
+
+  testWidgets('新增商家：名称匹配按当前位置偏置（定位只取一次）', (tester) async {
+    var calls = 0;
+    await pumpForm(
+      tester,
+      currentLocationResolver: () async {
+        calls++;
+        return _currentPosition;
+      },
+    );
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    expect(appleMaps.searches, ['蜜雪冰城']);
+    expect(appleMaps.centers.single, _currentPosition);
+
+    // 再搜一次不重复取定位（每次打开表单后台静默取一次）。
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城 ');
+    expect(appleMaps.centers, [_currentPosition, _currentPosition]);
+    expect(calls, 1);
+  });
+
+  testWidgets('编辑既有商家：按商家坐标偏置，不取当前位置', (tester) async {
+    var calls = 0;
+    await pumpForm(
+      tester,
+      merchant: const Merchant(
+        id: 7,
+        name: '既有商家',
+        latitude: 31.23,
+        longitude: 121.47,
+      ),
+      currentLocationResolver: () async {
+        calls++;
+        return _currentPosition;
+      },
+    );
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    expect(appleMaps.centers.single, const LatLng(31.23, 121.47));
+    expect(calls, 0);
+  });
+
+  testWidgets('点选候选写入坐标后：再次匹配仍按当前位置偏置', (tester) async {
+    await pumpForm(
+      tester,
+      currentLocationResolver: () async => _currentPosition,
+    );
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    await tester.tap(find.text('蜜雪冰城（玄武路店）'));
+    await tester.pumpAndSettle();
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城 ');
+    expect(appleMaps.centers, [_currentPosition, _currentPosition]);
+  });
+
+  testWidgets('定位不可用：回退到匹配写入的坐标', (tester) async {
+    await pumpForm(
+      tester,
+      currentLocationResolver: () async => null,
+    );
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    expect(appleMaps.centers.single, isNull);
+
+    await tester.tap(find.text('蜜雪冰城（玄武路店）'));
+    await tester.pumpAndSettle();
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城 ');
+    expect(appleMaps.centers.last, const LatLng(32.04, 118.79));
+  });
+
+  testWidgets('地图选点后：匹配按选点坐标偏置，不用当前位置', (tester) async {
+    await pumpForm(
+      tester,
+      currentLocationResolver: () async => _currentPosition,
+    );
+
+    // 直接触发地图 onTap（避免手势模拟的落点不确定性），落点偏离默认中心。
+    final options =
+        tester.widget<FlutterMap>(find.byType(FlutterMap)).options;
+    options.onTap!(
+      const TapPosition(Offset.zero, Offset.zero),
+      const LatLng(39.85, 116.35),
+    );
+    await tester.pumpAndSettle();
+
+    await typeAndSearch(tester, '商家名称（可留空）', '蜜雪冰城');
+    expect(appleMaps.centers.single, const LatLng(39.85, 116.35));
   });
 }

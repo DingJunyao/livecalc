@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/services/apple_maps_service.dart';
+import '../../../core/services/device_location.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/region_select_field.dart';
 import '../models/merchant.dart';
@@ -50,6 +51,9 @@ class MerchantFormScreen extends ConsumerStatefulWidget {
   final TileProvider? mapTileProvider;
   final AppleMapsService? appleMapsService;
 
+  /// 当前位置解析器（默认 geolocator 静默获取），测试注入固定值。
+  final Future<LatLng?> Function()? currentLocationResolver;
+
   const MerchantFormScreen({
     super.key,
     this.merchant,
@@ -57,6 +61,7 @@ class MerchantFormScreen extends ConsumerStatefulWidget {
     this.repository,
     this.mapTileProvider,
     this.appleMapsService,
+    this.currentLocationResolver,
   });
 
   @override
@@ -89,6 +94,10 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   List<ApplePlace> _nameCandidates = const [];
   List<ApplePlace> _addressCandidates = const [];
 
+  /// 设备当前位置（WGS84，每次打开表单后台静默取一次），名称/地址匹配的
+  /// 偏置中心候选；取不到保持 null。
+  LatLng? _currentLocation;
+
   /// 新增态退出确认：进入页面时的字段快照（与当前值比对判断「写过信息」）。
   late final LatLng? _initialCoordinate;
 
@@ -107,6 +116,34 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       _coordinate = LatLng(merchant!.latitude!, merchant.longitude!);
     }
     _initialCoordinate = _coordinate;
+    // 名称/地址匹配可能需要按当前位置偏置时（新增或坐标为占位值），后台
+    // 静默取一次定位：不阻塞首次搜索，取到后用于后续匹配，失败保持原逻辑。
+    if (_appleMaps.isAvailable &&
+        (_coordinate == null || isPlaceholderCoordinate(_coordinate))) {
+      unawaited(_resolveCurrentLocation());
+    }
+  }
+
+  Future<void> _resolveCurrentLocation() async {
+    final resolver =
+        widget.currentLocationResolver ?? getCurrentLatLngSilently;
+    try {
+      _currentLocation = await resolver();
+    } catch (_) {
+      _currentLocation = null;
+    }
+  }
+
+  /// 匹配偏置中心：用户手设/商家既有真实坐标优先（编辑既有商家按其位置
+  /// 找）；其次设备当前位置（新增时优先按身边找）；再次匹配写入的坐标
+  /// （定位不可用时的回退）；占位坐标（默认中心）不作偏置，交给系统默认。
+  LatLng? get _searchCenter {
+    if (_coordinate != null && !_coordinateFromMatch && _hasCoordinate) {
+      return _coordinate;
+    }
+    if (_currentLocation != null) return _currentLocation;
+    if (_coordinateFromMatch && _coordinate != null) return _coordinate;
+    return null;
   }
 
   /// 是否在新增态下写过任何信息（名字/地址/开关/地区/币种/坐标任一变化）。
@@ -161,7 +198,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       return;
     }
     _nameDebounce = Timer(_appleSearchDebounce, () async {
-      final results = await _appleMaps.searchPlaces(query, center: _coordinate);
+      final results = await _appleMaps.searchPlaces(query, center: _searchCenter);
       if (!mounted || seq != _nameSeq) return;
       setState(() => _nameCandidates = results);
     });
@@ -180,7 +217,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
     }
     _addressDebounce = Timer(_appleSearchDebounce, () async {
       final results =
-          await _appleMaps.searchPlaces(query, center: _coordinate);
+          await _appleMaps.searchPlaces(query, center: _searchCenter);
       if (!mounted || seq != _addressSeq) return;
       setState(() => _addressCandidates = results);
     });
