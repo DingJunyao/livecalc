@@ -10,6 +10,7 @@ import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../../shared/widgets/loading_indicator.dart';
+import '../../comparison/repositories/comparison_repository.dart';
 import '../../recipes/repositories/recipe_repository.dart';
 import '../../recipes/widgets/cost_proportion_chart.dart';
 import '../../recipes/widgets/nutrition_source_grid.dart';
@@ -31,6 +32,7 @@ class PlanDetailScreen extends ConsumerStatefulWidget {
 
 class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
   final _repo = PlannerRepository();
+  final _comparisonRepo = ComparisonRepository();
 
   bool _loading = true;
   bool _busy = false;
@@ -40,6 +42,59 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
   Map<String, dynamic>? _evaluation;
   List<Map<String, dynamic>> _trend = const [];
   int _trendDays = 90;
+
+  // 合计卡口径切换（当前 | 各地区对比）：草稿/已存方案都走 plan-evaluate-regions
+  List<RegionCandidate> _regionCandidates = const [];
+  List<Map<String, dynamic>> _regionTotals = const [];
+  bool _regionTotalsLoading = false;
+  bool _totalsByRegion = false;
+
+  /// 有价格数据的地区候选（失败返回空 → 切换隐藏）。
+  Future<List<RegionCandidate>> _ensureRegionCandidates() async {
+    if (_regionCandidates.isNotEmpty) return _regionCandidates;
+    try {
+      _regionCandidates = await _comparisonRepo.getRegions();
+    } on Exception {
+      _regionCandidates = const [];
+    }
+    return _regionCandidates;
+  }
+
+  Future<void> _loadRegionTotals() async {
+    final plan = _plan;
+    if (plan == null) return;
+    final candidates = await _ensureRegionCandidates();
+    if (candidates.length < 2) return;
+    setState(() => _regionTotalsLoading = true);
+    try {
+      // 条目形状 = 后端 PlanItemIn（group/item_type/ids/servings/quantity/unit_id）
+      final items = ((plan['items'] as List?) ?? const [])
+          .map((e) => e as Map)
+          .map((m) => {
+                'group': m['group'] ?? 'other',
+                'item_type': m['item_type'],
+                'recipe_id': m['recipe_id'],
+                'ingredient_id': m['ingredient_id'],
+                'product_id': m['product_id'],
+                'servings': (m['servings'] as num?)?.toDouble(),
+                'quantity': (m['quantity'] as num?)?.toDouble(),
+                'unit_id': m['unit_id'],
+                'sort_order': (m['sort_order'] as num?)?.toInt() ?? 0,
+                'note': m['note'],
+              })
+          .toList();
+      final regions = await _comparisonRepo.planEvaluateRegions(
+        items: items,
+        regionIds: candidates.take(6).map((r) => r.regionId).toList(),
+        kind: (plan['kind'] as String?) ?? 'meal',
+      );
+      if (mounted) setState(() => _regionTotals = regions);
+    } on Exception {
+      if (mounted) setState(() => _regionTotals = const []);
+    } finally {
+      if (mounted) setState(() => _regionTotalsLoading = false);
+    }
+  }
 
   @override
   void initState() {
@@ -319,15 +374,53 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(l10n.plansTotals,
-                      style: theme.textTheme.titleMedium
-                          ?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  PlanTotalsGrid(
-                    totals: totals,
-                    targets: targets,
-                    userCurrency: userCurrency,
+                  Row(
+                    children: [
+                      Text(l10n.plansTotals,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      // 口径切换（当前 | 各地区对比）：有 ≥2 个有数据地区时出现
+                      if (_regionCandidates.length >= 2)
+                        SegmentedButton<bool>(
+                          segments: [
+                            ButtonSegment(
+                              value: false,
+                              label: Text(l10n.compareDimensionCurrent,
+                                  style: const TextStyle(fontSize: 12)),
+                            ),
+                            ButtonSegment(
+                              value: true,
+                              label: Text(l10n.compareByRegion,
+                                  style: const TextStyle(fontSize: 12)),
+                            ),
+                          ],
+                          selected: {_totalsByRegion},
+                          onSelectionChanged: (s) {
+                            final v = s.first;
+                            setState(() => _totalsByRegion = v);
+                            if (v && _regionTotals.isEmpty) _loadRegionTotals();
+                          },
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                              visualDensity: VisualDensity.compact),
+                        ),
+                    ],
                   ),
+                  const SizedBox(height: 8),
+                  if (_totalsByRegion)
+                    _RegionTotalsTable(
+                      rows: _regionTotals,
+                      candidates: _regionCandidates,
+                      loading: _regionTotalsLoading,
+                      userCurrency: userCurrency,
+                    )
+                  else
+                    PlanTotalsGrid(
+                      totals: totals,
+                      targets: targets,
+                      userCurrency: userCurrency,
+                    ),
                 ],
               ),
             ),
@@ -432,3 +525,113 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
 }
 
 double _num(dynamic v) => (v as num?)?.toDouble() ?? 0;
+
+/// 各地区合计对照表（合计卡「按地区」口径）：行=地区，列=成本/热量/蛋白/脂肪。
+/// 成本最低地区绿色加粗（≥2 个有成本地区才标）。
+class _RegionTotalsTable extends StatelessWidget {
+  final List<Map<String, dynamic>> rows;
+  final List<RegionCandidate> candidates;
+  final bool loading;
+  final String userCurrency;
+
+  const _RegionTotalsTable({
+    required this.rows,
+    required this.candidates,
+    this.loading = false,
+    this.userCurrency = 'CNY',
+  });
+
+  String _name(int rid) {
+    for (final c in candidates) {
+      if (c.regionId == rid) return c.displayName;
+    }
+    return '#$rid';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    if (loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+    if (rows.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Text(l10n.compareNoRegionData, style: theme.textTheme.bodySmall),
+      );
+    }
+    final valid = rows
+        .map((r) => _num((r['totals'] as Map?)?['cost']))
+        .where((v) => v > 0)
+        .toList();
+    final minCost =
+        valid.length >= 2 ? valid.reduce((a, b) => a < b ? a : b) : null;
+    String metric(dynamic totals, String key, {int digits = 1}) {
+      final v = _num((totals as Map?)?[key]);
+      if (v <= 0) return '—';
+      return v.toStringAsFixed(v.truncateToDouble() == v ? 0 : digits);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        headingRowHeight: 36,
+        dataRowMinHeight: 36,
+        dataRowMaxHeight: 36,
+        columns: [
+          DataColumn(label: Text(l10n.compareRegionCol, style: theme.textTheme.labelSmall)),
+          DataColumn(
+              label: Text(l10n.compareMetricCost, style: theme.textTheme.labelSmall),
+              numeric: true),
+          DataColumn(
+              label: Text(l10n.compareMetricCalories, style: theme.textTheme.labelSmall),
+              numeric: true),
+          DataColumn(
+              label: Text(l10n.compareMetricProtein, style: theme.textTheme.labelSmall),
+              numeric: true),
+          DataColumn(
+              label: Text(l10n.compareMetricFat, style: theme.textTheme.labelSmall),
+              numeric: true),
+        ],
+        rows: [
+          for (final r in rows)
+            DataRow(cells: [
+              DataCell(Text(_name((r['region_id'] as num?)?.toInt() ?? 0),
+                  style: theme.textTheme.bodySmall)),
+              DataCell(Text(
+                _fmtCost(r, minCost, l10n),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight:
+                      _isLowest(r, minCost) ? FontWeight.bold : null,
+                  color: _isLowest(r, minCost)
+                      ? Colors.green.shade700
+                      : null,
+                ),
+              )),
+              DataCell(Text(metric(r['totals'], 'calories', digits: 0),
+                  style: theme.textTheme.bodySmall)),
+              DataCell(Text(metric(r['totals'], 'protein_g'),
+                  style: theme.textTheme.bodySmall)),
+              DataCell(Text(metric(r['totals'], 'fat_g'),
+                  style: theme.textTheme.bodySmall)),
+            ]),
+        ],
+      ),
+    );
+  }
+
+  bool _isLowest(Map<String, dynamic> r, double? minCost) {
+    if (minCost == null || minCost <= 0) return false;
+    return _num((r['totals'] as Map?)?['cost']) == minCost;
+  }
+
+  String _fmtCost(Map<String, dynamic> r, double? minCost, AppLocalizations l10n) {
+    final cost = _num((r['totals'] as Map?)?['cost']);
+    if (cost <= 0) return '—';
+    return formatMoney(cost, userCurrency);
+  }
+}

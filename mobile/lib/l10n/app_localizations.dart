@@ -6419,6 +6419,78 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'暂无篮子价格数据'**
   String get compareNoBasketData;
+
+  /// No description provided for @compareTabRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱·试算'**
+  String get compareTabRecipes;
+
+  /// No description provided for @compareRecipesSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'菜谱成本'**
+  String get compareRecipesSection;
+
+  /// No description provided for @compareSelectRecipes.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加菜谱'**
+  String get compareSelectRecipes;
+
+  /// No description provided for @comparePlansSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'试算合计'**
+  String get comparePlansSection;
+
+  /// No description provided for @compareSelectPlans.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加方案'**
+  String get compareSelectPlans;
+
+  /// No description provided for @compareDimensionCurrent.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前'**
+  String get compareDimensionCurrent;
+
+  /// No description provided for @compareTotalsByRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'各地区合计'**
+  String get compareTotalsByRegion;
+
+  /// No description provided for @compareRegionCol.
+  ///
+  /// In zh, this message translates to:
+  /// **'地区'**
+  String get compareRegionCol;
+
+  /// No description provided for @compareMetricCost.
+  ///
+  /// In zh, this message translates to:
+  /// **'成本'**
+  String get compareMetricCost;
+
+  /// No description provided for @compareMetricCalories.
+  ///
+  /// In zh, this message translates to:
+  /// **'热量 (kcal)'**
+  String get compareMetricCalories;
+
+  /// No description provided for @compareMetricProtein.
+  ///
+  /// In zh, this message translates to:
+  /// **'蛋白质 (g)'**
+  String get compareMetricProtein;
+
+  /// No description provided for @compareMetricFat.
+  ///
+  /// In zh, this message translates to:
+  /// **'脂肪 (g)'**
+  String get compareMetricFat;
 }
 
 class _AppLocalizationsDelegate

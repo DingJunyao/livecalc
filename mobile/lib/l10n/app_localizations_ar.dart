@@ -3428,4 +3428,40 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compareNoBasketData => 'لا توجد بيانات أسعار للسلة بعد';
+
+  @override
+  String get compareTabRecipes => 'الوصفات والخطط';
+
+  @override
+  String get compareRecipesSection => 'تكلفة الوصفات';
+
+  @override
+  String get compareSelectRecipes => 'إضافة وصفات';
+
+  @override
+  String get comparePlansSection => 'إجماليات الخطط';
+
+  @override
+  String get compareSelectPlans => 'إضافة خطط';
+
+  @override
+  String get compareDimensionCurrent => 'الحالي';
+
+  @override
+  String get compareTotalsByRegion => 'الإجماليات حسب المنطقة';
+
+  @override
+  String get compareRegionCol => 'المنطقة';
+
+  @override
+  String get compareMetricCost => 'التكلفة';
+
+  @override
+  String get compareMetricCalories => 'السعرات (kcal)';
+
+  @override
+  String get compareMetricProtein => 'البروتين (غ)';
+
+  @override
+  String get compareMetricFat => 'الدهون (غ)';
 }

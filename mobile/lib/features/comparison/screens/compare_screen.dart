@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/providers/calc_context_provider.dart'
+    show displayCurrencyProvider;
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../recipes/repositories/recipe_repository.dart';
@@ -49,9 +51,11 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(comparisonProvider.notifier).loadCandidates();
+      final notifier = ref.read(comparisonProvider.notifier);
+      notifier.loadCandidates();
+      notifier.loadPlanOptions();
     });
   }
 
@@ -99,9 +103,12 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
         ],
         bottom: TabBar(
           controller: _tabController,
+          isScrollable: true,
+          tabAlignment: TabAlignment.start,
           tabs: [
             Tab(text: l10n.compareTabOverview),
             Tab(text: l10n.compareTabPrices),
+            Tab(text: l10n.compareTabRecipes),
           ],
         ),
       ),
@@ -110,6 +117,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
         children: [
           _OverviewTab(state: state, onPickRegions: _openRegionPicker, maxRegions: _maxRegions),
           _PricesTab(state: state, maxRegions: _maxRegions),
+          const _RecipesTab(),
         ],
       ),
     );
@@ -750,6 +758,323 @@ class _EntityPickerSheetState extends ConsumerState<_EntityPickerSheet> {
                 },
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ 菜谱·试算（二期） ============
+
+/// 原始行 → RegionPriceMatrix 的 EntityPriceRow（cells 取 cost；无数据格为 null）。
+EntityPriceRow _rowToEntity(Map<String, dynamic> row, String costKey) {
+  final regionsRaw = (row['regions'] as Map?) ?? const {};
+  final regions = <String, EntityRegionPrice?>{};
+  regionsRaw.forEach((key, value) {
+    if (value == null) {
+      regions[key.toString()] = null;
+      return;
+    }
+    final m = value as Map;
+    final dynamic cost = m[costKey];
+    regions[key.toString()] = EntityRegionPrice(
+      price: cost == null ? null : _toDouble(cost),
+      isStale: false,
+      daysSinceRecord: null,
+      participantCount: 0,
+      unit: null,
+      trend: const [],
+    );
+  });
+  return EntityPriceRow(
+    entityId: ((row['recipe_id'] ?? row['plan_id']) as num?)?.toInt() ?? 0,
+    name: (row['name'] as String?) ?? '',
+    unit: null,
+    regions: regions,
+  );
+}
+
+double _toDouble(dynamic v, {double fallback = 0}) {
+  if (v == null) return fallback;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString()) ?? fallback;
+}
+
+class _RecipesTab extends ConsumerStatefulWidget {
+  const _RecipesTab();
+
+  @override
+  ConsumerState<_RecipesTab> createState() => _RecipesTabState();
+}
+
+class _RecipesTabState extends ConsumerState<_RecipesTab> {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final notifier = ref.read(comparisonProvider.notifier);
+    final state = ref.watch(comparisonProvider);
+    final userCurrency = ref.watch(displayCurrencyProvider);
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        // ---- 菜谱 ----
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Row(
+            children: [
+              Text(l10n.compareRecipesSection, style: theme.textTheme.titleSmall),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: state.selectedRegionIds.length < 2 ? null : _openRecipePicker,
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.compareSelectRecipes, style: theme.textTheme.labelMedium),
+              ),
+            ],
+          ),
+        ),
+        if (state.selectedRecipeIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final rid in state.selectedRecipeIds)
+                  InputChip(
+                    label: Text(_recipeName(state, rid), style: theme.textTheme.labelMedium),
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => notifier.toggleRecipe(rid),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+        RegionPriceMatrix(
+          columns: [
+            for (final r in state.summary?.regions ?? const <RegionSummary>[])
+              RegionMatrixColumn(regionId: r.regionId, label: r.displayName),
+          ],
+          rows: [
+            for (final row in state.recipeRows) _rowToEntity(row, 'total_cost'),
+          ],
+          loading: state.loadingRecipes,
+          emptyText: state.selectedRecipeIds.isEmpty
+              ? l10n.compareNoMatrixData
+              : (state.selectedRegionIds.length < 2 ? l10n.compareNeedTwoRegions : l10n.compareNoRegionData),
+          unassignedNote: l10n.compareUnassignedNote,
+          userCurrency: userCurrency,
+        ),
+
+        const Divider(height: 32),
+
+        // ---- 试算 ----
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            children: [
+              Text(l10n.comparePlansSection, style: theme.textTheme.titleSmall),
+              const Spacer(),
+              OutlinedButton.icon(
+                onPressed: state.selectedRegionIds.length < 2 ? _openPlanPicker : null,
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.compareSelectPlans, style: theme.textTheme.labelMedium),
+              ),
+            ],
+          ),
+        ),
+        if (state.selectedPlanIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final pid in state.selectedPlanIds)
+                  InputChip(
+                    label: Text(_planName(state, pid), style: theme.textTheme.labelMedium),
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => notifier.togglePlan(pid),
+                  ),
+              ],
+            ),
+          ),
+        const SizedBox(height: 12),
+        RegionPriceMatrix(
+          columns: [
+            for (final r in state.summary?.regions ?? const <RegionSummary>[])
+              RegionMatrixColumn(regionId: r.regionId, label: r.displayName),
+          ],
+          rows: [
+            for (final row in state.planRows) _rowToEntity(row, 'cost'),
+          ],
+          loading: state.loadingPlans,
+          emptyText: state.selectedPlanIds.isEmpty
+              ? l10n.compareNoMatrixData
+              : (state.selectedRegionIds.length < 2 ? l10n.compareNeedTwoRegions : l10n.compareNoRegionData),
+          unassignedNote: l10n.compareUnassignedNote,
+          userCurrency: userCurrency,
+        ),
+      ],
+    );
+  }
+
+  String _recipeName(ComparisonState state, int rid) {
+    for (final o in state.recipeOptions) {
+      if (o.id == rid) return o.name;
+    }
+    for (final row in state.recipeRows) {
+      if ((row['recipe_id'] as num?)?.toInt() == rid) return (row['name'] as String?) ?? '#$rid';
+    }
+    return '#$rid';
+  }
+
+  String _planName(ComparisonState state, int pid) {
+    for (final o in state.planOptions) {
+      if (o.id == pid) return o.name;
+    }
+    for (final row in state.planRows) {
+      if ((row['plan_id'] as num?)?.toInt() == pid) return (row['name'] as String?) ?? '#$pid';
+    }
+    return '#$pid';
+  }
+
+  Future<void> _openRecipePicker() async {
+    final state = ref.read(comparisonProvider);
+    final picked = await showModalBottomSheet<List<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _SimpleSearchPickerSheet(
+        title: AppLocalizations.of(ctx).compareSelectRecipes,
+        options: state.recipeOptions,
+        selected: state.selectedRecipeIds,
+        onSearch: (kw) => ref.read(comparisonProvider.notifier).searchRecipes(keyword: kw),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final notifier = ref.read(comparisonProvider.notifier);
+    for (final id in state.selectedRecipeIds) {
+      if (!picked.contains(id)) notifier.toggleRecipe(id);
+    }
+    for (final id in picked) {
+      if (!state.selectedRecipeIds.contains(id)) notifier.toggleRecipe(id);
+    }
+  }
+
+  Future<void> _openPlanPicker() async {
+    final state = ref.read(comparisonProvider);
+    if (state.planOptions.isEmpty) {
+      await ref.read(comparisonProvider.notifier).loadPlanOptions();
+    }
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<List<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        final fresh = ref.read(comparisonProvider).planOptions;
+        return _SimpleSearchPickerSheet(
+          title: AppLocalizations.of(ctx).compareSelectPlans,
+          options: fresh,
+          selected: state.selectedPlanIds,
+          onSearch: null,
+        );
+      },
+    );
+    if (picked == null || !mounted) return;
+    final notifier = ref.read(comparisonProvider.notifier);
+    for (final id in state.selectedPlanIds) {
+      if (!picked.contains(id)) notifier.togglePlan(id);
+    }
+    for (final id in picked) {
+      if (!state.selectedPlanIds.contains(id)) notifier.togglePlan(id);
+    }
+  }
+}
+
+/// 通用「搜索 + 多选」底部弹层（菜谱/方案共用；onSearch 为空 = 客户端过滤）。
+class _SimpleSearchPickerSheet extends StatefulWidget {
+  final String title;
+  final List<EntityOption> options;
+  final List<int> selected;
+  final ValueChanged<String>? onSearch;
+
+  const _SimpleSearchPickerSheet({
+    required this.title,
+    required this.options,
+    required this.selected,
+    this.onSearch,
+  });
+
+  @override
+  State<_SimpleSearchPickerSheet> createState() => _SimpleSearchPickerSheetState();
+}
+
+class _SimpleSearchPickerSheetState extends State<_SimpleSearchPickerSheet> {
+  late final Set<int> _temp;
+  String _keyword = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _temp = Set<int>.from(widget.selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final filtered = widget.options
+        .where((o) => _keyword.isEmpty || o.name.contains(_keyword))
+        .toList();
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text(widget.title),
+            subtitle: Text('${_temp.length}', style: theme.textTheme.labelSmall),
+            trailing: TextButton(
+              onPressed: () => Navigator.pop(context, _temp.toList()),
+              child: Text(AppLocalizations.of(context).commonDone),
+            ),
+          ),
+          if (widget.onSearch != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                decoration: const InputDecoration(
+                  isDense: true,
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+                onChanged: (v) {
+                  setState(() => _keyword = v.trim());
+                  widget.onSearch!(v.trim());
+                },
+              ),
+            ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: filtered.length,
+              itemBuilder: (ctx, i) {
+                final o = filtered[i];
+                return CheckboxListTile(
+                  value: _temp.contains(o.id),
+                  title: Text(o.name),
+                  onChanged: (v) {
+                    setState(() {
+                      if (v == true) {
+                        _temp.add(o.id);
+                      } else {
+                        _temp.remove(o.id);
+                      }
+                    });
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

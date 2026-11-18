@@ -19,6 +19,16 @@ class ComparisonState {
   final EntityPrices? entityPrices;
   final bool loadingEntityPrices;
 
+  // 二期：菜谱·试算 tab
+  final List<int> selectedRecipeIds;
+  final List<EntityOption> recipeOptions;
+  final List<Map<String, dynamic>> recipeRows;
+  final bool loadingRecipes;
+  final List<int> selectedPlanIds;
+  final List<EntityOption> planOptions;
+  final List<Map<String, dynamic>> planRows;
+  final bool loadingPlans;
+
   const ComparisonState({
     this.candidates = const [],
     this.selectedRegionIds = const [],
@@ -31,6 +41,14 @@ class ComparisonState {
     this.selectedEntityIds = const [],
     this.entityPrices,
     this.loadingEntityPrices = false,
+    this.selectedRecipeIds = const [],
+    this.recipeOptions = const [],
+    this.recipeRows = const [],
+    this.loadingRecipes = false,
+    this.selectedPlanIds = const [],
+    this.planOptions = const [],
+    this.planRows = const [],
+    this.loadingPlans = false,
   });
 
   ComparisonState copyWith({
@@ -49,6 +67,16 @@ class ComparisonState {
     EntityPrices? entityPrices,
     bool clearEntityPrices = false,
     bool? loadingEntityPrices,
+    List<int>? selectedRecipeIds,
+    List<EntityOption>? recipeOptions,
+    List<Map<String, dynamic>>? recipeRows,
+    bool clearRecipeRows = false,
+    bool? loadingRecipes,
+    List<int>? selectedPlanIds,
+    List<EntityOption>? planOptions,
+    List<Map<String, dynamic>>? planRows,
+    bool clearPlanRows = false,
+    bool? loadingPlans,
   }) {
     return ComparisonState(
       candidates: candidates ?? this.candidates,
@@ -62,6 +90,14 @@ class ComparisonState {
       selectedEntityIds: selectedEntityIds ?? this.selectedEntityIds,
       entityPrices: clearEntityPrices ? null : (entityPrices ?? this.entityPrices),
       loadingEntityPrices: loadingEntityPrices ?? this.loadingEntityPrices,
+      selectedRecipeIds: selectedRecipeIds ?? this.selectedRecipeIds,
+      recipeOptions: recipeOptions ?? this.recipeOptions,
+      recipeRows: clearRecipeRows ? const [] : (recipeRows ?? this.recipeRows),
+      loadingRecipes: loadingRecipes ?? this.loadingRecipes,
+      selectedPlanIds: selectedPlanIds ?? this.selectedPlanIds,
+      planOptions: planOptions ?? this.planOptions,
+      planRows: clearPlanRows ? const [] : (planRows ?? this.planRows),
+      loadingPlans: loadingPlans ?? this.loadingPlans,
     );
   }
 }
@@ -71,6 +107,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   int _summarySeq = 0;
   int _matrixSeq = 0;
   int _searchSeq = 0;
+  int _recipeSeq = 0;
+  int _planSeq = 0;
 
   ComparisonNotifier({ComparisonRepository? repository})
       : _repository = repository ?? ComparisonRepository(),
@@ -94,6 +132,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     state = state.copyWith(selectedRegionIds: ids, clearSummary: true, clearEntityPrices: true);
     await loadSummary();
     await loadMatrix();
+    await loadRecipeMatrix();
+    await loadPlanMatrix();
   }
 
   Future<void> loadSummary() async {
@@ -168,6 +208,84 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
       }
     } catch (_) {
       if (seq == _matrixSeq) state = state.copyWith(loadingEntityPrices: false);
+    }
+  }
+
+  // ==================== 二期：菜谱·试算 ====================
+
+  /// 菜谱搜索（GET /recipes，服务端 search）。
+  Future<void> searchRecipes({String keyword = ''}) async {
+    try {
+      final options = await _repository.searchRecipes(keyword: keyword);
+      state = state.copyWith(recipeOptions: options);
+    } catch (_) {
+      state = state.copyWith(recipeOptions: const []);
+    }
+  }
+
+  void toggleRecipe(int id) {
+    final current = [...state.selectedRecipeIds];
+    if (current.contains(id)) {
+      current.remove(id);
+    } else {
+      current.add(id);
+    }
+    state = state.copyWith(selectedRecipeIds: current, clearRecipeRows: true);
+    loadRecipeMatrix();
+  }
+
+  Future<void> loadRecipeMatrix() async {
+    final regionIds = state.selectedRegionIds;
+    final recipeIds = state.selectedRecipeIds;
+    if (regionIds.isEmpty || recipeIds.isEmpty) return;
+    final seq = ++_recipeSeq;
+    state = state.copyWith(loadingRecipes: true);
+    try {
+      final data = await _repository.getRecipeCosts(recipeIds: recipeIds, regionIds: regionIds);
+      final rows = ((data['recipes'] as List?) ?? const [])
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+      if (seq == _recipeSeq) state = state.copyWith(recipeRows: rows, loadingRecipes: false);
+    } catch (_) {
+      if (seq == _recipeSeq) state = state.copyWith(loadingRecipes: false);
+    }
+  }
+
+  /// 试算下拉全量选项（端点无分页/搜索）。
+  Future<void> loadPlanOptions() async {
+    try {
+      final options = await _repository.listPlans();
+      state = state.copyWith(planOptions: options);
+    } catch (_) {
+      // 下拉留空
+    }
+  }
+
+  void togglePlan(int id) {
+    final current = [...state.selectedPlanIds];
+    if (current.contains(id)) {
+      current.remove(id);
+    } else {
+      current.add(id);
+    }
+    state = state.copyWith(selectedPlanIds: current, clearPlanRows: true);
+    loadPlanMatrix();
+  }
+
+  Future<void> loadPlanMatrix() async {
+    final regionIds = state.selectedRegionIds;
+    final planIds = state.selectedPlanIds;
+    if (regionIds.isEmpty || planIds.isEmpty) return;
+    final seq = ++_planSeq;
+    state = state.copyWith(loadingPlans: true);
+    try {
+      final data = await _repository.getPlanCosts(planIds: planIds, regionIds: regionIds);
+      final rows = ((data['plans'] as List?) ?? const [])
+          .map((e) => e as Map<String, dynamic>)
+          .toList();
+      if (seq == _planSeq) state = state.copyWith(planRows: rows, loadingPlans: false);
+    } catch (_) {
+      if (seq == _planSeq) state = state.copyWith(loadingPlans: false);
     }
   }
 }

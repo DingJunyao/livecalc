@@ -3352,4 +3352,40 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get compareNoBasketData => '暂无篮子价格数据';
+
+  @override
+  String get compareTabRecipes => '菜谱·试算';
+
+  @override
+  String get compareRecipesSection => '菜谱成本';
+
+  @override
+  String get compareSelectRecipes => '添加菜谱';
+
+  @override
+  String get comparePlansSection => '试算合计';
+
+  @override
+  String get compareSelectPlans => '添加方案';
+
+  @override
+  String get compareDimensionCurrent => '当前';
+
+  @override
+  String get compareTotalsByRegion => '各地区合计';
+
+  @override
+  String get compareRegionCol => '地区';
+
+  @override
+  String get compareMetricCost => '成本';
+
+  @override
+  String get compareMetricCalories => '热量 (kcal)';
+
+  @override
+  String get compareMetricProtein => '蛋白质 (g)';
+
+  @override
+  String get compareMetricFat => '脂肪 (g)';
 }

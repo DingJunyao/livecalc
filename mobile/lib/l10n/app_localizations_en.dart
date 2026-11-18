@@ -3448,4 +3448,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compareNoBasketData => 'No basket price data yet';
+
+  @override
+  String get compareTabRecipes => 'Recipes & plans';
+
+  @override
+  String get compareRecipesSection => 'Recipe costs';
+
+  @override
+  String get compareSelectRecipes => 'Add recipes';
+
+  @override
+  String get comparePlansSection => 'Plan totals';
+
+  @override
+  String get compareSelectPlans => 'Add plans';
+
+  @override
+  String get compareDimensionCurrent => 'Current';
+
+  @override
+  String get compareTotalsByRegion => 'Totals by region';
+
+  @override
+  String get compareRegionCol => 'Region';
+
+  @override
+  String get compareMetricCost => 'Cost';
+
+  @override
+  String get compareMetricCalories => 'Calories (kcal)';
+
+  @override
+  String get compareMetricProtein => 'Protein (g)';
+
+  @override
+  String get compareMetricFat => 'Fat (g)';
 }

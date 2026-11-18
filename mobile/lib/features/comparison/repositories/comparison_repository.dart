@@ -333,6 +333,86 @@ class ComparisonRepository {
         .where((o) => o.id > 0)
         .toList();
   }
+
+  /// 菜谱搜索（GET /recipes，服务端 search）。
+  Future<List<EntityOption>> searchRecipes({String keyword = '', int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (keyword.isNotEmpty) params['search'] = keyword;
+    final response = await _client.dio.get('/recipes', queryParameters: params);
+    final data = response.data;
+    final list = (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
+    return list
+        .map((e) => EntityOption(
+              id: ((e as Map)['id'] as num?)?.toInt() ?? 0,
+              name: (e['name'] as String?) ?? '',
+            ))
+        .where((o) => o.id > 0)
+        .toList();
+  }
+
+  /// 试算下拉全量选项（端点无分页/搜索）。
+  Future<List<EntityOption>> listPlans() async {
+    final response = await _client.dio.get('/meal-plans');
+    final data = response.data;
+    final list = (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
+    return list
+        .map((e) => EntityOption(
+              id: ((e as Map)['id'] as num?)?.toInt() ?? 0,
+              name: (e['name'] as String?) ?? '',
+            ))
+        .where((o) => o.id > 0)
+        .toList();
+  }
+
+  // ==================== 二期：菜谱 / 试算成本对比 ====================
+
+  /// 菜谱×地区成本矩阵（明细里 cost=null 的行即该地区缺价食材）。
+  Future<Map<String, dynamic>> getRecipeCosts({
+    required List<int> recipeIds,
+    required List<int> regionIds,
+  }) async {
+    final response = await _client.dio.get('/comparison/recipe-costs',
+        queryParameters: {
+          'recipe_ids': recipeIds.join(','),
+          'region_ids': regionIds.join(','),
+        });
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// 已保存方案×地区合计对照（totals = evaluate 的 cost/营养五项）。
+  Future<Map<String, dynamic>> getPlanCosts({
+    required List<int> planIds,
+    required List<int> regionIds,
+  }) async {
+    final response = await _client.dio.get('/comparison/plan-costs',
+        queryParameters: {
+          'plan_ids': planIds.join(','),
+          'region_ids': regionIds.join(','),
+        });
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// 同一组条目（草稿也可）在 N 个地区分别求值（合计卡口径切换）。
+  Future<List<Map<String, dynamic>>> planEvaluateRegions({
+    required List<Map<String, dynamic>> items,
+    required List<int> regionIds,
+    String kind = 'meal',
+    String mealType = 'lunch',
+  }) async {
+    final response = await _client.dio.post(
+      '/comparison/plan-evaluate-regions',
+      data: {
+        'kind': kind,
+        'meal_type': mealType,
+        'items': items,
+        'region_ids': regionIds,
+      },
+    );
+    final data = response.data as Map<String, dynamic>;
+    return ((data['regions'] as List?) ?? const [])
+        .map((e) => e as Map<String, dynamic>)
+        .toList();
+  }
 }
 
 /// 实体搜索选项（原料/商品共用）。
