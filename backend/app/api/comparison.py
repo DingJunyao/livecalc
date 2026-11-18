@@ -22,7 +22,7 @@ from statistics import median
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, Query, Request
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
@@ -47,7 +47,12 @@ from app.services.recipe_service import (
     calculate_recipe_cost_as_of,
     calculate_recipe_cost_range_trend,
 )
-from app.services.price_region import apply_region_filter
+from app.services.price_region import (
+    apply_region_filter,
+    is_stale_recorded_at,
+    record_price_in_user_currency,
+    region_subtree_ids,
+)
 from app.models.administrative_region import AdministrativeRegion
 from app.models.merchant import Merchant
 from app.models.product import ProductRecord
@@ -739,3 +744,197 @@ async def comparison_plan_cost_trend(
         raise
     except Exception as e:
         raise LocalizedHTTPException(status_code=500, message="获取试算趋势对比失败: {error}", error=str(e))
+
+
+# ==================== 三期：商家物价热力图 ====================
+
+
+@router.get("/comparison/heatmap")
+async def comparison_heatmap(
+    request: Request,
+    mode: str = Query("item", pattern="^(item|overall)$", description="item=单品商家价 | overall=商家整体物价指数"),
+    entity_type: str = Query("ingredient", pattern="^(ingredient|product)$", description="单品模式的实体类型"),
+    entity_id: int = Query(None, description="单品模式的实体 ID"),
+    region_ids: str = Query(..., description="限定地区（逗号分隔 ≤6；商家必须落在子树内）"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+    tz: str = Depends(get_timezone),
+):
+    """商家物价热力图数据（圆点分档着色用）。
+
+    - mode=item：选一个原料/商品，返回各商家的该品代表价（每 (商家,商品) 取最新
+      一条有效记录 → 折算到用户币种 → ¥/斤 归一 → 同商家按权重加权）。
+    - mode=overall：不选实体，篮子 = 基准地区（region_ids 第一个）近一年有记录的
+      商品（上限 50）；每商家对篮子的加权均价 → price_index = 商家价 / 所选地区
+      全部商家价的中位数 ×100（中位数=100，分档自解释）。
+
+    返回 buckets 分位（p25/p50/p75/p90）供前端图例与着色分档；
+    坐标缺失（latitude/longitude 为空）的商家不返回（地图上无法渲染）。
+    """
+    try:
+        rids = _parse_region_ids(region_ids)
+        currency = get_user_default_currency(db, current_user)
+        uid = current_user.id
+        now = datetime.utcnow()
+
+        # 商家全集（地区子树内、营业中、有坐标），一次查齐
+        region_conds = []
+        for rid in rids:
+            ids = region_subtree_ids(db, rid)
+            if ids:
+                region_conds.append(Merchant.region_id.in_(ids))
+        merchants = db.query(Merchant).filter(
+            Merchant.is_open == True,  # noqa: E712
+            Merchant.latitude.isnot(None),
+            Merchant.longitude.isnot(None),
+            or_(*region_conds) if region_conds else False,
+        ).all()
+        merchant_by_id = {m.id: m for m in merchants}
+        if not merchants:
+            return {
+                "mode": mode, "currency": currency, "unit": "斤",
+                "items": [], "buckets": {},
+            }
+        mid_set = set(merchant_by_id.keys())
+
+        # 单品模式 → 商品集合；overall → 篮子商品集合
+        if mode == "item":
+            if entity_id is None:
+                raise LocalizedHTTPException(
+                    status_code=400, message="热力图参数无效: {error}", error="单品模式必须传 entity_id")
+            if entity_type == "ingredient":
+                product_ids = [p.id for p in db.query(Product.id).filter(
+                    Product.ingredient_id == entity_id,
+                    Product.is_active == True,  # noqa: E712
+                ).all()]
+            else:
+                product_ids = [entity_id]
+        else:
+            cutoff = now - timedelta(days=BASKET_WINDOW_DAYS)
+            basket_q = db.query(ProductRecord.product_id.distinct()).filter(
+                ProductRecord.is_active == True,  # noqa: E712
+                ProductRecord.price.isnot(None),
+                ProductRecord.recorded_at >= cutoff,
+            )
+            basket_rows = apply_region_filter(basket_q, db, rids[0]).all()
+            product_ids = [r[0] for r in basket_rows][:50]  # 上限 50 防查询过重
+
+        if not product_ids:
+            return {
+                "mode": mode, "currency": currency, "unit": "斤",
+                "items": [], "buckets": {},
+            }
+
+        # 每 (商家, 商品) 取子树内最新一条有效记录（join Merchant 界定子树）
+        records = (
+            db.query(ProductRecord)
+            .filter(
+                ProductRecord.product_id.in_(product_ids),
+                ProductRecord.merchant_id.in_(mid_set),
+                ProductRecord.is_active == True,  # noqa: E712
+                ProductRecord.price.isnot(None),
+            )
+            .order_by(ProductRecord.recorded_at.desc())
+            .all()
+        )
+        mp_latest: Dict[Tuple[int, int], object] = {}
+        sample_counts: Dict[int, set] = defaultdict(set)
+        for record in records:
+            key = (record.merchant_id, record.product_id)
+            if key not in mp_latest:
+                mp_latest[key] = record
+            sample_counts[record.merchant_id].add(record.product_id)
+
+        # 每商家：商品内均价 → 权重加权（与 latest-price-by-merchant 同口径，
+        # 归一单位统一 ¥/斤，跨商品可比）
+        from app.services.price_aggregator import record_standard_grams
+        from app.services.ingredient_price_service import _resolve_weight
+
+        pw = _weight_map(db, product_ids, uid)
+        merchant_prices: Dict[int, float] = {}
+        for mid in mid_set:
+            weighted = []
+            for pid in product_ids:
+                record = mp_latest.get((mid, pid))
+                if record is None:
+                    continue
+                grams = record_standard_grams(
+                    db, record.standard_quantity, record.standard_unit_id, pid)
+                if grams <= 0:
+                    continue
+                unit_price = float(record_price_in_user_currency(record)) * 500.0 / grams
+                w = pw.get(pid, 50)
+                if w <= 0:
+                    continue
+                weighted.append((unit_price, w))
+            if not weighted:
+                continue
+            num = sum(up * w for up, w in weighted)
+            den = sum(w for _, w in weighted)
+            merchant_prices[mid] = round(num / den, 2)
+
+        # 分位（非陈旧价；全陈旧时用全部）
+        prices_all = [
+            p for mid, p in merchant_prices.items()
+            if not is_stale_recorded_at(mp_latest[
+                next(k for k in mp_latest if k[0] == mid)
+            ].recorded_at)
+        ]
+        if not prices_all:
+            prices_all = list(merchant_prices.values())
+        buckets: Dict[str, Optional[float]] = {}
+        if prices_all:
+            s = sorted(prices_all)
+
+            def _pct(q: float) -> float:
+                idx = min(len(s) - 1, max(0, round((len(s) - 1) * q)))
+                return s[idx]
+            buckets = {"p25": _pct(0.25), "p50": _pct(0.50),
+                       "p75": _pct(0.75), "p90": _pct(0.90)}
+        median_price = buckets.get("p50")
+
+        items = []
+        for mid, m in merchant_by_id.items():
+            price = merchant_prices.get(mid)
+            if price is None:
+                continue
+            # 陈旧判定：该商家任一参与商品为最新记录即可代表，取最新那条
+            latest_at = None
+            for pid in product_ids:
+                record = mp_latest.get((mid, pid))
+                if record is not None and (
+                    latest_at is None or record.recorded_at > latest_at
+                ):
+                    latest_at = record.recorded_at
+            item: Dict[str, Any] = {
+                "merchant_id": mid,
+                "name": m.name,
+                "latitude": float(m.latitude),
+                "longitude": float(m.longitude),
+                "is_open": bool(m.is_open),
+                "region_id": m.region_id,
+                "price": price,
+                "is_stale": is_stale_recorded_at(latest_at),
+                "sample_count": len(sample_counts.get(mid) or set()),
+            }
+            if mode == "overall":
+                item["price_index"] = (
+                    round(price / median_price * 100, 1)
+                    if median_price and median_price > 0 else None
+                )
+            items.append(item)
+
+        return {
+            "mode": mode,
+            "currency": currency,
+            "unit": "斤",
+            "entity_type": entity_type if mode == "item" else None,
+            "entity_id": entity_id if mode == "item" else None,
+            "basket_size": len(product_ids) if mode == "overall" else None,
+            "buckets": buckets,
+            "items": items,
+        }
+    except LocalizedHTTPException:
+        raise
+    except Exception as e:
+        raise LocalizedHTTPException(status_code=500, message="获取热力图数据失败: {error}", error=str(e))

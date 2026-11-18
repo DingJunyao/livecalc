@@ -209,3 +209,49 @@ export async function getComparisonPlanCostTrend(
     params: { plan_id: planId, region_ids: regionIds.join(','), days },
   })
 }
+
+// ==================== 三期：商家物价热力图 ====================
+
+export interface HeatmapItem {
+  merchant_id: number
+  name: string
+  latitude: number
+  longitude: number
+  price: number
+  is_stale: boolean
+  sample_count: number
+  price_index?: number | null
+}
+
+export interface HeatmapBuckets {
+  p25?: number | null
+  p50?: number | null
+  p75?: number | null
+  p90?: number | null
+}
+
+export interface HeatmapResponse {
+  mode: 'item' | 'overall'
+  currency: string
+  unit: string
+  entity_type?: string | null
+  entity_id?: number | null
+  basket_size?: number | null
+  buckets: HeatmapBuckets
+  items: HeatmapItem[]
+}
+
+/** 商家物价热力图数据（mode=item 需 entity_type+entity_id）。 */
+export async function getComparisonHeatmap(
+  mode: 'item' | 'overall',
+  regionIds: number[],
+  opts: { entityType?: 'ingredient' | 'product'; entityId?: number } = {},
+): Promise<HeatmapResponse> {
+  return await api.get('/comparison/heatmap', {
+    params: {
+      mode,
+      region_ids: regionIds.join(','),
+      ...(mode === 'item' ? { entity_type: opts.entityType, entity_id: opts.entityId } : {}),
+    },
+  }) as HeatmapResponse
+}

@@ -1332,7 +1332,13 @@
     "mealRefreshLimit": "今天{meal_type}推荐已经刷新 {max} 次了，明天再来吧～",
     "mealDishNotInRecommendation": "该菜不在当前推荐中",
     "mealNoCandidates": "该餐类暂无可用菜谱",
-    "planNotFound": "方案不存在",    "invalidIdList": "ID 列表格式无效",    "idListRequired": "至少需要一个 ID",    "idListTooLong": "一次最多 {limit} 个",    "comparisonEntityTypeInvalid": "entity_type 无效"  },
+    "planNotFound": "方案不存在",
+    "invalidIdList": "ID 列表格式无效",
+    "idListRequired": "至少需要一个 ID",
+    "idListTooLong": "一次最多 {limit} 个",
+    "comparisonEntityTypeInvalid": "entity_type 无效",
+    "heatmapEntityRequired": "单品热力图必须选择原料或商品"
+  },
   "localValues": {
     "newNameSuffix": "(新)",
     "unknownIngredientName": "未知原料",
@@ -2016,7 +2022,15 @@
     "metricFat": "脂肪 (g)",
     "dimensionCurrent": "当前",
     "regionCol": "地区",
-    "planTrendTitle": "各地区成本趋势"
+    "planTrendTitle": "各地区成本趋势",
+    "tabHeatmap": "热力图",
+    "heatmapModeItem": "单品物价",
+    "heatmapModeOverall": "整体物价",
+    "heatmapPickEntity": "选择原料或商品",
+    "heatmapOverallNote": "不选单品，按共同商品篮子显示每个商家的整体物价指数（中位数=100）",
+    "heatmapEmpty": "所选地区暂无有坐标的商家价格数据",
+    "staleHint": "价格已超期",
+    "sampleCountUnit": "种商品"
   },
   "plans": {
     "title": "试算",

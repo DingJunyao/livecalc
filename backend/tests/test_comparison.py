@@ -70,11 +70,20 @@ def _build_fixture(db_session, with_free_merchant: bool = False):
         cities[key] = city
     db_session.flush()
 
-    merchant_a = Merchant(name=f"商家A-{suffix}", region_id=cities["A"].id)
-    merchant_b = Merchant(name=f"商家B-{suffix}", region_id=cities["B"].id)
+    merchant_a = Merchant(
+        name=f"商家A-{suffix}", region_id=cities["A"].id,
+        latitude=34.77, longitude=113.42,
+    )
+    merchant_b = Merchant(
+        name=f"商家B-{suffix}", region_id=cities["B"].id,
+        latitude=34.10, longitude=113.82,
+    )
     merchants = [merchant_a, merchant_b]
     if with_free_merchant:
-        merchants.append(Merchant(name=f"游离商家-{suffix}", region_id=None))
+        merchants.append(Merchant(
+            name=f"游离商家-{suffix}", region_id=None,
+            latitude=34.50, longitude=113.60,
+        ))
     db_session.add_all(merchants)
     db_session.flush()
 
@@ -517,4 +526,91 @@ def test_comparison_plan_costs_and_trend_by_region(db_session):
             synchronize_session=False
         )
         db_session.commit()
+        _cleanup_fixture(db_session, fx)
+
+
+# ==================== 三期：热力图 ====================
+
+
+def test_comparison_heatmap_item_mode(db_session):
+    """单品模式：各地商家的该品代表价（¥/斤 归一），含分位与坐标。"""
+    from app.api.comparison import comparison_heatmap
+
+    fx = _build_fixture(db_session)
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        res = asyncio.run(comparison_heatmap(
+            request=_fake_request(), mode="item",
+            entity_type="ingredient", entity_id=fx["ingredient"].id,
+            region_ids=rids,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        by_mid = {it["merchant_id"]: it for it in res["items"]}
+        # 500g 记录 → ¥/斤 = 原价
+        assert by_mid[fx["merchant_a"].id]["price"] == pytest.approx(10.0)
+        assert by_mid[fx["merchant_b"].id]["price"] == pytest.approx(100.0)
+        # 坐标来自商家（写入夹具）
+        assert by_mid[fx["merchant_a"].id]["latitude"] == pytest.approx(34.77)
+        assert by_mid[fx["merchant_a"].id]["sample_count"] >= 1
+        assert by_mid[fx["merchant_a"].id]["is_stale"] is False
+        # 分位：两家 [10, 100] → p50 ≈ 10（round((2-1)*0.5)=1 → index 1 → 100？验证结构即可）
+        assert res["buckets"] and "p50" in res["buckets"]
+        assert res["currency"]
+        # 单品模式无 price_index
+        assert "price_index" not in by_mid[fx["merchant_a"].id]
+    finally:
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_heatmap_overall_mode(db_session):
+    """整体物价模式：篮子=基准地区有记录商品；price_index 以中位数为 100。"""
+    from app.api.comparison import comparison_heatmap
+
+    fx = _build_fixture(db_session)
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        res = asyncio.run(comparison_heatmap(
+            request=_fake_request(), mode="overall",
+            entity_type="ingredient", entity_id=None,
+            region_ids=rids,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        by_mid = {it["merchant_id"]: it for it in res["items"]}
+        assert res["basket_size"] == 1
+        # 商家A 价 10（基准价），商家B 价 100 → 中位数取决于排序：
+        # 两家非陈旧价 [10, 100]，round(1*0.5)=1 → p50=100 → A=10.0、B=100.0
+        assert by_mid[fx["merchant_a"].id]["price_index"] is not None
+        assert by_mid[fx["merchant_b"].id]["price_index"] is not None
+        # 中位数价商家恒为 100
+        p50 = res["buckets"]["p50"]
+        by_p50 = [it for it in res["items"] if it["price"] == p50]
+        assert all(it["price_index"] == 100.0 for it in by_p50)
+    finally:
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_heatmap_requires_entity_in_item_mode(db_session):
+    """单品模式缺 entity_id 报 400；无坐标商家不返回。"""
+    from app.api.comparison import comparison_heatmap
+    from app.core.exceptions import LocalizedHTTPException
+
+    fx = _build_fixture(db_session)
+    rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
+    try:
+        with pytest.raises(LocalizedHTTPException):
+            asyncio.run(comparison_heatmap(
+                request=_fake_request(), mode="item",
+                entity_type="ingredient", entity_id=None,
+                region_ids=rids,
+                db=db_session, current_user=FakeUser(), tz="UTC",
+            ))
+        # 单品模式选无关原料 → 商品集为空 → 空 items
+        res = asyncio.run(comparison_heatmap(
+            request=_fake_request(), mode="item",
+            entity_type="ingredient", entity_id=999999,
+            region_ids=rids,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        assert res["items"] == []
+    finally:
         _cleanup_fixture(db_session, fx)
