@@ -407,3 +407,275 @@ export async function getComparisonEntityPrices(_params: Record<string, string>,
     entities: finalEntities,
   }
 }
+
+// ==================== 二期：菜谱 / 试算成本对比 ====================
+// 菜谱成本复用 recipes.ts 的 getRecipeCost / getCostHistoryRange（已支持 region_id）；
+// 试算求值在本地简单评估器上做地区过滤（原料/商品条目按商家地区子树取最新价，
+// 营养与地区无关沿用 evaluateItem；菜谱项走 getRecipeCost 的地区口径）。
+
+import { getRecipeCost, getCostHistoryRange } from './recipes'
+import { evaluateItem } from './mealPlans'
+import { getById } from '../database'
+
+const MAX_RECIPES = 10
+const MAX_PLANS = 10
+
+async function regionNamesById(): Promise<Map<number, { name: string; display_name: string; level: number }>> {
+  const all: any[] = await getAll('regions')
+  const map = new Map<number, { name: string; display_name: string; level: number }>()
+  for (const r of all) {
+    if (r?.id != null && r.is_active !== false) {
+      map.set(Number(r.id), {
+        name: r.name || String(r.id),
+        display_name: r.display_name || r.name || String(r.id),
+        level: r.level ?? 0,
+      })
+    }
+  }
+  return map
+}
+
+/** GET /comparison/recipe-costs — 菜谱×地区成本矩阵（复用 getRecipeCost 地区口径）。 */
+export async function getComparisonRecipeCosts(_params: Record<string, string>, query?: any): Promise<any> {
+  const recipeIds = parseIds(query?.recipe_ids, MAX_RECIPES)
+  const regionIds = parseIds(query?.region_ids, MAX_REGIONS)
+  const names = await regionNamesById()
+
+  const rows = []
+  for (const rid of recipeIds) {
+    const recipe = await getById('recipes', rid)
+    rows.push({
+      recipe_id: rid,
+      name: recipe?.name || String(rid),
+      regions: Object.fromEntries(regionIds.map(x => [String(x), null])),
+    })
+  }
+
+  for (const regionId of regionIds) {
+    for (const row of rows) {
+      let cost: any = null
+      try {
+        cost = await getRecipeCost({ id: String(row.recipe_id) }, { region_id: String(regionId) })
+      } catch {
+        cost = null
+      }
+      if (!cost || cost.total_cost == null) continue
+      const breakdown = (cost.cost_breakdown || []).map((b: any) => ({
+        ingredient_name: b.ingredient_name ?? null,
+        ingredient_id: b.ingredient_id ?? null,
+        quantity: b.quantity ?? null,
+        cost: b.cost ?? null,
+        fallback_chain: b.fallback_chain ?? null,
+        aggregation_chain: b.aggregation_chain ?? null,
+        price_recorded_at: null,
+      }))
+      row.regions[String(regionId)] = {
+        total_cost: cost.total_cost,
+        cost_per_serving: cost.cost_per_serving ?? null,
+        currency: cost.currency ?? DEFAULT_USER_CURRENCY,
+        missing_ingredients: breakdown
+          .filter((b: any) => b.cost == null && b.ingredient_name)
+          .map((b: any) => b.ingredient_name),
+        breakdown,
+      }
+    }
+  }
+
+  return {
+    currency: DEFAULT_USER_CURRENCY,
+    regions: regionIds.map(rid => ({
+      region_id: rid,
+      ...(names.get(rid) || { name: String(rid), display_name: String(rid), level: 0 }),
+    })),
+    recipes: rows,
+  }
+}
+
+/** GET /comparison/recipe-cost-trend — 单菜谱多地区趋势（复用 getCostHistoryRange）。 */
+export async function getComparisonRecipeCostTrend(_params: Record<string, string>, query?: any): Promise<any> {
+  const recipeId = parseInt(String(query?.recipe_id || ''), 10)
+  const regionIds = parseIds(query?.region_ids, MAX_REGIONS)
+  const days = Math.min(Math.max(parseInt(String(query?.days || '30'), 10) || 30, 7), 90)
+  const out: Record<string, any[]> = {}
+  for (const regionId of regionIds) {
+    let points: any[] = []
+    try {
+      points = (await getCostHistoryRange(
+        { id: String(recipeId) },
+        { region_id: String(regionId), days: String(days), offset_days: '0' },
+      )) as any[]
+    } catch {
+      points = []
+    }
+    out[String(regionId)] = Array.isArray(points) ? points : []
+  }
+  return { regions: out }
+}
+
+/** 单条目的地区口径成本（原料/商品：地区子树内最新记录；菜谱：getRecipeCost）。 */
+async function evaluateItemCostInRegion(
+  item: any,
+  regionId: number,
+  allowed: number[] | null,
+  ctx: LocalContext,
+): Promise<{ cost: number | null; currency: string | null }> {
+  if (item.item_type === 'recipe' && item.recipe_id != null) {
+    try {
+      const cost = await getRecipeCost({ id: String(item.recipe_id) }, { region_id: String(regionId) })
+      return { cost: cost?.total_cost ?? null, currency: cost?.currency ?? null }
+    } catch {
+      return { cost: null, currency: null }
+    }
+  }
+  const records = recordsInRegion(ctx, allowed)
+  let productId: number | null = null
+  if (item.item_type === 'product' && item.product_id != null) {
+    productId = Number(item.product_id)
+  } else if (item.item_type === 'ingredient' && item.ingredient_id != null) {
+    productId = ctx.products.find(
+      (p: any) => p.ingredient_id === item.ingredient_id && p.is_active !== false,
+    )?.id ?? null
+  }
+  if (productId == null) return { cost: null, currency: null }
+  const relevant = records.filter((r: any) => Number(r.product_id) === productId)
+    .sort((a: any, b: any) => ((b.recorded_at || '') > (a.recorded_at || '') ? 1 : -1))
+  const latest = relevant[0]
+  if (latest?.price == null) return { cost: null, currency: null }
+  const stdQty = Number(latest.standard_quantity) || 1
+  const cost = Math.round((Number(latest.price) / stdQty) * Number(item.quantity ?? 0) * 100) / 100
+  return { cost, currency: latest.currency || null }
+}
+
+async function evaluateTotalsInRegion(
+  items: any[],
+  regionId: number,
+  allowed: number[] | null,
+  ctx: LocalContext,
+): Promise<Record<string, any>> {
+  const totals = { cost: 0, currency: null as string | null, calories: 0, protein_g: 0, carbs_g: 0, fat_g: 0 }
+  for (const item of items) {
+    // 营养与地区无关，沿用 evaluateItem 的口径
+    const { nutrition } = await evaluateItem(item)
+    const costInfo = await evaluateItemCostInRegion(item, regionId, allowed, ctx)
+    if (costInfo.cost != null) {
+      totals.cost = Math.round((totals.cost + costInfo.cost) * 100) / 100
+      totals.currency = costInfo.currency || totals.currency
+    }
+    if (nutrition) {
+      totals.calories += nutrition.calories || 0
+      totals.protein_g += nutrition.protein_g || 0
+      totals.carbs_g += nutrition.carbs_g || 0
+      totals.fat_g += nutrition.fat_g || 0
+    }
+  }
+  for (const key of ['calories', 'protein_g', 'carbs_g', 'fat_g'] as const) {
+    totals[key] = Math.round(totals[key] * 100) / 100
+  }
+  return totals
+}
+
+/** POST /comparison/plan-evaluate-regions — 同一组条目分地区求值（合计卡口径切换）。 */
+export async function getComparisonPlanEvaluateRegions(_params: Record<string, string>, data?: any): Promise<any> {
+  const regionIds = parseIds((data?.region_ids || []).map(String).join(','), MAX_REGIONS)
+  const items = data?.items || []
+  const ctx = await loadContext()
+  const out = []
+  for (const regionId of regionIds) {
+    const allowed = await regionSubtreeIds(regionId)
+    const totals = await evaluateTotalsInRegion(items, regionId, allowed, ctx)
+    out.push({ region_id: regionId, totals })
+  }
+  return { regions: out }
+}
+
+/** GET /comparison/plan-costs — 已保存方案×地区合计对照。 */
+export async function getComparisonPlanCosts(_params: Record<string, string>, query?: any): Promise<any> {
+  const planIds = parseIds(query?.plan_ids, MAX_PLANS)
+  const regionIds = parseIds(query?.region_ids, MAX_REGIONS)
+  const ctx = await loadContext()
+  const allPlans: any[] = await getAll('meal_plans')
+  const out = []
+  for (const pid of planIds) {
+    const plan = allPlans.find((p: any) => Number(p.id) === pid)
+    const row: any = {
+      plan_id: pid,
+      name: plan?.name || String(pid),
+      regions: Object.fromEntries(regionIds.map(x => [String(x), null])),
+    }
+    if (plan) {
+      for (const regionId of regionIds) {
+        const allowed = await regionSubtreeIds(regionId)
+        try {
+          row.regions[String(regionId)] = await evaluateTotalsInRegion(plan.items || [], regionId, allowed, ctx)
+        } catch {
+          row.regions[String(regionId)] = null
+        }
+      }
+    }
+    out.push(row)
+  }
+  return { plans: out, regions: regionIds }
+}
+
+/** GET /comparison/plan-cost-trend — 单方案多地区趋势（与本地 mealPlans.costTrend 同口径 + 地区过滤）。 */
+export async function getComparisonPlanCostTrend(_params: Record<string, string>, query?: any): Promise<any> {
+  const planId = parseInt(String(query?.plan_id || ''), 10)
+  const regionIds = parseIds(query?.region_ids, MAX_REGIONS)
+  const days = Math.min(Math.max(parseInt(String(query?.days || '30'), 10) || 30, 7), 90)
+  const ctx = await loadContext()
+  const allPlans: any[] = await getAll('meal_plans')
+  const plan = allPlans.find((p: any) => Number(p.id) === planId)
+
+  const out: Record<string, any[]> = {}
+  for (const regionId of regionIds) {
+    if (!plan) {
+      out[String(regionId)] = []
+      continue
+    }
+    const allowed = await regionSubtreeIds(regionId)
+    const records = recordsInRegion(ctx, allowed)
+    const today = new Date()
+    const points: any[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(d.getDate() - i)
+      const dayStr = toLocalDayKey(d) as string
+      let total = 0
+      for (const item of plan.items || []) {
+        if (item.item_type === 'recipe') {
+          // 简化（与本地 mealPlans.costTrend 同口径）：菜谱项用当前成本
+          try {
+            const cost = await getRecipeCost({ id: String(item.recipe_id) }, { region_id: String(regionId) })
+            total += cost?.total_cost ?? 0
+          } catch { /* ignore */ }
+          continue
+        }
+        let productId: number | null = null
+        if (item.item_type === 'product' && item.product_id != null) {
+          productId = Number(item.product_id)
+        } else if (item.item_type === 'ingredient' && item.ingredient_id != null) {
+          productId = ctx.products.find(
+            (p: any) => p.ingredient_id === item.ingredient_id && p.is_active !== false,
+          )?.id ?? null
+        }
+        if (productId == null) continue
+        const dayRecords = records.filter(
+          (r: any) => Number(r.product_id) === productId && r.is_active !== false
+            && (r.recorded_at || '').split('T')[0] <= dayStr,
+        ).sort((a: any, b: any) => ((b.recorded_at || '') > (a.recorded_at || '') ? 1 : -1))
+        const latest = dayRecords[0]
+        if (latest?.price != null) {
+          const stdQty = Number(latest.standard_quantity) || 1
+          total += (Number(latest.price) / stdQty) * Number(item.quantity ?? 0)
+        }
+      }
+      const rounded = Math.round(total * 100) / 100
+      points.push({
+        date: dayStr, total_cost: rounded, min_cost: rounded,
+        max_cost: rounded, avg_cost: rounded, currency: DEFAULT_USER_CURRENCY,
+      })
+    }
+    out[String(regionId)] = points
+  }
+  return { regions: out }
+}

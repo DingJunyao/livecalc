@@ -2,7 +2,7 @@
   <div class="mb-4">
     <div class="d-flex align-center mb-3">
       <v-icon start color="info">mdi-store-outline</v-icon>
-      <span class="text-h6 font-weight-regular">{{ t('recipes.merchantCostEstimates') }}</span>
+      <span class="text-h6 font-weight-regular">{{ title ?? t('recipes.merchantCostEstimates') }}</span>
     </div>
 
     <div v-if="loading" class="d-flex ga-3">
@@ -71,6 +71,8 @@ import { useI18n } from 'vue-i18n'
 const props = defineProps<{
   merchantCosts?: { merchants?: any[] } | null
   loading?: boolean
+  /** 覆盖默认标题（跨地区对比的「按地区」模式传地区文案） */
+  title?: string
 }>()
 
 const { currency: userCurrency } = useUserCurrency()

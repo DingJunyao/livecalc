@@ -56,16 +56,24 @@
         :loading="loadingNutritionData"
       />
 
-      <!-- 模块 ⑤ + ④ -->
+      <!-- 模块 ⑤ + ④（维度切换：商家 / 地区；有 ≥2 个有数据地区时才出现切换） -->
       <div class="ma-4">
+        <div v-if="hasRegionComparison" class="d-flex justify-end mb-2">
+          <v-btn-toggle v-model="compareDimension" mandatory density="compact" variant="outlined" divided>
+            <v-btn value="merchant" size="small">{{ t('charts.byMerchant') }}</v-btn>
+            <v-btn value="region" size="small">{{ t('charts.byRegion') }}</v-btn>
+          </v-btn-toggle>
+        </div>
         <MerchantCostCards
-          :merchant-costs="merchantCosts"
-          :loading="loadingMerchantCosts"
+          :merchant-costs="compareDimension === 'region' ? regionCostsShaped : merchantCosts"
+          :loading="compareDimension === 'region' ? loadingRegionCosts : loadingMerchantCosts"
+          :title="compareDimension === 'region' ? t('compare.recipeMatrixTitle') : undefined"
         />
         <MerchantPriceMatrix
           :recipe-ingredients="recipe.ingredients"
-          :merchant-prices="merchantPriceData"
-          :loading="loadingMerchantPrices"
+          :merchant-prices="compareDimension === 'region' ? regionPricesShaped : merchantPriceData"
+          :loading="compareDimension === 'region' ? loadingRegionCosts : loadingMerchantPrices"
+          :title="compareDimension === 'region' ? t('compare.recipeMatrixTitle') : undefined"
         />
       </div>
     </template>
@@ -73,7 +81,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
@@ -261,6 +269,124 @@ function fetchMerchantPrice(ingredient: any): Promise<any> {
     }))
     .catch(() => null)
 }
+
+// ==================== 跨地区对比（维度切换：商家 / 地区） ====================
+// 复用 MerchantCostCards / MerchantPriceMatrix：把 comparison/recipe-costs 的
+// 地区数据整形为两个组件的商家数据形状（merchant_id=region_id、merchant_name=地区名），
+// 表头随维度切换（title prop），组件不重写。
+import { getComparisonRecipeCosts, type RecipeCostsResponse } from '@/api/comparison'
+import { fetchPricedRegions } from '@/composables/useRegionPrices'
+
+const compareDimension = ref<'merchant' | 'region'>('merchant')
+const regionCandidates = ref<Array<{ region_id: number; display_name: string }>>([])
+const regionCostsData = ref<RecipeCostsResponse | null>(null)
+const loadingRegionCosts = ref(false)
+
+const hasRegionComparison = computed(() => regionCandidates.value.length >= 2)
+
+async function loadRegionCompare() {
+  if (regionCandidates.value.length === 0) {
+    try {
+      regionCandidates.value = await fetchPricedRegions()
+    } catch {
+      regionCandidates.value = []
+    }
+  }
+  if (regionCandidates.value.length < 2 || !recipeId) return
+  loadingRegionCosts.value = true
+  try {
+    regionCostsData.value = await getComparisonRecipeCosts(
+      [recipeId],
+      regionCandidates.value.slice(0, 6).map(r => r.region_id),
+    )
+  } catch {
+    regionCostsData.value = null
+  } finally {
+    loadingRegionCosts.value = false
+  }
+}
+
+// 首次切到「地区」时才拉取（懒加载，与详情页一致）
+watch(compareDimension, (dim) => {
+  if (dim === 'region' && regionCostsData.value == null && !loadingRegionCosts.value) {
+    void loadRegionCompare()
+  }
+})
+
+const nameByIdFromRegions = computed(() => {
+  const map = new Map<number, string>()
+  for (const meta of regionCostsData.value?.regions || []) {
+    map.set(meta.region_id, meta.display_name || meta.name)
+  }
+  return map
+})
+
+/** 地区数据 → MerchantCostCards 形状（推荐=非缺失里总成本最低；单地区不标）。 */
+const regionCostsShaped = computed(() => {
+  const row = regionCostsData.value?.recipes?.[0]
+  if (!row) return null
+  const merchants: any[] = []
+  for (const [ridStr, cell] of Object.entries(row.regions)) {
+    if (!cell || cell.total_cost == null) continue
+    const breakdown = cell.breakdown || []
+    merchants.push({
+      merchant_id: Number(ridStr),
+      merchant_name: nameByIdFromRegions.value.get(Number(ridStr)) || ridStr,
+      total_cost: cell.total_cost,
+      external_cost: 0,
+      covered_cost: cell.total_cost,
+      covered_count: breakdown.filter(b => b.cost != null).length,
+      total_ingredients: breakdown.length,
+      missing_ingredients: cell.missing_ingredients || [],
+      fallback_chains: breakdown.map(b => b.fallback_chain).filter(Boolean),
+      is_recommended: false,
+    })
+  }
+  const fresh = merchants.filter(m => m.missing_ingredients.length === 0)
+  if (fresh.length >= 2) {
+    const min = Math.min(...fresh.map(m => m.total_cost))
+    for (const m of fresh) m.is_recommended = m.total_cost === min
+  }
+  return { merchants, currency: regionCostsData.value?.currency }
+})
+
+/** 地区数据 → MerchantPriceMatrix 形状（行=食材，prices=[{merchant_id=地区, cost}]；
+ * is_lowest 按行内非缺失最低计算）。 */
+const regionPricesShaped = computed(() => {
+  const row = regionCostsData.value?.recipes?.[0]
+  const ingredients = recipe.value?.ingredients || []
+  if (!row) return []
+  const regionIdsList = Object.keys(row.regions)
+  return ingredients.map((ing: any) => {
+    const cells = regionIdsList
+      .map(rid => ({ rid, cell: row.regions[rid] }))
+      .filter(x => x.cell)
+    const prices = cells.map(({ rid, cell }) => {
+      const b = (cell!.breakdown || []).find(x => x.ingredient_id === ing.ingredient_id)
+      return {
+        merchant_id: Number(rid),
+        merchant_name: nameByIdFromRegions.value.get(Number(rid)) || rid,
+        price: b?.cost ?? null,
+        total_cost: b?.cost ?? null,
+        is_lowest: false,
+      }
+    })
+    const valid = prices.filter(p => p.price != null)
+    if (valid.length >= 2) {
+      const min = Math.min(...valid.map(p => p.price as number))
+      for (const p of valid) p.is_lowest = p.price === min
+    }
+    return {
+      recipeIngredientId: ing.id,
+      ingredientId: ing.ingredient_id,
+      ingredientName: ing.name,
+      prices,
+      unit: null,
+      qtyDisplay: getEffectiveQuantity(ing).qtyDisplay,
+      fallbackChain: null,
+    }
+  })
+})
 
 // 并发控制：同时最多 3 个比价请求，全局超时 50 秒
 async function loadMerchantPrices() {
