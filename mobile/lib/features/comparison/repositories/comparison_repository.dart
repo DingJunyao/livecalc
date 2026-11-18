@@ -313,14 +313,16 @@ class ComparisonRepository {
     return EntityPrices.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// 实体搜索（原料 / 商品），返回 (id, name) 选项。
+  /// 实体搜索（原料 / 商品）。原料端点用 q，商品端点用 search（与列表页同参）。
   Future<List<EntityOption>> searchEntities({
     required String entityType,
     String keyword = '',
-    int limit = 20,
+    int limit = 50,
   }) async {
     final params = <String, dynamic>{'limit': limit};
-    if (keyword.isNotEmpty) params['q'] = keyword;
+    if (keyword.isNotEmpty) {
+      params[entityType == 'ingredient' ? 'q' : 'search'] = keyword;
+    }
     final url = entityType == 'ingredient' ? '/ingredients' : '/products/entity';
     final response = await _client.dio.get(url, queryParameters: params);
     final data = response.data;
@@ -431,6 +433,39 @@ class ComparisonRepository {
           },
         });
     return response.data as Map<String, dynamic>;
+  }
+
+  /// 用户的自定义计算范围（对比地区快捷选择）。
+  Future<List<CalcScopeOption>> listCalcScopes() async {
+    final response = await _client.dio.get('/calc-scopes');
+    final data = response.data;
+    final list = (data is List) ? data : ((data['items'] as List?) ?? const []);
+    return list
+        .map((e) => CalcScopeOption.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+}
+
+/// 自定义计算范围选项（名称 + 多地区 id 组合）。
+class CalcScopeOption {
+  final int id;
+  final String name;
+  final List<int> regionIds;
+
+  const CalcScopeOption({
+    required this.id,
+    required this.name,
+    required this.regionIds,
+  });
+
+  factory CalcScopeOption.fromJson(Map<String, dynamic> json) {
+    return CalcScopeOption(
+      id: (json['id'] as num?)?.toInt() ?? 0,
+      name: (json['name'] as String?) ?? '',
+      regionIds: ((json['region_ids'] as List?) ?? const [])
+          .map((e) => (e as num).toInt())
+          .toList(),
+    );
   }
 }
 

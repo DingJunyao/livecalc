@@ -70,6 +70,8 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
 
   Future<void> _openRegionPicker() async {
     final state = ref.read(comparisonProvider);
+    final scopes = await ref.read(comparisonProvider.notifier).loadCalcScopes();
+    if (!mounted) return;
     final picked = await showModalBottomSheet<List<int>>(
       context: context,
       isScrollControlled: true,
@@ -77,6 +79,7 @@ class _CompareScreenState extends ConsumerState<CompareScreen>
         candidates: state.candidates,
         selected: state.selectedRegionIds,
         maxRegions: _maxRegions,
+        scopes: scopes,
       ),
     );
     if (picked == null || !mounted) return;
@@ -452,11 +455,13 @@ class _RegionPickerSheet extends StatefulWidget {
   final List<RegionCandidate> candidates;
   final List<int> selected;
   final int maxRegions;
+  final List<CalcScopeOption> scopes;
 
   const _RegionPickerSheet({
     required this.candidates,
     required this.selected,
     required this.maxRegions,
+    this.scopes = const [],
   });
 
   @override
@@ -495,6 +500,28 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
               child: Text(l10n.commonDone),
             ),
           ),
+          // 自定义计算范围快捷项（用户在「个人中心」建好的多地区组合）
+          if (widget.scopes.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  for (final scope in widget.scopes)
+                    ActionChip(
+                      visualDensity: VisualDensity.compact,
+                      avatar: const Icon(Icons.playlist_add_check, size: 16),
+                      label: Text(scope.name, style: theme.textTheme.labelMedium),
+                      onPressed: () => setState(() {
+                        _temp
+                          ..clear()
+                          ..addAll(scope.regionIds.take(widget.maxRegions));
+                      }),
+                    ),
+                ],
+              ),
+            ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
@@ -954,7 +981,12 @@ class _RecipesTabState extends ConsumerState<_RecipesTab> {
         title: AppLocalizations.of(ctx).compareSelectRecipes,
         options: state.recipeOptions,
         selected: state.selectedRecipeIds,
-        onSearch: (kw) => ref.read(comparisonProvider.notifier).searchRecipes(keyword: kw),
+        // 搜索回调返回结果列表，弹层内部 setState 更新（弹层拿不到外层 provider 重建）
+        onSearch: (kw) async {
+          await ref.read(comparisonProvider.notifier).searchRecipes(keyword: kw);
+          final st = ref.read(comparisonProvider);
+          return st.recipeOptions;
+        },
       ),
     );
     if (picked == null || !mounted) return;
@@ -997,12 +1029,14 @@ class _RecipesTabState extends ConsumerState<_RecipesTab> {
   }
 }
 
-/// 通用「搜索 + 多选」底部弹层（菜谱/方案共用；onSearch 为空 = 客户端过滤）。
+/// 通用「搜索 + 多选」底部弹层（菜谱/方案共用）。
+/// options 为初始快照；onSearch 返回搜索结果列表，弹层内部 setState 更新
+///（showModalBottomSheet 是独立 route，外层 provider 重建不会刷新它）。
 class _SimpleSearchPickerSheet extends StatefulWidget {
   final String title;
   final List<EntityOption> options;
   final List<int> selected;
-  final ValueChanged<String>? onSearch;
+  final Future<List<EntityOption>> Function(String keyword)? onSearch;
 
   const _SimpleSearchPickerSheet({
     required this.title,
@@ -1017,18 +1051,39 @@ class _SimpleSearchPickerSheet extends StatefulWidget {
 
 class _SimpleSearchPickerSheetState extends State<_SimpleSearchPickerSheet> {
   late final Set<int> _temp;
+  late List<EntityOption> _options;
+  bool _searching = false;
   String _keyword = '';
+  int _seq = 0; // 慢响应不得覆盖新搜索结果
 
   @override
   void initState() {
     super.initState();
     _temp = Set<int>.from(widget.selected);
+    _options = widget.options;
+    // 初始选项为空且可搜索时先拉一次（与外层打开时序竞态兜底）
+    if (_options.isEmpty && widget.onSearch != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _runSearch(''));
+    }
+  }
+
+  Future<void> _runSearch(String keyword) async {
+    final search = widget.onSearch;
+    if (search == null) return;
+    final seq = ++_seq;
+    setState(() => _searching = true);
+    try {
+      final result = await search(keyword);
+      if (seq == _seq && mounted) setState(() { _options = result; _searching = false; });
+    } catch (_) {
+      if (seq == _seq && mounted) setState(() => _searching = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final filtered = widget.options
+    final filtered = _options
         .where((o) => _keyword.isEmpty || o.name.contains(_keyword))
         .toList();
     return SafeArea(
@@ -1054,32 +1109,38 @@ class _SimpleSearchPickerSheetState extends State<_SimpleSearchPickerSheet> {
                 ),
                 onChanged: (v) {
                   setState(() => _keyword = v.trim());
-                  widget.onSearch!(v.trim());
+                  _runSearch(v.trim());
                 },
               ),
             ),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: filtered.length,
-              itemBuilder: (ctx, i) {
-                final o = filtered[i];
-                return CheckboxListTile(
-                  value: _temp.contains(o.id),
-                  title: Text(o.name),
-                  onChanged: (v) {
-                    setState(() {
-                      if (v == true) {
-                        _temp.add(o.id);
-                      } else {
-                        _temp.remove(o.id);
-                      }
-                    });
-                  },
-                );
-              },
+          if (_searching)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                itemBuilder: (ctx, i) {
+                  final o = filtered[i];
+                  return CheckboxListTile(
+                    value: _temp.contains(o.id),
+                    title: Text(o.name),
+                    onChanged: (v) {
+                      setState(() {
+                        if (v == true) {
+                          _temp.add(o.id);
+                        } else {
+                          _temp.remove(o.id);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1104,8 +1165,6 @@ class _HeatmapTabState extends ConsumerState<_HeatmapTab> {
   bool _loading = false;
   String? _error;
   int _seq = 0;
-  int _searchSeq = 0;
-  List<EntityOption> _entityOptions = const [];
   String _lastRegionSignature = '';
   bool _initialLoaded = false;
 
@@ -1142,25 +1201,24 @@ class _HeatmapTabState extends ConsumerState<_HeatmapTab> {
     }
   }
 
-  Future<void> _searchEntities(String keyword) async {
-    final seq = ++_searchSeq;
+  Future<List<EntityOption>> _searchEntities(String keyword) async {
     try {
-      final options = await _heatmapRepo.searchEntities(
+      // 结果直接返回给弹层（弹层内部 setState 刷新，不走 provider）
+      return await _heatmapRepo.searchEntities(
         entityType: _entityType, keyword: keyword);
-      if (seq == _searchSeq && mounted) setState(() => _entityOptions = options);
     } catch (_) {
-      if (seq == _searchSeq && mounted) setState(() => _entityOptions = const []);
+      return const [];
     }
   }
 
   Future<void> _openEntityPicker() async {
-    await _searchEntities('');
+    final initial = await _searchEntities('');
     if (!mounted) return;
     final picked = await showModalBottomSheet<EntityOption>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => _EntityOptionPickerSheet(
-        options: _entityOptions,
+        initialOptions: initial,
         onSearch: (kw) => _searchEntities(kw),
       ),
     );
@@ -1233,7 +1291,6 @@ class _HeatmapTabState extends ConsumerState<_HeatmapTab> {
                     setState(() {
                       _entityType = v;
                       _selectedEntity = null;
-                      _entityOptions = const [];
                       _points = const [];
                       _buckets = null;
                       _error = null;
@@ -1280,12 +1337,12 @@ class _HeatmapTabState extends ConsumerState<_HeatmapTab> {
   }
 }
 
-/// 单品选择弹层（搜索 + 单选）。
+/// 单品选择弹层（搜索 + 单选）。onSearch 返回结果列表，弹层内部更新。
 class _EntityOptionPickerSheet extends StatefulWidget {
-  final List<EntityOption> options;
-  final ValueChanged<String>? onSearch;
+  final List<EntityOption> initialOptions;
+  final Future<List<EntityOption>> Function(String keyword)? onSearch;
 
-  const _EntityOptionPickerSheet({required this.options, this.onSearch});
+  const _EntityOptionPickerSheet({required this.initialOptions, this.onSearch});
 
   @override
   State<_EntityOptionPickerSheet> createState() =>
@@ -1293,11 +1350,36 @@ class _EntityOptionPickerSheet extends StatefulWidget {
 }
 
 class _EntityOptionPickerSheetState extends State<_EntityOptionPickerSheet> {
+  late List<EntityOption> _options;
+  bool _searching = false;
   String _keyword = '';
+  int _seq = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _options = widget.initialOptions;
+    if (_options.isEmpty && widget.onSearch != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _runSearch(''));
+    }
+  }
+
+  Future<void> _runSearch(String keyword) async {
+    final search = widget.onSearch;
+    if (search == null) return;
+    final seq = ++_seq;
+    setState(() => _searching = true);
+    try {
+      final result = await search(keyword);
+      if (seq == _seq && mounted) setState(() { _options = result; _searching = false; });
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final filtered = widget.options
+    final filtered = _options
         .where((o) => _keyword.isEmpty || o.name.contains(_keyword))
         .toList();
     return SafeArea(
@@ -1315,23 +1397,29 @@ class _EntityOptionPickerSheetState extends State<_EntityOptionPickerSheet> {
               ),
               onChanged: (v) {
                 setState(() => _keyword = v.trim());
-                widget.onSearch?.call(v.trim());
+                _runSearch(v.trim());
               },
             ),
           ),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: filtered.length,
-              itemBuilder: (ctx, i) {
-                final o = filtered[i];
-                return ListTile(
-                  title: Text(o.name),
-                  onTap: () => Navigator.pop(ctx, o),
-                );
-              },
+          if (_searching)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: filtered.length,
+                itemBuilder: (ctx, i) {
+                  final o = filtered[i];
+                  return ListTile(
+                    title: Text(o.name),
+                    onTap: () => Navigator.pop(ctx, o),
+                  );
+                },
+              ),
             ),
-          ),
         ],
       ),
     );

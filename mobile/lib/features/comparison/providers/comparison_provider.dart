@@ -109,10 +109,22 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   int _searchSeq = 0;
   int _recipeSeq = 0;
   int _planSeq = 0;
+  List<CalcScopeOption> _calcScopes = const [];
 
   ComparisonNotifier({ComparisonRepository? repository})
       : _repository = repository ?? ComparisonRepository(),
         super(const ComparisonState());
+
+  /// 用户的自定义计算范围（对比地区快捷选择；会话内缓存）。
+  Future<List<CalcScopeOption>> loadCalcScopes() async {
+    if (_calcScopes.isNotEmpty) return _calcScopes;
+    try {
+      _calcScopes = await _repository.listCalcScopes();
+    } catch (_) {
+      _calcScopes = const [];
+    }
+    return _calcScopes;
+  }
 
   /// 拉取地区候选；首次进入自动带入记录数前 3 个地区。
   Future<void> loadCandidates() async {
