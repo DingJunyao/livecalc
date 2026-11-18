@@ -161,6 +161,7 @@ import * as admin from './handlers/admin'
 import * as recipes from './handlers/recipes'
 import * as meals from './handlers/meals'
 import * as sparklines from './handlers/sparklines'
+import * as comparison from './handlers/comparison'
 import * as usda from './handlers/usda'
 import * as agents from './handlers/agents'
 import * as regions from './handlers/regions'
@@ -350,6 +351,11 @@ addRoute('/proposals', { get: emptyList, post: async () => ({ id: 0, status: 'pe
 // ---- Sparklines ----
 addRoute('/sparklines/products', { get: sparklines.getProductSparklines })
 addRoute('/sparklines/ingredients', { get: sparklines.getIngredientSparklines })
+
+// ---- 跨地区物价对比 ----
+addRoute('/comparison/regions', { get: comparison.getComparisonRegions })
+addRoute('/comparison/summary', { get: comparison.getComparisonSummary })
+addRoute('/comparison/entity-prices', { get: comparison.getComparisonEntityPrices })
 
 // ---- Agent ----
 addRoute('/agent/task-types', { get: agents.getTaskTypes })

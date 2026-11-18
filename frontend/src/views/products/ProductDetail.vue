@@ -311,7 +311,7 @@
           </div>
         </v-card-text>
 
-        <!-- 各商家最新价格 -->
+        <!-- 各商家/各地区最新价格（维度切换：默认商家，有 ≥2 个有数据地区时可切地区） -->
         <!-- 加载中 -->
         <template v-if="loadingMerchantPrices">
           <v-divider />
@@ -320,10 +320,76 @@
             <span class="text-caption text-medium-emphasis">{{ t('products.loadingMerchantPrices') }}</span>
           </v-card-text>
         </template>
+        <!-- 各地区价格（与商家卡同布局） -->
+        <template v-else-if="priceDimension === 'region'">
+          <v-divider />
+          <v-card-text class="pa-3">
+            <div class="d-flex align-center mb-2">
+              <div class="text-caption text-medium-emphasis">{{ t('products.regionPrices') }}</div>
+              <v-btn-toggle
+                v-if="hasRegionComparison"
+                v-model="priceDimension"
+                mandatory
+                density="compact"
+                variant="outlined"
+                divided
+                class="ms-2"
+              >
+                <v-btn value="merchant" size="x-small">{{ t('charts.byMerchant') }}</v-btn>
+                <v-btn value="region" size="x-small">{{ t('charts.byRegion') }}</v-btn>
+              </v-btn-toggle>
+            </div>
+            <div v-if="loadingRegionPrices" class="text-center py-4">
+              <v-progress-circular indeterminate size="18" />
+            </div>
+            <div v-else-if="regionPriceCards.length" class="merchant-price-list">
+              <div
+                v-for="card in regionPriceCards"
+                :key="card.regionId"
+                class="merchant-price-item"
+                :class="{ 'merchant-price-lowest': card.isLowest, 'merchant-price-stale': card.isStale }"
+                style="position: relative"
+              >
+                <SparklineBackground
+                  v-if="card.trend.length >= 2"
+                  :data="card.trend"
+                  color="tertiary"
+                />
+                <div class="merchant-price-name text-truncate" style="position: relative; z-index: 1">{{ card.name }}</div>
+                <div class="merchant-price-value" style="position: relative; z-index: 1">
+                  <span class="font-weight-bold" :class="card.isLowest ? 'text-success' : ''">
+                    {{ formatMoney(card.price, userCurrency) }}<span v-if="card.unit" class="text-caption font-weight-regular"> / {{ card.unit }}</span>
+                  </span>
+                </div>
+                <div v-if="card.isStale" class="merchant-price-date" style="position: relative; z-index: 1">
+                  {{ t('compare.staleRecord', { days: card.daysSince ?? 0 }) }}
+                </div>
+                <div v-if="card.isLowest" class="merchant-price-badge">
+                  <v-chip size="x-small" color="success" variant="flat" label>{{ t('products.lowest') }}</v-chip>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-caption text-medium-emphasis py-2">{{ t('compare.noRegionData') }}</div>
+          </v-card-text>
+        </template>
         <template v-else-if="merchantPrices.length > 0">
           <v-divider />
           <v-card-text class="pa-3">
-            <div class="text-caption text-medium-emphasis mb-2">{{ t('products.merchantPrices') }}</div>
+            <div class="d-flex align-center mb-2">
+              <div class="text-caption text-medium-emphasis">{{ t('products.merchantPrices') }}</div>
+              <v-btn-toggle
+                v-if="hasRegionComparison"
+                v-model="priceDimension"
+                mandatory
+                density="compact"
+                variant="outlined"
+                divided
+                class="ms-2"
+              >
+                <v-btn value="merchant" size="x-small">{{ t('charts.byMerchant') }}</v-btn>
+                <v-btn value="region" size="x-small">{{ t('charts.byRegion') }}</v-btn>
+              </v-btn-toggle>
+            </div>
             <div class="merchant-price-list">
               <div
                 v-for="mp in merchantPrices"
@@ -546,7 +612,8 @@
             :unit="chartUnit"
             :empty-text="t('products.noPriceHistory')"
             :data="chartData"
-            :comparison-series="merchantComparisonSeries"
+            :comparison-series="priceDimension === 'region' ? regionComparisonSeries : merchantComparisonSeries"
+            :compare-label="priceDimension === 'region' ? t('charts.byRegion') : undefined"
             :loading="loadingChartPrices"
             color="#ff9800"
             class="grid-item item-price-trend"
@@ -1434,6 +1501,7 @@ import {
   type BasisUnitOption,
 } from '@/utils/nutritionBasis'
 import SparklineBackground from '@/components/charts/SparklineBackground.vue'
+import { fetchPricedRegions, loadEntityRegionPrices, buildRegionSeriesFromRecords, type RegionMetaLite, type RegionPriceCard, type RegionSeries } from '@/composables/useRegionPrices'
 import { useUserStore } from '@/stores/user'
 import UsdaMatchDialog from '@/components/usda/UsdaMatchDialog.vue'
 import PendingProposalBanner from '@/components/proposals/PendingProposalBanner.vue'
@@ -2988,6 +3056,53 @@ const latestRecordStats = computed(() => {
 // 图表使用用户偏好的质量单位（默认斤）
 const chartUnit = computed(() => massUnitLabel.value)
 
+// ---- 跨地区对比（维度切换：商家 / 地区） ----
+const priceDimension = ref<'merchant' | 'region'>('merchant')
+const regionCandidates = ref<RegionMetaLite[]>([])
+const regionNamesById = ref<Map<number, string>>(new Map())
+const regionPriceCards = ref<RegionPriceCard[]>([])
+const loadingRegionPrices = ref(false)
+const hasRegionComparison = computed(() => regionCandidates.value.length >= 2)
+let regionPricesLoaded = false
+
+const loadRegionCandidates = async () => {
+  regionCandidates.value = await fetchPricedRegions()
+  regionNamesById.value = new Map(regionCandidates.value.map(r => [r.region_id, r.display_name]))
+}
+
+const loadRegionPrices = async () => {
+  if (!product.value?.id) return
+  loadingRegionPrices.value = true
+  try {
+    const res = await loadEntityRegionPrices('product', product.value.id)
+    regionPriceCards.value = res.cards
+  } catch {
+    regionPriceCards.value = []
+  } finally {
+    loadingRegionPrices.value = false
+  }
+}
+
+// 首次切到「地区」时才拉地区价格卡（候选列表轻量，随页面加载）
+watch(priceDimension, (dim) => {
+  if (dim === 'region' && !regionPricesLoaded) {
+    regionPricesLoaded = true
+    loadRegionPrices()
+  }
+})
+
+// 按地区对比序列：与原料详情同构——同一批图表记录按 merchant_region_id
+// 分组，分组内沿用主序列的归一与 as-of 加权口径（商品实体等权）。
+const regionComparisonSeries = computed<RegionSeries[]>(() =>
+  buildRegionSeriesFromRecords(chartPriceRecords.value, {
+    toPoint: (record: any) => toProductChartPoint(record),
+    weightOf: () => 50,
+    startDay: chartRangeStartDay.value,
+    namesById: regionNamesById.value,
+    unknownLabel: t('compare.unknownRegion'),
+  }),
+)
+
 // 单位选项
 const unitOptions = LOCAL_UNIT_VALUES
 
@@ -3093,6 +3208,7 @@ const loadData = async () => {
 
     // 后台分别加载其他数据，互不影响
     loadMerchantPrices()
+    loadRegionCandidates()
     loadPriceRecords()
     loadChartPriceRecords(daysAgo(30))  // 图表默认加载近 30 天（月）
     loadNutritionData()

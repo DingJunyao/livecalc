@@ -37,6 +37,7 @@ class ProductRecordResponse(TimeZoneAwareModel):
     product_name: str
     merchant_id: Optional[int]
     merchant_name: Optional[str]  # 商家名称
+    merchant_region_id: Optional[int] = None  # 商家地区 id（跨地区对比按记录分组用）
     price: Decimal
     currency: str
     user_currency: Optional[str] = "CNY"

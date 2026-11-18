@@ -585,6 +585,7 @@
     "average": "Average",
     "overall": "Overall",
     "byMerchant": "By merchant",
+    "byRegion": "By region",
     "computedPrice": "Fallback/derived price",
     "includeComputed": "Include fallback",
     "staleDirectReplaced": "Direct price is stale; using fallback (was {price})",
@@ -954,8 +955,7 @@
     "admin": "Admin",
     "logout": "Sign out",
     "theme": "Theme",
-    "plans": "Planner"
-  },
+    "plans": "Planner",    "compare": "Price comparison"  },
   "routes": {
     "login": "Sign in",
     "register": "Sign up",
@@ -993,8 +993,7 @@
     "adminEmailConfig": "Email settings",
     "adminImagesUnused": "Unused images",
     "adminStorage": "Image storage",
-    "plans": "Planner"
-  },
+    "plans": "Planner",    "compare": "Price comparison"  },
   "detailTypes": {
     "recipe": "Recipe",
     "product": "Product",
@@ -1333,8 +1332,7 @@
     "mealRefreshLimit": "This meal has been refreshed {max} times today. Come back tomorrow!",
     "mealDishNotInRecommendation": "That dish is not in the current recommendation",
     "mealNoCandidates": "No available recipes for this meal",
-    "planNotFound": "Plan not found"
-  },
+    "planNotFound": "Plan not found",    "invalidIdList": "Invalid ID list",    "idListRequired": "At least one ID is required",    "idListTooLong": "At most {limit} at a time",    "comparisonEntityTypeInvalid": "Invalid entity_type"  },
   "localValues": {
     "newNameSuffix": " (new)",
     "unknownIngredientName": "Unknown ingredient",
@@ -1955,8 +1953,7 @@
     "perBasis": "(per {amount}{unit})",
     "nutritionBasis": "Per",
     "nutritionBasisUnit": "Basis unit",
-    "nutritionBasisHint": "Match the label (custom units supported, e.g. 1 bag = 250 g)"
-  },
+    "nutritionBasisHint": "Match the label (custom units supported, e.g. 1 bag = 250 g)",    "regionPrices": "Region prices"  },
   "favorites": {
     "title": "My Favorites",
     "favorite": "Favorite",
@@ -1972,6 +1969,35 @@
     "tabProducts": "Products",
     "tabRecipes": "Recipes",
     "tabMerchants": "Merchants"
+  },
+  "compare": {
+    "tabOverview": "Overview",
+    "tabPrices": "Ingredients & products",
+    "regionSelector": "Regions to compare",
+    "baseRegionNote": "{base} is the base region (price index = 100)",
+    "needTwoRegions": "Pick at least two regions to start comparing",
+    "lowestIndex": "Lowest index",
+    "priceIndexUnit": "price index",
+    "recordCount": "{count} price records",
+    "entityCount": "{count} products",
+    "priceIndexTitle": "Price index ({base} = 100)",
+    "basketNote": "Basket covers {count} products priced in the base region within a year",
+    "basketTrendTitle": "Basket average price trend",
+    "trendUnitJin": "jin (500 g)",
+    "noBasketData": "No basket price data yet",
+    "entityTypeIngredient": "Ingredients",
+    "entityTypeProduct": "Products",
+    "selectEntities": "Select ingredients or products",
+    "searchEntityPlaceholder": "Search by name",
+    "noEntityMatch": "No matches",
+    "matrixTitle": "Region price comparison",
+    "matrixUnitNote": "per standard unit, lowest in bold green",
+    "noMatrixData": "Pick regions and items to see the comparison",
+    "matrixEntityCol": "Item",
+    "unassignedMerchantsNote": "Merchants without a region count in every region",
+    "staleRecord": "Last record {days} days ago",
+    "noRegionData": "No price data in the selected regions",
+    "unknownRegion": "Unknown region"
   },
   "plans": {
     "title": "Planner",
@@ -2319,8 +2345,7 @@
     "presetCookingOil": "Cooking oil",
     "presetSoySauce": "Soy sauce",
     "presetHoney": "Honey",
-    "perBasis": "(per {amount}{unit})"
-  },
+    "perBasis": "(per {amount}{unit})",    "regionPrices": "Region prices"  },
   "merchants": {
     "title": "Merchants",
     "detail": "Merchant details",
