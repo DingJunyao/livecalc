@@ -1,7 +1,47 @@
-# FEATURE_跨地区物价对比（一期）
+# FEATURE_跨地区物价对比（一期 + 二期）
 
-> 分支：后端+Web master `350dc521` → 合入 feat/mobile-app（merge `49208ca1`）；移动端 feat/mobile-app `f1566862`。
-> 一期范围：批量对比端点 + 对比页（概览 / 原料·商品）+ 详情页「商家｜地区」维度切换。菜谱·试算对比、热力图为二三期。
+> 一期：master `350dc521` / feat `f1566862`（批量端点 + 对比页概览与原料·商品 + 详情页维度切换）。
+> 二期：master `aae6e105` / feat `f5c580b5`（菜谱/试算成本对比）。
+> 三期（热力图）待做。
+
+## 二期：菜谱/试算成本对比
+
+### 后端
+
+- `meal_plan_service`：`evaluate_items` / `evaluate_plan` / `_evaluate_stub_items` / `plan_cost_trend` 加显式 `region_id` 参数。哨兵 `_REGION_UNSET = object()`：未传 → `resolve_region_param`（会话 X-Region / 用户默认）；显式 None → 全部地区；显式 id → 该子树（对比逐地区求值必须绕过会话头，测试 `test_comparison_plan_evaluate_regions_explicit_override` 专门验证会话指向无数据城市时显式参数仍生效）。
+- `comparison.py` 五端点：
+  - `GET /comparison/recipe-costs?recipe_ids=&region_ids=` — 菜谱×地区矩阵。每格复用 `calculate_recipe_cost_as_of`（同一降级链），返回 total_cost / cost_per_serving / **breakdown**（明细行 cost=null 即该地区缺价食材）+ missing_ingredients。上限 recipe≤10。
+  - `GET /comparison/recipe-cost-trend?recipe_id=&region_ids=&days=` — 单菜谱多地区趋势（复用 `calculate_recipe_cost_range_trend`）。
+  - `POST /comparison/plan-evaluate-regions` — body `{kind, meal_type, items[], region_ids[]}`，同一组条目 N 地区分别求值返回 totals。**草稿/未保存方案可用**（条目形状同 PlanItemIn）。
+  - `GET /comparison/plan-costs?plan_ids=&region_ids=` — 已存方案×地区 evaluate totals（归属校验 404）。
+  - `GET /comparison/plan-cost-trend?plan_id=&region_ids=&days=` — 单方案多地区趋势（复用 `plan_cost_trend` 显式 region）。
+
+### Web
+
+- **对比页第三 tab「菜谱·试算」**：菜谱 `v-autocomplete`（`/recipes` 服务端 search，300ms 防抖）多选 → `recipe-costs` 成本矩阵（RegionPriceMatrix 加 `clickableRows`/`row-click`，点行 → `recipe-cost-trend` 多地区叠加 PriceTrendChart，键为 region_id 字符串）；方案下拉（`/meal-plans` 无分页，一次拉全 + 客户端过滤）→ `plan-costs` 合计矩阵，点行 → 营养对照 v-table（成本列最低绿色加粗）。
+- **菜谱分析页「按商家｜按地区」维度切换**：`comparison/recipe-costs` 地区数据**整形为商家组件数据形状**复用——`MerchantCostCards`（merchant_id=region_id、is_recommended=非缺失里总成本最低≥2 才标）与 `MerchantPriceMatrix`（prices=[{merchant_id=地区, total_cost=明细行 cost}]，is_lowest 行内计算）；两组件加可选 `title` prop 换表头。切换仅在地区候选≥2 时出现，首次切地区懒加载。
+- **试算详情合计卡「当前｜各地区对比」**：对比态 v-table 每地区一行（成本/热量/蛋白/碳水/脂肪，成本最低绿加粗）；**草稿即可用**（走 plan-evaluate-regions，无需先保存）；趋势列在同一列位切换成 PriceTrendChart 多地区叠加（`plan-cost-trend`，仅已保存方案），当前口径仍走 CostTrendAnalysis（会话范围）。
+- 本地 handler：`recipe-costs`/`recipe-cost-trend` 复用 `getRecipeCost`/`getCostHistoryRange`（已支持 region_id）；`plan-*` 在本地评估器上按 regionSubtree 过滤；营养与地区无关沿用 `evaluateItem`。
+
+### 移动端
+
+- CompareScreen TabBar 扩 3 块「菜谱·试算」：菜谱搜索底部弹层多选（`_SimpleSearchPickerSheet` 通用组件，服务端 search）+ 成本矩阵；方案下拉多选（客户端过滤）+ 合计矩阵。原始行 → `EntityPriceRow` 转换（`_rowToEntity`）复用 RegionPriceMatrix。
+- 试算详情合计卡 SegmentedButton「当前｜各地区对比」：对比态 `_RegionTotalsTable`（DataTable 横向滚动，列=成本/热量/蛋白/脂肪，成本最低绿加粗）；条目直接由 `plan['items']` 构造 PlanItemIn 形状调 `plan-evaluate-regions`。
+
+### 二期测试坑
+
+- **菜谱成本归克**：`recipe_service._qty_unit_to_grams` 硬编码 `unit_id == 3` 短路视为克；内存测试库单位 id 不定 → 菜谱条目必须 get-or-create id=3 克单位（沿用 `test_recipe_pending_cost.py` 惯例），否则全部 no_quantity、成本恒 0。
+
+### 二期验证
+
+- 后端 test_comparison.py 10/10（新增：地区成本 / 多地区趋势 / 显式 region 覆写会话 X-Region / 方案合计+走势）。
+- Web build 53s ✓、check:i18n + sources ✓（compare 46 键）。
+- 移动端 analyze 0 issue；comparison + planner + l10n + router + prices utils + recipes widgets = 148 例全过。
+- 分支：master `aae6e105` → feat（merge `a697ffa0`）；移动端 feat `f5c580b5`。
+
+## 三期（待做）：热力图
+
+`GET /comparison/heatmap?mode=item|overall&entity_type=&entity_id=&region_ids=`：单品模式复用 latest-price-by-merchant 聚合 + join 坐标；整体物价模式按共同商品集算商家指数。Web `MerchantMapView` 分档着色覆盖层（Leaflet circleMarker；SDK 引擎 circle 覆盖物降级彩色 marker）+ 图例 + 单品/整体切换；移动端 flutter_map CircleLayer + iOS 原生 circle + marker onTap；本地 handler 同步。
 
 ## 需求与设计原则
 
