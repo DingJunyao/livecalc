@@ -1,8 +1,24 @@
-# FEATURE_跨地区物价对比（一期 + 二期 + 三期）
+# FEATURE_跨地区物价对比（一期 + 二期 + 三期 + 实测修复）
 
 > 一期：master `350dc521` / feat `f1566862`（批量端点 + 对比页概览与原料·商品 + 详情页维度切换）。
 > 二期：master `aae6e105` / feat `f5c580b5`（菜谱/试算成本对比）。
 > 三期：master `217e3735` / feat `bfa5c0bb`（商家物价热力图）。
+> 实测修复：master `cbf8baff` / feat `c0932659`（用户实测四大问题）。
+
+## 实测修复（2026-11-19，用户实测反馈）
+
+用户实测报告四问题，勘察定位后修复（勘察结论：对开发库直调端点，regions/summary/趋势数据全部正常，排除后端）：
+
+| 问题 | 根因 | 修复 |
+|---|---|---|
+| web 实体下拉只有前若干个 | `/products/entity` 搜索参数是 **search** 不是 q（原料用 q、菜谱用 search，三端点不同参） | 按实体类型传正确参数；初始 limit 20→50 |
+| 移动端弹层输入无反应 | `showModalBottomSheet` 是独立 route，**拿不到外层 provider 重建**——弹层拿打开瞬间的 options 快照 | onSearch 返回 `Future<List>`，弹层内部 setState 刷新 + 弹层内请求序号防竞态 + 空选项自动首拉 |
+| 比价数字不可信（尖椒 0.0 vs 0.01 元/g） | 卡片价用「每标准单位价」，**同一原料在不同地区参与商品的包装/标准单位不同** | **卡片价改 ¥/斤 归一**（`_unit_price_per_jin`，与趋势/指数/迷你图同口径），unit 固定「斤」 |
+| 未适配自定义范围 | 一期未接入 calc-scopes | web 概览加「自定义范围」下拉、移动端地区弹层加自定义范围 ActionChip（点选直接应用 region_ids） |
+| web 对比页缺导航栏 | CompareView 未加页面级 v-app-bar | 补统一导航栏（汉堡 + 标题 + CalcContextMenu，对齐 PlansView） |
+| 移动端按地区档未出现 | 代码已实现（记录带 merchant_region_id → regionSeries 分组）；需**重新构建 APK** 才能看到 | 构建后验证 |
+
+**教训**：跨地区比价绝不能用「每标准单位价」——必须统一到质量口径（¥/斤）才可比；三个实体端点的搜索参数名各自不同（q/search/search），前端封装时必须按端点核对。
 
 ## 三期：商家物价热力图
 
