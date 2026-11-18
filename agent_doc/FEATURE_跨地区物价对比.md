@@ -1,8 +1,49 @@
-# FEATURE_跨地区物价对比（一期 + 二期）
+# FEATURE_跨地区物价对比（一期 + 二期 + 三期）
 
 > 一期：master `350dc521` / feat `f1566862`（批量端点 + 对比页概览与原料·商品 + 详情页维度切换）。
 > 二期：master `aae6e105` / feat `f5c580b5`（菜谱/试算成本对比）。
-> 三期（热力图）待做。
+> 三期：master `217e3735` / feat `bfa5c0bb`（商家物价热力图）。
+
+## 三期：商家物价热力图
+
+### 后端
+
+`GET /comparison/heatmap?mode=item|overall&entity_type=&entity_id=&region_ids=`：
+
+- **item 模式**（选一个原料/商品）：商品集合 = 原料下活跃商品 / 该商品本身；每 (商家, 商品) 取子树内最新一条有效记录 → `record_standard_grams` 归一 **¥/斤** → 同商家按商品权重加权（`_weight_map`，与 latest-price-by-merchant 同口径）得商家代表价。
+- **overall 模式**（整体物价指数）：篮子 = 基准地区（region_ids 第一个）近一年有记录商品（上限 50）；每商家对篮子的加权均价 → `price_index = 商家价 / 所选地区全部商家价的中位数 ×100`（中位数=100，分档自解释）。
+- 只返回**营业中且有坐标**的商家（经纬度空不渲染）；返回 `buckets` p25/p50/p75/p90 供前端五档着色。
+- 价格经 `record_price_in_user_currency` 折算到用户/会话币种；陈旧标记 `is_stale` 同 30 天口径。
+
+### Web
+
+- **`components/compare/HeatMapCanvas.vue`**：Leaflet 统一渲染（`leaflet.chinatmsproviders` 高德瓦片 / OSM 可切），每商家 `L.circleMarker` 按 bucket 五档着色（绿→浅绿→黄→橙→红），右下角图例、popup 商家名/价格或指数/样本数/超期；fitBounds 全部点。
+  - **设计取舍**：刻意不侵入 `MerchantMapView.vue`（1204 行、五引擎 SDK/Leaflet 双分支 + 坐标转换），热力是对比页专属形态，独立组件零回归风险。代价：热力底图固定 Leaflet 系，不跟随管理端 SDK 配置（已知边界）。
+- 对比页第四 tab「热力图」：单品/整体模式 toggle + 实体类型 toggle + `v-autocomplete`（300ms 防抖 + 请求序号）+ 篮子说明；模式/地区/实体变化自动重拉。
+- 本地 handler `getComparisonHeatmap` 同步：regionSubtree 过滤 + `priceNormalize` ¥/斤 + 分位算法与后端一致；**商家无地区不渲染**（与后端 INNER 口径对齐）。
+
+### 移动端
+
+- **`features/comparison/widgets/heatmap_canvas.dart`**：flutter_map 渲染（底图取 `mapConfigProvider` 默认层，与商家地图同源瓦片配置），每商家一个着色圆点 Marker（22px），`GestureDetector` 点按弹 bottom sheet（商家名/价格或指数/样本数/超期）；图例 overlay；测试可注入 `tileProvider`。
+  - 同样不侵入 `MerchantMapView`（商家列表形态 + iOS 原生地图双路径），iOS 上热力图也用 flutter_map（已知边界：与商家地图的 iOS 原生体验不同，但功能一致）。
+- CompareScreen TabBar 扩 4 块；模式切换用 DropdownButton（窄屏不溢出）；实体选择搜索弹层单选；地区变化自动重拉（region signature 比对）。
+
+### 三期验证
+
+- 后端 test_comparison.py **13/13**（新增：单品模式商家代表价与坐标/整体模式中位数=100/缺 entity_id 400 + 无关实体空结果）。
+- Web build 57s ✓、check:i18n + sources ✓（compare 54 键 + localErrors 1 键）。
+- 移动端 analyze 0 issue；comparison 6 例 + l10n 全过；merchants 3 例 apple_map 为存量基线。
+- **i18n 脚本坑**：`insert_into_block` 在目标块末行出现多键同行时会插错块（`heatmapEntityRequired` 曾误落 localValues 且行内粘连；JSON 仍合法但 `check:i18n:sources` 按行解析报 missing）——手工按行拆分修复；后续新增 localErrors 键须验证落点。
+
+### 已知边界（三期）
+
+- 热力图底图固定 Leaflet 系（Web）/ flutter_map（移动端），不跟随管理端 SDK 引擎配置；SDK 专属能力（如高德原生覆盖物）不适用。
+- overall 模式篮子上限 50 商品（防查询过重）；不同地区便利店篮子不同属正常。
+- 无坐标商家不参与热力图（需在商家编辑页补经纬度）。
+
+## 四期候选（未做）
+
+- 刷新/推送对比数据；对比结果导出；热力图按分类聚合（如「蔬菜类整体物价」）。
 
 ## 二期：菜谱/试算成本对比
 
@@ -38,10 +79,6 @@
 - Web build 53s ✓、check:i18n + sources ✓（compare 46 键）。
 - 移动端 analyze 0 issue；comparison + planner + l10n + router + prices utils + recipes widgets = 148 例全过。
 - 分支：master `aae6e105` → feat（merge `a697ffa0`）；移动端 feat `f5c580b5`。
-
-## 三期（待做）：热力图
-
-`GET /comparison/heatmap?mode=item|overall&entity_type=&entity_id=&region_ids=`：单品模式复用 latest-price-by-merchant 聚合 + join 坐标；整体物价模式按共同商品集算商家指数。Web `MerchantMapView` 分档着色覆盖层（Leaflet circleMarker；SDK 引擎 circle 覆盖物降级彩色 marker）+ 图例 + 单品/整体切换；移动端 flutter_map CircleLayer + iOS 原生 circle + marker onTap；本地 handler 同步。
 
 ## 需求与设计原则
 
