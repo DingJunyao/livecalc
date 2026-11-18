@@ -6233,6 +6233,192 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'原料之间的换算建议改用替代/回退关系 + 换算系数（层级关系页维护）；此处关联适合商品包装链'**
   String get entityLinksIngredientHint;
+
+  /// No description provided for @compareTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'物价对比'**
+  String get compareTitle;
+
+  /// No description provided for @compareTabOverview.
+  ///
+  /// In zh, this message translates to:
+  /// **'概览'**
+  String get compareTabOverview;
+
+  /// No description provided for @compareTabPrices.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料·商品'**
+  String get compareTabPrices;
+
+  /// No description provided for @compareRegions.
+  ///
+  /// In zh, this message translates to:
+  /// **'对比地区'**
+  String get compareRegions;
+
+  /// No description provided for @compareNeedTwoRegions.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择至少两个地区开始对比'**
+  String get compareNeedTwoRegions;
+
+  /// No description provided for @compareLowestIndex.
+  ///
+  /// In zh, this message translates to:
+  /// **'指数最低'**
+  String get compareLowestIndex;
+
+  /// No description provided for @compareRecordCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条价格记录'**
+  String compareRecordCount(Object count);
+
+  /// No description provided for @compareEntityCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 种商品'**
+  String compareEntityCount(Object count);
+
+  /// No description provided for @comparePriceIndexTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'物价指数（{base} = 100）'**
+  String comparePriceIndexTitle(Object base);
+
+  /// No description provided for @comparePriceIndexCaption.
+  ///
+  /// In zh, this message translates to:
+  /// **'物价指数'**
+  String get comparePriceIndexCaption;
+
+  /// No description provided for @compareBasketNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'篮子含 {count} 种商品（基准地区近一年有记录）'**
+  String compareBasketNote(Object count);
+
+  /// No description provided for @compareBasketTrendTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'篮子均价趋势'**
+  String get compareBasketTrendTitle;
+
+  /// No description provided for @compareTrendUnit.
+  ///
+  /// In zh, this message translates to:
+  /// **'元/斤'**
+  String get compareTrendUnit;
+
+  /// No description provided for @compareByRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'按地区'**
+  String get compareByRegion;
+
+  /// No description provided for @compareRegionsSuffix.
+  ///
+  /// In zh, this message translates to:
+  /// **'等 {count} 个地区'**
+  String compareRegionsSuffix(Object count);
+
+  /// No description provided for @compareEntityTypeIngredient.
+  ///
+  /// In zh, this message translates to:
+  /// **'原料'**
+  String get compareEntityTypeIngredient;
+
+  /// No description provided for @compareEntityTypeProduct.
+  ///
+  /// In zh, this message translates to:
+  /// **'商品'**
+  String get compareEntityTypeProduct;
+
+  /// No description provided for @compareSelectEntities.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加实体'**
+  String get compareSelectEntities;
+
+  /// No description provided for @compareSearchEntityHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索名称'**
+  String get compareSearchEntityHint;
+
+  /// No description provided for @compareNoEntity.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配项'**
+  String get compareNoEntity;
+
+  /// No description provided for @compareMatrixTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'各地区价格对比'**
+  String get compareMatrixTitle;
+
+  /// No description provided for @compareMatrixEntityCol.
+  ///
+  /// In zh, this message translates to:
+  /// **'实体'**
+  String get compareMatrixEntityCol;
+
+  /// No description provided for @compareNoMatrixData.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择地区与实体后展示比价'**
+  String get compareNoMatrixData;
+
+  /// No description provided for @compareUnassignedNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'未分配地区的商家计入所有地区'**
+  String get compareUnassignedNote;
+
+  /// No description provided for @compareStaleRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近记录 {days} 天前'**
+  String compareStaleRecord(Object days);
+
+  /// No description provided for @compareNoRegionData.
+  ///
+  /// In zh, this message translates to:
+  /// **'所选地区暂无该实体价格'**
+  String get compareNoRegionData;
+
+  /// No description provided for @compareUnknownRegion.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知地区'**
+  String get compareUnknownRegion;
+
+  /// No description provided for @compareRegionPrices.
+  ///
+  /// In zh, this message translates to:
+  /// **'各地区价格'**
+  String get compareRegionPrices;
+
+  /// No description provided for @compareSelectedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选'**
+  String get compareSelectedCount;
+
+  /// No description provided for @navCompare.
+  ///
+  /// In zh, this message translates to:
+  /// **'物价对比'**
+  String get navCompare;
+
+  /// No description provided for @compareNoBasketData.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无篮子价格数据'**
+  String get compareNoBasketData;
 }
 
 class _AppLocalizationsDelegate

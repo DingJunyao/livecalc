@@ -183,6 +183,64 @@ List<PriceMerchantSeries> buildMerchantTrendSeries(
   return out;
 }
 
+/// 某地区的价格趋势序列（「综合 / 按地区」对比用）。
+class PriceRegionSeries {
+  final int regionId;
+  final String name;
+  final List<CostHistoryPoint> points;
+
+  /// 该地区真实有价格记录的本地日期（用于「有记录才画点」）
+  final Set<String> recordDays;
+
+  const PriceRegionSeries({
+    required this.regionId,
+    required this.name,
+    required this.points,
+    required this.recordDays,
+  });
+}
+
+/// 从价格记录里按商家地区分组，各跑一遍 as-of 加权序列。
+///
+/// 与 [buildMerchantTrendSeries] 同构同口径：组内沿用同一套逐日 as-of、
+/// 区间切片与陈旧上限。记录须带 merchant_region_id（后端记录序列化已加）；
+/// 未分配地区的记录不进任何地区线（只参与「综合」）。
+List<PriceRegionSeries> buildRegionTrendSeries(
+  List<PriceRecord> records, {
+  required String Function(int regionId) regionNameOf,
+  bool useStandardQuantity = false,
+  String? startDay,
+  int staleDays = _priceStaleDays,
+  bool backfillSparse = false,
+}) {
+  final byRegion = <int, List<PriceRecord>>{};
+  for (final r in records) {
+    final rid = r.merchantRegionId;
+    if (rid == null) continue;
+    byRegion.putIfAbsent(rid, () => <PriceRecord>[]).add(r);
+  }
+
+  final out = <PriceRegionSeries>[];
+  for (final entry in byRegion.entries) {
+    final points = buildPriceTrendPoints(
+      entry.value,
+      useStandardQuantity: useStandardQuantity,
+      startDay: startDay,
+      staleDays: staleDays,
+      backfillSparse: backfillSparse,
+    );
+    if (points.isEmpty) continue;
+    out.add(PriceRegionSeries(
+      regionId: entry.key,
+      name: regionNameOf(entry.key),
+      points: points,
+      recordDays: priceRecordDays(entry.value),
+    ));
+  }
+  out.sort((a, b) => b.recordDays.length.compareTo(a.recordDays.length));
+  return out;
+}
+
 /// 记录里真实有价格的本地日期集合（趋势图「只在记录日画点」）。
 Set<String> priceRecordDays(List<PriceRecord> records) {
   final days = <String>{};

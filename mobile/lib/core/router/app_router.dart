@@ -20,6 +20,7 @@ import '../../features/products/screens/product_list_screen.dart';
 import '../../features/products/screens/product_detail_screen.dart';
 import '../../features/products/screens/product_form_screen.dart';
 import '../../features/products/models/product.dart';
+import '../../features/comparison/screens/compare_screen.dart';
 import '../../features/favorites/screens/favorites_screen.dart';
 import '../../features/planner/screens/planner_screens.dart';
 import '../../features/planner/screens/plan_detail_screen.dart';
@@ -384,6 +385,15 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
             ),
           ),
           GoRoute(
+            path: '/compare',
+            name: 'compare',
+            pageBuilder: (context, state) => _shellTransitionPage(
+              child: const CompareScreen(),
+              key: state.pageKey,
+              location: state.matchedLocation,
+            ),
+          ),
+          GoRoute(
             path: '/plans/edit',
             name: 'plan-edit',
             builder: (context, state) {
@@ -552,6 +562,7 @@ enum _TabLabel {
   ingredients,
   products,
   merchants,
+  compare,
   favorites,
   plans,
   profile,
@@ -616,6 +627,12 @@ const _plansTab = _Tab(
     selectedIcon: Icons.assignment,
     prefixes: ['/plans'],
     route: '/plans');
+const _compareTab = _Tab(
+    label: _TabLabel.compare,
+    icon: Icons.compare_arrows,
+    selectedIcon: Icons.compare_arrows,
+    prefixes: ['/compare'],
+    route: '/compare');
 const _favoritesTab = _Tab(
     label: _TabLabel.favorites,
     icon: Icons.favorite_outline,
@@ -632,7 +649,7 @@ const _moreTab = _Tab(
     label: _TabLabel.more,
     icon: Icons.menu,
     selectedIcon: Icons.menu,
-    prefixes: ['/ingredients', '/products', '/merchants', '/profile']);
+    prefixes: ['/ingredients', '/products', '/merchants', '/compare', '/profile']);
 
 const _desktopTabs = [
   _homeTab,
@@ -641,6 +658,7 @@ const _desktopTabs = [
   _ingredientsTab,
   _productsTab,
   _merchantsTab,
+  _compareTab,
   _favoritesTab,
   _plansTab,
   _profileTab,
@@ -650,6 +668,7 @@ const _moreMenuTabs = [
   _ingredientsTab,
   _productsTab,
   _merchantsTab,
+  _compareTab,
   _favoritesTab,
   _plansTab,
   _profileTab,
@@ -663,6 +682,7 @@ String _tabLabel(_TabLabel label, AppLocalizations l10n) {
     _TabLabel.ingredients => l10n.navIngredients,
     _TabLabel.products => l10n.navProducts,
     _TabLabel.merchants => l10n.navMerchants,
+    _TabLabel.compare => l10n.navCompare,
     _TabLabel.favorites => l10n.navFavorites,
     _TabLabel.plans => l10n.navPlans,
     _TabLabel.profile => l10n.navProfile,
@@ -779,19 +799,36 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
       body: Row(
         children: [
           if (wide && !fullScreenForm)
-            NavigationRail(
-              selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-              onDestinationSelected: (i) =>
-                  _onTabSelected(context, _desktopTabs[i]),
-              labelType: NavigationRailLabelType.all,
-              destinations: [
-                for (final t in _desktopTabs)
-                  NavigationRailDestination(
-                    icon: Icon(t.icon),
-                    selectedIcon: Icon(t.selectedIcon),
-                    label: Text(_tabLabel(t.label, l10n)),
+            // 10 个目的地在矮视口（默认测试窗 800×600、桌面小窗）会纵向溢出：
+            // 包一层纵向滚动。rail 内部含 Expanded，必须给显式高度才有界；
+            // 高度取 max(视口, 660)——视口足够高时 rail 填满且不产生滚动，
+            // 矮视口时可上下滚动（660 = 10 个 labelType:all 目的地固有高度 + 余量）。
+            SizedBox(
+              width: 80,
+              child: LayoutBuilder(builder: (context, constraints) {
+                const minRailHeight = 660.0;
+                return SingleChildScrollView(
+                  child: SizedBox(
+                    height: constraints.maxHeight < minRailHeight
+                        ? minRailHeight
+                        : constraints.maxHeight,
+                    child: NavigationRail(
+                      selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
+                      onDestinationSelected: (i) =>
+                          _onTabSelected(context, _desktopTabs[i]),
+                      labelType: NavigationRailLabelType.all,
+                      destinations: [
+                        for (final t in _desktopTabs)
+                          NavigationRailDestination(
+                            icon: Icon(t.icon),
+                            selectedIcon: Icon(t.selectedIcon),
+                            label: Text(_tabLabel(t.label, l10n)),
+                          ),
+                      ],
+                    ),
                   ),
-              ],
+                );
+              }),
             ),
           Expanded(child: widget.child),
         ],

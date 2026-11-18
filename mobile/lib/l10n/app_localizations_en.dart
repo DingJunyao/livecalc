@@ -3342,4 +3342,110 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get entityLinksIngredientHint =>
       'For ingredient-to-ingredient conversion, prefer substitute/fallback relations with a conversion factor (maintained on the hierarchy page); links here suit product packaging chains';
+
+  @override
+  String get compareTitle => 'Price comparison';
+
+  @override
+  String get compareTabOverview => 'Overview';
+
+  @override
+  String get compareTabPrices => 'Items';
+
+  @override
+  String get compareRegions => 'Regions';
+
+  @override
+  String get compareNeedTwoRegions => 'Pick at least two regions to compare';
+
+  @override
+  String get compareLowestIndex => 'Lowest';
+
+  @override
+  String compareRecordCount(Object count) {
+    return '$count records';
+  }
+
+  @override
+  String compareEntityCount(Object count) {
+    return '$count products';
+  }
+
+  @override
+  String comparePriceIndexTitle(Object base) {
+    return 'Price index ($base = 100)';
+  }
+
+  @override
+  String get comparePriceIndexCaption => 'price index';
+
+  @override
+  String compareBasketNote(Object count) {
+    return 'Basket of $count products priced in the base region within a year';
+  }
+
+  @override
+  String get compareBasketTrendTitle => 'Basket price trend';
+
+  @override
+  String get compareTrendUnit => '¥/jin (500 g)';
+
+  @override
+  String get compareByRegion => 'By region';
+
+  @override
+  String compareRegionsSuffix(Object count) {
+    return 'and $count regions';
+  }
+
+  @override
+  String get compareEntityTypeIngredient => 'Ingredients';
+
+  @override
+  String get compareEntityTypeProduct => 'Products';
+
+  @override
+  String get compareSelectEntities => 'Add items';
+
+  @override
+  String get compareSearchEntityHint => 'Search by name';
+
+  @override
+  String get compareNoEntity => 'No matches';
+
+  @override
+  String get compareMatrixTitle => 'Region price comparison';
+
+  @override
+  String get compareMatrixEntityCol => 'Item';
+
+  @override
+  String get compareNoMatrixData => 'Pick regions and items to compare';
+
+  @override
+  String get compareUnassignedNote =>
+      'Merchants without a region count in every region';
+
+  @override
+  String compareStaleRecord(Object days) {
+    return 'last recorded $days days ago';
+  }
+
+  @override
+  String get compareNoRegionData => 'No price data in these regions';
+
+  @override
+  String get compareUnknownRegion => 'Unknown region';
+
+  @override
+  String get compareRegionPrices => 'Region prices';
+
+  @override
+  String get compareSelectedCount => 'selected';
+
+  @override
+  String get navCompare => 'Compare prices';
+
+  @override
+  String get compareNoBasketData => 'No basket price data yet';
 }

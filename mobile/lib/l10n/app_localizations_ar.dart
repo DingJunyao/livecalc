@@ -3323,4 +3323,109 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get entityLinksIngredientHint =>
       'للتحويل بين المكوّنات، يُفضَّل استخدام علاقات البديل/الاحتياط مع معامل تحويل (تُدار في صفحة العلاقات الهرمية)؛ الربط هنا مناسب لسلاسل تغليف المنتجات';
+
+  @override
+  String get compareTitle => 'مقارنة الأسعار';
+
+  @override
+  String get compareTabOverview => 'نظرة عامة';
+
+  @override
+  String get compareTabPrices => 'العناصر';
+
+  @override
+  String get compareRegions => 'المناطق';
+
+  @override
+  String get compareNeedTwoRegions => 'اختر منطقتين على الأقل للمقارنة';
+
+  @override
+  String get compareLowestIndex => 'الأدنى';
+
+  @override
+  String compareRecordCount(Object count) {
+    return '$count سجل';
+  }
+
+  @override
+  String compareEntityCount(Object count) {
+    return '$count منتج';
+  }
+
+  @override
+  String comparePriceIndexTitle(Object base) {
+    return 'مؤشر الأسعار ($base = 100)';
+  }
+
+  @override
+  String get comparePriceIndexCaption => 'مؤشر الأسعار';
+
+  @override
+  String compareBasketNote(Object count) {
+    return 'سلة من $count منتج له أسعار في المنطقة المرجعية خلال سنة';
+  }
+
+  @override
+  String get compareBasketTrendTitle => 'اتجاه سعر السلة';
+
+  @override
+  String get compareTrendUnit => 'يوان/جين';
+
+  @override
+  String get compareByRegion => 'حسب المنطقة';
+
+  @override
+  String compareRegionsSuffix(Object count) {
+    return 'و $count مناطق';
+  }
+
+  @override
+  String get compareEntityTypeIngredient => 'المواد';
+
+  @override
+  String get compareEntityTypeProduct => 'المنتجات';
+
+  @override
+  String get compareSelectEntities => 'إضافة عناصر';
+
+  @override
+  String get compareSearchEntityHint => 'ابحث بالاسم';
+
+  @override
+  String get compareNoEntity => 'لا توجد نتائج';
+
+  @override
+  String get compareMatrixTitle => 'مقارنة الأسعار حسب المنطقة';
+
+  @override
+  String get compareMatrixEntityCol => 'العنصر';
+
+  @override
+  String get compareNoMatrixData => 'اختر المناطق والعناصر للمقارنة';
+
+  @override
+  String get compareUnassignedNote => 'التجار بدون منطقة تُحتسب في كل منطقة';
+
+  @override
+  String compareStaleRecord(Object days) {
+    return 'آخر سجل قبل $days يوم';
+  }
+
+  @override
+  String get compareNoRegionData => 'لا توجد أسعار في هذه المناطق';
+
+  @override
+  String get compareUnknownRegion => 'منطقة غير معروفة';
+
+  @override
+  String get compareRegionPrices => 'الأسعار حسب المنطقة';
+
+  @override
+  String get compareSelectedCount => 'محدد';
+
+  @override
+  String get navCompare => 'مقارنة الأسعار';
+
+  @override
+  String get compareNoBasketData => 'لا توجد بيانات أسعار للسلة بعد';
 }

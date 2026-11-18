@@ -109,6 +109,9 @@ Future<void> main() async {
         titles: () => [zh.navFavorites, en.navFavorites, ar.navFavorites]),
     _Spec('planner_list', back: true, icons: 1,
         titles: () => [zh.navPlans, en.navPlans, ar.navPlans]),
+    // 物价对比（compare_screen.dart）：地区选择 icon + 计算范围 icon
+    _Spec('compare', back: true, icons: 2,
+        titles: () => [zh.compareTitle, en.compareTitle, ar.compareTitle]),
     // 试算新建/编辑（planner_screens.dart）：⋮ + 保存（设为今日只在列表/详情）
     _Spec('planner_form', back: true, icons: 2,
         titles: () => [zh.plansNewPlan, en.plansNewPlan, ar.plansNewPlan,

@@ -26,6 +26,7 @@ class PriceRecord {
   final String? standardUnit; // 后端标准化后的单位
   final int? merchantId;
   final String? merchantName;
+  final int? merchantRegionId; // 商家地区 id（跨地区对比按记录分组用）
   final String recordedAt;
   final String recordType; // 'purchase' | 'price'
   final String? notes;
@@ -44,6 +45,7 @@ class PriceRecord {
     this.standardUnit,
     this.merchantId,
     this.merchantName,
+    this.merchantRegionId,
     required this.recordedAt,
     this.recordType = 'price',
     this.notes,
@@ -69,6 +71,7 @@ class PriceRecord {
       standardUnit: json['standard_unit'] as String?,
       merchantId: json['merchant_id'] as int?,
       merchantName: json['merchant_name'] as String?,
+      merchantRegionId: json['merchant_region_id'] as int?,
       recordedAt:
           json['recorded_at'] as String? ?? DateTime.now().toIso8601String(),
       recordType: json['record_type'] as String? ?? 'price',

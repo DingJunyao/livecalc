@@ -15,6 +15,7 @@ import '../../profile/repositories/profile_repository.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/repositories/price_repository.dart';
 import '../../prices/utils/price_trend.dart';
+import '../../comparison/repositories/comparison_repository.dart';
 import '../../recipes/repositories/recipe_repository.dart'
     show CostHistoryPoint;
 import '../models/product.dart';
@@ -334,6 +335,12 @@ class ProductDetailPageState {
 
   /// 按商家分组的趋势序列（「综合 / 按商家」对比）
   final List<PriceMerchantSeries> merchantSeries;
+
+  /// 跨地区对比（维度切换：商家 / 地区）
+  final List<PriceRegionSeries> regionSeries;
+  final List<RegionCardData> regionPriceCards;
+  final bool loadingRegionPrices;
+  final bool priceDimensionRegion;
   final bool loading;
   final bool loadingLatest;
   final bool loadingMerchants;
@@ -373,6 +380,10 @@ class ProductDetailPageState {
     this.chartPoints = const [],
     this.chartRecordDays = const {},
     this.merchantSeries = const [],
+    this.regionSeries = const [],
+    this.regionPriceCards = const [],
+    this.loadingRegionPrices = false,
+    this.priceDimensionRegion = false,
     this.loading = false,
     this.loadingLatest = false,
     this.loadingMerchants = false,
@@ -405,6 +416,10 @@ class ProductDetailPageState {
     List<CostHistoryPoint>? chartPoints,
     Set<String>? chartRecordDays,
     List<PriceMerchantSeries>? merchantSeries,
+    List<PriceRegionSeries>? regionSeries,
+    List<RegionCardData>? regionPriceCards,
+    bool? loadingRegionPrices,
+    bool? priceDimensionRegion,
     bool? loading,
     bool? loadingLatest,
     bool? loadingMerchants,
@@ -439,6 +454,10 @@ class ProductDetailPageState {
       chartPoints: chartPoints ?? this.chartPoints,
       chartRecordDays: chartRecordDays ?? this.chartRecordDays,
       merchantSeries: merchantSeries ?? this.merchantSeries,
+      regionSeries: regionSeries ?? this.regionSeries,
+      regionPriceCards: regionPriceCards ?? this.regionPriceCards,
+      loadingRegionPrices: loadingRegionPrices ?? this.loadingRegionPrices,
+      priceDimensionRegion: priceDimensionRegion ?? this.priceDimensionRegion,
       loading: loading ?? this.loading,
       loadingLatest: loadingLatest ?? this.loadingLatest,
       loadingMerchants: loadingMerchants ?? this.loadingMerchants,
@@ -478,11 +497,14 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   final UsdaRepository _usdaRepo;
   final EntityRepository _entityRepo;
   final ProfileRepository _proposalRepo;
+  final ComparisonRepository _comparisonRepo;
   final int productId;
   int? _regionId;
   // 全局单位表缓存：质量/体积单位选项（单位表单下拉 + 显示口径）
   List<GlobalUnitOption> _weightUnitOptions = const [];
   bool _globalUnitsLoaded = false;
+  // 跨地区对比：地区候选缓存（轻量，会话内重复使用）
+  List<RegionCandidate> _regionCandidates = const [];
 
   ProductDetailPageNotifier(
     this.productId, {
@@ -493,7 +515,57 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         _usdaRepo = UsdaRepository(),
         _entityRepo = EntityRepository(),
         _proposalRepo = proposalRepository ?? ProfileRepository(),
+        _comparisonRepo = ComparisonRepository(),
         super(const ProductDetailPageState());
+
+  /// 地区候选（含名称映射）；失败返回空（地区维度不可用，UI 自动隐藏切换）。
+  Future<List<RegionCandidate>> _ensureRegionCandidates() async {
+    if (_regionCandidates.isNotEmpty) return _regionCandidates;
+    try {
+      _regionCandidates = await _comparisonRepo.getRegions();
+    } on Exception {
+      _regionCandidates = const [];
+    }
+    return _regionCandidates;
+  }
+
+  String _regionNameOf(List<RegionCandidate> candidates, int rid) {
+    for (final c in candidates) {
+      if (c.regionId == rid) return c.displayName;
+    }
+    return '#$rid';
+  }
+
+  /// 切换价格维度（商家 / 地区）；首次切到地区时拉各地区价格卡。
+  Future<void> setPriceDimension(bool region) async {
+    if (state.priceDimensionRegion == region) return;
+    state = state.copyWith(priceDimensionRegion: region);
+    if (region && state.regionPriceCards.isEmpty && !state.loadingRegionPrices) {
+      await _loadRegionPrices();
+    }
+  }
+
+  Future<void> _loadRegionPrices() async {
+    state = state.copyWith(loadingRegionPrices: true);
+    try {
+      final candidates = await _ensureRegionCandidates();
+      if (candidates.isEmpty) {
+        state = state.copyWith(regionPriceCards: const [], loadingRegionPrices: false);
+        return;
+      }
+      final prices = await _comparisonRepo.getEntityPrices(
+        entityType: 'product',
+        entityIds: [productId],
+        regionIds: candidates.take(3).map((r) => r.regionId).toList(),
+      );
+      state = state.copyWith(
+        regionPriceCards: regionCardsFromEntityPrices(prices),
+        loadingRegionPrices: false,
+      );
+    } on Exception {
+      state = state.copyWith(loadingRegionPrices: false);
+    }
+  }
 
   String _startDateFor(int days) {
     if (days >= 3650) return '';
@@ -746,6 +818,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   Future<void> _loadChart({required int days}) async {
     state = state.copyWith(loadingChart: true);
     try {
+      // 地区候选先就位（地区名用于按地区序列的图例）
+      final candidates = await _ensureRegionCandidates();
       final startDate = _startDateFor(days);
       var result = await _priceRepo.getRecords(
         productId: productId,
@@ -777,6 +851,14 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
         chartRecordDays: priceRecordDays(result.records),
         merchantSeries: buildMerchantTrendSeries(
           result.records,
+          useStandardQuantity: true,
+          startDay: startDate.isEmpty ? null : startDate,
+          backfillSparse: true,
+        ),
+        // 「按地区」对比：同一批记录按 merchant_region_id 分组（同口径）
+        regionSeries: buildRegionTrendSeries(
+          result.records,
+          regionNameOf: (rid) => _regionNameOf(candidates, rid),
           useStandardQuantity: true,
           startDay: startDate.isEmpty ? null : startDate,
           backfillSparse: true,

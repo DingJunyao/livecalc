@@ -22,6 +22,10 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../prices/models/price_record.dart';
 import '../../prices/screens/price_record_form_screen.dart';
+import '../../prices/utils/price_trend.dart' show PriceMerchantSeries;
+import '../../comparison/repositories/comparison_repository.dart'
+    show RegionCardData;
+import '../../comparison/widgets/region_price_card_list.dart';
 import '../../recipes/widgets/cost_trend_chart.dart';
 import '../models/product.dart';
 import '../screens/product_form_screen.dart' show ProductFormResult;
@@ -247,6 +251,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               loadingLatest: state.loadingLatest,
               loadingMerchants: state.loadingMerchants,
               currency: userCurrency,
+              regionCards: state.regionPriceCards,
+              loadingRegionPrices: state.loadingRegionPrices,
+              dimensionRegion: state.priceDimensionRegion,
+              hasRegionComparison: state.regionSeries.length >= 2,
+              onDimensionChanged: notifier.setPriceDimension,
             ),
             const SizedBox(height: 16),
             Card(
@@ -254,7 +263,23 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 padding: const EdgeInsets.all(16),
                 child: CostTrendChart(
                   points: state.chartPoints,
-                  merchantSeries: state.merchantSeries,
+                  merchantSeries: state.priceDimensionRegion
+                      ? [
+                          for (final s in state.regionSeries)
+                            PriceMerchantSeries(
+                              merchantId: s.regionId,
+                              name: s.name,
+                              points: s.points,
+                              recordDays: s.recordDays,
+                            ),
+                        ]
+                      : state.merchantSeries,
+                  compareLabel: state.priceDimensionRegion
+                      ? AppLocalizations.of(context).compareByRegion
+                      : null,
+                  compareSuffixBuilder: state.priceDimensionRegion
+                      ? (n) => AppLocalizations.of(context).compareRegionsSuffix(n)
+                      : null,
                   recordDays: state.chartRecordDays,
                   loading: state.loadingChart,
                   userCurrency: userCurrency,
@@ -995,12 +1020,24 @@ class _ProductLatestPriceCard extends StatelessWidget {
   final bool loadingMerchants;
   final String currency;
 
+  /// 跨地区对比（维度切换：商家 / 地区）
+  final List<RegionCardData> regionCards;
+  final bool loadingRegionPrices;
+  final bool dimensionRegion;
+  final bool hasRegionComparison;
+  final ValueChanged<bool> onDimensionChanged;
+
   const _ProductLatestPriceCard({
     required this.latest,
     required this.merchantPrices,
     required this.loadingLatest,
     required this.loadingMerchants,
     required this.currency,
+    this.regionCards = const [],
+    this.loadingRegionPrices = false,
+    this.dimensionRegion = false,
+    this.hasRegionComparison = false,
+    required this.onDimensionChanged,
   });
 
   @override
@@ -1053,14 +1090,58 @@ class _ProductLatestPriceCard extends StatelessWidget {
                 ),
             ],
             const SizedBox(height: 8),
-            MerchantPriceList(
-              prices: merchantPrices,
-              loading: loadingMerchants,
-              userCurrency: currency,
-            ),
+            // 维度切换（商家 / 地区）：有 ≥2 个有数据地区时出现，紧凑靠右
+            if (hasRegionComparison)
+              Align(
+                alignment: Alignment.centerRight,
+                child: _PriceDimensionToggle(
+                  dimensionRegion: dimensionRegion,
+                  onChanged: onDimensionChanged,
+                ),
+              ),
+            if (dimensionRegion)
+              RegionPriceCardList(
+                cards: regionCards,
+                loading: loadingRegionPrices,
+                userCurrency: currency,
+              )
+            else
+              MerchantPriceList(
+                prices: merchantPrices,
+                loading: loadingMerchants,
+                userCurrency: currency,
+              ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 价格维度切换（商家 / 地区）：紧凑分段按钮，仅占卡片内一行右侧。
+class _PriceDimensionToggle extends StatelessWidget {
+  final bool dimensionRegion;
+  final ValueChanged<bool> onChanged;
+
+  const _PriceDimensionToggle({
+    required this.dimensionRegion,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return SegmentedButton<bool>(
+      segments: [
+        ButtonSegment(value: false, label: Text(l10n.chartByMerchant, style: const TextStyle(fontSize: 12))),
+        ButtonSegment(value: true, label: Text(l10n.compareByRegion, style: const TextStyle(fontSize: 12))),
+      ],
+      selected: {dimensionRegion},
+      onSelectionChanged: (selection) {
+        if (selection.isNotEmpty) onChanged(selection.first);
+      },
+      showSelectedIcon: false,
+      style: const ButtonStyle(visualDensity: VisualDensity.compact),
     );
   }
 }

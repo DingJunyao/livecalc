@@ -45,6 +45,12 @@ class CostTrendChart extends StatefulWidget {
   /// 按商家对比序列（≥2 家时出现「综合 / 按商家」切换）
   final List<PriceMerchantSeries> merchantSeries;
 
+  /// 对比维度名（默认「按商家」；地区对比传「按地区」文案，序列 id 传地区 id）
+  final String? compareLabel;
+
+  /// 对比维度计数后缀（默认「等 N 家」；地区对比传「等 N 个地区」）
+  final String Function(int count)? compareSuffixBuilder;
+
   /// 综合口径的真实记录日（只在有记录的日子画点）
   final Set<String> recordDays;
 
@@ -61,6 +67,8 @@ class CostTrendChart extends StatefulWidget {
     this.showComputedSwitch = false,
     this.onIncludeComputedChange,
     this.merchantSeries = const [],
+    this.compareLabel,
+    this.compareSuffixBuilder,
     this.recordDays = const {},
   });
 
@@ -212,12 +220,13 @@ class _CostTrendChartState extends State<CostTrendChart> {
         .toList();
     final String label;
     if (selected.isEmpty) {
-      label = l10n.chartByMerchant;
+      label = widget.compareLabel ?? l10n.chartByMerchant;
     } else if (selected.length <= 2) {
       label = selected.map((s) => s.name).join('、');
     } else {
-      label = '${selected.take(2).map((s) => s.name).join('、')} 等 '
-          '${selected.length} 家';
+      final suffix = widget.compareSuffixBuilder?.call(selected.length) ??
+          '等 ${selected.length} 家';
+      label = '${selected.take(2).map((s) => s.name).join('、')} $suffix';
     }
     return InkWell(
       key: const Key('merchant_selector'),
@@ -261,7 +270,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   ListTile(
-                    title: Text(l10n.chartByMerchant),
+                    title: Text(widget.compareLabel ?? l10n.chartByMerchant),
                     trailing: TextButton(
                       onPressed: () => Navigator.pop(ctx, temp),
                       child: Text(l10n.commonDone),
@@ -329,7 +338,7 @@ class _CostTrendChartState extends State<CostTrendChart> {
                 child: Text(
                   m == TrendViewMode.overall
                       ? l10n.chartOverall
-                      : l10n.chartByMerchant,
+                      : (widget.compareLabel ?? l10n.chartByMerchant),
                   // 不设自定义 style：与时间区间下拉保持同一字号（DropdownButton 默认样式）
                 ),
               ))

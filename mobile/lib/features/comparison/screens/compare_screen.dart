@@ -1,0 +1,757 @@
+// compare_screen.dart — 物价对比（/compare）。
+// 概览：地区摘要卡 + 物价指数条形 + 篮子均价趋势（多地区叠加）。
+// 原料·商品：实体多选 + 各地区比价矩阵。
+// 交互参照「按商家」对比模式：地区选择用底部弹层多选（勾选 2-6 个）。
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_back_button.dart';
+import '../../../shared/widgets/calc_context_menu_button.dart';
+import '../../recipes/repositories/recipe_repository.dart';
+import '../../recipes/widgets/cost_trend_chart.dart';
+import '../../prices/utils/price_trend.dart' show PriceMerchantSeries;
+import '../providers/comparison_provider.dart';
+import '../repositories/comparison_repository.dart';
+import '../widgets/region_price_matrix.dart';
+
+const int _maxRegions = 6;
+
+/// 数字序列（前向填充、结束于今天）→ 图表日点。
+List<CostHistoryPoint> _trendToPoints(List<double> trend) {
+  if (trend.isEmpty) return const [];
+  final today = DateTime.now();
+  String dayKey(DateTime dt) =>
+      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
+  return [
+    for (var i = 0; i < trend.length; i++)
+      CostHistoryPoint(
+        date: dayKey(today.subtract(Duration(days: trend.length - 1 - i))),
+        minCost: trend[i],
+        maxCost: trend[i],
+        avgCost: trend[i],
+      ),
+  ];
+}
+
+class CompareScreen extends ConsumerStatefulWidget {
+  const CompareScreen({super.key});
+
+  @override
+  ConsumerState<CompareScreen> createState() => _CompareScreenState();
+}
+
+class _CompareScreenState extends ConsumerState<CompareScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(comparisonProvider.notifier).loadCandidates();
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openRegionPicker() async {
+    final state = ref.read(comparisonProvider);
+    final picked = await showModalBottomSheet<List<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _RegionPickerSheet(
+        candidates: state.candidates,
+        selected: state.selectedRegionIds,
+        maxRegions: _maxRegions,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    await ref.read(comparisonProvider.notifier).selectRegions(picked);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final state = ref.watch(comparisonProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: const AppBackButton(),
+        title: Text(l10n.compareTitle),
+        actions: [
+          IconButton(
+            tooltip: l10n.compareRegions,
+            icon: Badge(
+              isLabelVisible: state.selectedRegionIds.isNotEmpty,
+              label: Text('${state.selectedRegionIds.length}'),
+              child: const Icon(Icons.map_outlined),
+            ),
+            onPressed: _openRegionPicker,
+          ),
+          const CalcContextMenuButton(),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: l10n.compareTabOverview),
+            Tab(text: l10n.compareTabPrices),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _OverviewTab(state: state, onPickRegions: _openRegionPicker, maxRegions: _maxRegions),
+          _PricesTab(state: state, maxRegions: _maxRegions),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ 概览 ============
+
+class _OverviewTab extends ConsumerWidget {
+  final ComparisonState state;
+  final Future<void> Function() onPickRegions;
+  final int maxRegions;
+
+  const _OverviewTab({
+    required this.state,
+    required this.onPickRegions,
+    required this.maxRegions,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+
+    if (state.selectedRegionIds.length < 2) {
+      return RefreshIndicator(
+        onRefresh: () => ref.read(comparisonProvider.notifier).loadCandidates(),
+        child: ListView(
+          children: [
+            const SizedBox(height: 48),
+            Icon(Icons.map_outlined, size: 48, color: theme.colorScheme.outline),
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                l10n.compareNeedTwoRegions,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: FilledButton.icon(
+                onPressed: onPickRegions,
+                icon: const Icon(Icons.add),
+                label: Text(l10n.compareRegions),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final summary = state.summary;
+    return RefreshIndicator(
+      onRefresh: () => ref.read(comparisonProvider.notifier).loadSummary(),
+      child: ListView(
+        padding: const EdgeInsets.only(bottom: 24),
+        children: [
+          // 已选地区 chips（点击重新打开弹层）
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final rid in state.selectedRegionIds)
+                  Chip(
+                    label: Text(_regionName(state, rid), style: theme.textTheme.labelMedium),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ActionChip(
+                  visualDensity: VisualDensity.compact,
+                  avatar: const Icon(Icons.add, size: 16),
+                  label: Text(l10n.compareRegions, style: theme.textTheme.labelMedium),
+                  onPressed: onPickRegions,
+                ),
+              ],
+            ),
+          ),
+          if (state.loadingSummary)
+            const Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (summary == null)
+            Padding(
+              padding: const EdgeInsets.all(32),
+              child: Center(child: Text(l10n.compareNoBasketData, style: theme.textTheme.bodyMedium)),
+            )
+          else ...[
+            const SizedBox(height: 8),
+            // 地区摘要卡（横向滚动；最低指数高亮）
+            SizedBox(
+              height: 132,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                itemCount: summary.regions.length,
+                itemBuilder: (ctx, i) {
+                  final r = summary.regions[i];
+                  final lowest = _isLowestIndex(summary, r);
+                  return Container(
+                    width: 168,
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: lowest
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                r.displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: theme.textTheme.titleSmall,
+                              ),
+                            ),
+                            if (lowest)
+                              Text(
+                                l10n.compareLowestIndex,
+                                style: theme.textTheme.labelSmall
+                                    ?.copyWith(color: theme.colorScheme.primary),
+                              ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          r.priceIndex == null ? '—' : _fmtIndex(r.priceIndex!),
+                          style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          l10n.comparePriceIndexCaption,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${l10n.compareRecordCount(r.recordCount)} · ${l10n.compareEntityCount(r.entityCount)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall
+                              ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            // 物价指数条形对比（基准地区=100）
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Card(
+                elevation: 0,
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l10n.comparePriceIndexTitle(_regionName(state, summary.baseRegionId)),
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      ..._buildIndexBars(summary, theme, l10n),
+                      const SizedBox(height: 6),
+                      Text(
+                        l10n.compareBasketNote(summary.basketSize),
+                        style: theme.textTheme.labelSmall
+                            ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            // 篮子均价趋势（多地区叠加；参照「按商家」对比模式）
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Card(
+                elevation: 0,
+                margin: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: CostTrendChart(
+                    points: _trendToPoints(_baseTrend(summary)),
+                    unit: l10n.compareTrendUnit,
+                    userCurrency: summary.currency,
+                    merchantSeries: [
+                      for (final r in summary.regions)
+                        PriceMerchantSeries(
+                          merchantId: r.regionId,
+                          name: r.displayName,
+                          points: _trendToPoints(r.trend),
+                          recordDays: const {},
+                        ),
+                    ],
+                    compareLabel: l10n.compareByRegion,
+                    compareSuffixBuilder: (n) => l10n.compareRegionsSuffix(n),
+                    recordDays: const {},
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  String _regionName(ComparisonState state, int rid) {
+    for (final r in state.summary?.regions ?? const <RegionSummary>[]) {
+      if (r.regionId == rid) return r.displayName;
+    }
+    for (final c in state.candidates) {
+      if (c.regionId == rid) return c.displayName;
+    }
+    return '#$rid';
+  }
+
+  List<double> _baseTrend(ComparisonSummary summary) {
+    for (final r in summary.regions) {
+      if (r.regionId == summary.baseRegionId) return r.trend;
+    }
+    return summary.regions.isEmpty ? const [] : summary.regions.first.trend;
+  }
+
+  bool _isLowestIndex(ComparisonSummary summary, RegionSummary r) {
+    final values = summary.regions
+        .map((x) => x.priceIndex)
+        .whereType<double>()
+        .toList();
+    if (values.length < 2 || r.priceIndex == null) return false;
+    return r.priceIndex! <= values.reduce((a, b) => a < b ? a : b);
+  }
+
+  String _fmtIndex(double v) {
+    final rounded = (v * 10).round() / 10;
+    return rounded == rounded.roundToDouble()
+        ? rounded.round().toString()
+        : rounded.toString();
+  }
+
+  List<Widget> _buildIndexBars(ComparisonSummary summary, ThemeData theme, AppLocalizations l10n) {
+    final items = [...summary.regions]
+      ..sort((a, b) => (b.priceIndex ?? 0).compareTo(a.priceIndex ?? 0));
+    final maxVal = items
+        .map((r) => r.priceIndex ?? 0)
+        .reduce((a, b) => a > b ? a : b);
+    if (maxVal <= 0) return const [];
+    return [
+      for (final r in items)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 88,
+                child: Text(
+                  r.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.labelMedium,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Container(
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                    FractionallySizedBox(
+                      widthFactor:
+                          (r.priceIndex ?? 0) / maxVal < 0.02 ? 0.02 : (r.priceIndex ?? 0) / maxVal,
+                      child: Container(
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: r.regionId == summary.baseRegionId
+                              ? theme.colorScheme.primary
+                              : theme.colorScheme.secondary,
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 52,
+                child: Text(
+                  r.priceIndex == null ? '—' : _fmtIndex(r.priceIndex!),
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
+  }
+}
+
+// ============ 地区选择弹层 ============
+
+class _RegionPickerSheet extends StatefulWidget {
+  final List<RegionCandidate> candidates;
+  final List<int> selected;
+  final int maxRegions;
+
+  const _RegionPickerSheet({
+    required this.candidates,
+    required this.selected,
+    required this.maxRegions,
+  });
+
+  @override
+  State<_RegionPickerSheet> createState() => _RegionPickerSheetState();
+}
+
+class _RegionPickerSheetState extends State<_RegionPickerSheet> {
+  late final Set<int> _temp;
+  String _keyword = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _temp = Set<int>.from(widget.selected);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final filtered = widget.candidates
+        .where((c) => _keyword.isEmpty || c.displayName.contains(_keyword) || c.name.contains(_keyword))
+        .toList();
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text(l10n.compareRegions),
+            subtitle: Text(
+              '${_temp.length}/${widget.maxRegions}',
+              style: theme.textTheme.labelSmall,
+            ),
+            trailing: TextButton(
+              onPressed: _temp.length >= 2 ? () => Navigator.pop(context, _temp.toList()) : null,
+              child: Text(l10n.commonDone),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search),
+                hintText: l10n.compareSearchEntityHint,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (v) => setState(() => _keyword = v.trim()),
+            ),
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: filtered.length,
+              itemBuilder: (ctx, i) {
+                final c = filtered[i];
+                final checked = _temp.contains(c.regionId);
+                final disabled = !checked && _temp.length >= widget.maxRegions;
+                return CheckboxListTile(
+                  value: checked,
+                  secondary: Text(
+                    '${c.recordCount}',
+                    style: theme.textTheme.labelSmall
+                        ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                  title: Text(c.displayName),
+                  subtitle: Text(
+                    '${c.merchantCount} · ${c.recordCount}',
+                    style: theme.textTheme.labelSmall,
+                  ),
+                  onChanged: disabled
+                      ? null
+                      : (v) {
+                          setState(() {
+                            if (v == true) {
+                              _temp.add(c.regionId);
+                            } else {
+                              _temp.remove(c.regionId);
+                            }
+                          });
+                        },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============ 原料·商品 ============
+
+class _PricesTab extends ConsumerStatefulWidget {
+  final ComparisonState state;
+  final int maxRegions;
+
+  const _PricesTab({required this.state, required this.maxRegions});
+
+  @override
+  ConsumerState<_PricesTab> createState() => _PricesTabState();
+}
+
+class _PricesTabState extends ConsumerState<_PricesTab> {
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final notifier = ref.read(comparisonProvider.notifier);
+    final state = widget.state;
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+          child: Row(
+            children: [
+              // 实体类型切换：下拉（与趋势图模式切换同形态，窄屏不溢出）
+              DropdownButton<String>(
+                value: state.entityType,
+                isDense: true,
+                underline: const SizedBox.shrink(),
+                items: [
+                  DropdownMenuItem(value: 'ingredient', child: Text(l10n.compareEntityTypeIngredient)),
+                  DropdownMenuItem(value: 'product', child: Text(l10n.compareEntityTypeProduct)),
+                ],
+                onChanged: (v) {
+                  if (v != null) notifier.setEntityType(v);
+                },
+              ),
+              const Spacer(),
+              Text(
+                '${state.selectedEntityIds.length} ${l10n.compareSelectedCount}',
+                style: theme.textTheme.labelSmall
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: state.selectedRegionIds.length < 2 ? null : _openEntityPicker,
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.compareSelectEntities, style: theme.textTheme.labelMedium),
+              ),
+            ],
+          ),
+        ),
+        if (state.selectedEntityIds.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                for (final eid in state.selectedEntityIds)
+                  InputChip(
+                    label: Text(_entityName(state, eid), style: theme.textTheme.labelMedium),
+                    visualDensity: VisualDensity.compact,
+                    onDeleted: () => notifier.toggleEntity(eid),
+                  ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 12),
+        RegionPriceMatrix(
+          columns: [
+            for (final r in state.summary?.regions ?? const <RegionSummary>[])
+              RegionMatrixColumn(regionId: r.regionId, label: r.displayName),
+          ],
+          rows: state.entityPrices?.entities ?? const [],
+          loading: state.loadingEntityPrices,
+          emptyText: state.selectedEntityIds.isEmpty
+              ? l10n.compareNoMatrixData
+              : (state.selectedRegionIds.length < 2 ? l10n.compareNeedTwoRegions : l10n.compareNoRegionData),
+          unassignedNote: l10n.compareUnassignedNote,
+        ),
+      ],
+    );
+  }
+
+  String _entityName(ComparisonState state, int eid) {
+    for (final row in state.entityPrices?.entities ?? const <EntityPriceRow>[]) {
+      if (row.entityId == eid) return row.name;
+    }
+    for (final o in state.entityOptions) {
+      if (o.id == eid) return o.name;
+    }
+    return '#$eid';
+  }
+
+  Future<void> _openEntityPicker() async {
+    final state = ref.read(comparisonProvider);
+    final picked = await showModalBottomSheet<List<int>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => _EntityPickerSheet(
+        entityType: state.entityType,
+        selected: state.selectedEntityIds,
+        options: state.entityOptions,
+      ),
+    );
+    if (picked == null || !mounted) return;
+    final notifier = ref.read(comparisonProvider.notifier);
+    // 同步全量选择（弹层里可勾可取消）
+    for (final id in state.selectedEntityIds) {
+      if (!picked.contains(id)) notifier.toggleEntity(id);
+    }
+    for (final id in picked) {
+      if (!state.selectedEntityIds.contains(id)) notifier.toggleEntity(id);
+    }
+  }
+}
+
+class _EntityPickerSheet extends ConsumerStatefulWidget {
+  final String entityType;
+  final List<int> selected;
+  final List<EntityOption> options;
+
+  const _EntityPickerSheet({
+    required this.entityType,
+    required this.selected,
+    required this.options,
+  });
+
+  @override
+  ConsumerState<_EntityPickerSheet> createState() => _EntityPickerSheetState();
+}
+
+class _EntityPickerSheetState extends ConsumerState<_EntityPickerSheet> {
+  late final Set<int> _temp;
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _temp = Set<int>.from(widget.selected);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(comparisonProvider.notifier).searchEntities();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final state = ref.watch(comparisonProvider);
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            title: Text(l10n.compareSelectEntities),
+            subtitle: Text('${_temp.length}', style: theme.textTheme.labelSmall),
+            trailing: TextButton(
+              onPressed: () => Navigator.pop(context, _temp.toList()),
+              child: Text(l10n.commonDone),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: TextField(
+              controller: _controller,
+              decoration: InputDecoration(
+                isDense: true,
+                prefixIcon: const Icon(Icons.search),
+                hintText: l10n.compareSearchEntityHint,
+                border: const OutlineInputBorder(),
+              ),
+              onChanged: (v) =>
+                  ref.read(comparisonProvider.notifier).searchEntities(keyword: v.trim()),
+            ),
+          ),
+          if (state.searching)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: state.entityOptions.length,
+                itemBuilder: (ctx, i) {
+                  final o = state.entityOptions[i];
+                  return CheckboxListTile(
+                    value: _temp.contains(o.id),
+                    title: Text(o.name),
+                    onChanged: (v) {
+                      setState(() {
+                        if (v == true) {
+                          _temp.add(o.id);
+                        } else {
+                          _temp.remove(o.id);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

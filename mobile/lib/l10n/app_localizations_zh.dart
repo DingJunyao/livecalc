@@ -3247,4 +3247,109 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get entityLinksIngredientHint =>
       '原料之间的换算建议改用替代/回退关系 + 换算系数（层级关系页维护）；此处关联适合商品包装链';
+
+  @override
+  String get compareTitle => '物价对比';
+
+  @override
+  String get compareTabOverview => '概览';
+
+  @override
+  String get compareTabPrices => '原料·商品';
+
+  @override
+  String get compareRegions => '对比地区';
+
+  @override
+  String get compareNeedTwoRegions => '选择至少两个地区开始对比';
+
+  @override
+  String get compareLowestIndex => '指数最低';
+
+  @override
+  String compareRecordCount(Object count) {
+    return '$count 条价格记录';
+  }
+
+  @override
+  String compareEntityCount(Object count) {
+    return '$count 种商品';
+  }
+
+  @override
+  String comparePriceIndexTitle(Object base) {
+    return '物价指数（$base = 100）';
+  }
+
+  @override
+  String get comparePriceIndexCaption => '物价指数';
+
+  @override
+  String compareBasketNote(Object count) {
+    return '篮子含 $count 种商品（基准地区近一年有记录）';
+  }
+
+  @override
+  String get compareBasketTrendTitle => '篮子均价趋势';
+
+  @override
+  String get compareTrendUnit => '元/斤';
+
+  @override
+  String get compareByRegion => '按地区';
+
+  @override
+  String compareRegionsSuffix(Object count) {
+    return '等 $count 个地区';
+  }
+
+  @override
+  String get compareEntityTypeIngredient => '原料';
+
+  @override
+  String get compareEntityTypeProduct => '商品';
+
+  @override
+  String get compareSelectEntities => '添加实体';
+
+  @override
+  String get compareSearchEntityHint => '搜索名称';
+
+  @override
+  String get compareNoEntity => '没有匹配项';
+
+  @override
+  String get compareMatrixTitle => '各地区价格对比';
+
+  @override
+  String get compareMatrixEntityCol => '实体';
+
+  @override
+  String get compareNoMatrixData => '选择地区与实体后展示比价';
+
+  @override
+  String get compareUnassignedNote => '未分配地区的商家计入所有地区';
+
+  @override
+  String compareStaleRecord(Object days) {
+    return '最近记录 $days 天前';
+  }
+
+  @override
+  String get compareNoRegionData => '所选地区暂无该实体价格';
+
+  @override
+  String get compareUnknownRegion => '未知地区';
+
+  @override
+  String get compareRegionPrices => '各地区价格';
+
+  @override
+  String get compareSelectedCount => '已选';
+
+  @override
+  String get navCompare => '物价对比';
+
+  @override
+  String get compareNoBasketData => '暂无篮子价格数据';
 }
