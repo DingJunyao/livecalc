@@ -1,4 +1,12 @@
 <template>
+  <!-- 顶部导航栏 - 与其他页面统一（汉堡 + 标题） -->
+  <v-app-bar elevation="0" color="background" density="comfortable" fixed>
+    <v-app-bar-nav-icon @click="toggleSidebar(isDesktop)" />
+    <v-app-bar-title class="text-h6">{{ t('nav.compare') }}</v-app-bar-title>
+    <template #append>
+      <CalcContextMenu />
+    </template>
+  </v-app-bar>
   <v-container fluid class="pa-4 pb-8">
     <v-tabs v-model="tab" density="comfortable" color="primary">
       <v-tab value="overview">{{ t('compare.tabOverview') }}</v-tab>
@@ -14,7 +22,22 @@
         <v-card variant="outlined" class="mb-4">
           <v-card-text>
             <div class="text-caption text-medium-emphasis mb-2">{{ t('compare.regionSelector') }}</div>
-            <RegionMultiSelect v-model="regionIds" />
+            <div class="d-flex align-start flex-wrap ga-3">
+              <div style="flex: 1 1 420px">
+                <RegionMultiSelect v-model="regionIds" />
+              </div>
+              <!-- 自定义计算范围快捷选择（个人中心建好的多地区组合） -->
+              <v-select
+                v-if="calcScopes.length"
+                :items="calcScopeItems"
+                :label="t('compare.customScopeQuick')"
+                density="compact"
+                variant="outlined"
+                hide-details
+                style="max-width: 240px"
+                @update:model-value="applyCalcScope"
+              />
+            </div>
             <div class="text-caption text-medium-emphasis mt-2">
               {{ t('compare.baseRegionNote', { base: baseRegionName }) }}
             </div>
@@ -336,7 +359,9 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useUserCurrency } from '@/composables/useUserCurrency'
+import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { formatMoney } from '@/utils/currency'
+import CalcContextMenu from '@/components/layout/CalcContextMenu.vue'
 import RegionMultiSelect from '@/components/common/RegionMultiSelect.vue'
 import RegionPriceMatrix from '@/components/compare/RegionPriceMatrix.vue'
 import HeatMapCanvas from '@/components/compare/HeatMapCanvas.vue'
@@ -363,6 +388,7 @@ import {
 import { api } from '@/api'
 
 const { t } = useI18n()
+const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { currency: userCurrency } = useUserCurrency()
 const route = useRoute()
 const router = useRouter()
@@ -401,6 +427,9 @@ const queryRegionIds = computed<number[]>(() => {
 })
 
 watch(queryRegionIds, (ids) => {
+  // 与手选值相同（数组内容一致）时不再回写，避免手选→URL→回写的双请求
+  const current = regionIds.value
+  if (current.length === ids.length && ids.every((v, i) => current[i] === v)) return
   regionIds.value = ids.length ? [...ids] : []
 }, { immediate: true })
 
@@ -413,6 +442,29 @@ watch([tab, regionIds], () => {
 
 // ---- 候选地区（默认带入记录数前 3） ----
 const candidates = ref<RegionCandidate[]>([])
+// 自定义计算范围（个人中心建好的多地区组合，作为对比地区快捷选择）
+const calcScopes = ref<Array<{ id: number; name: string; region_ids: number[] }>>([])
+const calcScopeItems = computed(() =>
+  calcScopes.value.map(s => ({ title: s.name, value: s.id })))
+
+async function loadCalcScopes() {
+  try {
+    const res: any = await api.get('/calc-scopes')
+    calcScopes.value = (Array.isArray(res) ? res : res?.items || []).map((s: any) => ({
+      id: s.id, name: s.name, region_ids: s.region_ids || [],
+    }))
+  } catch {
+    calcScopes.value = []
+  }
+}
+
+function applyCalcScope(id: number) {
+  const scope = calcScopes.value.find(s => s.id === id)
+  if (scope?.region_ids?.length) {
+    regionIds.value = scope.region_ids.slice(0, MAX_REGIONS)
+  }
+}
+
 onMounted(async () => {
   try {
     const res = await getComparisonRegions()
@@ -423,6 +475,7 @@ onMounted(async () => {
   } catch { /* 候选加载失败时保持手动选择 */ }
   // 试算下拉的全量选项（端点无分页/搜索，一次拉全 + 客户端过滤）
   void loadPlanOptions()
+  void loadCalcScopes()
 })
 
 const baseRegionName = computed(() => {
@@ -509,9 +562,10 @@ let entitySearchTimer: ReturnType<typeof setTimeout> | null = null
 function fetchEntityOptions(keyword: string) {
   const seq = ++entitySearchSeq
   entitySearching.value = true
+  // 商品端点用 search，原料端点用 q（与各自列表页同参）
   const url = entityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
-  const params: Record<string, any> = { limit: 20 }
-  if (keyword) params.q = keyword
+  const params: Record<string, any> = { limit: 50 }
+  if (keyword) params[entityType.value === 'ingredient' ? 'q' : 'search'] = keyword
   api.get(url, { params }).then((res: any) => {
     if (seq !== entitySearchSeq) return
     entityOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
@@ -595,7 +649,7 @@ let recipeSearchTimer: ReturnType<typeof setTimeout> | null = null
 function fetchRecipeOptions(keyword: string) {
   const seq = ++recipeSearchSeq
   recipeSearching.value = true
-  const params: Record<string, any> = { limit: 20 }
+  const params: Record<string, any> = { limit: 50 }
   if (keyword) params.search = keyword
   api.get('/recipes', { params }).then((res: any) => {
     if (seq !== recipeSearchSeq) return
@@ -838,8 +892,8 @@ function fetchHeatmapEntityOptions(keyword: string) {
   const seq = ++heatmapEntitySearchSeq
   heatmapEntitySearching.value = true
   const url = heatmapEntityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
-  const params: Record<string, any> = { limit: 20 }
-  if (keyword) params.q = keyword
+  const params: Record<string, any> = { limit: 50 }
+  if (keyword) params[heatmapEntityType.value === 'ingredient' ? 'q' : 'search'] = keyword
   api.get(url, { params }).then((res: any) => {
     if (seq !== heatmapEntitySearchSeq) return
     heatmapEntityOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))

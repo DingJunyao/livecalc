@@ -25,9 +25,9 @@ from starlette.requests import Request
 PRICE_A = 10.0
 PRICE_B = 100.0
 STD_QTY = 500
-# 每标准单位（g）单价：卡片价口径 = price / standard_quantity
-UNIT_PRICE_A = PRICE_A / STD_QTY
-UNIT_PRICE_B = PRICE_B / STD_QTY
+# 卡片价口径 = ¥/斤 归一（500g = 1 斤 → 每斤价 = 记录价）
+UNIT_PRICE_A = PRICE_A
+UNIT_PRICE_B = PRICE_B
 
 
 def _fake_request() -> Request:
@@ -245,7 +245,7 @@ def test_comparison_entity_prices_ingredient_matrix(db_session):
         cell_a = row.regions[str(fx["cities"]["A"].id)]
         assert cell_a is not None
         assert cell_a.price == pytest.approx(UNIT_PRICE_A)
-        assert cell_a.unit == "g"
+        assert cell_a.unit == "斤"
         assert cell_a.days_since_record == 2
         assert cell_a.is_stale is False
         assert cell_a.participant_count == 1

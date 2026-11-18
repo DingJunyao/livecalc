@@ -2030,7 +2030,8 @@
     "heatmapOverallNote": "بدون عنصر واحد — يُلوَّن كل تاجر حسب مؤشر سلة أسعاره (الوسيط = 100)",
     "heatmapEmpty": "لا توجد أسعار تجار بإحداثيات في المناطق المحددة",
     "staleHint": "السعر قديم",
-    "sampleCountUnit": "منتجات"
+    "sampleCountUnit": "منتجات",
+    "customScopeQuick": "نطاق مخصص"
   },
   "plans": {
     "title": "الحاسبة",
