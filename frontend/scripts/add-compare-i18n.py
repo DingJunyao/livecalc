@@ -74,6 +74,7 @@ COMPARE_NS = {
         "heatmapEmpty": "所选地区暂无有坐标的商家价格数据",
         "staleHint": "价格已超期",
         "sampleCountUnit": "种商品",
+        "customScopeQuick": "自定义范围",
     },
     "en-US": {
         "tabOverview": "Overview",
@@ -130,6 +131,7 @@ COMPARE_NS = {
         "heatmapEmpty": "No geocoded merchant prices in the selected regions",
         "staleHint": "Price is stale",
         "sampleCountUnit": "items",
+        "customScopeQuick": "Custom scope",
     },
     "ar": {
         "tabOverview": "نظرة عامة",
@@ -186,6 +188,7 @@ COMPARE_NS = {
         "heatmapEmpty": "لا توجد أسعار تجار بإحداثيات في المناطق المحددة",
         "staleHint": "السعر قديم",
         "sampleCountUnit": "منتجات",
+        "customScopeQuick": "نطاق مخصص",
     },
 }
 

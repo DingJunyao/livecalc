@@ -2030,7 +2030,8 @@
     "heatmapOverallNote": "No single item — each merchant colored by its basket price index (median = 100)",
     "heatmapEmpty": "No geocoded merchant prices in the selected regions",
     "staleHint": "Price is stale",
-    "sampleCountUnit": "items"
+    "sampleCountUnit": "items",
+    "customScopeQuick": "Custom scope"
   },
   "plans": {
     "title": "Planner",

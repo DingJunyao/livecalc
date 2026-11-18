@@ -36,12 +36,9 @@ from app.api.sparklines import (
     _unit_price_per_jin,
     _weight_map,
 )
+from app.services.ingredient_price_service import INGREDIENT_PRICE_STALE_DAYS
 from app.services.currency_service import get_user_default_currency
 from app.services.catalog_display import region_display_name
-from app.services.ingredient_price_service import (
-    INGREDIENT_PRICE_STALE_DAYS,
-    _product_unit_price,
-)
 from app.services.meal_plan_service import evaluate_items, evaluate_plan, plan_cost_trend
 from app.services.recipe_service import (
     calculate_recipe_cost_as_of,
@@ -152,7 +149,10 @@ class _RegionPriceData:
     """单地区一次取数的结果：卡片价、趋势阶梯、陈旧标记共用同一批记录。"""
 
     def __init__(self):
-        self.prices: Dict[int, float] = {}        # pid → 最近有记录日每标准单位均价（用户币种）
+        # pid → 最近有记录日均价（**¥/斤 归一**，用户/会话币种）。跨地区比价
+        # 必须用统一口径：同一原料在不同地区的参与商品包装/标准单位不同
+        #（按根 vs 按克），每标准单位价（price/standard_quantity）不可比。
+        self.prices: Dict[int, float] = {}
         self.steps: Dict[int, dict] = {}          # pid → {本地日: [每斤单价,...]}（趋势口径）
         self.latest: Dict[int, object] = {}       # pid → 最近有记录的本地日
         self.units: Dict[int, Optional[str]] = {} # pid → 最近记录的标准单位缩写
@@ -193,9 +193,9 @@ def _region_price_data(db: Session, region_id: int, product_ids: List[int], tz: 
     for pid, by_day in by_pid_day.items():
         latest_day = max(by_day)
         latest_rows = by_day[latest_day]
-        unit_price = _product_unit_price(latest_rows)
-        if unit_price is not None:
-            data.prices[pid] = float(unit_price)
+        # 卡片价与趋势同一 ¥/斤 口径（跨地区可比；同商品内多记录取均价）
+        jin_prices = [_unit_price_per_jin(db, r) for r in latest_rows]
+        data.prices[pid] = sum(jin_prices) / len(jin_prices)
         data.latest[pid] = latest_day
         data.steps[pid] = {
             d: [_unit_price_per_jin(db, r) for r in day_rows]
@@ -212,10 +212,11 @@ def _entity_card_price(
     pw: Dict[int, int],
     today,
 ) -> Tuple[Optional[float], Optional[str], bool, Optional[int], int]:
-    """单实体的卡片价：mode="recent" 综合价口径。
+    """单实体的卡片价：mode="recent" 综合价口径，**¥/斤 归一**。
 
-    每商品取「最近有记录日」的每标准单位均价 → 30 天参与上限（全部超期放开）
-    → 按权重（用户覆盖 > price_weight > 50）加权。
+    每商品取「最近有记录日」的每斤均价 → 30 天参与上限（全部超期放开）
+    → 按权重（用户覆盖 > price_weight > 50）加权。¥/斤 保证跨地区/跨包装可比
+    （同一原料在不同地区的参与商品标准单位可能不同）。
     返回 (price, unit, is_stale, days_since_record, participant_count)。
     """
     pids_with = [p for p in pids if p in data.prices]
@@ -232,9 +233,8 @@ def _entity_card_price(
         num += data.prices[pid] * w
         den += w
     price = round(num / den, 2) if den > 0 else None
-    # 单位取最近有记录的参与商品的标准单位（与综合价的 std_abbr 口径一致）
-    latest_pid = max(pool, key=lambda p: data.latest[p])
-    unit = data.units.get(latest_pid)
+    # 单位固定「斤」（¥/斤 口径；各参与商品的标准单位可能不同，不再透传）
+    unit = "斤"
     days_since = min((today - data.latest[p]).days for p in pids_with)
     return price, unit, not fresh, days_since, len(pool)
 
