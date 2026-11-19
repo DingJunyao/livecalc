@@ -96,6 +96,19 @@
 - 移动端 analyze 0 issue；comparison + planner + l10n + router + prices utils + recipes widgets = 148 例全过。
 - 分支：master `aae6e105` → feat（merge `a697ffa0`）；移动端 feat `f5c580b5`。
 
+## 自定义计算范围作为独立对比列
+
+用户场景：住行政区划边界的用户会把「家+公司」等多地区组合存成自定义范围（如「明发」=和县+南京市），要求该范围**作为一个整体**与其它地区并列对比，而不是拆成单个地区。
+
+- **协议**：`region_ids` 每项支持 `<地区id>` 与 **`s<范围id>`**。范围项解析为 `tuple(scope.region_ids)` 并集——`region_subtree_ids` / `apply_region_filter` 原生支持多值（子树并集去重），因此范围与地区走完全相同的价格/成本管道，无需额外口径。
+- **响应**：范围项用 **负数 `resp_id = -(scope.id)`**、`display_name = 范围名`；前端矩阵/趋势/摘要的 key 结构与地区项完全一致（仅数字为负），无需特判渲染。
+- **端点覆盖**：summary / entity-prices / recipe-costs / recipe-cost-trend / plan-evaluate-regions（body 负数自动转 s）/ plan-costs / plan-cost-trend / heatmap 全部支持；范围本身也可作基准项（篮子=范围并集）。
+- **权限**：范围必须属于当前用户，否则 404（`自定义计算范围不存在`）。
+- **Web**：`serializeCompareItems`（负数→s）统一序列化；地区选择器只承载正数地区（`positiveRegionIds`），自定义范围以可关闭 chips 整体加入/移除；URL query 支持 `s<id>` 双向同步。
+- **移动端**：`serializeCompareRegionIds` 五处统一；地区弹层范围改为整体加入 + 已加入范围 chips；状态里缓存 calcScopes 供 chips 名称兜底。
+
+验证（浏览器实测，临时用户 + 「明发测试」= 和县+南京市）：概览出「明发测试」卡（734 条/428 种商品，指数 116.4 vs 湖滨区 100）；矩阵「茭白 湖滨区 6.98 vs 明发测试 4.99」；热力图正常。后端 test_comparison 16/16。
+
 ## 需求与设计原则
 
 数据范围跨多个地区时，对比各地区原料/商品价格、菜谱与试算成本、商家物价热力图。痛点是功能多、两端不知如何展示。
