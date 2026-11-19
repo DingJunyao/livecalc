@@ -16,6 +16,7 @@
 import asyncio
 import uuid
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
 from conftest import FakeUser
@@ -348,6 +349,126 @@ def test_comparison_region_ids_validation():
     assert _parse_region_ids("3,1,1,2") == [3, 1, 2]  # 去重保序
 
 
+# ==================== 自定义范围作为对比项 ====================
+
+
+def _create_scope(db_session, fx, name, region_ids):
+    from app.models.user_calc_scope import UserCalcScope
+
+    scope = UserCalcScope(
+        user_id=FakeUser.id, name=name, region_ids=list(region_ids),
+    )
+    db_session.add(scope)
+    db_session.commit()
+    return scope
+
+
+def _cleanup_scope(db_session, scope):
+    from app.models.user_calc_scope import UserCalcScope
+
+    db_session.query(UserCalcScope).filter(
+        UserCalcScope.id == scope.id
+    ).delete(synchronize_session=False)
+    db_session.commit()
+
+
+def test_comparison_summary_with_calc_scope_item(db_session):
+    """「明发」场景：自定义范围（和县+南京组合）作为一列与三门峡并列对比。
+
+    范围项 spec = 多地区 tuple 并集；resp_id = -(scope.id)；名称 = 范围名。
+    """
+    from app.api.comparison import comparison_summary
+
+    fx = _build_fixture(db_session)
+    # 模拟「明发」：城市A + 城市B 组合范围（范围内商家记录都会计入）
+    scope = _create_scope(db_session, fx, "测试范围", [fx["cities"]["A"].id, fx["cities"]["B"].id])
+    rids = f"{fx['cities']['A'].id},s{scope.id}"
+    try:
+        res = asyncio.run(comparison_summary(
+            request=_fake_request(), region_ids=rids, days=7,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        by_id = {r.region_id: r for r in res.regions}
+        # scope 项 resp_id = -(scope.id)
+        assert -scope.id in by_id
+        scope_item = by_id[-scope.id]
+        assert scope_item.name == "测试范围"
+        assert scope_item.display_name == "测试范围"
+        # 范围 = A∪B 两地子树：记录 ≥ 单独 A 地（共享内存库可能有其他测试残留，只比下限）
+        assert scope_item.record_count >= 2
+        assert scope_item.record_count > by_id[fx["cities"]["A"].id].record_count
+        # 指数：A（基准=100）与范围（含 A+B）……范围篮子趋势正常
+        assert by_id[fx["cities"]["A"].id].price_index == pytest.approx(100.0)
+        assert scope_item.price_index is not None
+        assert scope_item.trend and scope_item.trend[-1] > 0
+        # 基准仍是第一项（地区 A）
+        assert res.base_region_id == fx["cities"]["A"].id
+    finally:
+        _cleanup_scope(db_session, scope)
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_entity_prices_with_scope_column(db_session):
+    """矩阵 scope 列：key 为负数 resp_id 字符串；范围并集取价（B 地 100 元）。"""
+    from app.api.comparison import comparison_entity_prices
+
+    fx = _build_fixture(db_session)
+    scope = _create_scope(db_session, fx, "明发", [fx["cities"]["A"].id, fx["cities"]["B"].id])
+    try:
+        res = asyncio.run(comparison_entity_prices(
+            _fake_request(),
+            entity_type="ingredient",
+            entity_ids=str(fx["ingredient"].id),
+            region_ids=f"s{scope.id}",
+            days=7,
+            db=db_session, current_user=FakeUser(), tz="UTC",
+        ))
+        row = res.entities[0]
+        cell = row.regions[str(-scope.id)]
+        assert cell is not None
+        # 范围并集（A+B 两商家）：as-of 最近记录 = B 的 100 元/500g → 100/斤
+        assert cell.price == pytest.approx(100.0)
+        assert res.regions[0].region_id == -scope.id
+        assert res.regions[0].display_name == "明发"
+    finally:
+        _cleanup_scope(db_session, scope)
+        _cleanup_fixture(db_session, fx)
+
+
+def test_comparison_scope_not_owned_rejected(db_session):
+    """别人的范围 404；不存在的范围 404。"""
+    from app.api.comparison import comparison_summary
+    from app.core.exceptions import LocalizedHTTPException
+
+    fx = _build_fixture(db_session)
+    # scope 归 FakeUser2（其他用户）
+    from app.models.user_calc_scope import UserCalcScope
+
+    other = SimpleNamespace(id=999999)
+    scope = UserCalcScope(
+        user_id=other.id, name="别人的范围", region_ids=[fx["cities"]["A"].id],
+    )
+    db_session.add(scope)
+    db_session.commit()
+    try:
+        with pytest.raises(LocalizedHTTPException) as ei:
+            asyncio.run(comparison_summary(
+                request=_fake_request(), region_ids=f"s{scope.id}", days=7,
+                db=db_session, current_user=FakeUser(), tz="UTC",
+            ))
+        assert ei.value.status_code == 404
+        # 不存在的范围
+        with pytest.raises(LocalizedHTTPException) as ei2:
+            asyncio.run(comparison_summary(
+                request=_fake_request(), region_ids="s999999", days=7,
+                db=db_session, current_user=FakeUser(), tz="UTC",
+            ))
+        assert ei2.value.status_code == 404
+    finally:
+        _cleanup_scope(db_session, scope)
+        _cleanup_fixture(db_session, fx)
+
+
 # ==================== 二期：菜谱 / 试算成本对比 ====================
 
 
@@ -434,6 +555,7 @@ def test_comparison_recipe_cost_trend_by_region(db_session):
     rids = f"{fx['cities']['A'].id},{fx['cities']['B'].id}"
     try:
         res = asyncio.run(comparison_recipe_cost_trend(
+            _fake_request(),
             recipe_id=recipe.id, region_ids=rids, days=7,
             db=db_session, current_user=FakeUser(), tz="UTC",
         ))
@@ -468,7 +590,7 @@ def test_comparison_plan_evaluate_regions_explicit_override(db_session):
         set_session_region(fx["cities"]["C"].id)
         try:
             res = asyncio.run(comparison_plan_evaluate_regions(
-                body, db=db_session, current_user=FakeUser(), tz="UTC",
+                _fake_request(), body, db=db_session, current_user=FakeUser(), tz="UTC",
             ))
         finally:
             reset_session_region()
@@ -509,6 +631,7 @@ def test_comparison_plan_costs_and_trend_by_region(db_session):
         assert row["regions"][str(fx["cities"]["B"].id)]["cost"] == pytest.approx(PRICE_B)
 
         trend = asyncio.run(comparison_plan_cost_trend(
+            _fake_request(),
             plan_id=plan.id, region_ids=rids, days=7,
             db=db_session, current_user=FakeUser(), tz="UTC",
         ))

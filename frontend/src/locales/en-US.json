@@ -2031,7 +2031,8 @@
     "heatmapEmpty": "No geocoded merchant prices in the selected regions",
     "staleHint": "Price is stale",
     "sampleCountUnit": "items",
-    "customScopeQuick": "Custom scope"
+    "customScopeQuick": "Custom scope",
+    "addScopeItem": "Add custom scope"
   },
   "plans": {
     "title": "Planner",

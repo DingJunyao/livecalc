@@ -24,19 +24,38 @@
             <div class="text-caption text-medium-emphasis mb-2">{{ t('compare.regionSelector') }}</div>
             <div class="d-flex align-start flex-wrap ga-3">
               <div style="flex: 1 1 420px">
-                <RegionMultiSelect v-model="regionIds" />
+                <!-- 只承载正数地区项；自定义范围项以 chips 单独展示（可整体删除） -->
+                <RegionMultiSelect
+                  :model-value="positiveRegionIds"
+                  @update:model-value="onPositiveRegionsChange"
+                />
               </div>
-              <!-- 自定义计算范围快捷选择（个人中心建好的多地区组合） -->
+              <!-- 自定义计算范围：作为一个整体对比列加入（不拆成单个地区） -->
               <v-select
                 v-if="calcScopes.length"
                 :items="calcScopeItems"
-                :label="t('compare.customScopeQuick')"
+                :label="t('compare.addScopeItem')"
                 density="compact"
                 variant="outlined"
                 hide-details
+                clearable
                 style="max-width: 240px"
-                @update:model-value="applyCalcScope"
+                @update:model-value="onScopeSelected"
               />
+            </div>
+            <!-- 已加入的对比范围（负数 id → 范围名） -->
+            <div v-if="scopeItems.length" class="d-flex flex-wrap ga-2 mt-2">
+              <v-chip
+                v-for="item in scopeItems"
+                :key="item.id"
+                color="primary"
+                variant="tonal"
+                size="small"
+                label
+                closable
+                prepend-icon="mdi-playlist-check"
+                @click:close="removeScopeItem(item.id)"
+              >{{ item.name }}</v-chip>
             </div>
             <div class="text-caption text-medium-emphasis mt-2">
               {{ t('compare.baseRegionNote', { base: baseRegionName }) }}
@@ -423,7 +442,19 @@ const regionIds = ref<number[]>([])
 const queryRegionIds = computed<number[]>(() => {
   const raw = route.query.regions
   if (typeof raw !== 'string' || !raw) return []
-  return raw.split(',').map(s => parseInt(s, 10)).filter(n => Number.isFinite(n) && n > 0).slice(0, MAX_REGIONS)
+  // 每项：纯数字 = 地区 id；s<id> = 自定义计算范围（存负数 -(id)）
+  const out: number[] = []
+  for (const part of raw.split(',')) {
+    const t = part.trim()
+    if (!t) continue
+    if (t.startsWith('s') && /^\d+$/.test(t.slice(1))) {
+      out.push(-parseInt(t.slice(1), 10))
+    } else {
+      const n = parseInt(t, 10)
+      if (Number.isFinite(n) && n > 0) out.push(n)
+    }
+  }
+  return out.slice(0, MAX_REGIONS)
 })
 
 watch(queryRegionIds, (ids) => {
@@ -436,13 +467,14 @@ watch(queryRegionIds, (ids) => {
 watch([tab, regionIds], () => {
   const q: Record<string, string> = {}
   if (tab.value !== 'overview') q.tab = tab.value
-  if (regionIds.value.length) q.regions = regionIds.value.join(',')
+  if (regionIds.value.length) {
+    // 负数项 = 自定义范围（-v → s<v>）
+    q.regions = regionIds.value.map(v => (v < 0 ? `s${-v}` : String(v))).join(',')
+  }
   router.replace({ query: q })
 })
 
-// ---- 候选地区（默认带入记录数前 3） ----
-const candidates = ref<RegionCandidate[]>([])
-// 自定义计算范围（个人中心建好的多地区组合，作为对比地区快捷选择）
+// ---- 自定义计算范围（作为对比项参与对比；id 存负数） ----
 const calcScopes = ref<Array<{ id: number; name: string; region_ids: number[] }>>([])
 const calcScopeItems = computed(() =>
   calcScopes.value.map(s => ({ title: s.name, value: s.id })))
@@ -458,13 +490,48 @@ async function loadCalcScopes() {
   }
 }
 
-function applyCalcScope(id: number) {
+/** 把自定义范围作为一个对比项加入（不拆开地区）：regionIds 存负数 -(scope.id)。 */
+function onScopeSelected(id: number | null) {
+  if (id == null) return
   const scope = calcScopes.value.find(s => s.id === id)
-  if (scope?.region_ids?.length) {
-    regionIds.value = scope.region_ids.slice(0, MAX_REGIONS)
-  }
+  if (!scope?.region_ids?.length) return
+  if (regionIds.value.includes(-id)) return
+  if (regionIds.value.length >= MAX_REGIONS) return
+  regionIds.value = [...regionIds.value, -id]
 }
 
+function removeScopeItem(id: number) {
+  regionIds.value = regionIds.value.filter(v => v !== id)
+}
+
+/** 已加入的对比范围项（负数 id）。 */
+const scopeItems = computed(() =>
+  regionIds.value
+    .filter(v => v < 0)
+    .map(id => ({ id, name: scopeNameById.value.get(id) || String(id) })),
+)
+
+/** 传给 RegionMultiSelect 的只有正数地区项。 */
+const positiveRegionIds = computed(() => regionIds.value.filter(v => v > 0))
+
+/** RegionMultiSelect 变更：保留已加入的范围项，合并正数地区。 */
+function onPositiveRegionsChange(ids: number[]) {
+  const negatives = regionIds.value.filter(v => v < 0)
+  const merged: number[] = []
+  for (const v of [...ids.filter(v => v > 0), ...negatives]) {
+    if (!merged.includes(v)) merged.push(v)
+  }
+  regionIds.value = merged.slice(0, MAX_REGIONS)
+}
+
+const scopeNameById = computed(() => {
+  const map = new Map<number, string>()
+  for (const s of calcScopes.value) map.set(-s.id, s.name)
+  return map
+})
+
+// ---- 候选地区（默认带入记录数前 3） ----
+const candidates = ref<RegionCandidate[]>([])
 onMounted(async () => {
   try {
     const res = await getComparisonRegions()
@@ -473,7 +540,7 @@ onMounted(async () => {
       regionIds.value = candidates.value.slice(0, 3).map(r => r.region_id)
     }
   } catch { /* 候选加载失败时保持手动选择 */ }
-  // 试算下拉的全量选项（端点无分页/搜索，一次拉全 + 客户端过滤）
+  // 试算下拉的全量选项 + 自定义范围列表
   void loadPlanOptions()
   void loadCalcScopes()
 })
@@ -482,7 +549,9 @@ const baseRegionName = computed(() => {
   const id = regionIds.value[0]
   const item = summary.value?.regions.find(r => r.region_id === id)
     || candidates.value.find(c => c.region_id === id)
-  return item?.display_name || '—'
+  if (item) return item.display_name || item.name || '—'
+  if (id != null && id < 0) return scopeNameById.value.get(id) || String(id)
+  return '—'
 })
 
 // ---- 概览 ----

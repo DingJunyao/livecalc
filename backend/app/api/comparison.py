@@ -111,6 +111,113 @@ def _parse_region_ids(raw: str) -> List[int]:
     return values
 
 
+def _resolve_compare_items(db: Session, user, raw: str, locale: str = "zh-CN") -> List[Dict[str, Any]]:
+    """解析对比项列表（保序去重，≤6）。每项可作为独立对比列。
+
+    项格式：
+      - ``<int>``        行政区划地区 id（spec = 该 id，子树过滤）
+      - ``s<int>``       用户自定义计算范围 id（spec = 范围内地区 id 的
+                         **tuple 并集**——region_subtree_ids/apply_region_filter
+                         原生支持，一个范围作为一棵合并子树参与对比）
+
+    返回 [{spec, resp_id, name, display_name, level}]：
+      - 地区项 resp_id = 地区 id；范围项 resp_id = -(scope.id)（负数区分，
+        前端矩阵/趋势/摘要的 key 结构不变，仅数字不同）
+      - display_name：地区经 region_display_name 本地化；范围取 scope.name
+    """
+    from app.models.user_calc_scope import UserCalcScope
+
+    seen_keys: List[str] = []
+    items_raw: List[str] = []
+    region_ids_needed: List[int] = []
+    scope_ids: List[int] = []
+    for part in raw.split(","):
+        text = part.strip()
+        if not text:
+            continue
+        if text.startswith("s") and text[1:].isdigit():
+            sid = int(text[1:])
+            if sid <= 0:
+                raise LocalizedHTTPException(status_code=400, message="地区 ID 列表格式无效: {error}", error="范围 ID 必须为正整数")
+            key = f"s{sid}"
+            if key not in seen_keys:
+                seen_keys.append(key)
+                items_raw.append(key)
+                scope_ids.append(sid)
+        else:
+            try:
+                value = int(text)
+            except ValueError as exc:
+                raise LocalizedHTTPException(status_code=400, message="地区 ID 列表格式无效: {error}", error=str(exc))
+            if value <= 0:
+                raise LocalizedHTTPException(status_code=400, message="地区 ID 列表格式无效: {error}", error="地区 ID 必须为正整数")
+            key = str(value)
+            if key not in seen_keys:
+                seen_keys.append(key)
+                items_raw.append(key)
+                region_ids_needed.append(value)
+    if not items_raw:
+        raise LocalizedHTTPException(status_code=400, message="地区 ID 列表格式无效: {error}", error="至少需要一个地区")
+    if len(items_raw) > MAX_COMPARISON_REGIONS:
+        raise LocalizedHTTPException(
+            status_code=400,
+            message="地区 ID 列表格式无效: {error}",
+            error=f"一次最多对比 {MAX_COMPARISON_REGIONS} 个地区",
+        )
+
+    # 批量取名称：地区 + 范围（scope 归属校验：只能用自己建的）
+    regions_by_id = _load_regions(db, region_ids_needed)
+    scope_by_id: Dict[int, Any] = {}
+    if scope_ids:
+        for row in db.query(UserCalcScope).filter(
+            UserCalcScope.id.in_(scope_ids),
+            UserCalcScope.user_id == user.id,
+        ).all():
+            scope_by_id[row.id] = row
+
+    out: List[Dict[str, Any]] = []
+    for key in items_raw:
+        if key.startswith("s"):
+            sid = int(key[1:])
+            scope = scope_by_id.get(sid)
+            if scope is None:
+                raise LocalizedHTTPException(status_code=404, message="自定义计算范围不存在: {error}", error=f"s{sid}")
+            region_list = tuple(dict.fromkeys(int(r) for r in (scope.region_ids or [])))
+            if not region_list:
+                raise LocalizedHTTPException(status_code=400, message="地区 ID 列表格式无效: {error}", error=f"范围「{scope.name}」不含任何地区")
+            out.append({
+                "spec": region_list,          # tuple 并集（子树合并为一棵）
+                "resp_id": -sid,              # 负数区分范围项
+                "name": scope.name,
+                "display_name": scope.name,
+                "level": 0,
+            })
+        else:
+            rid = int(key)
+            region = regions_by_id.get(rid)
+            out.append({
+                "spec": rid,
+                "resp_id": rid,
+                "name": region.name if region else str(rid),
+                "display_name": region_display_name(region, locale) if region else str(rid),
+                "level": region.level if region else 0,
+            })
+    return out
+
+
+def _items_region_metas(items: List[Dict[str, Any]]) -> List[RegionMeta]:
+    """对比项 → RegionMeta（响应列头/名称映射；scope 项负数 resp_id + 范围名）。"""
+    return [
+        RegionMeta(
+            region_id=item["resp_id"],
+            name=item["name"],
+            display_name=item["display_name"],
+            level=item["level"],
+        )
+        for item in items
+    ]
+
+
 def _parse_entity_ids(raw: str, limit: int = MAX_COMPARISON_ENTITIES) -> List[int]:
     """逗号分隔实体 ID：去重保序、最多 limit 个。"""
     values: List[int] = []
@@ -292,7 +399,7 @@ async def list_priced_regions(
 @router.get("/summary", response_model=ComparisonSummaryResponse)
 async def comparison_summary(
     request: Request,
-    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6，第一个为基准地区）"),
+    region_ids: str = Query(..., description="对比项列表，逗号分隔（≤6，第一个为基准项；支持地区 id 与 s<范围id>）"),
     days: int = Query(30, ge=7, le=90, description="篮子趋势天数"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -300,32 +407,35 @@ async def comparison_summary(
 ):
     """各地区概览：记录数/商品数 + 物价指数 + 共同商品篮子日均价趋势。
 
-    篮子 = 基准地区（region_ids 第一个）近一年有记录的商品；物价指数 =
-    各地区对篮子商品的「单价比率（地区价 / 基准价）」中位数 × 100。
+    篮子 = 基准项（region_ids 第一个）近一年有记录的商品；物价指数 =
+    各项对篮子商品的「单价比率（项价 / 基准价）」中位数 × 100。
+    项可为地区或自定义计算范围（s<id>，范围内子树并集）。
     """
     try:
-        rids = _parse_region_ids(region_ids)
-        regions_by_id = _load_regions(db, rids)
         locale = request_locale(request)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, locale)
         currency = get_user_default_currency(db, current_user)
         today = utc_datetime_to_local_date(datetime.utcnow(), tz)
+        base_spec = compare_items[0]["spec"]
+        base_resp_id = compare_items[0]["resp_id"]
 
-        # 篮子：基准地区近一年有记录的商品
+        # 篮子：基准项近一年有记录的商品
         cutoff = datetime.utcnow() - timedelta(days=BASKET_WINDOW_DAYS)
         basket_q = db.query(ProductRecord.product_id.distinct()).filter(
             ProductRecord.is_active == True,  # noqa: E712
             ProductRecord.price.isnot(None),
             ProductRecord.recorded_at >= cutoff,
         )
-        basket_rows = apply_region_filter(basket_q, db, rids[0]).all()
+        basket_rows = apply_region_filter(basket_q, db, base_spec).all()
         basket_pids = [r[0] for r in basket_rows]
 
         pw = _weight_map(db, basket_pids, current_user.id)
-        base_data = _region_price_data(db, rids[0], basket_pids, tz)
+        base_data = _region_price_data(db, base_spec, basket_pids, tz)
 
         items: List[RegionSummaryItem] = []
-        for rid in rids:
-            data = base_data if rid == rids[0] else _region_price_data(db, rid, basket_pids, tz)
+        for idx, item in enumerate(compare_items):
+            spec = item["spec"]
+            data = base_data if idx == 0 else _region_price_data(db, spec, basket_pids, tz)
             ratios = [
                 data.prices[pid] / base_data.prices[pid]
                 for pid in basket_pids
@@ -339,13 +449,12 @@ async def comparison_summary(
                 ProductRecord.is_active == True,  # noqa: E712
                 ProductRecord.price.isnot(None),
             )
-            record_count, entity_count = apply_region_filter(count_q, db, rid).one()
+            record_count, entity_count = apply_region_filter(count_q, db, spec).one()
             trend = _basket_daily_series(data.steps, pw, days, tz)
-            region = regions_by_id.get(rid)
             items.append(RegionSummaryItem(
-                region_id=rid,
-                name=region.name if region else str(rid),
-                display_name=region_display_name(region, locale) if region else str(rid),
+                region_id=item["resp_id"],
+                name=item["name"],
+                display_name=item["display_name"],
                 record_count=record_count,
                 entity_count=entity_count,
                 price_index=price_index,
@@ -353,7 +462,7 @@ async def comparison_summary(
             ))
         return ComparisonSummaryResponse(
             currency=currency,
-            base_region_id=rids[0],
+            base_region_id=base_resp_id,
             basket_size=len(basket_pids),
             regions=items,
         )
@@ -417,27 +526,18 @@ async def comparison_entity_prices(
     current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
 ):
-    """实体×地区价格矩阵：每格 = 卡片价（每标准单位，综合价口径）+ 趋势（¥/斤）。
+    """实体×对比项价格矩阵：每格 = 卡片价（¥/斤，综合价口径）+ 趋势（¥/斤）。
 
     卡片价经 30 天参与上限聚合；该地区近一年无任何记录时整格为 null。
+    项可为地区或自定义计算范围（s<id>）。
     """
     try:
-        rids = _parse_region_ids(region_ids)
+        locale = request_locale(request)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, locale)
         ids = _parse_entity_ids(entity_ids)
         currency = get_user_default_currency(db, current_user)
         today = utc_datetime_to_local_date(datetime.utcnow(), tz)
-        regions_by_id = _load_regions(db, rids)
-        locale = request_locale(request)
-        region_metas = [
-            RegionMeta(
-                region_id=rid,
-                name=regions_by_id[rid].name,
-                display_name=region_display_name(regions_by_id[rid], locale),
-                level=regions_by_id[rid].level,
-            )
-            for rid in rids
-            if rid in regions_by_id
-        ]
+        region_metas = _items_region_metas(compare_items)
 
         name_by_id: Dict[int, str] = {}
         entity_pids: Dict[int, List[int]] = {}
@@ -468,19 +568,21 @@ async def comparison_entity_prices(
                 entity_id=eid,
                 name=name_by_id.get(eid, str(eid)),
                 unit=None,
-                regions={str(rid): None for rid in rids},
+                regions={str(item["resp_id"]): None for item in compare_items},
             )
             for eid in ids
         }
 
-        for rid in rids:
+        for item in compare_items:
+            rid_spec = item["spec"]
+            rid_key = str(item["resp_id"])
             if entity_type == "ingredient":
                 trends = _ingredients_sparklines_batched(
-                    db, ids, days=days, user_id=current_user.id, tz=tz, region_id=rid
+                    db, ids, days=days, user_id=current_user.id, tz=tz, region_id=rid_spec
                 )
             else:
-                trends = _products_sparklines_batched(db, ids, days=days, tz=tz, region_id=rid)
-            data = _region_price_data(db, rid, all_pids, tz)
+                trends = _products_sparklines_batched(db, ids, days=days, tz=tz, region_id=rid_spec)
+            data = _region_price_data(db, rid_spec, all_pids, tz)
             for eid in ids:
                 price, unit, is_stale, days_since, participants = _entity_card_price(
                     data, entity_pids.get(eid) or [], pw, today
@@ -495,7 +597,7 @@ async def comparison_entity_prices(
                     unit=unit,
                     trend=trends.get(str(eid)) or [],
                 )
-                rows[eid].regions[str(rid)] = cell
+                rows[eid].regions[rid_key] = cell
                 if rows[eid].unit is None and unit:
                     rows[eid].unit = unit
 
@@ -544,11 +646,10 @@ async def comparison_recipe_costs(
     供菜谱分析页「按地区」模式的覆盖提示与比价矩阵复用。
     """
     try:
-        rids = _parse_region_ids(region_ids)
+        locale = request_locale(request)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, locale)
         rids_recipes = _parse_entity_ids(recipe_ids, limit=MAX_COMPARISON_RECIPES)
         currency = get_user_default_currency(db, current_user)
-        regions_by_id = _load_regions(db, rids)
-        locale = request_locale(request)
         name_by_id = {
             rid: name
             for rid, name in db.query(Recipe.id, Recipe.name).filter(
@@ -560,15 +661,17 @@ async def comparison_recipe_costs(
             rid_: RecipeCostRow(
                 recipe_id=rid_,
                 name=name_by_id.get(rid_, str(rid_)),
-                regions={str(r): None for r in rids},
+                regions={str(item["resp_id"]): None for item in compare_items},
             )
             for rid_ in rids_recipes
         }
-        for rid in rids:
+        for item in compare_items:
+            rid_spec = item["spec"]
+            rid_key = str(item["resp_id"])
             for recipe_id in rids_recipes:
                 try:
                     cost = calculate_recipe_cost_as_of(
-                        recipe_id, current_user.id, now, db, tz=tz, region_id=rid,
+                        recipe_id, current_user.id, now, db, tz=tz, region_id=rid_spec,
                     )
                 except Exception:
                     cost = None
@@ -587,7 +690,7 @@ async def comparison_recipe_costs(
                     )
                     for b in breakdown_raw
                 ]
-                rows[recipe_id].regions[str(rid)] = RecipeRegionCost(
+                rows[recipe_id].regions[rid_key] = RecipeRegionCost(
                     total_cost=cost.get("total_cost"),
                     cost_per_serving=cost.get("cost_per_serving"),
                     currency=cost.get("currency"),
@@ -597,16 +700,7 @@ async def comparison_recipe_costs(
                     ],
                     breakdown=breakdown,
                 )
-        region_metas = [
-            RegionMeta(
-                region_id=rid,
-                name=regions_by_id[rid].name,
-                display_name=region_display_name(regions_by_id[rid], locale),
-                level=regions_by_id[rid].level,
-            )
-            for rid in rids
-            if rid in regions_by_id
-        ]
+        region_metas = _items_region_metas(compare_items)
         return RecipeCostsResponse(
             currency=currency,
             regions=region_metas,
@@ -620,8 +714,9 @@ async def comparison_recipe_costs(
 
 @router.get("/recipe-cost-trend")
 async def comparison_recipe_cost_trend(
+    request: Request,
     recipe_id: int = Query(..., description="菜谱 ID（单选，多地区趋势）"),
-    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    region_ids: str = Query(..., description="对比项列表，逗号分隔（≤6，支持 s<范围id>）"),
     days: int = Query(30, ge=7, le=90, description="趋势天数"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
@@ -629,16 +724,16 @@ async def comparison_recipe_cost_trend(
 ):
     """单菜谱的多地区成本趋势（每地区一条序列，键为 region_id 字符串）。"""
     try:
-        rids = _parse_region_ids(region_ids)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, request_locale(request))
         out: Dict[str, List[Dict]] = {}
-        for rid in rids:
+        for item in compare_items:
             try:
                 trend = calculate_recipe_cost_range_trend(
-                    recipe_id, current_user.id, db, days=days, tz=tz, region_id=rid,
+                    recipe_id, current_user.id, db, days=days, tz=tz, region_id=item["spec"],
                 )
             except Exception:
                 trend = []
-            out[str(rid)] = trend or []
+            out[str(item["resp_id"])] = trend or []
         return {"regions": out}
     except LocalizedHTTPException:
         raise
@@ -648,28 +743,35 @@ async def comparison_recipe_cost_trend(
 
 @router.post("/plan-evaluate-regions", response_model=PlanEvaluateRegionsResponse)
 async def comparison_plan_evaluate_regions(
+    request: Request,
     body: PlanEvaluateRegionsBody,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
 ):
-    """同一组试算条目（草稿/未保存均可）在 N 个地区分别求值。
+    """同一组试算条目（草稿/未保存均可）在 N 个对比项分别求值。
 
-    试算详情页「合计卡口径切换」的数据源：每地区返回 evaluate 的 totals
-    （cost / calories / protein_g / carbs_g / fat_g）。显式逐地区传 region_id，
-    不走会话 X-Region。
+    试算详情页「合计卡口径切换」的数据源：每项返回 evaluate 的 totals
+    （cost / calories / protein_g / carbs_g / fat_g）。显式逐项传范围，
+    不走会话 X-Region。body.region_ids 中负数 = 自定义计算范围（-(scope.id)）。
     """
     try:
-        rids = _parse_region_ids(",".join(str(r) for r in body.region_ids))
+        compare_items = _resolve_compare_items(
+            db, current_user,
+            ",".join(
+                (f"s{-r}" if r < 0 else str(r)) for r in body.region_ids
+            ),
+            request_locale(request),
+        )
         item_dicts = [item.model_dump() for item in body.items]
         regions = []
-        for rid in rids:
+        for item in compare_items:
             result = await evaluate_items(
                 db, current_user, item_dicts,
                 kind=body.kind, meal_type=body.meal_type, tz=tz,
-                region_id=rid,
+                region_id=item["spec"],
             )
-            regions.append(PlanRegionTotals(region_id=rid, totals=result.get("totals") or {}))
+            regions.append(PlanRegionTotals(region_id=item["resp_id"], totals=result.get("totals") or {}))
         return PlanEvaluateRegionsResponse(regions=regions)
     except LocalizedHTTPException:
         raise
@@ -681,14 +783,14 @@ async def comparison_plan_evaluate_regions(
 async def comparison_plan_costs(
     request: Request,
     plan_ids: str = Query(..., description="试算方案 ID 列表，逗号分隔（≤10）"),
-    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    region_ids: str = Query(..., description="对比项列表，逗号分隔（≤6，支持 s<范围id>）"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
 ):
-    """已保存方案×地区合计对照：每格 = evaluate 的 totals（成本+四项营养）。"""
+    """已保存方案×对比项合计对照：每格 = evaluate 的 totals（成本+四项营养）。"""
     try:
-        rids = _parse_region_ids(region_ids)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, request_locale(request))
         ids = _parse_plan_ids(plan_ids)
         plans = _load_owned_plans(db, current_user, ids)
         out = []
@@ -697,19 +799,19 @@ async def comparison_plan_costs(
             row: Dict[str, Any] = {
                 "plan_id": pid,
                 "name": plan.name if plan else str(pid),
-                "regions": {str(r): None for r in rids},
+                "regions": {str(item["resp_id"]): None for item in compare_items},
             }
             if plan is not None:
-                for rid in rids:
+                for item in compare_items:
                     try:
                         result = await evaluate_plan(
-                            db, current_user, plan, tz=tz, region_id=rid,
+                            db, current_user, plan, tz=tz, region_id=item["spec"],
                         )
-                        row["regions"][str(rid)] = result.get("totals") or {}
+                        row["regions"][str(item["resp_id"])] = result.get("totals") or {}
                     except Exception:
-                        row["regions"][str(rid)] = None
+                        row["regions"][str(item["resp_id"])] = None
             out.append(row)
-        return {"plans": out, "regions": rids}
+        return {"plans": out, "regions": [item["resp_id"] for item in compare_items]}
     except LocalizedHTTPException:
         raise
     except Exception as e:
@@ -718,27 +820,28 @@ async def comparison_plan_costs(
 
 @router.get("/plan-cost-trend")
 async def comparison_plan_cost_trend(
+    request: Request,
     plan_id: int = Query(..., description="试算方案 ID（单选，多地区趋势）"),
-    region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
+    region_ids: str = Query(..., description="对比项列表，逗号分隔（≤6，支持 s<范围id>）"),
     days: int = Query(30, ge=7, le=90, description="趋势天数"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
     tz: str = Depends(get_timezone),
 ):
-    """单方案的多地区成本趋势（每地区一条序列，复用 plan_cost_trend 显式 region）。"""
+    """单方案的多对比项成本趋势（每项一条序列，复用 plan_cost_trend 显式 region）。"""
     try:
-        rids = _parse_region_ids(region_ids)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, request_locale(request))
         plans = _load_owned_plans(db, current_user, [plan_id])
         plan = plans.get(plan_id)
         if plan is None:
             raise LocalizedHTTPException(status_code=404, message="方案不存在")
         out: Dict[str, List[Dict]] = {}
-        for rid in rids:
+        for item in compare_items:
             try:
-                trend = plan_cost_trend(db, current_user, plan, days=days, tz=tz, region_id=rid)
+                trend = plan_cost_trend(db, current_user, plan, days=days, tz=tz, region_id=item["spec"])
             except Exception:
                 trend = []
-            out[str(rid)] = trend or []
+            out[str(item["resp_id"])] = trend or []
         return {"regions": out}
     except LocalizedHTTPException:
         raise
@@ -772,15 +875,15 @@ async def comparison_heatmap(
     坐标缺失（latitude/longitude 为空）的商家不返回（地图上无法渲染）。
     """
     try:
-        rids = _parse_region_ids(region_ids)
+        compare_items = _resolve_compare_items(db, current_user, region_ids, request_locale(request))
         currency = get_user_default_currency(db, current_user)
         uid = current_user.id
         now = datetime.utcnow()
 
-        # 商家全集（地区子树内、营业中、有坐标），一次查齐
+        # 商家全集（各对比项子树并集内、营业中、有坐标），一次查齐
         region_conds = []
-        for rid in rids:
-            ids = region_subtree_ids(db, rid)
+        for item in compare_items:
+            ids = region_subtree_ids(db, item["spec"])
             if ids:
                 region_conds.append(Merchant.region_id.in_(ids))
         merchants = db.query(Merchant).filter(
@@ -816,7 +919,7 @@ async def comparison_heatmap(
                 ProductRecord.price.isnot(None),
                 ProductRecord.recorded_at >= cutoff,
             )
-            basket_rows = apply_region_filter(basket_q, db, rids[0]).all()
+            basket_rows = apply_region_filter(basket_q, db, compare_items[0]["spec"]).all()
             product_ids = [r[0] for r in basket_rows][:50]  # 上限 50 防查询过重
 
         if not product_ids:
