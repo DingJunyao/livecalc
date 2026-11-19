@@ -239,7 +239,7 @@ def _entity_card_price(
     return price, unit, not fresh, days_since, len(pool)
 
 
-@router.get("/comparison/regions", response_model=RegionCandidatesResponse)
+@router.get("/regions", response_model=RegionCandidatesResponse)
 async def list_priced_regions(
     request: Request,
     db: Session = Depends(get_db),
@@ -289,7 +289,7 @@ async def list_priced_regions(
         raise LocalizedHTTPException(status_code=500, message="获取对比地区失败: {error}", error=str(e))
 
 
-@router.get("/comparison/summary", response_model=ComparisonSummaryResponse)
+@router.get("/summary", response_model=ComparisonSummaryResponse)
 async def comparison_summary(
     request: Request,
     region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6，第一个为基准地区）"),
@@ -406,7 +406,7 @@ def _basket_daily_series(by_pid_day: Dict[int, dict], pw: Dict[int, int], days: 
     return series
 
 
-@router.get("/comparison/entity-prices", response_model=EntityPricesResponse)
+@router.get("/entity-prices", response_model=EntityPricesResponse)
 async def comparison_entity_prices(
     request: Request,
     entity_type: str = Query(..., pattern="^(ingredient|product)$", description="实体类型"),
@@ -529,7 +529,7 @@ def _load_owned_plans(db: Session, user, ids: List[int]) -> Dict[int, "MealPlan"
     return {p.id: p for p in rows}
 
 
-@router.get("/comparison/recipe-costs", response_model=RecipeCostsResponse)
+@router.get("/recipe-costs", response_model=RecipeCostsResponse)
 async def comparison_recipe_costs(
     request: Request,
     recipe_ids: str = Query(..., description="菜谱 ID 列表，逗号分隔（≤10）"),
@@ -618,7 +618,7 @@ async def comparison_recipe_costs(
         raise LocalizedHTTPException(status_code=500, message="获取菜谱成本对比失败: {error}", error=str(e))
 
 
-@router.get("/comparison/recipe-cost-trend")
+@router.get("/recipe-cost-trend")
 async def comparison_recipe_cost_trend(
     recipe_id: int = Query(..., description="菜谱 ID（单选，多地区趋势）"),
     region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
@@ -646,7 +646,7 @@ async def comparison_recipe_cost_trend(
         raise LocalizedHTTPException(status_code=500, message="获取菜谱趋势对比失败: {error}", error=str(e))
 
 
-@router.post("/comparison/plan-evaluate-regions", response_model=PlanEvaluateRegionsResponse)
+@router.post("/plan-evaluate-regions", response_model=PlanEvaluateRegionsResponse)
 async def comparison_plan_evaluate_regions(
     body: PlanEvaluateRegionsBody,
     db: Session = Depends(get_db),
@@ -677,7 +677,7 @@ async def comparison_plan_evaluate_regions(
         raise LocalizedHTTPException(status_code=500, message="试算分地区求值失败: {error}", error=str(e))
 
 
-@router.get("/comparison/plan-costs")
+@router.get("/plan-costs")
 async def comparison_plan_costs(
     request: Request,
     plan_ids: str = Query(..., description="试算方案 ID 列表，逗号分隔（≤10）"),
@@ -716,7 +716,7 @@ async def comparison_plan_costs(
         raise LocalizedHTTPException(status_code=500, message="获取试算对比失败: {error}", error=str(e))
 
 
-@router.get("/comparison/plan-cost-trend")
+@router.get("/plan-cost-trend")
 async def comparison_plan_cost_trend(
     plan_id: int = Query(..., description="试算方案 ID（单选，多地区趋势）"),
     region_ids: str = Query(..., description="对比地区 ID，逗号分隔（≤6）"),
@@ -749,7 +749,7 @@ async def comparison_plan_cost_trend(
 # ==================== 三期：商家物价热力图 ====================
 
 
-@router.get("/comparison/heatmap")
+@router.get("/heatmap")
 async def comparison_heatmap(
     request: Request,
     mode: str = Query("item", pattern="^(item|overall)$", description="item=单品商家价 | overall=商家整体物价指数"),
