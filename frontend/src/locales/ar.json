@@ -2031,7 +2031,8 @@
     "heatmapEmpty": "لا توجد أسعار تجار بإحداثيات في المناطق المحددة",
     "staleHint": "السعر قديم",
     "sampleCountUnit": "منتجات",
-    "customScopeQuick": "نطاق مخصص"
+    "customScopeQuick": "نطاق مخصص",
+    "addScopeItem": "إضافة نطاق مخصص"
   },
   "plans": {
     "title": "الحاسبة",

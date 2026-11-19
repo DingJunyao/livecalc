@@ -2031,7 +2031,8 @@
     "heatmapEmpty": "所选地区暂无有坐标的商家价格数据",
     "staleHint": "价格已超期",
     "sampleCountUnit": "种商品",
-    "customScopeQuick": "自定义范围"
+    "customScopeQuick": "自定义范围",
+    "addScopeItem": "加入自定义范围"
   },
   "plans": {
     "title": "试算",

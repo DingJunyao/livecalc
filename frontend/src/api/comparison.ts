@@ -73,25 +73,35 @@ export async function getComparisonRegions(): Promise<RegionCandidatesResponse> 
   return await api.get('/comparison/regions') as RegionCandidatesResponse
 }
 
-/** 各地区概览（物价指数 + 篮子趋势）；regionIds 第一个为基准地区。 */
-export async function getComparisonSummary(regionIds: number[], days = 30): Promise<ComparisonSummary> {
+/**
+ * 对比项序列化：正数 = 地区 id；负数 = 自定义计算范围（-v → `s<v>`，
+ * 后端展开为范围内多地区并集作为一棵合并子树参与对比）。
+ */
+export function serializeCompareItems(items: Array<number | string>): string {
+  return items
+    .map((v) => (typeof v === 'number' && v < 0 ? `s${-v}` : String(v)))
+    .join(',')
+}
+
+/** 各地区概览（物价指数 + 篮子趋势）；items 第一个为基准项（可含负数范围项）。 */
+export async function getComparisonSummary(items: Array<number | string>, days = 30): Promise<ComparisonSummary> {
   return await api.get('/comparison/summary', {
-    params: { region_ids: regionIds.join(','), days },
+    params: { region_ids: serializeCompareItems(items), days },
   }) as ComparisonSummary
 }
 
-/** 实体×地区价格矩阵。entityType: 'ingredient' | 'product'。 */
+/** 实体×对比项价格矩阵。entityType: 'ingredient' | 'product'。 */
 export async function getComparisonEntityPrices(
   entityType: 'ingredient' | 'product',
   entityIds: number[],
-  regionIds: number[],
+  items: Array<number | string>,
   days = 30,
 ): Promise<EntityPricesResponse> {
   return await api.get('/comparison/entity-prices', {
     params: {
       entity_type: entityType,
       entity_ids: entityIds.join(','),
-      region_ids: regionIds.join(','),
+      region_ids: serializeCompareItems(items),
       days,
     },
   }) as EntityPricesResponse
@@ -138,24 +148,24 @@ export interface RecipeCostTrendPoint {
   has_record?: boolean
 }
 
-/** 菜谱×地区成本矩阵（明细里 cost=null 的行即该地区缺价食材）。 */
+/** 菜谱×对比项成本矩阵（明细里 cost=null 的行即该地区缺价食材）。 */
 export async function getComparisonRecipeCosts(
   recipeIds: number[],
-  regionIds: number[],
+  items: Array<number | string>,
 ): Promise<RecipeCostsResponse> {
   return await api.get('/comparison/recipe-costs', {
-    params: { recipe_ids: recipeIds.join(','), region_ids: regionIds.join(',') },
+    params: { recipe_ids: recipeIds.join(','), region_ids: serializeCompareItems(items) },
   }) as RecipeCostsResponse
 }
 
-/** 单菜谱的多地区成本趋势（键为 region_id 字符串）。 */
+/** 单菜谱的多对比项成本趋势（键为 resp_id 字符串，范围项为负数）。 */
 export async function getComparisonRecipeCostTrend(
   recipeId: number,
-  regionIds: number[],
+  items: Array<number | string>,
   days = 30,
 ): Promise<{ regions: Record<string, RecipeCostTrendPoint[]> }> {
   return await api.get('/comparison/recipe-cost-trend', {
-    params: { recipe_id: recipeId, region_ids: regionIds.join(','), days },
+    params: { recipe_id: recipeId, region_ids: serializeCompareItems(items), days },
   })
 }
 
@@ -171,10 +181,10 @@ export interface PlanRegionTotals {
   }
 }
 
-/** 同一组试算条目在 N 个地区分别求值（试算详情合计卡口径切换）。 */
+/** 同一组试算条目在 N 个对比项分别求值（试算详情合计卡口径切换；负数=范围项）。 */
 export async function postComparisonPlanEvaluateRegions(
   items: Array<Record<string, any>>,
-  regionIds: number[],
+  regionIds: Array<number | string>,
   kind = 'meal',
   mealType = 'lunch',
 ): Promise<{ regions: PlanRegionTotals[] }> {
@@ -189,24 +199,24 @@ export interface PlanCostRow {
   regions: Record<string, PlanRegionTotals['totals'] | null>
 }
 
-/** 已保存方案×地区合计对照（试算对比 tab）。 */
+/** 已保存方案×对比项合计对照（试算对比 tab）。 */
 export async function getComparisonPlanCosts(
   planIds: number[],
-  regionIds: number[],
-): Promise<{ plans: PlanCostRow[]; regions: number[] }> {
+  items: Array<number | string>,
+): Promise<{ plans: PlanCostRow[]; regions: Array<number | string> }> {
   return await api.get('/comparison/plan-costs', {
-    params: { plan_ids: planIds.join(','), region_ids: regionIds.join(',') },
+    params: { plan_ids: planIds.join(','), region_ids: serializeCompareItems(items) },
   })
 }
 
-/** 单方案的多地区成本趋势（键为 region_id 字符串，点为 plan_cost_trend 结构）。 */
+/** 单方案的多对比项成本趋势（键为 resp_id 字符串，点为 plan_cost_trend 结构）。 */
 export async function getComparisonPlanCostTrend(
   planId: number,
-  regionIds: number[],
+  items: Array<number | string>,
   days = 30,
 ): Promise<{ regions: Record<string, RecipeCostTrendPoint[]> }> {
   return await api.get('/comparison/plan-cost-trend', {
-    params: { plan_id: planId, region_ids: regionIds.join(','), days },
+    params: { plan_id: planId, region_ids: serializeCompareItems(items), days },
   })
 }
 
@@ -241,16 +251,16 @@ export interface HeatmapResponse {
   items: HeatmapItem[]
 }
 
-/** 商家物价热力图数据（mode=item 需 entity_type+entity_id）。 */
+/** 商家物价热力图数据（mode=item 需 entity_type+entity_id；负数项=范围）。 */
 export async function getComparisonHeatmap(
   mode: 'item' | 'overall',
-  regionIds: number[],
+  items: Array<number | string>,
   opts: { entityType?: 'ingredient' | 'product'; entityId?: number } = {},
 ): Promise<HeatmapResponse> {
   return await api.get('/comparison/heatmap', {
     params: {
       mode,
-      region_ids: regionIds.join(','),
+      region_ids: serializeCompareItems(items),
       ...(mode === 'item' ? { entity_type: opts.entityType, entity_id: opts.entityId } : {}),
     },
   }) as HeatmapResponse

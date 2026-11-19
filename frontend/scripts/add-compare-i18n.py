@@ -75,6 +75,7 @@ COMPARE_NS = {
         "staleHint": "价格已超期",
         "sampleCountUnit": "种商品",
         "customScopeQuick": "自定义范围",
+        "addScopeItem": "加入自定义范围",
     },
     "en-US": {
         "tabOverview": "Overview",
@@ -132,6 +133,7 @@ COMPARE_NS = {
         "staleHint": "Price is stale",
         "sampleCountUnit": "items",
         "customScopeQuick": "Custom scope",
+        "addScopeItem": "Add custom scope",
     },
     "ar": {
         "tabOverview": "نظرة عامة",
@@ -189,6 +191,7 @@ COMPARE_NS = {
         "staleHint": "السعر قديم",
         "sampleCountUnit": "منتجات",
         "customScopeQuick": "نطاق مخصص",
+        "addScopeItem": "إضافة نطاق مخصص",
     },
 }
 
