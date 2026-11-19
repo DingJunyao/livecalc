@@ -3510,4 +3510,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get compareSampleCountUnit => 'items';
+
+  @override
+  String get compareAddScopeItem => 'Add custom scope';
 }

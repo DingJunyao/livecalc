@@ -3412,4 +3412,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get compareSampleCountUnit => '种商品';
+
+  @override
+  String get compareAddScopeItem => '加入自定义范围';
 }

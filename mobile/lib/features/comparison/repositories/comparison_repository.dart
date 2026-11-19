@@ -3,6 +3,11 @@
 
 import '../../../core/api/api_client.dart';
 
+/// 对比项序列化：正数 = 地区 id；负数 = 自定义计算范围（-v → `s<v>`，
+/// 后端展开为范围内多地区并集作为一棵合并子树参与对比）。
+String serializeCompareRegionIds(List<int> ids) =>
+    ids.map((v) => v < 0 ? 's${-v}' : '$v').join(',');
+
 class RegionCandidate {
   final int regionId;
   final String name;
@@ -289,7 +294,7 @@ class ComparisonRepository {
   }) async {
     final response = await _client.dio.get('/comparison/summary',
         queryParameters: {
-          'region_ids': regionIds.join(','),
+          'region_ids': serializeCompareRegionIds(regionIds),
           'days': days,
         });
     return ComparisonSummary.fromJson(
@@ -307,7 +312,7 @@ class ComparisonRepository {
         queryParameters: {
           'entity_type': entityType,
           'entity_ids': entityIds.join(','),
-          'region_ids': regionIds.join(','),
+          'region_ids': serializeCompareRegionIds(regionIds),
           'days': days,
         });
     return EntityPrices.fromJson(response.data as Map<String, dynamic>);
@@ -376,7 +381,7 @@ class ComparisonRepository {
     final response = await _client.dio.get('/comparison/recipe-costs',
         queryParameters: {
           'recipe_ids': recipeIds.join(','),
-          'region_ids': regionIds.join(','),
+          'region_ids': serializeCompareRegionIds(regionIds),
         });
     return response.data as Map<String, dynamic>;
   }
@@ -389,7 +394,7 @@ class ComparisonRepository {
     final response = await _client.dio.get('/comparison/plan-costs',
         queryParameters: {
           'plan_ids': planIds.join(','),
-          'region_ids': regionIds.join(','),
+          'region_ids': serializeCompareRegionIds(regionIds),
         });
     return response.data as Map<String, dynamic>;
   }
@@ -426,7 +431,7 @@ class ComparisonRepository {
     final response = await _client.dio.get('/comparison/heatmap',
         queryParameters: {
           'mode': mode,
-          'region_ids': regionIds.join(','),
+          'region_ids': serializeCompareRegionIds(regionIds),
           if (mode == 'item') ...{
             'entity_type': entityType,
             'entity_id': entityId,

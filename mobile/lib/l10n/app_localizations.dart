@@ -6539,6 +6539,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'种商品'**
   String get compareSampleCountUnit;
+
+  /// No description provided for @compareAddScopeItem.
+  ///
+  /// In zh, this message translates to:
+  /// **'加入自定义范围'**
+  String get compareAddScopeItem;
 }
 
 class _AppLocalizationsDelegate

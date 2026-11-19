@@ -2465,5 +2465,7 @@
   "compareStaleHint": "السعر قديم",
   "@compareStaleHint": {},
   "compareSampleCountUnit": "منتجات",
-  "@compareSampleCountUnit": {}
+  "@compareSampleCountUnit": {},
+  "compareAddScopeItem": "إضافة نطاق مخصص",
+  "@compareAddScopeItem": {}
 }

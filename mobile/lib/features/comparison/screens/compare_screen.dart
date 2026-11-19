@@ -358,6 +358,12 @@ class _OverviewTab extends ConsumerWidget {
     for (final c in state.candidates) {
       if (c.regionId == rid) return c.displayName;
     }
+    // 负数 = 自定义计算范围项（摘要未就绪时用范围名兜底）
+    if (rid < 0) {
+      for (final s in state.calcScopes) {
+        if (-s.id == rid) return s.name;
+      }
+    }
     return '#$rid';
   }
 
@@ -478,6 +484,16 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
     _temp = Set<int>.from(widget.selected);
   }
 
+  /// 已加入的范围项（负数 id）。
+  List<int> get _selectedScopeIds => _temp.where((v) => v < 0).toList();
+
+  String _scopeName(int scopeId) {
+    for (final s in widget.scopes) {
+      if (s.id == scopeId) return s.name;
+    }
+    return '#$scopeId';
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -500,24 +516,50 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
               child: Text(l10n.commonDone),
             ),
           ),
-          // 自定义计算范围快捷项（用户在「个人中心」建好的多地区组合）
+          // 自定义计算范围：作为一个整体对比列加入（存负数 -(scope.id)，不拆成单个地区）
           if (widget.scopes.isNotEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 4,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final scope in widget.scopes)
-                    ActionChip(
-                      visualDensity: VisualDensity.compact,
-                      avatar: const Icon(Icons.playlist_add_check, size: 16),
-                      label: Text(scope.name, style: theme.textTheme.labelMedium),
-                      onPressed: () => setState(() {
-                        _temp
-                          ..clear()
-                          ..addAll(scope.regionIds.take(widget.maxRegions));
-                      }),
+                  Text(l10n.compareAddScopeItem,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: [
+                      for (final scope in widget.scopes)
+                        ActionChip(
+                          visualDensity: VisualDensity.compact,
+                          avatar: const Icon(Icons.playlist_add_check, size: 16),
+                          label: Text(scope.name, style: theme.textTheme.labelMedium),
+                          onPressed: _temp.contains(-scope.id) ||
+                                  _temp.length >= widget.maxRegions
+                              ? null
+                              : () => setState(() => _temp.add(-scope.id)),
+                        ),
+                    ],
+                  ),
+                  // 已加入的范围项（负数 → 范围名），可整体移除
+                  if (_selectedScopeIds.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final sid in _selectedScopeIds)
+                            InputChip(
+                              visualDensity: VisualDensity.compact,
+                              label: Text(_scopeName(-sid),
+                                  style: theme.textTheme.labelMedium),
+                              onDeleted: () => setState(() => _temp.remove(sid)),
+                            ),
+                        ],
+                      ),
                     ),
                 ],
               ),

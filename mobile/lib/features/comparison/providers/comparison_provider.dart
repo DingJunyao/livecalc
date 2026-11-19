@@ -7,6 +7,8 @@ import '../repositories/comparison_repository.dart';
 
 class ComparisonState {
   final List<RegionCandidate> candidates;
+  /// 用户自定义计算范围（可作为独立对比项加入，负 id 表示）
+  final List<CalcScopeOption> calcScopes;
   final List<int> selectedRegionIds;
   final ComparisonSummary? summary;
   final bool loadingSummary;
@@ -31,6 +33,7 @@ class ComparisonState {
 
   const ComparisonState({
     this.candidates = const [],
+    this.calcScopes = const [],
     this.selectedRegionIds = const [],
     this.summary,
     this.loadingSummary = false,
@@ -53,6 +56,7 @@ class ComparisonState {
 
   ComparisonState copyWith({
     List<RegionCandidate>? candidates,
+    List<CalcScopeOption>? calcScopes,
     List<int>? selectedRegionIds,
     ComparisonSummary? summary,
     bool clearSummary = false,
@@ -80,6 +84,7 @@ class ComparisonState {
   }) {
     return ComparisonState(
       candidates: candidates ?? this.candidates,
+      calcScopes: calcScopes ?? this.calcScopes,
       selectedRegionIds: selectedRegionIds ?? this.selectedRegionIds,
       summary: clearSummary ? null : (summary ?? this.summary),
       loadingSummary: loadingSummary ?? this.loadingSummary,
@@ -123,6 +128,7 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     } catch (_) {
       _calcScopes = const [];
     }
+    state = state.copyWith(calcScopes: _calcScopes);
     return _calcScopes;
   }
 

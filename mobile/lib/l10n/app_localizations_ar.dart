@@ -3490,4 +3490,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compareSampleCountUnit => 'منتجات';
+
+  @override
+  String get compareAddScopeItem => 'إضافة نطاق مخصص';
 }

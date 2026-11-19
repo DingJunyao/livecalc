@@ -2465,5 +2465,7 @@
   "compareStaleHint": "Price is stale",
   "@compareStaleHint": {},
   "compareSampleCountUnit": "items",
-  "@compareSampleCountUnit": {}
+  "@compareSampleCountUnit": {},
+  "compareAddScopeItem": "Add custom scope",
+  "@compareAddScopeItem": {}
 }
