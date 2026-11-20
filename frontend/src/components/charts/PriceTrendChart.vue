@@ -171,6 +171,8 @@ const props = withDefaults(defineProps<{
   comparisonSeries?: MerchantSeries[]
   /** 对比维度名（默认按商家；地区对比传 charts.byRegion 文案） */
   compareLabel?: string
+  /** 初始视图模式（默认综合；跨地区对比页传 'merchant' 默认按对比维度展示） */
+  defaultViewMode?: 'avg' | 'merchant'
   /**
    * 按菜谱成本降级链折算出来的价格（替代/回退/半成品/从属）。
    * 只用于「该原料自己没有直接商品价」的日子；非空时显示「含替代/从属」开关（默认开）。
@@ -193,6 +195,7 @@ const props = withDefaults(defineProps<{
   color: '#42b883',
   comparisonSeries: () => [],
   compareLabel: undefined,
+  defaultViewMode: 'avg',
   computedSeries: () => [],
   computedTitle: undefined,
   includeComputed: true,
@@ -216,8 +219,8 @@ const hasEverHadData = ref(false)
 
 const selectedFilter = ref<'week' | 'month' | 'quarter' | 'year' | 'all'>('month')
 
-// ---- 按商家对比模式 ----
-const viewMode = ref<'avg' | 'merchant'>('avg')
+// ---- 按商家对比模式（defaultViewMode：跨地区对比页默认按对比维度展示） ----
+const viewMode = ref<'avg' | 'merchant'>(props.defaultViewMode)
 const selectedMerchantIds = ref<Array<number | null>>([])
 
 const hasComparison = computed(() => (props.comparisonSeries?.length ?? 0) >= 2)

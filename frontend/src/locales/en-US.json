@@ -2032,7 +2032,9 @@
     "staleHint": "Price is stale",
     "sampleCountUnit": "items",
     "customScopeQuick": "Custom scope",
-    "addScopeItem": "Add custom scope"
+    "addScopeItem": "Add custom scope",
+    "addIngredients": "Add ingredients",
+    "addProducts": "Add products"
   },
   "plans": {
     "title": "Planner",

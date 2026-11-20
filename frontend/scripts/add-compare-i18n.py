@@ -76,6 +76,8 @@ COMPARE_NS = {
         "sampleCountUnit": "种商品",
         "customScopeQuick": "自定义范围",
         "addScopeItem": "加入自定义范围",
+        "addIngredients": "添加原料",
+        "addProducts": "添加商品",
     },
     "en-US": {
         "tabOverview": "Overview",
@@ -134,6 +136,8 @@ COMPARE_NS = {
         "sampleCountUnit": "items",
         "customScopeQuick": "Custom scope",
         "addScopeItem": "Add custom scope",
+        "addIngredients": "Add ingredients",
+        "addProducts": "Add products",
     },
     "ar": {
         "tabOverview": "نظرة عامة",
@@ -192,6 +196,8 @@ COMPARE_NS = {
         "sampleCountUnit": "منتجات",
         "customScopeQuick": "نطاق مخصص",
         "addScopeItem": "إضافة نطاق مخصص",
+        "addIngredients": "إضافة مواد",
+        "addProducts": "إضافة منتجات",
     },
 }
 

@@ -271,6 +271,7 @@
             :data="planTrendBaseData"
             :comparison-series="planTrendSeries"
             :compare-label="t('charts.byRegion')"
+            :default-view-mode="'merchant'"
             :loading="planTrendLoading"
             @filter-change="onPlanRegionTrendFilterChange"
           />
