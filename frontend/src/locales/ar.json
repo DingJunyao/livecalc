@@ -2032,7 +2032,9 @@
     "staleHint": "السعر قديم",
     "sampleCountUnit": "منتجات",
     "customScopeQuick": "نطاق مخصص",
-    "addScopeItem": "إضافة نطاق مخصص"
+    "addScopeItem": "إضافة نطاق مخصص",
+    "addIngredients": "إضافة مواد",
+    "addProducts": "إضافة منتجات"
   },
   "plans": {
     "title": "الحاسبة",

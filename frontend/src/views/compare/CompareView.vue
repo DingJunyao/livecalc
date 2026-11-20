@@ -131,6 +131,7 @@
                 :data="baseRegionTrendData"
                 :comparison-series="regionTrendSeries"
                 :compare-label="t('charts.byRegion')"
+        :default-view-mode="'merchant'"
                 :loading="summaryLoading"
               />
             </v-col>
@@ -142,16 +143,13 @@
       <v-tabs-window-item value="prices">
         <v-card variant="outlined" class="mb-4">
           <v-card-text>
-            <div class="d-flex align-center flex-wrap ga-3">
-              <v-btn-toggle v-model="entityType" mandatory density="compact" variant="outlined" divided>
-                <v-btn value="ingredient">{{ t('compare.entityTypeIngredient') }}</v-btn>
-                <v-btn value="product">{{ t('compare.entityTypeProduct') }}</v-btn>
-              </v-btn-toggle>
+            <div class="d-flex align-start flex-wrap ga-3">
+              <!-- 原料与商品分开添加（两个独立下拉，chips 带类型前缀） -->
               <v-autocomplete
-                v-model="entityIds"
-                :items="entityOptions"
-                :loading="entitySearching"
-                v-model:search="entitySearch"
+                v-model="ingredientSelection.ids"
+                :items="mergedIngredientOptions"
+                :loading="ingredientSel.loading"
+                v-model:search="ingredientSel.search"
                 :custom-filter="() => true"
                 multiple
                 chips
@@ -159,12 +157,40 @@
                 density="compact"
                 variant="outlined"
                 hide-details
-                :label="t('compare.selectEntities')"
+                :label="t('compare.addIngredients')"
                 :placeholder="t('compare.searchEntityPlaceholder')"
                 item-title="name"
                 item-value="id"
                 :no-data-text="t('compare.noEntityMatch')"
-              />
+                style="flex: 1 1 320px"
+              >
+                <template #chip="{ props: chipProps, item }">
+                  <v-chip v-bind="chipProps" :text="`${t('compare.entityTypeIngredient')}：${item.raw.name}`" />
+                </template>
+              </v-autocomplete>
+              <v-autocomplete
+                v-model="productSelection.ids"
+                :items="mergedProductOptions"
+                :loading="productSel.loading"
+                v-model:search="productSel.search"
+                :custom-filter="() => true"
+                multiple
+                chips
+                closable-chips
+                density="compact"
+                variant="outlined"
+                hide-details
+                :label="t('compare.addProducts')"
+                :placeholder="t('compare.searchEntityPlaceholder')"
+                item-title="name"
+                item-value="id"
+                :no-data-text="t('compare.noEntityMatch')"
+                style="flex: 1 1 320px"
+              >
+                <template #chip="{ props: chipProps, item }">
+                  <v-chip v-bind="chipProps" :text="`${t('compare.entityTypeProduct')}：${item.raw.name}`" />
+                </template>
+              </v-autocomplete>
               <span v-if="regionIds.length < 2" class="text-caption text-warning">
                 {{ t('compare.needTwoRegions') }}
               </span>
@@ -237,6 +263,7 @@
           :data="recipeTrendBaseData"
           :comparison-series="recipeTrendSeries"
           :compare-label="t('charts.byRegion')"
+        :default-view-mode="'merchant'"
           :loading="recipeTrendLoading"
           class="mt-4"
         />
@@ -374,7 +401,7 @@
 <script setup lang="ts">
 // 物价对比页：概览（物价指数 + 篮子趋势）+ 原料·商品比价矩阵。
 // 地区选择复用自定义计算范围的 RegionMultiSelect；tab/地区同步到 URL query。
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useUserCurrency } from '@/composables/useUserCurrency'
@@ -620,62 +647,91 @@ const regionTrendSeries = computed<TrendSeries[]>(() =>
 )
 
 // ---- 原料·商品矩阵 ----
-const entityType = ref<'ingredient' | 'product'>('ingredient')
-const entityIds = ref<number[]>([])
-const entityOptions = ref<Array<{ id: number; name: string }>>([])
-const entitySearching = ref(false)
-const entitySearch = ref('')
-let entitySearchSeq = 0
-let entitySearchTimer: ReturnType<typeof setTimeout> | null = null
+// 原料与商品分开添加（用户反馈分不清类型）；混合选择时分两次请求合并行。
+// 已选实体的名称缓存：搜索替换 options 后 chips 仍显示名称而非 id（用户反馈）。
+interface EntityOptionItem { id: number; name: string }
 
-function fetchEntityOptions(keyword: string) {
+interface EntityPickerState {
+  ids: number[]
+  options: EntityOptionItem[]
+  search: string
+  loading: boolean
+}
+
+function createEntityPickerState(): EntityPickerState {
+  return { ids: [], options: [], search: '', loading: false }
+}
+
+const ingredientSel = ref<EntityPickerState>(createEntityPickerState())
+const productSel = ref<EntityPickerState>(createEntityPickerState())
+
+/** 初始拉全（limit 1000，按价格记录数排序——常用项在前）；搜索走服务端过滤。 */
+function fetchEntityOptionsFor(sel: Ref<EntityPickerState>, entityType: 'ingredient' | 'product', keyword: string) {
   const seq = ++entitySearchSeq
-  entitySearching.value = true
-  // 商品端点用 search，原料端点用 q（与各自列表页同参）
-  const url = entityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
-  const params: Record<string, any> = { limit: 50 }
-  if (keyword) params[entityType.value === 'ingredient' ? 'q' : 'search'] = keyword
+  sel.value.loading = true
+  const url = entityType === 'ingredient' ? '/ingredients' : '/products/entity'
+  const params: Record<string, any> = { limit: 1000 }
+  if (keyword) params[entityType === 'ingredient' ? 'q' : 'search'] = keyword
   api.get(url, { params }).then((res: any) => {
     if (seq !== entitySearchSeq) return
-    entityOptions.value = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
+    sel.value.options = (res.items || []).map((x: any) => ({ id: x.id, name: x.name }))
   }).catch(() => {
-    if (seq === entitySearchSeq) entityOptions.value = []
+    if (seq === entitySearchSeq) sel.value.options = []
   }).finally(() => {
-    if (seq === entitySearchSeq) entitySearching.value = false
+    if (seq === entitySearchSeq) sel.value.loading = false
   })
 }
 
-// 搜索词变化（300ms 防抖，与项目其他搜索下拉一致）
-watch(entitySearch, (kw) => {
-  if (entitySearchTimer) clearTimeout(entitySearchTimer)
-  const keyword = (kw || '').trim()
-  entitySearchTimer = setTimeout(() => fetchEntityOptions(keyword), 300)
-})
+let entitySearchSeq = 0
+const entitySearchTimers: Record<string, ReturnType<typeof setTimeout> | null> = { ingredient: null, product: null }
 
-watch(entityType, () => {
-  entityIds.value = []
-  entityOptions.value = []
-  entitySearch.value = ''
-  fetchEntityOptions('')
-})
+function onEntitySearch(kind: 'ingredient' | 'product', sel: Ref<EntityPickerState>, keyword: string) {
+  if (entitySearchTimers[kind]) clearTimeout(entitySearchTimers[kind])
+  entitySearchTimers[kind] = setTimeout(
+    () => fetchEntityOptionsFor(sel, kind, keyword.trim()),
+    300,
+  )
+}
 
-onMounted(() => { fetchEntityOptions('') })
+const ingredientSearchHandler = (kw: string) => onEntitySearch('ingredient', ingredientSel, kw)
+const productSearchHandler = (kw: string) => onEntitySearch('product', productSel, kw)
+watch(() => ingredientSel.value.search, ingredientSearchHandler)
+watch(() => productSel.value.search, productSearchHandler)
 
-// 矩阵取数：地区或实体变化时重新拉取
-const matrixData = ref<EntityPricesResponse | null>(null)
+/** 已选项与搜索结果合并（已选的名称缓存不丢——chips 不再闪现 id）。 */
+function mergedOptions(sel: Ref<EntityPickerState>) {
+  const selected = sel.value.ids
+    .map(id => sel.value.options.find(o => o.id === id))
+    .filter((o): o is EntityOptionItem => !!o)
+  const selectedIds = new Set(selected.map(o => o.id))
+  return [...selected, ...sel.value.options.filter(o => !selectedIds.has(o.id))]
+}
+
+const mergedIngredientOptions = computed(() => mergedOptions(ingredientSel))
+const mergedProductOptions = computed(() => mergedOptions(productSel))
+
+// 矩阵取数：地区或任一类型实体变化时重新拉取（混合选择分 ingredient/product 两请求合并）
+const matrixData = ref<Array<{ prefix: string; resp: EntityPricesResponse }>>([])
 const matrixLoading = ref(false)
 let matrixSeq = 0
 
-watch([entityType, entityIds, regionIds], async () => {
-  matrixData.value = null
-  const ids = regionIds.value || []
-  const eids = entityIds.value || []
-  if (ids.length < 1 || eids.length < 1) return
+watch([ingredientSel, productSel, regionIds], async () => {
+  matrixData.value = []
+  const ids = regionIds.value
+  const ingIds = ingredientSel.value.ids
+  const prodIds = productSel.value.ids
+  if (ids.length < 1 || (ingIds.length < 1 && prodIds.length < 1)) return
   const seq = ++matrixSeq
   matrixLoading.value = true
   try {
-    const res = await getComparisonEntityPrices(entityType.value, eids, ids, 30)
-    if (seq === matrixSeq) matrixData.value = res
+    const parts: Array<{ prefix: string; resp: EntityPricesResponse }> = []
+    const [ingRes, prodRes] = await Promise.all([
+      ingIds.length ? getComparisonEntityPrices('ingredient', ingIds, ids, 30) : null,
+      prodIds.length ? getComparisonEntityPrices('product', prodIds, ids, 30) : null,
+    ])
+    if (ingRes) parts.push({ prefix: 'i', resp: ingRes })
+    if (prodRes) parts.push({ prefix: 'p', resp: prodRes })
+    if (seq === matrixSeq) matrixData.value = parts
   } catch { /* 静默 */ }
   finally {
     if (seq === matrixSeq) matrixLoading.value = false
@@ -683,26 +739,29 @@ watch([entityType, entityIds, regionIds], async () => {
 }, { immediate: true, deep: true })
 
 const matrixColumns = computed<MatrixColumn[]>(() => {
-  if (matrixData.value?.regions?.length) {
-    return matrixData.value.regions.map(r => ({ id: r.region_id, label: r.display_name }))
+  const first = matrixData.value[0]
+  if (first?.resp?.regions?.length) {
+    return first.resp.regions.map(r => ({ id: r.region_id, label: r.display_name }))
   }
   return (summary.value?.regions || []).map(r => ({ id: r.region_id, label: r.display_name }))
 })
 
 const matrixRows = computed<MatrixRow[]>(() => {
-  const data = matrixData.value
-  if (!data) return []
-  return data.entities.map(e => ({
-    id: e.entity_id,
-    label: e.name,
-    unit: e.unit,
-    cells: Object.fromEntries(
-      Object.entries(e.regions).map(([rid, cell]) => [
-        rid,
-        cell ? { price: cell.price, isStale: cell.is_stale } : null,
-      ]),
-    ),
-  }))
+  if (!matrixData.value.length) return []
+  // 合并各类型段；行 id 加类型前缀（原料/商品 id 空间不同，避免撞行）
+  return matrixData.value.flatMap(({ prefix, resp }) =>
+    resp.entities.map(e => ({
+      id: `${prefix}-${e.entity_id}`,
+      label: e.name,
+      unit: e.unit,
+      cells: Object.fromEntries(
+        Object.entries(e.regions).map(([rid, cell]) => [
+          rid,
+          cell ? { price: cell.price, isStale: cell.is_stale } : null,
+        ]),
+      ),
+    })),
+  )
 })
 
 // ==================== 菜谱·试算 tab ====================
@@ -718,7 +777,7 @@ let recipeSearchTimer: ReturnType<typeof setTimeout> | null = null
 function fetchRecipeOptions(keyword: string) {
   const seq = ++recipeSearchSeq
   recipeSearching.value = true
-  const params: Record<string, any> = { limit: 50 }
+  const params: Record<string, any> = { limit: 1000 }
   if (keyword) params.search = keyword
   api.get('/recipes', { params }).then((res: any) => {
     if (seq !== recipeSearchSeq) return
@@ -961,7 +1020,7 @@ function fetchHeatmapEntityOptions(keyword: string) {
   const seq = ++heatmapEntitySearchSeq
   heatmapEntitySearching.value = true
   const url = heatmapEntityType.value === 'ingredient' ? '/ingredients' : '/products/entity'
-  const params: Record<string, any> = { limit: 50 }
+  const params: Record<string, any> = { limit: 1000 }
   if (keyword) params[heatmapEntityType.value === 'ingredient' ? 'q' : 'search'] = keyword
   api.get(url, { params }).then((res: any) => {
     if (seq !== heatmapEntitySearchSeq) return

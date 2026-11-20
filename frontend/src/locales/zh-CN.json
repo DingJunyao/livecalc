@@ -2032,7 +2032,9 @@
     "staleHint": "价格已超期",
     "sampleCountUnit": "种商品",
     "customScopeQuick": "自定义范围",
-    "addScopeItem": "加入自定义范围"
+    "addScopeItem": "加入自定义范围",
+    "addIngredients": "添加原料",
+    "addProducts": "添加商品"
   },
   "plans": {
     "title": "试算",
