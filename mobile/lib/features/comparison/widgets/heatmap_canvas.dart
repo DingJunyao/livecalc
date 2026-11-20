@@ -4,14 +4,18 @@
 // 热力是对比页专属形态，独立组件避免双端（iOS 原生地图）回归风险。
 // 底图图层从 mapConfigProvider 取默认层（与商家地图同一套瓦片配置）。
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/flutter_map.dart' as fm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:latlong2/latlong.dart';
+import 'package:latlong2/latlong.dart' as latlong;
 
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../merchants/providers/map_config_provider.dart';
+// iOS 用苹果地图 SDK（与商家地图一致）；Android 用 flutter_map
+import 'package:apple_maps_flutter/apple_maps_flutter.dart' as apple;
 
 class HeatmapPoint {
   final int merchantId;
@@ -104,7 +108,7 @@ class HeatmapCanvas extends ConsumerStatefulWidget {
   final bool loading;
   final bool overallMode; // overall=显示物价指数；item=显示价格
   final String userCurrency;
-  final TileProvider? tileProvider; // 测试注入内存瓦片
+  final fm.TileProvider? tileProvider; // 测试注入内存瓦片
 
   const HeatmapCanvas({
     super.key,
@@ -134,6 +138,47 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
         .where((p) => p.latitude != 0 || p.longitude != 0)
         .toList();
 
+    // iOS：苹果地图 SDK（与商家地图一致）；圆点为 MapKit Circle 着色覆盖
+    if (Platform.isIOS) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 420,
+              child: apple.AppleMap(
+                initialCameraPosition: apple.CameraPosition(
+                  target: points.isEmpty
+                      ? const apple.LatLng(34.5, 113.6)
+                      : apple.LatLng(points.first.latitude, points.first.longitude),
+                  zoom: 10,
+                ),
+                circles: {
+                  for (final p in points)
+                    apple.Circle(
+                      circleId: apple.CircleId('heat-${p.merchantId}'),
+                      center: apple.LatLng(p.latitude, p.longitude),
+                      radius: 800,
+                      fillColor:
+                          heatmapColorFor(p.price, widget.buckets).withValues(alpha: 0.55),
+                      strokeWidth: 1,
+                      strokeColor: Colors.white,
+                      onTap: () => _showPointSheet(p),
+                    ),
+                },
+              ),
+            ),
+          ),
+          if (widget.buckets != null && widget.buckets!.hasData) _buildLegend(theme),
+          if (widget.loading)
+            const Positioned.fill(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+        ],
+      );
+    }
+
+    // Android / 其它平台：flutter_map
     return Stack(
       children: [
         ClipRRect(
@@ -145,26 +190,26 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                     child: Text(l10n.compareHeatmapEmpty,
                         style: theme.textTheme.bodyMedium),
                   )
-                : FlutterMap(
-                    options: const MapOptions(
-                      initialCenter: LatLng(34.5, 113.6),
+                : fm.FlutterMap(
+                    options: const fm.MapOptions(
+                      initialCenter: latlong.LatLng(34.5, 113.6),
                       initialZoom: 10,
                     ),
                     children: [
                       if (layer != null)
-                        TileLayer(
+                        fm.TileLayer(
                           urlTemplate: layer.urlTemplate,
                           subdomains: layer.subdomains,
                           tms: layer.tms,
                           userAgentPackageName: 'livecalc_mobile',
                           tileProvider: widget.tileProvider,
                         ),
-                      MarkerLayer(
+                      fm.MarkerLayer(
                         markers: [
                           for (final p in points)
-                            Marker(
+                            fm.Marker(
                               key: ValueKey('heat-${p.merchantId}'),
-                              point: LatLng(p.latitude, p.longitude),
+                              point: latlong.LatLng(p.latitude, p.longitude),
                               width: 22,
                               height: 22,
                               child: GestureDetector(
@@ -189,41 +234,45 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                   ),
           ),
         ),
-        // 图例
-        if (widget.buckets != null && widget.buckets!.hasData)
-          Positioned(
-            right: 8,
-            bottom: 8,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withValues(alpha: 0.94),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: const [
-                  BoxShadow(blurRadius: 4, color: Colors.black26),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _legendRow(theme, 0, _fmtBucket(widget.buckets!.p25, '≤')),
-                  _legendRow(theme, 1,
-                      '${_fmtVal(widget.buckets!.p25)} ~ ${_fmtVal(widget.buckets!.p50)}'),
-                  _legendRow(theme, 2,
-                      '${_fmtVal(widget.buckets!.p50)} ~ ${_fmtVal(widget.buckets!.p75)}'),
-                  _legendRow(theme, 3,
-                      '${_fmtVal(widget.buckets!.p75)} ~ ${_fmtVal(widget.buckets!.p90)}'),
-                  _legendRow(theme, 4, _fmtBucket(widget.buckets!.p90, '>')),
-                ],
-              ),
-            ),
-          ),
+        // 图例（iOS / flutter_map 分支共用）
+        if (widget.buckets != null && widget.buckets!.hasData) _buildLegend(theme),
         if (widget.loading)
           const Positioned.fill(
             child: Center(child: CircularProgressIndicator()),
           ),
       ],
+    );
+  }
+
+  /// 分档图例（右下角浮层）。
+  Widget _buildLegend(ThemeData theme) {
+    return Positioned(
+      right: 8,
+      bottom: 8,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surface.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(blurRadius: 4, color: Colors.black26),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _legendRow(theme, 0, _fmtBucket(widget.buckets!.p25, '≤')),
+            _legendRow(theme, 1,
+                '${_fmtVal(widget.buckets!.p25)} ~ ${_fmtVal(widget.buckets!.p50)}'),
+            _legendRow(theme, 2,
+                '${_fmtVal(widget.buckets!.p50)} ~ ${_fmtVal(widget.buckets!.p75)}'),
+            _legendRow(theme, 3,
+                '${_fmtVal(widget.buckets!.p75)} ~ ${_fmtVal(widget.buckets!.p90)}'),
+            _legendRow(theme, 4, _fmtBucket(widget.buckets!.p90, '>')),
+          ],
+        ),
+      ),
     );
   }
 

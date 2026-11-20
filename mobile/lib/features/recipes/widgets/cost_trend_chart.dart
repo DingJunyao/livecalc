@@ -51,6 +51,9 @@ class CostTrendChart extends StatefulWidget {
   /// 对比维度计数后缀（默认「等 N 家」；地区对比传「等 N 个地区」）
   final String Function(int count)? compareSuffixBuilder;
 
+  /// 初始视图模式（跨地区对比页默认按对比维度展示）
+  final bool initialCompareMode;
+
   /// 综合口径的真实记录日（只在有记录的日子画点）
   final Set<String> recordDays;
 
@@ -69,6 +72,7 @@ class CostTrendChart extends StatefulWidget {
     this.merchantSeries = const [],
     this.compareLabel,
     this.compareSuffixBuilder,
+    this.initialCompareMode = false,
     this.recordDays = const {},
   });
 
@@ -87,7 +91,7 @@ String _formatDate(String value, {bool short = false}) {
 class _CostTrendChartState extends State<CostTrendChart> {
   _Range _selected = _Range.month;
   int? _touchIndex;
-  TrendViewMode _viewMode = TrendViewMode.overall;
+  late TrendViewMode _viewMode;
   final Set<int> _selectedMerchants = {};
 
   bool get _canCompareMerchants => widget.merchantSeries.length >= 2;
@@ -95,6 +99,9 @@ class _CostTrendChartState extends State<CostTrendChart> {
   @override
   void initState() {
     super.initState();
+    _viewMode = widget.initialCompareMode
+        ? TrendViewMode.merchant
+        : TrendViewMode.overall;
     _syncDefaultMerchants();
   }
 

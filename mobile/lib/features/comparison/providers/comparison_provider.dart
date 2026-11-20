@@ -18,7 +18,11 @@ class ComparisonState {
   final List<EntityOption> entityOptions;
   final bool searching;
   final List<int> selectedEntityIds;
+  /// id → 实体类型（'ingredient' | 'product'；原料/商品可同时参与对比）
+  final Map<int, String> selectedEntityTypes;
   final EntityPrices? entityPrices;
+  /// 混合类型分段结果（原料段 + 商品段；RegionPriceMatrix 逐段合并行）
+  final List<EntityPrices> entityPriceParts;
   final bool loadingEntityPrices;
 
   // 二期：菜谱·试算 tab
@@ -42,7 +46,9 @@ class ComparisonState {
     this.entityOptions = const [],
     this.searching = false,
     this.selectedEntityIds = const [],
+    this.selectedEntityTypes = const {},
     this.entityPrices,
+    this.entityPriceParts = const [],
     this.loadingEntityPrices = false,
     this.selectedRecipeIds = const [],
     this.recipeOptions = const [],
@@ -68,7 +74,9 @@ class ComparisonState {
     bool clearEntityOptions = false,
     bool? searching,
     List<int>? selectedEntityIds,
+    Map<int, String>? selectedEntityTypes,
     EntityPrices? entityPrices,
+    List<EntityPrices>? entityPriceParts,
     bool clearEntityPrices = false,
     bool? loadingEntityPrices,
     List<int>? selectedRecipeIds,
@@ -93,7 +101,9 @@ class ComparisonState {
       entityOptions: clearEntityOptions ? const [] : (entityOptions ?? this.entityOptions),
       searching: searching ?? this.searching,
       selectedEntityIds: selectedEntityIds ?? this.selectedEntityIds,
+      selectedEntityTypes: selectedEntityTypes ?? this.selectedEntityTypes,
       entityPrices: clearEntityPrices ? null : (entityPrices ?? this.entityPrices),
+      entityPriceParts: entityPriceParts ?? this.entityPriceParts,
       loadingEntityPrices: loadingEntityPrices ?? this.loadingEntityPrices,
       selectedRecipeIds: selectedRecipeIds ?? this.selectedRecipeIds,
       recipeOptions: recipeOptions ?? this.recipeOptions,
@@ -169,13 +179,13 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     }
   }
 
-  /// 实体搜索（原料 / 商品）。
-  Future<void> searchEntities({String keyword = ''}) async {
+  /// 实体搜索（原料 / 商品；按当前弹层类型）。
+  Future<void> searchEntities({String keyword = '', String? entityType}) async {
     final seq = ++_searchSeq;
     state = state.copyWith(searching: true);
     try {
       final options = await _repository.searchEntities(
-        entityType: state.entityType,
+        entityType: entityType ?? state.entityType,
         keyword: keyword,
       );
       if (seq == _searchSeq) state = state.copyWith(entityOptions: options, searching: false);
@@ -186,27 +196,44 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     }
   }
 
-  void toggleEntity(int id) {
+  /// 选择实体（原料/商品分开添加；types 记录 id → 类型用于混合矩阵分组）。
+  void toggleEntity(int id, {String type = 'ingredient'}) {
     final current = [...state.selectedEntityIds];
+    final types = Map<int, String>.from(state.selectedEntityTypes);
     if (current.contains(id)) {
       current.remove(id);
+      types.remove(id);
     } else {
       current.add(id);
+      types[id] = type;
     }
-    state = state.copyWith(selectedEntityIds: current, clearEntityPrices: true);
+    state = state.copyWith(
+      selectedEntityIds: current,
+      selectedEntityTypes: types,
+      clearEntityPrices: true,
+    );
+    loadMatrix();
+  }
+
+  /// 移除已选实体（chips 删除；类型记录一并清掉）。
+  void removeEntity(int id) {
+    final current = [...state.selectedEntityIds]..remove(id);
+    final types = Map<int, String>.from(state.selectedEntityTypes)..remove(id);
+    state = state.copyWith(
+      selectedEntityIds: current,
+      selectedEntityTypes: types,
+      clearEntityPrices: true,
+    );
     loadMatrix();
   }
 
   Future<void> setEntityType(String type) async {
-    // 换实体类型：清空搜索/已选实体与矩阵，重新拉默认搜索列表
+    // 换弹层搜索类型（不清已选实体——原料与商品可同时参与对比）
     state = state.copyWith(
       entityType: type,
-      selectedEntityIds: const [],
       clearEntityOptions: true,
-      clearEntityPrices: true,
     );
     await searchEntities();
-    await loadMatrix();
   }
 
   Future<void> loadMatrix() async {
@@ -216,13 +243,24 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     final seq = ++_matrixSeq;
     state = state.copyWith(loadingEntityPrices: true);
     try {
-      final prices = await _repository.getEntityPrices(
-        entityType: state.entityType,
-        entityIds: entityIds,
-        regionIds: regionIds,
-      );
+      // 混合选择：按类型分组分别请求（原料/商品 id 空间不同），合并矩阵段
+      final ingIds = entityIds
+          .where((id) => state.selectedEntityTypes[id] != 'product')
+          .toList();
+      final prodIds = entityIds
+          .where((id) => state.selectedEntityTypes[id] == 'product')
+          .toList();
+      final parts = <EntityPrices>[];
+      if (ingIds.isNotEmpty) {
+        parts.add(await _repository.getEntityPrices(
+          entityType: 'ingredient', entityIds: ingIds, regionIds: regionIds));
+      }
+      if (prodIds.isNotEmpty) {
+        parts.add(await _repository.getEntityPrices(
+          entityType: 'product', entityIds: prodIds, regionIds: regionIds));
+      }
       if (seq == _matrixSeq) {
-        state = state.copyWith(entityPrices: prices, loadingEntityPrices: false);
+        state = state.copyWith(entityPriceParts: parts, loadingEntityPrices: false);
       }
     } catch (_) {
       if (seq == _matrixSeq) state = state.copyWith(loadingEntityPrices: false);

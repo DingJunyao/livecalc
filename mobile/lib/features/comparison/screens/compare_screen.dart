@@ -340,6 +340,7 @@ class _OverviewTab extends ConsumerWidget {
                     ],
                     compareLabel: l10n.compareByRegion,
                     compareSuffixBuilder: (n) => l10n.compareRegionsSuffix(n),
+                    initialCompareMode: true,
                     recordDays: const {},
                   ),
                 ),
@@ -576,9 +577,9 @@ class _RegionPickerSheetState extends State<_RegionPickerSheet> {
               onChanged: (v) => setState(() => _keyword = v.trim()),
             ),
           ),
-          Flexible(
+          SizedBox(
+            height: 420,
             child: ListView.builder(
-              shrinkWrap: true,
               itemCount: filtered.length,
               itemBuilder: (ctx, i) {
                 final c = filtered[i];
@@ -644,19 +645,6 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
           padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
           child: Row(
             children: [
-              // 实体类型切换：下拉（与趋势图模式切换同形态，窄屏不溢出）
-              DropdownButton<String>(
-                value: state.entityType,
-                isDense: true,
-                underline: const SizedBox.shrink(),
-                items: [
-                  DropdownMenuItem(value: 'ingredient', child: Text(l10n.compareEntityTypeIngredient)),
-                  DropdownMenuItem(value: 'product', child: Text(l10n.compareEntityTypeProduct)),
-                ],
-                onChanged: (v) {
-                  if (v != null) notifier.setEntityType(v);
-                },
-              ),
               const Spacer(),
               Text(
                 '${state.selectedEntityIds.length} ${l10n.compareSelectedCount}',
@@ -664,10 +652,23 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
                     ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
               ),
               const SizedBox(width: 8),
+              // 原料与商品分开添加（chips 带类型前缀，不会混淆）
               OutlinedButton.icon(
-                onPressed: state.selectedRegionIds.length < 2 ? null : _openEntityPicker,
+                onPressed: state.selectedRegionIds.length < 2
+                    ? null
+                    : () => _openEntityPicker('ingredient'),
                 icon: const Icon(Icons.add, size: 16),
-                label: Text(l10n.compareSelectEntities, style: theme.textTheme.labelMedium),
+                label: Text(l10n.compareEntityTypeIngredient,
+                    style: theme.textTheme.labelMedium),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton.icon(
+                onPressed: state.selectedRegionIds.length < 2
+                    ? null
+                    : () => _openEntityPicker('product'),
+                icon: const Icon(Icons.add, size: 16),
+                label: Text(l10n.compareEntityTypeProduct,
+                    style: theme.textTheme.labelMedium),
               ),
             ],
           ),
@@ -681,9 +682,12 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
               children: [
                 for (final eid in state.selectedEntityIds)
                   InputChip(
-                    label: Text(_entityName(state, eid), style: theme.textTheme.labelMedium),
+                    label: Text(
+                      '${state.selectedEntityTypes[eid] == 'product' ? l10n.compareEntityTypeProduct : l10n.compareEntityTypeIngredient}：${_entityName(state, eid)}',
+                      style: theme.textTheme.labelMedium,
+                    ),
                     visualDensity: VisualDensity.compact,
-                    onDeleted: () => notifier.toggleEntity(eid),
+                    onDeleted: () => notifier.removeEntity(eid),
                   ),
               ],
             ),
@@ -695,7 +699,10 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
             for (final r in state.summary?.regions ?? const <RegionSummary>[])
               RegionMatrixColumn(regionId: r.regionId, label: r.displayName),
           ],
-          rows: state.entityPrices?.entities ?? const [],
+          rows: [
+            for (final part in state.entityPriceParts)
+              ...(part.entities),
+          ],
           loading: state.loadingEntityPrices,
           emptyText: state.selectedEntityIds.isEmpty
               ? l10n.compareNoMatrixData
@@ -707,8 +714,10 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
   }
 
   String _entityName(ComparisonState state, int eid) {
-    for (final row in state.entityPrices?.entities ?? const <EntityPriceRow>[]) {
-      if (row.entityId == eid) return row.name;
+    for (final part in state.entityPriceParts) {
+      for (final row in part.entities) {
+        if (row.entityId == eid) return row.name;
+      }
     }
     for (final o in state.entityOptions) {
       if (o.id == eid) return o.name;
@@ -716,25 +725,33 @@ class _PricesTabState extends ConsumerState<_PricesTab> {
     return '#$eid';
   }
 
-  Future<void> _openEntityPicker() async {
+  Future<void> _openEntityPicker(String entityType) async {
+    final notifier = ref.read(comparisonProvider.notifier);
     final state = ref.read(comparisonProvider);
+    // 先按该类型拉默认选项（弹层内搜索继续走该类型）
+    await notifier.searchEntities(entityType: entityType);
+    if (!mounted) return;
+    final options = ref.read(comparisonProvider).entityOptions;
     final picked = await showModalBottomSheet<List<int>>(
       context: context,
       isScrollControlled: true,
       builder: (ctx) => _EntityPickerSheet(
-        entityType: state.entityType,
+        entityType: entityType,
         selected: state.selectedEntityIds,
-        options: state.entityOptions,
+        options: options,
       ),
     );
     if (picked == null || !mounted) return;
-    final notifier = ref.read(comparisonProvider.notifier);
-    // 同步全量选择（弹层里可勾可取消）
+    // 同步全量选择（弹层里可勾可取消；toggleEntity 记录类型）
     for (final id in state.selectedEntityIds) {
-      if (!picked.contains(id)) notifier.toggleEntity(id);
+      if (!picked.contains(id) && state.selectedEntityTypes[id] == entityType) {
+        notifier.removeEntity(id);
+      }
     }
     for (final id in picked) {
-      if (!state.selectedEntityIds.contains(id)) notifier.toggleEntity(id);
+      if (!state.selectedEntityIds.contains(id)) {
+        notifier.toggleEntity(id, type: entityType);
+      }
     }
   }
 }
@@ -810,9 +827,9 @@ class _EntityPickerSheetState extends ConsumerState<_EntityPickerSheet> {
               child: Center(child: CircularProgressIndicator()),
             )
           else
-            Flexible(
+            SizedBox(
+              height: 420,
               child: ListView.builder(
-                shrinkWrap: true,
                 itemCount: state.entityOptions.length,
                 itemBuilder: (ctx, i) {
                   final o = state.entityOptions[i];
@@ -951,7 +968,7 @@ class _RecipesTabState extends ConsumerState<_RecipesTab> {
               Text(l10n.comparePlansSection, style: theme.textTheme.titleSmall),
               const Spacer(),
               OutlinedButton.icon(
-                onPressed: state.selectedRegionIds.length < 2 ? _openPlanPicker : null,
+                onPressed: state.selectedRegionIds.length < 2 ? null : _openPlanPicker,
                 icon: const Icon(Icons.add, size: 16),
                 label: Text(l10n.compareSelectPlans, style: theme.textTheme.labelMedium),
               ),
@@ -1161,9 +1178,9 @@ class _SimpleSearchPickerSheetState extends State<_SimpleSearchPickerSheet> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else
-            Flexible(
+            SizedBox(
+              height: 420,
               child: ListView.builder(
-                shrinkWrap: true,
                 itemCount: filtered.length,
                 itemBuilder: (ctx, i) {
                   final o = filtered[i];
@@ -1449,9 +1466,9 @@ class _EntityOptionPickerSheetState extends State<_EntityOptionPickerSheet> {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else
-            Flexible(
+            SizedBox(
+              height: 420,
               child: ListView.builder(
-                shrinkWrap: true,
                 itemCount: filtered.length,
                 itemBuilder: (ctx, i) {
                   final o = filtered[i];
