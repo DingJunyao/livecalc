@@ -1,64 +1,67 @@
-[tool.poetry]
+[project]
 name = "livecalc"
 version = "0.9.1"
 description = "生计 - 生活成本计算器"
-authors = ["DingJunyao <dingjunyao0703@163.com>"]
+authors = [{ name = "DingJunyao", email = "dingjunyao0703@163.com" }]
 readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "fastapi>=0.138.0,<0.139.0",
+    "uvicorn[standard]>=0.31.0,<0.34.0",
+    "sqlalchemy>=2.0.25,<3.0.0",
+    "alembic>=1.13.0,<2.0.0",
+    "pydantic[email]>=2.5.0,<3.0.0",
+    # EmailStr 运行时依赖（pydantic[email] extra 会隐式安装，此处显式声明以固定下界，与 requirements.txt 一致）
+    "email-validator>=2.1.0,<3.0.0",
+    "pydantic-settings>=2.1.0,<3.0.0",
+    "python-jose[cryptography]>=3.3.0,<4.0.0",
+    "passlib[bcrypt]>=1.7.4,<2.0.0",
+    # 注意：^0.0.6 对 0.0.x 会锁死上界 0.0.6，须与 requirements.txt 保持相同的显式区间
+    "python-multipart>=0.0.6,<0.1.0",
+    "apscheduler>=3.10.4,<4.0.0",
+    "requests>=2.31.0,<3.0.0",
+    "babel>=2.14.0,<3.0.0",
+    # Windows 上 zoneinfo 无系统时区数据，需 tzdata 提供 IANA 时区
+    "tzdata>=2024.1",
+    # 图片存储 - S3 兼容后端（OSS/COS/MinIO/AWS S3）
+    "boto3>=1.34.0,<2.0.0",
+    # 数据库驱动（requirements.txt 同步包含：按部署后端选用，两者均保留以兼容双引擎）
+    "psycopg2-binary>=2.9.9,<3.0.0",
+    "pymysql>=1.1.0,<2.0.0",
+    # Agent 维护任务台。mcp 在 Python >=3.14 下要求 starlette>=0.48。
+    # FastAPI 0.138+ 已兼容 starlette 1.x，故不再手动锁 starlette 上界。
+    "mcp>=1.28.0,<2.0.0",
+    "httpx>=0.26.0,<0.29.0",
+    # Langchain Agent 集成（OpenAI/Anthropic）。1.x 是当前稳定大版本。
+    # 实测 resolver 解到：langchain 1.3.10 / langchain-openai 1.3.2 / langchain-anthropic 1.4.6。
+    # 会顺带拉入 openai>=2 / anthropic>=0.1，与本仓库其它 AI 客户端共用。
+    "langchain>=1.0.0,<2.0.0",
+    "langchain-openai>=1.0.0,<2.0.0",
+    "langchain-anthropic>=1.0.0,<2.0.0",
+    # Codex SDK Provider。0.144.4 会固定拉入 openai-codex-cli-bin 0.144.4。
+    "openai-codex==0.144.4",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-fastapi = "^0.138.0"
-	uvicorn = {extras = ["standard"], version = ">=0.31,<0.34"}
-sqlalchemy = "^2.0.25"
-alembic = "^1.13.0"
-pydantic = {extras = ["email"], version = "^2.5.0"}
-# EmailStr 运行时依赖（pydantic[email] extra 会隐式安装，此处显式声明以固定下界，与 requirements.txt 一致）
-email-validator = ">=2.1.0,<3.0.0"
-pydantic-settings = "^2.1.0"
-python-jose = {extras = ["cryptography"], version = "^3.3.0"}
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
-# 注意：^0.0.6 对 0.0.x 会锁死上界 0.0.6，须与 requirements.txt 保持相同的显式区间
-python-multipart = ">=0.0.6,<0.1.0"
-apscheduler = "^3.10.4"
-requests = "^2.31.0"
-babel = ">=2.14,<3"
-# Windows 上 zoneinfo 无系统时区数据，需 tzdata 提供 IANA 时区
-tzdata = ">=2024.1"
-# 图片存储 - S3 兼容后端（OSS/COS/MinIO/AWS S3）
-boto3 = ">=1.34.0,<2.0.0"
-# 数据库驱动（requirements.txt 同步包含：按部署后端选用，两者均保留以兼容双引擎）
-psycopg2-binary = ">=2.9.9,<3.0.0"
-pymysql = ">=1.1.0,<2.0.0"
-celery = {extras = ["redis"], version = "^5.3.6", optional = true}
-redis = {extras = ["hiredis"], version = "^5.0.1", optional = true}
-	# Agent 维护任务台。mcp 在 Python >=3.14 下要求 starlette>=0.48。
-	# FastAPI 0.138+ 已兼容 starlette 1.x，故不再手动锁 starlette 上界。
-	mcp = "^1.28"
-	httpx = ">=0.26,<0.29"
-	# Langchain Agent 集成（OpenAI/Anthropic）。1.x 是当前稳定大版本。
-	# 实测 resolver 解到：langchain 1.3.10 / langchain-openai 1.3.2 / langchain-anthropic 1.4.6。
-	# 会顺带拉入 openai>=2 / anthropic>=0.1，与本仓库其它 AI 客户端共用。
-	langchain = ">=1.0,<2"
-	langchain-openai = ">=1.0,<2"
-	langchain-anthropic = ">=1.0,<2"
-	# Codex SDK Provider。0.144.4 会固定拉入 openai-codex-cli-bin 0.144.4。
-	openai-codex = "==0.144.4"
+# 可选依赖（requirements.txt 中默认注释掉，按需启用）
+[project.optional-dependencies]
+celery = ["celery[redis]>=5.3.6,<6.0.0"]
+redis = ["redis[hiredis]>=5.0.1,<6.0.0"]
 
 [dependency-groups]
 i18n = ["Babel>=2.14,<3"]
+dev = [
+    "pytest>=7.4.4,<8.0.0",
+    "pytest-asyncio>=0.23.3,<0.24.0",
+    "pytest-cov>=4.1.0,<5.0.0",
+    "black>=24.1.1,<25.0.0",
+    "isort>=5.13.2,<6.0.0",
+    "flake8>=7.0.0,<8.0.0",
+    "mypy>=1.8.0,<2.0.0",
+]
 
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.4.4"
-pytest-asyncio = "^0.23.3"
-pytest-cov = "^4.1.0"
-black = "^24.1.1"
-isort = "^5.13.2"
-flake8 = "^7.0.0"
-mypy = "^1.8.0"
+[tool.uv]
+# 后端从源码以 uvicorn 运行，无需把项目本身构建为包；uv sync 只安装依赖。
+package = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
