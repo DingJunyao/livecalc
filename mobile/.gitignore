@@ -32,3 +32,5 @@ coverage/
 *.pid
 *.mjs.map
 node_modules/
+# Widget Preview related
+.widget_preview/

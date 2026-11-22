@@ -28,3 +28,4 @@ build/CMakeFiles/
 
 .mimosa/
 .AGENTS.md.*
+.DS_Store

@@ -1,0 +1,22 @@
+{
+  "pins" : [
+    {
+      "identity" : "csqlite",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/simolus3/CSQLite.git",
+      "state" : {
+        "revision" : "1ee46d19a4f451a7aa64ffc64fc99b4748131e62"
+      }
+    },
+    {
+      "identity" : "tocropviewcontroller",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/TimOliver/TOCropViewController.git",
+      "state" : {
+        "revision" : "ed49bd95ed34debf02968fe1ec0d9bdb3577ba93",
+        "version" : "3.3.0"
+      }
+    }
+  ],
+  "version" : 2
+}

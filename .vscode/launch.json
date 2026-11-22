@@ -36,12 +36,52 @@
             "jinja": true
         },
         {
-            "name": "Flutter",
+            "name": "Flutter (Windows 桌面)",
             "type": "dart",
             "request": "launch",
             "cwd": "${workspaceFolder}/mobile",
             "program": "lib/main.dart",
             "deviceId": "windows",
+            "debuggerType": "flutter",
+            "flutterMode": "debug",
+            "openDevTools": "logging"
+        },
+        {
+            // iOS 模拟器调试。前提：
+            // 1. xcode-select 指向完整 Xcode
+            // 2. CocoaPods 已安装（brew install cocoapods）
+            // 3. 对应模拟器已启动（关机状态不在扩展设备列表里，会报 Device not found）
+            "name": "Flutter (iOS 模拟器)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/mobile",
+            "program": "lib/main.dart",
+            "deviceId": "iPhone 18 Pro",
+            "debuggerType": "flutter",
+            "flutterMode": "debug",
+            "openDevTools": "logging"
+        },
+        {
+            // iPhone Duo：iOS 27.2 iPhone19-4 beta runtime（构建号 24B91016s 带 seed 后缀），
+            // 新形态设备测试用。同样需要先启动：xcrun simctl boot "iPhone Duo"
+            "name": "Flutter (iOS 模拟器 iPhone Duo)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/mobile",
+            "program": "lib/main.dart",
+            "deviceId": "iPhone Duo",
+            "debuggerType": "flutter",
+            "flutterMode": "debug",
+            "openDevTools": "logging"
+        },
+        {
+            // 真机调试：需在 Xcode 里打开 mobile/ios/Runner.xcworkspace 配置签名团队
+            // （自动签名），然后插上 iPhone 选择本配置；deviceId 留空由 VS Code 弹出设备选择。
+            "name": "Flutter (iOS 真机)",
+            "type": "dart",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/mobile",
+            "program": "lib/main.dart",
             "debuggerType": "flutter",
             "flutterMode": "debug",
             "openDevTools": "logging"
