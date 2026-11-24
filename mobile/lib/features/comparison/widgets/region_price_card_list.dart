@@ -7,8 +7,7 @@ import 'package:flutter/material.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/currency_fmt.dart';
 import '../../../shared/widgets/sparkline.dart';
-import '../repositories/comparison_repository.dart'
-    show RegionCardData;
+import '../repositories/comparison_repository.dart' show RegionCardData;
 
 class RegionPriceCardList extends StatelessWidget {
   final List<RegionCardData> cards;
@@ -92,7 +91,8 @@ class _RegionPriceCard extends StatelessWidget {
         color: containerColor,
         borderRadius: BorderRadius.circular(10),
         border: showLowest
-            ? Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.35))
+            ? Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.35))
             : null,
       ),
       child: Stack(

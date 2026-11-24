@@ -252,6 +252,8 @@
   "@saveButtonPositionBottom": {},
   "saveButtonPositionHint": "يُحفظ على هذا الجهاز فقط",
   "@saveButtonPositionHint": {},
+  "saveButtonPositionDuoRailNote": "إذا ظهر الشريط الجانبي، فسيظهر زر الحفظ دائمًا في الجزء العلوي من الشريط، أيًّا كان الخيار المحدد.",
+  "@saveButtonPositionDuoRailNote": {},
   "profileMyData": "بياناتي",
   "@profileMyData": {},
   "profileMyProposals": "اقتراحاتي",
@@ -1722,7 +1724,12 @@
     }
   },
   "recipeCostPerServings": "{amount} / {count} حصة",
-  "@recipeCostPerServings": {
+"recipeCostPerServing": "{amount} / حصة",
+  "@recipeCostPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },  "@recipeCostPerServings": {
     "placeholders": {
       "amount": {},
       "count": {}

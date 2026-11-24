@@ -222,7 +222,8 @@ class ProductRepository {
   }
 
   /// 同一原料下的其他商品（合并目标候选）。
-  Future<List<Product>> listSiblingProducts(int productId, int ingredientId) async {
+  Future<List<Product>> listSiblingProducts(
+      int productId, int ingredientId) async {
     final page = await search(ingredientIds: [ingredientId], limit: 50);
     return page.items.where((p) => p.id != productId).toList();
   }
@@ -266,8 +267,7 @@ class ProductRepository {
 
   /// 我的商品价格权重（个人偏好，不走审核）。
   Future<MyWeightInfo> getMyWeight(int productId) async {
-    final response =
-        await _client.dio.get('/products/$productId/my-weight');
+    final response = await _client.dio.get('/products/$productId/my-weight');
     return MyWeightInfo.fromJson(response.data as Map<String, dynamic>);
   }
 

@@ -95,6 +95,13 @@ void main() {
 
     // 推荐页（HomeScreen）AppBar 标题「生计」；splash 也有「生计」文案，
     // 再用 shell 导航栏「我的」确认已进入 shell（splash 已移除）。
+    // 视口用 900×1200（平板档）：该档左 rail 带文字标签；Duo 竖条/常规手机
+    // 底栏的图标形态由 scaffold_with_nav_bar_test 单独覆盖。
+    tester.view.physicalSize = const Size(900, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pump();
     expect(find.text('生计'), findsOneWidget);
     expect(find.text('我的'), findsOneWidget);
   });
@@ -157,6 +164,24 @@ void main() {
       ),
       findsNothing,
     );
+  });
+
+  testWidgets('窄屏「更多」菜单每行 4 项（手机 / 分屏）', (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await pumpRouter(tester);
+    await openMoreMenu(tester);
+
+    // 7 项、每行 4 项：前 4 项同一行，第 5 项（收藏）换行
+    double topOf(String label) =>
+        tester.getTopLeft(find.byKey(ValueKey('more-$label'))).dy;
+    expect(topOf('原料'), topOf('商品'));
+    expect(topOf('商家'), topOf('商品'));
+    expect(topOf('物价对比'), topOf('商品'));
+    expect(topOf('收藏'), greaterThan(topOf('商品') + 20));
+    expect(topOf('试算'), topOf('收藏'));
+    expect(topOf('我的'), topOf('收藏'));
   });
 
   testWidgets('「更多」菜单中当前路由对应胶囊为选中态', (tester) async {

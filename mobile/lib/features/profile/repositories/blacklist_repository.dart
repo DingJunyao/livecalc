@@ -45,8 +45,7 @@ class BlacklistGroup {
       name: json['name']?.toString() ?? '',
       ingredientIds: [
         for (final id in (json['ingredient_ids'] as List? ?? const []))
-          if (_asInt(id) != null)
-            _asInt(id)!,
+          if (_asInt(id) != null) _asInt(id)!,
       ],
     );
   }
@@ -141,7 +140,9 @@ class BlacklistRepository {
   Future<void> subscribeGroup(int groupId) async {
     await _client.dio.post(
       '/blacklist/groups',
-      data: {'group_ids': [groupId]},
+      data: {
+        'group_ids': [groupId]
+      },
     );
   }
 

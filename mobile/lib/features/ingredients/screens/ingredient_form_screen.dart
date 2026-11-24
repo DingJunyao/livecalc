@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../shared/models/entity_unit.dart';
@@ -369,12 +372,13 @@ class _IngredientFormScreenState extends ConsumerState<IngredientFormScreen> {
       enabled: !_isEdit && !_saving,
       isDirty: () => _hasUnsavedInput,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(
             _isEdit ? l10n.ingredientEditTitle : l10n.ingredientAddTitle,
           ),
           actions: [
             ...saveAppBarActions(
+              context: context,
               position: savePosition,
               onSave: _saving ? null : _save,
               label: _saving ? l10n.commonSaving : l10n.commonSave,

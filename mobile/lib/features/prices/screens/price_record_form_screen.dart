@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../shared/screens/price_record_edit_screen.dart'
@@ -502,10 +505,11 @@ class _PriceRecordFormScreenState extends ConsumerState<PriceRecordFormScreen> {
     return Stack(
       children: [
         Scaffold(
-          appBar: AppBar(
+          appBar: ShellAppBar(
             title: Text(l10n.priceAddRecordTitle),
             actions: [
               ...saveAppBarActions(
+                context: context,
                 position: savePosition,
                 onSave: _saving ? null : _save,
                 label: l10n.commonSave,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../core/i18n/app_formatters.dart';
+import '../../core/layout/shell_app_bar.dart';
 import '../../features/nutrition/models/usda_models.dart';
 import '../../features/nutrition/repositories/usda_repository.dart';
 import '../../l10n/app_localizations.dart';
@@ -373,12 +374,13 @@ class _NutritionEditScreenState extends ConsumerState<NutritionEditScreen> {
     final savePosition = ref.watch(saveButtonPositionProvider);
     final saveLabel = _usdaMode ? l10n.nutritionConfirmMatch : l10n.commonSave;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         // 标题固定为「编辑营养成分」：实体名和「清空自定义」放不下标题区
         // （en/ar 文案 + 动态名会把标题挤没），分别移到 body 顶部与底部。
         title: Text(l10n.nutritionEditTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave:
                 _saving ? null : (_usdaMode ? _confirmUsdaMatch : _saveManual),

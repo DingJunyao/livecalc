@@ -107,8 +107,10 @@ class IngredientChangeReconcile {
 
   /// 调和后的完整列表（改指向的行已改写、要移除的行已去掉）
   final List<EntityUnit> units;
+
   /// 引用改指向「同名单位」的行（编辑态需要写回服务端）
   final List<EntityUnit> retargeted;
+
   /// 找不到同名单位、只能移除的行
   final List<EntityUnit> removed;
 }

@@ -9,7 +9,8 @@ class PriceRecordSessionMemory {
   const PriceRecordSessionMemory({this.merchantId, this.isPurchase = true});
 }
 
-class PriceRecordSessionMemoryNotifier extends Notifier<PriceRecordSessionMemory> {
+class PriceRecordSessionMemoryNotifier
+    extends Notifier<PriceRecordSessionMemory> {
   @override
   PriceRecordSessionMemory build() => const PriceRecordSessionMemory();
 
@@ -22,7 +23,7 @@ class PriceRecordSessionMemoryNotifier extends Notifier<PriceRecordSessionMemory
   }
 }
 
-final priceRecordSessionMemoryProvider =
-    NotifierProvider<PriceRecordSessionMemoryNotifier, PriceRecordSessionMemory>(
+final priceRecordSessionMemoryProvider = NotifierProvider<
+    PriceRecordSessionMemoryNotifier, PriceRecordSessionMemory>(
   PriceRecordSessionMemoryNotifier.new,
 );

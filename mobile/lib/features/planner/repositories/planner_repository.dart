@@ -3,7 +3,8 @@ import '../../../core/api/api_client.dart';
 /// 试算方案（与云端 /meal-plans 同契约）。
 class PlannerRepository {
   final ApiClient _client;
-  PlannerRepository({ApiClient? client}) : _client = client ?? ApiClient.instance;
+  PlannerRepository({ApiClient? client})
+      : _client = client ?? ApiClient.instance;
 
   Future<List<Map<String, dynamic>>> list() async {
     final response = await _client.dio.get('/meal-plans');

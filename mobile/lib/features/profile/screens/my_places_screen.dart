@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../models/user_place.dart';
 import '../providers/profile_provider.dart';
@@ -103,7 +104,7 @@ class _MyPlacesScreenState extends ConsumerState<MyPlacesScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileMyPlaces)),
+      appBar: ShellAppBar(title: Text(l10n.profileMyPlaces)),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _openEditor(),
         tooltip: l10n.placeAdd,

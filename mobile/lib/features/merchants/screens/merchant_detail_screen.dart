@@ -1,7 +1,12 @@
 import 'dart:io' show Platform;
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../shared/widgets/detail_two_column.dart';
+
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
@@ -57,7 +62,7 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
 
     if (state.error != null && merchant == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.merchantDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.merchantDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -67,21 +72,32 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
     }
     if (merchant == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.merchantDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.merchantDetailTitle)),
         body: const LoadingIndicator(),
       );
     }
 
     final notifier = ref.read(merchantDetailPageProvider(widget.id).notifier);
+    // 竖条导航（折叠态/内屏横屏/分屏）：编辑动作交给竖条，后退由壳层置顶。
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(actions: [
+        ShellAction(
+          icon: Icons.edit_outlined,
+          label: l10n.merchantEditTitle,
+          onPressed: _editMerchant,
+        ),
+      ]);
+    }
+
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         // 标题只放商家名（AppBar 自动单行省略，长按看全名）。
         title: AppTitleTooltip(
           message: merchant.name.trim().isEmpty
               ? l10n.merchantUnnamed
               : merchant.name,
         ),
-        // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
@@ -102,66 +118,75 @@ class _MerchantDetailScreenState extends ConsumerState<MerchantDetailScreen> {
               ),
               const SizedBox(height: 16),
             ],
-            _BasicInfoCard(
-              merchant: merchant,
-              onEdit: _editMerchant,
-            ),
-            if (merchant.latitude != null && merchant.longitude != null) ...[
-              const SizedBox(height: 16),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.map,
-                              color: theme.colorScheme.secondary, size: 20),
-                          const SizedBox(width: 8),
-                          Text(l10n.merchantLocation,
-                              style: theme.textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      const Divider(height: 12),
-                      SizedBox(
-                        height: 260,
-                        child: mapReady
-                            ? MerchantMapView(
-                                merchants: [merchant],
-                                selectedId: merchant.id,
-                                mapConfig: mapConfig,
-                              )
-                            : DecoratedBox(
-                                decoration: BoxDecoration(
-                                  color:
-                                      theme.colorScheme.surfaceContainerHighest,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Center(
-                                  child: SizedBox(
-                                    width: 24,
-                                    height: 24,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                      ),
-                    ],
+            DetailTwoColumn.rows(
+              rows: [
+                // 严格对齐 web MerchantDetail 桌面 CSS Grid：
+                // 基本信息｜位置（地图），价格整行。
+                [
+                  _BasicInfoCard(
+                    merchant: merchant,
+                    onEdit: _editMerchant,
                   ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            _ProductPricesCard(
-              prices: state.productPrices,
-              loading: state.loadingPrices,
-              hasMore: state.pricesHasMore,
-              onLoadMore: notifier.loadMorePrices,
-              userCurrency: ref.read(displayCurrencyProvider),
+                  if (merchant.latitude != null && merchant.longitude != null)
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.map,
+                                    color: theme.colorScheme.secondary,
+                                    size: 20),
+                                const SizedBox(width: 8),
+                                Text(l10n.merchantLocation,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                            fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            const Divider(height: 12),
+                            SizedBox(
+                              height: 260,
+                              child: mapReady
+                                  ? MerchantMapView(
+                                      merchants: [merchant],
+                                      selectedId: merchant.id,
+                                      mapConfig: mapConfig,
+                                    )
+                                  : DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        color: theme.colorScheme
+                                            .surfaceContainerHighest,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 24,
+                                          height: 24,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+                [
+                  _ProductPricesCard(
+                    prices: state.productPrices,
+                    loading: state.loadingPrices,
+                    hasMore: state.pricesHasMore,
+                    onLoadMore: notifier.loadMorePrices,
+                    userCurrency: ref.read(displayCurrencyProvider),
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -215,10 +240,15 @@ class _BasicInfoCard extends StatelessWidget {
                 Icon(Icons.info_outline,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.journeyBasicInformation,
+                Expanded(
+                  child: Text(
+                    l10n.journeyBasicInformation,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   tooltip: l10n.commonEdit,
@@ -352,6 +382,67 @@ class _ProductPricesCard extends StatelessWidget {
     this.userCurrency = 'CNY',
   });
 
+  Widget _row(BuildContext context, ThemeData theme, MerchantProductPrice p) {
+    return InkWell(
+      onTap: () => context.push('/products/${p.productId}'),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        // 陈旧记录（>30 天未更新）整行置灰弱化；后端已把陈旧记录排到最后
+        child: Opacity(
+          opacity: p.isStale ? 0.5 : 1.0,
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: theme.colorScheme.tertiaryContainer,
+                foregroundColor: theme.colorScheme.onTertiaryContainer,
+                radius: 18,
+                child: const Icon(Icons.inventory_2_outlined, size: 18),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.productName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodyMedium
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 2),
+                    Text(_fmtDateTime(p.recordedAt),
+                        style: theme.textTheme.bodySmall
+                            ?.copyWith(color: theme.colorScheme.outline)),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${formatMoney(p.displayPrice, p.currency)}${p.displayUnit}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.tertiary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (p.exchangeRate != null && p.currency != userCurrency)
+                    Text(
+                      '≈ ${formatMoney(convertAmount(p.displayPrice, p.exchangeRate), userCurrency)}',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                ],
+              ),
+              Icon(DirectionalIcons.forwardChevron(context),
+                  size: 20, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -409,71 +500,40 @@ class _ProductPricesCard extends StatelessWidget {
                 ),
               )
             else ...[
-              for (final p in prices) ...[
-                InkWell(
-                  onTap: () => context.push('/products/${p.productId}'),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    // 陈旧记录（>30 天未更新）整行置灰弱化；后端已把陈旧记录排到最后
-                    child: Opacity(
-                      opacity: p.isStale ? 0.5 : 1.0,
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            backgroundColor:
-                                theme.colorScheme.tertiaryContainer,
-                            foregroundColor:
-                                theme.colorScheme.onTertiaryContainer,
-                            radius: 18,
-                            child: const Icon(Icons.inventory_2_outlined,
-                                size: 18),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(p.productName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.bodyMedium?.copyWith(
-                                        fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 2),
-                                Text(_fmtDateTime(p.recordedAt),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                        color: theme.colorScheme.outline)),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '${formatMoney(p.displayPrice, p.currency)}${p.displayUnit}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.tertiary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (p.exchangeRate != null &&
-                                  p.currency != userCurrency)
-                                Text(
-                                  '≈ ${formatMoney(convertAmount(p.displayPrice, p.exchangeRate), userCurrency)}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.outline),
-                                ),
-                            ],
-                          ),
-                          Icon(DirectionalIcons.forwardChevron(context),
-                              size: 20, color: Colors.grey),
-                        ],
+              LayoutBuilder(builder: (context, c) {
+                // 宽屏（Duo 展开）两列，窄屏单列；每项仍可点进商品详情。
+                final twoCol = c.maxWidth >= 620;
+                final itemWidth = (c.maxWidth - 16) / 2;
+                if (!twoCol) {
+                  return Column(
+                    children: [
+                      for (final p in prices) ...[
+                        _row(context, theme, p),
+                        const Divider(height: 1),
+                      ],
+                    ],
+                  );
+                }
+                final rows = <Widget>[];
+                for (var i = 0; i < prices.length; i += 2) {
+                  rows.add(Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                          width: itemWidth,
+                          child: _row(context, theme, prices[i])),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: itemWidth,
+                        child: i + 1 < prices.length
+                            ? _row(context, theme, prices[i + 1])
+                            : const SizedBox.shrink(),
                       ),
-                    ),
-                  ),
-                ),
-                const Divider(height: 1),
-              ],
+                    ],
+                  ));
+                }
+                return Column(children: rows);
+              }),
               if (hasMore)
                 Center(
                   child: TextButton(

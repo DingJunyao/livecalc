@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/api/auth_interceptor.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../shared/widgets/region_select_field.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../models/user.dart';
@@ -183,10 +184,11 @@ class _EditAccountScreenState extends ConsumerState<EditAccountScreen> {
 
     final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.authEditAccountTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: _saving ? l10n.authSaving : l10n.commonSave,

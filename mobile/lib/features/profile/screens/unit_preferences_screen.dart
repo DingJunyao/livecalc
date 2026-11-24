@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../models/unit_option.dart';
@@ -147,10 +148,11 @@ class _UnitPreferencesScreenState extends ConsumerState<UnitPreferencesScreen> {
     final l10n = AppLocalizations.of(context);
     final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.profileUnitPreferences),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: _saving ? l10n.commonSaving : l10n.commonSave,

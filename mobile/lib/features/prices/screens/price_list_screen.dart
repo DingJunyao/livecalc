@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -185,11 +188,33 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
     final theme = Theme.of(context);
     final state = ref.watch(priceListProvider);
     final l10n = AppLocalizations.of(context);
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.journeyAddRecord,
+          onPressed: _openRecordForm,
+        ),
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+          ShellAction(
+            icon: Icons.bolt,
+            label: l10n.quickFillTitle,
+            onPressed: () => context.push('/prices/quick-fill'),
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.journeyPriceRecords),
         // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
+        // 竖条导航（折叠态/内屏横屏/分屏）下动作交给竖条渲染。
         actions: [
           const CalcContextMenuButton(),
           IconButton(
@@ -205,10 +230,12 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
           Expanded(child: _buildBody(theme, state, l10n)),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openRecordForm,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: _openRecordForm,
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -332,20 +359,55 @@ class _PriceListScreenState extends ConsumerState<PriceListScreen> {
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () => ref.read(priceListProvider.notifier).loadRecords(),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        itemCount: state.records.length + (state.hasMore ? 1 : 0),
-        itemBuilder: (ctx, i) {
-          if (i >= state.records.length) {
-            return _buildLoadMoreIndicator(state);
-          }
-          return _buildRecordCard(theme, state.records[i]);
-        },
-      ),
-    );
+    // 宽屏（Duo 展开竖屏 669 / 折叠横屏 678 / 内屏横屏 867）单行列表改为多列，
+    // 与 web 列表栅格同构；手机竖屏保持单列。
+    return LayoutBuilder(builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 1100
+          ? 3
+          : (constraints.maxWidth >= 620 ? 2 : 1);
+      if (columns <= 1) {
+        return RefreshIndicator(
+          onRefresh: () => ref.read(priceListProvider.notifier).loadRecords(),
+          child: ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            itemCount: state.records.length + (state.hasMore ? 1 : 0),
+            itemBuilder: (ctx, i) {
+              if (i >= state.records.length) {
+                return _buildLoadMoreIndicator(state);
+              }
+              return _buildRecordCard(theme, state.records[i]);
+            },
+          ),
+        );
+      }
+      final records = state.records;
+      final rowCount = (records.length + columns - 1) ~/ columns;
+      return RefreshIndicator(
+        onRefresh: () => ref.read(priceListProvider.notifier).loadRecords(),
+        child: ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          itemCount: rowCount + (state.hasMore ? 1 : 0),
+          itemBuilder: (ctx, row) {
+            if (row >= rowCount) return _buildLoadMoreIndicator(state);
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var col = 0; col < columns; col++) ...[
+                  if (col > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: row * columns + col < records.length
+                        ? _buildRecordCard(theme, records[row * columns + col])
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      );
+    });
   }
 
   Widget _buildLoadMoreIndicator(PriceListState state) {

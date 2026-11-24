@@ -1,7 +1,10 @@
 import 'dart:async';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
@@ -107,18 +110,36 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     });
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.recipeCreateTooltip,
+          onPressed: _openCreate,
+        ),
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+        ],
+      );
+    }
     final state = ref.watch(recipeListProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.recipeTitle),
-        actions: const [CalcContextMenuButton()],
+        actions: rail ? const [] : const [CalcContextMenuButton()],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openCreate,
-        tooltip: l10n.recipeCreateTooltip,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: _openCreate,
+              tooltip: l10n.recipeCreateTooltip,
+              child: const Icon(Icons.add),
+            ),
       body: Column(
         children: [
           _buildSearchBar(theme, state),
@@ -167,7 +188,7 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
             height: 48,
             child: Badge(
               isLabelVisible: notifier.activeFilterCount > 0,
-          label: Text(formatNumber(notifier.activeFilterCount)),
+              label: Text(formatNumber(notifier.activeFilterCount)),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
                 tooltip: l10n.journeyFilters,
@@ -243,8 +264,11 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                AspectRatio(
-                                  aspectRatio: 4 / 3,
+                                // 图片固定高 104：一行四项（Duo 展开横屏）时
+                                // 卡片变窄，4:3 随宽变化会把行高拉得过高
+                                // （设计稿 Plate 03，与 Web 端栅格跨端一致）。
+                                SizedBox(
+                                  height: 104,
                                   child: Container(
                                     width: double.infinity,
                                     color: theme.colorScheme.primaryContainer
@@ -273,30 +297,27 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
                                                 style:
                                                     theme.textTheme.titleSmall,
                                                 maxLines: 1,
-                                                overflow: TextOverflow.ellipsis),
+                                                overflow:
+                                                    TextOverflow.ellipsis),
                                           ),
                                           InkWell(
                                             onTap: () => ref
-                                                .read(recipeListProvider
-                                                    .notifier)
+                                                .read(
+                                                    recipeListProvider.notifier)
                                                 .toggleFavorite(r.id),
                                             borderRadius:
                                                 BorderRadius.circular(16),
                                             child: Padding(
-                                              padding:
-                                                  const EdgeInsets.all(2),
+                                              padding: const EdgeInsets.all(2),
                                               child: Icon(
-                                                state.favoriteIds
-                                                        .contains(r.id)
+                                                state.favoriteIds.contains(r.id)
                                                     ? Icons.favorite
                                                     : Icons.favorite_border,
                                                 size: 18,
                                                 color: state.favoriteIds
                                                         .contains(r.id)
-                                                    ? theme
-                                                        .colorScheme.error
-                                                    : theme
-                                                        .colorScheme.outline,
+                                                    ? theme.colorScheme.error
+                                                    : theme.colorScheme.outline,
                                               ),
                                             ),
                                           ),
@@ -345,12 +366,14 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     ); // 关闭 RefreshIndicator
   }
 
-  /// 每行卡片数：对齐 Web 端栅格阈值（cols=6/6/4/3/2）
-  /// <960 两列，960-1279 三列，1280-1919 四列，≥1920 六列
+  /// 每行卡片数：对齐 Web 端栅格（xl=2/12 六列）+ Duo 展开横屏四列档
+  /// （≥800，如 951×669——设计稿 Plate 03「一行四项」），其余两列。
+  /// 669 宽（内屏竖屏 / web sm）两列，与 web sm=6 一致。
   int _columnCountFor(double width) {
     if (width >= 1920) return 6;
-    if (width >= 1280) return 4;
-    if (width >= 960) return 3;
+    if (width >= 1280) return 5;
+    if (width >= 800) return 4; // Duo 内屏横屏（867）一行四项
+    if (width >= 620) return 3; // Duo 展开竖屏（669）/ 折叠横屏（678）
     return 2;
   }
 
@@ -363,20 +386,19 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
     // 价格/热量懒加载中：显示占位，避免跳变
     if (!hasCost && !hasCal) {
       return Text(
-        loading
-            ? '--'
-            : l10n.recipeServingsCount(formatNumber(r.servings)),
+        loading ? '--' : l10n.recipeServingsCount(formatNumber(r.servings)),
         style: theme.textTheme.labelSmall
             ?.copyWith(color: theme.colorScheme.outline),
       );
     }
     final children = <Widget>[];
     if (hasCost) {
+      // 口径对齐 web：卡片显示「成本/份」（总价 ÷ 份数），而非总价/份数。
+      final perServing = (r.estimatedCost! / servings).round();
       children.add(
         Text(
-          l10n.recipeCostPerServings(
-            formatMoney(r.estimatedCost!, userCurrency),
-            formatNumber(servings),
+          l10n.recipeCostPerServing(
+            formatMoney(perServing, userCurrency),
           ),
           style: theme.textTheme.labelMedium?.copyWith(
             color: theme.colorScheme.primary,
@@ -424,8 +446,8 @@ class _RecipeListScreenState extends ConsumerState<RecipeListScreen> {
         initialIngredientIds: state.filterIngredientIds,
         initialConditions: state.filterConditions,
         initialFavoritesOnly: state.favoritesOnly,
-        onApply:
-            (categories, difficulties, ingredientIds, conditions, favoritesOnly) {
+        onApply: (categories, difficulties, ingredientIds, conditions,
+            favoritesOnly) {
           ref.read(recipeListProvider.notifier).applyFilters(
                 categories: categories,
                 difficulties: difficulties,

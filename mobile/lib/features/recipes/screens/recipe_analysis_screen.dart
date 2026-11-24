@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/recipe_provider.dart';
@@ -8,6 +9,7 @@ import '../widgets/nutrition_source_grid.dart';
 import '../widgets/merchant_cost_cards.dart';
 import '../widgets/merchant_price_matrix.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/detail_two_column.dart';
 import '../../../shared/widgets/app_title_tooltip.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_display.dart';
@@ -47,7 +49,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
 
     if (state.error != null && detail == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.recipeAnalysisTitle)),
+        appBar: ShellAppBar(title: Text(l10n.recipeAnalysisTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -57,7 +59,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
     }
     if (detail == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.recipeAnalysisTitle)),
+        appBar: ShellAppBar(title: Text(l10n.recipeAnalysisTitle)),
         body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
@@ -67,7 +69,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
     final userCurrency = ref.read(displayCurrencyProvider);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         // 标题 = 菜谱名（可省略，长按看全名）+ 「分析」标签。
         title: AppTitleTooltip(
           message: detail.name,
@@ -80,8 +82,7 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(10),
@@ -100,25 +101,31 @@ class _RecipeAnalysisScreenState extends ConsumerState<RecipeAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ① 成本占比
-            CostProportionChart(
-              breakdown: breakdown,
-              totalCost: totalCost,
-              loading: state.loadingCost,
-              userCurrency: userCurrency,
-            ),
-            const SizedBox(height: 16),
-            // ② 成本趋势
-            CostTrendStackedChart(
-              points: state.costHistory,
-              loading: state.loadingHistory,
-              userCurrency: userCurrency,
-              onFilterChange: (filter) {
-                final days = costHistoryDays[filter] ?? 90;
-                ref
-                    .read(recipeDetailPageProvider(widget.id).notifier)
-                    .reloadHistory(days);
-              },
+            // ①② 成本占比 + 成本趋势：对齐 web 桌面栅格（两列并排）；
+            // Duo 展开竖屏（内容宽 637）/ 展开横屏都分栏，手机单列。
+            DetailTwoColumn(
+              breakpoint: 600,
+              left: [
+                CostProportionChart(
+                  breakdown: breakdown,
+                  totalCost: totalCost,
+                  loading: state.loadingCost,
+                  userCurrency: userCurrency,
+                ),
+              ],
+              right: [
+                CostTrendStackedChart(
+                  points: state.costHistory,
+                  loading: state.loadingHistory,
+                  userCurrency: userCurrency,
+                  onFilterChange: (filter) {
+                    final days = costHistoryDays[filter] ?? 90;
+                    ref
+                        .read(recipeDetailPageProvider(widget.id).notifier)
+                        .reloadHistory(days);
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             // ③ 营养贡献溯源

@@ -134,8 +134,8 @@ class EntityDraftPersister {
     if (entries.isNotEmpty) {
       try {
         final review = entityType == 'ingredient'
-            ? await nutritionRepository.saveIngredientNutrition(entityId, entries,
-                basis: basis)
+            ? await nutritionRepository.saveIngredientNutrition(
+                entityId, entries, basis: basis)
             : await nutritionRepository.saveProductNutrition(entityId, entries,
                 basis: basis);
         if (review.pending) {

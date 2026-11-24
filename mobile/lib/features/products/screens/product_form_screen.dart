@@ -3,6 +3,9 @@ import 'dart:developer';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/models/entity_unit.dart';
 import '../../../shared/models/nutrition.dart';
@@ -1129,12 +1132,13 @@ class _ProductFormScreenState extends ConsumerState<ProductFormScreen> {
       child: Stack(
         children: [
           Scaffold(
-            appBar: AppBar(
+            appBar: ShellAppBar(
               title: Text(
                 _isEdit ? l10n.productEditTitle : l10n.productAddTitle,
               ),
               actions: [
                 ...saveAppBarActions(
+                  context: context,
                   position: savePosition,
                   onSave: _saving ? null : _save,
                   label: _saving ? l10n.commonSaving : l10n.commonSave,

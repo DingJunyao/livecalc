@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/i18n/app_formatters.dart';
+import '../../core/layout/shell_app_bar.dart';
 import '../../features/entities/repositories/entity_repository.dart';
 import '../../features/profile/providers/save_button_position_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -49,6 +50,7 @@ class EntityUnitsCard extends StatelessWidget {
   final int entityId;
   final String? entityName;
   final List<EntityUnit> units;
+
   /// 关联原料的自定义单位（仅商品有）：本商品没覆盖时继承使用，
   /// 用于「箱 = 12 盒」这类引用（盒 定义在原料上）与下拉选项。
   final List<EntityUnit> inheritedUnits;
@@ -64,6 +66,7 @@ class EntityUnitsCard extends StatelessWidget {
   final Future<Object?> Function(int unitId) onDeleteUnit;
   final Future<Object?> Function(DensityWriteInput input) onAddDensity;
   final Future<Object?> Function(int densityId) onDeleteDensity;
+
   /// 密度之后的附加区块（如「关联与换算」）。
   final List<Widget> extraSections;
 
@@ -128,9 +131,8 @@ class EntityUnitsCard extends StatelessWidget {
           inheritedUnitIds: {for (final unit in inheritedUnits) unit.id},
           globalUnitOptions: globalUnitOptions,
           effectiveDensityKgM3: _effectiveDensity,
-          onSave: (input) => unit == null
-              ? onAddUnit(input)
-              : onEditUnit(unit.id, input),
+          onSave: (input) =>
+              unit == null ? onAddUnit(input) : onEditUnit(unit.id, input),
         ),
       ),
     );
@@ -647,9 +649,8 @@ _ResolvedUnit? _resolveUnit(
     return _ResolvedUnit(
       gramsPerWeightUnit: gramsOf(ref, {...visited}, depth + 1),
       isVolume: resolved.isVolume,
-      weightUnitLabel: ref.unitName.isEmpty
-          ? resolved.weightUnitLabel
-          : ref.unitName,
+      weightUnitLabel:
+          ref.unitName.isEmpty ? resolved.weightUnitLabel : ref.unitName,
     );
   };
 
@@ -668,7 +669,9 @@ String? entityUnitDetailLine(
   final l10n = AppLocalizations.of(context);
   final resolved = _resolveUnit(unit, units, globalUnitOptions, densityKgM3);
   if (resolved == null) {
-    return unit.weightUnitOverrideId != null ? l10n.unitsReferenceMissing : null;
+    return unit.weightUnitOverrideId != null
+        ? l10n.unitsReferenceMissing
+        : null;
   }
   final factor = _positiveOrOne(unit.conversionFactor);
   final amount = factor * _positiveOrOne(unit.weightPerUnit);
@@ -697,6 +700,7 @@ class EntityUnitEditPage extends ConsumerStatefulWidget {
   final EntityUnit? unit;
   final String? initialName;
   final List<EntityUnit> units;
+
   /// 其中哪些是「继承自关联原料」的单位（下拉里标注出来）。
   final Set<int> inheritedUnitIds;
   final List<GlobalUnitOption> globalUnitOptions;
@@ -732,22 +736,26 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
   bool _isDefault = false;
   bool _saving = false;
 
-  int? get _selectedGlobalUnitId =>
-      _weightUnit.startsWith('u:') ? int.tryParse(_weightUnit.substring(2)) : null;
+  int? get _selectedGlobalUnitId => _weightUnit.startsWith('u:')
+      ? int.tryParse(_weightUnit.substring(2))
+      : null;
 
-  int? get _selectedOverrideUnitId =>
-      _weightUnit.startsWith('e:') ? int.tryParse(_weightUnit.substring(2)) : null;
+  int? get _selectedOverrideUnitId => _weightUnit.startsWith('e:')
+      ? int.tryParse(_weightUnit.substring(2))
+      : null;
 
   @override
   void initState() {
     super.initState();
     final unit = widget.unit;
-    _name = TextEditingController(text: unit?.unitName ?? widget.initialName ?? '');
+    _name =
+        TextEditingController(text: unit?.unitName ?? widget.initialName ?? '');
     // 换算系数已从表单移除：打开时把「系数 × 量」合并进「量」，
     // 保存时系数恒为 1，语义不变（老数据里 系数12 + 空量 会显示成 量=12）。
     final storedFactor = _positiveOrOne(unit?.conversionFactor);
     final storedWeight = unit?.weightPerUnit;
-    final hasAmount = storedWeight != null || (unit != null && storedFactor != 1);
+    final hasAmount =
+        storedWeight != null || (unit != null && storedFactor != 1);
     _weight = TextEditingController(
       text: !hasAmount
           ? ''
@@ -769,9 +777,8 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
     super.dispose();
   }
 
-  double get _density => widget.effectiveDensityKgM3 <= 0
-      ? 1000
-      : widget.effectiveDensityKgM3;
+  double get _density =>
+      widget.effectiveDensityKgM3 <= 0 ? 1000 : widget.effectiveDensityKgM3;
 
   /// 下拉可选项：默认（克）+ 全局质量/体积单位 + 本实体其它自定义单位
   /// + 继承自关联原料的自定义单位（同名时本实体的覆盖优先）。
@@ -798,7 +805,8 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
     for (final option in widget.globalUnitOptions) {
       if (entityNames.contains(option.name.trim())) continue;
       if (!values.add('u:${option.id}')) continue;
-      items.add(_item('u:${option.id}', '${option.name} (${option.abbreviation})'));
+      items.add(
+          _item('u:${option.id}', '${option.name} (${option.abbreviation})'));
     }
     for (final unit in widget.units) {
       if (excluded.contains(unit.id) || !values.add('e:${unit.id}')) continue;
@@ -815,9 +823,7 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
       final unit = unitId == null ? null : _unitById(unitId);
       items.add(_item(
         _weightUnit,
-        unit == null
-            ? _weightUnit
-            : l10n.unitsCustomUnitOption(unit.unitName),
+        unit == null ? _weightUnit : l10n.unitsCustomUnitOption(unit.unitName),
       ));
     }
     return items;
@@ -968,10 +974,11 @@ class _EntityUnitEditPageState extends ConsumerState<EntityUnitEditPage> {
     final savePosition = ref.watch(saveButtonPositionProvider);
     final saveLabel = l10n.unitsSave;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(isEditing ? l10n.unitsEditTitle : l10n.unitsAddTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: saveLabel,
@@ -1190,10 +1197,11 @@ class _DensityEditPageState extends ConsumerState<_DensityEditPage> {
     final savePosition = ref.watch(saveButtonPositionProvider);
     final saveLabel = l10n.densitySave;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(isEditing ? l10n.unitsEditTitle : l10n.densityAddTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: saveLabel,
@@ -1213,8 +1221,7 @@ class _DensityEditPageState extends ConsumerState<_DensityEditPage> {
         children: [
           TextField(
             controller: _density,
-            keyboardType:
-                const TextInputType.numberWithOptions(decimal: true),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: InputDecoration(
               labelText: l10n.densityLabel,
               border: const OutlineInputBorder(),
@@ -1241,7 +1248,8 @@ class _DensityEditPageState extends ConsumerState<_DensityEditPage> {
             children: [
               for (final preset in presets)
                 ActionChip(
-                  label: Text('${preset.label} ${formatQuantity(preset.value)}'),
+                  label:
+                      Text('${preset.label} ${formatQuantity(preset.value)}'),
                   onPressed: _saving
                       ? null
                       : () => setState(

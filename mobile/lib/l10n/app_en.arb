@@ -252,6 +252,8 @@
   "@saveButtonPositionBottom": {},
   "saveButtonPositionHint": "Saved on this device only",
   "@saveButtonPositionHint": {},
+  "saveButtonPositionDuoRailNote": "If the side rail is shown, the save button always appears in the upper part of the rail, whichever option you choose.",
+  "@saveButtonPositionDuoRailNote": {},
   "profileMyData": "My data",
   "@profileMyData": {},
   "profileMyProposals": "My proposals",
@@ -1722,7 +1724,12 @@
     }
   },
   "recipeCostPerServings": "{amount} / {count} servings",
-  "@recipeCostPerServings": {
+"recipeCostPerServing": "{amount} / serving",
+  "@recipeCostPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },  "@recipeCostPerServings": {
     "placeholders": {
       "amount": {},
       "count": {}

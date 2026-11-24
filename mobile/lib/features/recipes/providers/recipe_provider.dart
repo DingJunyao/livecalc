@@ -387,7 +387,8 @@ class RecipeDetailPageNotifier extends StateNotifier<RecipeDetailPageState> {
   Future<void> _loadHistory({int days = 30}) async {
     state = state.copyWith(loadingHistory: true);
     try {
-      final history = await _repo.getRecipeCostHistory(recipeId, days: days, regionId: _regionId);
+      final history = await _repo.getRecipeCostHistory(recipeId,
+          days: days, regionId: _regionId);
       state = state.copyWith(costHistory: history, loadingHistory: false);
     } on Exception catch (_) {
       state = state.copyWith(loadingHistory: false);
@@ -397,7 +398,8 @@ class RecipeDetailPageNotifier extends StateNotifier<RecipeDetailPageState> {
   Future<void> _loadMerchantCosts() async {
     state = state.copyWith(loadingMerchantCosts: true);
     try {
-      final costs = await _repo.getRecipeMerchantCosts(recipeId, regionId: _regionId);
+      final costs =
+          await _repo.getRecipeMerchantCosts(recipeId, regionId: _regionId);
       state = state.copyWith(merchantCosts: costs, loadingMerchantCosts: false);
     } on Exception catch (_) {
       state = state.copyWith(loadingMerchantCosts: false);
@@ -448,7 +450,8 @@ class RecipeDetailPageNotifier extends StateNotifier<RecipeDetailPageState> {
   Future<void> reloadHistory(int days) async {
     state = state.copyWith(loadingHistory: true);
     try {
-      final history = await _repo.getRecipeCostHistory(recipeId, days: days, regionId: _regionId);
+      final history = await _repo.getRecipeCostHistory(recipeId,
+          days: days, regionId: _regionId);
       state = state.copyWith(costHistory: history, loadingHistory: false);
     } on Exception catch (_) {
       state = state.copyWith(loadingHistory: false);

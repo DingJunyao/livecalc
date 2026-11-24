@@ -85,6 +85,87 @@
             "debuggerType": "flutter",
             "flutterMode": "debug",
             "openDevTools": "logging"
+        },
+
+        // ───── 打包（只构建、不运行）──────────────────────────────────────────
+        // Dart 扩展没有「只构建」的启动项，下面几个用 node 类型直接调起 flutter 命令
+        // （与上面「前端」配置同一手法）：F5 后在集成终端跑完整构建，结束时进程退出。
+        // 版本号取 mobile/pubspec.yaml 的 version（1.0.0+1 → versionName/versionCode、CFBundleVersion）。
+        // 前提：终端里 `flutter --version` 可用；pub 镜像已在这里显式给出（dart.env 只作用于 Dart 扩展）。
+        {
+            // 产物：mobile/build/app/outputs/flutter-apk/app-release.apk
+            // 直传手机/侧载用。需要 Android SDK + JDK 21（见 flutter doctor）。
+            // 体积优先可加 "--split-per-abi"（按 ABI 出多个 apk，需分别安装）。
+            "name": "Flutter 打包 (Android APK · release)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "flutter",
+            "args": ["build", "apk", "--release"],
+            "cwd": "${workspaceFolder}/mobile",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+                "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
+                "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn"
+            }
+        },
+        {
+            // 产物：mobile/build/app/outputs/bundle/release/app-release.aab
+            // Google Play 上架用（Play 只收 AAB）。本地想装 AAB 验证可用 bundletool。
+            "name": "Flutter 打包 (Android AAB · release)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "flutter",
+            "args": ["build", "appbundle", "--release"],
+            "cwd": "${workspaceFolder}/mobile",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+                "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
+                "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn"
+            }
+        },
+        {
+            // 产物：mobile/build/ios/ipa/*.ipa（同时留下 build/ios/archive/Runner.xcarchive）
+            // 需要签名：先在 Xcode 里打开 mobile/ios/Runner.xcworkspace → Runner target →
+            // Signing & Capabilities 选 Team（Bundle ID com.livecalc.livecalcMobile 需在开发者账号下注册）。
+            // 分发方式默认 app-store；内测可用 "--export-method development" 或 "ad-hoc"。
+            "name": "Flutter 打包 (iOS IPA · release)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "flutter",
+            "args": ["build", "ipa", "--release"],
+            "cwd": "${workspaceFolder}/mobile",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+                "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
+                "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn",
+                // 本机 xcode-select 若退回 Command Line Tools，靠它找到完整 Xcode
+                "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"
+            }
+        },
+        {
+            // 产物：mobile/build/ios/iphoneos/Runner.app
+            // 不签名编译验证（无需开发者账号 / Team），用来确认 iOS 侧代码与插件能编过。
+            // 真机安装和上架必须走上面的 IPA 项。
+            "name": "Flutter 打包 (iOS · 不签名验证)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "flutter",
+            "args": ["build", "ios", "--release", "--no-codesign"],
+            "cwd": "${workspaceFolder}/mobile",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+                "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
+                "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn",
+                "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"
+            }
         }
     ]
 }

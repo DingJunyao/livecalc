@@ -25,6 +25,7 @@ class HomeState {
   final HomeErrorCode? error;
   final Map<String, bool> refreshLoading;
   final HomeErrorCode? lastError;
+
   /// 一句话偏好输入（随生成/换菜提交）
   final String preferenceInput;
 
@@ -108,7 +109,8 @@ class HomeNotifier extends StateNotifier<HomeState> {
       var rec = await _repository.getTodayRecommendation();
       if (rec.status == 'not_generated') {
         rec = await _repository.triggerGenerate(
-          preference: state.preferenceInput.isEmpty ? null : state.preferenceInput,
+          preference:
+              state.preferenceInput.isEmpty ? null : state.preferenceInput,
         );
       }
       if (rec.status == 'generating') {
@@ -135,7 +137,8 @@ class HomeNotifier extends StateNotifier<HomeState> {
       await _repository.refreshMeal(
         mealType,
         recipeId: recipeId,
-        preference: state.preferenceInput.isEmpty ? null : state.preferenceInput,
+        preference:
+            state.preferenceInput.isEmpty ? null : state.preferenceInput,
       );
       await _pollRefreshMeal(mealType);
     } on DioException catch (e) {

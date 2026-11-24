@@ -40,6 +40,7 @@ class SaveButtonPositionNotifier extends StateNotifier<SaveButtonPosition> {
 }
 
 final saveButtonPositionProvider =
-    StateNotifierProvider<SaveButtonPositionNotifier, SaveButtonPosition>((ref) {
+    StateNotifierProvider<SaveButtonPositionNotifier, SaveButtonPosition>(
+        (ref) {
   return SaveButtonPositionNotifier();
 });

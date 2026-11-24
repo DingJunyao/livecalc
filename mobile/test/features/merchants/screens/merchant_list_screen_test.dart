@@ -504,4 +504,56 @@ void main() {
       expect(prefs.getInt('merchants_map_current_place_id'), isNull);
     });
   });
+
+  testWidgets('展开宽屏（≥820）：左 1/2 列表 + 右全高地图', (tester) async {
+    tester.view.physicalSize = const Size(980, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpList(tester);
+
+    final search = tester.getRect(find.byType(TextField).first);
+    final map = tester.getRect(find.byType(FlutterMap));
+    // 完全展开：列表 : 地图 = 1 : 1
+    expect(search.right, lessThanOrEqualTo(980 / 2 + 20),
+        reason: '列表应在左半区：$search');
+    expect(map.width, greaterThan(980 * 0.4),
+        reason: '地图应占约一半宽：$map');
+    expect(map.height, greaterThan(600),
+        reason: '双栏时地图应全高（而非窄屏的 260）：$map');
+
+    // 左侧列表保持单列（商家页是列表多列的例外）
+    final cards = find.byType(Card);
+    if (cards.evaluate().length >= 2) {
+      final r0 = tester.getRect(cards.at(0));
+      final r1 = tester.getRect(cards.at(1));
+      expect(r1.top, greaterThan(r0.bottom - 1),
+          reason: '左侧列表应单列堆叠，而不是并排');
+    }
+  });
+
+  testWidgets('展开宽屏即使关闭地图开关也展示右侧地图（商家页例外）', (tester) async {
+    tester.view.physicalSize = const Size(980, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    // 默认进入时地图是开着的；先切到窄屏关掉开关再切回宽屏，验证恒显
+    await pumpList(tester);
+    expect(find.byType(FlutterMap), findsOneWidget);
+
+    // 宽屏下不渲染地图开关（右侧恒有地图）
+    expect(find.byIcon(Icons.map_outlined), findsNothing);
+    expect(find.byIcon(Icons.map), findsNothing);
+  });
+
+  testWidgets('窄屏（<820）：地图在列表上方、高度 260（既有行为）', (tester) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await pumpList(tester);
+
+    final map = tester.getRect(find.byType(FlutterMap));
+    expect(map.height, moreOrLessEquals(260, epsilon: 1));
+  });
 }

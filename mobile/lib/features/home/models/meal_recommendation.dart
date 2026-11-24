@@ -73,11 +73,13 @@ class MealRecommendation {
   final double? carbsG;
   final double? fatG;
   final bool isCurrentMeal;
+
   /// 多道菜套餐（新）；[recipeId]/[recipeName] 为 staple（无则首道）菜的兼容别名。
   final List<RecommendedDish> dishes;
   final String? source; // rule / system_ai / user_ai / plan
   final String? reason;
   final String? preference;
+
   /// 试算方案来源餐（source='plan'）
   final int? planId;
   final String? planName;
@@ -175,8 +177,7 @@ class MealRecommendation {
       fatG: (nutrition?['fat_g'] as num?)?.toDouble(),
       isCurrentMeal: json['is_current_meal'] as bool? ?? false,
       dishes: (json['dishes'] as List<dynamic>?)
-              ?.map((e) =>
-                  RecommendedDish.fromJson(e as Map<String, dynamic>))
+              ?.map((e) => RecommendedDish.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
       source: json['source'] as String?,
@@ -186,21 +187,21 @@ class MealRecommendation {
       planName: plan?['name'] as String?,
       planKind: plan?['kind'] as String?,
       planItems: (plan?['items'] as List<dynamic>?)
-              ?.map((e) =>
-                  MealPlanItemBrief.fromJson(e as Map<String, dynamic>))
+              ?.map(
+                  (e) => MealPlanItemBrief.fromJson(e as Map<String, dynamic>))
               .toList() ??
           const [],
       planCost: ((plan?['totals'] as Map<String, dynamic>?)?['cost'] as num?)
           ?.toDouble(),
-      planCalories: ((plan?['totals'] as Map<String, dynamic>?)?['calories']
-              as num?)
-          ?.toDouble(),
-      planProteinG: ((plan?['totals'] as Map<String, dynamic>?)?['protein_g']
-              as num?)
-          ?.toDouble(),
-      planCarbsG: ((plan?['totals'] as Map<String, dynamic>?)?['carbs_g']
-              as num?)
-          ?.toDouble(),
+      planCalories:
+          ((plan?['totals'] as Map<String, dynamic>?)?['calories'] as num?)
+              ?.toDouble(),
+      planProteinG:
+          ((plan?['totals'] as Map<String, dynamic>?)?['protein_g'] as num?)
+              ?.toDouble(),
+      planCarbsG:
+          ((plan?['totals'] as Map<String, dynamic>?)?['carbs_g'] as num?)
+              ?.toDouble(),
       planFatG: ((plan?['totals'] as Map<String, dynamic>?)?['fat_g'] as num?)
           ?.toDouble(),
     );

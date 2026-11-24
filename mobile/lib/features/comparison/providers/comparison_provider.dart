@@ -7,6 +7,7 @@ import '../repositories/comparison_repository.dart';
 
 class ComparisonState {
   final List<RegionCandidate> candidates;
+
   /// 用户自定义计算范围（可作为独立对比项加入，负 id 表示）
   final List<CalcScopeOption> calcScopes;
   final List<int> selectedRegionIds;
@@ -18,9 +19,11 @@ class ComparisonState {
   final List<EntityOption> entityOptions;
   final bool searching;
   final List<int> selectedEntityIds;
+
   /// id → 实体类型（'ingredient' | 'product'；原料/商品可同时参与对比）
   final Map<int, String> selectedEntityTypes;
   final EntityPrices? entityPrices;
+
   /// 混合类型分段结果（原料段 + 商品段；RegionPriceMatrix 逐段合并行）
   final List<EntityPrices> entityPriceParts;
   final bool loadingEntityPrices;
@@ -96,13 +99,16 @@ class ComparisonState {
       selectedRegionIds: selectedRegionIds ?? this.selectedRegionIds,
       summary: clearSummary ? null : (summary ?? this.summary),
       loadingSummary: loadingSummary ?? this.loadingSummary,
-      summaryError: clearSummaryError ? null : (summaryError ?? this.summaryError),
+      summaryError:
+          clearSummaryError ? null : (summaryError ?? this.summaryError),
       entityType: entityType ?? this.entityType,
-      entityOptions: clearEntityOptions ? const [] : (entityOptions ?? this.entityOptions),
+      entityOptions:
+          clearEntityOptions ? const [] : (entityOptions ?? this.entityOptions),
       searching: searching ?? this.searching,
       selectedEntityIds: selectedEntityIds ?? this.selectedEntityIds,
       selectedEntityTypes: selectedEntityTypes ?? this.selectedEntityTypes,
-      entityPrices: clearEntityPrices ? null : (entityPrices ?? this.entityPrices),
+      entityPrices:
+          clearEntityPrices ? null : (entityPrices ?? this.entityPrices),
       entityPriceParts: entityPriceParts ?? this.entityPriceParts,
       loadingEntityPrices: loadingEntityPrices ?? this.loadingEntityPrices,
       selectedRecipeIds: selectedRecipeIds ?? this.selectedRecipeIds,
@@ -157,7 +163,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
   }
 
   Future<void> selectRegions(List<int> ids) async {
-    state = state.copyWith(selectedRegionIds: ids, clearSummary: true, clearEntityPrices: true);
+    state = state.copyWith(
+        selectedRegionIds: ids, clearSummary: true, clearEntityPrices: true);
     await loadSummary();
     await loadMatrix();
     await loadRecipeMatrix();
@@ -171,7 +178,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     state = state.copyWith(loadingSummary: true, clearSummaryError: true);
     try {
       final summary = await _repository.getSummary(regionIds: ids);
-      if (seq == _summarySeq) state = state.copyWith(summary: summary, loadingSummary: false);
+      if (seq == _summarySeq)
+        state = state.copyWith(summary: summary, loadingSummary: false);
     } catch (e) {
       if (seq == _summarySeq) {
         state = state.copyWith(loadingSummary: false, summaryError: '$e');
@@ -188,7 +196,8 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
         entityType: entityType ?? state.entityType,
         keyword: keyword,
       );
-      if (seq == _searchSeq) state = state.copyWith(entityOptions: options, searching: false);
+      if (seq == _searchSeq)
+        state = state.copyWith(entityOptions: options, searching: false);
     } catch (_) {
       if (seq == _searchSeq) {
         state = state.copyWith(clearEntityOptions: true, searching: false);
@@ -253,14 +262,15 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
       final parts = <EntityPrices>[];
       if (ingIds.isNotEmpty) {
         parts.add(await _repository.getEntityPrices(
-          entityType: 'ingredient', entityIds: ingIds, regionIds: regionIds));
+            entityType: 'ingredient', entityIds: ingIds, regionIds: regionIds));
       }
       if (prodIds.isNotEmpty) {
         parts.add(await _repository.getEntityPrices(
-          entityType: 'product', entityIds: prodIds, regionIds: regionIds));
+            entityType: 'product', entityIds: prodIds, regionIds: regionIds));
       }
       if (seq == _matrixSeq) {
-        state = state.copyWith(entityPriceParts: parts, loadingEntityPrices: false);
+        state =
+            state.copyWith(entityPriceParts: parts, loadingEntityPrices: false);
       }
     } catch (_) {
       if (seq == _matrixSeq) state = state.copyWith(loadingEntityPrices: false);
@@ -297,11 +307,13 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     final seq = ++_recipeSeq;
     state = state.copyWith(loadingRecipes: true);
     try {
-      final data = await _repository.getRecipeCosts(recipeIds: recipeIds, regionIds: regionIds);
+      final data = await _repository.getRecipeCosts(
+          recipeIds: recipeIds, regionIds: regionIds);
       final rows = ((data['recipes'] as List?) ?? const [])
           .map((e) => e as Map<String, dynamic>)
           .toList();
-      if (seq == _recipeSeq) state = state.copyWith(recipeRows: rows, loadingRecipes: false);
+      if (seq == _recipeSeq)
+        state = state.copyWith(recipeRows: rows, loadingRecipes: false);
     } catch (_) {
       if (seq == _recipeSeq) state = state.copyWith(loadingRecipes: false);
     }
@@ -335,11 +347,13 @@ class ComparisonNotifier extends StateNotifier<ComparisonState> {
     final seq = ++_planSeq;
     state = state.copyWith(loadingPlans: true);
     try {
-      final data = await _repository.getPlanCosts(planIds: planIds, regionIds: regionIds);
+      final data = await _repository.getPlanCosts(
+          planIds: planIds, regionIds: regionIds);
       final rows = ((data['plans'] as List?) ?? const [])
           .map((e) => e as Map<String, dynamic>)
           .toList();
-      if (seq == _planSeq) state = state.copyWith(planRows: rows, loadingPlans: false);
+      if (seq == _planSeq)
+        state = state.copyWith(planRows: rows, loadingPlans: false);
     } catch (_) {
       if (seq == _planSeq) state = state.copyWith(loadingPlans: false);
     }

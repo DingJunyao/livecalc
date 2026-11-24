@@ -29,7 +29,8 @@ class RegionCandidate {
     return RegionCandidate(
       regionId: (json['region_id'] as num?)?.toInt() ?? 0,
       name: (json['name'] as String?) ?? '',
-      displayName: (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
+      displayName:
+          (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
       level: (json['level'] as num?)?.toInt() ?? 0,
       recordCount: (json['record_count'] as num?)?.toInt() ?? 0,
       merchantCount: (json['merchant_count'] as num?)?.toInt() ?? 0,
@@ -60,12 +61,12 @@ class RegionSummary {
     return RegionSummary(
       regionId: (json['region_id'] as num?)?.toInt() ?? 0,
       name: (json['name'] as String?) ?? '',
-      displayName: (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
+      displayName:
+          (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
       recordCount: (json['record_count'] as num?)?.toInt() ?? 0,
       entityCount: (json['entity_count'] as num?)?.toInt() ?? 0,
-      priceIndex: json['price_index'] == null
-          ? null
-          : _toDouble(json['price_index']),
+      priceIndex:
+          json['price_index'] == null ? null : _toDouble(json['price_index']),
       trend: ((json['trend'] as List?) ?? const [])
           .map((e) => _toDouble(e))
           .toList(),
@@ -115,7 +116,8 @@ class RegionMeta {
     return RegionMeta(
       regionId: (json['region_id'] as num?)?.toInt() ?? 0,
       name: (json['name'] as String?) ?? '',
-      displayName: (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
+      displayName:
+          (json['display_name'] as String?) ?? (json['name'] as String?) ?? '',
       level: (json['level'] as num?)?.toInt() ?? 0,
     );
   }
@@ -156,6 +158,7 @@ class EntityPriceRow {
   final int entityId;
   final String name;
   final String? unit;
+
   /// 键为 region_id 字符串；该地区无数据时值为 null
   final Map<String, EntityRegionPrice?> regions;
 
@@ -292,13 +295,12 @@ class ComparisonRepository {
     required List<int> regionIds,
     int days = 30,
   }) async {
-    final response = await _client.dio.get('/comparison/summary',
-        queryParameters: {
-          'region_ids': serializeCompareRegionIds(regionIds),
-          'days': days,
-        });
-    return ComparisonSummary.fromJson(
-        response.data as Map<String, dynamic>);
+    final response =
+        await _client.dio.get('/comparison/summary', queryParameters: {
+      'region_ids': serializeCompareRegionIds(regionIds),
+      'days': days,
+    });
+    return ComparisonSummary.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// 实体×地区价格矩阵。
@@ -308,13 +310,13 @@ class ComparisonRepository {
     required List<int> regionIds,
     int days = 30,
   }) async {
-    final response = await _client.dio.get('/comparison/entity-prices',
-        queryParameters: {
-          'entity_type': entityType,
-          'entity_ids': entityIds.join(','),
-          'region_ids': serializeCompareRegionIds(regionIds),
-          'days': days,
-        });
+    final response =
+        await _client.dio.get('/comparison/entity-prices', queryParameters: {
+      'entity_type': entityType,
+      'entity_ids': entityIds.join(','),
+      'region_ids': serializeCompareRegionIds(regionIds),
+      'days': days,
+    });
     return EntityPrices.fromJson(response.data as Map<String, dynamic>);
   }
 
@@ -328,10 +330,12 @@ class ComparisonRepository {
     if (keyword.isNotEmpty) {
       params[entityType == 'ingredient' ? 'q' : 'search'] = keyword;
     }
-    final url = entityType == 'ingredient' ? '/ingredients' : '/products/entity';
+    final url =
+        entityType == 'ingredient' ? '/ingredients' : '/products/entity';
     final response = await _client.dio.get(url, queryParameters: params);
     final data = response.data;
-    final list = (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
+    final list =
+        (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
     return list
         .map((e) => EntityOption(
               id: ((e as Map)['id'] as num?)?.toInt() ?? 0,
@@ -342,12 +346,14 @@ class ComparisonRepository {
   }
 
   /// 菜谱搜索（GET /recipes，服务端 search）。
-  Future<List<EntityOption>> searchRecipes({String keyword = '', int limit = 20}) async {
+  Future<List<EntityOption>> searchRecipes(
+      {String keyword = '', int limit = 20}) async {
     final params = <String, dynamic>{'limit': limit};
     if (keyword.isNotEmpty) params['search'] = keyword;
     final response = await _client.dio.get('/recipes', queryParameters: params);
     final data = response.data;
-    final list = (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
+    final list =
+        (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
     return list
         .map((e) => EntityOption(
               id: ((e as Map)['id'] as num?)?.toInt() ?? 0,
@@ -361,7 +367,8 @@ class ComparisonRepository {
   Future<List<EntityOption>> listPlans() async {
     final response = await _client.dio.get('/meal-plans');
     final data = response.data;
-    final list = (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
+    final list =
+        (data is Map ? (data['items'] as List?) : (data as List?)) ?? const [];
     return list
         .map((e) => EntityOption(
               id: ((e as Map)['id'] as num?)?.toInt() ?? 0,
@@ -378,11 +385,11 @@ class ComparisonRepository {
     required List<int> recipeIds,
     required List<int> regionIds,
   }) async {
-    final response = await _client.dio.get('/comparison/recipe-costs',
-        queryParameters: {
-          'recipe_ids': recipeIds.join(','),
-          'region_ids': serializeCompareRegionIds(regionIds),
-        });
+    final response =
+        await _client.dio.get('/comparison/recipe-costs', queryParameters: {
+      'recipe_ids': recipeIds.join(','),
+      'region_ids': serializeCompareRegionIds(regionIds),
+    });
     return response.data as Map<String, dynamic>;
   }
 
@@ -391,11 +398,11 @@ class ComparisonRepository {
     required List<int> planIds,
     required List<int> regionIds,
   }) async {
-    final response = await _client.dio.get('/comparison/plan-costs',
-        queryParameters: {
-          'plan_ids': planIds.join(','),
-          'region_ids': serializeCompareRegionIds(regionIds),
-        });
+    final response =
+        await _client.dio.get('/comparison/plan-costs', queryParameters: {
+      'plan_ids': planIds.join(','),
+      'region_ids': serializeCompareRegionIds(regionIds),
+    });
     return response.data as Map<String, dynamic>;
   }
 
@@ -428,15 +435,15 @@ class ComparisonRepository {
     String entityType = 'ingredient',
     int? entityId,
   }) async {
-    final response = await _client.dio.get('/comparison/heatmap',
-        queryParameters: {
-          'mode': mode,
-          'region_ids': serializeCompareRegionIds(regionIds),
-          if (mode == 'item') ...{
-            'entity_type': entityType,
-            'entity_id': entityId,
-          },
-        });
+    final response =
+        await _client.dio.get('/comparison/heatmap', queryParameters: {
+      'mode': mode,
+      'region_ids': serializeCompareRegionIds(regionIds),
+      if (mode == 'item') ...{
+        'entity_type': entityType,
+        'entity_id': entityId,
+      },
+    });
     return response.data as Map<String, dynamic>;
   }
 

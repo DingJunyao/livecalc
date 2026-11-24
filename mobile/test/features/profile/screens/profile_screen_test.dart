@@ -13,6 +13,7 @@ import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
 import 'package:com_a4ding_livecalc/features/profile/screens/profile_screen.dart';
+import 'package:com_a4ding_livecalc/core/layout/vertical_bar_edge.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
@@ -538,5 +539,58 @@ void main() {
     expectedNames.forEach((code, name) {
       expect(find.text('$name $code'), findsOneWidget);
     });
+  });
+
+  // 保存按钮位置对话框：Duo 上多一句「有侧边栏时总在侧边栏上部分」。
+  Future<void> pumpProfileWithDialog(
+    WidgetTester tester, {
+    required bool duo,
+  }) async {
+    notifier.state = const AuthState(
+      status: AuthStatus.authenticated,
+      user: User(id: 1, username: 'alice', email: 'a@test.com'),
+    );
+    await tester.pumpWidget(ProviderScope(
+      overrides: [authProvider.overrideWith((ref) => notifier)],
+      child: DuoLayoutScope(
+        // 展开竖屏实测遮挡区：右上状态簇 144×82（有遮挡区即视为 Duo）
+        layout: duo
+            ? const DuoLayoutInfo(
+                width: 669,
+                height: 951,
+                occlusions: [Rect.fromLTRB(525, 0, 669, 82)],
+              )
+            : const DuoLayoutInfo(),
+        railWidth: 0,
+        child: const MaterialApp(
+          locale: Locale('zh', 'CN'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: ProfileScreen(),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    final row = find.text('保存按钮位置');
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('保存按钮位置（Duo）：提示有侧边栏时总在侧边栏上部分', (tester) async {
+    await pumpProfileWithDialog(tester, duo: true);
+    expect(
+      find.text('如果显示了侧边栏，则无论选哪项，保存按钮都固定在侧边栏上部分。'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('保存按钮位置（非 Duo）：不显示该提示', (tester) async {
+    await pumpProfileWithDialog(tester, duo: false);
+    expect(
+      find.text('如果显示了侧边栏，则无论选哪项，保存按钮都固定在侧边栏上部分。'),
+      findsNothing,
+    );
   });
 }

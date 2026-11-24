@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../repositories/price_repository.dart';
 import '../utils/paste_price_parser.dart';
 import '../../products/repositories/product_repository.dart';
@@ -547,7 +548,7 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
     final hasImportable = _importable.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.pricePasteImportTitle)),
+      appBar: ShellAppBar(title: Text(l10n.pricePasteImportTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           controller: _scrollController,
@@ -568,16 +569,6 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 onTap: _pickRecordedAt,
               ),
               const SizedBox(height: 8),
-              // 复制模板
-              Align(
-                alignment: AlignmentDirectional.centerEnd,
-                child: TextButton.icon(
-                  onPressed:
-                      widget.historyProductNames.isEmpty ? null : _copyTemplate,
-                  icon: const Icon(Icons.content_copy),
-                  label: Text(l10n.priceCopyTemplate),
-                ),
-              ),
               // 粘贴文本输入
               TextField(
                 key: const Key('paste-raw-text-field'),
@@ -591,9 +582,17 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              // 解析按钮 + 概要
+              // 操作行：复制模板靠左、解析并匹配靠右（用户定调，与 web 同构）
               Row(
                 children: [
+                  TextButton.icon(
+                    onPressed: widget.historyProductNames.isEmpty
+                        ? null
+                        : _copyTemplate,
+                    icon: const Icon(Icons.content_copy),
+                    label: Text(l10n.priceCopyTemplate),
+                  ),
+                  const Spacer(),
                   FilledButton.tonalIcon(
                     onPressed: _parsing ? null : _parse,
                     icon: _parsing
@@ -605,20 +604,21 @@ class _PasteImportScreenState extends State<PasteImportScreen> {
                         : const Icon(Icons.search),
                     label: Text(l10n.priceParseAndMatch),
                   ),
-                  const SizedBox(width: 12),
-                  if (_rows.isNotEmpty)
-                    Expanded(
-                      child: Text(
-                        l10n.pricePasteSummary(
-                          formatNumber(_matchedCount),
-                          formatNumber(_unmatchedCount),
-                          formatNumber(_invalidCount),
-                        ),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ),
                 ],
               ),
+              // 概要（解析后才有）
+              if (_rows.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    l10n.pricePasteSummary(
+                      formatNumber(_matchedCount),
+                      formatNumber(_unmatchedCount),
+                      formatNumber(_invalidCount),
+                    ),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ),
               const SizedBox(height: 12),
               // 行列表
               if (_rows.isNotEmpty) ...[

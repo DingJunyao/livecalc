@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +15,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/utils/entity_unit_names.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/utils/currency_fmt.dart';
+import '../../../shared/widgets/adaptive_tab_bar.dart';
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -68,21 +72,40 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(plannerListProvider);
     final userCurrency = ref.watch(displayCurrencyProvider);
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.plansNewPlan,
+          onPressed: _openCreate,
+        ),
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.navPlans),
-        leading: const AppBackButton(),
+        // 宽底栏下一级目的地（Duo 展开竖屏 / 折叠横屏）不需要返回键。
+        leading: context.shellTabRoot ? null : const AppBackButton(),
         actions: const [
           CalcContextMenuButton(),
         ],
       ),
       body: _buildBody(theme, l10n, state, userCurrency),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openCreate,
-        tooltip: l10n.plansNewPlan,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: _openCreate,
+              tooltip: l10n.plansNewPlan,
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -100,16 +123,47 @@ class _PlannerListScreenState extends ConsumerState<PlannerListScreen> {
         title: l10n.plansEmpty,
       );
     }
-    return RefreshIndicator(
-      onRefresh: () => ref.read(plannerListProvider.notifier).load(),
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          for (final plan in state.plans)
-            _planCard(theme, l10n, state, plan, userCurrency),
-        ],
-      ),
-    );
+    // 宽屏（Duo 展开态）列表改多列，与 web 栅格同构；手机竖屏单列。
+    return LayoutBuilder(builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 1100
+          ? 3
+          : (constraints.maxWidth >= 620 ? 2 : 1);
+      if (columns <= 1) {
+        return RefreshIndicator(
+          onRefresh: () => ref.read(plannerListProvider.notifier).load(),
+          child: ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              for (final plan in state.plans)
+                _planCard(theme, l10n, state, plan, userCurrency),
+            ],
+          ),
+        );
+      }
+      final plans = state.plans;
+      final rowCount = (plans.length + columns - 1) ~/ columns;
+      return RefreshIndicator(
+        onRefresh: () => ref.read(plannerListProvider.notifier).load(),
+        child: ListView.builder(
+          padding: const EdgeInsets.all(12),
+          itemCount: rowCount,
+          itemBuilder: (ctx, row) => Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var col = 0; col < columns; col++) ...[
+                if (col > 0) const SizedBox(width: 12),
+                Expanded(
+                  child: row * columns + col < plans.length
+                      ? _planCard(theme, l10n, state,
+                          plans[row * columns + col], userCurrency)
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   /// 列表卡片：名称/类型 + 成本 + 营养素（含 NRV%）+ 30 天成本迷你图
@@ -597,7 +651,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
     if (_loading) return const LoadingIndicator();
     if (_error != null) {
       return Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(l10n.navPlans),
           leading: const AppBackButton(),
         ),
@@ -610,7 +664,7 @@ class _PlannerEditScreenState extends ConsumerState<PlannerEditScreen> {
       isDirty: () =>
           _nameController.text.trim().isNotEmpty || _items.isNotEmpty,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(_planId == null ? l10n.plansNewPlan : l10n.plansEdit),
           leading: const AppBackButton(),
           actions: [
@@ -953,7 +1007,7 @@ class _PlanEntityPickerState extends State<_PlanEntityPicker> {
           children: [
             Material(
               color: Theme.of(context).colorScheme.surface,
-              child: TabBar(
+              child: AdaptiveTabBar(
                 tabs: [
                   Tab(text: l10n.plansTypeRecipe),
                   Tab(text: l10n.plansTypeIngredient),

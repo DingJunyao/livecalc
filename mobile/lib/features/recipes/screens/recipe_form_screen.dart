@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -866,11 +869,12 @@ class _RecipeFormScreenState extends ConsumerState<RecipeFormScreen> {
         _handleBack();
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(_appBarTitle(l10n)),
           actions: [
             if (_hasPageSave)
               ...saveAppBarActions(
+                context: context,
                 position: savePosition,
                 onSave: _pageSaveAction(),
                 label: _pageSaveLabel(l10n),

@@ -16,9 +16,7 @@ Future<int?> matchRegionId(
   String? subLocality,
 }) async {
   try {
-    if (administrativeArea == null &&
-        locality == null &&
-        subLocality == null) {
+    if (administrativeArea == null && locality == null && subLocality == null) {
       return null;
     }
     final countries = await repository.listRegions(level: 0);
@@ -123,7 +121,17 @@ String? _normalizeName(String? raw) {
   var name = raw.trim();
   if (name.isEmpty) return null;
   const suffixes = [
-    '特别行政区', '自治区', '自治州', '林区', '地区', '盟', '省', '市', '县', '区', '旗',
+    '特别行政区',
+    '自治区',
+    '自治州',
+    '林区',
+    '地区',
+    '盟',
+    '省',
+    '市',
+    '县',
+    '区',
+    '旗',
   ];
   bool changed = true;
   while (changed) {

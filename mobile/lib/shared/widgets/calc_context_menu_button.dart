@@ -162,8 +162,7 @@ class _CalcContextSheetState extends ConsumerState<CalcContextSheet> {
             regionId: _isCustomScope ? null : _regionId,
             scope: _scope,
             currency: _currency,
-            customRegionIds:
-                _isCustomScope ? _selectedCustomRegionIds() : null,
+            customRegionIds: _isCustomScope ? _selectedCustomRegionIds() : null,
           );
       if (mounted) {
         Navigator.of(context).pop();

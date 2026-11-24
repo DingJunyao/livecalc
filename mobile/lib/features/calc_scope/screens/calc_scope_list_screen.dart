@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
@@ -116,14 +118,27 @@ class _CalcScopeListScreenState extends ConsumerState<CalcScopeListScreen> {
     final theme = Theme.of(context);
     final state = ref.watch(calcScopeListProvider);
     final l10n = AppLocalizations.of(context);
+    // 竖条导航：新增走竖条主操作，页面不再显示 FAB（否则两个新增入口并存）。
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.calcScopeAdd,
+          onPressed: () => _openEditor(),
+        ),
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.calcScopeListTitle)),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openEditor(),
-        tooltip: l10n.calcScopeAdd,
-        child: const Icon(Icons.add),
-      ),
+      appBar: ShellAppBar(title: Text(l10n.calcScopeListTitle)),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openEditor(),
+              tooltip: l10n.calcScopeAdd,
+              child: const Icon(Icons.add),
+            ),
       body: state.loading && state.items.isEmpty
           ? const LoadingIndicator()
           : state.error != null && state.items.isEmpty
@@ -176,8 +191,8 @@ class _CalcScopeListScreenState extends ConsumerState<CalcScopeListScreen> {
                               scope.regionsSummary,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.outline),
+                              style: theme.textTheme.bodySmall
+                                  ?.copyWith(color: theme.colorScheme.outline),
                             ),
                             trailing: PopupMenuButton<String>(
                               tooltip: l10n.calcScopeMoreActions,

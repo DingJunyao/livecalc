@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../models/auth_config.dart';
 import '../providers/auth_provider.dart';
 import '../../profile/providers/startup_page_provider.dart';
@@ -147,7 +148,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
         !(authConfig.isLoading && authConfig.value == null);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.authRegisterTitle)),
+      appBar: ShellAppBar(title: Text(l10n.authRegisterTitle)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

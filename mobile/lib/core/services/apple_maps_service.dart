@@ -84,7 +84,7 @@ class ApplePlace {
 class AppleMapsService {
   AppleMapsService({MethodChannel? channel, bool? available})
       : _channel =
-              channel ?? const MethodChannel('com.a4ding.livecalc/apple_maps'),
+            channel ?? const MethodChannel('com.a4ding.livecalc/apple_maps'),
         _availableOverride = available;
 
   final MethodChannel _channel;

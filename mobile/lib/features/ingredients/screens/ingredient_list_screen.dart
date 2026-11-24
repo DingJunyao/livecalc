@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,7 +18,6 @@ import '../../merchants/providers/merchant_provider.dart';
 import '../../prices/screens/price_record_form_screen.dart';
 import '../../products/repositories/product_repository.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/widgets/directional_icons.dart';
 import '../models/ingredient.dart';
 import 'ingredient_form_screen.dart' show IngredientFormResult;
 import '../providers/ingredient_provider.dart';
@@ -89,11 +91,28 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
       ref.read(ingredientListProvider.notifier).load();
     });
     final theme = Theme.of(context);
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.commonAdd,
+          onPressed: () => _openAddForm(),
+        ),
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+        ],
+      );
+    }
     final state = ref.watch(ingredientListProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.ingredientTitle),
-        leading: const AppBackButton(),
+        // 宽底栏下一级目的地（Duo 展开竖屏 / 折叠横屏）不需要返回键。
+        leading: context.shellTabRoot ? null : const AppBackButton(),
         // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
         actions: const [
           CalcContextMenuButton(),
@@ -105,10 +124,12 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
           Expanded(child: _buildBody(theme, state)),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _openAddForm,
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: _openAddForm,
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -151,7 +172,7 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
             height: 48,
             child: Badge(
               isLabelVisible: notifier.activeFilterCount > 0,
-          label: Text(formatNumber(notifier.activeFilterCount)),
+              label: Text(formatNumber(notifier.activeFilterCount)),
               child: IconButton.filledTonal(
                 icon: const Icon(Icons.tune),
                 tooltip: l10n.journeyFilters,
@@ -190,45 +211,88 @@ class _IngredientListScreenState extends ConsumerState<IngredientListScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => ref.read(ingredientListProvider.notifier).load(),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        itemCount: state.items.length + (state.hasMore ? 1 : 0),
-        itemBuilder: (ctx, i) {
-          if (i >= state.items.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: state.loadingMore
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : TextButton(
-                        onPressed: () => ref
-                            .read(ingredientListProvider.notifier)
-                            .load(loadMore: true),
-                        child: Text(l10n.journeyLoadMore),
-                      ),
-              ),
-            );
-          }
-          return _IngredientCard(
-            item: state.items[i],
-            latest: state.latestPrices[state.items[i].id],
-            sparkline: state.sparklines[state.items[i].id],
-            onTap: () => context.push('/ingredients/${state.items[i].id}'),
-            onQuickPrice: () => _quickPrice(state.items[i]),
-            isFavorite: state.favoriteIds.contains(state.items[i].id),
-            onToggleFavorite: () =>
-                ref.read(ingredientListProvider.notifier).toggleFavorite(
-                      state.items[i].id,
-                    ),
-            userCurrency: ref.read(displayCurrencyProvider),
+      child: LayoutBuilder(builder: (context, constraints) {
+        // 展开态（≥620）单行列表改多列：Duo 展开竖屏/折叠横屏两列、
+        // 内屏横屏三列；手机竖屏保持单列。
+        final columns = constraints.maxWidth >= 1100
+            ? 3
+            : (constraints.maxWidth >= 620 ? 2 : 1);
+        final items = state.items;
+        if (columns <= 1) {
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            itemCount: items.length + (state.hasMore ? 1 : 0),
+            itemBuilder: (ctx, i) => _buildItem(ctx, i, items, state, ref),
           );
-        },
-      ),
+        }
+        final rowCount = (items.length + columns - 1) ~/ columns;
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          itemCount: rowCount + (state.hasMore ? 1 : 0),
+          itemBuilder: (ctx, row) {
+            if (row >= rowCount) {
+              return _buildItem(ctx, items.length, items, state, ref);
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var col = 0; col < columns; col++) ...[
+                  if (col > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: row * columns + col < items.length
+                        ? _buildItem(
+                            ctx, row * columns + col, items, state, ref)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  /// 列表项（或加载更多）——单列与多列共用。
+  Widget _buildItem(
+    BuildContext ctx,
+    int i,
+    List<Ingredient> items,
+    IngredientListState state,
+    WidgetRef ref,
+  ) {
+    final l10n = AppLocalizations.of(context);
+    if (i >= items.length) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: state.loadingMore
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : TextButton(
+                  onPressed: () => ref
+                      .read(ingredientListProvider.notifier)
+                      .load(loadMore: true),
+                  child: Text(l10n.journeyLoadMore),
+                ),
+        ),
+      );
+    }
+    return _IngredientCard(
+      item: items[i],
+      latest: state.latestPrices[items[i].id],
+      sparkline: state.sparklines[items[i].id],
+      onTap: () => context.push('/ingredients/${items[i].id}'),
+      onQuickPrice: () => _quickPrice(items[i]),
+      isFavorite: state.favoriteIds.contains(items[i].id),
+      onToggleFavorite: () =>
+          ref.read(ingredientListProvider.notifier).toggleFavorite(items[i].id),
+      userCurrency: ref.read(displayCurrencyProvider),
     );
   }
 
@@ -421,19 +485,11 @@ class _IngredientCard extends ConsumerWidget {
                   isFavorite ? Icons.favorite : Icons.favorite_border,
                   color: isFavorite ? theme.colorScheme.error : null,
                 ),
-                tooltip:
-                    isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+                tooltip: isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
                 visualDensity: VisualDensity.compact,
                 onPressed: onToggleFavorite,
               ),
-              IconButton(
-                icon: const Icon(Icons.add_chart),
-                tooltip: l10n.journeyRecordPrice,
-                visualDensity: VisualDensity.compact,
-                onPressed: onQuickPrice,
-              ),
-              Icon(DirectionalIcons.forwardChevron(context),
-                  color: Colors.grey),
+              // 列表不再提供「记价」入口与尾部箭头：点卡片进详情即可。
             ],
           ),
         ),

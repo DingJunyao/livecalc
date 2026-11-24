@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/vertical_bar_edge.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_repository.dart';
 import '../../calc_scope/models/calc_scope.dart';
@@ -24,7 +26,7 @@ class ProfileScreen extends ConsumerWidget {
     final user = authState.user;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileTitle)),
+      appBar: ShellAppBar(title: Text(l10n.profileTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -91,6 +93,8 @@ class ProfileScreen extends ConsumerWidget {
               leading: const Icon(Icons.currency_exchange),
               title: Text(l10n.profileDefaultCurrency),
               subtitle: Text(user?.defaultCurrency ?? l10n.profileFollowRegion),
+              trailing: Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
               onTap: () => _showDefaultCurrencyDialog(context, ref),
             ),
             const Divider(height: 1),
@@ -100,6 +104,8 @@ class ProfileScreen extends ConsumerWidget {
               subtitle: Text(user?.defaultCalcScopeId != null
                   ? l10n.profileCustomCalcScopes
                   : _calcScopeDisplayName(user?.defaultCalcScope, l10n)),
+              trailing: Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
               onTap: () => _showDefaultCalcScopeDialog(context, ref),
             ),
             const Divider(height: 1),
@@ -107,6 +113,8 @@ class ProfileScreen extends ConsumerWidget {
               leading: const Icon(Icons.layers_outlined),
               title: Text(l10n.profileCustomCalcScopes),
               subtitle: Text(l10n.profileCustomCalcScopesSubtitle),
+              trailing: Icon(DirectionalIcons.forwardChevron(context),
+                  color: Colors.grey),
               onTap: () => context.push('/profile/calc-scopes'),
             ),
             const Divider(height: 1),
@@ -242,6 +250,11 @@ Future<void> _showSaveButtonPositionDialog(
     BuildContext context, WidgetRef ref) async {
   final current = ref.read(saveButtonPositionProvider);
   final l10n = AppLocalizations.of(context);
+  // 弹层挂在根导航上，拿不到壳层的 DuoLayoutScope → 先在这里判断是不是 Duo。
+  final duoInfo = DuoLayoutScope.infoOf(context);
+  final isDuo = duoInfo != null &&
+      (duoInfo.occlusions.isNotEmpty ||
+          duoInfo.edge != VerticalBarEdge.unspecified);
   final selected = await showDialog<SaveButtonPosition>(
     context: context,
     builder: (ctx) => SimpleDialog(
@@ -254,6 +267,29 @@ Future<void> _showSaveButtonPositionDialog(
             style: Theme.of(ctx).textTheme.bodySmall,
           ),
         ),
+        if (isDuo)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 16,
+                  color: Theme.of(ctx).colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    l10n.saveButtonPositionDuoRailNote,
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         RadioGroup<SaveButtonPosition>(
           groupValue: current,
           onChanged: (v) => Navigator.of(ctx).pop(v),
@@ -416,8 +452,8 @@ String? _localizedCurrencyName(String code, AppLocalizations l10n) {
 
 /// 币种显示名：优先接口已按 Accept-Language 本地化的 display_name，
 /// 其次本地文案表（接口不可用时的兜底），最后回退原始 name / 币种代码。
-String _currencyDisplayName(Map<String, dynamic> currency,
-    AppLocalizations l10n) {
+String _currencyDisplayName(
+    Map<String, dynamic> currency, AppLocalizations l10n) {
   final code = currency['code']?.toString() ?? '';
   final displayName = currency['display_name']?.toString().trim();
   if (displayName != null && displayName.isNotEmpty) return displayName;

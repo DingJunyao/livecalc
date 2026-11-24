@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,7 +11,7 @@ import '../../../shared/models/latest_price.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/repositories/favorites_repository.dart';
 import '../../../shared/utils/currency_fmt.dart';
-import '../../../shared/widgets/directional_icons.dart';
+import '../../../shared/widgets/adaptive_tab_bar.dart';
 import '../../../shared/widgets/app_back_button.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../shared/widgets/empty_state.dart';
@@ -198,18 +201,29 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(actions: [
+        ShellAction.custom(
+          child: const CalcContextMenuButton(),
+          label: l10n.calcContextTooltip,
+        ),
+      ]);
+    }
+
     return DefaultTabController(
       length: 4,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(l10n.navFavorites),
-          leading: const AppBackButton(),
+          // 宽底栏下一级目的地（Duo 展开竖屏 / 折叠横屏）不需要返回键。
+          leading: context.shellTabRoot ? null : const AppBackButton(),
           // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
           actions: const [
             CalcContextMenuButton(),
           ],
-          bottom: TabBar(
-            isScrollable: true,
+          // 宽屏标签等分整行（右侧不留空白），窄屏按内容排、可滚动。
+          bottom: AdaptiveTabBar(
             tabs: [
               Tab(text: l10n.favoritesTabIngredients),
               Tab(text: l10n.favoritesTabProducts),
@@ -247,10 +261,34 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     }
     return RefreshIndicator(
       onRefresh: _load,
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: children,
-      ),
+      child: LayoutBuilder(builder: (context, constraints) {
+        // 展开态（≥620）两列、≥1100 三列；手机竖屏单列。
+        final columns = constraints.maxWidth >= 1100
+            ? 3
+            : (constraints.maxWidth >= 620 ? 2 : 1);
+        if (columns <= 1) {
+          return ListView(
+            padding: const EdgeInsets.all(12),
+            children: children,
+          );
+        }
+        final width =
+            (constraints.maxWidth - 24 - 12 * (columns - 1)) / columns;
+        return ListView(
+          padding: const EdgeInsets.all(12),
+          children: [
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              crossAxisAlignment: WrapCrossAlignment.start,
+              children: [
+                for (final child in children)
+                  SizedBox(width: width, child: child),
+              ],
+            ),
+          ],
+        );
+      }),
     );
   }
 
@@ -354,8 +392,8 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
             titleBadge: item.isOpen
                 ? null
                 : Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 6, vertical: 1),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                     decoration: BoxDecoration(
                       color: Colors.orange.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(8),
@@ -539,8 +577,8 @@ class _FavoriteTile extends StatelessWidget {
               if (sparkline != null && sparkline!.length >= 2) ...[
                 Sparkline(
                   data: sparkline!,
-                  color: sparklineColor ??
-                      Theme.of(context).colorScheme.primary,
+                  color:
+                      sparklineColor ?? Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 4),
               ],
@@ -553,8 +591,6 @@ class _FavoriteTile extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 onPressed: onToggleFavorite,
               ),
-              Icon(DirectionalIcons.forwardChevron(context),
-                  color: Colors.grey),
             ],
           ),
         ),

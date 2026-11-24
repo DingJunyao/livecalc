@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/layout/shell_chrome.dart';
 import '../../features/profile/providers/save_button_position_provider.dart';
 
 /// 全屏表单统一的「保存」入口，位置由用户本地设置决定：
@@ -19,11 +20,20 @@ import '../../features/profile/providers/save_button_position_provider.dart';
 ///     saveBottomBar(context: context, position: pos, onSave: _save, label: l10n.commonSave),
 /// ```
 List<Widget> saveAppBarActions({
+  required BuildContext context,
   required SaveButtonPosition position,
   required VoidCallback? onSave,
   required String label,
   bool busy = false,
 }) {
+  // 竖条导航（折叠态 / 内屏横屏 / 分屏）：保存进竖条（顶部第一个操作），
+  // 标题栏不再显示文字按钮。
+  if (context.shellRailMode) {
+    context.publishShellActions(
+      primary: ShellAction(icon: Icons.check, label: label, onPressed: onSave),
+    );
+    return const <Widget>[];
+  }
   if (position != SaveButtonPosition.topRight) return const <Widget>[];
   return <Widget>[
     TextButton(
@@ -42,6 +52,8 @@ PreferredSizeWidget? saveBottomBar({
   bool busy = false,
   String? subtitle,
 }) {
+  // 竖条导航下保存已在竖条内，不再显示底部整宽按钮条。
+  if (context.shellRailMode) return null;
   if (position != SaveButtonPosition.bottom) return null;
   final theme = Theme.of(context);
   return PreferredSize(

@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
+
+import '../../../shared/widgets/detail_two_column.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -84,7 +89,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
 
     if (state.error != null && detail == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.recipeDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.recipeDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -94,7 +99,7 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
     }
     if (detail == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.recipeDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.recipeDetailTitle)),
         body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
@@ -145,15 +150,30 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
       ),
     ];
 
+    // 竖条导航（折叠态/内屏横屏/分屏）：动作交给竖条渲染（后退由壳层置顶）。
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        actions: [
+          ShellAction.custom(
+              child: appBarActions[0],
+              label: _isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd),
+          ShellAction.custom(
+              child: appBarActions[1], label: l10n.recipeAnalysisTitle),
+          ShellAction.custom(child: appBarActions[2], label: l10n.recipeDelete),
+        ],
+      );
+    }
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           if (hasImages)
-            SliverAppBar(
+            ShellSliverAppBar(
               expandedHeight: 260,
               pinned: true,
               title: AppTitleTooltip(message: detail.name),
-              actions: appBarActions,
+              actions: rail ? const [] : appBarActions,
               flexibleSpace: FlexibleSpaceBar(
                 background: GestureDetector(
                   onTap: () =>
@@ -195,10 +215,10 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               ),
             )
           else
-            SliverAppBar(
+            ShellSliverAppBar(
               pinned: true,
               title: AppTitleTooltip(message: detail.name),
-              actions: appBarActions,
+              actions: rail ? const [] : appBarActions,
             ),
           SliverToBoxAdapter(
             child: Padding(
@@ -206,27 +226,61 @@ class _RecipeDetailScreenState extends ConsumerState<RecipeDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (imageUrls.length > 1) ...[
-                    _buildImageGallery(theme, imageUrls, _selectedImageIndex),
-                    const SizedBox(height: 16),
-                  ],
-                  if (detail.pendingProposals.isNotEmpty) ...[
-                    PendingChangeBanner(
-                      modifications: _pendingModificationLabels(detail, l10n),
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-                  _buildHeader(theme, detail),
-                  const SizedBox(height: 16),
-                  _buildCostCard(theme, state, ratio),
-                  const SizedBox(height: 16),
-                  _buildIngredientsCard(theme, detail, state, ratio),
-                  const SizedBox(height: 16),
-                  _buildStepsCard(theme, detail),
-                  const SizedBox(height: 16),
-                  _buildNutritionCard(theme, state, ratio),
-                  const SizedBox(height: 16),
-                  _buildTipsCard(theme, detail.tips),
+                  // 宽屏（Duo 内屏横屏/展开）按 web 详情页分栏：左=概览/成本/原料，
+                  // 右=步骤/营养/小贴士；窄屏保持单列顺序。
+                  // 与 web RecipeDetail 的 .recipe-top-grid 对齐：
+                  // 左 = 图片灯箱 + 基本信息；右 = 成本（含走势）；
+                  // 下面两行 = 「原料｜步骤」「营养｜小贴士」。
+                  DetailTwoColumn.rows(
+                    single: [
+                      if (imageUrls.length > 1)
+                        _buildImageGallery(
+                            theme, imageUrls, _selectedImageIndex),
+                      if (detail.pendingProposals.isNotEmpty)
+                        PendingChangeBanner(
+                          modifications:
+                              _pendingModificationLabels(detail, l10n),
+                        ),
+                      _buildHeader(theme, detail),
+                      _buildCostCard(theme, state, ratio),
+                      _buildIngredientsCard(theme, detail, state, ratio),
+                      _buildStepsCard(theme, detail),
+                      _buildNutritionCard(theme, state, ratio),
+                      _buildTipsCard(theme, detail.tips),
+                    ],
+                    rows: [
+                      [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (imageUrls.length > 1) ...[
+                              _buildImageGallery(
+                                  theme, imageUrls, _selectedImageIndex),
+                              const SizedBox(height: 16),
+                            ],
+                            if (detail.pendingProposals.isNotEmpty) ...[
+                              PendingChangeBanner(
+                                modifications:
+                                    _pendingModificationLabels(detail, l10n),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                            _buildHeader(theme, detail),
+                          ],
+                        ),
+                        _buildCostCard(theme, state, ratio),
+                      ],
+                      [
+                        _buildIngredientsCard(theme, detail, state, ratio),
+                        _buildStepsCard(theme, detail),
+                      ],
+                      [
+                        _buildNutritionCard(theme, state, ratio),
+                        _buildTipsCard(theme, detail.tips),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),

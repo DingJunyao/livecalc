@@ -1,8 +1,11 @@
+import '../../../shared/widgets/adaptive_tab_bar.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/i18n/app_formatters.dart';
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../shared/models/hierarchy_relation.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/directional_icons.dart';
@@ -330,18 +333,29 @@ class _IngredientHierarchyScreenState extends State<IngredientHierarchyScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    void done() => Navigator.of(context).pop(_changed);
+    // 竖条导航：完成进竖条（主操作，对勾），标题栏不放按钮。
+    if (context.shellRailMode) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.check,
+          label: l10n.commonDone,
+          onPressed: done,
+        ),
+      );
+    }
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(l10n.ingredientManageRelations),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(_changed),
+              onPressed: done,
               child: Text(l10n.commonDone),
             ),
           ],
-          bottom: TabBar(
+          bottom: AdaptiveTabBar(
             tabs: [
               Tab(text: l10n.ingredientRelationGraph),
               Tab(text: l10n.ingredientRelationList),

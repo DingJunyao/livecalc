@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/i18n/app_formatters.dart';
+import '../../core/layout/shell_app_bar.dart';
 import '../../features/merchants/models/merchant.dart';
 import '../../features/prices/repositories/price_repository.dart';
 import '../../features/products/models/product.dart';
@@ -430,10 +431,11 @@ class _PriceRecordEditScreenState extends ConsumerState<PriceRecordEditScreen> {
     final l10n = AppLocalizations.of(context);
     final savePosition = ref.watch(saveButtonPositionProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(isEdit ? l10n.priceEditTitle : l10n.priceRecordTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _submit,
             label: isEdit ? l10n.commonSave : l10n.commonAdd,

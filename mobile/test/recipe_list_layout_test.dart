@@ -150,8 +150,8 @@ void main() {
         reason: '宽屏下单结果应靠左，dx=${topLeft.dx} 应为 $_gridLeft');
   });
 
-  testWidgets('第二行不满时新行卡片仍靠左（2 列 3 个）', (tester) async {
-    tester.view.physicalSize = const Size(800, 1200);
+  testWidgets('第二行不满时新行卡片仍靠左（2 列 3 个，手机宽度 560）', (tester) async {
+    tester.view.physicalSize = const Size(560, 1200);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
@@ -169,6 +169,27 @@ void main() {
         reason: '第二行仅 1 个卡片时应靠左，dx=${third.dx} 应为 $_gridLeft');
     expect(third.dy, greaterThan(tester.getTopLeft(cards.first).dy),
         reason: '第三卡片应位于第二行');
+  });
+
+  testWidgets('展开竖屏 669 / 折叠横屏 678：一行三列', (tester) async {
+    for (final width in [669.0, 678.0]) {
+      tester.view.physicalSize = Size(width, 1400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_wrap(const [
+        RecipeSummary(id: 1, name: 'A'),
+        RecipeSummary(id: 2, name: 'B'),
+        RecipeSummary(id: 3, name: 'C'),
+      ]));
+      await tester.pumpAndSettle();
+      final r0 = tester.getRect(find.byType(Card).at(0));
+      final r1 = tester.getRect(find.byType(Card).at(1));
+      final r2 = tester.getRect(find.byType(Card).at(2));
+      expect(r1.top, moreOrLessEquals(r0.top, epsilon: 0.5),
+          reason: 'width=$width 应三列同行');
+      expect(r2.top, moreOrLessEquals(r0.top, epsilon: 0.5));
+      expect(r2.left, greaterThan(r1.right));
+    }
   });
 
   testWidgets('超宽屏 6 列下 1 个菜谱仍靠左', (tester) async {

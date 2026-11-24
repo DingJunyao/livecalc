@@ -159,13 +159,16 @@ class _EntityQuantityLinksSectionState
       children: [
         Row(
           children: [
-            Text(
-              l10n.entityLinksTitle,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
+            Expanded(
+              child: Text(
+                l10n.entityLinksTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
-            const Spacer(),
             TextButton.icon(
               onPressed: _busy ? null : () => _openEditor(),
               icon: const Icon(Icons.link, size: 18),

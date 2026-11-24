@@ -47,9 +47,11 @@ class RegionPriceMatrix extends StatelessWidget {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            Icon(Icons.table_chart_outlined, size: 40, color: theme.colorScheme.outline),
+            Icon(Icons.table_chart_outlined,
+                size: 40, color: theme.colorScheme.outline),
             const SizedBox(height: 8),
-            Text(emptyText, textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
+            Text(emptyText,
+                textAlign: TextAlign.center, style: theme.textTheme.bodyMedium),
           ],
         ),
       );
@@ -95,7 +97,8 @@ class RegionPriceMatrix extends StatelessWidget {
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
                   l10n.compareMatrixTitle,
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ),
               Row(
@@ -112,8 +115,8 @@ class RegionPriceMatrix extends StatelessWidget {
                             alignment: Alignment.centerLeft,
                             child: Text(
                               l10n.compareMatrixEntityCol,
-                              style: theme.textTheme.labelMedium
-                                  ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant),
                             ),
                           ),
                         ),
@@ -154,7 +157,9 @@ class RegionPriceMatrix extends StatelessWidget {
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: theme.textTheme.labelMedium
-                                          ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                                          ?.copyWith(
+                                              color: theme.colorScheme
+                                                  .onSurfaceVariant),
                                     ),
                                   ),
                                 ),
@@ -165,7 +170,8 @@ class RegionPriceMatrix extends StatelessWidget {
                               children: [
                                 for (final col in columns)
                                   Builder(builder: (ctx) {
-                                    final c = row.regions[col.regionId.toString()];
+                                    final c =
+                                        row.regions[col.regionId.toString()];
                                     final price = c?.price;
                                     final isStale = c?.isStale ?? false;
                                     return cell(

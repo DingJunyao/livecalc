@@ -466,8 +466,7 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
                   widget.points.length - 1
                 };
                 if (!idxList.contains(i)) return const SizedBox.shrink();
-                final label =
-                    _formatDate(widget.points[i].date, short: true);
+                final label = _formatDate(widget.points[i].date, short: true);
                 return Padding(
                   padding: const EdgeInsets.only(top: 4),
                   child: Directionality(
@@ -495,10 +494,10 @@ class _CostTrendStackedChartState extends State<CostTrendStackedChart> {
           // 点击/悬停全部由外层 Listener 处理（见 _onPointerGlobal 注释）。
           handleBuiltInTouches: false,
           touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (touchedSpots) => buildStackedTooltipItems(series,
+            getTooltipItems: (touchedSpots) => buildStackedTooltipItems(
+                series,
                 touchedSpots,
-                _formatDate(
-                    widget.points[touchedSpots.first.x.toInt()].date),
+                _formatDate(widget.points[touchedSpots.first.x.toInt()].date),
                 userCurrency: widget.userCurrency,
                 totalLabel: '${l10n.recipeTotalLabel}: '),
           ),

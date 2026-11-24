@@ -393,6 +393,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get saveButtonPositionHint => 'يُحفظ على هذا الجهاز فقط';
 
   @override
+  String get saveButtonPositionDuoRailNote =>
+      'إذا ظهر الشريط الجانبي، فسيظهر زر الحفظ دائمًا في الجزء العلوي من الشريط، أيًّا كان الخيار المحدد.';
+
+  @override
   String get profileMyData => 'بياناتي';
 
   @override
@@ -2467,6 +2471,11 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String recipeCostPerServings(Object amount, Object count) {
     return '$amount / $count حصة';
+  }
+
+  @override
+  String recipeCostPerServing(Object amount) {
+    return '$amount / حصة';
   }
 
   @override

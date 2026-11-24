@@ -888,13 +888,15 @@ class IngredientDetailPageNotifier
         hierarchy,
         proposal.entityId,
         _toInt(proposal.payload['strength']),
-        factorParentQuantity: _toDouble(proposal.payload['factor_parent_quantity'] ??
-            proposal.snapshot['factor_parent_quantity']),
+        factorParentQuantity: _toDouble(
+            proposal.payload['factor_parent_quantity'] ??
+                proposal.snapshot['factor_parent_quantity']),
         factorParentUnit: (proposal.payload['factor_parent_unit'] ??
                 proposal.snapshot['factor_parent_unit'])
             ?.toString(),
-        factorChildQuantity: _toDouble(proposal.payload['factor_child_quantity'] ??
-            proposal.snapshot['factor_child_quantity']),
+        factorChildQuantity: _toDouble(
+            proposal.payload['factor_child_quantity'] ??
+                proposal.snapshot['factor_child_quantity']),
         factorChildUnit: (proposal.payload['factor_child_unit'] ??
                 proposal.snapshot['factor_child_unit'])
             ?.toString(),
@@ -981,7 +983,9 @@ class IngredientDetailPageNotifier
   Future<void> setPriceDimension(bool region) async {
     if (state.priceDimensionRegion == region) return;
     state = state.copyWith(priceDimensionRegion: region);
-    if (region && state.regionPriceCards.isEmpty && !state.loadingRegionPrices) {
+    if (region &&
+        state.regionPriceCards.isEmpty &&
+        !state.loadingRegionPrices) {
       await _loadRegionPrices();
     }
   }
@@ -991,7 +995,8 @@ class IngredientDetailPageNotifier
     try {
       final candidates = await _ensureRegionCandidates();
       if (candidates.isEmpty) {
-        state = state.copyWith(regionPriceCards: const [], loadingRegionPrices: false);
+        state = state
+            .copyWith(regionPriceCards: const [], loadingRegionPrices: false);
         return;
       }
       final prices = await _comparisonRepo.getEntityPrices(
@@ -1382,18 +1387,16 @@ class IngredientDetailPageNotifier
       relationType: payload['relation_type']?.toString() ?? 'substitutable',
       strength: _toInt(payload['strength']) ?? 50,
       isPending: true,
-      factorParentQuantity:
-          _toDouble(payload['factor_parent_quantity'] ??
-              snapshot['factor_parent_quantity']),
-      factorParentUnit: (payload['factor_parent_unit'] ??
-              snapshot['factor_parent_unit'])
-          ?.toString(),
-      factorChildQuantity:
-          _toDouble(payload['factor_child_quantity'] ??
-              snapshot['factor_child_quantity']),
-      factorChildUnit: (payload['factor_child_unit'] ??
-              snapshot['factor_child_unit'])
-          ?.toString(),
+      factorParentQuantity: _toDouble(payload['factor_parent_quantity'] ??
+          snapshot['factor_parent_quantity']),
+      factorParentUnit:
+          (payload['factor_parent_unit'] ?? snapshot['factor_parent_unit'])
+              ?.toString(),
+      factorChildQuantity: _toDouble(payload['factor_child_quantity'] ??
+          snapshot['factor_child_quantity']),
+      factorChildUnit:
+          (payload['factor_child_unit'] ?? snapshot['factor_child_unit'])
+              ?.toString(),
     );
   }
 

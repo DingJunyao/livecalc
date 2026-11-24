@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/i18n/app_formatters.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../models/proposal.dart';
 import '../providers/profile_provider.dart';
 import '../../../l10n/app_localizations.dart';
@@ -214,7 +215,7 @@ class _MyProposalsScreenState extends ConsumerState<MyProposalsScreen> {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.profileMyProposals)),
+      appBar: ShellAppBar(title: Text(l10n.profileMyProposals)),
       body: state.loading && state.items.isEmpty
           ? const LoadingIndicator()
           : state.error != null && state.items.isEmpty

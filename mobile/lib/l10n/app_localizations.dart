@@ -832,6 +832,12 @@ abstract class AppLocalizations {
   /// **'仅保存在本机，不影响其他设备'**
   String get saveButtonPositionHint;
 
+  /// No description provided for @saveButtonPositionDuoRailNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'如果显示了侧边栏，则无论选哪项，保存按钮都固定在侧边栏上部分。'**
+  String get saveButtonPositionDuoRailNote;
+
   /// No description provided for @profileMyData.
   ///
   /// In zh, this message translates to:
@@ -4679,6 +4685,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{amount} / {count} 人份'**
   String recipeCostPerServings(Object amount, Object count);
+
+  /// No description provided for @recipeCostPerServing.
+  ///
+  /// In zh, this message translates to:
+  /// **'{amount} / 份'**
+  String recipeCostPerServing(Object amount);
 
   /// No description provided for @recipeCaloriesPerServing.
   ///

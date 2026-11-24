@@ -226,4 +226,39 @@ void main() {
     expect(nutritionColors, [getIngredientColor(77)]);
     expect(costColors.first, nutritionColors.first);
   });
+
+  testWidgets('展开宽屏（≥820）：条目卡与合计卡并排（web 分栏）', (tester) async {
+    final adapter = _PlanDetailApiAdapter();
+    final previousAdapter = ApiClient.instance.dio.httpClientAdapter;
+    ApiClient.instance.dio.interceptors.clear();
+    ApiClient.instance.dio.httpClientAdapter = adapter;
+    addTearDown(() {
+      if (!adapter.trendCompleter.isCompleted) {
+        adapter.trendCompleter.completeError(Exception('cancelled'));
+      }
+      ApiClient.instance.dio.httpClientAdapter = previousAdapter;
+    });
+
+    tester.view.physicalSize = const Size(867, 669); // Duo 内屏横屏可用宽
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_wrap(_router()));
+    await tester.pump(const Duration(milliseconds: 20));
+
+    final items = tester.getTopLeft(find.text('Items'));
+    final totals = tester.getTopLeft(find.text('Totals vs targets'));
+    // 同一行（dy 相同）、合计在右侧 → 左右分栏
+    expect(totals.dy, moreOrLessEquals(items.dy, epsilon: 1.0),
+        reason: 'items=$items totals=$totals');
+    expect(totals.dx, greaterThan(items.dx));
+
+    adapter.trendCompleter.complete(
+      ResponseBody.fromString(jsonEncode([]), 200,
+          headers: {
+            Headers.contentTypeHeader: [Headers.jsonContentType],
+          }),
+    );
+    await tester.pumpAndSettle();
+  });
 }

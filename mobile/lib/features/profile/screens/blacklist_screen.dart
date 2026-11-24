@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart' show DioException;
 import 'package:flutter/material.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/error_display.dart';
 import '../../ingredients/models/ingredient.dart';
@@ -77,7 +78,8 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
   }
 
   void _toast(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// 优先展示后端返回的 detail 文案，便于用户理解失败原因。
@@ -192,8 +194,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
       await _repository.removeManual(ingredientId: item.ingredientId);
       if (!mounted) return;
       setState(() {
-        _manualItems =
-            _manualItems.where((i) => i.id != item.id).toList();
+        _manualItems = _manualItems.where((i) => i.id != item.id).toList();
       });
     } catch (e) {
       if (!mounted) return;
@@ -206,7 +207,7 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.blacklistTitle)),
+      appBar: ShellAppBar(title: Text(l10n.blacklistTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -321,7 +322,8 @@ class _BlacklistScreenState extends State<BlacklistScreen> {
                             for (final item in _manualItems)
                               InputChip(
                                 label: Text(
-                                  item.ingredientName ?? '#${item.ingredientId}',
+                                  item.ingredientName ??
+                                      '#${item.ingredientId}',
                                 ),
                                 tooltip: item.reason,
                                 onDeleted: () => _removeItem(item),
@@ -346,7 +348,9 @@ class _GroupExpansionTile extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return ExpansionTile(
       title: Text(
-        l10n.blacklistGroupTitle(group.name, group.ingredients.isEmpty
+        l10n.blacklistGroupTitle(
+            group.name,
+            group.ingredients.isEmpty
                 ? group.ingredientCount
                 : group.ingredients.length),
       ),

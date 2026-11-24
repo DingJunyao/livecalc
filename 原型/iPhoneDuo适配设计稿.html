@@ -1,0 +1,1068 @@
+<!doctype html>
+<html lang="zh-CN" data-zcode-design>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>生计 · iPhone Duo 折叠屏适配设计稿</title>
+<style>
+:root{
+  /* ── App M3 色板（派生自 mobile/lib/core/theme/app_theme.dart，种子色 #558B2F）── */
+  --app-primary:#558B2F;
+  --app-primary-strong:#3D6A1D;
+  --app-on-primary:#FFFFFF;
+  --app-primary-container:#C4E99A;
+  --app-on-primary-container:#0F2F00;
+  --app-secondary:#547C8C;
+  --app-secondary-container:#D0E8F2;
+  --app-on-secondary-container:#0F1D24;
+  --app-surface:#F9FAEF;
+  --app-surface-low:#F1F4E6;
+  --app-surface-high:#E1E6D6;
+  --app-on-surface:#1A1C15;
+  --app-on-surface-var:#44483D;
+  --app-outline:#757A6C;
+  --app-outline-var:#C4C9B7;
+  --app-error:#BA1A1A;
+  --dish-bg:#E7F1D3;
+  --warn-bg:#FBE9B8;
+  --warn-ink:#6E5200;
+  /* ── 稿面（规格页）层 ── */
+  --paper:#FAFAF6;
+  --ink:#191C14;
+  --ink-soft:#565B4E;
+  --ink-faint:#6E7365;
+  --line:#DBD8CB;
+  --line-soft:#E9E7DB;
+  --fold:#547C8C;
+  --sans:-apple-system,"PingFang SC","Noto Sans SC","Source Han Sans SC","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono",ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--sans);background:var(--paper);color:var(--ink);
+  font-size:15px;line-height:1.6;padding:48px 28px 72px;
+}
+.sheet{max-width:1240px;margin:0 auto}
+h1{font-size:34px;font-weight:600;letter-spacing:-0.01em;line-height:1.2}
+h2{font-size:19px;font-weight:600;letter-spacing:0}
+a{color:inherit}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;color:var(--ink-faint);text-transform:uppercase}
+/* ── 头部 ── */
+header.masthead{border-bottom:1.5px solid var(--ink);padding-bottom:26px;margin-bottom:14px}
+.masthead .title-row{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.masthead .brand-no{font-family:var(--mono);font-size:12px;color:var(--ink-soft);letter-spacing:.06em;text-align:right}
+.meta-strip{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:16px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+.meta-strip b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px;align-items:center}
+.lg{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-soft);
+    border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:#fff}
+.lg .dot{width:9px;height:9px;border-radius:3px}
+.lg-note{font-size:12.5px;color:var(--ink-soft)}
+.demo-note{margin-top:14px;font-size:12.5px;color:var(--ink-faint)}
+.fold-cap{margin-top:6px;font-size:12.5px;color:var(--ink-faint)}
+.plate-index{display:flex;gap:14px;margin-top:16px}
+.plate-index a{font-family:var(--mono);font-size:12px;color:var(--ink-soft);text-decoration:none;
+               border-bottom:1px solid var(--line);padding-bottom:2px}
+.plate-index a:hover{color:var(--ink);border-bottom-color:var(--ink)}
+/* ── 版块 ── */
+.plate{margin-top:64px}
+.plate-head{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.plate-no{font-family:var(--mono);font-size:13px;color:var(--ink-soft);letter-spacing:.08em}
+.plate-sub{color:var(--ink-soft);font-size:14px;max-width:720px}
+/* ── 设备框 ── */
+.device-zone{display:flex;justify-content:center}
+.device{background:#14160F;border-radius:52px;padding:11px;zoom:var(--z,.94);flex:none;
+        box-shadow:0 18px 44px rgba(25,28,20,.16),0 3px 10px rgba(25,28,20,.10)}
+.device.landscape{border-radius:40px}
+.screen{width:var(--w);height:var(--h);background:var(--app-surface);border-radius:42px;
+        overflow:hidden;position:relative;display:flex;flex-direction:column;
+        font-size:14px;line-height:1.45;color:var(--app-on-surface)}
+.device.landscape .screen{border-radius:32px}
+.screen *{letter-spacing:.01em}
+/* 环形状态栏（右上角，围绕摄像头；折叠态外屏与半开 pane 顶部用浮动式） */
+.sring{position:absolute;top:14px;right:16px;display:flex;align-items:center;gap:9px;z-index:6}
+.sring .tm{font-size:13px;font-weight:600}
+.ring{width:30px;height:30px;border-radius:50%;position:relative;flex:none;
+      background:conic-gradient(var(--app-on-surface) 0 218deg,rgba(25,28,20,.16) 218deg 360deg)}
+.ring::before{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--app-surface)}
+.ring::after{content:"";position:absolute;inset:11px;border-radius:50%;background:#101216}
+.home-ind{position:absolute;left:50%;bottom:7px;width:124px;height:5px;border-radius:3px;
+          background:rgba(25,28,20,.30);transform:translateX(-50%)}
+/* App Bar */
+.appbar{height:54px;flex:none;display:flex;align-items:center;justify-content:center;position:relative;background:var(--app-surface)}
+.appbar .t{font-size:16px;font-weight:600}
+.appbar .act{position:absolute;right:8px;display:flex;gap:2px}
+.appbar .act .ib{width:42px;height:42px;display:flex;align-items:center;justify-content:center;color:var(--app-on-surface-var);border-radius:50%}
+/* 图标 */
+.ic{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.7;
+    stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ic.s{width:18px;height:18px}
+/* 右缘竖条：状态环（右上）+ 图标导航（右下），随姿态保持 */
+.edge-rail{position:absolute;top:0;right:0;bottom:0;width:84px;background:var(--app-surface);
+           border-left:1px solid var(--app-outline-var);display:flex;flex-direction:column;
+           align-items:center;padding:12px 26px 14px 14px;z-index:4}
+.edge-rail .rtime{font-size:12px;font-weight:600;margin-top:6px}
+.edge-rail .nav{margin-top:auto;display:flex;flex-direction:column;gap:3px}
+.edge-rail .it{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+               color:var(--app-on-surface-var)}
+.edge-rail .it.on{background:var(--app-primary-container);color:var(--app-on-primary-container)}
+.rail-cam{height:22px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
+.camdot{width:9px;height:9px;border-radius:50%;background:#101216}
+.rail-tools{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.ltitle{font-size:20px;font-weight:700;letter-spacing:-0.01em}
+/* 底部 tab bar（内屏竖屏：HIG 例外保留标准横条） */
+.bnav{flex:none;margin-top:auto;background:var(--app-surface);border-top:1px solid var(--app-outline-var);
+      padding:10px 8px 24px;display:flex}
+.bnav .it{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--app-on-surface-var);font-size:12px}
+.bnav .pill{width:58px;height:31px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.bnav .it.on{color:var(--app-on-primary-container);font-weight:600}
+.bnav .it.on .pill{background:var(--app-primary-container)}
+/* 状态栏（内屏竖屏：内屏摄像头隐藏，标准横排） */
+.sbar{height:40px;flex:none;display:flex;align-items:center;justify-content:space-between;
+      padding:0 26px;font-size:13.5px;font-weight:600}
+.body{flex:1;min-width:0;display:flex;flex-direction:column}
+.content{flex:1;overflow:hidden;padding:16px 20px}
+/* 卡片与列表 */
+.card{background:var(--app-surface-low);border-radius:12px;padding:13px 15px}
+.chiprow{display:flex;gap:8px;flex-wrap:wrap}
+.achip{border:1px solid var(--app-outline-var);border-radius:9px;padding:5px 12px;font-size:12.5px;color:var(--app-on-surface-var);background:#fff}
+.prow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.p-name{font-size:15px;font-weight:600}
+.p-sub{font-size:12px;color:var(--app-on-surface-var);margin-top:2px}
+.p-price{font-family:var(--mono);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.p-price small{font-size:12px;color:var(--app-on-surface-var);font-weight:400}
+.fab{position:absolute;right:84px;bottom:112px;width:56px;height:56px;border-radius:16px;
+     background:var(--app-primary-container);color:var(--app-on-primary-container);
+     display:flex;align-items:center;justify-content:center;
+     box-shadow:0 4px 10px rgba(25,28,20,.22)}
+/* 分段控件 */
+.seg{display:flex;border:1px solid var(--app-outline-var);border-radius:12px;overflow:hidden}
+.seg span{flex:1;text-align:center;font-size:12.5px;padding:7px 0;color:var(--app-on-surface-var);border-right:1px solid var(--app-outline-var)}
+.seg span:last-child{border-right:none}
+.seg span.on{background:var(--app-secondary-container);color:var(--app-on-secondary-container);font-weight:600}
+/* 铰链/折痕标注：细虚线（仅位置标注） */
+.fold-band-v{position:absolute;top:0;bottom:0;width:26px;transform:translateX(-13px);
+             background:rgba(84,124,140,.07);pointer-events:none}
+.fold-line-v{position:absolute;top:0;bottom:0;border-left:1.5px dashed var(--fold);pointer-events:none}
+.fold-band-h{position:absolute;left:0;right:0;height:26px;transform:translateY(-13px);
+             background:rgba(84,124,140,.07);pointer-events:none}
+.fold-line-h{position:absolute;left:0;right:0;border-top:1.5px dashed var(--fold);pointer-events:none}
+.fold-tag{position:absolute;font-family:var(--mono);font-size:11px;color:#fff;background:var(--fold);
+          border-radius:6px;padding:4px 9px;letter-spacing:.06em;z-index:5}
+.fold-note{position:absolute;font-size:12px;line-height:1.5;color:var(--app-on-surface-var);background:rgba(249,250,239,.94);
+           border:1px solid var(--app-outline-var);border-radius:8px;padding:5px 10px;z-index:5}
+/* 菜谱卡（真实结构：图 + 名称+心形 + ¥成本/份 · kcal/份） */
+.rcard{background:var(--app-surface-low);border-radius:12px;overflow:hidden}
+.rcard .img{height:104px;background:var(--dish-bg);position:relative}
+.rcard .img svg{width:100%;height:100%;display:block}
+.rcard .img .dishph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+                    color:var(--app-primary);opacity:.5}
+.rcard .bd{padding:8px 10px 9px}
+.rcard .nm{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.rcard .nm b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rcard .nm .ic{width:16px;height:16px;color:var(--app-outline)}
+.rcard .nm .ic.fav{color:var(--app-error);fill:var(--app-error)}
+.rcard .meta{margin-top:3px;font-size:12px;color:var(--app-on-surface-var);white-space:nowrap}
+.rcard .meta .c{color:var(--app-primary-strong);font-weight:700;font-family:var(--mono);font-variant-numeric:tabular-nums}
+/* 原料/商品卡（web 同构：走势铺底 + 头像 + 名称 + 分类/品牌 + 最新价 + 收藏/记价） */
+.icard{background:var(--app-surface-low);border-radius:12px;overflow:hidden;position:relative;width:188px}
+.icard .spark{position:absolute;left:0;right:0;bottom:0;height:64px;width:100%;display:block}
+.icard .bd{position:relative;padding:10px 12px 8px;display:flex;flex-direction:column;gap:7px}
+.icard .hd{display:flex;align-items:center;gap:8px}
+.icard .ava{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;background:var(--app-secondary-container);color:var(--app-on-secondary-container)}
+.icard .ava.pri{background:var(--app-primary-container);color:var(--app-on-primary-container)}
+.icard .nm{min-width:0}
+.icard .nm b{font-size:13.5px;font-weight:600;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icard .kchip{align-self:flex-start;border:1px solid var(--app-outline-var);border-radius:6px;padding:1.5px 7px;font-size:11px;letter-spacing:.05em;color:var(--app-on-surface-var)}
+.icard .price{font-family:var(--mono);font-size:15px;font-weight:700;color:var(--app-primary-strong);font-variant-numeric:tabular-nums}
+.icard .price small{font-size:12px;color:var(--app-on-surface-var);font-weight:400}
+.icard .ft{border-top:1px solid var(--app-outline-var);display:flex;justify-content:flex-end;gap:4px;padding:5px 8px}
+.icard .ft .ib{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--app-on-surface-var)}
+.icard .ft .ib.fav{color:var(--app-error);fill:var(--app-error)}
+.ic.fav{color:var(--app-error);fill:var(--app-error)}
+/* 商家双栏（左 350 列表 + 右地图） */
+.mleft{width:350px;flex:none;border-right:1px solid var(--app-outline-var);display:flex;flex-direction:column;min-height:0}
+.mrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--app-line,#E9E7DB)}
+.mapctl{position:absolute;top:10px;left:10px;display:flex;gap:6px;z-index:3}
+.mapctl span{background:#fff;border:1px solid var(--app-outline-var);border-radius:8px;padding:4px 9px;font-size:12px;color:var(--app-on-surface)}
+/* 试算条目卡（web 同构：类型 chip + 名称 / 餐次·份数或数量·单位 / 成本+移除） */
+.tcard{background:var(--app-surface-low);border-radius:12px;padding:9px 10px;width:188px;display:flex;flex-direction:column;gap:7px}
+.tcard .hd{display:flex;align-items:center;gap:6px}
+.tcard .tchip{border-radius:6px;padding:2px 7px;font-size:12px;font-weight:600;flex:none}
+.tcard .nm{font-size:13.5px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .qty{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--app-outline-var);border-radius:8px;padding:5px 8px;font-size:12.5px;color:var(--app-on-surface-var)}
+.tcard .qty b{color:var(--app-on-surface);font-weight:600}
+.tcard .cost{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--app-on-surface-var)}
+.tcard .cost b{font-family:var(--mono);font-size:14px;color:var(--ink);font-variant-numeric:tabular-nums}
+/* 规格注解列 */
+.spec{margin-top:26px}
+.spec .head-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.stype{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:#fff;background:var(--ink);
+       border-radius:5px;padding:3px 8px}
+.stype.p0{background:var(--app-error)} .stype.p1{background:var(--app-secondary)} .stype.p2{background:var(--app-primary-strong)}
+table.spec-t{width:100%;border-collapse:collapse;font-size:13px}
+table.spec-t th{font-family:var(--mono);font-weight:600;font-size:11px;letter-spacing:.1em;color:var(--ink-faint);
+                text-align:left;padding:6px 14px 6px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+table.spec-t td{padding:7px 14px 7px 0;border-bottom:1px solid var(--line-soft);color:var(--ink);vertical-align:top}
+table.spec-t td code{font-family:var(--mono);font-size:12.5px;background:#fff;border:1px solid var(--line-soft);border-radius:5px;padding:1px 6px}
+ul.notes{list-style:none;margin-top:14px;display:grid;gap:9px}
+ul.notes li{display:flex;gap:10px;align-items:flex-start;font-size:14px;color:var(--ink-soft)}
+ul.notes .nbody b{color:var(--ink);font-weight:600}
+.chip{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:#fff;border-radius:5px;
+      padding:2.5px 7px;margin-top:2px;flex:none}
+.chip.p0{background:var(--app-error)} .chip.p1{background:var(--app-secondary)} .chip.p2{background:var(--app-primary-strong)}
+.chip.n{background:var(--ink-faint)}
+/* 版块栅格 */
+.duo-row{display:grid;grid-template-columns:486px 689px;gap:36px;justify-content:center}
+.duo-row .spec{margin-top:24px}
+.split-row{display:flex;gap:44px;align-items:flex-start;justify-content:center}
+.split-row .device-zone{flex:none}
+.split-row .spec{margin-top:8px;max-width:420px}
+.field{display:flex;align-items:center;gap:10px;background:var(--app-surface-low);
+       border:1px solid var(--app-outline-var);border-radius:12px;padding:10px 14px}
+.field .fl{font-size:12px;color:var(--app-on-surface-var);width:44px;flex:none}
+.field .fv{font-size:14px;font-weight:600}
+.field .fh{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--app-on-surface-var)}
+.btn{background:var(--app-primary-strong);color:var(--app-on-primary);border-radius:14px;height:46px;
+     display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600}
+/* Web 端浏览器框（Duo 展开横屏） */
+.browser{width:var(--w);height:var(--h);background:#ECECF1;border-radius:18px;overflow:hidden;
+         display:flex;flex-direction:column;zoom:var(--z,.94);flex:none;
+         box-shadow:0 18px 44px rgba(25,28,20,.16),0 3px 10px rgba(25,28,20,.10)}
+.bchrome{height:42px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px}
+.bdot{width:11px;height:11px;border-radius:50%;flex:none}
+.burl{flex:1;max-width:430px;margin:0 auto;height:28px;border-radius:8px;background:#fff;
+      display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--ink-soft)}
+.bcontent{flex:1;position:relative;background:var(--paper);display:flex;min-height:0}
+.bside{width:200px;flex:none;background:#fff;border-right:1px solid var(--line-soft);padding:10px 8px;
+       display:flex;flex-direction:column;gap:2px}
+.bside .bi{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink-soft);
+           padding:7px 10px;border-radius:8px;white-space:nowrap}
+.bside .bi.on{background:var(--app-primary-container);color:var(--app-on-primary-container);font-weight:600}
+.bmain{flex:1;min-width:0;display:flex;flex-direction:column}
+.bbar{height:42px;flex:none;display:flex;align-items:center;gap:10px;padding:0 16px;background:#fff;
+      border-bottom:1px solid var(--line-soft)}
+.wcard{background:#fff;border:1px solid var(--app-outline-var);border-radius:10px;padding:12px 14px}
+/* 页脚 */
+footer{margin-top:80px;border-top:1.5px solid var(--ink);padding-top:16px;display:flex;
+       justify-content:space-between;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-soft)}
+footer .mono{font-family:var(--mono);font-size:12.5px;color:var(--ink-faint)}
+/* 响应式 */
+@media (max-width:1360px){ .device,.browser{--z:.88} }
+@media (max-width:1060px){
+  .duo-row{grid-template-columns:1fr;justify-items:center}
+  .split-row{flex-direction:column;align-items:center}
+  .split-row .spec{max-width:none}
+  .device{--z:.8}
+  .device.landscape,.browser{--z:.72}
+}
+@media (max-width:820px){ .device{--z:.62} .device.landscape,.browser{--z:.42} }
+@media (max-width:520px){
+  body{padding:28px 16px 56px}
+  .device{--z:.48}
+  .device.landscape,.browser{--z:.34}
+  h1{font-size:26px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3.5 13.7 10.3 20.5 12 13.7 13.7 12 20.5 10.3 13.7 3.5 12 10.3 10.3Z"/></symbol>
+    <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12V20l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4L6 20Z"/><path d="M9.2 8h5.6M9.2 11.5h5.6M9.2 15h3.2"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.3C10 4.9 7.4 4.4 4 4.4v14.2c3.4 0 6 .5 8 1.9 2-1.4 4.6-1.9 8-1.9V4.4c-3.4 0-6 .5-8 1.9Z"/><path d="M12 6.3v14.2"/></symbol>
+    <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5.2 18.8C5.2 9.8 11.6 4.6 19.8 4.6c0 8.2-5.2 14.6-14.2 14.6Z"/><path d="M5.2 18.8c2.8-5.4 6.4-8.8 10.6-11"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="m12 3.4 8 3.9v10.2l-8 3.9-8-3.9V7.3Z"/><path d="m4.2 7.5 7.8 3.8 7.8-3.8M12 11.3v9.9"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="m3.6 9.5 1.8-4.6h13.2l1.8 4.6"/><path d="M4.4 9.5h15.2V20H4.4Z"/><path d="M10 20v-4.6h4V20"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4.6 8h12.8M14.4 5l3.2 3-3.2 3"/><path d="M19.4 16H6.6M9.6 13l-3.2 3 3.2 3"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 19.8S4.8 15.4 3 11.6C1.6 8.6 3.6 5.4 6.8 5.4c2 0 3.7 1.1 5.2 3 1.5-1.9 3.2-3 5.2-3 3.2 0 5.2 3.2 3.8 6.2-1.8 3.8-9 8.2-9 8.2Z"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect x="4.6" y="3.4" width="14.8" height="17.2" rx="2.4"/><path d="M8.4 7.6h7.2M8.4 12.4h.01M12 12.4h.01M15.6 12.4h.01M8.4 16.4h.01M12 16.4h.01M15.6 16.4h.01"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8.2" r="3.6"/><path d="M5.2 19.8c1.2-3.5 3.9-5.2 6.8-5.2s5.6 1.7 6.8 5.2"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4.5 4.5h5.6v5.6H4.5ZM13.9 4.5h5.6v5.6h-5.6ZM4.5 13.9h5.6v5.6H4.5ZM13.9 13.9h5.6v5.6h-5.6Z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5.5v13M5.5 12h13"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4.5 8.5v-2a2 2 0 0 1 2-2h2M15.5 4.5h2a2 2 0 0 1 2 2v2M19.5 15.5v2a2 2 0 0 1-2 2h-2M8.5 19.5h-2a2 2 0 0 1-2-2v-2"/><path d="M8 9v6M11.5 9v6M15 9v6"/></symbol>
+    <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4.5 6.5h15M7.5 12h9M10.5 17.5h3"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9.5 6.5 5.5 5.5-5.5 5.5"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 24 24"><path d="M3.5 9.5C8.4 5 15.6 5 20.5 9.5M6.5 13c3.2-2.9 7.8-2.9 11 0M9.5 16.4c1.5-1.4 3.5-1.4 5 0"/><circle cx="12" cy="19.4" r="1" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-fork" viewBox="0 0 24 24"><path d="M7.5 3.5v5a2.5 2.5 0 0 0 5 0v-5M10 3.5V21"/><path d="M16.5 3.5c-1.8 3.4-1.8 7.6 0 10v7"/></symbol>
+    <symbol id="i-sig" viewBox="0 0 24 24"><path d="M4 18.5v-3M8.5 18.5v-6M13 18.5v-9M17.5 18.5v-12"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 3.5v4h-4"/></symbol>
+    <!-- 菜谱图（平绘示意，对应真实卡片的 imageUrl / 图标占位两种状态） -->
+    <symbol id="d-braise" viewBox="0 0 188 104"><ellipse cx="94" cy="88" rx="64" ry="12" fill="rgba(25,28,20,.08)"/><path d="M34 60h120c0 16-12 26-30 28H64c-18-2-30-12-30-28Z" fill="#EFE9DC"/><path d="M34 60h120v6H34Z" fill="#DACFB9"/><ellipse cx="74" cy="52" rx="26" ry="10" fill="#C97B3D"/><ellipse cx="112" cy="48" rx="22" ry="9" fill="#B96E33"/><ellipse cx="94" cy="38" rx="30" ry="9" fill="#F5F0E4"/><circle cx="70" cy="34" r="3.4" fill="#558B2F"/><circle cx="104" cy="30" r="3" fill="#6FA344"/><circle cx="122" cy="36" r="2.6" fill="#558B2F"/></symbol>
+    <symbol id="d-tomato" viewBox="0 0 188 104"><ellipse cx="94" cy="86" rx="62" ry="12" fill="rgba(25,28,20,.08)"/><ellipse cx="94" cy="62" rx="58" ry="22" fill="#FFFFFF"/><ellipse cx="94" cy="62" rx="50" ry="17" fill="#F2EDE2"/><ellipse cx="72" cy="58" rx="13" ry="8" fill="#E8B84B"/><ellipse cx="104" cy="54" rx="12" ry="8" fill="#E8B84B"/><ellipse cx="88" cy="68" rx="11" ry="7" fill="#C94F3D"/><ellipse cx="118" cy="66" rx="10" ry="6" fill="#C94F3D"/><circle cx="80" cy="48" r="2.6" fill="#6FA344"/><circle cx="112" cy="60" r="2.4" fill="#6FA344"/></symbol>
+    <symbol id="d-pork" viewBox="0 0 188 104"><ellipse cx="94" cy="88" rx="62" ry="11" fill="rgba(25,28,20,.08)"/><ellipse cx="94" cy="64" rx="56" ry="20" fill="#EFE9DC"/><ellipse cx="94" cy="64" rx="48" ry="15" fill="#F7F3E8"/><rect x="58" y="52" width="34" height="7" rx="3.5" fill="#D8B08C" transform="rotate(-8 75 55)"/><rect x="88" y="56" width="36" height="7" rx="3.5" fill="#CDA47C" transform="rotate(6 106 59)"/><rect x="72" y="66" width="32" height="7" rx="3.5" fill="#D8B08C" transform="rotate(-4 88 69)"/><rect x="104" y="44" width="30" height="7" rx="3.5" fill="#6FA344" transform="rotate(10 119 47)"/><rect x="64" y="42" width="26" height="7" rx="3.5" fill="#558B2F" transform="rotate(-12 77 45)"/></symbol>
+    <symbol id="d-broccoli" viewBox="0 0 188 104"><ellipse cx="94" cy="88" rx="58" ry="11" fill="rgba(25,28,20,.08)"/><path d="M40 58h108c0 14-12 22-28 24H68c-16-2-28-10-28-24Z" fill="#EFE9DC"/><path d="M40 58h108v5H40Z" fill="#DACFB9"/><circle cx="70" cy="48" r="11" fill="#5E9137"/><circle cx="92" cy="44" r="12" fill="#6FA344"/><circle cx="114" cy="48" r="11" fill="#5E9137"/><circle cx="82" cy="40" r="8" fill="#7CB05A"/><circle cx="104" cy="38" r="8" fill="#7CB05A"/><circle cx="66" cy="44" r="2" fill="#F5F0E4"/><circle cx="96" cy="46" r="2" fill="#F5F0E4"/><circle cx="118" cy="44" r="2" fill="#F5F0E4"/></symbol>
+      <symbol id="d-map" viewBox="0 0 360 416"><rect width="360" height="416" fill="#E9EEDA"/><path d="M0 90h360M0 210h360M0 330h360" stroke="#FFFFFF" stroke-width="14" fill="none"/><path d="M60 0v416M180 0v416M300 0v416" stroke="#FFFFFF" stroke-width="10" fill="none"/><path d="M0 150c60-20 120 20 180 0s120-24 180-6" stroke="#DCE5CB" stroke-width="8" fill="none"/><path d="M120 0v416" stroke="#DCE5CB" stroke-width="6" fill="none"/><rect x="70" y="20" width="40" height="52" rx="4" fill="#DDE6CD"/><rect x="196" y="24" width="70" height="48" rx="4" fill="#DDE6CD"/><rect x="70" y="228" width="46" height="60" rx="4" fill="#DDE6CD"/><rect x="196" y="120" width="88" height="70" rx="4" fill="#DDE6CD"/><rect x="256" y="240" width="80" height="66" rx="4" fill="#DDE6CD"/><rect x="20" y="340" width="90" height="56" rx="4" fill="#DDE6CD"/><g fill="#547C8C"><circle cx="120" cy="150" r="11"/><circle cx="255" cy="90" r="11"/><circle cx="215" cy="300" r="11"/></g><g fill="#558B2F"><circle cx="160" cy="240" r="14"/><path d="M160 226c-8 0-14 6-14 13 0 10 14 20 14 20s14-10 14-20c0-7-6-13-14-13Z" opacity=".25"/></g><text x="160" y="278" font-size="12" font-weight="600" fill="#3D6A1D" text-anchor="middle">永辉超市</text></symbol>
+      <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.8 12.4 12 20.6a1.9 1.9 0 0 0 2.7 0l5.9-5.9a1.9 1.9 0 0 0 0-2.7L12.4 3.8H5.6a1.8 1.8 0 0 0-1.8 1.8Z"/><circle cx="8.8" cy="8.8" r="1.3"/></symbol>
+    <symbol id="d-spark-a" viewBox="0 0 188 64" preserveAspectRatio="none"><path d="M0 42 18 38 36 44 54 30 72 35 90 24 108 29 126 18 144 23 162 14 188 18 L188 64 0 64 Z" fill="rgba(84,124,140,.18)"/><polyline points="0,42 18,38 36,44 54,30 72,35 90,24 108,29 126,18 144,23 162,14 188,18" fill="none" stroke="#547C8C" stroke-width="1.5"/></symbol>
+    <symbol id="d-spark-b" viewBox="0 0 188 64" preserveAspectRatio="none"><path d="M0 46 22 40 44 46 66 36 88 40 110 30 132 34 154 24 188 28 L188 64 0 64 Z" fill="rgba(85,139,47,.16)"/><polyline points="0,46 22,40 44,46 66,36 88,40 110,30 132,34 154,24 188,28" fill="none" stroke="#558B2F" stroke-width="1.5"/></symbol>
+    <symbol id="i-gps" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4.5 6.5h15M9.8 6.2V4.6h4.4v1.6M6.6 6.5 7.6 20h8.8l1-13.5M10 10v6M14 10v6"/></symbol>
+  </defs>
+</svg>
+
+<main class="sheet">
+  <header class="masthead">
+    <div class="title-row">
+      <div>
+        <p class="eyebrow">Spec Sheet · Mobile Layout · v2</p>
+        <h1>生计 · iPhone Duo 折叠屏适配设计稿</h1>
+      </div>
+      <p class="brand-no">AGENT_DOC / FEATURE_iPhoneDuo折叠屏适配调研<br>2026-11-22 · 尚未实施</p>
+    </div>
+    <div class="meta-strip">
+      <span>设备 <b>iPhone19,4</b></span>
+      <span>实证 <b>Xcode 27.2 描述文件</b></span>
+      <span>像素密度 <b>@3x · 460 PPI</b></span>
+      <span>内屏 <b>2007×2853 px</b> · 外屏 <b>1398×2034 px</b></span>
+      <span>系统控件 <b>环形状态栏（右上）· 姿态竖条（右缘）</b></span>
+      <span>壳层 <b>外屏/内屏横屏 → 尾缘竖条（控件+工具栏+tab）· 内屏竖屏 → 标准横条 · 常规 iPhone → 底栏</b></span>
+    </div>
+    <div class="legend">
+      <span class="lg"><i class="dot" style="background:var(--app-error)"></i>P0 正确性</span>
+      <span class="lg"><i class="dot" style="background:var(--app-secondary)"></i>P1 体验</span>
+      <span class="lg"><i class="dot" style="background:var(--app-primary)"></i>P2 增强</span>
+      <span class="lg"><i class="dot" style="background:#6E7365"></i>既有机制，维持不变</span>
+      <span class="lg-note">铰链标注：全形态统一细虚线（仅位置标注，内容可跨折痕）· 分屏时竖条跟随系统条侧别（左窗靠左）· 竖向导航的页面切换为上下滑动</span>
+    </div>
+    <p class="demo-note">界面中的商品、商家、价格与营养数值均为示例数据，仅用于展示布局形态。</p>
+    <nav class="plate-index" aria-label="版块导航">
+      <a href="#plate-01">01 折叠态</a>
+      <a href="#plate-02">02 展开竖屏</a>
+      <a href="#plate-03">03 菜谱四列</a>
+      <a href="#plate-04">04 原料四列</a>
+      <a href="#plate-05">05 商品四列</a>
+      <a href="#plate-06">06 商家双栏</a>
+      <a href="#plate-07">07 试算详情</a>
+      <a href="#plate-08">08 半开竖屏</a>
+      <a href="#plate-09">09 Web 详情两列</a>
+    </nav>
+  </header>
+
+  <!-- ══ Plate 01 + 02 ══ -->
+  <div class="duo-row">
+
+    <section class="plate" id="plate-01" data-variant="cover-folded">
+      <div class="plate-head">
+        <span class="plate-no">01</span>
+        <h2>外屏 · 折叠态（合上）</h2>
+      </div>
+      <p class="plate-sub">折叠态同样把导航收在右缘：状态环在右上、图标导航沉右下，与展开态同一套壳层——Duo 全形态导航位置不变。</p>
+      <div class="device-zone">
+        <div class="device" style="--w:466px;--h:678px">
+          <div class="screen" style="--w:466px;--h:678px">
+            <div class="body" style="margin-right:84px">
+              <div class="content" style="display:flex;flex-direction:column;gap:10px;padding-top:16px">
+                <div class="ltitle" style="padding:0 2px 4px">计价</div>
+                <div class="chiprow"><span class="achip">全部商家</span><span class="achip">近 30 天</span></div>
+                <div class="card prow"><div><div class="p-name">尖椒</div><div class="p-sub">湖滨区永辉超市 · 今天 09:12</div></div><div class="p-price">¥6.98 <small>/斤</small></div></div>
+                <div class="card prow"><div><div class="p-name">五花肉</div><div class="p-sub">涧南农贸市场 · 昨天 18:40</div></div><div class="p-price">¥15.80 <small>/斤</small></div></div>
+                <div class="card prow"><div><div class="p-name">鸡蛋</div><div class="p-sub">明发商业广场店 · 昨天 07:32</div></div><div class="p-price">¥5.20 <small>/斤</small></div></div>
+                <div class="card prow"><div><div class="p-name">茉莉香米</div><div class="p-sub">大润发 · 11-18</div></div><div class="p-price">¥39.90 <small>/5kg袋</small></div></div>
+                <div class="card prow"><div><div class="p-name">老姜</div><div class="p-sub">涧南农贸市场 · 11-20</div></div><div class="p-price">¥12.50 <small>/斤</small></div></div>
+              </div>
+            </div>
+            <div class="fab" style="right:80px;bottom:30px"><svg class="ic" style="width:24px;height:24px" aria-hidden="true"><use href="#i-plus"/></svg></div>
+            <div class="edge-rail">
+              <div class="rail-cam"><i class="camdot"></i></div>
+              <i class="ring"></i>
+              <span class="rtime">9:41</span>
+              <div class="rail-tools">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-scan"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+              <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+              </div>
+            </div>
+            <i class="home-ind"></i>
+          </div>
+        </div>
+      </div>
+      <aside class="spec">
+        <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+        <table class="spec-t">
+          <tr><th>视口</th><td><code>466 × 678 pt</code> @3x</td></tr>
+          <tr><th>形态</th><td>折叠态 · 尾缘竖条：Dynamic Island/状态环 + 工具栏（扫码/筛选）+ tab bar；外屏摄像头常驻区在竖条顶部</td></tr>
+          <tr><th>壳层</th><td>Duo 全形态统一右缘导航——折叠态不再用底部 4 tab（常规 iPhone 仍用底栏，属设备分支）</td></tr>
+        </table>
+        <ul class="notes">
+          <li><span class="chip p1">P1</span><span class="nbody"><b>壳层按设备分支：</b>Duo 上折叠态（466 宽）也走右缘竖条，仅常规 iPhone 走底栏——<code>ScaffoldWithNavBar</code> 需要设备形态判断而非纯宽度断点。</span></li>
+          <li><span class="chip p1">P1</span><span class="nbody"><b>弹层高度收敛：</b>对比页 5 处固定 420 高的搜索弹层改 <code>ConstrainedBox(maxHeight)</code>——678 高度叠加键盘时易超屏。</span></li>
+          <li><span class="chip n">保持</span><span class="nbody">标题栏操作按钮（扫码/筛选）移入竖条工具栏区——HIG：导航控件置顶、主要操作随后；FAB 留在内容区右下。</span></li>
+          <li><span class="chip n">保持</span><span class="nbody">折叠态摄像头可能落在竖条<strong>底部</strong>（随持握方向，如左下/右下角）——此时系统簇占下半段，导航项自动翻到竖条顶部，始终与系统元素错开。</span></li>
+        </ul>
+      </aside>
+    </section>
+
+    <section class="plate" id="plate-02" data-variant="inner-open-portrait">
+      <div class="plate-head">
+        <span class="plate-no">02</span>
+        <h2>内屏 · 展开竖屏 · 菜谱网格</h2>
+      </div>
+      <p class="plate-sub">展开竖屏 ≈ Web 端 sm 档：菜谱两列图卡，列表内容自然跨过折痕滚动；固定控件（右缘导航、FAB）不落在折痕上。</p>
+      <p class="fold-cap">图中虚线 = 铰链 / 折痕（y ≈ 475 pt）——仅作位置标注，滚动内容不强制分区。</p>
+      <div class="device-zone">
+        <div class="device" style="--w:669px;--h:951px">
+          <div class="screen" style="--w:669px;--h:951px">
+            <div class="sbar tall"><span>9:41</span><span class="ind"><svg class="ic s" style="width:15px;height:12px" aria-hidden="true"><use href="#i-sig"/></svg><svg class="ic s" style="width:15px;height:15px" aria-hidden="true"><use href="#i-wifi"/></svg><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="0.5" y="2.5" width="17" height="7" rx="2" fill="none" stroke="#1A1C15" stroke-width="1"/><rect x="2" y="4" width="11" height="4" rx="1" fill="#1A1C15"/><rect x="19" y="4.5" width="2" height="3" rx="1" fill="#1A1C15"/></svg></span></div>
+            <div class="body">
+              <div class="appbar"><span class="t">菜谱</span><span class="act"><span class="ib"><svg class="ic" aria-hidden="true"><use href="#i-filter"/></svg></span></span></div>
+              <div class="content" style="padding-top:10px">
+                <div class="chiprow" style="margin-bottom:12px"><span class="achip">全部分类</span><span class="achip">简单难度</span><span class="achip">仅收藏</span></div>
+                <div style="display:flex;gap:12px;margin-bottom:12px">
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><svg aria-hidden="true"><use href="#d-braise"/></svg></div>
+                    <div class="bd"><div class="nm"><b>黄焖鸡米饭</b><svg class="ic fav" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥7.41/份</span> · 310 kcal/份</div></div>
+                  </div>
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><svg aria-hidden="true"><use href="#d-tomato"/></svg></div>
+                    <div class="bd"><div class="nm"><b>番茄炒蛋</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥3.42/份</span> · 186 kcal/份</div></div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:12px;margin-bottom:12px">
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><svg aria-hidden="true"><use href="#d-pork"/></svg></div>
+                    <div class="bd"><div class="nm"><b>青椒肉丝</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥6.15/份</span> · 320 kcal/份</div></div>
+                  </div>
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><svg aria-hidden="true"><use href="#d-broccoli"/></svg></div>
+                    <div class="bd"><div class="nm"><b>蒜蓉西兰花</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥4.05/份</span> · 96 kcal/份</div></div>
+                  </div>
+                </div>
+                <div style="display:flex;gap:12px">
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                    <div class="bd"><div class="nm"><b>紫菜蛋花汤</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥2.10/份</span> · 45 kcal/份</div></div>
+                  </div>
+                  <div class="rcard" style="width:280px">
+                    <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                    <div class="bd"><div class="nm"><b>红烧排骨</b><svg class="ic fav" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                    <div class="meta"><span class="c">¥9.30/份</span> · 486 kcal/份</div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+                      <div class="bnav">
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg></span>推荐</span>
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg></span>计价</span>
+            <span class="it on"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span>菜谱</span>
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg></span>更多</span>
+          </div>
+            <i class="fold-band-h" style="top:475px"></i><i class="fold-line-h" style="top:475px"></i>
+            <i class="home-ind"></i>
+          </div>
+        </div>
+      </div>
+      <aside class="spec">
+        <div class="head-row"><span class="stype">SPEC</span><span class="stype p0">P0 风险位</span></div>
+        <table class="spec-t">
+          <tr><th>视口</th><td><code>669 × 951 pt</code> @3x · 折痕位于 y ≈ 475 pt</td></tr>
+          <tr><th>形态</th><td>内屏竖屏 · 标准横条（HIG 例外：竖屏保留顶部导航栏 + 底部 tab bar）· 两列图卡 ≈ Web sm 档</td></tr>
+          <tr><th>断点</th><td>669 ≥ 600 → 右缘竖条（替代左侧 NavigationRail）</td></tr>
+        </table>
+        <ul class="notes">
+          <li><span class="chip p0">P0</span><span class="nbody"><b>壳层树形恒定：</b>外屏 466 ↔ 内屏 669 穿越断点时保持子树深度不变（底栏 ↔ 右缘竖条互换壳，内容树不动），防滚动/输入 State 丢失。</span></li>
+          <li><span class="chip p1">P1</span><span class="nbody"><b>展开态壳层改右缘竖条：</b>状态环（右上）+ 10 目的地图标导航（右下），随姿态保持——对齐 Duo 系统控件行为；图标无文字，目的地取舍（10 个 vs 4+更多）实施时定。</span></li>
+          <li><span class="chip p1">P1</span><span class="nbody"><b>断点抽共享常量：</b>600（<code>app_router.dart:792</code>）与菜谱网格 960/1280/1920 目前是两处互不相关的裸数字。</span></li>
+          <li><span class="chip p1">P1</span><span class="nbody"><b>目的地顺序对齐 web：</b>web 侧栏为 商品→原料（<code>AppLayout.vue:46-65</code>），移动端 rail 目前 原料→商品——本稿按 web 顺序；卡片口径亦对齐（成本/份 · 每份热量）。</span></li>
+          <li><span class="chip n">保持</span><span class="nbody">rail 矮视口 660 滚动兜底逻辑保留（竖条在 669 高的横屏下同样需要）。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">HIG 例外：内屏竖屏保留标准横条；横屏/外屏走尾缘竖条——姿态切换时控件相对位置尽量一致（keep controls consistent across poses）。</span></li>
+      </ul>
+      </aside>
+    </section>
+  </div>
+  <!-- ══ Plate 03：内屏横屏 · 菜谱四列图卡 ══ -->
+  <section class="plate" id="plate-03" data-variant="inner-open-landscape">
+    <div class="plate-head">
+      <span class="plate-no">03</span>
+      <h2>内屏 · 展开横屏 · 菜谱四列图卡</h2>
+    </div>
+    <p class="plate-sub">菜谱卡按真实结构还原（图 + 名称心形 + 成本/份 · kcal/份），一行四项、图片固定高；折痕恰好走在第 2/3 列的列间距里，卡片不跨铰链。</p>
+    <div class="device-zone">
+      <div class="device landscape" style="--w:951px;--h:669px">
+        <div class="screen" style="--w:951px;--h:669px">
+          <div class="body" style="margin-right:84px">
+            <div style="padding:14px 0 0 81px;display:flex;flex-direction:column;gap:12px"><div class="ltitle" style="margin-bottom:2px">菜谱</div>
+              <div style="display:flex;gap:12px">
+                <div class="rcard" style="width:188px">
+                  <div class="img"><svg aria-hidden="true"><use href="#d-braise"/></svg></div>
+                  <div class="bd"><div class="nm"><b>黄焖鸡米饭</b><svg class="ic fav" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥7.41/份</span> · 310 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><svg aria-hidden="true"><use href="#d-tomato"/></svg></div>
+                  <div class="bd"><div class="nm"><b>番茄炒蛋</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥3.42/份</span> · 186 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><svg aria-hidden="true"><use href="#d-pork"/></svg></div>
+                  <div class="bd"><div class="nm"><b>青椒肉丝</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥6.15/份</span> · 320 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><svg aria-hidden="true"><use href="#d-broccoli"/></svg></div>
+                  <div class="bd"><div class="nm"><b>蒜蓉西兰花</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥4.05/份</span> · 96 kcal/份</div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div class="rcard" style="width:188px">
+                  <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                  <div class="bd"><div class="nm"><b>紫菜蛋花汤</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥2.10/份</span> · 45 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                  <div class="bd"><div class="nm"><b>红烧排骨</b><svg class="ic fav" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥9.30/份</span> · 486 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                  <div class="bd"><div class="nm"><b>清炒土豆丝</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥3.20/份</span> · 152 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                  <div class="bd"><div class="nm"><b>凉拌黄瓜</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥2.85/份</span> · 64 kcal/份</div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div class="rcard" style="width:188px">
+                  <div class="img"><svg aria-hidden="true"><use href="#d-tomato"/></svg></div>
+                  <div class="bd"><div class="nm"><b>西红柿鸡蛋面</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥5.60/份</span> · 402 kcal/份</div></div>
+                </div>
+                <div class="rcard" style="width:188px">
+                  <div class="img"><span class="dishph"><svg class="ic" style="width:40px;height:40px" aria-hidden="true"><use href="#i-fork"/></svg></span></div>
+                  <div class="bd"><div class="nm"><b>香菇滑鸡</b><svg class="ic" aria-hidden="true"><use href="#i-heart"/></svg></div>
+                  <div class="meta"><span class="c">¥4.88/份</span> · 288 kcal/份</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="edge-rail">
+            <i class="ring"></i>
+            <span class="rtime">9:41</span>
+              <div class="rail-tools">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+            <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:486px;top:8px">铰链 · 折痕</span>
+          <span class="fold-note" style="left:8px;top:236px;width:66px">折痕走列间距<br>卡片不跨折痕</span>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>951 × 669 pt</code> @3x（开书自然方向）· 折痕位于 x ≈ 475 pt</td></tr>
+        <tr><th>形态</th><td>展开横屏 · 尾缘竖条（状态环 + 工具栏 + tab bar）· 页面标题入内容区</td></tr>
+        <tr><th>断点</th><td>951 ≥ 600 → 右缘竖条；折痕走 2/3 列间距（gutter 469–481 pt）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>菜谱卡一行四项 + 图片固定高：</b>当前卡片图 4:3 随宽度变化、<code>_columnCountFor(951)</code> 只排 3 列——Duo 展开态补列档（4 列）并把图改固定高 104，与 Web 端栅格跨端一致；无图菜谱沿用图标占位（<code>recipe_list_screen.dart:252</code> 两种真实状态）。</span></li>
+        <li><span class="chip p1">P1</span><span class="nbody"><b>列距对齐折痕：</b>网格 gutter 与铰链对齐（卡片 188 + 间距 12 × 4 列），列表类页面同理——折痕落点处留白或分隔。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">内屏忽略 <code>UISupportedInterfaceOrientations</code>（无论如何声明都会旋转），横屏可用性是硬前提。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 04：展开横屏 · 原料四列 ══ -->
+  <section class="plate" id="plate-04" data-variant="inner-open-landscape-ingredients">
+    <div class="plate-head">
+      <span class="plate-no">04</span>
+      <h2>内屏 · 展开横屏 · 原料四列</h2>
+    </div>
+    <p class="plate-sub">与 Web 原料管理页同构：搜索+筛选 → 四列卡（30 天走势铺底 · 首字母头像 · 分类 chip · 最新价 · 收藏/记价）→ 分页；折痕走 2/3 列间距。</p>
+    <div class="device-zone">
+      <div class="device landscape" style="--w:951px;--h:669px">
+        <div class="screen" style="--w:951px;--h:669px">
+          <div class="body" style="margin-right:84px">
+            <div style="padding:14px 18px 0 81px;display:flex;flex-direction:column"><div class="ltitle" style="margin-bottom:8px">原料</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <div class="field" style="flex:1;padding:8px 14px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">搜索原料</span></div>
+                <span style="width:38px;height:38px;border:1px solid var(--app-outline-var);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--app-on-surface-var)"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+              <div class="chiprow" style="margin-bottom:12px"><span class="achip">分类：全部</span><span class="achip">仅看收藏</span><span class="achip">特殊条件 ▾</span></div>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava">尖</span><span class="nm"><b>尖椒</b></span></div><span class="kchip">蔬菜类</span><div class="price">¥6.98 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s fav" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava">鸡</span><span class="nm"><b>鸡蛋</b></span></div><span class="kchip">蛋奶类</span><div class="price">¥5.20 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s fav" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava">五</span><span class="nm"><b>五花肉</b></span></div><span class="kchip">肉禽类</span><div class="price">¥15.80 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava">茉</span><span class="nm"><b>茉莉香米</b></span></div><span class="kchip">主食类</span><div class="price">¥7.98 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava">干</span><span class="nm"><b>干香菇</b></span></div><span class="kchip">干货类</span><div class="price">¥28.00 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava">老</span><span class="nm"><b>老姜</b></span></div><span class="kchip">调味类</span><div class="price">¥12.50 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava">大</span><span class="nm"><b>大蒜</b></span></div><span class="kchip">调味类</span><div class="price">¥8.60 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava">西</span><span class="nm"><b>西兰花</b></span></div><span class="kchip">蔬菜类</span><div class="price">¥4.50 <small>/斤</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--app-on-surface-var)">
+                <span class="achip" style="padding:2px 9px">1</span><span>2</span><span>3</span><span>…</span><span style="margin-left:auto">每页 20 条 · 共 63 种</span>
+              </div>
+            </div>
+          </div>
+          <div class="edge-rail">
+            <i class="ring"></i>
+            <span class="rtime">9:41</span>
+              <div class="rail-tools">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+            <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+          <div class="fab" style="right:80px;bottom:24px;width:48px;height:48px"><svg class="ic" style="width:22px;height:22px" aria-hidden="true"><use href="#i-plus"/></svg></div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:486px;top:8px">铰链 · 折痕</span>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>951 × 669 pt</code> @3x · 折痕 x ≈ 475 走 2/3 列间距（gutter 469–481）</td></tr>
+        <tr><th>形态</th><td>展开横屏 · 尾缘竖条（原料 active）· 工具栏（筛选）入竖条 · 标题入内容区</td></tr>
+        <tr><th>骨架</th><td>搜索+筛选 → 四列卡 → 分页 → FAB（web 原料管理同构，<code>IngredientsView.vue</code>）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>移动端原料列表对齐 web：</b>四列卡补 30 天走势铺底、首字母头像、分类 chip、最新价与「记价」入口（QuickPriceRecordDialog 同源）。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">排序与 web 一致：价格记录数 + 收藏置顶（<code>favorites_first</code>）；折痕落列间距，卡片不跨接。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 05：展开横屏 · 商品四列 ══ -->
+  <section class="plate" id="plate-05" data-variant="inner-open-landscape-products">
+    <div class="plate-head">
+      <span class="plate-no">05</span>
+      <h2>内屏 · 展开横屏 · 商品四列</h2>
+    </div>
+    <p class="plate-sub">商品管理页同骨架：品牌与别名进卡片，头像用 primary 色区分实体类型；筛选行含关联原料/品牌/无价格条件。</p>
+    <div class="device-zone">
+      <div class="device landscape" style="--w:951px;--h:669px">
+        <div class="screen" style="--w:951px;--h:669px">
+          <div class="body" style="margin-right:84px">
+            <div style="padding:14px 18px 0 81px;display:flex;flex-direction:column"><div class="ltitle" style="margin-bottom:8px">商品</div>
+              <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+                <div class="field" style="flex:1;padding:8px 14px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">搜索商品</span></div>
+                <span style="width:38px;height:38px;border:1px solid var(--app-outline-var);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--app-on-surface-var)"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+              <div class="chiprow" style="margin-bottom:12px"><span class="achip">关联原料：全部</span><span class="achip">品牌：全部</span><span class="achip">无价格</span></div>
+              <div style="display:flex;gap:12px;margin-bottom:12px">
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava pri">茉</span><span class="nm"><b>茉莉香米 5kg</b></span></div><span class="kchip">金龙鱼</span><div class="price">¥39.90 <small>/袋</small></div></div><div class="ft"><span class="ib"><svg class="ic s fav" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava pri">午</span><span class="nm"><b>午餐肉 340g</b></span></div><span class="kchip">梅林</span><div class="price">¥18.50 <small>/罐</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava pri">生</span><span class="nm"><b>酿造生抽 500ml</b></span></div><span class="kchip">海天</span><div class="price">¥8.90 <small>/瓶</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava pri">挂</span><span class="nm"><b>挂面 800g</b></span></div><span class="kchip" style="color:var(--ink-soft)">无品牌</span><div class="price">¥6.50 <small>/袋</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava pri">食</span><span class="nm"><b>食用油 5L</b></span></div><span class="kchip">鲁花</span><div class="price">¥68.90 <small>/桶</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava pri">白</span><span class="nm"><b>白砂糖 400g</b></span></div><span class="kchip" style="color:var(--ink-soft)">无品牌</span><div class="price">¥4.20 <small>/袋</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-a"/></svg><div class="bd"><div class="hd"><span class="ava pri">火</span><span class="nm"><b>火腿肠 400g</b></span></div><span class="kchip">双汇</span><div class="price">¥12.90 <small>/袋</small></div></div><div class="ft"><span class="ib"><svg class="ic s fav" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+                <div class="icard"><svg class="spark" viewBox="0 0 188 64" preserveAspectRatio="none" aria-hidden="true"><use href="#d-spark-b"/></svg><div class="bd"><div class="hd"><span class="ava pri">苏</span><span class="nm"><b>苏打饼干 380g</b></span></div><span class="kchip" style="color:var(--ink-soft)">无品牌</span><div class="price">¥9.80 <small>/盒</small></div></div><div class="ft"><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg></span><span class="ib"><svg class="ic s" aria-hidden="true"><use href="#i-tag"/></svg></span></div></div>
+              </div>
+              <div style="margin-top:12px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--app-on-surface-var)">
+                <span class="achip" style="padding:2px 9px">1</span><span>2</span><span>3</span><span>…</span><span style="margin-left:auto">每页 20 条 · 共 41 种</span>
+              </div>
+            </div>
+          </div>
+          <div class="edge-rail">
+            <i class="ring"></i>
+            <span class="rtime">9:41</span>
+              <div class="rail-tools">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+              </div>
+            <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+          <div class="fab" style="right:80px;bottom:24px;width:48px;height:48px"><svg class="ic" style="width:22px;height:22px" aria-hidden="true"><use href="#i-plus"/></svg></div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:486px;top:8px">铰链 · 折痕</span>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>951 × 669 pt</code> @3x · 折痕走 2/3 列间距</td></tr>
+        <tr><th>形态</th><td>展开横屏 · 尾缘竖条（商品 active）· 工具栏（筛选）入竖条 · 标题入内容区</td></tr>
+        <tr><th>骨架</th><td>搜索+筛选 → 四列卡 → 分页 → FAB（web 商品管理同构，<code>ProductsView.vue</code>）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>移动端商品列表对齐 web：</b>品牌（无品牌兜底）与别名 chips 进卡片；头像 primary 色，与原料（secondary 色）区分实体类型。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">排序同 web（价格记录数 + 收藏置顶）；筛选集合：关联原料 / 原料分类 / 品牌 / 仅看收藏 / 特殊条件。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 06：展开横屏 · 商家双栏 ══ -->
+  <section class="plate" id="plate-06" data-variant="inner-open-landscape-merchants">
+    <div class="plate-head">
+      <span class="plate-no">06</span>
+      <h2>内屏 · 展开横屏 · 商家双栏</h2>
+    </div>
+    <p class="plate-sub">商家页 Web 桌面默认即双栏：左 350 pt 列表（搜索/筛选/分页/FAB）+ 右弹性地图；地图内容可跨折痕。</p>
+    <div class="device-zone">
+      <div class="device landscape" style="--w:951px;--h:669px">
+        <div class="screen" style="--w:951px;--h:669px">
+          <div class="body" style="margin-right:84px">
+            <div style="display:flex;flex:1;min-height:0">
+              <div class="mleft">
+                <div class="ltitle" style="padding:12px 14px 0">商家</div>
+                <div style="display:flex;gap:8px;align-items:center;padding:10px 12px 6px">
+                  <div class="field" style="flex:1;padding:7px 12px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">搜索商家</span></div>
+                  <span style="width:36px;height:36px;border:1px solid var(--app-outline-var);border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--app-on-surface-var)"><svg class="ic s" aria-hidden="true"><use href="#i-filter"/></svg></span>
+                </div>
+                <div style="flex:1;overflow:hidden">
+                  <div class="mrow"><span class="ava" style="width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--app-secondary-container);color:var(--app-secondary)"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg></span><div style="min-width:0"><div style="font-size:13.5px;font-weight:600">湖滨区永辉超市</div><div style="font-size:12px;color:var(--app-on-surface-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">湖滨区建设路 88 号</div></div><svg class="ic s" style="margin-left:auto;color:var(--app-secondary)" aria-hidden="true"><use href="#i-gps"/></svg></div>
+                  <div class="mrow"><span class="ava" style="width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--app-secondary-container);color:var(--app-secondary)"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg></span><div style="min-width:0"><div style="font-size:13.5px;font-weight:600">涧南农贸市场</div><div style="font-size:12px;color:var(--app-on-surface-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">涧南区农贸路 12 号</div></div><svg class="ic s" style="margin-left:auto;color:var(--app-secondary)" aria-hidden="true"><use href="#i-gps"/></svg></div>
+                  <div class="mrow"><span class="ava" style="width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--app-secondary-container);color:var(--app-secondary)"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg></span><div style="min-width:0"><div style="font-size:13.5px;font-weight:600">明发商业广场店</div><div style="font-size:12px;color:var(--app-on-surface-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">明发广场 1 层</div></div><svg class="ic s" style="margin-left:auto;color:var(--app-secondary)" aria-hidden="true"><use href="#i-gps"/></svg></div>
+                  <div class="mrow"><span class="ava" style="width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--app-secondary-container);color:var(--app-secondary)"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg></span><div style="min-width:0"><div style="font-size:13.5px;font-weight:600">大润发湖滨店</div><div style="font-size:12px;color:var(--app-on-surface-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">湖滨区解放路 200 号</div></div><svg class="ic s" style="margin-left:auto;color:var(--app-secondary)" aria-hidden="true"><use href="#i-gps"/></svg></div>
+                  <div class="mrow"><span class="ava" style="width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;background:var(--app-secondary-container);color:var(--app-secondary)"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg></span><div style="min-width:0"><div style="font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px">联华超市<span class="kchip" style="background:var(--warn-bg);color:var(--warn-ink);border-color:transparent">已歇业</span></div><div style="font-size:12px;color:var(--app-on-surface-var);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">老城区南街 5 号</div></div><svg class="ic s" style="margin-left:auto;color:var(--app-secondary)" aria-hidden="true"><use href="#i-gps"/></svg></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--app-on-surface-var);padding:8px 12px">
+                  <span class="achip" style="padding:2px 9px">1</span><span>2</span><span>…</span><span style="margin-left:auto">共 42 家</span>
+                </div>
+                <div class="fab" style="position:absolute;right:16px;bottom:18px;width:48px;height:48px"><svg class="ic" style="width:22px;height:22px" aria-hidden="true"><use href="#i-plus"/></svg></div>
+              </div>
+              <div style="flex:1;position:relative;overflow:hidden">
+                <svg viewBox="0 0 360 416" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0;width:100%;height:100%" aria-hidden="true"><use href="#d-map"/></svg>
+                <div class="mapctl"><span>高德 ▾</span><span>常用地点 ▾</span><span>定位</span><span>全览</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="edge-rail">
+            <i class="ring"></i>
+            <span class="rtime">9:41</span>
+            <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:486px;top:64px">铰链 · 折痕</span>
+          <span class="fold-note" style="left:500px;top:124px">地图内容可跨折痕<br>列表 pane 与折痕保持距离</span>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>951 × 669 pt</code> @3x · 折痕 x ≈ 475 落在地图区</td></tr>
+        <tr><th>形态</th><td>展开横屏 · 分屏：导航列表 pane 在左（leading）+ 尾缘竖条；列表控件留在 pane 顶部</td></tr>
+        <tr><th>断点</th><td>≥ 600 → 右缘竖条（商家 active）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>移动端商家页展开态双栏化：</b><code>MerchantMapView</code> 挂右栏、列表左栏 350 独立滚动；≤960 退回上下堆叠（web 同规则）。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">地图引擎 Leaflet + 高德/百度/腾讯/天地图/OSM 适配不变；列表两行制（名称+歇业 chip / 地址）与行尾定位按钮同 web。</span></li>
+        <li><span class="chip n">已知</span><span class="nbody">地图禁用模式（后台设置）退回四列卡网格——同 Plate 04/05 骨架。</span></li>
+      <li><span class="chip n">保持</span><span class="nbody">HIG「控件靠近其作用的内容」：搜索/筛选留在列表 pane 顶部而非竖条；分屏多任务时各 app 控件靠自身外缘。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 07：展开横屏 · 试算详情 ══ -->
+  <section class="plate" id="plate-07" data-variant="inner-open-landscape-plan">
+    <div class="plate-head">
+      <span class="plate-no">07</span>
+      <h2>内屏 · 展开横屏 · 试算详情</h2>
+    </div>
+    <p class="plate-sub">按 Web 试算详情的区块顺序同构：编辑行 → 三搜索 → 条目四列 → 合计四块 → 图表 1:1 双栏（营养成分｜营养来源在折痕以下滚动）。</p>
+    <div class="device-zone">
+      <div class="device landscape" style="--w:951px;--h:669px">
+        <div class="screen" style="--w:951px;--h:669px">
+          <div class="body" style="margin-right:84px">
+            <div style="padding:16px 18px 0;display:flex;flex-direction:column;gap:10px">
+              <div style="display:flex;gap:8px">
+                <div class="field" style="flex:1;padding:8px 12px"><span class="fl">方案名</span><span class="fv">黄焖鸡一餐</span></div>
+                <div class="field" style="width:96px;padding:8px 12px"><span class="fv">一顿</span><svg class="ic s" style="color:var(--app-on-surface-var)" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                <div class="btn" style="width:72px;height:40px;font-size:13.5px;border-radius:10px">保存</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+                <div class="field" style="padding:8px 12px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">加菜谱…</span></div>
+                <div class="field" style="padding:8px 12px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">加原料…</span></div>
+                <div class="field" style="padding:8px 12px"><span class="fv" style="color:var(--app-on-surface-var);font-weight:400">加商品…</span></div>
+              </div>
+              <div style="display:flex;gap:10px;margin-left:63px">
+                <div class="tcard">
+                  <div class="hd"><span class="tchip" style="background:var(--app-primary-container);color:var(--app-on-primary-container)">菜谱</span><span class="nm">黄焖鸡米饭</span><svg class="ic s" style="color:var(--app-on-surface-var)" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                  <div class="qty">份数 <b>2</b><span style="margin-left:auto">份</span></div>
+                  <div class="cost">成本 <b>¥14.81</b><svg class="ic s" aria-hidden="true"><use href="#i-trash"/></svg></div>
+                </div>
+                <div class="tcard">
+                  <div class="hd"><span class="tchip" style="background:var(--app-secondary-container);color:var(--app-on-secondary-container)">原料</span><span class="nm">五花肉</span><svg class="ic s" style="color:var(--app-on-surface-var)" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                  <div class="qty">数量 <b>300</b><span style="margin-left:auto">克 ▾</span></div>
+                  <div class="cost">成本 <b>¥9.36</b><svg class="ic s" aria-hidden="true"><use href="#i-trash"/></svg></div>
+                </div>
+                <div class="tcard">
+                  <div class="hd"><span class="tchip" style="background:var(--app-secondary-container);color:var(--app-on-secondary-container)">原料</span><span class="nm">青椒</span><svg class="ic s" style="color:var(--app-on-surface-var)" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                  <div class="qty">数量 <b>200</b><span style="margin-left:auto">克 ▾</span></div>
+                  <div class="cost">成本 <b>¥2.79</b><svg class="ic s" aria-hidden="true"><use href="#i-trash"/></svg></div>
+                </div>
+                <div class="tcard">
+                  <div class="hd"><span class="tchip" style="background:#fff;border:1px solid var(--app-outline-var);color:var(--app-on-surface-var)">商品</span><span class="nm">午餐肉 340g</span><svg class="ic s" style="color:var(--app-on-surface-var)" aria-hidden="true"><use href="#i-chev"/></svg></div>
+                  <div class="qty">数量 <b>1</b><span style="margin-left:auto">罐 ▾</span></div>
+                  <div class="cost">成本 <b>¥18.50</b><svg class="ic s" aria-hidden="true"><use href="#i-trash"/></svg></div>
+                </div>
+              </div>
+              <div class="card" style="padding:12px 14px">
+                <div class="prow"><span class="p-name">合计</span><span class="chiprow"><span class="achip" style="background:var(--app-secondary-container);color:var(--app-on-secondary-container);border-color:transparent">当前</span><span class="achip">各地区对比</span></span></div>
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px">
+                  <div style="background:#fff;border:1px solid var(--app-outline-var);border-radius:10px;padding:8px 12px"><div style="font-size:12px;color:var(--app-on-surface-var)">成本</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--app-primary-strong)">¥45.46</div><div style="font-size:12px;color:var(--ink-faint)">预算 ¥50 内</div></div>
+                  <div style="background:#fff;border:1px solid var(--app-outline-var);border-radius:10px;padding:8px 12px"><div style="font-size:12px;color:var(--app-on-surface-var)">热量</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--app-primary-strong)">1240 kcal</div><div style="font-size:12px;color:var(--ink-faint)">目标 2000</div></div>
+                  <div style="background:#fff;border:1px solid var(--app-outline-var);border-radius:10px;padding:8px 12px"><div style="font-size:12px;color:var(--app-on-surface-var)">蛋白质</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--app-error)">86 g</div><div style="font-size:12px;color:var(--ink-faint)">目标 60</div></div>
+                  <div style="background:#fff;border:1px solid var(--app-outline-var);border-radius:10px;padding:8px 12px"><div style="font-size:12px;color:var(--app-on-surface-var)">脂肪</div><div style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--app-primary-strong)">45 g</div><div style="font-size:12px;color:var(--ink-faint)">目标 66</div></div>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px">
+                <div class="trend-wrap" style="width:451px">
+                  <div class="tl"><span>成本构成占比</span><span>按条目成本</span></div>
+                  <div style="display:flex;align-items:center;gap:14px;padding:6px 0 4px">
+                    <svg viewBox="0 0 64 64" width="96" height="96" role="img" aria-label="成本构成：鸡腿肉 43%，调料与米 30%，干香菇 15%，青椒 12%">
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="var(--app-outline-var)" stroke-width="10"/>
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="#558B2F" stroke-width="10" stroke-dasharray="64.8 85.9" stroke-dashoffset="0" transform="rotate(-90 32 32)"/>
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="#547C8C" stroke-width="10" stroke-dasharray="45.2 105.6" stroke-dashoffset="-64.8" transform="rotate(-90 32 32)"/>
+                      <circle cx="32" cy="32" r="24" fill="none" stroke="#C4E99A" stroke-width="10" stroke-dasharray="22.6 128.2" stroke-dashoffset="-110" transform="rotate(-90 32 32)"/>
+                    </svg>
+                    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--app-on-surface-var)">
+                      <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#558B2F;margin-right:6px"></i>鸡腿肉 43%</span>
+                      <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#547C8C;margin-right:6px"></i>调料与米 30%</span>
+                      <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#C4E99A;margin-right:6px"></i>干香菇 15%</span>
+                      <span><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--app-outline-var);margin-right:6px"></i>青椒 12%</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="trend-wrap" style="flex:1">
+                  <div class="tl"><span>30 天成本走势</span><span>11-22 · ¥45.46</span></div>
+                  <svg viewBox="0 0 300 64" style="width:100%;height:64px;margin-top:4px" role="img" aria-label="本方案 30 天合计成本走势，约在 43 至 47 元之间波动">
+                    <path d="M0,40 25,36 50,38 75,30 100,27 125,33 150,24 175,22 200,26 225,18 250,17 275,22 300,15 L300,64 0,64 Z" fill="rgba(85,139,47,.10)"/>
+                    <polyline points="0,40 25,36 50,38 75,30 100,27 125,33 150,24 175,22 200,26 225,18 250,17 275,22 300,15" fill="none" stroke="#558B2F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <g fill="#558B2F"><circle cx="25" cy="36" r="3"/><circle cx="75" cy="30" r="3"/><circle cx="125" cy="33" r="3"/><circle cx="200" cy="26" r="3"/><circle cx="250" cy="17" r="3"/></g>
+                  </svg>
+                  <div class="tl"><span>10-23</span><span>仅记录日画点</span><span>11-22</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="edge-rail">
+            <i class="ring"></i>
+            <span class="rtime">9:41</span>
+              <div class="rail-tools">
+                <span class="it"><svg class="ic s" style="transform:rotate(180deg)" aria-hidden="true"><use href="#i-chev"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-trash"/></svg></span>
+              </div>
+            <div class="nav">
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg></span>
+                <span class="it"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg></span>
+                <span class="it on"><svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg></span>
+            </div>
+          </div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:486px;top:8px">铰链 · 折痕</span>
+          <span class="fold-note" style="left:500px;top:64px">条目卡与图表双栏<br>分割线与折痕对齐</span>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>951 × 669 pt</code> @3x · 折痕 x ≈ 475 与图表双栏分割线对齐</td></tr>
+        <tr><th>形态</th><td>展开横屏 · 尾缘竖条：Back 置顶（导航控件）→ 删除 → tab bar；保存留在编辑行（控件靠近内容）</td></tr>
+        <tr><th>顺序</th><td>编辑行 → 三搜索 → 条目四列 → 合计四块 → 图表 1:1 双栏 → 营养成分｜来源（下方滚动）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>plan_detail 展开态分栏：</b>移动端现为单列（<code>plan_detail_screen.dart:453</code>）——按 web <code>PlanDetailView.vue</code> 区块顺序与列档（条目 lg=4、合计 4 块、图表 md=6｜md=6、营养 1:1）对齐。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">合计块超目标红/正常绿 + 「目标 X」；≥2 个有数据地区时出现「当前｜各地区对比」口径切换（成本随数据范围）。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">条目卡点按跳实体详情、类型 chip 三色（菜谱/原料/商品）同 web。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 08：半开竖屏 · 同连续屏处理 ══ -->
+  <section class="plate" id="plate-08" data-variant="half-open-portrait">
+    <div class="plate-head">
+      <span class="plate-no">08</span>
+      <h2>内屏 · 半开竖屏</h2>
+    </div>
+    <p class="plate-sub">半开竖屏与展开竖屏同一处理：连续屏、内容自然跨过折痕，不做 pane 分区；内屏竖屏走标准横条（顶部导航栏 + 底部 tab bar）。</p>
+    <p class="fold-cap">图中虚线 = 铰链 / 折痕（y ≈ 475 pt）——半折态下同样仅作位置标注。</p>
+    <div class="device-zone">
+      <div class="device" style="--w:669px;--h:951px">
+        <div class="screen" style="--w:669px;--h:951px">
+          <div class="sbar tall"><span>9:41</span><span class="ind"><svg class="ic s" style="width:15px;height:12px" aria-hidden="true"><use href="#i-sig"/></svg><svg class="ic s" style="width:15px;height:15px" aria-hidden="true"><use href="#i-wifi"/></svg><svg width="22" height="12" viewBox="0 0 22 12" aria-hidden="true"><rect x="0.5" y="2.5" width="17" height="7" rx="2" fill="none" stroke="#1A1C15" stroke-width="1"/><rect x="2" y="4" width="11" height="4" rx="1" fill="#1A1C15"/><rect x="19" y="4.5" width="2" height="3" rx="1" fill="#1A1C15"/></svg></span></div>
+          <div class="appbar"><span class="t">计价</span><span class="act"><span class="ib"><svg class="ic" aria-hidden="true"><use href="#i-scan"/></svg></span></span></div>
+            <div class="content" style="display:flex;flex-direction:column;gap:10px;padding-top:10px">
+              <div class="chiprow"><span class="achip">全部商家</span><span class="achip">近 30 天</span></div>
+              <div class="card prow"><div><div class="p-name">尖椒</div><div class="p-sub">湖滨区永辉超市 · 今天 09:12</div></div><div class="p-price">¥6.98 <small>/斤</small></div></div>
+              <div class="card prow"><div><div class="p-name">五花肉</div><div class="p-sub">涧南农贸市场 · 昨天 18:40</div></div><div class="p-price">¥15.80 <small>/斤</small></div></div>
+              <div class="card prow"><div><div class="p-name">鸡蛋</div><div class="p-sub">明发商业广场店 · 昨天 07:32</div></div><div class="p-price">¥5.20 <small>/斤</small></div></div>
+              <div class="card prow"><div><div class="p-name">茉莉香米</div><div class="p-sub">大润发 · 11-18</div></div><div class="p-price">¥39.90 <small>/5kg袋</small></div></div>
+              <div class="card prow"><div><div class="p-name">老姜</div><div class="p-sub">涧南农贸市场 · 11-20</div></div><div class="p-price">¥12.50 <small>/斤</small></div></div>
+            </div>
+                    <div class="bnav">
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-spark"/></svg></span>推荐</span>
+            <span class="it on"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-receipt"/></svg></span>计价</span>
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-book"/></svg></span>菜谱</span>
+            <span class="it"><span class="pill"><svg class="ic" aria-hidden="true"><use href="#i-grid"/></svg></span>更多</span>
+          </div>
+            <i class="fold-band-h" style="top:475px"></i><i class="fold-line-h" style="top:475px"></i>
+          <i class="home-ind"></i>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype n">用户定调</span></div>
+      <table class="spec-t">
+        <tr><th>视口</th><td><code>669 × 951 pt</code> @3x · 折痕 y ≈ 475（半开 book 姿态）</td></tr>
+        <tr><th>形态</th><td>半开竖屏 · 标准横条（同内屏竖屏）· 折叠区仅系统级避让（alerts/sheets 自动移出中心）</td></tr>
+        <tr><th>处理</th><td>同展开竖屏——连续屏，内容可跨折痕；<b>不做 pane 分区</b></td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip n">定调</span><span class="nbody"><b>半折态不分区、不避让：</b>与展开竖屏同构；无弹层锚点需求 → foldable 桥接（displayFeatures）暂缓，待后续出现 pane/避让需求再启用。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody">固定控件（右缘导航、FAB）不落折痕落点；滚动列表内容可自然跨过 y ≈ 475。</span></li>
+        <li><span class="chip n">已知</span><span class="nbody">模拟器半开静止后 fold 数据延迟约 1 秒到达；未来若需姿态，仍以 viewport segments / 姿态 API 为准。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <!-- ══ Plate 09：Web 端 · Duo 展开横屏 · 详情两列 ══ -->
+  <section class="plate" id="plate-09" data-variant="web-open-landscape">
+    <div class="plate-head">
+      <span class="plate-no">09</span>
+      <h2>Web 端 · Duo 展开横屏 · 详情两列</h2>
+    </div>
+    <p class="plate-sub">根因：Vuetify md=960，Duo 横屏 951 差 9pt 跌落 sm 档——详情 md=6 全部堆叠成单列，壳层桌面判定（960）也退到移动抽屉。修复 = 详情页列档 md→sm + 壳层阈值降档 + 姿态 API 渐进增强。</p>
+    <div class="device-zone">
+      <div class="browser" style="--w:951px;--h:669px">
+        <div class="bchrome">
+          <span class="bdot" style="background:#FF5F57"></span>
+          <span class="bdot" style="background:#FEBC2E"></span>
+          <span class="bdot" style="background:#28C840"></span>
+          <div class="burl">生计 - 生活成本计算器</div>
+        </div>
+        <div class="bcontent">
+          <div class="bside">
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-spark"/></svg>今日推荐</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-receipt"/></svg>价格记录</span>
+            <span class="bi on"><svg class="ic s" aria-hidden="true"><use href="#i-book"/></svg>菜谱管理</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-box"/></svg>商品管理</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-leaf"/></svg>原料管理</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-store"/></svg>商家管理</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-swap"/></svg>物价对比</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-heart"/></svg>我的收藏</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-calc"/></svg>试算</span>
+            <span class="bi"><svg class="ic s" aria-hidden="true"><use href="#i-user"/></svg>个人中心</span>
+          </div>
+          <div class="bmain">
+            <div class="bbar">
+              <svg class="ic s" aria-hidden="true"><use href="#i-grid"/></svg>
+              <span style="font-size:15px;font-weight:600">黄焖鸡米饭</span>
+              <span class="kchip">家常菜</span>
+              <span style="margin-left:auto;display:flex;gap:6px"><span class="achip" style="padding:3px 10px">编辑</span><span class="achip" style="padding:3px 10px">试算</span></span>
+            </div>
+            <div style="flex:1;padding:14px;display:grid;grid-template-columns:1fr 1fr;gap:14px;align-content:start">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="wcard">
+                  <div class="prow" style="margin-bottom:8px"><span class="p-name">基本信息</span><span class="p-sub">2 人份 · 简单</span></div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12.5px;color:var(--ink-soft)">
+                    <span>用时 <b style="color:var(--ink)">35 分钟</b></span>
+                    <span>分类 <b style="color:var(--ink)">家常菜</b></span>
+                    <span>热量 <b style="color:var(--ink)">620 kcal/份</b></span>
+                    <span>状态 <b style="color:var(--ink)">已发布</b></span>
+                  </div>
+                </div>
+                <div class="wcard">
+                  <div class="prow" style="margin-bottom:8px"><span class="p-name">原料清单</span><span class="p-sub">5 项 · ¥14.81</span></div>
+                  <div style="display:flex;flex-direction:column;gap:5px;font-size:12.5px">
+                    <div class="prow"><span>鸡腿肉 600g</span><span style="font-family:var(--mono)">¥6.40</span></div>
+                    <div class="prow"><span>尖椒 200g</span><span style="font-family:var(--mono)">¥1.85</span></div>
+                    <div class="prow"><span>干香菇 20g</span><span style="font-family:var(--mono)">¥2.20</span></div>
+                    <div class="prow"><span>土豆 300g</span><span style="font-family:var(--mono)">¥1.20</span></div>
+                    <div class="prow"><span>调料与米</span><span style="font-family:var(--mono)">¥3.16</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div class="wcard">
+                  <div class="prow" style="margin-bottom:8px"><span class="p-name">步骤</span><span class="p-sub">3 步</span></div>
+                  <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--ink-soft)">
+                    <span><b style="color:var(--ink)">1.</b> 鸡腿肉切块，加料酒生抽腌制 15 分钟</span>
+                    <span><b style="color:var(--ink)">2.</b> 热油煸炒至变色，下香菇与土豆</span>
+                    <span><b style="color:var(--ink)">3.</b> 加水没过食材，焖 20 分钟收汁</span>
+                  </div>
+                </div>
+                <div class="wcard">
+                  <div class="prow" style="margin-bottom:8px"><span class="p-name">成本构成</span><span class="p-sub">¥14.81 / 2 份</span></div>
+                  <div style="display:flex;flex-direction:column;gap:6px">
+                    <div class="prow" style="font-size:12px;color:var(--app-on-surface-var)"><span>鸡腿肉</span><span>¥6.40 · 43%</span></div>
+                    <div style="height:6px;border-radius:3px;background:var(--app-surface-high)"><div style="width:43%;height:100%;border-radius:3px;background:var(--app-primary)"></div></div>
+                    <div class="prow" style="font-size:12px;color:var(--app-on-surface-var)"><span>调料与米</span><span>¥4.36 · 30%</span></div>
+                    <div style="height:6px;border-radius:3px;background:var(--app-surface-high)"><div style="width:30%;height:100%;border-radius:3px;background:var(--app-primary)"></div></div>
+                    <div class="prow" style="font-size:12px;color:var(--app-on-surface-var)"><span>干香菇</span><span>¥2.20 · 15%</span></div>
+                    <div style="height:6px;border-radius:3px;background:var(--app-surface-high)"><div style="width:15%;height:100%;border-radius:3px;background:var(--app-primary)"></div></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <i class="fold-band-v" style="left:475px"></i><i class="fold-line-v" style="left:475px"></i>
+          <span class="fold-tag" style="left:490px;top:8px">铰链 · 连续屏</span>
+          <span class="fold-note" style="left:420px;top:46px;white-space:nowrap">双栏为内容分栏可跨折痕 · 半折态按 segments 分 pane</span>
+        </div>
+      </div>
+    </div>
+    <aside class="spec">
+      <div class="head-row"><span class="stype">SPEC</span><span class="stype p1">P1 改动</span></div>
+      <table class="spec-t">
+        <tr><th>页面视口</th><td><code>951 × 627 pt</code>（Safari 全屏，扣地址栏）· 折痕 x ≈ 475</td></tr>
+        <tr><th>形态</th><td>Web · Duo 展开横屏 · 桌面侧栏壳 + 详情两列（连续屏，双栏可跨折痕）</td></tr>
+        <tr><th>策略</th><td>L1 断点层（全浏览器生效）→ L2 viewport-segments（半折双 pane）→ L3 姿态检测（辅助）</td></tr>
+      </table>
+      <ul class="notes">
+        <li><span class="chip p1">P1</span><span class="nbody"><b>L1 断点层（立即见效）：</b>详情页列档 <code>cols="12" md="6"</code> → <code>sm="6"</code>（<code>RecipeDetail.vue:301</code> 等四处）——Duo 竖屏 669 与横屏 951 都吃两列，手机 &lt;600 仍单列；壳层桌面判定 <code>mdAndUp</code>(960) 降为 900 或「折叠屏已知」（<code>useMobileDrawer.ts:12</code>、<code>MobileAppBar.vue:30</code>）。</span></li>
+        <li><span class="chip p1">P1</span><span class="nbody"><b>L2 半折双 pane：</b><code>@media (horizontal-viewport-segments: 2)</code> + <code>env(viewport-segment-*)</code>——列表/详情各占一段，折痕处留 gutter。Chrome 125+ / Samsung Internet 已正式支持；<b>Safari 27.1 已带 Device Posture + Viewport Segments API（Feature Flags 阶段）</b>，需设置开启，正式版随 iOS 27.x 后续发布。</span></li>
+        <li><span class="chip n">限制</span><span class="nbody"><b>L3 检测边界：</b>device-posture 只有 continuous/folded——全展开与直板机同值，纯 API 判不出「折叠屏全展开」；以半折时缓存 isFoldable + 宽度档近似即可（两列对平板同样受益）。</span></li>
+        <li><span class="chip n">保持</span><span class="nbody"><b>Android 折叠屏：</b>Flutter 的 displayFeatures/hinge posture 在 Android 原生可用（foldable 桥接包只是 iOS 缺口）——本稿 02-08 的 pane 布局可直接复用于 Galaxy Z Fold 等机型；web 端 Chrome on Android 已原生支持 segments API。</span></li>
+      </ul>
+    </aside>
+  </section>
+
+  <footer>
+    <span>配套调研：<a href="../agent_doc/FEATURE_iPhoneDuo折叠屏适配调研.md">agent_doc/FEATURE_iPhoneDuo折叠屏适配调研.md</a> · 分支 feat/mobile-app</span>
+    <span class="mono">iPhone Duo.simdevicetype · iOS 27 · Flutter 3.50.1 · #195199 已含 / #193025 待合</span>
+  </footer>
+
+</main>
+</body>
+</html>

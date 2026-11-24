@@ -53,7 +53,8 @@ class HeatmapPoint {
       price: toDouble(json['price']),
       isStale: json['is_stale'] == true,
       sampleCount: (json['sample_count'] as num?)?.toInt() ?? 0,
-      priceIndex: json['price_index'] == null ? null : toDouble(json['price_index']),
+      priceIndex:
+          json['price_index'] == null ? null : toDouble(json['price_index']),
     );
   }
 }
@@ -150,7 +151,8 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                 initialCameraPosition: apple.CameraPosition(
                   target: points.isEmpty
                       ? const apple.LatLng(34.5, 113.6)
-                      : apple.LatLng(points.first.latitude, points.first.longitude),
+                      : apple.LatLng(
+                          points.first.latitude, points.first.longitude),
                   zoom: 10,
                 ),
                 circles: {
@@ -159,8 +161,8 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                       circleId: apple.CircleId('heat-${p.merchantId}'),
                       center: apple.LatLng(p.latitude, p.longitude),
                       radius: 800,
-                      fillColor:
-                          heatmapColorFor(p.price, widget.buckets).withValues(alpha: 0.55),
+                      fillColor: heatmapColorFor(p.price, widget.buckets)
+                          .withValues(alpha: 0.55),
                       strokeWidth: 1,
                       strokeColor: Colors.white,
                       onTap: () => _showPointSheet(p),
@@ -169,7 +171,8 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
               ),
             ),
           ),
-          if (widget.buckets != null && widget.buckets!.hasData) _buildLegend(theme),
+          if (widget.buckets != null && widget.buckets!.hasData)
+            _buildLegend(theme),
           if (widget.loading)
             const Positioned.fill(
               child: Center(child: CircularProgressIndicator()),
@@ -216,9 +219,9 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                                 onTap: () => _showPointSheet(p),
                                 child: Container(
                                   decoration: BoxDecoration(
-                                    color: heatmapColorFor(
-                                            p.price, widget.buckets)
-                                        .withValues(alpha: 0.75),
+                                    color:
+                                        heatmapColorFor(p.price, widget.buckets)
+                                            .withValues(alpha: 0.75),
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: Colors.white,
@@ -235,7 +238,8 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
           ),
         ),
         // 图例（iOS / flutter_map 分支共用）
-        if (widget.buckets != null && widget.buckets!.hasData) _buildLegend(theme),
+        if (widget.buckets != null && widget.buckets!.hasData)
+          _buildLegend(theme),
         if (widget.loading)
           const Positioned.fill(
             child: Center(child: CircularProgressIndicator()),
@@ -326,8 +330,10 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(p.name,
-                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold)),
+                  style: Theme.of(ctx)
+                      .textTheme
+                      .titleMedium
+                      ?.copyWith(fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
               Text(valueLabel, style: Theme.of(ctx).textTheme.bodyLarge),
               if (p.sampleCount > 0)
@@ -335,8 +341,10 @@ class _HeatmapCanvasState extends ConsumerState<HeatmapCanvas> {
                     style: Theme.of(ctx).textTheme.bodySmall),
               if (p.isStale)
                 Text(l10n.compareStaleHint,
-                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(ctx).colorScheme.outline)),
+                    style: Theme.of(ctx)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(color: Theme.of(ctx).colorScheme.outline)),
             ],
           ),
         ),

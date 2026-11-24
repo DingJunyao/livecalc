@@ -28,18 +28,6 @@
           hide-details
         />
 
-        <div class="d-flex justify-end mb-1">
-          <v-btn
-            variant="text"
-            size="small"
-            prepend-icon="mdi-clipboard-outline"
-            :disabled="historyProductNames.length === 0"
-            @click="templateDialog = true"
-          >
-            {{ t('prices.copyTemplate') }}
-          </v-btn>
-        </div>
-
         <v-textarea
           v-model="rawText"
           :label="t('prices.pasteLabel')"
@@ -50,11 +38,22 @@
           class="mb-3"
         />
 
+        <!-- 操作行：复制模板靠左、解析并匹配靠右（与移动端同构） -->
         <div class="d-flex align-center mb-3">
+          <v-btn
+            variant="text"
+            size="small"
+            prepend-icon="mdi-clipboard-outline"
+            :disabled="historyProductNames.length === 0"
+            @click="templateDialog = true"
+          >
+            {{ t('prices.copyTemplate') }}
+          </v-btn>
+          <v-spacer />
+          <span v-if="summaryText" class="text-caption text-medium-emphasis me-3">{{ summaryText }}</span>
           <v-btn color="primary" variant="tonal" prepend-icon="mdi-text-search" :loading="parsing" @click="doParse">
             {{ t('prices.parseAndMatch') }}
           </v-btn>
-          <span v-if="summaryText" class="text-caption text-medium-emphasis ms-3">{{ summaryText }}</span>
         </div>
 
         <v-table v-if="rows.length > 0" density="compact" class="paste-preview-table">

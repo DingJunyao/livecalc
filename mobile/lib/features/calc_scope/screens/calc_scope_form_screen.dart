@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../l10n/app_localizations.dart';
@@ -8,8 +11,7 @@ import '../models/calc_scope.dart';
 import '../providers/calc_scope_provider.dart';
 import '../widgets/region_multi_select_field.dart';
 import '../../merchants/repositories/merchant_repository.dart';
-import 'calc_scope_list_screen.dart'
-    show calcScopeWriteError; // 复用同一错误文案提取
+import 'calc_scope_list_screen.dart' show calcScopeWriteError; // 复用同一错误文案提取
 import '../../profile/providers/save_button_position_provider.dart';
 
 class CalcScopeFormResult {
@@ -121,11 +123,11 @@ class _CalcScopeFormScreenState extends ConsumerState<CalcScopeFormScreen> {
       enabled: !editing && !_saving,
       isDirty: () => _hasUnsavedInput,
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-              editing ? l10n.calcScopeEdit : l10n.calcScopeAdd),
+        appBar: ShellAppBar(
+          title: Text(editing ? l10n.calcScopeEdit : l10n.calcScopeAdd),
           actions: [
             ...saveAppBarActions(
+              context: context,
               position: savePosition,
               onSave: _saving ? null : _save,
               label: _saving ? l10n.commonSaving : saveLabel,

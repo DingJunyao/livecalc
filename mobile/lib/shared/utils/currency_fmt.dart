@@ -36,10 +36,7 @@ String formatMoneyWithConvert(
   final nativeCode = code.trim().toUpperCase();
   final target = targetCode.trim().toUpperCase();
   final rate = exchangeRate;
-  if (nativeCode.isEmpty ||
-      nativeCode == target ||
-      rate == null ||
-      rate <= 0) {
+  if (nativeCode.isEmpty || nativeCode == target || rate == null || rate <= 0) {
     return nativeCode == target
         ? formatMoney(amount, target, formatLocale: formatLocale)
         : native;

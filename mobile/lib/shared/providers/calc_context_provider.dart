@@ -69,7 +69,8 @@ class CalcContextNotifier extends StateNotifier<CalcContextState> {
     List<int>? customRegionIds,
   }) async {
     final isCustom = scope != null && scope.startsWith('custom:');
-    final effective = isCustom ? null : await _resolveEffectiveRegion(regionId, scope);
+    final effective =
+        isCustom ? null : await _resolveEffectiveRegion(regionId, scope);
     state = CalcContextState(
       regionId: isCustom ? null : regionId,
       scope: scope,
@@ -113,7 +114,8 @@ class CalcContextNotifier extends StateNotifier<CalcContextState> {
         .where((n) => n['id'] == regionId)
         .map((n) => n['level'] as int)
         .firstOrNull;
-    final level = (selfLevel == null || selfLevel > target) ? target : selfLevel;
+    final level =
+        (selfLevel == null || selfLevel > target) ? target : selfLevel;
     final node = chain.where((n) => n['level'] == level).firstOrNull;
     return (node?['id'] as int?) ?? regionId;
   }

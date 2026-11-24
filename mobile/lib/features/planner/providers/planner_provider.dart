@@ -7,10 +7,13 @@ class PlannerListState {
   final List<Map<String, dynamic>> plans;
   final bool loading;
   final String? error;
+
   /// plan.id → evaluate 的 totals（成本 / 热量 / 蛋白质 / 脂肪）
   final Map<int, Map<String, dynamic>> totals;
+
   /// plan.id → evaluate 的 nutrition（含 NRV%），供列表显示 NRV
   final Map<int, Map<String, dynamic>> nutrients;
+
   /// plan.id → 近 30 天成本（迷你图）
   final Map<int, List<double>> trends;
 
@@ -87,7 +90,8 @@ class PlannerListNotifier extends StateNotifier<PlannerListState> {
             },
             nutrients: {
               ...state.nutrients,
-              id: (evaluation['nutrition'] as Map<String, dynamic>?) ?? const {},
+              id: (evaluation['nutrition'] as Map<String, dynamic>?) ??
+                  const {},
             },
           );
         } on Exception {
@@ -113,7 +117,9 @@ class PlannerListNotifier extends StateNotifier<PlannerListState> {
   /// 与 web 同口径：meal 方案按条目分组推餐次（other 退回午餐）
   String _mealTypeOf(List<Map<String, dynamic>> items) {
     final group = items.first['group'];
-    return (group == 'breakfast' || group == 'dinner') ? group as String : 'lunch';
+    return (group == 'breakfast' || group == 'dinner')
+        ? group as String
+        : 'lunch';
   }
 
   Map<String, dynamic> _itemToPayload(Map<String, dynamic> item) => {

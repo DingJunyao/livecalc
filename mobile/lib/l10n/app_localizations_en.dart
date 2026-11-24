@@ -395,6 +395,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get saveButtonPositionHint => 'Saved on this device only';
 
   @override
+  String get saveButtonPositionDuoRailNote =>
+      'If the side rail is shown, the save button always appears in the upper part of the rail, whichever option you choose.';
+
+  @override
   String get profileMyData => 'My data';
 
   @override
@@ -2483,6 +2487,11 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String recipeCostPerServings(Object amount, Object count) {
     return '$amount / $count servings';
+  }
+
+  @override
+  String recipeCostPerServing(Object amount) {
+    return '$amount / serving';
   }
 
   @override

@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/i18n/app_formatters.dart';
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../repositories/price_repository.dart';
 import '../../merchants/repositories/merchant_repository.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -351,46 +353,64 @@ class _QuickFillScreenState extends ConsumerState<QuickFillScreen> {
     }
   }
 
+  /// 粘贴导入：带入历史商品名，导入成功后回填并刷新历史列表。
+  Future<void> _pasteImport() async {
+    final savedIds = await context.push<List<int>>(
+      '/prices/paste-import',
+      extra: {
+        'merchantId': _selectedMerchantId,
+        'historyProductNames': _rows
+            .map((r) => r.nameController.text)
+            .where((n) => n.trim().isNotEmpty)
+            .toList(),
+      },
+    );
+    if (savedIds != null && savedIds.isNotEmpty && mounted) {
+      // 先按导入顺序记录排序，再刷新历史列表（对齐 web onPasteImported）
+      await _saveProductOrders(savedIds);
+      _loadHistoryProducts();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    // 历史商品加载中也必须禁用：模板依赖加载完成的商品名列表。
+    final canSubmit = _selectedMerchantId != null && !_loading;
+    // 竖条导航：保存进竖条（主操作，对勾）+ 粘贴导入，标题栏不放按钮。
+    if (context.shellRailMode) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.check,
+          label: l10n.quickFillSaveAll,
+          onPressed: canSubmit ? _saveAll : null,
+        ),
+        actions: [
+          ShellAction(
+            icon: Icons.paste,
+            label: l10n.pricePasteImportTooltip,
+            onPressed: canSubmit ? _pasteImport : null,
+          ),
+        ],
+      );
+    }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.quickFillTitle),
         actions: [
           IconButton(
             icon: const Icon(Icons.paste),
             tooltip: l10n.pricePasteImportTooltip,
             key: const Key('quick-fill-paste-button'),
-            // 历史商品加载中也必须禁用：模板依赖加载完成的商品名列表。
-            onPressed: _selectedMerchantId == null || _loading
-                ? null
-                : () async {
-                    final savedIds = await context.push<List<int>>(
-                      '/prices/paste-import',
-                      extra: {
-                        'merchantId': _selectedMerchantId,
-                        'historyProductNames': _rows
-                            .map((r) => r.nameController.text)
-                            .where((n) => n.trim().isNotEmpty)
-                            .toList(),
-                      },
-                    );
-                    if (savedIds != null && savedIds.isNotEmpty && mounted) {
-                      // 先按导入顺序记录排序，再刷新历史列表（对齐 web onPasteImported）
-                      await _saveProductOrders(savedIds);
-                      _loadHistoryProducts();
-                    }
-                  },
+            onPressed: canSubmit ? _pasteImport : null,
           ),
           // 保存入口固定在右上角（图标）：列表长时无需滚到底部才能保存
           IconButton(
             icon: const Icon(Icons.save),
             tooltip: l10n.quickFillSaveAll,
-            onPressed:
-                _selectedMerchantId == null || _loading ? null : _saveAll,
+            onPressed: canSubmit ? _saveAll : null,
           ),
         ],
       ),

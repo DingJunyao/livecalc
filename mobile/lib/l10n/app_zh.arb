@@ -252,6 +252,8 @@
   "@saveButtonPositionBottom": {},
   "saveButtonPositionHint": "仅保存在本机，不影响其他设备",
   "@saveButtonPositionHint": {},
+  "saveButtonPositionDuoRailNote": "如果显示了侧边栏，则无论选哪项，保存按钮都固定在侧边栏上部分。",
+  "@saveButtonPositionDuoRailNote": {},
   "profileMyData": "我的数据",
   "@profileMyData": {},
   "profileMyProposals": "我的提议",
@@ -1722,7 +1724,12 @@
     }
   },
   "recipeCostPerServings": "{amount} / {count} 人份",
-  "@recipeCostPerServings": {
+"recipeCostPerServing": "{amount} / 份",
+  "@recipeCostPerServing": {
+    "placeholders": {
+      "amount": {}
+    }
+  },  "@recipeCostPerServings": {
     "placeholders": {
       "amount": {},
       "count": {}

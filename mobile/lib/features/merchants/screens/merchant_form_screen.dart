@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -125,8 +128,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   }
 
   Future<void> _resolveCurrentLocation() async {
-    final resolver =
-        widget.currentLocationResolver ?? getCurrentLatLngSilently;
+    final resolver = widget.currentLocationResolver ?? getCurrentLatLngSilently;
     try {
       _currentLocation = await resolver();
     } catch (_) {
@@ -198,7 +200,8 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       return;
     }
     _nameDebounce = Timer(_appleSearchDebounce, () async {
-      final results = await _appleMaps.searchPlaces(query, center: _searchCenter);
+      final results =
+          await _appleMaps.searchPlaces(query, center: _searchCenter);
       if (!mounted || seq != _nameSeq) return;
       setState(() => _nameCandidates = results);
     });
@@ -228,7 +231,8 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
   /// 避免清空已输入内容）；坐标/行政区划仍只填空字段/占位值（用户已设
   /// 的选点/区划不覆盖）。地址流的地址本身是搜索源，永不回写。
   /// 程序化赋值不触发 onChanged，无二次搜索循环。
-  Future<void> _applyCandidate(ApplePlace place, {required bool fromName}) async {
+  Future<void> _applyCandidate(ApplePlace place,
+      {required bool fromName}) async {
     final repository = widget.repository ?? MerchantRepository();
     if (fromName) {
       _nameDebounce?.cancel();
@@ -457,10 +461,11 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
       enabled: !editing && !_saving,
       isDirty: () => _hasUnsavedInput,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ShellAppBar(
           title: Text(editing ? l10n.merchantEditTitle : l10n.merchantAddTitle),
           actions: [
             ...saveAppBarActions(
+              context: context,
               position: savePosition,
               onSave: _saving ? null : _save,
               label: _saving ? l10n.commonSaving : saveLabel,
@@ -488,8 +493,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                     labelText: l10n.merchantNameOptional,
                     border: const OutlineInputBorder(),
                   ),
-                  onChanged:
-                      _appleMaps.isAvailable ? _onNameChanged : null,
+                  onChanged: _appleMaps.isAvailable ? _onNameChanged : null,
                 ),
                 if (_nameCandidates.isNotEmpty) ...[
                   const SizedBox(height: 4),
@@ -506,8 +510,7 @@ class _MerchantFormScreenState extends ConsumerState<MerchantFormScreen> {
                     labelText: l10n.merchantAddress,
                     border: const OutlineInputBorder(),
                   ),
-                  onChanged:
-                      _appleMaps.isAvailable ? _onAddressChanged : null,
+                  onChanged: _appleMaps.isAvailable ? _onAddressChanged : null,
                 ),
                 if (_addressCandidates.isNotEmpty) ...[
                   const SizedBox(height: 4),

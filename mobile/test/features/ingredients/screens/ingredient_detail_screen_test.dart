@@ -131,4 +131,38 @@ void main() {
     expect(find.textContaining('125 CNY'), findsOneWidget);
     expect(find.textContaining('1,250 CNY'), findsNothing);
   });
+
+  testWidgets('展开竖屏（669×951，内容宽 637）双列布局不溢出', (tester) async {
+    tester.view.physicalSize = const Size(669, 951);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          ingredientDetailPageProvider.overrideWith(
+            (ref, id) => _FakeIngredientDetailNotifier(id),
+          ),
+          merchantListProvider.overrideWith(
+            (ref) => MerchantListNotifier(_FakeMerchantRepository()),
+          ),
+        ],
+        child: const MaterialApp(
+          locale: Locale('zh', 'CN'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: IngredientDetailScreen(id: 8),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // 溢出会以异常形式抛给测试框架：无异常即通过
+    expect(tester.takeException(), isNull);
+    // 不分栏：基本信息在上、最新价格在下（用户定调：详情页只在展开横屏分栏）
+    final basic = tester.getRect(find.text('基本信息').first);
+    final latest = tester.getRect(find.text('最新价格').first);
+    expect(latest.top, greaterThan(basic.bottom));
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -197,6 +197,9 @@ class NutritionSourceGrid extends StatefulWidget {
 }
 
 class _NutritionSourceGridState extends State<NutritionSourceGrid> {
+  /// 一行两个条形图的卡内宽度阈值（Duo 展开竖屏卡内约 605、折叠横屏约 614）。
+  static const double twoColumnBreakpoint = 560;
+
   bool _showAll = false;
   // 已展开明细的营养素 key 集合
   final Set<String> _expanded = {};
@@ -294,9 +297,36 @@ class _NutritionSourceGridState extends State<NutritionSourceGrid> {
                 style: TextStyle(color: theme.colorScheme.outline))),
       );
     }
-    return Column(
-      children: [for (final d in displays) _buildItem(theme, d)],
-    );
+    // 宽屏（Duo 展开竖屏/横屏：卡内可用宽 ≥560）一行两个条形图；窄屏单列。
+    return LayoutBuilder(builder: (context, constraints) {
+      if (constraints.maxWidth < twoColumnBreakpoint) {
+        return Column(
+          children: [for (final d in displays) _buildItem(theme, d)],
+        );
+      }
+      final rows = <Widget>[];
+      for (var i = 0; i < displays.length; i += 2) {
+        final pair = [
+          displays[i],
+          if (i + 1 < displays.length) displays[i + 1],
+        ];
+        rows.add(IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(child: _buildItem(theme, pair[0])),
+              const SizedBox(width: 12),
+              Expanded(
+                child: pair.length > 1
+                    ? _buildItem(theme, pair[1])
+                    : const SizedBox(),
+              ),
+            ],
+          ),
+        ));
+      }
+      return Column(children: rows);
+    });
   }
 
   /// 单列卡片：标题行（箭头+名称+NRV%+总量）+ 多色段进度条 +（展开）食材明细。

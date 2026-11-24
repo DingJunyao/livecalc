@@ -8,17 +8,22 @@ import 'nutrient_grid.dart';
 
 class MealCard extends StatelessWidget {
   final MealRecommendation meal;
+
   /// 单道菜点按：传入该菜谱 id（进菜谱详情）
   final void Function(int recipeId)? onDishTap;
+
   /// 方案条目点按：进对应实体详情
   final void Function(MealPlanItemBrief item)? onPlanItemTap;
+
   /// 方案名点按（移动端暂无方案独立详情路由，先落到试算页）
   final VoidCallback? onPlanTap;
   final bool isRefreshing;
   final VoidCallback? onRefresh;
+
   /// 单道换：传入被换菜的 recipeId（null = 整餐重搭）
   final void Function(int recipeId)? onSwapDish;
   final String userCurrency;
+
   /// 能量显示单位（kcal / kJ，随用户偏好，与 web 一致）
   final String energyUnit;
 
@@ -86,9 +91,7 @@ class MealCard extends StatelessWidget {
                 ),
               ),
               Text(
-                meal.planKind == 'day'
-                    ? l10n.plansKindDay
-                    : l10n.plansKindMeal,
+                meal.planKind == 'day' ? l10n.plansKindDay : l10n.plansKindMeal,
                 style: theme.textTheme.labelSmall
                     ?.copyWith(color: theme.colorScheme.onTertiaryContainer),
               ),
@@ -234,7 +237,8 @@ class MealCard extends StatelessWidget {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final headerImages = _headerImageUrls;
-    final hasBody = _isPlan || _hasDishes ||
+    final hasBody = _isPlan ||
+        _hasDishes ||
         meal.calories != null ||
         meal.proteinG != null ||
         meal.carbsG != null ||
@@ -279,8 +283,7 @@ class MealCard extends StatelessWidget {
                       NutrientGridItem(
                         icon: Icons.local_fire_department,
                         label: l10n.plansCalories,
-                        value:
-                            '${formatNumber(meal.calories!.round())} kcal',
+                        value: '${formatNumber(meal.calories!.round())} kcal',
                       ),
                     if (meal.proteinG != null)
                       NutrientGridItem(
@@ -333,8 +336,7 @@ class MealCard extends StatelessWidget {
                     Text(
                       '${l10n.mealsPreferenceChip}${meal.preference}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.colorScheme.outline.withValues(alpha: 0.7),
+                        color: theme.colorScheme.outline.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -383,8 +385,8 @@ class MealCard extends StatelessWidget {
               theme,
               name: dish.name,
               trailing: dish.estimatedCost != null
-                  ? formatMoney(dish.estimatedCost!,
-                      dish.currency ?? userCurrency)
+                  ? formatMoney(
+                      dish.estimatedCost!, dish.currency ?? userCurrency)
                   : '--',
               action: onSwapDish == null
                   ? null
@@ -393,15 +395,13 @@ class MealCard extends StatelessWidget {
                       tooltip: l10n.mealsChangeDish,
                       visualDensity: VisualDensity.compact,
                       padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints.tightFor(
-                          width: 32, height: 32),
+                      constraints:
+                          const BoxConstraints.tightFor(width: 32, height: 32),
                       onPressed: isRefreshing
                           ? null
                           : () => onSwapDish!(dish.recipeId),
-              ),
-              onTap: onDishTap == null
-                  ? null
-                  : () => onDishTap!(dish.recipeId),
+                    ),
+              onTap: onDishTap == null ? null : () => onDishTap!(dish.recipeId),
             ),
           _buildTotalsFooter(theme, l10n, meal.dishNutrients,
               cost: meal.dishCost),

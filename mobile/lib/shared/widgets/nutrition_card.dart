@@ -55,14 +55,32 @@ class NutritionCard extends StatelessWidget {
                 Icon(Icons.food_bank_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.nutritionTitle,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(width: 6),
-                Text(l10n.nutritionPerBase(_baseLabel(info)),
-                    style: theme.textTheme.bodySmall
-                        ?.copyWith(color: theme.colorScheme.outline)),
-                const Spacer(),
+                // 标题 + 基准，两者可收缩：窄栏（详情页双列 ≈300）里不溢出
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          l10n.nutritionTitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Flexible(
+                        child: Text(
+                          l10n.nutritionPerBase(_baseLabel(info)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall
+                              ?.copyWith(color: theme.colorScheme.outline),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
                 if (!loading)
                   TextButton.icon(
                     onPressed: saving ? null : () => _openEditor(context),
@@ -206,9 +224,8 @@ class _NutritionTableState extends State<_NutritionTable> {
     );
   }
 
-  List<Widget> _rows(
-      ThemeData theme, AppLocalizations l10n, List<NutrientEntry> items,
-      double valueW, double nrvW) {
+  List<Widget> _rows(ThemeData theme, AppLocalizations l10n,
+      List<NutrientEntry> items, double valueW, double nrvW) {
     return [
       for (var i = 0; i < items.length; i++)
         Container(

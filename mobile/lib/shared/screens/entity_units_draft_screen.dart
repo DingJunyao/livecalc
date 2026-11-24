@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/layout/shell_app_bar.dart';
+import '../../core/layout/shell_chrome.dart';
 import '../../l10n/app_localizations.dart';
 import '../models/entity_unit.dart';
 import '../utils/draft_units.dart';
@@ -17,6 +19,7 @@ class EntityUnitsDraftScreen extends StatefulWidget {
   final List<EntityUnit> inheritedUnits;
   final List<GlobalUnitOption> globalUnitOptions;
   final double effectiveDensityKgM3;
+
   /// 实体名（商品/原料），只用于「保存 XX 时一并保存」这句提示。
   final String target;
   final ValueChanged<List<EntityUnit>> onChanged;
@@ -99,14 +102,24 @@ class _EntityUnitsDraftScreenState extends State<EntityUnitsDraftScreen> {
     final l10n = AppLocalizations.of(context);
     final secondaryStyle =
         theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline);
+    // 竖条导航：新增进竖条（主操作），标题栏不放按钮。
+    if (context.shellRailMode) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.commonAdd,
+          onPressed: _openEditor,
+        ),
+      );
+    }
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.unitsCustomTab),
         actions: [
           IconButton(
             tooltip: l10n.commonAdd,
             icon: const Icon(Icons.add),
-            onPressed: () => _openEditor(),
+            onPressed: _openEditor,
           ),
         ],
       ),
@@ -142,7 +155,8 @@ class _EntityUnitsDraftScreenState extends State<EntityUnitsDraftScreen> {
                     IconButton(
                       tooltip: l10n.commonDelete,
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _update(removeDraftUnit(_units, unit.id)),
+                      onPressed: () =>
+                          _update(removeDraftUnit(_units, unit.id)),
                       icon: const Icon(Icons.delete_outline),
                     ),
                   ],

@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../core/i18n/app_formatters.dart' hide formatMoney;
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/utils/currency_fmt.dart';
@@ -24,6 +27,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _preferenceController = TextEditingController();
+
   /// 一句话偏好的应用范围：current / breakfast / lunch / dinner / all
   String _preferenceTarget = 'current';
   bool _applyingPreference = false;
@@ -43,7 +47,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     try {
       final meals = state.recommendation?.meals ?? const <MealRecommendation>[];
       final hasAnyMeal = meals.any((meal) =>
-          meal.dishes.isNotEmpty || meal.recipeId != null || meal.planName != null);
+          meal.dishes.isNotEmpty ||
+          meal.recipeId != null ||
+          meal.planName != null);
       if (!hasAnyMeal) {
         await ref.read(homeProvider.notifier).loadToday();
       } else {
@@ -86,6 +92,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       if (value is num) return value.toDouble();
       return double.tryParse('$value') ?? 0;
     }
+
     final calories = numOf('calories');
     final protein = numOf('protein_g');
     final carbs = numOf('carbs_g');
@@ -126,35 +133,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            // 营养汇总：2×2 宫格，各带 NRV%
-            NutrientGrid(items: [
-              NutrientGridItem(
-                icon: Icons.local_fire_department,
-                label: l10n.plansCalories,
-                value:
-                    '${formatNumber(toDisplayCalorie(calories, energyUnit))} '
-                    '$energyUnit',
-                nrv: nrv('energy', calories),
-              ),
-              NutrientGridItem(
-                icon: Icons.egg_outlined,
-                label: l10n.plansProtein,
-                value: '${formatNumber(protein, maximumFractionDigits: 1)} g',
-                nrv: nrv('protein', protein),
-              ),
-              NutrientGridItem(
-                icon: Icons.water_drop_outlined,
-                label: l10n.plansFat,
-                value: '${formatNumber(fat, maximumFractionDigits: 1)} g',
-                nrv: nrv('fat', fat),
-              ),
-              NutrientGridItem(
-                icon: Icons.grain,
-                label: l10n.nutritionNutrientCarbohydrate,
-                value: '${formatNumber(carbs, maximumFractionDigits: 1)} g',
-                nrv: nrv('carbohydrate', carbs),
-              ),
-            ]),
+            // 营养汇总：2×2 宫格，各带 NRV%；Duo 展开横屏等宽屏排成一行四项
+            NutrientGrid(
+              wideColumns: 4,
+              items: [
+                NutrientGridItem(
+                  icon: Icons.local_fire_department,
+                  label: l10n.plansCalories,
+                  value:
+                      '${formatNumber(toDisplayCalorie(calories, energyUnit))} '
+                      '$energyUnit',
+                  nrv: nrv('energy', calories),
+                ),
+                NutrientGridItem(
+                  icon: Icons.egg_outlined,
+                  label: l10n.plansProtein,
+                  value: '${formatNumber(protein, maximumFractionDigits: 1)} g',
+                  nrv: nrv('protein', protein),
+                ),
+                NutrientGridItem(
+                  icon: Icons.water_drop_outlined,
+                  label: l10n.plansFat,
+                  value: '${formatNumber(fat, maximumFractionDigits: 1)} g',
+                  nrv: nrv('fat', fat),
+                ),
+                NutrientGridItem(
+                  icon: Icons.grain,
+                  label: l10n.nutritionNutrientCarbohydrate,
+                  value: '${formatNumber(carbs, maximumFractionDigits: 1)} g',
+                  nrv: nrv('carbohydrate', carbs),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -176,6 +186,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(homeProvider);
+    final rail = context.shellRailMode;
+    if (rail) {
+      final busy =
+          state.generating || state.refreshLoading.values.any((v) => v);
+      context.publishShellActions(
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+          ShellAction(
+            icon: Icons.refresh,
+            label: l10n.homeSwapAll,
+            onPressed:
+                busy ? null : () => ref.read(homeProvider.notifier).refresh(),
+          ),
+        ],
+      );
+    }
     final energyUnit =
         ref.watch(authProvider).user?.unitPreferences?.energyUnit ?? 'kcal';
 
@@ -238,8 +267,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       isDense: true,
                       onChanged: _applyingPreference
                           ? null
-                          : (value) =>
-                              setState(() => _preferenceTarget = value ?? 'current'),
+                          : (value) => setState(
+                              () => _preferenceTarget = value ?? 'current'),
                       items: [
                         DropdownMenuItem(
                           value: 'current',
@@ -267,51 +296,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 Expanded(
                   child: TextField(
-                  controller: _preferenceController,
-                  decoration: InputDecoration(
-                    labelText: l10n.mealsPreferencePlaceholder,
-                    prefixIcon: const Icon(Icons.chat_bubble_outline),
-                    suffixIcon: Padding(
-                      padding: const EdgeInsets.only(left: 4),
-                      child: TextButton(
-                        onPressed: state.preferenceInput.isEmpty ||
-                                _applyingPreference
-                            ? null
-                            : _applyPreference,
-                        child: Text(l10n.mealsApplyPreference),
+                    controller: _preferenceController,
+                    decoration: InputDecoration(
+                      labelText: l10n.mealsPreferencePlaceholder,
+                      prefixIcon: const Icon(Icons.chat_bubble_outline),
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: TextButton(
+                          onPressed: state.preferenceInput.isEmpty ||
+                                  _applyingPreference
+                              ? null
+                              : _applyPreference,
+                          child: Text(l10n.mealsApplyPreference),
+                        ),
                       ),
+                      border: const OutlineInputBorder(),
+                      isDense: true,
                     ),
-                    border: const OutlineInputBorder(),
-                    isDense: true,
+                    onChanged: (v) =>
+                        ref.read(homeProvider.notifier).setPreference(v),
                   ),
-                  onChanged: (v) =>
-                      ref.read(homeProvider.notifier).setPreference(v),
-                ),
                 ),
               ],
             ),
           ),
-          ...state.recommendation!.meals.map((meal) => Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: MealCard(
-                  meal: meal,
-                  isRefreshing: state.refreshLoading[meal.mealType] ?? false,
-                  onDishTap: (recipeId) => context.push('/recipes/$recipeId'),
-                  onPlanItemTap: (item) => _openPlanItem(context, item),
-                  onPlanTap: meal.planId == null
-                      ? null
-                      : () => context.push('/plans/${meal.planId}'),
-                  onSwapDish: (recipeId) => ref
-                      .read(homeProvider.notifier)
-                      .refreshMeal(meal.mealType, recipeId: recipeId),
-                  onRefresh: () => ref
-                      .read(homeProvider.notifier)
-                      .refreshMeal(meal.mealType),
-                  userCurrency: ref.read(displayCurrencyProvider),
-                  energyUnit: energyUnit,
-                ),
-              )),
+          _buildMealsArea(
+            context,
+            state.recommendation!.meals,
+            state.refreshLoading,
+            ref.read(displayCurrencyProvider),
+            energyUnit,
+          ),
         ],
       );
     } else {
@@ -322,8 +337,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.appBrandShort),
+        // 竖条导航下动作交给竖条渲染（标题栏右侧不再留空）。
         actions: [
           const CalcContextMenuButton(),
           IconButton(
@@ -363,6 +379,68 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
       ),
     );
+  }
+
+  /// 餐次卡布局：宽屏（Duo 展开横屏 ≈ 867pt 可用宽）三栏并排，其次两栏，
+  /// 手机竖屏单列（设计稿「展开下今日推荐三栏式」）。
+  Widget _buildMealsArea(
+    BuildContext context,
+    List<MealRecommendation> meals,
+    Map<String, bool> refreshLoading,
+    String userCurrency,
+    String energyUnit,
+  ) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 780
+          ? 3
+          : (constraints.maxWidth >= 560 ? 2 : 1);
+      Widget card(MealRecommendation meal) => MealCard(
+            meal: meal,
+            isRefreshing: refreshLoading[meal.mealType] ?? false,
+            onDishTap: (recipeId) => context.push('/recipes/$recipeId'),
+            onPlanItemTap: (item) => _openPlanItem(context, item),
+            onPlanTap: meal.planId == null
+                ? null
+                : () => context.push('/plans/${meal.planId}'),
+            onSwapDish: (recipeId) => ref
+                .read(homeProvider.notifier)
+                .refreshMeal(meal.mealType, recipeId: recipeId),
+            onRefresh: () =>
+                ref.read(homeProvider.notifier).refreshMeal(meal.mealType),
+            userCurrency: userCurrency,
+            energyUnit: energyUnit,
+          );
+
+      if (columns == 1) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final meal in meals)
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: card(meal),
+              ),
+          ],
+        );
+      }
+      const gap = 12.0;
+      const side = 16.0;
+      final cardWidth =
+          (constraints.maxWidth - side * 2 - gap * (columns - 1)) / columns;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: side, vertical: 4),
+        child: Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          crossAxisAlignment: WrapCrossAlignment.start,
+          children: [
+            for (final meal in meals)
+              SizedBox(width: cardWidth, child: card(meal)),
+          ],
+        ),
+      );
+    });
   }
 }
 

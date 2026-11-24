@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'core/i18n/app_locale.dart' as locale_utils;
 import 'core/i18n/locale_settings.dart';
+import 'core/layout/shell_chrome.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_shortcuts_service.dart';
 import 'core/shortcuts/app_shortcuts.dart';
@@ -30,6 +31,10 @@ class LiveCalcApp extends ConsumerStatefulWidget {
 class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
   final _refreshNotifier = _RouterRefreshNotifier();
   final _shortcuts = AppShortcutsService();
+
+  /// 壳层竖条 / Duo 系统簇对**浮层**（底部弹层、对话框）安全区的接管信号：壳层写入，
+  /// [MaterialApp.router] 的 builder 里由 [ShellOverlayInsetsScope] 套给整棵导航树。
+  final _overlayInsets = ShellOverlayInsets();
   late final GoRouter _router;
 
   /// 已点击但还没跳转的快捷方式：等认证完成后再执行，避免被 redirect 吞掉。
@@ -41,7 +46,11 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     // Create the router exactly once; auth/server changes are wired through
     // refreshListenable so the redirect re-evaluates without rebuilding the
     // whole router each frame.
-    _router = createAppRouter(ref, _refreshNotifier);
+    _router = createAppRouter(
+      ref,
+      _refreshNotifier,
+      overlayInsets: _overlayInsets,
+    );
     // 主屏快捷方式（长按图标）热启动点击；冷启动的点在 _bootstrap 中取回。
     _shortcuts.actions.listen(_onShortcutAction);
     _bootstrap();
@@ -51,6 +60,7 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
   void dispose() {
     _shortcuts.dispose();
     _refreshNotifier.dispose();
+    _overlayInsets.dispose();
     super.dispose();
   }
 
@@ -179,7 +189,9 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
               systemNavigationBarIconBrightness:
                   isDark ? Brightness.light : Brightness.dark,
             ),
-            child: child!,
+            // 浮层（底部弹层 / 对话框）的全宽与摄像头让位在这里统一生效。
+            child:
+                ShellOverlayInsetsScope(insets: _overlayInsets, child: child!),
           ),
         );
       },

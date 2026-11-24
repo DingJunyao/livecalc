@@ -1,6 +1,14 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../layout/device_form.dart';
+import '../layout/shell_chrome.dart';
+import '../layout/vertical_bar_edge.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/ingredients/models/ingredient.dart';
 import '../../features/prices/screens/price_list_screen.dart';
@@ -57,7 +65,14 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>();
 /// 上次 shell 路由位置，用于计算 tab 切换动画的滑动方向。
 String? _lastShellLocation;
 
-GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
+///
+/// [overlayInsets]：与 `MaterialApp.router` 的 `builder` 里 [ShellOverlayInsetsScope]
+/// 共用的浮层安全区信号（不传则壳层自用一个，浮层不做接管——测试桩用）。
+GoRouter createAppRouter(
+  WidgetRef ref,
+  Listenable refreshListenable, {
+  ShellOverlayInsets? overlayInsets,
+}) {
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
@@ -123,7 +138,8 @@ GoRouter createAppRouter(WidgetRef ref, Listenable refreshListenable) {
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
-        builder: (_, __, child) => ScaffoldWithNavBar(child: child),
+        builder: (_, __, child) =>
+            ScaffoldWithNavBar(child: child, overlayInsets: overlayInsets),
         routes: [
           GoRoute(
             path: '/entities/:entityType/:entityId/nutrition',
@@ -649,14 +665,23 @@ const _moreTab = _Tab(
     label: _TabLabel.more,
     icon: Icons.menu,
     selectedIcon: Icons.menu,
-    prefixes: ['/ingredients', '/products', '/merchants', '/compare', '/profile']);
+    prefixes: [
+      '/ingredients',
+      '/products',
+      '/merchants',
+      '/compare',
+      '/favorites',
+      '/plans',
+      '/profile',
+    ]);
 
+/// 顺序对齐 web 侧栏（AppLayout.vue）：商品在原料前。
 const _desktopTabs = [
   _homeTab,
   _pricesTab,
   _recipesTab,
-  _ingredientsTab,
   _productsTab,
+  _ingredientsTab,
   _merchantsTab,
   _compareTab,
   _favoritesTab,
@@ -665,8 +690,8 @@ const _desktopTabs = [
 ];
 const _mobileTabs = [_homeTab, _pricesTab, _recipesTab, _moreTab];
 const _moreMenuTabs = [
-  _ingredientsTab,
   _productsTab,
+  _ingredientsTab,
   _merchantsTab,
   _compareTab,
   _favoritesTab,
@@ -708,7 +733,8 @@ final _editFormPathPattern = RegExp(
 );
 
 /// 自定义计算范围编辑页（/profile 前缀，不在实体正则内）。
-final _calcScopeEditFormPathPattern = RegExp(r'^/profile/calc-scopes/\d+/edit$');
+final _calcScopeEditFormPathPattern =
+    RegExp(r'^/profile/calc-scopes/\d+/edit$');
 
 /// 全屏表单路由：新增/编辑原料、商品、菜谱、商家、方案时隐藏底栏/侧栏 tab。
 ///
@@ -758,16 +784,20 @@ CustomTransitionPage<void> _shellTransitionPage({
     key: key,
     child: child,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      // RTL 下 tab 视觉顺序左右相反，滑动方向需要镜像。
-      final isRtl = Directionality.of(context) == TextDirection.rtl;
+      // 导航为竖向（尾缘/左缘竖条）时，页面切换沿竖条方向上下滑动；
+      // 横条/底栏/平板左 rail 仍为左右滑动（RTL 镜像）。
+      final mode = shellModeFor(
+        MediaQuery.sizeOf(context),
+        MediaQuery.displayFeaturesOf(context),
+      );
+      final begin = shellPageSlideBegin(
+        mode: mode,
+        toEarlierTab: toEarlierTab,
+        isRtl: Directionality.of(context) == TextDirection.rtl,
+      );
       return SlideTransition(
-        position: Tween<Offset>(
-          begin: shellTabSlideBegin(
-            toEarlierTab: toEarlierTab,
-            isRtl: isRtl,
-          ),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
+        position: Tween<Offset>(begin: begin, end: Offset.zero)
+            .animate(CurvedAnimation(
           parent: animation,
           curve: Curves.easeInOut,
         )),
@@ -779,31 +809,429 @@ CustomTransitionPage<void> _shellTransitionPage({
 
 class ScaffoldWithNavBar extends ConsumerStatefulWidget {
   final Widget child;
-  const ScaffoldWithNavBar({super.key, required this.child});
+
+  /// 浮层（底部弹层 / 对话框）安全区接管信号；应与 `MaterialApp.router` 的
+  /// `builder` 里 [ShellOverlayInsetsScope] 共用同一个实例。不传时壳层自用一个。
+  final ShellOverlayInsets? overlayInsets;
+
+  const ScaffoldWithNavBar({
+    super.key,
+    required this.child,
+    this.overlayInsets,
+  });
 
   @override
   ConsumerState<ScaffoldWithNavBar> createState() => _ScaffoldWithNavBarState();
 }
 
-class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
+class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
+    with WidgetsBindingObserver {
+  final _duoLayout = DuoLayoutChannel();
+
+  /// Duo 布局信息（竖条侧别 + 系统遮挡区）；iOS 27.1+ 才有实质值。
+  DuoLayoutInfo _duoLayoutInfo = const DuoLayoutInfo();
+
+  /// 本次运行是否见过 Duo（竖条侧别或系统遮挡区）。
+  ///
+  /// 折叠↔展开切换的瞬间，原生可能返回空信息（reservedRegions 尚未就绪）；若直接
+  /// 按「非 Duo」处理，页面会把系统 top padding 加回来，标题栏/导航会掉到状态簇
+  /// 下面（用户报障「展开时有概率掉下去」）。记住一次即长期按 Duo 处理。
+  bool _seenDuo = false;
+
+  /// 页面发布到竖条工具栏的动作（竖条模式下的 AppBar actions / FAB）。
+  final ShellChrome _chrome = ShellChrome();
+
+  /// 上一次的路由位置：变化时清空上一页发布的动作。
+  String? _lastChromeLocation;
+
+  /// 当前路由（含 `push` 出来的子页面）。ShellRoute 的 builder 在子页面被 push
+  /// 时不会重建，`GoRouterState.of(context)` 会一直停在 tab 根路径——靠 Router
+  /// delegate 的监听保持最新，竖条动作/高亮才不会串页。
+  String _currentLocation = '';
+
+  /// 已订阅的 Router delegate（`didChangeDependencies` 可能多次调用）。
+  GoRouter? _observedRouter;
+
+  /// 浮层安全区信号（外部注入或自用，自用的随壳层销毁）。
+  late final ShellOverlayInsets _overlayInsets;
+  bool _ownsOverlayInsets = false;
+
+  /// 姿态变化后的延迟重查（旋转瞬间系统布局未稳定）。
+  Timer? _layoutRefreshTimer;
+
+  /// 原生返回空遮挡区时的补查（最多 5 次，避免无限轮询）。
+  Timer? _layoutRetryTimer;
+  int _layoutRetry = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _ownsOverlayInsets = widget.overlayInsets == null;
+    _overlayInsets = widget.overlayInsets ?? ShellOverlayInsets();
+    _refreshVerticalBarEdge();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _layoutRefreshTimer?.cancel();
+    _layoutRetryTimer?.cancel();
+    _observedRouter?.routerDelegate.removeListener(_onRouteChanged);
+    _chrome.dispose();
+    if (_ownsOverlayInsets) _overlayInsets.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    // 旋转、进出分屏、拖动分隔条都会触发。系统布局在旋转瞬间尚未稳定，
+    // 立即查可能拿到旧的保留区 → 工具栏被状态图标压住；补一帧后再查一次。
+    _refreshVerticalBarEdge();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _refreshVerticalBarEdge();
+    });
+    _layoutRefreshTimer?.cancel();
+    _layoutRefreshTimer = Timer(const Duration(milliseconds: 180), () {
+      if (mounted) _refreshVerticalBarEdge();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // MediaQuery（尺寸/内边距）变化同样可能意味着姿态变化。
+    _refreshVerticalBarEdge();
+    _observeRouter();
+  }
+
+  /// 监听 Router delegate：`push` / `pop` 子页面时 ShellRoute 的 builder 不重建，
+  /// 这里主动把当前地址（含命令式 push 的页面）同步进来并触发重建。
+  void _observeRouter() {
+    final router = GoRouter.of(context);
+    if (identical(router, _observedRouter)) return;
+    _observedRouter?.routerDelegate.removeListener(_onRouteChanged);
+    _observedRouter = router;
+    router.routerDelegate.addListener(_onRouteChanged);
+    _currentLocation = _resolveLocation(router);
+  }
+
+  String _resolveLocation(GoRouter router) {
+    final matches = router.routerDelegate.currentConfiguration.matches;
+    if (matches.isEmpty) return GoRouterState.of(context).matchedLocation;
+    // push 出来的页面嵌在 ShellRouteMatch 内部：一路走到最深的那层才是真实地址。
+    RouteMatchBase match = matches.last;
+    while (match is ShellRouteMatch && match.matches.isNotEmpty) {
+      match = match.matches.last;
+    }
+    return match.matchedLocation;
+  }
+
+  void _onRouteChanged() {
+    if (!mounted || _observedRouter == null) return;
+    final next = _resolveLocation(_observedRouter!);
+    if (next == _currentLocation) return;
+    _currentLocation = next;
+    // 立即告知壳层（竖条动作按路由过滤），补一帧再重建自身（高亮/表单判定）。
+    _chrome.bindLocation(next);
+    if (SchedulerBinding.instance.schedulerPhase ==
+        SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    } else {
+      setState(() {});
+    }
+  }
+
+  Future<void> _refreshVerticalBarEdge() async {
+    final info = await _duoLayout.layoutInfo();
+    if (kDebugMode) {
+      debugPrint('DUO edge=${info.edge} size=${info.width}x${info.height} '
+          'occlusions=${info.occlusions}');
+    }
+    if (!mounted) return;
+    if (info.edge != VerticalBarEdge.unspecified ||
+        info.occlusions.isNotEmpty) {
+      _seenDuo = true;
+    }
+    // 切换姿态的瞬间原生可能还拿不到 reservedRegions（返回空遮挡区）：同尺寸下
+    // 先沿用上一帧的，否则标题栏会临时变矮、按钮也不再给状态簇让位；同时补查一次。
+    var effective = info;
+    if (info.occlusions.isEmpty &&
+        _duoLayoutInfo.occlusions.isNotEmpty &&
+        info.width == _duoLayoutInfo.width &&
+        info.height == _duoLayoutInfo.height) {
+      effective = DuoLayoutInfo(
+        edge: info.edge == VerticalBarEdge.unspecified
+            ? _duoLayoutInfo.edge
+            : info.edge,
+        width: info.width,
+        height: info.height,
+        occlusions: _duoLayoutInfo.occlusions,
+        divisions: info.divisions,
+      );
+    }
+    if (info.occlusions.isEmpty && _seenDuo && _layoutRetry < 5) {
+      _scheduleLayoutRetry();
+    } else if (info.occlusions.isNotEmpty) {
+      _layoutRetry = 0;
+    }
+    // 尺寸也要比：rect 坐标只在它自己的坐标空间里有效，尺寸变了要重新推导
+    // 顶部/底部簇（否则会按旧高度把顶部簇当底部簇）。
+    final same = effective.edge == _duoLayoutInfo.edge &&
+        effective.width == _duoLayoutInfo.width &&
+        effective.height == _duoLayoutInfo.height &&
+        listEquals(effective.occlusions, _duoLayoutInfo.occlusions);
+    if (same) return;
+    setState(() => _duoLayoutInfo = effective);
+  }
+
+  void _scheduleLayoutRetry() {
+    _layoutRetry++;
+    _layoutRetryTimer?.cancel();
+    _layoutRetryTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) _refreshVerticalBarEdge();
+    });
+  }
+
+  /// 当前姿态的标题栏让位规格（[DuoBarInsets]）。
+  ///
+  /// 原生在姿态切换瞬间可能拿不到遮挡区；此时对「展开竖屏」（≥600×800 且已确认
+  /// 是 Duo）按实测几何兜底（右上状态簇 144×82、图标光轴 48），保证标题栏内按钮
+  /// 仍给状态簇让位，而不是压在它底下。拿到真实数据后自动覆盖。
+  DuoBarInsets _barInsets(BuildContext context) {
+    if (_duoLayoutInfo.occlusions.isNotEmpty) {
+      return DuoBarInsets.of(_duoLayoutInfo);
+    }
+    if (!_seenDuo) return DuoBarInsets.none;
+    final size = MediaQuery.sizeOf(context);
+    if (size.width >= 600 && size.height >= 800) {
+      return const DuoBarInsets(
+        toolbarHeight: 82,
+        trailingInset: 144,
+        contentCenterY: 48,
+      );
+    }
+    return DuoBarInsets.none;
+  }
+
+  /// Duo 横条模式（展开竖屏 / 折叠横屏）下页面标题栏的规格，全部由系统上报的
+  /// 遮挡区推导（[DuoBarInsets]）：
+  /// - 高度与顶部系统状态簇底边平齐（不再是一大片空白下的窄条）；
+  /// - 系统簇在左 / 右时，按钮排到簇的旁边（不被时间 / 电量盖住）；
+  /// - 其余情况按钮靠边，返回键留 64 的呼吸位。
+  Widget _wrapDuoPageChrome(
+      BuildContext context, ShellMode mode, Widget child) {
+    final theme = Theme.of(context);
+    var data = theme;
+    if (_isDuo() && mode == ShellMode.bottomBar) {
+      final bar = _barInsets(context);
+      data = theme.copyWith(
+        appBarTheme: theme.appBarTheme.copyWith(
+          toolbarHeight: bar.toolbarHeight > 56 ? bar.toolbarHeight : null,
+          leadingWidth: 64 + bar.leadingInset,
+          actionsPadding:
+              EdgeInsetsDirectional.only(end: 8 + bar.trailingInset),
+        ),
+        // 让位规格挂到主题上：ShellAppBar 据此把返回键排到系统簇右边。
+        extensions: [...theme.extensions.values, bar],
+      );
+    }
+    // 恒定包一层（不随形态增减节点，页面子树不会被重新挂载）；用 AnimatedTheme：
+    // 旋转后系统上报的状态簇形状会先停在上一姿态的形状上再切到稳态（实测 1~10 秒），
+    // 标题栏高度 / 让位随之平滑过渡而不是瞬跳。
+    return AnimatedTheme(
+      data: data,
+      duration: kThemeAnimationDuration,
+      child: child,
+    );
+  }
+
+  /// 页面子树的 MediaQuery（恒定包一层，保证壳层换形态时子树结构不变、State 不丢）。
+  ///
+  /// 系统安全区是**整条**侧边内缩（Duo 摄像头侧 84pt），但系统 UI 只占摄像头
+  /// 所在的那个角；照搬会让标题栏被二次内缩、正文与标题栏空出一整条：
+  /// - 横条模式：水平内边距清零（标题栏由 [_wrapDuoPageChrome] 按遮挡区局部让位，
+  ///   底栏自行让位），标题栏顶到屏幕上沿；无底栏的整页表单把底部抬到底部
+  ///   系统簇（摄像头）之上。
+  /// - 竖条模式：去掉竖条所在侧的内边距（内容已整体让出竖条宽度，再来一层就是双份）；
+  ///   顶部没有系统簇时标题栏顶到屏幕上沿。
+  Widget _wrapPageMediaQuery(BuildContext context, ShellMode mode, bool showNav,
+      bool railOnLeft, Widget child) {
+    final mq = MediaQuery.of(context);
+    var padding = mq.padding;
+    // 尺寸兜底：底栏模式 + Duo 展开竖屏的尺寸特征（≥600×800）时一律当 Duo，
+    // 即使这一帧原生还没上报布局信息——否则顶栏会被系统 top padding 推下去。
+    final duoLike = _isDuo() ||
+        (mode == ShellMode.bottomBar &&
+            mq.size.width >= 600 &&
+            mq.size.height >= 800);
+    if (duoLike) {
+      if (mode == ShellMode.bottomBar) {
+        // 键盘弹出时系统本来就把 bottom 归零，这里保持同样口径。
+        final baseBottom =
+            math.max(0.0, mq.viewPadding.bottom - mq.viewInsets.bottom);
+        final cluster = showNav ? 0.0 : _barInsets(context).bottomInset;
+        padding = EdgeInsets.only(
+          bottom: cluster > baseBottom ? cluster : baseBottom,
+        );
+      } else if (mode == ShellMode.edgeRail) {
+        padding = padding.copyWith(
+          left: railOnLeft ? 0 : null,
+          right: railOnLeft ? null : 0,
+          top: _duoLayoutInfo.topClusterInset == 0 ? 0 : null,
+        );
+      } else if (_duoLayoutInfo.topClusterInset == 0) {
+        padding = padding.copyWith(top: 0);
+      }
+    }
+    return MediaQuery(
+      data: mq.copyWith(padding: padding),
+      child: child,
+    );
+  }
+
+  bool _isDuo() =>
+      _seenDuo ||
+      _duoLayoutInfo.edge != VerticalBarEdge.unspecified ||
+      _duoLayoutInfo.occlusions.isNotEmpty;
+
   @override
   Widget build(BuildContext context) {
-    final location = GoRouterState.of(context).matchedLocation;
-    final wide = MediaQuery.of(context).size.width >= 600;
+    final location = _currentLocation.isEmpty
+        ? GoRouterState.of(context).matchedLocation
+        : _currentLocation;
+    final mode = shellModeFor(
+      MediaQuery.sizeOf(context),
+      MediaQuery.displayFeaturesOf(context),
+      edge: _duoLayoutInfo.edge,
+    );
     final fullScreenForm = _isFullScreenFormRoute(location);
-    final tabs = wide ? _desktopTabs : _mobileTabs;
+    final railLike = mode != ShellMode.bottomBar;
+    final tabs = railLike ? _desktopTabs : _mobileTabs;
     final selectedIndex = _tabIndexFor(tabs, location);
     final l10n = AppLocalizations.of(context);
+    // 竖条模式下表单页也显示竖条（后退 + 保存都在竖条里，HIG：控件随姿态）；
+    // 底栏 / 平板 rail 模式仍按既有行为在表单页隐藏，避免误触丢内容。
+    final railNav = mode == ShellMode.edgeRail;
+    final showNav = railNav ? true : !fullScreenForm;
+    final showTabs = !fullScreenForm;
+    final isDuo = _isDuo();
+    // 告知壳层当前路由：转场中旧页的迟到 publish 会被丢弃（否则返回/下钻后竖条残留按钮）。
+    _chrome.bindLocation(location);
+    if (_lastChromeLocation != location) {
+      _lastChromeLocation = location;
+      _chrome.clear();
+    }
+    // 竖条不接管工具（非竖条模式 / 竖条太矮）时清空残留，避免工具留在竖条里。
+    final railToolbar = showNav &&
+        mode == ShellMode.edgeRail &&
+        MediaQuery.sizeOf(context).height >= 620;
+    if (!railToolbar) _chrome.clear();
+    // 尾缘竖条宽度 = 系统保留区宽度（Duo 内屏横屏实测 viewPadding.right = 84pt，
+    // 系统状态图标列居中于该条内）。图标必须与系统图标同列同尺寸（20pt），
+    // 否则会「移位」到系统图标列的左侧。无系统保留区（如常规 iPhone）兜底 56。
+    // 分屏（Split View）时系统保留条只出现在本窗口靠外的一侧：左窗 left=84、
+    // 右窗 right=84（HIG：每个 app 把控件放在自己靠外的边缘）。竖条跟随该侧，
+    // 双向保证图标与系统状态图标同列。
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    // 侧别以 UIKit trait（verticalBarEdge）为准——分屏时 viewPadding 不一定
+    // 反映竖条在哪一侧；trait 不可用（非 iOS / 低版本 / 无竖条）时退回
+    // padding 比较。
+    final stripOnLeft = switch (_duoLayoutInfo.edge) {
+      VerticalBarEdge.leading => true,
+      // 无竖条信息时按完全展开处理：条在 trailing（不用 padding 猜测，
+      // 避免某些姿态被误判成左侧而留下一大片空白）。
+      VerticalBarEdge.trailing || VerticalBarEdge.unspecified => false,
+    };
+    final systemStrip = stripOnLeft ? viewPadding.left : viewPadding.right;
+    final edgeRailWidth = systemStrip >= 44 ? systemStrip : 56.0;
+    // 系统状态图标列中心距尾缘实测 48pt（Duo 外屏 466×678 像素测量：时间行与
+    // 环形电量行中心一致）。84pt 保留条的几何中心是 42pt，若按条居中会偏内 6pt。
+    // 竖条内图标按该中心线对齐；无保留条的常规设备退回条中心。
+    final iconColumnCenter = systemStrip >= 84 ? 48.0 : edgeRailWidth / 2;
+    final railEndPad =
+        (2 * iconColumnCenter - edgeRailWidth).clamp(0.0, edgeRailWidth);
+    // 平板左 rail 跟随方向（leading，RTL 时视觉翻到右侧）；尾缘竖条物理固定
+    // 在系统条所在侧（分屏左窗为左缘、右窗为右缘；RTL 下也不翻转，与硬件对齐）。
+    final railOnLeft = Directionality.of(context) != TextDirection.rtl;
+    final edgeRailOnLeft = mode == ShellMode.edgeRail && stripOnLeft;
+    final EdgeInsets contentPadding;
+    if (showNav && mode == ShellMode.sideRail) {
+      contentPadding = railOnLeft
+          ? const EdgeInsets.only(left: 80)
+          : const EdgeInsets.only(right: 80);
+    } else if (showNav && mode == ShellMode.edgeRail) {
+      contentPadding = edgeRailOnLeft
+          ? EdgeInsets.only(left: edgeRailWidth)
+          : EdgeInsets.only(right: edgeRailWidth);
+    } else {
+      contentPadding = EdgeInsets.zero;
+    }
+
+    // 浮层（底部弹层 / 对话框）的安全区在 Navigator 之上统一接管，不用逐个弹层改：
+    // 竖条模式去掉竖条所在侧的系统条；Duo 横条模式两侧铺满、底部抬到底部系统簇之上。
+    final duoBottomBar = isDuo && mode == ShellMode.bottomBar;
+    _overlayInsets.schedule(
+      stripSide: showNav && mode == ShellMode.edgeRail
+          ? (edgeRailOnLeft ? ShellStripSide.leading : ShellStripSide.trailing)
+          : ShellStripSide.none,
+      dropHorizontal: duoBottomBar,
+      bottomFloor: duoBottomBar ? _barInsets(context).bottomInset : 0,
+    );
 
     return Scaffold(
-      body: Row(
+      body: Stack(
         children: [
-          if (wide && !fullScreenForm)
+          // 树形恒定（P0）：内容槽固定在 Stack 首位，壳层模式切换只改 padding
+          // 与叠加的导航层——外屏(466) ↔ 内屏(669/951) 切换时子树不重建，
+          // 滚动/输入 State 不丢。
+          Padding(
+            padding: contentPadding,
+            child: ColoredBox(
+              color: Theme.of(context).colorScheme.surface,
+              child: DuoLayoutScope(
+                layout: _duoLayoutInfo,
+                railWidth: mode == ShellMode.edgeRail ? edgeRailWidth : 0,
+                child: ShellChromeScope(
+                  chrome: _chrome,
+                  // Duo 展开竖屏 / 折叠横屏：底栏直接列出全部目的地，列表页就是一级
+                  // tab → 页面不显示返回键（用户定调：这时候不应该有）。
+                  tabRoot: mode == ShellMode.bottomBar &&
+                      MediaQuery.sizeOf(context).width >= 600 &&
+                      _desktopTabs.any((t) => t.prefixes.contains(location)),
+                  // 竖条接管工具（高 ≥620）：页面标题栏不再放按钮，动作与返回都在竖条里。
+                  isRailMode: showNav &&
+                      mode == ShellMode.edgeRail &&
+                      MediaQuery.sizeOf(context).height >= 620,
+                  // Duo 的竖条在侧边、顶部没有系统状态簇时，页面标题栏应顶到
+                  // 屏幕最上方（不再被多余的 top padding 推下来）。
+                  child: _wrapDuoPageChrome(
+                    context,
+                    mode,
+                    _wrapPageMediaQuery(
+                      context,
+                      mode,
+                      showNav,
+                      edgeRailOnLeft,
+                      widget.child,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (showNav && mode == ShellMode.sideRail)
             // 10 个目的地在矮视口（默认测试窗 800×600、桌面小窗）会纵向溢出：
             // 包一层纵向滚动。rail 内部含 Expanded，必须给显式高度才有界；
             // 高度取 max(视口, 660)——视口足够高时 rail 填满且不产生滚动，
             // 矮视口时可上下滚动（660 = 10 个 labelType:all 目的地固有高度 + 余量）。
-            SizedBox(
+            Positioned(
+              left: railOnLeft ? 0 : null,
+              right: railOnLeft ? null : 0,
+              top: 0,
+              bottom: 0,
               width: 80,
               child: LayoutBuilder(builder: (context, constraints) {
                 const minRailHeight = 660.0;
@@ -830,48 +1258,115 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
                 );
               }),
             ),
-          Expanded(child: widget.child),
+          if (showNav && mode == ShellMode.edgeRail)
+            Positioned(
+              left: edgeRailOnLeft ? 0 : null,
+              right: edgeRailOnLeft ? null : 0,
+              top: 0,
+              bottom: 0,
+              width: edgeRailWidth,
+              child: _EdgeRail(
+                onLeft: edgeRailOnLeft,
+                showTabs: showTabs,
+                chrome: _chrome,
+                // tab 恒在底部（HIG：tab bar 在竖条末端），工具在顶部；
+                // 底部若有系统簇（摄像头朝下），由 bottomInset 让位。
+                bottomInset: _duoLayoutInfo.bottomClusterInset,
+                key: const ValueKey('edge-rail'),
+                // 竖条与底栏同构：只有 4 个目的地，最后一个是「更多」
+                // （点开底部弹层展示其余目的地）。
+                selectedIndex: _tabIndexFor(_mobileTabs, location),
+                tabs: _mobileTabs,
+                labels: [
+                  for (final t in _mobileTabs) _tabLabel(t.label, l10n),
+                ],
+                contentPadding: EdgeInsetsDirectional.only(
+                  start: edgeRailOnLeft ? railEndPad : 0,
+                  end: edgeRailOnLeft ? 0 : railEndPad,
+                  // 系统簇下方多留 12pt：避免按钮贴着摄像头/曲面边界的圆角。
+                  // 左侧竖条（分屏左窗）常常没有上报顶部遮挡区（occlusions=[]），
+                  // 此时工具会贴在屏幕上沿、被窗口圆角切掉；按「下部分按钮距屏幕的
+                  // 距离」（home indicator 内边距）对齐，两侧留白对称。
+                  top: _duoLayoutInfo.topClusterInset == 0
+                      ? math.max(12.0, viewPadding.bottom)
+                      : _duoLayoutInfo.topClusterInset + 12,
+                ),
+                onSelected: (t) => _onTabSelected(context, t),
+              ),
+            ),
         ],
       ),
-      bottomNavigationBar: wide || fullScreenForm
-          ? null
-          : _buildBottomNav(context, selectedIndex),
+      bottomNavigationBar: mode == ShellMode.bottomBar && !fullScreenForm
+          ? _buildBottomNav(
+              context,
+              _tabIndexFor(
+                MediaQuery.sizeOf(context).width >= 600
+                    ? _desktopTabs
+                    : _mobileTabs,
+                location,
+              ),
+            )
+          : null,
     );
   }
 
   Widget _buildBottomNav(BuildContext context, int selectedIndex) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
-    return Material(
-      color: theme.colorScheme.surface,
-      child: SafeArea(
-        top: false,
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: theme.colorScheme.outlineVariant),
+    // 展开竖屏（≥600，如 669×951）空间足够：底栏直接给全部目的地，
+    // 不再收进「更多」；窄屏仍是 4 个 + 更多。
+    final wideBar = MediaQuery.sizeOf(context).width >= 600;
+    final tabs = wideBar ? _desktopTabs : _mobileTabs;
+    final duoBar = _isDuo() ? _barInsets(context) : DuoBarInsets.none;
+    // 底栏横跨全宽：去掉系统竖条带来的水平内边距（外屏左/内屏右各一侧）。
+    // 底部只让 home indicator：Duo 折叠横屏、摄像头朝下时底部安全区已被抬到系统簇
+    // 之上（给弹层用），底栏改为在水平方向让开那个角（见下）。
+    final mq = MediaQuery.of(context);
+    return MediaQuery(
+      data: mq.copyWith(
+        padding: EdgeInsets.only(
+          bottom: math.max(0.0, mq.viewPadding.bottom - mq.viewInsets.bottom),
+        ),
+      ),
+      child: Material(
+        color: theme.colorScheme.surface,
+        child: SafeArea(
+          top: false,
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(
+                top: BorderSide(color: theme.colorScheme.outlineVariant),
+              ),
             ),
-          ),
-          child: Row(
-            children: [
-              for (var i = 0; i < _mobileTabs.length; i++)
-                Expanded(
-                  child: _NavItem(
-                    // key 用 label（如 tab-计价），避免 route 带 '/' 前缀与测试长按断言不一致
-                    itemKey: ValueKey(
-                      'tab-${_tabLabel(_mobileTabs[i].label, l10n)}',
+            // Duo 折叠横屏、摄像头在左下 / 右下：那一角是系统簇（摄像头），底栏让开。
+            child: AnimatedPadding(
+              duration: kThemeAnimationDuration,
+              padding: EdgeInsetsDirectional.only(
+                start: duoBar.barLeadingInset,
+                end: duoBar.barTrailingInset,
+              ),
+              child: Row(
+                children: [
+                  for (var i = 0; i < tabs.length; i++)
+                    Expanded(
+                      child: _NavItem(
+                        // key 用 label（如 tab-计价），避免 route 带 '/' 前缀与测试长按断言不一致
+                        itemKey: ValueKey(
+                          'tab-${_tabLabel(tabs[i].label, l10n)}',
+                        ),
+                        label: _tabLabel(tabs[i].label, l10n),
+                        icon: tabs[i].icon,
+                        selectedIcon: tabs[i].selectedIcon,
+                        selected: i == selectedIndex,
+                        compact: wideBar,
+                        onTap: () => _onTabSelected(context, tabs[i]),
+                        onLongPress:
+                            tabs[i] == _pricesTab ? _onLongPressPrices : null,
+                      ),
                     ),
-                    label: _tabLabel(_mobileTabs[i].label, l10n),
-                    icon: _mobileTabs[i].icon,
-                    selectedIcon: _mobileTabs[i].selectedIcon,
-                    selected: i == selectedIndex,
-                    onTap: () => _onTabSelected(context, _mobileTabs[i]),
-                    onLongPress: _mobileTabs[i] == _pricesTab
-                        ? _onLongPressPrices
-                        : null,
-                  ),
-                ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -896,62 +1391,74 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 标题行：「更多」+ 右上角关闭按钮
-            // right: 4 用于抵消 IconButton 默认水平内边距，使 close 图标视觉右缘
-            // 距屏 16，与左侧「更多」Text 的 16 对称；调 IconButton 内边距时注意保持。
-            Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 4, 0),
-              child: Row(
-                children: [
-                  Text(
-                    l10n.navMore,
-                    style: Theme.of(ctx).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: l10n.commonClose,
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(ctx).pop(),
-                  ),
-                ],
+      builder: (ctx) => MediaQuery.removePadding(
+        context: ctx,
+        removeLeft: true,
+        removeRight: true,
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 标题行：「更多」+ 右上角关闭按钮
+              // right: 4 用于抵消 IconButton 默认水平内边距，使 close 图标视觉右缘
+              // 距屏 16，与左侧「更多」Text 的 16 对称；调 IconButton 内边距时注意保持。
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 4, 0),
+                child: Row(
+                  children: [
+                    Text(
+                      l10n.navMore,
+                      style: Theme.of(ctx).textTheme.titleMedium,
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: l10n.commonClose,
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            // 横排胶囊网格：复用 _NavItem，与底栏外观完全一致
-            Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
-              child: LayoutBuilder(
-                builder: (_, constraints) {
-                  // 每行 4 个：条目多于 4 个时自动换行（当前 5 个）
-                  final itemWidth = constraints.maxWidth / 4;
-                  return Wrap(
-                    children: [
-                      for (var i = 0; i < _moreMenuTabs.length; i++)
-                        SizedBox(
-                          width: itemWidth,
-                          child: _NavItem(
-                            itemKey: ValueKey(
-                              'more-${_tabLabel(_moreMenuTabs[i].label, l10n)}',
+              // 横排胶囊网格：复用 _NavItem，与底栏外观完全一致。
+              // 列数按可用宽度自适应——宽屏（Duo 展开）一行排满，右侧不留大片空白。
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 12),
+                child: LayoutBuilder(
+                  builder: (_, constraints) {
+                    // 窄屏（手机 / 分屏 / 折叠态）固定每行 4 项（用户定调）；
+                    // 宽屏（展开）按可用宽度多排，右侧不留空白。
+                    final columns = constraints.maxWidth < 600
+                        ? 4
+                        : (constraints.maxWidth / 72.0)
+                            .floor()
+                            .clamp(4, _moreMenuTabs.length);
+                    final itemWidth = constraints.maxWidth / columns;
+                    return Wrap(
+                      children: [
+                        for (var i = 0; i < _moreMenuTabs.length; i++)
+                          SizedBox(
+                            width: itemWidth,
+                            child: _NavItem(
+                              itemKey: ValueKey(
+                                'more-${_tabLabel(_moreMenuTabs[i].label, l10n)}',
+                              ),
+                              label: _tabLabel(_moreMenuTabs[i].label, l10n),
+                              icon: _moreMenuTabs[i].icon,
+                              selectedIcon: _moreMenuTabs[i].selectedIcon,
+                              selected: i == selectedIdx,
+                              onTap: () {
+                                Navigator.of(ctx).pop();
+                                context.go(_moreMenuTabs[i].route!);
+                              },
                             ),
-                            label: _tabLabel(_moreMenuTabs[i].label, l10n),
-                            icon: _moreMenuTabs[i].icon,
-                            selectedIcon: _moreMenuTabs[i].selectedIcon,
-                            selected: i == selectedIdx,
-                            onTap: () {
-                              Navigator.of(ctx).pop();
-                              context.go(_moreMenuTabs[i].route!);
-                            },
                           ),
-                        ),
-                    ],
-                  );
-                },
+                      ],
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -978,6 +1485,9 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLongPress;
 
+  /// 底栏显示全部目的地时压缩：胶囊变窄、标签单行省略。
+  final bool compact;
+
   const _NavItem({
     this.itemKey,
     required this.label,
@@ -985,6 +1495,7 @@ class _NavItem extends StatelessWidget {
     required this.selectedIcon,
     required this.selected,
     required this.onTap,
+    this.compact = false,
     this.onLongPress,
   });
 
@@ -1010,8 +1521,9 @@ class _NavItem extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                padding: compact
+                    ? const EdgeInsets.symmetric(horizontal: 10, vertical: 3)
+                    : const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                 decoration: selected
                     ? BoxDecoration(
                         color: scheme.secondaryContainer,
@@ -1021,18 +1533,289 @@ class _NavItem extends StatelessWidget {
                 child: Icon(
                   selected ? selectedIcon : icon,
                   color: selected ? scheme.onSecondaryContainer : color,
-                  size: 24,
+                  size: compact ? 20 : 24,
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                softWrap: false,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: color,
+                  fontSize: compact ? 11 : null,
                   fontWeight: selected ? FontWeight.w600 : null,
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 尾缘竖条（HIG「Vertical controls」）：外屏折叠态 / 内屏横屏的壳层导航。
+///
+/// 竖条自上而下 = 系统状态/摄像头保留区（SafeArea 消化）+ 工具栏区（页面操作，
+/// Phase 2 接入）+ tab 目的地（沉底）。图标无文字是 Duo 竖条惯例，语义标签
+/// 通过 Semantics 提供给读屏；宽 64、项 44×38、选中 M3 胶囊（primaryContainer）。
+class _EdgeRail extends StatelessWidget {
+  final ShellChrome chrome;
+
+  /// 是否显示底部 4 个 tab（表单页隐藏，只保留后退 + 保存等工具项）。
+  final bool showTabs;
+  final int selectedIndex;
+  final List<_Tab> tabs;
+  final List<String> labels;
+  final EdgeInsetsDirectional contentPadding;
+
+  /// 竖条贴在窗口左缘（分屏左窗）还是右缘。
+  final bool onLeft;
+
+  /// 竖条底部需要让开的系统簇高度（摄像头朝下时 > 0）。
+  final double bottomInset;
+  final void Function(_Tab tab) onSelected;
+
+  const _EdgeRail({
+    super.key,
+    required this.chrome,
+    required this.showTabs,
+    required this.selectedIndex,
+    required this.tabs,
+    required this.labels,
+    required this.contentPadding,
+    required this.onLeft,
+    required this.bottomInset,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surface,
+      child: Container(
+        decoration: BoxDecoration(
+          // 分隔线放在竖条靠内容的一侧（左缘竖条 → 右边线）。
+          border: Border(
+            left: onLeft
+                ? BorderSide.none
+                : BorderSide(color: theme.colorScheme.outlineVariant),
+            right: onLeft
+                ? BorderSide(color: theme.colorScheme.outlineVariant)
+                : BorderSide.none,
+          ),
+        ),
+        child: SafeArea(
+          // 关键：竖条本身就位于系统保留条内，绝不能再吃 right inset
+          // （viewPadding.right = 84pt 会把 84 宽竖条的内容压成 0 宽 →
+          // 图标被挤向左、hit 区塌陷 → 点按无响应）。
+          left: false,
+          right: false,
+          // 顶部消化系统状态/摄像头保留区；底部消化 home indicator。
+          top: true,
+          bottom: true,
+          child: AnimatedPadding(
+            duration: kThemeAnimationDuration,
+            padding: contentPadding,
+            child: AnimatedBuilder(
+              animation: chrome,
+              builder: (context, _) {
+                final tools = _toolbar(context);
+                final items = showTabs ? _items() : const <Widget>[];
+                return Column(
+                  children: [
+                    ...tools,
+                    const Spacer(),
+                    ...items,
+                    // 摄像头在底部时给 tab 让位。
+                    if (bottomInset > 0) SizedBox(height: bottomInset),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 竖条工具栏：顺序 = 后退（如有）→ 主操作（原 FAB）→ 页面其他动作。
+  ///
+  /// 所有项与导航项**同样大小与对齐**：44×44 命中区、20pt 图标、与竖条同列；
+  /// 系统状态簇占用的顶部区域由 `contentPadding.top` 让开（否则会被挡住）。
+  List<Widget> _toolbar(BuildContext context) {
+    // 矮竖条不接管工具（工具留在页面标题栏）。
+    final showTools = MediaQuery.sizeOf(context).height >= 620;
+    final out = <Widget>[];
+    // ShellRoute 下 ModalRoute 的 canPop 不可靠，用 GoRouter 判断能否返回。
+    if (showTools && GoRouter.of(context).canPop()) {
+      out.add(_toolbarIcon(
+        context,
+        icon: Icons.arrow_back,
+        label: MaterialLocalizations.of(context).backButtonTooltip,
+        onPressed: () => GoRouter.of(context).pop(),
+      ));
+    }
+    final primary = chrome.primary;
+    if (primary != null) {
+      // 主操作（原 FAB）：与导航项同尺寸同列，但保留主色底，避免太不显眼。
+      out.add(Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Semantics(
+          label: primary.label,
+          button: true,
+          child: InkWell(
+            onTap: primary.onPressed,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                primary.icon,
+                size: 22,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ),
+        ),
+      ));
+    }
+    for (final action in chrome.actions) {
+      if (action.child != null) {
+        out.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: IconTheme(
+            data: const IconThemeData(size: 20),
+            child: IconButtonTheme(
+              data: IconButtonThemeData(
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(44, 44),
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  foregroundColor:
+                      Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Center(child: action.child),
+              ),
+            ),
+          ),
+        ));
+      } else {
+        out.add(_toolbarIcon(
+          context,
+          icon: action.icon!,
+          label: action.label,
+          onPressed: action.onPressed,
+        ));
+      }
+    }
+    return out;
+  }
+
+  Widget _toolbarIcon(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required VoidCallback? onPressed,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Semantics(
+        label: label,
+        button: true,
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: SizedBox(
+            width: 44,
+            height: 44,
+            child: Icon(
+              icon,
+              size: 20,
+              color: onPressed == null
+                  ? Theme.of(context).colorScheme.outline
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _items() {
+    return [
+      for (var i = 0; i < tabs.length; i++)
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: _EdgeRailItem(
+            itemKey: ValueKey('edge-tab-${labels[i]}'),
+            icon: tabs[i].icon,
+            selectedIcon: tabs[i].selectedIcon,
+            label: labels[i],
+            selected: i == selectedIndex,
+            onTap: () => onSelected(tabs[i]),
+          ),
+        ),
+    ];
+  }
+}
+
+/// 竖条项：44×44 命中区、图标 20（与系统状态图标同尺寸），居中于系统保留条内
+/// 以与系统图标列对齐；选中态 M3 胶囊（primaryContainer）。
+class _EdgeRailItem extends StatelessWidget {
+  final Key? itemKey;
+  final IconData icon;
+  final IconData selectedIcon;
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _EdgeRailItem({
+    this.itemKey,
+    required this.icon,
+    required this.selectedIcon,
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      key: itemKey,
+      label: label,
+      button: true,
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: selected
+              ? BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                )
+              : null,
+          child: Icon(
+            selected ? selectedIcon : icon,
+            size: 20,
+            color:
+                selected ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
           ),
         ),
       ),

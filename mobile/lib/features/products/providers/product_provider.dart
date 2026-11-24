@@ -540,7 +540,9 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
   Future<void> setPriceDimension(bool region) async {
     if (state.priceDimensionRegion == region) return;
     state = state.copyWith(priceDimensionRegion: region);
-    if (region && state.regionPriceCards.isEmpty && !state.loadingRegionPrices) {
+    if (region &&
+        state.regionPriceCards.isEmpty &&
+        !state.loadingRegionPrices) {
       await _loadRegionPrices();
     }
   }
@@ -550,7 +552,8 @@ class ProductDetailPageNotifier extends StateNotifier<ProductDetailPageState> {
     try {
       final candidates = await _ensureRegionCandidates();
       if (candidates.isEmpty) {
-        state = state.copyWith(regionPriceCards: const [], loadingRegionPrices: false);
+        state = state
+            .copyWith(regionPriceCards: const [], loadingRegionPrices: false);
         return;
       }
       final prices = await _comparisonRepo.getEntityPrices(

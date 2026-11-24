@@ -257,7 +257,9 @@ List<String> mergePriceUnitOptions(
     result.add(name);
   }
   final currentName = current?.trim();
-  if (currentName != null && currentName.isNotEmpty && !result.contains(currentName)) {
+  if (currentName != null &&
+      currentName.isNotEmpty &&
+      !result.contains(currentName)) {
     result.insert(0, currentName);
   }
   return result;
@@ -309,7 +311,9 @@ Future<List<String>> loadNutritionBasisUnitNames({
         _firstNonEmptyName(row, const ['abbreviation', 'name']),
   ];
 
-  final ownRows = entityId > 0 ? await rowsOf('/entities/$entityType/$entityId/units') : <Map>[];
+  final ownRows = entityId > 0
+      ? await rowsOf('/entities/$entityType/$entityId/units')
+      : <Map>[];
   var inheritedRows = <Map>[];
   if (entityType == 'product') {
     final linkedId = entityId > 0

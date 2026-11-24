@@ -379,6 +379,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get saveButtonPositionHint => '仅保存在本机，不影响其他设备';
 
   @override
+  String get saveButtonPositionDuoRailNote => '如果显示了侧边栏，则无论选哪项，保存按钮都固定在侧边栏上部分。';
+
+  @override
   String get profileMyData => '我的数据';
 
   @override
@@ -2413,6 +2416,11 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String recipeCostPerServings(Object amount, Object count) {
     return '$amount / $count 人份';
+  }
+
+  @override
+  String recipeCostPerServing(Object amount) {
+    return '$amount / 份';
   }
 
   @override

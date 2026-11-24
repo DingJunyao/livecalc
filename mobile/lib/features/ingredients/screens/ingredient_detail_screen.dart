@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../shared/widgets/detail_two_column.dart';
+import '../../../core/layout/shell_chrome.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -152,7 +156,7 @@ class _IngredientDetailScreenState
 
     if (state.error != null && ingredient == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.ingredientDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.ingredientDetailTitle)),
         body: ErrorDisplay(
           message: state.error!,
           onRetry: () =>
@@ -162,7 +166,7 @@ class _IngredientDetailScreenState
     }
     if (ingredient == null) {
       return Scaffold(
-        appBar: AppBar(title: Text(l10n.ingredientDetailTitle)),
+        appBar: ShellAppBar(title: Text(l10n.ingredientDetailTitle)),
         body: LoadingIndicator(message: l10n.commonLoading),
       );
     }
@@ -195,8 +199,172 @@ class _IngredientDetailScreenState
       if (state.deletedDensityIds.isNotEmpty) l10n.journeyPendingDensity,
       if (state.deletedHierarchyIds.isNotEmpty) l10n.journeyPendingHierarchy,
     };
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(actions: [
+        ShellAction(
+          icon: _isFavorite ? Icons.favorite : Icons.favorite_border,
+          label: _isFavorite ? l10n.favoritesRemove : l10n.favoritesAdd,
+          onPressed: _toggleFavorite,
+        ),
+        ShellAction(
+          icon: Icons.payments_outlined,
+          label: l10n.journeyRecordPrice,
+          onPressed: () => _openRecordPrice(notifier, state, ingredient),
+        ),
+        ShellAction(
+          icon: Icons.more_vert,
+          label: l10n.commonEdit,
+          onPressed: () => _showActionSheet(notifier, ingredient, l10n),
+        ),
+      ]);
+    }
+
+    final cBasic = _BasicInfoCard(
+      ingredient: ingredient,
+      categoriesAsync: ref.watch(ingredientCategoriesProvider),
+      onEdit: () => _openEditBasicPage(notifier, ingredient),
+    );
+    final cLatest = _LatestPriceCard(
+      latest: state.latestPrice,
+      merchantPrices: state.merchantPrices,
+      loadingLatest: state.loadingLatest,
+      loadingMerchants: state.loadingMerchants,
+      currency: userCurrency,
+      fallbackChain: _activeFallbackChain(state),
+      regionCards: state.regionPriceCards,
+      loadingRegionPrices: state.loadingRegionPrices,
+      dimensionRegion: state.priceDimensionRegion,
+      hasRegionComparison: state.regionSeries.length >= 2,
+      onDimensionChanged: notifier.setPriceDimension,
+    );
+    final cProducts = _RelatedProductsCard(
+      products: state.products,
+      productPrices: state.productPrices,
+      loading: state.loadingProducts,
+      currency: userCurrency,
+      onLoadPrice: notifier.loadProductPrice,
+      onAdd: () => _openAddProductPage(notifier, ingredient),
+      onEdit: (p) => _openEditProductPage(notifier, ingredient, p),
+      onDelete: (p) => _confirmDeleteProduct(notifier, p),
+    );
+    final cRecords = _PriceRecordsCard(
+      records: state.records,
+      loading: state.loadingRecords,
+      hasMore: state.recordsHasMore,
+      products: state.products,
+      currency: userCurrency,
+      onLoadMore: notifier.loadMoreRecords,
+      onAdd: () => _openAddRecord(notifier, state, ingredient),
+      onEdit: (r) => _openEditRecord(notifier, state, r),
+      onDelete: (r) => _confirmDeleteRecord(notifier, r),
+    );
+    final cRecipes = _RelatedRecipesCard(
+      recipes: state.recipes,
+      loading: state.loadingRecipes,
+      hasMore: state.recipesHasMore,
+      onLoadMore: notifier.loadMoreRecipes,
+    );
+    final cNutrition = NutritionCard(
+      entityType: 'ingredient',
+      entityId: widget.id,
+      entityName: ingredient.name,
+      nutrition: state.nutrition,
+      loading: state.loadingNutrition,
+      saving: state.savingNutrition,
+      onRefresh: notifier.refreshNutrition,
+      onSave: notifier.saveNutrition,
+    );
+    final cHierarchy = _HierarchyCard(
+      currentId: widget.id,
+      currentName: ingredient.name,
+      data: state.hierarchy,
+      loading: state.loadingHierarchy,
+      onAdd: () => _openHierarchyPage(notifier, isAdmin),
+      onEditStrength: (relation) => _openHierarchyPage(notifier, isAdmin),
+      onDelete: (relation) => _openHierarchyPage(notifier, isAdmin),
+    );
+    final cUnits = EntityUnitsCard(
+      entityType: 'ingredient',
+      entityId: widget.id,
+      entityName: ingredient.name,
+      units: state.units,
+      unmappedUnits: state.unmappedUnits,
+      densities: state.densities,
+      globalUnitOptions: state.globalUnitOptions,
+      loading: state.loadingUnits,
+      isAdmin: isAdmin,
+      effectiveDensityKgM3: state.effectiveDensityKgM3,
+      onAddUnit: (input) => notifier.addUnit(
+        unitName: input.unitName,
+        conversionFactor: input.conversionFactor,
+        weightPerUnit: input.weightPerUnit,
+        weightUnitId: input.weightUnitId,
+        weightUnitOverrideId: input.weightUnitOverrideId,
+        isDefault: input.isDefault,
+        isAdmin: isAdmin,
+      ),
+      onEditUnit: (unitId, input) => notifier.updateUnit(
+        unitId,
+        unitName: input.unitName,
+        conversionFactor: input.conversionFactor,
+        weightPerUnit: input.weightPerUnit,
+        weightUnitId: input.weightUnitId,
+        weightUnitOverrideId: input.weightUnitOverrideId,
+        isDefault: input.isDefault,
+        isAdmin: isAdmin,
+      ),
+      onDeleteUnit: notifier.deleteUnit,
+      onAddDensity: (input) => notifier.addDensity(
+        density: input.density,
+        condition: input.condition,
+        isAdmin: isAdmin,
+      ),
+      onDeleteDensity: notifier.deleteDensity,
+      extraSections: [
+        EntityQuantityLinksSection(
+          entityType: 'ingredient',
+          entityId: widget.id,
+          entityName: ingredient.name,
+          currency: userCurrency,
+        ),
+      ],
+    );
+    final cTrend = Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: CostTrendChart(
+          points: state.chartPoints,
+          computedPoints: state.computedPoints,
+          includeComputed: state.includeComputed,
+          showComputedSwitch: _showComputedSwitch(state),
+          onIncludeComputedChange: notifier.setIncludeComputed,
+          merchantSeries: state.priceDimensionRegion
+              ? [
+                  for (final s in state.regionSeries)
+                    PriceMerchantSeries(
+                      merchantId: s.regionId,
+                      name: s.name,
+                      points: s.points,
+                      recordDays: s.recordDays,
+                    ),
+                ]
+              : state.merchantSeries,
+          compareLabel: state.priceDimensionRegion
+              ? AppLocalizations.of(context).compareByRegion
+              : null,
+          compareSuffixBuilder: state.priceDimensionRegion
+              ? (n) => AppLocalizations.of(context).compareRegionsSuffix(n)
+              : null,
+          recordDays: state.chartRecordDays,
+          loading: state.loadingChart,
+          userCurrency: userCurrency,
+          onRangeChange: (days) => notifier.reloadChart(days),
+        ),
+      ),
+    );
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         // 标题 = 原料名（可省略，长按看全名）+ 类型标签；名称必须包在
         // Flexible 里，否则长名会把 chip 挤出工具栏。
         title: AppTitleTooltip(
@@ -210,8 +378,7 @@ class _IngredientDetailScreenState
               ),
               const SizedBox(width: 8),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(10),
@@ -278,162 +445,87 @@ class _IngredientDetailScreenState
               ),
               const SizedBox(height: 16),
             ],
-            _BasicInfoCard(
-              ingredient: ingredient,
-              categoriesAsync: ref.watch(ingredientCategoriesProvider),
-              onEdit: () => _openEditBasicPage(notifier, ingredient),
-            ),
-            const SizedBox(height: 16),
-            _LatestPriceCard(
-              latest: state.latestPrice,
-              merchantPrices: state.merchantPrices,
-              loadingLatest: state.loadingLatest,
-              loadingMerchants: state.loadingMerchants,
-              currency: userCurrency,
-              fallbackChain: _activeFallbackChain(state),
-              regionCards: state.regionPriceCards,
-              loadingRegionPrices: state.loadingRegionPrices,
-              dimensionRegion: state.priceDimensionRegion,
-              hasRegionComparison: state.regionSeries.length >= 2,
-              onDimensionChanged: notifier.setPriceDimension,
-            ),
-            const SizedBox(height: 16),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: CostTrendChart(
-                  points: state.chartPoints,
-                  computedPoints: state.computedPoints,
-                  includeComputed: state.includeComputed,
-                  showComputedSwitch: _showComputedSwitch(state),
-                  onIncludeComputedChange: notifier.setIncludeComputed,
-                  merchantSeries: state.priceDimensionRegion
-                      ? [
-                          for (final s in state.regionSeries)
-                            PriceMerchantSeries(
-                              merchantId: s.regionId,
-                              name: s.name,
-                              points: s.points,
-                              recordDays: s.recordDays,
-                            ),
-                        ]
-                      : state.merchantSeries,
-                  compareLabel: state.priceDimensionRegion
-                      ? AppLocalizations.of(context).compareByRegion
-                      : null,
-                  compareSuffixBuilder: state.priceDimensionRegion
-                      ? (n) => AppLocalizations.of(context).compareRegionsSuffix(n)
-                      : null,
-                  recordDays: state.chartRecordDays,
-                  loading: state.loadingChart,
-                  userCurrency: userCurrency,
-                  onRangeChange: (days) => notifier.reloadChart(days),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _RelatedProductsCard(
-              products: state.products,
-              productPrices: state.productPrices,
-              loading: state.loadingProducts,
-              currency: userCurrency,
-              onLoadPrice: notifier.loadProductPrice,
-              onAdd: () => _openAddProductPage(notifier, ingredient),
-              onEdit: (p) => _openEditProductPage(notifier, ingredient, p),
-              onDelete: (p) => _confirmDeleteProduct(notifier, p),
-            ),
-            const SizedBox(height: 16),
-            _PriceRecordsCard(
-              records: state.records,
-              loading: state.loadingRecords,
-              hasMore: state.recordsHasMore,
-              products: state.products,
-              currency: userCurrency,
-              onLoadMore: notifier.loadMoreRecords,
-              onAdd: () => _openAddRecord(notifier, state, ingredient),
-              onEdit: (r) => _openEditRecord(notifier, state, r),
-              onDelete: (r) => _confirmDeleteRecord(notifier, r),
-            ),
-            const SizedBox(height: 16),
-            _RelatedRecipesCard(
-              recipes: state.recipes,
-              loading: state.loadingRecipes,
-              hasMore: state.recipesHasMore,
-              onLoadMore: notifier.loadMoreRecipes,
-            ),
-            const SizedBox(height: 16),
-            NutritionCard(
-              entityType: 'ingredient',
-              entityId: widget.id,
-              entityName: ingredient.name,
-              nutrition: state.nutrition,
-              loading: state.loadingNutrition,
-              saving: state.savingNutrition,
-              onRefresh: notifier.refreshNutrition,
-              onSave: notifier.saveNutrition,
-            ),
-            const SizedBox(height: 16),
-            EntityUnitsCard(
-              entityType: 'ingredient',
-              entityId: widget.id,
-              entityName: ingredient.name,
-              units: state.units,
-              unmappedUnits: state.unmappedUnits,
-              densities: state.densities,
-              globalUnitOptions: state.globalUnitOptions,
-              loading: state.loadingUnits,
-              isAdmin: isAdmin,
-              effectiveDensityKgM3: state.effectiveDensityKgM3,
-              onAddUnit: (input) => notifier.addUnit(
-                unitName: input.unitName,
-                conversionFactor: input.conversionFactor,
-                weightPerUnit: input.weightPerUnit,
-                weightUnitId: input.weightUnitId,
-                weightUnitOverrideId: input.weightUnitOverrideId,
-                isDefault: input.isDefault,
-                isAdmin: isAdmin,
-              ),
-              onEditUnit: (unitId, input) => notifier.updateUnit(
-                unitId,
-                unitName: input.unitName,
-                conversionFactor: input.conversionFactor,
-                weightPerUnit: input.weightPerUnit,
-                weightUnitId: input.weightUnitId,
-                weightUnitOverrideId: input.weightUnitOverrideId,
-                isDefault: input.isDefault,
-                isAdmin: isAdmin,
-              ),
-              onDeleteUnit: notifier.deleteUnit,
-              onAddDensity: (input) => notifier.addDensity(
-                density: input.density,
-                condition: input.condition,
-                isAdmin: isAdmin,
-              ),
-              onDeleteDensity: notifier.deleteDensity,
-              extraSections: [
-                EntityQuantityLinksSection(
-                  entityType: 'ingredient',
-                  entityId: widget.id,
-                  entityName: ingredient.name,
-                  currency: userCurrency,
-                ),
+            DetailTwoColumn.rows(
+              // 单列：保持移动端原有顺序（单位在层级之前）。
+              single: [
+                cBasic,
+                cLatest,
+                cTrend,
+                cProducts,
+                cRecords,
+                cRecipes,
+                cNutrition,
+                cUnits,
+                cHierarchy,
               ],
-            ),
-            const SizedBox(height: 16),
-            _HierarchyCard(
-              currentId: widget.id,
-              currentName: ingredient.name,
-              data: state.hierarchy,
-              loading: state.loadingHierarchy,
-              onAdd: () => _openHierarchyPage(notifier, isAdmin),
-              onEditStrength: (relation) =>
-                  _openHierarchyPage(notifier, isAdmin),
-              onDelete: (relation) => _openHierarchyPage(notifier, isAdmin),
+              // 双列：严格对齐 web IngredientDetail 桌面 CSS Grid（≥960）。
+              rows: [
+                [cBasic, cLatest],
+                [cProducts, cTrend],
+                [cRecipes, cRecords],
+                [
+                  cNutrition,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      cHierarchy,
+                      const SizedBox(height: 16),
+                      cUnits,
+                    ],
+                  ),
+                ],
+              ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  /// 竖条里的「⋮」动作：编辑 / 合并 / 删除。
+  Future<void> _showActionSheet(
+    IngredientDetailPageNotifier notifier,
+    dynamic ingredient,
+    AppLocalizations l10n,
+  ) async {
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(l10n.commonEdit),
+              onTap: () => Navigator.of(ctx).pop('edit'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.merge_type),
+              title: Text(l10n.ingredientMergeIntoOther),
+              onTap: () => Navigator.of(ctx).pop('merge'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(l10n.ingredientDeleteIngredient),
+              onTap: () => Navigator.of(ctx).pop('delete'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || action == null) return;
+    if (action == 'edit') {
+      _openEditBasicPage(notifier, ingredient);
+    } else if (action == 'merge') {
+      _openMergeDialog(notifier, ingredient);
+    } else if (action == 'delete') {
+      _confirmDelete(notifier, ingredient);
+    }
   }
 
   // ---- 记录价格 ----
@@ -1038,10 +1130,15 @@ class _BasicInfoCard extends StatelessWidget {
                 Icon(Icons.info_outline,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.journeyBasicInformation,
+                Expanded(
+                  child: Text(
+                    l10n.journeyBasicInformation,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
                   tooltip: l10n.commonEdit,
@@ -1294,8 +1391,14 @@ class _PriceDimensionToggle extends StatelessWidget {
     final l10n = AppLocalizations.of(context);
     return SegmentedButton<bool>(
       segments: [
-        ButtonSegment(value: false, label: Text(l10n.chartByMerchant, style: const TextStyle(fontSize: 12))),
-        ButtonSegment(value: true, label: Text(l10n.compareByRegion, style: const TextStyle(fontSize: 12))),
+        ButtonSegment(
+            value: false,
+            label: Text(l10n.chartByMerchant,
+                style: const TextStyle(fontSize: 12))),
+        ButtonSegment(
+            value: true,
+            label: Text(l10n.compareByRegion,
+                style: const TextStyle(fontSize: 12))),
       ],
       selected: {dimensionRegion},
       onSelectionChanged: (selection) {
@@ -1345,18 +1448,31 @@ class _RelatedProductsCard extends StatelessWidget {
                 Icon(Icons.inventory_2_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.journeyRelatedProducts,
-                    style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                if (products.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  Chip(
-                    label: Text(formatNumber(products.length)),
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                // 标题可收缩（详情页双列 ≈300 宽时不溢出），计数 chip 跟随其后
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          l10n.journeyRelatedProducts,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      if (products.isNotEmpty) ...[
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text(formatNumber(products.length)),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ],
+                    ],
                   ),
-                ],
-                const Spacer(),
+                ),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),
@@ -1548,10 +1664,15 @@ class _PriceRecordsCard extends StatelessWidget {
               children: [
                 Icon(Icons.history, color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.journeyPriceRecords,
+                Expanded(
+                  child: Text(
+                    l10n.journeyPriceRecords,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 if (products.isNotEmpty)
                   TextButton.icon(
                     onPressed: onAdd,
@@ -1866,10 +1987,15 @@ class _HierarchyCard extends StatelessWidget {
                 Icon(Icons.account_tree_outlined,
                     color: theme.colorScheme.primary, size: 20),
                 const SizedBox(width: 8),
-                Text(l10n.journeyPendingHierarchy,
+                Expanded(
+                  child: Text(
+                    l10n.journeyPendingHierarchy,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.titleMedium
-                        ?.copyWith(fontWeight: FontWeight.bold)),
-                const Spacer(),
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
                 TextButton.icon(
                   onPressed: onAdd,
                   icon: const Icon(Icons.add, size: 18),

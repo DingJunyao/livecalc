@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/i18n/app_formatters.dart';
+import '../../core/layout/shell_app_bar.dart';
 import '../../features/entities/repositories/entity_repository.dart';
 import '../../features/profile/providers/save_button_position_provider.dart';
 import '../../l10n/app_localizations.dart';
@@ -22,14 +23,17 @@ class EntityQuantityLinkEditPage extends ConsumerStatefulWidget {
   final int? ingredientId;
   final EntityQuantityLink? link;
   final EntityRepository? repository;
+
   /// 测试注入：返回实体自身可用的单位名（含关联单位）。
   final Future<List<String>> Function(
     String entityType,
     int entityId,
     int? ingredientId,
   )? unitNamesLoader;
+
   /// 测试注入：返回全局单位名。
   final Future<List<String>> Function()? globalUnitNamesLoader;
+
   /// 测试注入：返回实体「默认单位」名（商品自身默认 > 关联原料默认）。
   final Future<String?> Function(
     String entityType,
@@ -216,9 +220,7 @@ class _EntityQuantityLinkEditPageState
 
   List<String> _optionsWithCurrent(List<String> options, String? current) {
     final list = [...options];
-    if (current != null &&
-        current.isNotEmpty &&
-        !list.contains(current)) {
+    if (current != null && current.isNotEmpty && !list.contains(current)) {
       list.insert(0, current);
     }
     return list;
@@ -333,10 +335,12 @@ class _EntityQuantityLinkEditPageState
         '${_fromQty.text.trim()} ${_fromUnit ?? '—'} ${widget.entityName ?? '—'}'
         ' = ${_toQty.text.trim()} ${_toUnit ?? '—'} ${targetName ?? '—'}';
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_isEditing ? l10n.entityLinksEdit : l10n.entityLinksAddTitle),
+      appBar: ShellAppBar(
+        title:
+            Text(_isEditing ? l10n.entityLinksEdit : l10n.entityLinksAddTitle),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: saveLabel,

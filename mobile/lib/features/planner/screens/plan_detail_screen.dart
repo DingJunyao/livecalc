@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_app_bar.dart';
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -229,8 +232,21 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
     final userCurrency = ref.watch(displayCurrencyProvider);
     final plan = _plan;
 
+    final rail = context.shellRailMode;
+    if (rail) {
+      context.publishShellActions(
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+          ShellAction.custom(child: _moreMenu(l10n), label: l10n.plansEdit),
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         // 方案名是动态标题，操作全部收进 ⋮ 菜单，避免挤压标题；长按看全名。
         title: AppTitleTooltip(
           message: plan?['name'] as String? ?? l10n.navPlans,
@@ -238,50 +254,55 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
         leading: const AppBackButton(),
         actions: [
           const CalcContextMenuButton(),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (v) {
-              if (v == 'edit') {
-                _editPlan();
-              } else if (v == 'setToday') {
-                _setToday();
-              } else if (v == 'delete') {
-                _delete();
-              }
-            },
-            itemBuilder: (_) => [
-              PopupMenuItem(
-                value: 'edit',
-                enabled: !_loading,
-                child: ListTile(
-                  leading: const Icon(Icons.edit_outlined),
-                  title: Text(l10n.plansEdit),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'setToday',
-                enabled: !_busy,
-                child: ListTile(
-                  leading: const Icon(Icons.verified_outlined),
-                  title: Text(l10n.plansSetToday),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-              PopupMenuItem(
-                value: 'delete',
-                enabled: !_busy,
-                child: ListTile(
-                  leading: const Icon(Icons.delete_outline),
-                  title: Text(l10n.commonDelete),
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ),
-            ],
-          ),
+          _moreMenu(l10n),
         ],
       ),
       body: _buildBody(theme, l10n, userCurrency),
+    );
+  }
+
+  /// ⋮ 溢出菜单（编辑 / 设为今日 / 删除）：AppBar 与竖条共用同一实现。
+  Widget _moreMenu(AppLocalizations l10n) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      onSelected: (v) {
+        if (v == 'edit') {
+          _editPlan();
+        } else if (v == 'setToday') {
+          _setToday();
+        } else if (v == 'delete') {
+          _delete();
+        }
+      },
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          value: 'edit',
+          enabled: !_loading,
+          child: ListTile(
+            leading: const Icon(Icons.edit_outlined),
+            title: Text(l10n.plansEdit),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'setToday',
+          enabled: !_busy,
+          child: ListTile(
+            leading: const Icon(Icons.verified_outlined),
+            title: Text(l10n.plansSetToday),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          enabled: !_busy,
+          child: ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(l10n.commonDelete),
+            contentPadding: EdgeInsets.zero,
+          ),
+        ),
+      ],
     );
   }
 
@@ -299,154 +320,248 @@ class _PlanDetailScreenState extends ConsumerState<PlanDetailScreen> {
     final totals = (evaluation?['totals'] as Map<String, dynamic>?) ?? const {};
     final targets =
         (evaluation?['targets'] as Map<String, dynamic>?) ?? const {};
-    final nutrition = evaluation?['nutrition'] as Map<String, dynamic>?;
+    final nutritionJson = evaluation?['nutrition'] as Map<String, dynamic>?;
     final evalItems = ((evaluation?['items'] as List?) ?? const [])
         .cast<Map<String, dynamic>>();
     final items = _items;
 
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        l10n.plansItems,
-                        style: theme.textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 1),
-                      decoration: BoxDecoration(
-                        color: plan['kind'] == 'day'
-                            ? theme.colorScheme.tertiaryContainer
-                            : theme.colorScheme.primaryContainer,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        plan['kind'] == 'day'
-                            ? l10n.plansKindDay
-                            : l10n.plansKindMeal,
-                        style: theme.textTheme.labelSmall?.copyWith(
-                          color: plan['kind'] == 'day'
-                              ? theme.colorScheme.onTertiaryContainer
-                              : theme.colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  l10n.plansItemCount(items.length),
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: theme.colorScheme.outline),
-                ),
-                for (var i = 0; i < items.length; i++)
-                  _itemRow(
-                    theme,
-                    l10n,
-                    items[i],
-                    evalItems.length > i ? evalItems[i] : null,
-                    userCurrency,
-                  ),
-                if ((plan['note'] as String?)?.isNotEmpty ?? false) ...[
-                  const SizedBox(height: 6),
-                  Text(plan['note'] as String? ?? '',
-                      style: theme.textTheme.bodySmall),
-                ],
-              ],
-            ),
-          ),
-        ),
-        if (evaluation != null) ...[
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(l10n.plansTotals,
-                          style: theme.textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold)),
-                      const Spacer(),
-                      // 口径切换（当前 | 各地区对比）：有 ≥2 个有数据地区时出现
-                      if (_regionCandidates.length >= 2)
-                        SegmentedButton<bool>(
-                          segments: [
-                            ButtonSegment(
-                              value: false,
-                              label: Text(l10n.compareDimensionCurrent,
-                                  style: const TextStyle(fontSize: 12)),
-                            ),
-                            ButtonSegment(
-                              value: true,
-                              label: Text(l10n.compareByRegion,
-                                  style: const TextStyle(fontSize: 12)),
-                            ),
-                          ],
-                          selected: {_totalsByRegion},
-                          onSelectionChanged: (s) {
-                            final v = s.first;
-                            setState(() => _totalsByRegion = v);
-                            if (v && _regionTotals.isEmpty) _loadRegionTotals();
-                          },
-                          showSelectedIcon: false,
-                          style: const ButtonStyle(
-                              visualDensity: VisualDensity.compact),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (_totalsByRegion)
-                    _RegionTotalsTable(
-                      rows: _regionTotals,
-                      candidates: _regionCandidates,
-                      loading: _regionTotalsLoading,
-                      userCurrency: userCurrency,
-                    )
-                  else
-                    PlanTotalsGrid(
-                      totals: totals,
-                      targets: targets,
-                      userCurrency: userCurrency,
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-        CostTrendChart(
-          points: _trend,
-          userCurrency: userCurrency,
-          loading: _trendLoading,
-          days: _trendDays,
-          onDaysChanged: (days) {
-            setState(() => _trendDays = days);
-            _loadTrend();
-          },
-        ),
-        if (evaluation != null) ...[
+    // 展开态（宽度 ≥820，如 Duo 内屏横屏 951−84=867）：按 web 的信息架构分栏——
+    // 左 3/5 = 条目（双列）+ 右 2/5 = 合计 + 成本占比；走势与营养来源整行。
+    return LayoutBuilder(builder: (context, constraints) {
+      final wide = constraints.maxWidth >= 820;
+      final itemsCard = _buildItemsCard(
+        theme,
+        l10n,
+        plan,
+        items,
+        evalItems,
+        userCurrency,
+        columns: wide ? 2 : 1,
+      );
+      final totalsCard = evaluation == null
+          ? null
+          : _buildTotalsCard(theme, l10n, totals, targets, userCurrency);
+      // 走势图只在有数据时插入（与既有行为一致：图表自带空态）。
+      final trend = CostTrendChart(
+        points: _trend,
+        userCurrency: userCurrency,
+        loading: _trendLoading,
+        days: _trendDays,
+        onDaysChanged: (days) {
+          setState(() => _trendDays = days);
+          _loadTrend();
+        },
+      );
+      final extras = <Widget>[
+        if (evaluation != null)
           CostProportionChart(
             breakdown: _costBreakdown(items, evalItems),
             totalCost: _num(totals['cost']),
             userCurrency: (totals['currency'] as String?) ?? userCurrency,
           ),
-          NutritionSourceGrid(
-            nutrition: RecipeNutrition.fromJson(nutrition ?? const {}),
-          ),
+      ];
+      final nutrition = evaluation == null
+          ? null
+          : NutritionSourceGrid(
+              nutrition: RecipeNutrition.fromJson(nutritionJson ?? const {}),
+            );
+
+      return ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          if (wide)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(flex: 1, child: itemsCard),
+                const SizedBox(width: 12),
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      if (totalsCard != null) totalsCard,
+                      ...extras,
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else ...[
+            itemsCard,
+            if (totalsCard != null) totalsCard,
+            ...extras,
+          ],
+          trend,
+          if (nutrition != null) nutrition,
         ],
-      ],
+      );
+    });
+  }
+
+  /// 条目卡：宽屏时条目按 columns 列排布（与 web 条目网格同构）。
+  Widget _buildItemsCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    Map<String, dynamic> plan,
+    List<Map<String, dynamic>> items,
+    List<Map<String, dynamic>> evalItems,
+    String userCurrency, {
+    required int columns,
+  }) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.plansItems,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: plan['kind'] == 'day'
+                        ? theme.colorScheme.tertiaryContainer
+                        : theme.colorScheme.primaryContainer,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    plan['kind'] == 'day'
+                        ? l10n.plansKindDay
+                        : l10n.plansKindMeal,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: plan['kind'] == 'day'
+                          ? theme.colorScheme.onTertiaryContainer
+                          : theme.colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              l10n.plansItemCount(items.length),
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: theme.colorScheme.outline),
+            ),
+            if (columns <= 1)
+              for (var i = 0; i < items.length; i++)
+                _itemRow(
+                  theme,
+                  l10n,
+                  items[i],
+                  evalItems.length > i ? evalItems[i] : null,
+                  userCurrency,
+                )
+            else
+              LayoutBuilder(builder: (context, c) {
+                const gap = 12.0;
+                final width = (c.maxWidth - gap * (columns - 1)) / columns;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: 4,
+                  children: [
+                    for (var i = 0; i < items.length; i++)
+                      SizedBox(
+                        width: width,
+                        child: _itemRow(
+                          theme,
+                          l10n,
+                          items[i],
+                          evalItems.length > i ? evalItems[i] : null,
+                          userCurrency,
+                        ),
+                      ),
+                  ],
+                );
+              }),
+            if ((plan['note'] as String?)?.isNotEmpty ?? false) ...[
+              const SizedBox(height: 6),
+              Text(plan['note'] as String? ?? '',
+                  style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 合计卡（当前 / 各地区对比两种口径）。
+  Widget _buildTotalsCard(
+    ThemeData theme,
+    AppLocalizations l10n,
+    Map<String, dynamic> totals,
+    Map<String, dynamic> targets,
+    String userCurrency,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    l10n.plansTotals,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (_regionCandidates.length >= 2)
+                  SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(
+                        value: false,
+                        label: Text(l10n.compareDimensionCurrent,
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text(l10n.compareByRegion,
+                            style: const TextStyle(fontSize: 12)),
+                      ),
+                    ],
+                    selected: {_totalsByRegion},
+                    onSelectionChanged: (s) {
+                      final v = s.first;
+                      setState(() => _totalsByRegion = v);
+                      if (v && _regionTotals.isEmpty) _loadRegionTotals();
+                    },
+                    showSelectedIcon: false,
+                    style:
+                        const ButtonStyle(visualDensity: VisualDensity.compact),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (_totalsByRegion)
+              _RegionTotalsTable(
+                rows: _regionTotals,
+                candidates: _regionCandidates,
+                loading: _regionTotalsLoading,
+                userCurrency: userCurrency,
+              )
+            else
+              PlanTotalsGrid(
+                totals: totals,
+                targets: targets,
+                userCurrency: userCurrency,
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -583,18 +698,24 @@ class _RegionTotalsTable extends StatelessWidget {
         dataRowMinHeight: 36,
         dataRowMaxHeight: 36,
         columns: [
-          DataColumn(label: Text(l10n.compareRegionCol, style: theme.textTheme.labelSmall)),
           DataColumn(
-              label: Text(l10n.compareMetricCost, style: theme.textTheme.labelSmall),
+              label: Text(l10n.compareRegionCol,
+                  style: theme.textTheme.labelSmall)),
+          DataColumn(
+              label: Text(l10n.compareMetricCost,
+                  style: theme.textTheme.labelSmall),
               numeric: true),
           DataColumn(
-              label: Text(l10n.compareMetricCalories, style: theme.textTheme.labelSmall),
+              label: Text(l10n.compareMetricCalories,
+                  style: theme.textTheme.labelSmall),
               numeric: true),
           DataColumn(
-              label: Text(l10n.compareMetricProtein, style: theme.textTheme.labelSmall),
+              label: Text(l10n.compareMetricProtein,
+                  style: theme.textTheme.labelSmall),
               numeric: true),
           DataColumn(
-              label: Text(l10n.compareMetricFat, style: theme.textTheme.labelSmall),
+              label: Text(l10n.compareMetricFat,
+                  style: theme.textTheme.labelSmall),
               numeric: true),
         ],
         rows: [
@@ -605,11 +726,8 @@ class _RegionTotalsTable extends StatelessWidget {
               DataCell(Text(
                 _fmtCost(r, minCost, l10n),
                 style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight:
-                      _isLowest(r, minCost) ? FontWeight.bold : null,
-                  color: _isLowest(r, minCost)
-                      ? Colors.green.shade700
-                      : null,
+                  fontWeight: _isLowest(r, minCost) ? FontWeight.bold : null,
+                  color: _isLowest(r, minCost) ? Colors.green.shade700 : null,
                 ),
               )),
               DataCell(Text(metric(r['totals'], 'calories', digits: 0),
@@ -629,7 +747,8 @@ class _RegionTotalsTable extends StatelessWidget {
     return _num((r['totals'] as Map?)?['cost']) == minCost;
   }
 
-  String _fmtCost(Map<String, dynamic> r, double? minCost, AppLocalizations l10n) {
+  String _fmtCost(
+      Map<String, dynamic> r, double? minCost, AppLocalizations l10n) {
     final cost = _num((r['totals'] as Map?)?['cost']);
     if (cost <= 0) return '—';
     return formatMoney(cost, userCurrency);

@@ -1,10 +1,12 @@
 import 'dart:io' show Platform;
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../shared/providers/calc_context_provider.dart';
 import '../../../shared/widgets/calc_context_menu_button.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/widgets/directional_icons.dart';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/layout/shell_chrome.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:go_router/go_router.dart';
@@ -171,63 +173,128 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
       }
     });
 
+    final rail = context.shellRailMode;
+    // 商家页是列表页的例外：展开横屏（≥820）右侧始终展示地图、左侧单列，
+    // 此时地图开关无意义（不渲染）。
+    final wideLayout = MediaQuery.sizeOf(context).width >= 820;
+    if (rail) {
+      context.publishShellActions(
+        primary: ShellAction(
+          icon: Icons.add,
+          label: l10n.commonAdd,
+          onPressed: () => _openMerchantForm(),
+        ),
+        actions: [
+          ShellAction.custom(
+            child: const CalcContextMenuButton(),
+            label: l10n.calcContextTooltip,
+          ),
+          if (!wideLayout)
+            ShellAction(
+              icon: _showMap ? Icons.map : Icons.map_outlined,
+              label: _showMap ? l10n.merchantHideMap : l10n.merchantShowMap,
+              onPressed: () => setState(() => _showMap = !_showMap),
+            ),
+        ],
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(l10n.merchantTitle),
-        leading: const AppBackButton(),
+        // 宽底栏下一级目的地（Duo 展开竖屏 / 折叠横屏）不需要返回键。
+        leading: context.shellTabRoot ? null : const AppBackButton(),
         // 刷新走 body 的下拉刷新，AppBar 不放刷新按钮，给标题留宽度。
+        // 竖条导航下动作交给竖条渲染（标题栏右侧不再留空）。
         actions: [
           const CalcContextMenuButton(),
-          IconButton(
-            icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
-            tooltip: _showMap ? l10n.merchantHideMap : l10n.merchantShowMap,
-            onPressed: () => setState(() => _showMap = !_showMap),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(theme, state),
-          if (_showMap)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              child: SizedBox(
-                height: 260,
-                child: mapReady
-                    ? MerchantMapView(
-                        merchants: state.items,
-                        selectedId: _selectedMerchant?.id,
-                        controller: _mapController,
-                        allCoordinates: _allCoordinates,
-                        mapConfig: mapConfig,
-                        places: _places,
-                        currentPlaceId: _currentPlaceId,
-                        onPlaceChanged: _onPlaceChanged,
-                        showControls: true,
-                        tileProvider: widget.mapTileProvider,
-                      )
-                    : DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        ),
-                      ),
-              ),
+          if (!wideLayout)
+            IconButton(
+              icon: Icon(_showMap ? Icons.map : Icons.map_outlined),
+              tooltip: _showMap ? l10n.merchantHideMap : l10n.merchantShowMap,
+              onPressed: () => setState(() => _showMap = !_showMap),
             ),
-          Expanded(child: _buildBody(theme, state)),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _openMerchantForm(),
-        child: const Icon(Icons.add),
-      ),
+      body: LayoutBuilder(builder: (context, constraints) {
+        final mapPane = mapReady
+            ? MerchantMapView(
+                merchants: state.items,
+                selectedId: _selectedMerchant?.id,
+                controller: _mapController,
+                allCoordinates: _allCoordinates,
+                mapConfig: mapConfig,
+                places: _places,
+                currentPlaceId: _currentPlaceId,
+                onPlaceChanged: _onPlaceChanged,
+                showControls: true,
+                tileProvider: widget.mapTileProvider,
+              )
+            : DecoratedBox(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              );
+        final listPane = _buildBody(theme, state);
+
+        // 展开态（≥820，如 Duo 内屏横屏 867）：与 web 桌面同为
+        // 「左 350 列表 + 右弹性地图」双栏；窄屏保持「搜索 + 地图 + 列表」堆叠。
+        final wideDualPane = constraints.maxWidth >= 820 && mapReady;
+        if (wideDualPane) {
+          // 完全展开：列表 : 地图 = 1 : 1。
+          final listWidth = constraints.maxWidth / 2;
+          return Row(
+            children: [
+              SizedBox(
+                width: listWidth,
+                child: Column(
+                  children: [
+                    _buildSearchBar(theme, state),
+                    Expanded(child: listPane),
+                  ],
+                ),
+              ),
+              VerticalDivider(
+                  width: 1, color: theme.colorScheme.outlineVariant),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: mapPane,
+                  ),
+                ),
+              ),
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            _buildSearchBar(theme, state),
+            if (_showMap || (constraints.maxWidth >= 820 && mapReady))
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: SizedBox(height: 260, child: mapPane),
+              ),
+            Expanded(child: listPane),
+          ],
+        );
+      }),
+      floatingActionButton: rail
+          ? null
+          : FloatingActionButton(
+              onPressed: () => _openMerchantForm(),
+              child: const Icon(Icons.add),
+            ),
     );
   }
 
@@ -313,43 +380,87 @@ class _MerchantListScreenState extends ConsumerState<MerchantListScreen> {
     }
     return RefreshIndicator(
       onRefresh: () => ref.read(merchantListProvider.notifier).load(),
-      child: ListView.builder(
-        controller: _scrollController,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        itemCount: state.items.length + (state.hasMore ? 1 : 0),
-        itemBuilder: (ctx, i) {
-          if (i >= state.items.length) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: state.loadingMore
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : TextButton(
-                        onPressed: () => ref
-                            .read(merchantListProvider.notifier)
-                            .load(loadMore: true),
-                        child: Text(l10n.journeyLoadMore),
-                      ),
-              ),
-            );
-          }
-          final item = state.items[i];
-          return _MerchantCard(
-            item: item,
-            isFavorite: state.favoriteIds.contains(item.id),
-            onTap: () => context.push('/merchants/${item.id}'),
-            onFavorite: () =>
-                ref.read(merchantListProvider.notifier).toggleFavorite(item.id),
-            onLocate: () => _locateMerchant(item),
-            onEdit: () => _openMerchantForm(item: item),
-            onDelete: () => _confirmDelete(item),
+      child: LayoutBuilder(builder: (context, constraints) {
+        // 展开态（≥620）列表改多列；地图分栏时左栏通常 <620 仍单列。
+        final columns = constraints.maxWidth >= 1100
+            ? 3
+            : (constraints.maxWidth >= 620 ? 2 : 1);
+        final items = state.items;
+        if (columns <= 1) {
+          return ListView.builder(
+            controller: _scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            itemCount: items.length + (state.hasMore ? 1 : 0),
+            itemBuilder: (ctx, i) =>
+                _buildMerchantItem(ctx, i, items, state, l10n),
           );
-        },
-      ),
+        }
+        final rowCount = (items.length + columns - 1) ~/ columns;
+        return ListView.builder(
+          controller: _scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          itemCount: rowCount + (state.hasMore ? 1 : 0),
+          itemBuilder: (ctx, row) {
+            if (row >= rowCount) {
+              return _buildMerchantItem(ctx, items.length, items, state, l10n);
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var col = 0; col < columns; col++) ...[
+                  if (col > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: row * columns + col < items.length
+                        ? _buildMerchantItem(
+                            ctx, row * columns + col, items, state, l10n)
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  /// 列表项（或加载更多）——单列与多列共用。
+  Widget _buildMerchantItem(
+    BuildContext ctx,
+    int i,
+    List<Merchant> items,
+    MerchantListState state,
+    AppLocalizations l10n,
+  ) {
+    if (i >= items.length) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Center(
+          child: state.loadingMore
+              ? const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : TextButton(
+                  onPressed: () => ref
+                      .read(merchantListProvider.notifier)
+                      .load(loadMore: true),
+                  child: Text(l10n.journeyLoadMore),
+                ),
+        ),
+      );
+    }
+    final item = items[i];
+    return _MerchantCard(
+      item: item,
+      isFavorite: state.favoriteIds.contains(item.id),
+      onTap: () => context.push('/merchants/${item.id}'),
+      onFavorite: () =>
+          ref.read(merchantListProvider.notifier).toggleFavorite(item.id),
+      onLocate: () => _locateMerchant(item),
+      onEdit: () => _openMerchantForm(item: item),
+      onDelete: () => _confirmDelete(item),
     );
   }
 
@@ -681,8 +792,6 @@ class _MerchantCard extends StatelessWidget {
                       value: 'delete', child: Text(l10n.commonDelete)),
                 ],
               ),
-              Icon(DirectionalIcons.forwardChevron(context),
-                  color: Colors.grey),
             ],
           ),
         ),

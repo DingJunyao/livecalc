@@ -18,11 +18,25 @@ class AppBackButton extends StatelessWidget {
       icon: Icon(DirectionalIcons.backArrow(context)),
       tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       onPressed: () async {
-        final popped = await Navigator.of(context).maybePop();
-        // maybePop 失败且无路由可退（表单确认放弃 / 已是根路由）→ 回首页
-        if (!popped && context.mounted && !context.canPop()) {
-          context.go('/home');
+        // 有未保存确认（PopScope / FormExitGuard）时交给 maybePop：由守卫决定弹确认
+        // 还是取消，不能绕过（GoRouter.pop 不经过 PopScope）。
+        final route = ModalRoute.of(context);
+        if (route != null &&
+            route.popDisposition == RoutePopDisposition.doNotPop) {
+          await Navigator.of(context).maybePop();
+          return;
         }
+        // ShellRoute 下 Navigator.maybePop 不可靠（会「按了没反应」），有可返回
+        // 路由时用 GoRouter.pop 强制弹栈。独立页面（无 GoRouter，如组件测试）退回
+        // Navigator，否则会直接抛「No GoRouter found in context」。
+        final router = GoRouter.maybeOf(context);
+        if (router != null && router.canPop()) {
+          router.pop();
+          return;
+        }
+        if (await Navigator.of(context).maybePop()) return;
+        // tab 根页 / 无处可退：回首页
+        if (router != null && context.mounted) context.go('/home');
       },
     );
   }

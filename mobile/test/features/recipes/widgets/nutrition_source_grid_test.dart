@@ -251,4 +251,34 @@ void main() {
       }
     });
   });
+
+  group('NutritionSourceGrid 宽屏一行两个', () {
+    Future<void> pumpAt(WidgetTester tester, double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        locale: const Locale('zh', 'CN'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(body: NutritionSourceGrid(nutrition: _nutrition())),
+      ));
+    }
+
+    testWidgets('卡内宽 ≥560（Duo 展开竖屏 605）：蛋白质与脂肪同一行', (tester) async {
+      await pumpAt(tester, 669);
+      final protein = tester.getRect(find.text('蛋白质'));
+      final fat = tester.getRect(find.text('脂肪'));
+      expect(protein.center.dy, moreOrLessEquals(fat.center.dy, epsilon: 1),
+          reason: '两项应在同一行');
+      expect(fat.left, greaterThan(protein.left), reason: '脂肪在右列');
+    });
+
+    testWidgets('手机宽度：单列（两行）', (tester) async {
+      await pumpAt(tester, 390);
+      final protein = tester.getRect(find.text('蛋白质'));
+      final fat = tester.getRect(find.text('脂肪'));
+      expect(fat.top, greaterThan(protein.top + 20));
+    });
+  });
 }

@@ -231,7 +231,8 @@ void main() {
     expect(find.text('Recipes'), findsOneWidget);
     expect(find.text('Search recipes...'), findsOneWidget);
     expect(find.text('Stored recipe'), findsOneWidget);
-    expect(find.textContaining('servings'), findsOneWidget);
+    // 卡片口径对齐 web：成本/份 + 每份热量，两行都含 serving
+    expect(find.textContaining('serving'), findsNWidgets(2));
 
     await tester.tap(find.byIcon(Icons.tune));
     await tester.pumpAndSettle();

@@ -42,8 +42,7 @@ class EntityUnit {
       source: json['source'] as String?,
       isPending: false,
       weightUnitId: (json['weight_unit_id'] as num?)?.toInt(),
-      weightUnitOverrideId:
-          (json['weight_unit_override_id'] as num?)?.toInt(),
+      weightUnitOverrideId: (json['weight_unit_override_id'] as num?)?.toInt(),
     );
   }
 }

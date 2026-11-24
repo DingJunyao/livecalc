@@ -4,6 +4,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import '../../../core/layout/shell_app_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../merchants/widgets/map_point_picker.dart';
 import '../models/user_place.dart';
@@ -139,10 +140,11 @@ class _UserPlaceFormScreenState extends ConsumerState<UserPlaceFormScreen> {
     final savePosition = ref.watch(saveButtonPositionProvider);
     final saveLabel = editing ? l10n.commonSave : l10n.commonAdd;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ShellAppBar(
         title: Text(editing ? l10n.userPlaceEditTitle : l10n.placeAdd),
         actions: [
           ...saveAppBarActions(
+            context: context,
             position: savePosition,
             onSave: _saving ? null : _save,
             label: _saving ? l10n.commonSaving : saveLabel,

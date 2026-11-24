@@ -174,9 +174,7 @@ class EntityRepository {
         await _client.dio.get('/units/', queryParameters: {'limit': 500});
     final data = response.data;
     final list = (data is List) ? data : (data['items'] as List?) ?? const [];
-    return list
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<EntityWriteResult<EntityDensity>> upsertDensity(
