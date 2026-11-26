@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart' show ThemeExtension;
@@ -39,6 +40,45 @@ class DuoLayoutInfo {
   /// 折叠区（半开时把显示分成两块的带状区域）；完全展开时为空。
   final List<Rect> divisions;
 
+  /// 真正属于 Duo 的系统簇（摄像头 / 侧边状态列）。
+  ///
+  /// **普通 iPhone 会把整条状态栏也当作 occlusion 上报**（实测 iPhone 18 Pro
+  /// 402×874：`Rect(0, 0, 402, 54)`）。若照单全收就会被误判成 Duo：页面顶部的
+  /// 系统内边距被移除（标题栏跑到刘海 / 灵动岛上面）、`trailingInset` 算成整屏宽
+  /// （右侧按钮被推出屏幕外）。Duo 的系统簇一定**贴在某条侧边、并且落在某个角落**
+  /// （同时贴上/下边），且不会占满整宽或整高——按这个几何特征过滤。
+  List<Rect> get clusters {
+    // 尺寸未知时无法校验几何特征：一律当作没有 Duo 簇（宁可退回普通布局，
+    // 也不能把真机上未经校验的遮挡区当成 Duo 用）。
+    if (width <= 0 || height <= 0) return const [];
+    return [
+      for (final r in occlusions)
+        if (_isSideCluster(r)) r,
+    ];
+  }
+
+  /// 是否存在 Duo 系统簇（有才算 Duo 设备/姿态）。
+  bool get hasDuoCluster => clusters.isNotEmpty;
+
+  bool _isSideCluster(Rect r) {
+    if (r.isEmpty) return false;
+    const eps = 1.5;
+    // 底部簇不一定贴死下边（home indicator 区域可能被排除），留安全区量级的容差。
+    const cornerTolerance = 40.0;
+    final touchesSide = r.left <= eps || r.right >= width - eps;
+    final nearTopOrBottom =
+        r.top <= cornerTolerance || r.bottom >= height - cornerTolerance;
+    // 整条状态栏 / 整列状态条：占满某个方向，不属于 Duo 的角落簇
+    final spansFullWidth = r.width >= width - eps;
+    final spansFullHeight = r.height >= height - eps;
+    return touchesSide &&
+        nearTopOrBottom &&
+        !spansFullWidth &&
+        !spansFullHeight;
+  }
+
+  /// 原始遮挡区（含普通 iPhone 的整条状态栏）**不应直接用于布局**——用 [clusters]。
+
   /// 折叠区中心 x（横屏半展开）：用于让分栏对齐铰链而不是简单对半分。
   /// 折叠区中心 x（横屏半展开）：用于让分栏对齐铰链而不是简单对半分。
   ///
@@ -47,6 +87,7 @@ class DuoLayoutInfo {
   double? get foldX {
     if (divisions.isNotEmpty) return divisions.first.center.dx;
     if (height <= 0) return null;
+    // 折痕带不贴侧边，不能用「侧边簇」过滤，用原始遮挡区。
     for (final r in occlusions) {
       if (r.height >= height * 0.55 && r.width > 0 && r.width <= 80) {
         return r.center.dx;
@@ -60,7 +101,7 @@ class DuoLayoutInfo {
   /// 竖条里的页面动作必须从这条线**下方**开始，否则会被系统状态图标挡住。
   double get topClusterInset {
     var bottom = 0.0;
-    for (final r in occlusions) {
+    for (final r in clusters) {
       if (height > 0 && r.center.dy < height * 0.45) {
         bottom = bottom > r.bottom ? bottom : r.bottom;
       }
@@ -70,7 +111,7 @@ class DuoLayoutInfo {
 
   /// 系统簇是否在底部（摄像头在左下/右下）。
   bool get clusterAtBottom =>
-      height > 0 && occlusions.any((r) => r.center.dy > height * 0.55);
+      height > 0 && clusters.any((r) => r.center.dy > height * 0.55);
 
   /// 系统簇（底部摄像头/状态）从底部向上占用多少（pt）；无则 0。
   ///
@@ -78,7 +119,7 @@ class DuoLayoutInfo {
   double get bottomClusterInset {
     if (height <= 0) return 0;
     var inset = 0.0;
-    for (final r in occlusions) {
+    for (final r in clusters) {
       if (r.center.dy > height * 0.55) {
         final fromBottom = height - r.top;
         if (fromBottom > inset) inset = fromBottom;
@@ -199,7 +240,7 @@ class DuoBarInsets extends ThemeExtension<DuoBarInsets> {
     var botLeading = 0.0;
     var botTrailing = 0.0;
     var botTop = h;
-    for (final r in info.occlusions) {
+    for (final r in info.clusters) {
       if (r.isEmpty) continue;
       final top = r.center.dy < h / 2;
       final leading = r.center.dx < w / 2;
@@ -232,6 +273,19 @@ class DuoBarInsets extends ThemeExtension<DuoBarInsets> {
       bottomInset: botTop < h ? h - botTop : 0,
     );
   }
+}
+
+/// 屏幕比例是否像折叠屏 / 平板。
+///
+/// Duo 各姿态（外屏 466×678、内屏 669×951 / 951×669）短边/长边都 ≥0.68；
+/// 普通 iPhone（iPhone 13 Pro 390×844、iPhone 18 Pro 402×874）约 0.46。
+/// 用比例把普通手机整体排除在 Duo 布局之外——真机上它们上报的遮挡区形态与
+/// 模拟器不同（iPhone 13 Pro 真机曾把标题栏顶到刘海下面），只靠矩形过滤不够稳。
+bool isFoldableScreenShape(Size size) {
+  final shortest = math.min(size.width, size.height);
+  final longest = math.max(size.width, size.height);
+  if (longest <= 0) return false;
+  return shortest / longest >= 0.6;
 }
 
 /// 读取 UIKit 的 Duo 布局信息（`UITraitCollection.verticalBarEdge`

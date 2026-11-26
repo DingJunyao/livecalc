@@ -56,7 +56,7 @@
             "request": "launch",
             "cwd": "${workspaceFolder}/mobile",
             "program": "lib/main.dart",
-            "deviceId": "iPhone 18 Pro",
+            "deviceId": "iPhone 13 Pro",
             "debuggerType": "flutter",
             "flutterMode": "debug",
             "openDevTools": "logging"
@@ -149,14 +149,35 @@
             }
         },
         {
-            // 产物：mobile/build/ios/iphoneos/Runner.app
-            // 不签名编译验证（无需开发者账号 / Team），用来确认 iOS 侧代码与插件能编过。
-            // 真机安装和上架必须走上面的 IPA 项。
-            "name": "Flutter 打包 (iOS · 不签名验证)",
+            // 产物是 .app（build/ios/iphoneos/Runner.app），**不是 ipa**：
+            // --no-codesign 只做编译、跳过 archive/export 两个签名阶段。
+            // 只为确认 iOS 侧代码与插件能编过，无需开发者账号；装真机/出 ipa 见下面两项。
+            "name": "Flutter 打包 (iOS · 不签名编译验证)",
             "type": "node",
             "request": "launch",
             "runtimeExecutable": "flutter",
             "args": ["build", "ios", "--release", "--no-codesign"],
+            "cwd": "${workspaceFolder}/mobile",
+            "console": "integratedTerminal",
+            "internalConsoleOptions": "neverOpen",
+            "skipFiles": ["<node_internals>/**"],
+            "env": {
+                "PUB_HOSTED_URL": "https://pub.flutter-io.cn",
+                "FLUTTER_STORAGE_BASE_URL": "https://storage.flutter-io.cn",
+                "DEVELOPER_DIR": "/Applications/Xcode.app/Contents/Developer"
+            }
+        },
+        {
+            // 产物：mobile/build/ios/ipa/livecalc-<版本>-unsigned.ipa（Payload/ 压缩包）
+            // 先重新做一次不签名 release 编译再打包（保证 ipa 里是最新代码）；
+            // 想跳过编译直接用上次构建的 Runner.app，把 args 改成 ["scripts/make-unsigned-ipa.sh", "--reuse"]。
+            // **未签名**：不能直接安装，需用 Sideloadly / AltStore 等拿自己的 Apple ID 重签后再装
+            // （也可交给有企业证书的人重签）。
+            "name": "Flutter 打包 (iOS · 未签名 IPA)",
+            "type": "node",
+            "request": "launch",
+            "runtimeExecutable": "bash",
+            "args": ["scripts/make-unsigned-ipa.sh"],
             "cwd": "${workspaceFolder}/mobile",
             "console": "integratedTerminal",
             "internalConsoleOptions": "neverOpen",

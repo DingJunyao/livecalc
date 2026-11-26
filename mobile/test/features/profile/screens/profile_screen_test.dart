@@ -560,7 +560,12 @@ void main() {
                 height: 951,
                 occlusions: [Rect.fromLTRB(525, 0, 669, 82)],
               )
-            : const DuoLayoutInfo(),
+            // 非 Duo：普通 iPhone 上报的整条状态栏（402×54）不能被当成 Duo 簇
+            : const DuoLayoutInfo(
+                width: 402,
+                height: 874,
+                occlusions: [Rect.fromLTRB(0, 0, 402, 54)],
+              ),
         railWidth: 0,
         child: const MaterialApp(
           locale: Locale('zh', 'CN'),

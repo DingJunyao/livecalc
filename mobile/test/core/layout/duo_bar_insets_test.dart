@@ -114,4 +114,69 @@ void main() {
       );
     });
   });
+
+  group('普通 iPhone 的整条状态栏不能被当成 Duo 簇', () {
+    // 实测 iPhone 18 Pro（402×874）：reservedRegions 上报整条状态栏
+    const iPhone = DuoLayoutInfo(
+      width: 402,
+      height: 874,
+      occlusions: [Rect.fromLTRB(0, 0, 402, 54)],
+    );
+
+    test('hasDuoCluster 为假（整宽状态栏被过滤）', () {
+      expect(iPhone.hasDuoCluster, isFalse);
+      expect(iPhone.clusters, isEmpty);
+      expect(iPhone.topClusterInset, 0);
+      expect(DuoBarInsets.of(iPhone), DuoBarInsets.none);
+    });
+
+    test('Duo 的角落簇仍然保留', () {
+      const duo = DuoLayoutInfo(
+        width: 669,
+        height: 951,
+        occlusions: [Rect.fromLTRB(525, 0, 669, 82)],
+      );
+      expect(duo.hasDuoCluster, isTrue);
+      expect(duo.clusters, hasLength(1));
+      expect(DuoBarInsets.of(duo).toolbarHeight, 82);
+    });
+
+    test('横屏 iPhone 的侧边刘海（垂直居中、不贴角）也被过滤', () {
+      const landscape = DuoLayoutInfo(
+        width: 874,
+        height: 402,
+        occlusions: [Rect.fromLTRB(0, 140, 37, 262)],
+      );
+      expect(landscape.hasDuoCluster, isFalse);
+    });
+  });
+
+  group('isFoldableScreenShape：屏幕比例闸门', () {
+    test('Duo 各姿态通过', () {
+      for (final size in const [
+        Size(466, 678), // 外屏竖屏
+        Size(678, 466), // 外屏横屏
+        Size(669, 951), // 内屏竖屏
+        Size(951, 669), // 内屏横屏
+        Size(469, 669), // 分屏左窗
+      ]) {
+        expect(isFoldableScreenShape(size), isTrue, reason: '$size');
+      }
+    });
+
+    test('普通 iPhone 一律不通过（含 13 Pro / 18 Pro）', () {
+      for (final size in const [
+        Size(390, 844), // iPhone 13 Pro
+        Size(402, 874), // iPhone 18 Pro
+        Size(844, 390),
+        Size(375, 667), // SE
+      ]) {
+        expect(isFoldableScreenShape(size), isFalse, reason: '$size');
+      }
+    });
+
+    test('尺寸未知不通过', () {
+      expect(isFoldableScreenShape(Size.zero), isFalse);
+    });
+  });
 }

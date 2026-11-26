@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../layout/device_form.dart';
 import '../layout/shell_chrome.dart';
+import '../layout/orientation_policy.dart';
 import '../layout/vertical_bar_edge.dart';
 import '../../features/home/screens/home_screen.dart';
 import '../../features/ingredients/models/ingredient.dart';
@@ -946,20 +947,23 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
 
   Future<void> _refreshVerticalBarEdge() async {
     final info = await _duoLayout.layoutInfo();
-    if (kDebugMode) {
-      debugPrint('DUO edge=${info.edge} size=${info.width}x${info.height} '
-          'occlusions=${info.occlusions}');
-    }
     if (!mounted) return;
-    if (info.edge != VerticalBarEdge.unspecified ||
-        info.occlusions.isNotEmpty) {
-      _seenDuo = true;
+    if (kDebugMode) {
+      // 排查普通手机 / 折叠屏误判时，这行日志带齐了判据（用户真机回传即可定位）。
+      final size = MediaQuery.sizeOf(context);
+      debugPrint('DUO edge=${info.edge} size=${info.width}x${info.height} '
+          'occlusions=${info.occlusions} clusters=${info.clusters.length} '
+          'mq=$size shape=${isFoldableScreenShape(size)}');
+    }
+    if (info.edge != VerticalBarEdge.unspecified || info.hasDuoCluster) {
+      // 只有屏幕比例像折叠屏才记住「这是 Duo」：普通手机真机的遮挡区形态不可靠。
+      if (isFoldableScreenShape(MediaQuery.sizeOf(context))) _seenDuo = true;
     }
     // 切换姿态的瞬间原生可能还拿不到 reservedRegions（返回空遮挡区）：同尺寸下
     // 先沿用上一帧的，否则标题栏会临时变矮、按钮也不再给状态簇让位；同时补查一次。
     var effective = info;
     if (info.occlusions.isEmpty &&
-        _duoLayoutInfo.occlusions.isNotEmpty &&
+        _duoLayoutInfo.hasDuoCluster &&
         info.width == _duoLayoutInfo.width &&
         info.height == _duoLayoutInfo.height) {
       effective = DuoLayoutInfo(
@@ -974,11 +978,15 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
     }
     if (info.occlusions.isEmpty && _seenDuo && _layoutRetry < 5) {
       _scheduleLayoutRetry();
-    } else if (info.occlusions.isNotEmpty) {
+    } else if (info.hasDuoCluster) {
       _layoutRetry = 0;
     }
     // 尺寸也要比：rect 坐标只在它自己的坐标空间里有效，尺寸变了要重新推导
     // 顶部/底部簇（否则会按旧高度把顶部簇当底部簇）。
+    // 折叠屏一旦上报出系统簇就允许旋转（普通手机始终保持竖屏锁定）。
+    if (mounted) {
+      OrientationPolicy.apply(size: MediaQuery.sizeOf(context), duo: effective);
+    }
     final same = effective.edge == _duoLayoutInfo.edge &&
         effective.width == _duoLayoutInfo.width &&
         effective.height == _duoLayoutInfo.height &&
@@ -1001,7 +1009,10 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
   /// 是 Duo）按实测几何兜底（右上状态簇 144×82、图标光轴 48），保证标题栏内按钮
   /// 仍给状态簇让位，而不是压在它底下。拿到真实数据后自动覆盖。
   DuoBarInsets _barInsets(BuildContext context) {
-    if (_duoLayoutInfo.occlusions.isNotEmpty) {
+    if (!isFoldableScreenShape(MediaQuery.sizeOf(context))) {
+      return DuoBarInsets.none;
+    }
+    if (_duoLayoutInfo.hasDuoCluster) {
       return DuoBarInsets.of(_duoLayoutInfo);
     }
     if (!_seenDuo) return DuoBarInsets.none;
@@ -1025,7 +1036,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
       BuildContext context, ShellMode mode, Widget child) {
     final theme = Theme.of(context);
     var data = theme;
-    if (_isDuo() && mode == ShellMode.bottomBar) {
+    if (_isDuo(MediaQuery.sizeOf(context)) && mode == ShellMode.bottomBar) {
       final bar = _barInsets(context);
       data = theme.copyWith(
         appBarTheme: theme.appBarTheme.copyWith(
@@ -1063,7 +1074,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
     var padding = mq.padding;
     // 尺寸兜底：底栏模式 + Duo 展开竖屏的尺寸特征（≥600×800）时一律当 Duo，
     // 即使这一帧原生还没上报布局信息——否则顶栏会被系统 top padding 推下去。
-    final duoLike = _isDuo() ||
+    final duoLike = _isDuo(mq.size) ||
         (mode == ShellMode.bottomBar &&
             mq.size.width >= 600 &&
             mq.size.height >= 800);
@@ -1092,10 +1103,17 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
     );
   }
 
-  bool _isDuo() =>
-      _seenDuo ||
-      _duoLayoutInfo.edge != VerticalBarEdge.unspecified ||
-      _duoLayoutInfo.occlusions.isNotEmpty;
+  /// 当前是否按 Duo 布局处理。
+  ///
+  /// 除了「见过 Duo 信息」，还要求屏幕比例像折叠屏（[isFoldableScreenShape]）：
+  /// 普通 iPhone 真机会上报与模拟器不同形态的遮挡区（iPhone 13 Pro 真机复现
+  /// 标题栏顶进刘海），只靠矩形过滤不可靠；比例是最稳的一道闸门。
+  bool _isDuo(Size size) {
+    if (!isFoldableScreenShape(size)) return false;
+    return _seenDuo ||
+        _duoLayoutInfo.edge != VerticalBarEdge.unspecified ||
+        _duoLayoutInfo.hasDuoCluster;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1117,7 +1135,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
     final railNav = mode == ShellMode.edgeRail;
     final showNav = railNav ? true : !fullScreenForm;
     final showTabs = !fullScreenForm;
-    final isDuo = _isDuo();
+    final isDuo = _isDuo(MediaQuery.sizeOf(context));
     // 告知壳层当前路由：转场中旧页的迟到 publish 会被丢弃（否则返回/下钻后竖条残留按钮）。
     _chrome.bindLocation(location);
     if (_lastChromeLocation != location) {
@@ -1317,7 +1335,9 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
     // 不再收进「更多」；窄屏仍是 4 个 + 更多。
     final wideBar = MediaQuery.sizeOf(context).width >= 600;
     final tabs = wideBar ? _desktopTabs : _mobileTabs;
-    final duoBar = _isDuo() ? _barInsets(context) : DuoBarInsets.none;
+    final duoBar = _isDuo(MediaQuery.sizeOf(context))
+        ? _barInsets(context)
+        : DuoBarInsets.none;
     // 底栏横跨全宽：去掉系统竖条带来的水平内边距（外屏左/内屏右各一侧）。
     // 底部只让 home indicator：Duo 折叠横屏、摄像头朝下时底部安全区已被抬到系统簇
     // 之上（给弹层用），底栏改为在水平方向让开那个角（见下）。

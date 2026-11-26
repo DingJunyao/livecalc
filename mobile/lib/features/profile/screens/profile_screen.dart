@@ -253,8 +253,7 @@ Future<void> _showSaveButtonPositionDialog(
   // 弹层挂在根导航上，拿不到壳层的 DuoLayoutScope → 先在这里判断是不是 Duo。
   final duoInfo = DuoLayoutScope.infoOf(context);
   final isDuo = duoInfo != null &&
-      (duoInfo.occlusions.isNotEmpty ||
-          duoInfo.edge != VerticalBarEdge.unspecified);
+      (duoInfo.hasDuoCluster || duoInfo.edge != VerticalBarEdge.unspecified);
   final selected = await showDialog<SaveButtonPosition>(
     context: context,
     builder: (ctx) => SimpleDialog(

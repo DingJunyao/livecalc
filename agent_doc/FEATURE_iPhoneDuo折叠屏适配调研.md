@@ -152,6 +152,53 @@ v2 四条修正 + 新增 web 同构页面版块（现共 8 版块，`原型/iPho
 - **列表页分列**：计价列表与试算列表 ≥620 两列、≥1100 三列（行内 `Row + Expanded`，保留加载更多）；菜谱网格新增 669/678 三列档（`≥1920:6 / ≥1280:5 / ≥800:4 / ≥620:3 / else 2`）。
 - **验证**：新增测试——竖条模式动作进竖条且无 FAB、横条模式动作留在标题栏、669/678 一行三列、详情/列表既有测试全绿；`flutter analyze` 非 deprecated 0；`flutter test` 除既有基线外全过（本轮新踩：`no_unlocalized_user_text_test` 拦截硬编码「计算范围」→ 改用 `l10n.calcContextTooltip`）。
 
+**㉕ 真机 iPhone 13 Pro 标题栏仍顶进刘海：加屏幕比例闸门（2026-11-26 第二十二轮）**
+
+用户实测：「iPhone 13 Pro，模拟器上没问题，但是真机就不行，标题栏还是会跑到刘海那块。」
+
+**分析**：模拟器（iPhone 18 Pro）上报的是整条状态栏 `Rect(0,0,402,54)`，被第二十轮的「角落簇」过滤挡掉了；但真机的 `reservedRegions` 形态与模拟器不同（可能上报刘海/摄像头区，甚至带侧别），矩形过滤不足以保证。**结论：光靠遮挡区形状判 Duo 不可靠，要加一道与设备形态无关的闸门。**
+
+**修法**：
+- 新增 `isFoldableScreenShape(size)`：短边/长边 ≥ **0.6** 才算折叠屏。Duo 各姿态（466×678 / 669×951 / 951×669 / 469×669）比值都 ≥0.687；普通 iPhone（13 Pro 390×844、18 Pro 402×874、SE 375×667）≤0.56。
+- 所有 Duo 决策都过这道闸门：`_isDuo(size)`、`_seenDuo` 赋值、`_barInsets`、`OrientationPolicy`（普通比例的手机即使上报「像 Duo 的侧别/遮挡区」也不会解锁旋转）。
+- 顺手修 `DuoLayoutInfo.clusters`：`width/height` 未知时返回**空**（此前返回原始 occlusions，等于跳过校验）。
+- 调试日志补齐判据：`DUO edge=… size=… occlusions=[…] clusters=N mq=Size(…) shape=bool`——真机有问题时让用户回传这一行即可定位。
+
+**验证**：`flutter analyze` 非 deprecated 0；新增测试——`isFoldableScreenShape` 各姿态（Duo 5 种通过 / 普通 4 种不过）、`duo_poses_test`「普通手机比例 + 上报像 Duo 的角落簇与侧别 → 标题栏仍在状态栏下方、动作不被推走、返回键可用」、方向策略「普通比例 + 像 Duo 的信号仍锁竖屏」；全量 `flutter test` **950 通过、14 失败**（同一批既有基线）。
+
+**㉔ iOS 普通手机锁定竖屏（2026-11-26 第二十一轮）**
+
+用户：「iPhone 18 横屏时，未避让灵动岛。建议 iOS 下，一般的手机端不要做旋转，旋转仅适用于平板和折叠屏设备。」
+
+普通 iPhone 横屏时灵动岛在侧边，标题栏没有（也不打算）为普通手机做横屏避让——按建议直接禁旋转。新 `core/layout/orientation_policy.dart`：
+
+- `allowedOrientations(isIOS, size, duo)`：非 iOS 保持原样（Android 折叠屏走 `displayFeatures`，不动）；**iOS 普通手机（最短边 <600 且无 Duo 簇）→ 仅 `portraitUp`**；平板（最短边 ≥600）与折叠屏（`hasDuoCluster` 或竖条侧别已知）→ `portraitUp + 两个横屏`。
+- 应用时机：冷启动 `_bootstrap` 末尾 **发后即忘**（`applyForCurrentView` 不 await、不加超时——原生通道在测试 / 冷启动瞬间可能永不回包，挂一个 Timer 会让测试的 pending-timer 断言失败，`await` 还会卡住后面的启动步骤）；壳层拿到 Duo 信息变化后再跑一次（折叠屏展开出系统簇即解锁旋转）。策略结果有缓存，重复调用不重复设。
+- 实测：iPhone 18 Pro 启动（窗口遗留横屏 874×402）→ `ORIENT apply=portraitUp` 且窗口转回竖屏；Duo（内屏横屏 951×669 + 簇）→ `apply=portraitUp,landscapeLeft,landscapeRight` 旋转保持可用。
+
+**验证**：`flutter analyze` 非 deprecated 0；新增 `orientation_policy_test` 5 例（普通手机竖屏锁定含横屏尺寸、平板旋转、Duo 旋转、折叠态旋转、Android 不受限）；全量 `flutter test` **945 通过、14 失败**（同一批既有基线）；已构建并同时安装到 iPhone 18 Pro 与 Duo 模拟器。
+
+**㉓ 回归：普通 iPhone 的整条状态栏被误判成 Duo 簇（2026-11-26 第二十轮）**
+
+用户：「改 duo 的布局不要影响其他机型。现在其他机型的标题栏跑到了刘海、灵动岛上面，根本无法操作按钮；原先该有的后退按钮也没了。」
+
+**排查（在 iPhone 18 Pro 模拟器上取证）**：app 的 `DUO edge=…` 日志显示普通 iPhone 也会上报 occlusion：
+
+```
+DUO edge=VerticalBarEdge.unspecified size=402.0x874.0
+    occlusions=[Rect.fromLTRB(0.0, 0.0, 402.0, 54.0)]
+```
+
+也就是 **`UIView.reservedRegions(.occlusion)` 在全机型上都会返回「整条状态栏」**。壳层此前用「有遮挡区 = Duo」判断，于是普通 iPhone 命中：
+
+- `_wrapPageMediaQuery` 走 Duo 分支 → 顶部内边距清零 → 标题栏内容画到状态栏/灵动岛下方（跑到它上面）；
+- `DuoBarInsets.of` 把整条状态栏当成「在右侧的簇」→ `trailingInset = 402` → 动作按钮被推到屏幕外，点不到；
+- 后退键同样被挤出可视区（不是被隐藏，而是整条栏错位）。
+
+**修法**：`DuoLayoutInfo.clusters` 只保留「侧边簇」——同时满足①贴左/右边缘、②靠近上/下边缘（容差 40pt，覆盖 home indicator 区）、③不占满整宽、④不占满整高。`DuoBarInsets`、`topClusterInset`、`bottomClusterInset`、`clusterAtBottom`、`_isDuo()`、`_seenDuo`、个人中心的 Duo 提示全部改用 `clusters` / `hasDuoCluster`；`foldX` 的折痕带识别仍用原始遮挡区（折痕带不贴侧边）。普通 iPhone / iPad 的整条状态栏因此被过滤，Duo 的角落簇（669 竖屏 144×82、内屏横屏 84×124、折叠态 174×84 / 84×82 等）不受影响。
+
+**验证**：iPhone 18 Pro 模拟器实测（重新安装后截图）——状态栏下方是正常标题栏，右侧两个动作在屏内，底部 4 项 + 更多；新增测试：`duo_bar_insets_test` 3 例（整宽状态栏 / 横屏居中刘海 → 非 Duo；Duo 角落簇保留）、`duo_poses_test`「普通 iPhone：标题栏留在状态栏下方、动作不被推走、返回键可点」、个人中心「非 Duo」用例改用真实状态栏遮挡区；全量 `flutter test` **940 通过、14 失败**（同一批既有基线）。
+
 **㉒ 左侧竖条（分屏左窗）上部分按钮贴边（2026-11-25 第十九轮）**
 
 用户：「侧边栏在左边的情况时，上部分按钮太靠边，显示不完全。请参照下部分按钮距离屏幕的距离。」

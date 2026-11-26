@@ -53,6 +53,25 @@ const _foldedClusterUp = _Pose(
   FakeViewPadding(left: 84, bottom: 21),
 );
 
+/// 普通 iPhone（iPhone 18 Pro 实测 402×874）：系统把整条状态栏当作 occlusion 上报。
+const _iPhoneWithStatusBar = _Pose(
+  '普通 iPhone',
+  Size(402, 874),
+  0,
+  [Rect.fromLTRB(0, 0, 402, 54)],
+  FakeViewPadding(top: 54, bottom: 34),
+);
+
+/// iPhone 13 Pro 真机的「最坏情况」：屏幕是普通手机比例，但上报了像 Duo 角落簇
+/// 的遮挡区 + 侧别。比例闸门必须让这类上报完全按普通手机处理。
+const _iPhone13ProOddReport = _Pose(
+  'iPhone 13 Pro（异常上报）',
+  Size(390, 844),
+  1,
+  [Rect.fromLTRB(0, 0, 150, 32)],
+  FakeViewPadding(top: 47, bottom: 34),
+);
+
 const _phonePortrait = _Pose(
   '手机竖屏',
   Size(390, 844),
@@ -558,6 +577,48 @@ void main() {
     testWidgets('手机竖屏（390×844，底栏 4 项 + 更多）：保留返回键', (tester) async {
       await _pump(tester, _phonePortrait, initial: '/products');
       expect(_inAppBar(find.byIcon(Icons.arrow_back)), findsOneWidget);
+    });
+  });
+
+  group('普通 iPhone：整条状态栏不能被当成 Duo 簇', () {
+    testWidgets('标题栏留在状态栏下方、按钮不被推走、返回键还在', (tester) async {
+      await _pump(tester, _iPhoneWithStatusBar);
+      await _openDetail(tester);
+
+      // 状态栏（54）以内不能放标题栏内容：AppBar 高度 = 状态栏 54 + 工具栏 56，
+      // 内容（返回键 / 标题 / 动作）整体在 54 以下
+      expect(tester.getSize(_appBar).height, 54 + 56);
+      expect(tester.getTopLeft(find.byIcon(Icons.arrow_back).first).dy,
+          greaterThanOrEqualTo(54));
+
+      // 返回键在左侧、可点；动作仍在右侧贴边（没有被 402 宽的 inset 推到屏幕外）
+      final back = _inAppBar(find.byIcon(Icons.arrow_back));
+      expect(back, findsOneWidget);
+      expect(_trailingGap(tester, Icons.more_vert), lessThanOrEqualTo(16));
+
+      // 点返回能回上一页
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('go-detail')), findsOneWidget);
+    });
+  });
+
+  group('普通手机比例时，即使上报了像 Duo 的遮挡区也不套 Duo 布局', () {
+    testWidgets('iPhone 13 Pro：标题栏仍在刘海下方、按钮不被推走、返回键可用', (tester) async {
+      await _pump(tester, _iPhone13ProOddReport);
+      await _openDetail(tester);
+
+      // 状态栏（47）以内不能放标题栏内容
+      expect(tester.getSize(_appBar).height, 47 + 56);
+      final back = _inAppBar(find.byIcon(Icons.arrow_back));
+      expect(tester.getTopLeft(back).dy, greaterThanOrEqualTo(47));
+
+      // 动作仍在右侧贴边（没有被 150 宽的 inset 推走）
+      expect(_trailingGap(tester, Icons.more_vert), lessThanOrEqualTo(16));
+
+      await tester.tap(back);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('go-detail')), findsOneWidget);
     });
   });
 

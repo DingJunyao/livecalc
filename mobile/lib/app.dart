@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'core/i18n/app_locale.dart' as locale_utils;
 import 'core/i18n/locale_settings.dart';
 import 'core/layout/shell_chrome.dart';
+import 'core/layout/orientation_policy.dart';
 import 'core/router/app_router.dart';
 import 'core/services/app_shortcuts_service.dart';
 import 'core/shortcuts/app_shortcuts.dart';
@@ -86,6 +87,9 @@ class _LiveCalcAppState extends ConsumerState<LiveCalcApp> {
     // checkAuth 完成后才能跳转（未登录时 router 会先落到登录页，
     // 这里保留 pending 等登录成功后再跳）。
     _applyPendingShortcut();
+    // 屏幕方向：iOS 普通手机锁竖屏，平板 / 折叠屏允许旋转（见 OrientationPolicy）。
+    // 发后即忘：策略失败不影响启动，原生通道未就绪也不会卡住启动流程。
+    OrientationPolicy.applyForCurrentView();
   }
 
   /// 点击快捷方式：先存起来，等认证完成（或当前已登录）再跳转。
