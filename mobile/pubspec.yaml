@@ -1,7 +1,7 @@
 name: com_a4ding_livecalc
 description: 鐢熻 - Live Calculator App
 publish_to: 'none'
-version: 0.9.1+1
+version: 0.10.1+1
 environment:
   sdk: ^3.5.0
 
