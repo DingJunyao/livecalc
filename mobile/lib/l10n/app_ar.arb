@@ -2536,5 +2536,7 @@
   "aiNoticeViewAbout": "عرض تفاصيل خدمة الذكاء الاصطناعي",
   "@aiNoticeViewAbout": {},
   "aiNoticeOk": "حسنًا",
-  "@aiNoticeOk": {}
+  "@aiNoticeOk": {},
+  "aboutApprovalMissing": "غير محدد (أضفه في «معلومات الامتثال» على الخادم)",
+  "@aboutApprovalMissing": {}
 }

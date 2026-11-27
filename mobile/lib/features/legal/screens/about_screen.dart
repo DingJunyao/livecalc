@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart'
+    show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -188,7 +190,16 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Widget _buildMapCard(
       ThemeData theme, AppLocalizations l10n, AppComplianceConfig? config) {
-    final providers = config?.mapProviders ?? const <MapProviderInfo>[];
+    // 按平台只展示实际使用的那张底图：
+    // iOS 走原生 MapKit（Apple 地图，中国区数据由高德提供），安卓走服务端配置的瓦片底图。
+    // 审图号按「实际展示的地图产品」标注，不把所有引擎都列出来。
+    final List<MapProviderInfo> providers;
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+      final apple = config?.appleMap;
+      providers = apple == null ? const [] : [apple];
+    } else {
+      providers = config?.mapProviders ?? const <MapProviderInfo>[];
+    }
     final enabled = config?.mapEnabled == true && providers.isNotEmpty;
     return Card(
       child: Column(
@@ -209,9 +220,16 @@ class _AboutScreenState extends State<AboutScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(p.displayName, style: theme.textTheme.bodyLarge),
-                      if (p.approvalNo.isNotEmpty)
-                        Text('${l10n.aboutApprovalNo}: ${p.approvalNo}',
-                            style: theme.textTheme.bodySmall),
+                      Text(
+                        p.approvalNo.isNotEmpty
+                            ? '${l10n.aboutApprovalNo}: ${p.approvalNo}'
+                            : '${l10n.aboutApprovalNo}: ${l10n.aboutApprovalMissing}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: p.approvalNo.isEmpty
+                              ? theme.colorScheme.error
+                              : null,
+                        ),
+                      ),
                       if (p.note.isNotEmpty)
                         Text(p.note, style: theme.textTheme.bodySmall),
                     ],

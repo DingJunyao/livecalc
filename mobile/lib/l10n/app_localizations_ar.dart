@@ -3600,4 +3600,8 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aiNoticeOk => 'حسنًا';
+
+  @override
+  String get aboutApprovalMissing =>
+      'غير محدد (أضفه في «معلومات الامتثال» على الخادم)';
 }

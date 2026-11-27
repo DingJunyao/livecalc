@@ -3518,4 +3518,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aiNoticeOk => '我知道了';
+
+  @override
+  String get aboutApprovalMissing => '未填写（请在服务器「合规信息」中补全）';
 }

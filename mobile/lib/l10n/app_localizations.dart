@@ -6743,6 +6743,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'我知道了'**
   String get aiNoticeOk;
+
+  /// No description provided for @aboutApprovalMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未填写（请在服务器「合规信息」中补全）'**
+  String get aboutApprovalMissing;
 }
 
 class _AppLocalizationsDelegate

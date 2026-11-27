@@ -2536,5 +2536,7 @@
   "aiNoticeViewAbout": "View AI service details",
   "@aiNoticeViewAbout": {},
   "aiNoticeOk": "Got it",
-  "@aiNoticeOk": {}
+  "@aiNoticeOk": {},
+  "aboutApprovalMissing": "Not set (add it under Compliance information on the server)",
+  "@aboutApprovalMissing": {}
 }

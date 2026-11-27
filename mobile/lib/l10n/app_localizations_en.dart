@@ -3623,4 +3623,8 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aiNoticeOk => 'Got it';
+
+  @override
+  String get aboutApprovalMissing =>
+      'Not set (add it under Compliance information on the server)';
 }

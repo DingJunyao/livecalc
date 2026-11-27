@@ -59,6 +59,10 @@ class AppComplianceConfig {
   final List<AiProviderInfo> aiProviders;
   final bool mapEnabled;
   final List<MapProviderInfo> mapProviders;
+
+  /// iOS 原生 MapKit（Apple 地图）的合规信息：不参与安卓底图列表，
+  /// 由客户端按平台二选一展示。
+  final MapProviderInfo? appleMap;
   final String contactEmail;
   final String legalUpdatedAt;
 
@@ -68,6 +72,7 @@ class AppComplianceConfig {
     this.aiProviders = const [],
     this.mapEnabled = false,
     this.mapProviders = const [],
+    this.appleMap,
     this.contactEmail = '',
     this.legalUpdatedAt = '',
   });
@@ -90,6 +95,10 @@ class AppComplianceConfig {
       aiProviders: list(ai['providers'], AiProviderInfo.fromJson),
       mapEnabled: map['enabled'] == true,
       mapProviders: list(map['providers'], MapProviderInfo.fromJson),
+      appleMap: map['apple'] is Map
+          ? MapProviderInfo.fromJson(
+              (map['apple'] as Map).cast<String, dynamic>())
+          : null,
       contactEmail: '${legal['contact_email'] ?? ''}',
       legalUpdatedAt: '${legal['updated_at'] ?? ''}',
     );
