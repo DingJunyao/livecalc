@@ -47,6 +47,8 @@ def test_app_config_public(env):
     assert resp.status_code == 200
     body = resp.json()
     assert "registration_require_invite_code" in body
+    # 服务端版本来自 app-info.json，App「关于」页会与移动端版本并列展示
+    assert body["version"]
     assert body["ai"]["providers"] is not None
     assert body["map"]["providers"]
     assert body["legal"]["privacy_url"] == "/legal/privacy"

@@ -835,6 +835,7 @@
     }
   },
   "about": {
+    "serverVersion": "服务端版本",
     "server": "服务器",
     "contact": "联系方式",
     "legalSection": "法律文档",

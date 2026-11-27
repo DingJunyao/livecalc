@@ -16,6 +16,9 @@
           <div class="text-body-2 text-medium-emphasis">
             {{ t('profile.version', { version: appInfo.version }) }}
           </div>
+          <div v-if="serverVersion" class="text-caption text-medium-emphasis">
+            {{ t('about.serverVersion') }}: {{ serverVersion }}
+          </div>
           <div v-if="serverDisplay" class="text-caption text-medium-emphasis text-truncate">
             {{ t('about.server') }}: {{ serverDisplay }}
           </div>
@@ -154,6 +157,7 @@ const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const localeStore = useLocaleStore()
 const isLocalMode = computed(() => import.meta.env.VITE_STORAGE_MODE === 'local')
 
+const serverVersion = ref('')
 const aiProviders = ref<AiProvider[]>([])
 const mapProviders = ref<MapProvider[]>([])
 const contactEmail = ref('')
@@ -168,6 +172,7 @@ const load = async () => {
   if (isLocalMode.value) return
   try {
     const config: any = await api.get('/app/config')
+    serverVersion.value = config?.version || ''
     aiProviders.value = config?.ai?.providers || []
     mapProviders.value = config?.map?.providers || []
     contactEmail.value = config?.legal?.contact_email || ''

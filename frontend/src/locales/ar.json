@@ -835,6 +835,7 @@
     }
   },
   "about": {
+    "serverVersion": "إصدار الخادم",
     "server": "الخادم",
     "contact": "وسيلة الاتصال",
     "legalSection": "المستندات القانونية",
