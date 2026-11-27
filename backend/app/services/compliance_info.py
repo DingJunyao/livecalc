@@ -44,14 +44,14 @@ DEFAULT_AI_PROVIDERS: Dict[str, dict] = {
 
 # 与地图配置 available_maps 的 key 保持一致（天地图可合规使用，需填审图号）
 DEFAULT_MAP_PROVIDERS: Dict[str, dict] = {
-    "amap": {"display_name": "高德地图", "approval_no": "", "note": ""},
-    "baidu": {"display_name": "百度地图", "approval_no": "", "note": ""},
-    "tencent": {"display_name": "腾讯地图", "approval_no": "", "note": ""},
-    "tianditu": {"display_name": "天地图", "approval_no": "", "note": ""},
-    "osm": {"display_name": "OpenStreetMap", "approval_no": "", "note": "境外底图，中国境内不建议提供"},
+    "amap": {"display_name": "高德地图", "approval_no": "", "approval_no_satellite": "", "note": ""},
+    "baidu": {"display_name": "百度地图", "approval_no": "", "approval_no_satellite": "", "note": ""},
+    "tencent": {"display_name": "腾讯地图", "approval_no": "", "approval_no_satellite": "", "note": ""},
+    "tianditu": {"display_name": "天地图", "approval_no": "", "approval_no_satellite": "", "note": ""},
+    "osm": {"display_name": "OpenStreetMap", "approval_no": "", "approval_no_satellite": "", "note": "境外底图，中国境内不建议提供"},
     # iOS 原生 MapKit：中国区数据由高德提供。MapKit 没有审图号 API，
     # 需管理员在此手工填写与自然资源部公示一致的高德底图审图号。
-    "apple": {"display_name": "Apple 地图", "approval_no": "",
+    "apple": {"display_name": "Apple 地图", "approval_no": "", "approval_no_satellite": "",
               "note": "中国区数据由高德地图提供"},
 }
 
@@ -117,6 +117,7 @@ def get_map_compliance(db: Session) -> Dict[str, dict]:
             merged[key] = {
                 "display_name": info.get("display_name") or key,
                 "approval_no": info.get("approval_no") or "",
+                "approval_no_satellite": info.get("approval_no_satellite") or "",
                 "note": info.get("note") or "",
             }
     return merged
@@ -146,7 +147,7 @@ def update_map_compliance(db: Session, providers: dict) -> Dict[str, dict]:
         if not isinstance(info, dict):
             continue
         row = dict(merged.get(key) or {})
-        for field in ("display_name", "approval_no", "note"):
+        for field in ("display_name", "approval_no", "approval_no_satellite", "note"):
             if field in info:
                 row[field] = str(info[field] or "")
         merged[key] = row

@@ -870,6 +870,7 @@
     "filingNo": "Filing number",
     "filingNoPlaceholder": "e.g. filing number issued by CAC",
     "approvalNo": "Approval number",
+    "approvalNoSatellite": "Satellite approval no.",
     "approvalNoPlaceholder": "e.g. GS(2024)xxxx",
     "note": "Note",
     "privacyZh": "Privacy policy (Chinese)",
