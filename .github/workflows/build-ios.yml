@@ -39,11 +39,22 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    # ⚠️ 必须用 xcode-27 镜像（默认 macos-latest 只有 Xcode 26.x / iOS 26 SDK）：
+    #   ios/Runner/AppDelegate.swift 的 DuoLayoutPlugin 用到 iOS 27 才有的
+    #   UITraitCollection.verticalBarEdge / UIView.reservedRegions(kind:) /
+    #   ReservedRegion，Xcode 26 SDK 里没有这些符号 → 编译期直接报
+    #   "has no member 'verticalBarEdge'". 镜像里装了 Xcode 27.2（与本地一致）。
+    runs-on: xcode-27
     timeout-minutes: 45
     steps:
       - name: 检出代码
         uses: actions/checkout@v5
+
+      # 镜像默认 Xcode 是 27.1，显式切到 27.2（本机开发用的同一版本，27B52）
+      - name: 选择 Xcode 27.2
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.2.app
+          xcodebuild -version
 
       # ⚠️ 版本必须与移动端开发环境（feat/mobile-app 分支，当前 Flutter 3.50.1 / Dart 3.14.0）保持一致：
       #   mobile/pubspec.lock 里 analyzer 14.7.0、sdks 要求 dart >=3.13.0、flutter >=3.47.0，

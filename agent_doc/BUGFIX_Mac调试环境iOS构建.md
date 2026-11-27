@@ -69,3 +69,22 @@ build_runner >=2.16.2 is incompatible with flutter from sdk.
 修正：CI 的 `flutter-version` 升到 **3.50.1**（与本地开发环境一致），并在 workflow 里写了注释说明这条绑定关系。改完本地实测同口径通过：`flutter pub get`（输出 `Changed 176 dependencies!` 只是 mirror URL 被改写的假变更，版本号全部 `was == now`）+ `dart run build_runner build`（685 outputs，31s）+ `flutter analyze`（0 error / 255 info，info 均为存量）。`--delete-conflicting-outputs` 在 build_runner 2.17 已是「保留但忽略」的选项（源码 `removedOptions`），只会打一行 warning，可留可删。
 
 规则：**升级 Flutter 时 workflow 的 `flutter-version` 与 `mobile/pubspec.lock` 必须一起改**，否则 CI 会在 pub get 阶段失败。
+
+### 第二轮：xcodebuild 阶段又挂在 iOS 27 SDK 上
+
+pub get / codegen 都过了，卡在 `xcodebuild 构建未签名 .app`：
+
+```
+ios/Runner/AppDelegate.swift:377:55: error: value of type 'UITraitCollection' has no member 'verticalBarEdge'
+ios/Runner/AppDelegate.swift:385:35: error: 'ReservedRegion' is not a member type of class 'UIKit.UIView'
+ios/Runner/AppDelegate.swift:396:37: error: value of type 'UIView' has no member 'reservedRegions'
+...
+** BUILD FAILED **
+```
+
+`DuoLayoutPlugin`（iPhone Duo 竖条/遮挡区）用的是 iOS 27 才引入的 API，而 `macos-latest`（macOS 26 镜像）只装了 Xcode 26.0.1~26.6 / iOS 26 SDK，符号根本不存在——`#available(iOS 27.1, *)` 这种运行时判断救不了编译期缺失的符号。
+
+修正：`runs-on: xcode-27`（runner-images 的 Xcode 27 预览镜像，基于 macOS 27，装 Xcode 27.2 / 27.1 / 27.0 + iOS 27.0/27.1/27.2 SDK + CocoaPods 1.17.0），并加一步 `sudo xcode-select -s /Applications/Xcode_27.2.app`——镜像默认是 27.1，本地开发是 27.2（27B52），对齐同一版本。
+
+代价与注意：`xcode-27` 目前是 **preview 镜像**，可能有排队/稳定性问题；若以后该镜像下线或转正改名，需同步改 `runs-on`。**不要**为了迁就旧 SDK 把 Duo 原生代码编译期裁掉——那会让侧载出来的 IPA 在 Duo 上失去竖条/遮挡区能力。
+
