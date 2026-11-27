@@ -51,4 +51,21 @@ sudo xcodebuild -runFirstLaunch
 - Flutter 大版本发布后，框架源码用新语言特性会让**所有**封顶旧 analyzer 的代码生成器（riverpod_generator/drift_dev/build 工具链）集体失效，报错点却是任意一个被分析的文件；解法是把「有 analyzer 上限的构建插件」升到允许新 analyzer 的版本，而不是降 Flutter。
 - 排查前先 grep 使用量再决定升级范围：riverpod_generator 在本项目 0 使用，直接删除比跨 major 迁移 riverpod 3.x 便宜两个数量级。
 - native-assets hook（objective_c 等包）拿不到 SDK path 且 stdout 为空报 `Bad state: No element`，是 hook 进程没有 DEVELOPER_DIR；flutter 工具只透传 PATH 不透传 DEVELOPER_DIR——shim xcrun 可验证全链路，永久解法只有 xcode-select 切到完整 Xcode。
-- 镜像变量（PUB_HOSTED_URL/FLUTTER_STORAGE_BASE_URL）只写在 settings.json 的 dart.env 里，终端默认拿不到；直连 pub.dev 会长时间无响应。
+- 镜像变量（PUB_HOSTED_URL/FLUTTER_STORAGE_BASE_URL）只写在 settings.json 的 dart.env 里，终端默认拿不到；直连 pub.dev 会长时间无响应（`flutter pub get` 还会把 `mobile/pubspec.lock` 里的 mirror URL 全改回 pub.dev，属于噪声改动，提交前用 `git checkout -- mobile/pubspec.lock` 还原）。
+
+## GitHub Actions iOS 构建（CI 侧的同一断层）
+
+工作流 `.github/workflows/build-ios.yml` 原固定 `flutter-version: 3.44.8`（Dart 3.12.2），在 `flutter pub get` 阶段就失败：
+
+```
+Because build_runner >=2.16.2 depends on analyzer ^14.3.0 and analyzer >=14.6.0 requires SDK version >=3.13.0 <4.0.0,
+build_runner >=2.16.2 requires analyzer >=14.3.0 <14.6.0.
+And because analyzer >=13.1.0 <14.6.0 depends on meta ^1.18.3 and every version of flutter from sdk depends on meta 1.18.0,
+build_runner >=2.16.2 is incompatible with flutter from sdk.
+```
+
+即本机上「升 Flutter + 升 build_runner」的解法在 CI 上反过来了：CI 的 Flutter 太旧，凑不出 build_runner 2.17.1 需要的 analyzer（lock 里是 14.7.0，要求 Dart ≥3.13；`pubspec.lock` 的 sdks 也写了 `dart >=3.13.0` / `flutter >=3.47.0`）。**不能反过来把 build_runner 降到 2.15.1**——那样本机 Flutter 3.50 的 dot-shorthand 又会挂死 codegen。
+
+修正：CI 的 `flutter-version` 升到 **3.50.1**（与本地开发环境一致），并在 workflow 里写了注释说明这条绑定关系。改完本地实测同口径通过：`flutter pub get`（输出 `Changed 176 dependencies!` 只是 mirror URL 被改写的假变更，版本号全部 `was == now`）+ `dart run build_runner build`（685 outputs，31s）+ `flutter analyze`（0 error / 255 info，info 均为存量）。`--delete-conflicting-outputs` 在 build_runner 2.17 已是「保留但忽略」的选项（源码 `removedOptions`），只会打一行 warning，可留可删。
+
+规则：**升级 Flutter 时 workflow 的 `flutter-version` 与 `mobile/pubspec.lock` 必须一起改**，否则 CI 会在 pub get 阶段失败。
