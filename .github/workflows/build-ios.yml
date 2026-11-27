@@ -45,11 +45,18 @@ jobs:
       - name: 检出代码
         uses: actions/checkout@v4
 
+      # ⚠️ 版本必须与移动端开发环境（feat/mobile-app 分支，当前 Flutter 3.50.1 / Dart 3.14.0）保持一致：
+      #   mobile/pubspec.lock 里 analyzer 14.7.0、sdks 要求 dart >=3.13.0、flutter >=3.47.0，
+      #   而 build_runner >=2.16.2 只有在 dart >=3.13 才能解析到兼容的 analyzer。
+      #   曾固定 3.44.8（Dart 3.12.2）→ pub get 直接 version solving failed。
+      #   另外 Flutter 3.50 框架源码用了 dot-shorthand，只有 analyzer >=14.6 能解析，
+      #   否则 build_runner 会在 0% CPU 挂死（见 agent_doc/BUGFIX_Mac调试环境iOS构建.md）。
+      #   升级 Flutter 时同步改这里 + mobile/pubspec.lock（mobile/ 目录本体在 feat/mobile-app 分支）。
       - name: 配置 Flutter（stable）
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.44.8
+          flutter-version: 3.50.1
           cache: true
 
       - name: 打印 Flutter 版本
