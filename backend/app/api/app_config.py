@@ -104,7 +104,20 @@ def _map_section(db: Session) -> dict:
             "approval_no": info.get("approval_no") or "",
             "note": info.get("note") or "",
         })
-    return {"enabled": enabled, "default": default_map, "providers": providers}
+    # iOS 原生 MapKit（Apple 地图）不参与 available_maps：客户端按平台二选一展示，
+    # 这里单独给出，避免 iOS 用户看到安卓底图列表。
+    apple = compliance.get("apple") or {}
+    return {
+        "enabled": enabled,
+        "default": default_map,
+        "providers": providers,
+        "apple": {
+            "key": "apple",
+            "display_name": apple.get("display_name") or "Apple 地图",
+            "approval_no": apple.get("approval_no") or "",
+            "note": apple.get("note") or "",
+        },
+    }
 
 
 @router.get("/app/config")

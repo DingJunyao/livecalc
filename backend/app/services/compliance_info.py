@@ -49,6 +49,10 @@ DEFAULT_MAP_PROVIDERS: Dict[str, dict] = {
     "tencent": {"display_name": "腾讯地图", "approval_no": "", "note": ""},
     "tianditu": {"display_name": "天地图", "approval_no": "", "note": ""},
     "osm": {"display_name": "OpenStreetMap", "approval_no": "", "note": "境外底图，中国境内不建议提供"},
+    # iOS 原生 MapKit：中国区数据由高德提供。MapKit 没有审图号 API，
+    # 需管理员在此手工填写与自然资源部公示一致的高德底图审图号。
+    "apple": {"display_name": "Apple 地图", "approval_no": "",
+              "note": "中国区数据由高德地图提供"},
 }
 
 _RESOURCES = Path(__file__).resolve().parent.parent / "resources" / "legal"

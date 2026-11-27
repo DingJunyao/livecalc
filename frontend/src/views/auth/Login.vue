@@ -54,6 +54,19 @@
               {{ t('auth.registerNow') }}
             </v-btn>
           </v-card-actions>
+
+          <!-- 未登录也能查看法律文档（后端直出页面，可直接填入商店） -->
+          <v-card-text class="pt-0 pb-4 text-center">
+            <a :href="privacyUrl" target="_blank" rel="noopener"
+              class="text-caption text-medium-emphasis text-decoration-none">
+              {{ t('about.privacyPolicy') }}
+            </a>
+            <span class="text-caption text-medium-emphasis mx-2">·</span>
+            <a :href="termsUrl" target="_blank" rel="noopener"
+              class="text-caption text-medium-emphasis text-decoration-none">
+              {{ t('about.termsOfService') }}
+            </a>
+          </v-card-text>
         </v-card>
       </v-container>
     </v-main>
@@ -61,15 +74,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { computed, ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { hashPassword } from '@/utils/crypto'
+import { legalPageUrl } from '@/utils/publicUrl'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const privacyUrl = computed(() => legalPageUrl('privacy', String(locale.value)))
+const termsUrl = computed(() => legalPageUrl('terms', String(locale.value)))
 
 const form = reactive({
   username: '',
