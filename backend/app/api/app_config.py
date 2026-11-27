@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from app import __version__
 from app.api.admin import DEFAULT_MAP_CONFIG
 from app.core.database import get_db
 from app.core.security import get_current_admin_user
@@ -127,6 +128,8 @@ async def get_app_config(db: Session = Depends(get_db)):
     """公开启动配置：注册策略、AI/地图合规展示信息、法律文档元信息。"""
     legal = ci.get_legal_docs(db)
     return {
+        # 服务端版本（app-info.json 单一来源）；App「关于」页与前端都会展示
+        "version": __version__,
         "registration_require_invite_code": _registration_require_invite(db),
         "ai": _ai_section(db),
         "map": _map_section(db),

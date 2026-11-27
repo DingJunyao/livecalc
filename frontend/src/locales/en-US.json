@@ -835,6 +835,7 @@
     }
   },
   "about": {
+    "serverVersion": "Server version",
     "server": "Server",
     "contact": "Contact",
     "legalSection": "Legal documents",
