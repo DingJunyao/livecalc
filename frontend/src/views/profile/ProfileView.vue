@@ -323,7 +323,7 @@
           </v-list-item>
         </template>
 
-        <v-list-item @click="aboutDialog = true">
+        <v-list-item to="/about">
           <template #prepend>
             <v-icon>mdi-information</v-icon>
           </template>
@@ -908,43 +908,6 @@
       </v-card>
     </v-dialog>
 
-    <!-- 关于对话框 -->
-    <v-dialog v-model="aboutDialog" max-width="420">
-      <v-card>
-        <v-card-title class="d-flex align-center">
-          {{ t('profile.about') }}
-          <v-spacer />
-          <v-btn icon="mdi-close" variant="text" size="small" @click="aboutDialog = false" />
-        </v-card-title>
-        <v-card-text class="text-center">
-          <v-avatar size="72" rounded="lg" class="mx-auto mb-3">
-            <v-img src="/logo.svg" :alt="appInfo.name" cover />
-          </v-avatar>
-          <div class="text-h6 font-weight-bold">{{ appInfo.name }}</div>
-          <div class="text-caption text-medium-emphasis mb-2">{{ t('profile.version', { version: appInfo.version }) }}</div>
-          <div class="text-body-2 text-medium-emphasis mb-3">{{ appInfo.description }}</div>
-          <div class="text-caption text-medium-emphasis mb-2">{{ appInfo.copyright }}</div>
-          <v-divider class="mb-2" />
-          <v-list density="compact" class="bg-transparent text-start">
-            <v-list-item :href="appInfo.homepage" target="_blank" rel="noopener">
-              <template #prepend>
-                <v-icon>mdi-github</v-icon>
-              </template>
-              <v-list-item-title>{{ t('profile.projectHomepage') }}</v-list-item-title>
-              <v-list-item-subtitle class="text-truncate">{{ appInfo.homepage }}</v-list-item-subtitle>
-            </v-list-item>
-            <v-list-item :href="appInfo.authorHomepage" target="_blank" rel="noopener">
-              <template #prepend>
-                <v-icon>mdi-web</v-icon>
-              </template>
-              <v-list-item-title>{{ t('profile.authorHomepage') }}</v-list-item-title>
-              <v-list-item-subtitle class="text-truncate">{{ appInfo.authorHomepage }}</v-list-item-subtitle>
-            </v-list-item>
-          </v-list>
-        </v-card-text>
-      </v-card>
-    </v-dialog>
-
     <!-- 导出进度遮罩 -->
     <v-overlay v-model="exporting" class="align-center justify-center" persistent>
       <div class="text-center">
@@ -1012,7 +975,6 @@ const search = ref('')
 // 数据导入与导出
 const importDialog = ref(false)
 const exportDialog = ref(false)
-const aboutDialog = ref(false)
 const exportScope = ref<'full' | 'mine'>('full')
 const exporting = ref(false)
 
