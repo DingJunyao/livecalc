@@ -1,6 +1,7 @@
 package com.a4ding.livecalc
 
 import android.content.Intent
+import android.net.Uri
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -19,6 +20,7 @@ import io.flutter.plugin.common.MethodChannel
  */
 class MainActivity : FlutterActivity() {
     private var shortcutChannel: MethodChannel? = null
+    private var externalUrlChannel: MethodChannel? = null
     private var dartReady = false
     private var pendingShortcut: String? = null
 
@@ -39,6 +41,35 @@ class MainActivity : FlutterActivity() {
                     }
                 }
             }
+        // 「关于」页的项目/作者链接：用系统 Intent 打开，避免引入 url_launcher 插件
+        externalUrlChannel =
+            MethodChannel(flutterEngine.dartExecutor.binaryMessenger, EXTERNAL_URL_CHANNEL).apply {
+                setMethodCallHandler { call, result ->
+                    when (call.method) {
+                        "openUrl" -> {
+                            val url = call.argument<String>("url")
+                            if (url.isNullOrBlank()) {
+                                result.success(false)
+                            } else {
+                                result.success(openExternalUrl(url))
+                            }
+                        }
+                        else -> result.notImplemented()
+                    }
+                }
+            }
+    }
+
+    private fun openExternalUrl(url: String): Boolean {
+        return try {
+            startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            )
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -54,6 +85,7 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val CHANNEL = "com.a4ding.livecalc/shortcuts"
+        private const val EXTERNAL_URL_CHANNEL = "com.a4ding.livecalc/external_url"
         private const val EXTRA_SHORTCUT_ACTION = "com.a4ding.livecalc.SHORTCUT_ACTION"
     }
 }

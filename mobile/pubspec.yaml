@@ -33,8 +33,6 @@ dependencies:
   image_cropper: ^12.2.1
   geolocator: ^14.1.1
   mobile_scanner: ^7.4.0
-  # 「关于」页打开项目/作者链接
-  url_launcher: ^6.3.0
 
 dependency_overrides:
   # package_info_plus 10.2.0+ 支持 Flutter Built-in Kotlin（10.2.2 修复仅在未启用内置 Kotlin

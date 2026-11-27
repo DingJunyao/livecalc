@@ -26,6 +26,10 @@ import UIKit
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "DuoLayoutPlugin") {
       DuoLayoutPlugin.register(with: registrar)
     }
+    // 「关于」页打开项目/作者链接，见文件末尾 ExternalUrlPlugin。
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ExternalUrlPlugin") {
+      ExternalUrlPlugin.register(with: registrar)
+    }
   }
 }
 
@@ -418,5 +422,34 @@ final class DuoLayoutPlugin: NSObject, FlutterPlugin {
       }
     }
     return 0
+  }
+}
+
+/// 打开外部链接（项目主页/作者主页）。
+///
+/// 与 Android MainActivity 的 `com.a4ding.livecalc/external_url` 通道同协议；
+/// 不引入 url_launcher 插件，避免新增 SPM 依赖导致 iOS 构建需要访问 GitHub。
+final class ExternalUrlPlugin: NSObject, FlutterPlugin {
+  private static let channelName = "com.a4ding.livecalc/external_url"
+
+  static func register(with registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(
+      name: channelName,
+      binaryMessenger: registrar.messenger()
+    )
+    registrar.addMethodCallDelegate(ExternalUrlPlugin(), channel: channel)
+  }
+
+  func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+    guard call.method == "openUrl",
+          let args = call.arguments as? [String: Any],
+          let raw = args["url"] as? String,
+          let url = URL(string: raw) else {
+      result(FlutterMethodNotImplemented)
+      return
+    }
+    UIApplication.shared.open(url, options: [:]) { opened in
+      result(opened)
+    }
   }
 }

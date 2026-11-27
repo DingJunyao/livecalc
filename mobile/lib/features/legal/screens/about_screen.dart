@@ -6,9 +6,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_client.dart';
+import '../../../core/services/external_link_service.dart';
 import '../../../core/layout/shell_app_bar.dart';
 import '../../../l10n/app_localizations.dart';
 import '../compliance_repository.dart';
@@ -44,14 +44,7 @@ class _AboutScreenState extends State<AboutScreen> {
   }
 
   Future<void> _openLink(String url) async {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    var ok = false;
-    try {
-      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      ok = false;
-    }
+    final ok = await ExternalLinkService.open(url);
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(AppLocalizations.of(context).aboutLinkOpenFailed)),
