@@ -45,6 +45,16 @@ class AuthRepository {
     return User.fromJson(response.data as Map<String, dynamic>);
   }
 
+  /// 注销账号：删除服务器上的账号与全部个人数据
+  /// （App Store 5.1.1(v) / Google Play 账号删除政策）。
+  /// [passwordHash] 与登录一致，为前端 SHA-256 后的值。
+  Future<void> deleteAccount({required String passwordHash}) async {
+    await _client.dio.post(
+      '/auth/me/delete',
+      data: {'password_hash': passwordHash},
+    );
+  }
+
   /// 更新个人设置（营养目标/预算/单位偏好），只传变化字段。
   Future<User> updateMe(Map<String, dynamic> body) async {
     final response = await _client.dio.patch('/auth/me', data: body);

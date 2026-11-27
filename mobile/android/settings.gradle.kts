@@ -19,13 +19,14 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.0.1" apply false
-    // Flutter 3.47（stable）的 Android 模板：gradle.properties 里
-    // android.builtInKotlin=false（沿用 AGP 9 之前的 KGP 路径），因此必须显式声明
-    // Kotlin Gradle Plugin，否则 Flutter 会拿到 AGP 自带的 Kotlin 2.2.10，
-    // 低于其最低支持版本 2.2.20 而终止构建。
-    // 版本对齐 Flutter 3.47.8 模板的 templateKotlinGradlePluginVersion（2.4.0）。
-    id("org.jetbrains.kotlin.android") version "2.4.0" apply false
+    id("com.android.application") version "9.3.1" apply false
+    // android.builtInKotlin=false（沿用 AGP 9 之前的 KGP 路径，见 gradle.properties），
+    // 因此必须显式声明 Kotlin Gradle Plugin，否则会拿到 AGP 自带的 Kotlin，
+    // 低于 Flutter 的下限而终止构建。
+    // 三件套统一取 Flutter 3.50.1 模板版本（Gradle 9.5.0 / AGP 9.3.1 / KGP 2.4.20）；
+    // 3.50.1 的硬性下限是 Gradle 9.3.1、AGP 9.1.1、KGP 2.4.10，低于下限会在
+    // DependencyVersionChecker 里直接报错（旧值 9.1.0 / 9.0.1 / 2.4.0 全部在下限之下）。
+    id("org.jetbrains.kotlin.android") version "2.4.20" apply false
 }
 
 include(":app")

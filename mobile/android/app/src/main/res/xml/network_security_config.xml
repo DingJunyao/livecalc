@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  发布构建：默认禁止明文 HTTP（公网自建服务器请用 HTTPS / 反向代理）。
+  例外：localhost 与 Android 模拟器宿主机 10.0.2.2，方便本机联调。
+  调试构建另有一份 src/debug/res/xml/network_security_config.xml，对全部域名放开明文，
+  局域网真机联调用 debug 包即可。
+  若确实需要发布版也支持局域网 HTTP（例如家庭内网自建服务器），把 base-config 的
+  cleartextTrafficPermitted 改为 true —— 会降低传输安全性，且商店安全扫描会提示。
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

@@ -11,14 +11,21 @@ import 'package:com_a4ding_livecalc/features/auth/models/auth_config.dart';
 import 'package:com_a4ding_livecalc/features/auth/models/user.dart';
 import 'package:com_a4ding_livecalc/features/auth/providers/auth_provider.dart';
 import 'package:com_a4ding_livecalc/features/auth/repositories/auth_repository.dart';
-import 'package:com_a4ding_livecalc/features/auth/screens/login_screen.dart';
-import 'package:com_a4ding_livecalc/features/auth/screens/register_screen.dart';
+import 'package:com_a4ding_livecalc/features/auth/screens/login_screen.dart';import 'package:com_a4ding_livecalc/features/auth/screens/register_screen.dart';
 import 'package:com_a4ding_livecalc/features/auth/screens/server_config_screen.dart';
 import 'package:com_a4ding_livecalc/features/auth/screens/splash_screen.dart';
 import 'package:com_a4ding_livecalc/l10n/app_localizations.dart';
 import 'package:com_a4ding_livecalc/features/profile/providers/startup_page_provider.dart';
 
 class MockAuthRepository extends Mock implements AuthRepository {}
+
+/// 注册页要求先勾选「已阅读并同意隐私政策/用户协议」，提交前点一下。
+Future<void> _acceptLegal(WidgetTester tester) async {
+  final checkbox = find.byType(Checkbox);
+  expect(checkbox, findsOneWidget);
+  await tester.tap(checkbox);
+  await tester.pump();
+}
 
 GoRouter _router(String initial) {
   return GoRouter(
@@ -217,6 +224,7 @@ void main() {
     await tester.enterText(
         find.widgetWithText(TextFormField, '邮箱'), 'a@test.com');
     await tester.enterText(find.widgetWithText(TextFormField, '密码'), '123456');
+    await _acceptLegal(tester);
     await tester.tap(find.widgetWithText(FilledButton, '注册'));
     await tester.pumpAndSettle();
 
@@ -299,6 +307,7 @@ void main() {
     await tester.enterText(
         find.widgetWithText(TextFormField, '邮箱'), 'a@test.com');
     await tester.enterText(find.widgetWithText(TextFormField, '密码'), '123456');
+    await _acceptLegal(tester);
     await tester.tap(find.widgetWithText(FilledButton, '注册'));
     await tester.pumpAndSettle();
 
@@ -362,6 +371,7 @@ void main() {
     await tester.enterText(
         find.widgetWithText(TextFormField, '邮箱'), 'a@test.com');
     await tester.enterText(find.widgetWithText(TextFormField, '密码'), '123456');
+    await _acceptLegal(tester);
     await tester.tap(find.widgetWithText(FilledButton, '注册'));
     await tester.pumpAndSettle();
 

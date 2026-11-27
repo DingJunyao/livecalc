@@ -3502,4 +3502,102 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get compareAddScopeItem => 'إضافة نطاق مخصص';
+
+  @override
+  String get legalPrivacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String get legalTermsOfService => 'شروط الخدمة';
+
+  @override
+  String get legalAgreePrefix => 'قرأت وأوافق على';
+
+  @override
+  String get legalAgreeAnd => 'و';
+
+  @override
+  String get legalAgreeRequired =>
+      'يرجى قراءة سياسة الخصوصية وشروط الخدمة والموافقة عليهما أولاً';
+
+  @override
+  String get legalDocLoadFailed => 'تعذر تحميل المستند، يرجى المحاولة مرة أخرى';
+
+  @override
+  String get deleteAccountTitle => 'حذف الحساب';
+
+  @override
+  String get deleteAccountWarning =>
+      'سيؤدي حذف الحساب إلى إزالة الحساب وسجلات الأسعار والتجار والوصفات والخطط والمفضلة وإعدادات الذكاء الاصطناعي والصور من الخادم نهائيًا (يُحتفظ بالمحتوى العام الذي يشير إليه مستخدمون آخرون دون بيانات هوية). أدخل كلمة المرور للتأكيد.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'كلمة المرور الحالية';
+
+  @override
+  String get deleteAccountPasswordRequired => 'أدخل كلمة المرور';
+
+  @override
+  String get deleteAccountConfirm => 'تأكيد الحذف';
+
+  @override
+  String get deleteAccountFailed => 'تعذر حذف الحساب، يرجى المحاولة لاحقًا';
+
+  @override
+  String get deleteAccountWrongPassword => 'كلمة المرور غير صحيحة';
+
+  @override
+  String get deleteAccountUnsupported =>
+      'إصدار الخادم الحالي لا يدعم حذف الحساب من التطبيق. يرجى سؤال مسؤول الخادم عن الترقية والمحاولة مرة أخرى.';
+
+  @override
+  String get aboutTitle => 'حول';
+
+  @override
+  String get aboutVersion => 'الإصدار';
+
+  @override
+  String get aboutServer => 'الخادم';
+
+  @override
+  String get aboutContact => 'وسيلة الاتصال';
+
+  @override
+  String get aboutAiSection => 'خدمة الذكاء الاصطناعي';
+
+  @override
+  String get aboutMapSection => 'خدمة الخرائط';
+
+  @override
+  String get aboutModel => 'النموذج';
+
+  @override
+  String get aboutFilingNo => 'رقم التسجيل';
+
+  @override
+  String get aboutApprovalNo => 'رقم اعتماد الخريطة';
+
+  @override
+  String get aboutAiDisabled => 'توصيات الذكاء الاصطناعي معطلة على هذا الخادم';
+
+  @override
+  String get aboutMapDisabled => 'الخرائط معطلة على هذا الخادم';
+
+  @override
+  String get aboutLoadFailedHint =>
+      'تعذر قراءة إعدادات الخادم؛ يتم عرض معلومات التطبيق فقط';
+
+  @override
+  String get aboutUpdatedAt => 'تحديث المستندات';
+
+  @override
+  String get aiNoticeTitle => 'حول توصيات الذكاء الاصطناعي';
+
+  @override
+  String get aiNoticeBody =>
+      'قد تُنشأ توصيات اليوم بواسطة الذكاء الاصطناعي المهيأ على خادمك. تُرسل تفضيلاتك وأهدافك الغذائية وأسماء الوصفات إلى الخادم وتُعالج بواسطة خدمة النموذج التي يهيئها مسؤول الخادم؛ ويمكن تعطيل الذكاء الاصطناعي على الخادم. راجع قسم خدمة الذكاء الاصطناعي في صفحة حول للتفاصيل.';
+
+  @override
+  String get aiNoticeViewAbout => 'عرض تفاصيل خدمة الذكاء الاصطناعي';
+
+  @override
+  String get aiNoticeOk => 'حسنًا';
 }

@@ -27,6 +27,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   final _inviteCodeFocus = FocusNode();
   Timer? _configTimer;
   bool _submitting = false;
+  bool _agreedToLegal = false;
   String? _configError;
 
   static const _configPollInterval = Duration(seconds: 5);
@@ -87,6 +88,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
   Future<void> _register() async {
     if (_submitting) return;
     if (!_formKey.currentState!.validate()) return;
+    // 隐私政策/用户协议同意是注册前置条件（PIPL 告知-同意；App Store 5.1.1）
+    if (!_agreedToLegal) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).legalAgreeRequired)),
+      );
+      return;
+    }
     setState(() {
       _submitting = true;
       _configError = null;
@@ -131,6 +139,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
     // a newly required invite field appears immediately after the rejection.
     await _refreshConfig();
     if (mounted) setState(() => _submitting = false);
+  }
+
+  /// 注册页的《隐私政策》《用户协议》内联链接（打开应用内全文页）。
+  Widget _legalLink(
+      BuildContext context, String text, String route, ThemeData theme) {
+    return InkWell(
+      onTap: () => context.push(route),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.primary,
+          decoration: TextDecoration.underline,
+        ),
+      ),
+    );
   }
 
   bool get _inviteRequired =>
@@ -235,7 +258,50 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
                 if (authState.message != null)
                   Text(authState.message!.localized(l10n),
                       style: TextStyle(color: theme.colorScheme.error)),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                // 隐私政策 / 用户协议同意（可点开全文）
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 32,
+                      height: 32,
+                      child: Checkbox(
+                        value: _agreedToLegal,
+                        onChanged: (v) =>
+                            setState(() => _agreedToLegal = v ?? false),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(l10n.legalAgreePrefix,
+                                style: theme.textTheme.bodySmall),
+                            _legalLink(
+                              context,
+                              l10n.legalPrivacyPolicy,
+                              '/legal/privacy',
+                              theme,
+                            ),
+                            Text(l10n.legalAgreeAnd,
+                                style: theme.textTheme.bodySmall),
+                            _legalLink(
+                              context,
+                              l10n.legalTermsOfService,
+                              '/legal/terms',
+                              theme,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
                 FilledButton(
                   onPressed: canSubmit ? _register : null,
                   child: authState.status == AuthStatus.loading

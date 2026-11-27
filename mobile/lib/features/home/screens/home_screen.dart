@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/layout/shell_app_bar.dart';
 import '../../../core/layout/shell_chrome.dart';
@@ -31,6 +32,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// 一句话偏好的应用范围：current / breakfast / lunch / dinner / all
   String _preferenceTarget = 'current';
   bool _applyingPreference = false;
+
+  /// AI 告知弹窗只检查/弹出一次（App Store 5.1.2：把个人数据交给模型前告知）
+  static const _aiNoticePrefsKey = 'ai_disclosure_ack_v1';
+  bool _aiNoticeChecked = false;
+
+  /// 首次看到 AI 生成的推荐时给出一次性告知，并提供「关于」页入口查看模型/备案信息。
+  /// 服务器未启用 AI 时不会触发（推荐里没有 AI 来源）。
+  Future<void> _maybeShowAiNotice(HomeState state) async {
+    if (_aiNoticeChecked) return;
+    final meals = state.recommendation?.meals ?? const <MealRecommendation>[];
+    if (!meals.any((meal) => meal.isAiSource)) return;
+    _aiNoticeChecked = true;
+    SharedPreferences prefs;
+    try {
+      prefs = await SharedPreferences.getInstance();
+    } catch (_) {
+      // 测试环境/存储不可用时静默跳过，不影响推荐展示
+      return;
+    }
+    if (prefs.getBool(_aiNoticePrefsKey) == true || !mounted) return;
+    final l10n = AppLocalizations.of(context);
+    final viewAbout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.aiNoticeTitle),
+        content: Text(l10n.aiNoticeBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l10n.aiNoticeViewAbout),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l10n.aiNoticeOk),
+          ),
+        ],
+      ),
+    );
+    await prefs.setBool(_aiNoticePrefsKey, true);
+    if (viewAbout == true && mounted) context.push('/profile/about');
+  }
 
   @override
   void initState() {
@@ -186,6 +228,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final state = ref.watch(homeProvider);
+    _maybeShowAiNotice(state);
     final rail = context.shellRailMode;
     if (rail) {
       final busy =

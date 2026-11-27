@@ -3423,4 +3423,99 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get compareAddScopeItem => '加入自定义范围';
+
+  @override
+  String get legalPrivacyPolicy => '隐私政策';
+
+  @override
+  String get legalTermsOfService => '用户协议';
+
+  @override
+  String get legalAgreePrefix => '我已阅读并同意';
+
+  @override
+  String get legalAgreeAnd => '和';
+
+  @override
+  String get legalAgreeRequired => '请先阅读并同意《隐私政策》和《用户协议》';
+
+  @override
+  String get legalDocLoadFailed => '文档加载失败，请重试';
+
+  @override
+  String get deleteAccountTitle => '注销账号';
+
+  @override
+  String get deleteAccountWarning =>
+      '注销后，服务器上的账号及价格记录、商家、菜谱、方案、收藏、AI 设置与图片将被删除，且无法恢复（被其他用户引用的公共内容会匿名保留）。请输入密码确认。';
+
+  @override
+  String get deleteAccountPasswordLabel => '当前密码';
+
+  @override
+  String get deleteAccountPasswordRequired => '请输入密码';
+
+  @override
+  String get deleteAccountConfirm => '确认注销';
+
+  @override
+  String get deleteAccountFailed => '注销失败，请稍后重试';
+
+  @override
+  String get deleteAccountWrongPassword => '密码不正确';
+
+  @override
+  String get deleteAccountUnsupported => '当前服务器版本不支持自助注销，请联系服务器管理员升级后再试';
+
+  @override
+  String get aboutTitle => '关于';
+
+  @override
+  String get aboutVersion => '版本';
+
+  @override
+  String get aboutServer => '服务器';
+
+  @override
+  String get aboutContact => '联系方式';
+
+  @override
+  String get aboutAiSection => 'AI 服务';
+
+  @override
+  String get aboutMapSection => '地图服务';
+
+  @override
+  String get aboutModel => '模型';
+
+  @override
+  String get aboutFilingNo => '备案号';
+
+  @override
+  String get aboutApprovalNo => '审图号';
+
+  @override
+  String get aboutAiDisabled => '当前服务器未启用 AI 推荐';
+
+  @override
+  String get aboutMapDisabled => '当前服务器未启用地图';
+
+  @override
+  String get aboutLoadFailedHint => '无法从服务器读取配置，以下仅显示应用信息';
+
+  @override
+  String get aboutUpdatedAt => '文档更新时间';
+
+  @override
+  String get aiNoticeTitle => '关于 AI 推荐';
+
+  @override
+  String get aiNoticeBody =>
+      '「今日推荐」可能由服务器配置的 AI 生成。生成时会把你的偏好、营养目标与菜谱名称发送到服务器，由服务器管理员配置的模型服务处理；不使用 AI 时可在服务器端关闭。详情见「关于」页的 AI 服务说明。';
+
+  @override
+  String get aiNoticeViewAbout => '查看 AI 服务信息';
+
+  @override
+  String get aiNoticeOk => '我知道了';
 }

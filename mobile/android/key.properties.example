@@ -1,0 +1,13 @@
+# 复制为 android/key.properties 后填入自己的签名信息（key.properties 已被 .gitignore 排除）。
+#
+# 生成 keystore（keytool 在 Android Studio 的 JBR 里）：
+#   "/Applications/Android Studio.app/Contents/jbr/Contents/Home/bin/keytool" -genkeypair -v \
+#     -keystore ~/livecalc-release.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 \
+#     -alias livecalc
+# 生成后务必离线备份 keystore 与密码：丢了这个 key 就无法再发布同 applicationId 的更新。
+#
+# storeFile 可写绝对路径；写相对路径时以 mobile/android/ 为基准。
+storePassword=改成你的storePassword
+keyPassword=改成你的keyPassword
+keyAlias=livecalc
+storeFile=/Users/你的用户名/livecalc-release.jks

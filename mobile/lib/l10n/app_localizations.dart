@@ -6557,6 +6557,192 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'加入自定义范围'**
   String get compareAddScopeItem;
+
+  /// No description provided for @legalPrivacyPolicy.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐私政策'**
+  String get legalPrivacyPolicy;
+
+  /// No description provided for @legalTermsOfService.
+  ///
+  /// In zh, this message translates to:
+  /// **'用户协议'**
+  String get legalTermsOfService;
+
+  /// No description provided for @legalAgreePrefix.
+  ///
+  /// In zh, this message translates to:
+  /// **'我已阅读并同意'**
+  String get legalAgreePrefix;
+
+  /// No description provided for @legalAgreeAnd.
+  ///
+  /// In zh, this message translates to:
+  /// **'和'**
+  String get legalAgreeAnd;
+
+  /// No description provided for @legalAgreeRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先阅读并同意《隐私政策》和《用户协议》'**
+  String get legalAgreeRequired;
+
+  /// No description provided for @legalDocLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'文档加载失败，请重试'**
+  String get legalDocLoadFailed;
+
+  /// No description provided for @deleteAccountTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销账号'**
+  String get deleteAccountTitle;
+
+  /// No description provided for @deleteAccountWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销后，服务器上的账号及价格记录、商家、菜谱、方案、收藏、AI 设置与图片将被删除，且无法恢复（被其他用户引用的公共内容会匿名保留）。请输入密码确认。'**
+  String get deleteAccountWarning;
+
+  /// No description provided for @deleteAccountPasswordLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前密码'**
+  String get deleteAccountPasswordLabel;
+
+  /// No description provided for @deleteAccountPasswordRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入密码'**
+  String get deleteAccountPasswordRequired;
+
+  /// No description provided for @deleteAccountConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认注销'**
+  String get deleteAccountConfirm;
+
+  /// No description provided for @deleteAccountFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'注销失败，请稍后重试'**
+  String get deleteAccountFailed;
+
+  /// No description provided for @deleteAccountWrongPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码不正确'**
+  String get deleteAccountWrongPassword;
+
+  /// No description provided for @deleteAccountUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前服务器版本不支持自助注销，请联系服务器管理员升级后再试'**
+  String get deleteAccountUnsupported;
+
+  /// No description provided for @aboutTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于'**
+  String get aboutTitle;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'版本'**
+  String get aboutVersion;
+
+  /// No description provided for @aboutServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器'**
+  String get aboutServer;
+
+  /// No description provided for @aboutContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系方式'**
+  String get aboutContact;
+
+  /// No description provided for @aboutAiSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'AI 服务'**
+  String get aboutAiSection;
+
+  /// No description provided for @aboutMapSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'地图服务'**
+  String get aboutMapSection;
+
+  /// No description provided for @aboutModel.
+  ///
+  /// In zh, this message translates to:
+  /// **'模型'**
+  String get aboutModel;
+
+  /// No description provided for @aboutFilingNo.
+  ///
+  /// In zh, this message translates to:
+  /// **'备案号'**
+  String get aboutFilingNo;
+
+  /// No description provided for @aboutApprovalNo.
+  ///
+  /// In zh, this message translates to:
+  /// **'审图号'**
+  String get aboutApprovalNo;
+
+  /// No description provided for @aboutAiDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前服务器未启用 AI 推荐'**
+  String get aboutAiDisabled;
+
+  /// No description provided for @aboutMapDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前服务器未启用地图'**
+  String get aboutMapDisabled;
+
+  /// No description provided for @aboutLoadFailedHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法从服务器读取配置，以下仅显示应用信息'**
+  String get aboutLoadFailedHint;
+
+  /// No description provided for @aboutUpdatedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'文档更新时间'**
+  String get aboutUpdatedAt;
+
+  /// No description provided for @aiNoticeTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于 AI 推荐'**
+  String get aiNoticeTitle;
+
+  /// No description provided for @aiNoticeBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'「今日推荐」可能由服务器配置的 AI 生成。生成时会把你的偏好、营养目标与菜谱名称发送到服务器，由服务器管理员配置的模型服务处理；不使用 AI 时可在服务器端关闭。详情见「关于」页的 AI 服务说明。'**
+  String get aiNoticeBody;
+
+  /// No description provided for @aiNoticeViewAbout.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看 AI 服务信息'**
+  String get aiNoticeViewAbout;
+
+  /// No description provided for @aiNoticeOk.
+  ///
+  /// In zh, this message translates to:
+  /// **'我知道了'**
+  String get aiNoticeOk;
 }
 
 class _AppLocalizationsDelegate

@@ -21,6 +21,9 @@ import '../../features/recipes/screens/recipe_detail_screen.dart';
 import '../../features/recipes/screens/recipe_form_screen.dart';
 import '../../features/recipes/screens/recipe_analysis_screen.dart';
 import '../../features/recipes/models/recipe_detail.dart';
+import '../../features/legal/legal_document.dart';
+import '../../features/legal/screens/legal_document_screen.dart';
+import '../../features/legal/screens/about_screen.dart';
 import '../../features/ingredients/screens/ingredient_list_screen.dart';
 import '../../features/ingredients/screens/ingredient_detail_screen.dart';
 import '../../features/ingredients/screens/ingredient_hierarchy_screen.dart';
@@ -89,12 +92,16 @@ GoRouter createAppRouter(
           location == '/register' ||
           location == '/server-config';
       final isSplash = location == '/splash';
+      // 隐私政策/用户协议要能在注册前打开（注册页的同意勾选），
+      // 但已登录用户也不应被强制弹回首页，故单独判定。
+      final isLegalRoute = location.startsWith('/legal');
+      final isPublicRoute = isAuthRoute || isLegalRoute;
 
       // Startup/session restoration holds on splash. Login and registration
       // also use loading state; keep those forms in place so a failed submit
       // does not bounce the user to another auth page and lose context.
       if (status == AuthStatus.initial || status == AuthStatus.loading) {
-        return (isSplash || isAuthRoute) ? null : '/splash';
+        return (isSplash || isPublicRoute) ? null : '/splash';
       }
 
       if (status == AuthStatus.authenticated) {
@@ -114,7 +121,7 @@ GoRouter createAppRouter(
       if (!hasServer) {
         return location == '/server-config' ? null : '/server-config';
       }
-      return isAuthRoute ? null : '/login';
+      return isPublicRoute ? null : '/login';
     },
     routes: [
       GoRoute(
@@ -136,6 +143,14 @@ GoRouter createAppRouter(
         path: '/register',
         name: RouteNames.register,
         builder: (_, __) => const RegisterScreen(),
+      ),
+      GoRoute(
+        path: '/legal/:doc',
+        name: RouteNames.legal,
+        builder: (_, state) => LegalDocumentScreen(
+          document: LegalDocumentX.fromSlug(state.pathParameters['doc']) ??
+              LegalDocument.privacy,
+        ),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -488,6 +503,11 @@ GoRouter createAppRouter(
             path: '/profile/account',
             name: RouteNames.editAccount,
             builder: (_, __) => const EditAccountScreen(),
+          ),
+          GoRoute(
+            path: '/profile/about',
+            name: RouteNames.about,
+            builder: (_, __) => const AboutScreen(),
           ),
           GoRoute(
             path: '/profile/proposals',

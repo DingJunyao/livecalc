@@ -3,6 +3,8 @@ class RouteNames {
   static const serverConfig = 'server-config';
   static const login = 'login';
   static const register = 'register';
+  static const legal = 'legal';
+  static const about = 'about';
   static const home = 'home';
   static const prices = 'prices';
   static const priceRecord = 'price-record';

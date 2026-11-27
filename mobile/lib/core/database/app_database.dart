@@ -31,6 +31,11 @@ class AppDatabase extends _$AppDatabase {
   Future<void> deleteSynced() {
     return (delete(offlineQueue)..where((t) => t.synced.equals(true))).go();
   }
+
+  /// 清空离线队列（退出登录 / 注销账号时调用，避免残留他人数据）。
+  Future<void> clearAll() {
+    return delete(offlineQueue).go();
+  }
 }
 
 LazyDatabase _openConnection() {

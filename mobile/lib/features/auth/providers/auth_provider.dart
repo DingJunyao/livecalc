@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import '../../../core/api/api_client.dart';
 import '../../../core/api/auth_interceptor.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/services/server_connection_checker.dart';
 import '../models/login_request.dart';
 import '../models/auth_config.dart';
@@ -27,6 +28,9 @@ enum AuthMessageCode {
   registerServerError,
   registerNetworkError,
   registerGenericError,
+  deleteAccountWrongPassword,
+  deleteAccountFailed,
+  deleteAccountUnsupported,
 }
 
 class AuthMessage {
@@ -63,6 +67,12 @@ class AuthMessage {
         return l10n.authRegisterNetworkError;
       case AuthMessageCode.registerGenericError:
         return l10n.authRegisterGenericError;
+      case AuthMessageCode.deleteAccountWrongPassword:
+        return l10n.deleteAccountWrongPassword;
+      case AuthMessageCode.deleteAccountFailed:
+        return l10n.deleteAccountFailed;
+      case AuthMessageCode.deleteAccountUnsupported:
+        return l10n.deleteAccountUnsupported;
     }
   }
 }
@@ -213,6 +223,37 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await AuthInterceptor.clearTokens();
     await AuthInterceptor.clearCredentials();
     state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+
+  /// 注销账号：服务器侧删除账号与数据，成功后清本地凭证与离线队列。
+  /// 返回 null 表示成功；否则返回可本地化的错误信息。
+  Future<AuthMessage?> deleteAccount(String password) async {
+    final passwordHash = sha256.convert(utf8.encode(password)).toString();
+    try {
+      await _repository.deleteAccount(passwordHash: passwordHash);
+    } on DioException catch (e) {
+      final code = e.response?.statusCode;
+      if (code == 404) {
+        // 旧版服务端没有该端点：提示升级，而不是含糊的「注销失败」
+        return const AuthMessage(AuthMessageCode.deleteAccountUnsupported);
+      }
+      if (code == 400 || code == 401 || code == 403) {
+        return const AuthMessage(AuthMessageCode.deleteAccountWrongPassword);
+      }
+      return const AuthMessage(AuthMessageCode.deleteAccountFailed);
+    } on Exception {
+      return const AuthMessage(AuthMessageCode.deleteAccountFailed);
+    }
+
+    await AuthInterceptor.clearTokens();
+    await AuthInterceptor.clearCredentials();
+    try {
+      await AppDatabase().clearAll();
+    } catch (_) {
+      // 本地队列清理失败不应阻断注销流程
+    }
+    state = const AuthState(status: AuthStatus.unauthenticated);
+    return null;
   }
 
   /// Clears a previous "server unreachable" condition once the user has

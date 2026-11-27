@@ -182,6 +182,26 @@ class ProfileScreen extends ConsumerWidget {
                 title: Text(l10n.blacklistTitle),
                 onTap: () => context.push('/profile/blacklist')),
           ])),
+          const SizedBox(height: 16),
+          // 法律文档（商店要求：应用内可访问隐私政策）
+          Card(
+              child: Column(children: [
+            ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: Text(l10n.legalPrivacyPolicy),
+                onTap: () => context.push('/legal/privacy')),
+            const Divider(height: 1),
+            ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: Text(l10n.legalTermsOfService),
+                onTap: () => context.push('/legal/terms')),
+            const Divider(height: 1),
+            // 关于：版本、AI 模型备案信息、地图审图号、联系方式
+            ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: Text(l10n.aboutTitle),
+                onTap: () => context.push('/profile/about')),
+          ])),
           const SizedBox(height: 32),
 
           // Logout
@@ -197,10 +217,106 @@ class ProfileScreen extends ConsumerWidget {
                   foregroundColor: theme.colorScheme.error),
             ),
           ),
+          const SizedBox(height: 8),
+          // 注销账号（App Store 5.1.1(v) / Google Play 账号删除政策）
+          TextButton.icon(
+            onPressed: () => _showDeleteAccountDialog(context, ref),
+            icon: const Icon(Icons.person_remove_outlined, size: 18),
+            label: Text(l10n.deleteAccountTitle),
+            style: TextButton.styleFrom(
+                foregroundColor: theme.colorScheme.error),
+          ),
         ],
       ),
     );
   }
+}
+
+/// 注销账号确认对话框：要求输入密码，成功后清本地状态并回到登录页。
+Future<void> _showDeleteAccountDialog(
+    BuildContext context, WidgetRef ref) async {
+  final l10n = AppLocalizations.of(context);
+  final passwordController = TextEditingController();
+  String? error;
+  var busy = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setState) {
+        final theme = Theme.of(ctx);
+        return AlertDialog(
+          title: Text(l10n.deleteAccountTitle),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.deleteAccountWarning,
+                    style: theme.textTheme.bodyMedium),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: passwordController,
+                  obscureText: true,
+                  enabled: !busy,
+                  decoration: InputDecoration(
+                      labelText: l10n.deleteAccountPasswordLabel),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(error!,
+                      style: TextStyle(color: theme.colorScheme.error)),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: busy ? null : () => Navigator.of(ctx).pop(),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.error),
+              onPressed: busy
+                  ? null
+                  : () async {
+                      if (passwordController.text.isEmpty) {
+                        setState(
+                            () => error = l10n.deleteAccountPasswordRequired);
+                        return;
+                      }
+                      setState(() {
+                        busy = true;
+                        error = null;
+                      });
+                      final message = await ref
+                          .read(authProvider.notifier)
+                          .deleteAccount(passwordController.text);
+                      if (!ctx.mounted) return;
+                      if (message != null) {
+                        setState(() {
+                          busy = false;
+                          error = message.localized(l10n);
+                        });
+                        return;
+                      }
+                      Navigator.of(ctx).pop();
+                      if (context.mounted) context.go('/login');
+                    },
+              child: busy
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
+                  : Text(l10n.deleteAccountConfirm),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+  passwordController.dispose();
 }
 
 /// 启动时起始页单选对话框：点选即生效并关闭。

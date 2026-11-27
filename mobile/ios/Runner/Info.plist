@@ -36,8 +36,9 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
+		<!-- 公网自建服务器必须用 HTTPS（App Review 对 ATS 例外很敏感，原先的
+		     NSAllowsArbitraryLoads 会让所有明文 HTTP 放行）。
+		     局域网（.local / 无点主机名）与本地回环仍允许明文，便于自建服务调试。 -->
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
