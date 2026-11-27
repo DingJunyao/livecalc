@@ -200,7 +200,7 @@ class ProfileScreen extends ConsumerWidget {
             ListTile(
                 leading: const Icon(Icons.info_outline),
                 title: Text(l10n.aboutTitle),
-                onTap: () => context.push('/profile/about')),
+                onTap: () => context.push('/about')),
           ])),
           const SizedBox(height: 32),
 

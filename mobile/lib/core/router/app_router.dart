@@ -92,10 +92,11 @@ GoRouter createAppRouter(
           location == '/register' ||
           location == '/server-config';
       final isSplash = location == '/splash';
-      // 隐私政策/用户协议要能在注册前打开（注册页的同意勾选），
+      // 隐私政策/用户协议/关于要能在注册前、未登录时打开（注册页同意勾选、审核查看），
       // 但已登录用户也不应被强制弹回首页，故单独判定。
-      final isLegalRoute = location.startsWith('/legal');
-      final isPublicRoute = isAuthRoute || isLegalRoute;
+      final isInfoRoute =
+          location.startsWith('/legal') || location == '/about';
+      final isPublicRoute = isAuthRoute || isInfoRoute;
 
       // Startup/session restoration holds on splash. Login and registration
       // also use loading state; keep those forms in place so a failed submit
@@ -117,6 +118,8 @@ GoRouter createAppRouter(
       }
 
       // unauthenticated / error
+      // 未配置服务器时也要能读隐私政策/用户协议/关于（服务器配置页底部有入口）
+      if (isInfoRoute) return null;
       final hasServer = serverUrl != null && serverUrl.isNotEmpty;
       if (!hasServer) {
         return location == '/server-config' ? null : '/server-config';
@@ -151,6 +154,11 @@ GoRouter createAppRouter(
           document: LegalDocumentX.fromSlug(state.pathParameters['doc']) ??
               LegalDocument.privacy,
         ),
+      ),
+      GoRoute(
+        path: '/about',
+        name: RouteNames.about,
+        builder: (_, __) => const AboutScreen(),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -505,11 +513,6 @@ GoRouter createAppRouter(
             builder: (_, __) => const EditAccountScreen(),
           ),
           GoRoute(
-            path: '/profile/about',
-            name: RouteNames.about,
-            builder: (_, __) => const AboutScreen(),
-          ),
-          GoRoute(
             path: '/profile/proposals',
             name: RouteNames.myProposals,
             builder: (_, __) => const MyProposalsScreen(),
@@ -603,6 +606,7 @@ enum _TabLabel {
   favorites,
   plans,
   profile,
+  about,
   more
 }
 
@@ -613,6 +617,7 @@ class _Tab {
     required this.selectedIcon,
     required this.prefixes,
     this.route,
+    this.push = false,
   });
 
   final _TabLabel label;
@@ -620,6 +625,10 @@ class _Tab {
   final IconData selectedIcon;
   final List<String> prefixes;
   final String? route;
+
+  /// 用 push 而不是 go 打开：用于非 tab 目的地（如「关于」），
+  /// 保留返回栈、不替换整棵壳层。
+  final bool push;
 }
 
 const _homeTab = _Tab(
@@ -682,6 +691,13 @@ const _profileTab = _Tab(
     selectedIcon: Icons.person,
     prefixes: ['/profile'],
     route: '/profile');
+const _aboutTab = _Tab(
+    label: _TabLabel.about,
+    icon: Icons.info_outline,
+    selectedIcon: Icons.info,
+    prefixes: ['/about'],
+    route: '/about',
+    push: true);
 const _moreTab = _Tab(
     label: _TabLabel.more,
     icon: Icons.menu,
@@ -718,6 +734,7 @@ const _moreMenuTabs = [
   _favoritesTab,
   _plansTab,
   _profileTab,
+  _aboutTab,
 ];
 
 String _tabLabel(_TabLabel label, AppLocalizations l10n) {
@@ -732,6 +749,7 @@ String _tabLabel(_TabLabel label, AppLocalizations l10n) {
     _TabLabel.favorites => l10n.navFavorites,
     _TabLabel.plans => l10n.navPlans,
     _TabLabel.profile => l10n.navProfile,
+    _TabLabel.about => l10n.aboutTitle,
     _TabLabel.more => l10n.navMore,
   };
 }
@@ -1488,7 +1506,12 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
                               selected: i == selectedIdx,
                               onTap: () {
                                 Navigator.of(ctx).pop();
-                                context.go(_moreMenuTabs[i].route!);
+                                final tab = _moreMenuTabs[i];
+                                if (tab.push) {
+                                  context.push(tab.route!);
+                                } else {
+                                  context.go(tab.route!);
+                                }
                               },
                             ),
                           ),

@@ -5,6 +5,7 @@ import '../providers/auth_provider.dart';
 import '../providers/server_provider.dart';
 import '../../profile/providers/startup_page_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/legal_links.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -132,6 +133,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextButton(
                       onPressed: () => context.go('/server-config'),
                       child: Text(l10n.authChangeServer)),
+                  const SizedBox(height: 8),
+                  // 未登录也能查看隐私政策、用户协议与合规信息
+                  const LegalLinksRow(),
                 ],
               ),
             ),

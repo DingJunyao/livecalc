@@ -7,6 +7,7 @@ import '../../../core/services/server_connection_checker.dart';
 import '../providers/auth_provider.dart';
 import '../providers/server_provider.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/legal_links.dart';
 
 class ServerConfigScreen extends ConsumerStatefulWidget {
   const ServerConfigScreen({super.key});
@@ -142,6 +143,9 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2))
                         : Text(l10n.authConnect),
                   ),
+                  const SizedBox(height: 12),
+                  // 首次配置服务器时也能读隐私政策/用户协议/关于
+                  const LegalLinksRow(),
                 ],
               ),
             ),

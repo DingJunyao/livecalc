@@ -71,7 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
     await prefs.setBool(_aiNoticePrefsKey, true);
-    if (viewAbout == true && mounted) context.push('/profile/about');
+    if (viewAbout == true && mounted) context.push('/about');
   }
 
   @override
