@@ -230,6 +230,9 @@ class _AboutScreenState extends State<AboutScreen> {
                               : null,
                         ),
                       ),
+                      if (p.approvalNoSatellite.isNotEmpty)
+                        Text('${l10n.aboutApprovalNo}（卫星）: ${p.approvalNoSatellite}',
+                            style: theme.textTheme.bodySmall),
                       if (p.note.isNotEmpty)
                         Text(p.note, style: theme.textTheme.bodySmall),
                     ],

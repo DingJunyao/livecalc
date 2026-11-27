@@ -9,6 +9,7 @@ import '../../../core/geo/coordinate_transform.dart';
 import '../../../core/geo/map_zoom.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/map_attribution.dart';
 import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
 import 'merchant_map_logic.dart';
@@ -216,6 +217,13 @@ class _AppleMerchantMapState extends State<AppleMerchantMap> {
       ),
       if (widget.showControls)
         Positioned(top: 8, right: 8, child: _buildControls()),
+      // 审图号角标（Apple 地图，中国区数据由高德提供）
+      const Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: MapAttribution(layerId: 'apple'),
+      ),
     ]);
   }
 

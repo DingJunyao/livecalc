@@ -3604,4 +3604,7 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get aboutApprovalMissing =>
       'غير محدد (أضفه في «معلومات الامتثال» على الخادم)';
+
+  @override
+  String get mapApprovalPending => 'رقم الاعتماد غير متوفر';
 }

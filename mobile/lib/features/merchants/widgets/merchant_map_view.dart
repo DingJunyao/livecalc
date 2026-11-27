@@ -8,6 +8,7 @@ import '../../../core/geo/coordinate_transform.dart';
 import '../../../core/geo/map_zoom.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/empty_state.dart';
+import '../../../shared/widgets/map_attribution.dart';
 import '../../profile/models/user_place.dart';
 import '../models/merchant.dart';
 import '../providers/map_config_provider.dart';
@@ -489,6 +490,14 @@ class _MerchantMapViewState extends State<MerchantMapView> {
       ),
       if (widget.showControls)
         Positioned(top: 8, right: 8, child: _buildControls()),
+      // 审图号角标（972 号文：地图显著位置标注来源与审图号）
+      if (layer != null)
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: MapAttribution(layerId: layer.id),
+        ),
     ]);
   }
 }

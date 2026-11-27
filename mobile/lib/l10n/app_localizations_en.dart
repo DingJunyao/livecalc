@@ -3627,4 +3627,7 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get aboutApprovalMissing =>
       'Not set (add it under Compliance information on the server)';
+
+  @override
+  String get mapApprovalPending => 'approval no. pending';
 }

@@ -2538,5 +2538,7 @@
   "aiNoticeOk": "Got it",
   "@aiNoticeOk": {},
   "aboutApprovalMissing": "Not set (add it under Compliance information on the server)",
-  "@aboutApprovalMissing": {}
+  "@aboutApprovalMissing": {},
+  "mapApprovalPending": "approval no. pending",
+  "@mapApprovalPending": {}
 }

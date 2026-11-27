@@ -2538,5 +2538,7 @@
   "aiNoticeOk": "حسنًا",
   "@aiNoticeOk": {},
   "aboutApprovalMissing": "غير محدد (أضفه في «معلومات الامتثال» على الخادم)",
-  "@aboutApprovalMissing": {}
+  "@aboutApprovalMissing": {},
+  "mapApprovalPending": "رقم الاعتماد غير متوفر",
+  "@mapApprovalPending": {}
 }

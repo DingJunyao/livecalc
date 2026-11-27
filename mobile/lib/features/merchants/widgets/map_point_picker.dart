@@ -8,6 +8,7 @@ import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
 import '../providers/map_config_provider.dart';
 import 'apple_map_picker.dart';
+import '../../../shared/widgets/map_attribution.dart';
 import 'map_locate_button.dart';
 import 'merchant_map_logic.dart';
 
@@ -281,6 +282,13 @@ class _MapPointPickerState extends ConsumerState<MapPointPicker> {
                   ),
                 ),
               ),
+              if (layer != null)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: MapAttribution(layerId: layer.id),
+                ),
             ]),
           ),
         ),

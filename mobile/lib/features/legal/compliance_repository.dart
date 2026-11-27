@@ -34,12 +34,16 @@ class MapProviderInfo {
   final String key;
   final String displayName;
   final String approvalNo;
+
+  /// 卫星影像审图号（与普通底图不同；Apple 地图/高德卫星图各自独立审核）
+  final String approvalNoSatellite;
   final String note;
 
   const MapProviderInfo({
     required this.key,
     required this.displayName,
     this.approvalNo = '',
+    this.approvalNoSatellite = '',
     this.note = '',
   });
 
@@ -48,6 +52,7 @@ class MapProviderInfo {
       key: '${json['key'] ?? ''}',
       displayName: '${json['display_name'] ?? json['key'] ?? ''}',
       approvalNo: '${json['approval_no'] ?? ''}',
+      approvalNoSatellite: '${json['approval_no_satellite'] ?? ''}',
       note: '${json['note'] ?? ''}',
     );
   }

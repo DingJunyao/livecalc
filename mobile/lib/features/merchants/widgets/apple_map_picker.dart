@@ -6,6 +6,7 @@ import 'package:latlong2/latlong.dart';
 import '../../../core/geo/coordinate_transform.dart';
 import '../../../core/i18n/app_formatters.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/map_attribution.dart';
 import 'map_locate_button.dart';
 import 'merchant_map_logic.dart';
 
@@ -175,6 +176,16 @@ class _AppleMapPickerState extends State<AppleMapPicker> {
                       MapLocateButton(onLocated: _selectLocated),
                     ],
                   ),
+                ),
+              ),
+              // 审图号角标（卫星图用卫星审图号）
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: MapAttribution(
+                  layerId: 'apple',
+                  satellite: _mapType == apple.MapType.satellite,
                 ),
               ),
             ]),

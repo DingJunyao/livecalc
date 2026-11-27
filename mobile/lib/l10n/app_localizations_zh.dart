@@ -3521,4 +3521,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutApprovalMissing => '未填写（请在服务器「合规信息」中补全）';
+
+  @override
+  String get mapApprovalPending => '审图号待补';
 }

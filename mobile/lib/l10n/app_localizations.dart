@@ -6749,6 +6749,12 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'未填写（请在服务器「合规信息」中补全）'**
   String get aboutApprovalMissing;
+
+  /// No description provided for @mapApprovalPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'审图号待补'**
+  String get mapApprovalPending;
 }
 
 class _AppLocalizationsDelegate
