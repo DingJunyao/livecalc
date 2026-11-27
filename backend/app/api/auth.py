@@ -35,6 +35,7 @@ from app.schemas.auth import (
     UserAccountResponse,
     UnitPreference,
     UnitPreferences,
+    AccountDeleteRequest,
 )
 from app.schemas.common import PaginatedResponse
 from typing import List, Optional
@@ -480,6 +481,43 @@ async def update_my_account(
         access_token=access_token,
         refresh_token=refresh_token,
     )
+
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(
+    payload: AccountDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """注销当前账号，物理删除全部个人数据。
+
+    App Store 审核指南 5.1.1(v) 与 Google Play 账号删除政策要求 App 内可自助注销。
+    需要再次输入密码（前端 SHA256 后传）；最后一个管理员不允许自助注销，
+    避免把系统管理权限删空。
+    """
+    user = db.query(User).filter(User.id == current_user.id).first()
+    if not user:
+        raise LocalizedHTTPException(status_code=status.HTTP_404_NOT_FOUND, message='用户不存在')
+
+    if not verify_password(payload.password_hash, user.password_hash):
+        raise LocalizedHTTPException(status_code=status.HTTP_400_BAD_REQUEST, message='密码不正确')
+
+    if user.is_admin:
+        remaining_admins = db.query(User).filter(
+            User.is_admin.is_(True),
+            User.is_active.is_(True),
+            User.id != user.id,
+        ).count()
+        if remaining_admins == 0:
+            raise LocalizedHTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                message='系统至少需要保留一个管理员，请先指定其他管理员',
+            )
+
+    from app.services.account_deletion import delete_user_account
+
+    delete_user_account(db, user)
+    return None
 
 
 @router.post("/me/avatar")

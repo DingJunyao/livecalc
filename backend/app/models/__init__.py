@@ -44,6 +44,11 @@ from app.models.barcode_lookup_cache import BarcodeLookupCache
 from app.models.currency import Currency
 from app.models.exchange_rate_snapshot import ExchangeRateSnapshot
 from app.models.user_calc_scope import UserCalcScope
+# 账号注销/审计相关：保证 Base.metadata 里包含这些表（新建空库 create_all 时才不会缺表）
+from app.models.operation_log import OperationLog
+from app.models.import_task import ImportTask
+from app.models.change_proposal import ChangeProposal
+from app.models.ingredient_merge_record import IngredientMergeRecord
 
 __all__ = [
     "User", "UserPlace", "Merchant", "ProductRecord", "RecordType",
