@@ -144,6 +144,12 @@ const router = createRouter({
           meta: { titleKey: 'routes.profile' },
         },
         {
+          path: 'about',
+          name: 'about',
+          component: () => import('@/views/about/AboutView.vue'),
+          meta: { titleKey: 'routes.about' },
+        },
+        {
           path: 'profile/places',
           name: 'profile-places',
           component: () => import('@/views/profile/UserPlacesView.vue'),

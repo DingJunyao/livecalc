@@ -834,6 +834,25 @@
       "success": "Success"
     }
   },
+  "about": {
+    "server": "Server",
+    "contact": "Contact",
+    "legalSection": "Legal documents",
+    "privacyPolicy": "Privacy Policy",
+    "termsOfService": "Terms of Service",
+    "updatedAt": "Documents updated",
+    "aiSection": "AI services (model and filing)",
+    "aiDisabled": "AI recommendations are disabled on this server",
+    "mapSection": "Map services (approval numbers)",
+    "mapDisabled": "Maps are disabled on this server",
+    "provider": "Provider",
+    "model": "Model",
+    "filingNo": "Filing no.",
+    "approvalNo": "Approval no.",
+    "note": "Note",
+    "loadFailed": "Could not read compliance information from the server. Check that it is up to date.",
+    "localModeHint": "Local mode does not connect to a server, so server-configured compliance information is unavailable."
+  },
   "adminCompliance": {
     "title": "Compliance information",
     "hint": "Configure AI model filing details, map approval numbers, and the privacy policy / terms. The app's About page shows the AI and map information; the legal documents are also published at /legal/privacy and /legal/terms for store listings. Clearing a legal document falls back to the built-in default text.",
@@ -1021,6 +1040,7 @@
     "adminExchangeRates": "Exchange rates",
     "adminBarcodeServices": "Barcode services",
     "adminCompliance": "Compliance",
+    "about": "About",
     "adminMapSettings": "Map settings",
     "adminAiConfig": "AI and translation",
     "adminUsers": "Users",

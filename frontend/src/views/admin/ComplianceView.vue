@@ -178,6 +178,7 @@ import { useRouter } from 'vue-router'
 import { useMobileDrawerControl } from '@/composables/useMobileDrawer'
 import { useGlobalSnackbar } from '@/composables/useGlobalSnackbar'
 import { api } from '@/api'
+import { legalPageUrl } from '@/utils/publicUrl'
 
 interface AiProviderInfo {
   display_name: string
@@ -198,12 +199,9 @@ const { isDesktop, toggleSidebar } = useMobileDrawerControl()
 const { notify } = useGlobalSnackbar()
 
 const saving = ref(false)
-// 公开法律页由后端根路径提供；VITE_API_URL 为绝对地址时据此推出后端根，
-// 相对地址（/api/v1）时按同域代理处理。
-const apiBase = import.meta.env.VITE_API_URL || '/api/v1'
-const publicBase = apiBase.replace(/\/api\/v1\/?$/, '')
-const privacyUrl = computed(() => `${publicBase}/legal/privacy`)
-const termsUrl = computed(() => `${publicBase}/legal/terms`)
+// 公开法律页由后端根路径提供（与「关于」页共用同一推导）
+const privacyUrl = computed(() => legalPageUrl('privacy', 'zh'))
+const termsUrl = computed(() => legalPageUrl('terms', 'zh'))
 const aiProviders = reactive<Record<string, AiProviderInfo>>({})
 const mapProviders = reactive<Record<string, MapProviderInfo>>({})
 const legal = reactive({
