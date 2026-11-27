@@ -60,10 +60,13 @@ class _AboutScreenState extends State<AboutScreen> {
                       ),
                     ),
                   _buildLegalCard(theme, l10n, config),
-                  const SizedBox(height: 12),
-                  _buildAiCard(theme, l10n, config),
-                  const SizedBox(height: 12),
-                  _buildMapCard(theme, l10n, config),
+                  // 读不到服务器配置时，AI/地图卡片不渲染（否则会误报「未启用」）
+                  if (config != null) ...[
+                    const SizedBox(height: 12),
+                    _buildAiCard(theme, l10n, config),
+                    const SizedBox(height: 12),
+                    _buildMapCard(theme, l10n, config),
+                  ],
                 ],
                 const SizedBox(height: 24),
               ],
@@ -193,14 +196,17 @@ class _AboutScreenState extends State<AboutScreen> {
     // 按平台只展示实际使用的那张底图：
     // iOS 走原生 MapKit（Apple 地图，中国区数据由高德提供），安卓走服务端配置的瓦片底图。
     // 审图号按「实际展示的地图产品」标注，不把所有引擎都列出来。
+    final isIos = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     final List<MapProviderInfo> providers;
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
+    if (isIos) {
       final apple = config?.appleMap;
       providers = apple == null ? const [] : [apple];
     } else {
       providers = config?.mapProviders ?? const <MapProviderInfo>[];
     }
-    final enabled = config?.mapEnabled == true && providers.isNotEmpty;
+    // iOS 用原生 MapKit，不依赖服务端瓦片开关；只有服务端配置根本没读到时才算不可用
+    final enabled =
+        providers.isNotEmpty && (isIos || config?.mapEnabled == true);
     return Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

@@ -606,7 +606,6 @@ enum _TabLabel {
   favorites,
   plans,
   profile,
-  about,
   more
 }
 
@@ -617,7 +616,6 @@ class _Tab {
     required this.selectedIcon,
     required this.prefixes,
     this.route,
-    this.push = false,
   });
 
   final _TabLabel label;
@@ -626,9 +624,6 @@ class _Tab {
   final List<String> prefixes;
   final String? route;
 
-  /// 用 push 而不是 go 打开：用于非 tab 目的地（如「关于」），
-  /// 保留返回栈、不替换整棵壳层。
-  final bool push;
 }
 
 const _homeTab = _Tab(
@@ -691,13 +686,6 @@ const _profileTab = _Tab(
     selectedIcon: Icons.person,
     prefixes: ['/profile'],
     route: '/profile');
-const _aboutTab = _Tab(
-    label: _TabLabel.about,
-    icon: Icons.info_outline,
-    selectedIcon: Icons.info,
-    prefixes: ['/about'],
-    route: '/about',
-    push: true);
 const _moreTab = _Tab(
     label: _TabLabel.more,
     icon: Icons.menu,
@@ -734,7 +722,6 @@ const _moreMenuTabs = [
   _favoritesTab,
   _plansTab,
   _profileTab,
-  _aboutTab,
 ];
 
 String _tabLabel(_TabLabel label, AppLocalizations l10n) {
@@ -749,7 +736,6 @@ String _tabLabel(_TabLabel label, AppLocalizations l10n) {
     _TabLabel.favorites => l10n.navFavorites,
     _TabLabel.plans => l10n.navPlans,
     _TabLabel.profile => l10n.navProfile,
-    _TabLabel.about => l10n.aboutTitle,
     _TabLabel.more => l10n.navMore,
   };
 }
@@ -1506,12 +1492,7 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
                               selected: i == selectedIdx,
                               onTap: () {
                                 Navigator.of(ctx).pop();
-                                final tab = _moreMenuTabs[i];
-                                if (tab.push) {
-                                  context.push(tab.route!);
-                                } else {
-                                  context.go(tab.route!);
-                                }
+                                context.go(_moreMenuTabs[i].route!);
                               },
                             ),
                           ),
