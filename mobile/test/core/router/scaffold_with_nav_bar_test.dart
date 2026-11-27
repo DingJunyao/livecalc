@@ -42,6 +42,10 @@ GoRouter _router({String initial = '/home'}) {
           GoRoute(
               path: '/products/new',
               builder: (_, __) => const Scaffold(body: Text('新增商品页'))),
+          // 键盘内边距探针：全屏表单路由（壳层隐藏底栏），正文高度可测量。
+          GoRoute(
+              path: '/products/1/edit',
+              builder: (_, __) => const _KeyboardProbePage()),
           GoRoute(
               path: '/merchants',
               builder: (_, __) => const Scaffold(body: Text('商家页'))),
@@ -94,6 +98,24 @@ class _PublishingPage extends StatelessWidget {
   }
 }
 
+/// 键盘内边距探针：把页面正文可用高度记录下来，供「键盘只扣一次」的回归测试断言。
+double? _probeBodyHeight;
+
+class _KeyboardProbePage extends StatelessWidget {
+  const _KeyboardProbePage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('表单页')),
+      body: LayoutBuilder(builder: (context, constraints) {
+        _probeBodyHeight = constraints.maxHeight;
+        return const SizedBox.expand();
+      }),
+    );
+  }
+}
+
 /// 树形恒定测试用的输入桩页：TextField 内容随 State 存续。
 class _InputPage extends StatefulWidget {
   const _InputPage();
@@ -120,11 +142,13 @@ void main() {
     Locale locale = const Locale('zh', 'CN'),
     Size size = const Size(400, 800),
     FakeViewPadding systemPadding = FakeViewPadding.zero,
+    FakeViewPadding viewInsets = FakeViewPadding.zero,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1.0;
     tester.view.padding = systemPadding;
     tester.view.viewPadding = systemPadding;
+    tester.view.viewInsets = viewInsets;
     addTearDown(tester.view.reset);
     await tester.pumpWidget(ProviderScope(
       child: MaterialApp.router(
@@ -218,6 +242,23 @@ void main() {
 
     expect(find.text('新增商品页'), findsOneWidget);
     expect(find.byType(NavigationRail), findsNothing);
+  });
+
+  testWidgets('弹键盘时页面正文只扣一次键盘高度（不出现大片空白）', (tester) async {
+    const keyboard = 329.0;
+    _probeBodyHeight = null;
+    await pump(
+      tester,
+      initial: '/products/1/edit',
+      size: const Size(390, 844),
+      viewInsets: const FakeViewPadding(bottom: keyboard),
+    );
+
+    // 壳层 Scaffold 先把 body 收缩到键盘之上（844-329=515），页面正文再扣
+    // 自己的 AppBar（56）→ 459；若壳层包 MediaQuery 时把键盘内边距又带回来，
+    // 内层 Scaffold 会再扣一次，正文只剩 130（等于键盘高度扣两遍）。
+    expect(_probeBodyHeight, isNotNull);
+    expect(_probeBodyHeight, closeTo(844 - keyboard - kToolbarHeight, 1));
   });
 
   testWidgets('桌面 rail 显示全部 7 项，无更多', (tester) async {

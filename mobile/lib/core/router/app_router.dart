@@ -1121,8 +1121,16 @@ class _ScaffoldWithNavBarState extends ConsumerState<ScaffoldWithNavBar>
         padding = padding.copyWith(top: 0);
       }
     }
+    // 壳层 Scaffold 已经按键盘收缩过 body（并把 viewInsets.bottom 从 body 的
+    // MediaQuery 中去掉）。这里为了改 padding 又包了一层 MediaQuery，取的却是
+    // 壳层上层的原始 MediaQuery——不把底部 viewInsets 一并去掉，内层页面
+    // Scaffold 会**再减一次键盘高度**：iPhone 13 Pro 实测弹键盘后正文只剩
+    // ~80pt，键盘上方一大片空白（输入几乎不可用）。保持 Flutter 的同一口径：
+    // body 收到的就是「已消费掉键盘」的 MediaQuery。
     return MediaQuery(
-      data: mq.copyWith(padding: padding),
+      data: mq
+          .copyWith(padding: padding)
+          .removeViewInsets(removeBottom: true),
       child: child,
     );
   }
