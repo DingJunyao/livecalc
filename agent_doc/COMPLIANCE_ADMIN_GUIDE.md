@@ -26,6 +26,36 @@
 | 隐私政策 URL | 托管 `legal/privacy-policy.html`，与 App 内文案一致 | 浏览器打开 |
 | 联系邮箱 | 隐私政策/用户协议里的邮箱必须是真实可达的（当前：dingjunyao0703@163.com） | 发一封测试信 |
 
+## 1.5 数据库影响（无表结构变更）
+
+本次合规相关改动**不新增/修改任何表结构**：
+
+- 账号注销：只使用既有表（`users` / `recipes` / `merchants` / `meal_plans` / `product_records` / `favorites` / `agent_*` / `operation_logs` 等），按外键顺序清理。
+- 合规信息（AI 模型/备案、地图审图号、法律文档正文）：存在既有 `system_config` 表的 `value`（Text，存 JSON），键为 `compliance_ai` / `compliance_map` / `legal_docs`。
+- 因此**不需要新的 alembic 迁移**，也没有对应的建表/加列 SQL。
+
+唯一的前置检查：`operation_logs` 表必须存在（迁移 `20260320_0001` 里定义）。旧库若因历史原因缺这张表，注销接口会报 `no such table: operation_logs`。三种补法任选其一：
+
+1. **重启后端**（启动时 `Base.metadata.create_all` 会补建缺失表，最省事）；
+2. `alembic upgrade head`；
+3. 手工执行 `backend/scripts/sql/20261127_operation_logs_{sqlite,mysql,postgresql}.sql`（幂等）。
+
+部署自检（只读，三种引擎通用写法按需调整）：
+
+```sql
+-- 注销会触碰的表必须齐全；缺哪张补哪张
+SELECT table_name FROM information_schema.tables WHERE table_schema = current_schema()
+  AND table_name IN ('users','recipes','recipe_ingredients','recipe_cost_history',
+                     'merchants','product_records','meal_plans','meal_plan_items',
+                     'daily_recommendations','daily_recommendation_items',
+                     'agent_sessions','agent_messages','agent_approvals',
+                     'operation_logs','import_tasks','change_proposals',
+                     'ingredient_merge_records','nutrition_edit_history',
+                     'ai_ingredient_matches','image_tracking','system_config');
+```
+
+SQLite 用 `SELECT name FROM sqlite_master WHERE type='table' AND name IN (...)`；MySQL 把 `current_schema()` 换成 `DATABASE()`。
+
 ## 2. 管理端逐页合规对照
 
 > 路径：Web 管理端 → 左侧「管理」分组。以下「风险」指**合规/安全**风险，不是功能缺陷。
