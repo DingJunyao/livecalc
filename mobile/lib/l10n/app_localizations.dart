@@ -6755,6 +6755,42 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'审图号待补'**
   String get mapApprovalPending;
+
+  /// No description provided for @aboutMobileVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'移动端版本'**
+  String get aboutMobileVersion;
+
+  /// No description provided for @aboutServerVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务端版本'**
+  String get aboutServerVersion;
+
+  /// No description provided for @aboutProjectHomepage.
+  ///
+  /// In zh, this message translates to:
+  /// **'项目主页'**
+  String get aboutProjectHomepage;
+
+  /// No description provided for @aboutAuthorHomepage.
+  ///
+  /// In zh, this message translates to:
+  /// **'作者主页'**
+  String get aboutAuthorHomepage;
+
+  /// No description provided for @aboutCopyright.
+  ///
+  /// In zh, this message translates to:
+  /// **'版权'**
+  String get aboutCopyright;
+
+  /// No description provided for @aboutLinkOpenFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开链接'**
+  String get aboutLinkOpenFailed;
 }
 
 class _AppLocalizationsDelegate

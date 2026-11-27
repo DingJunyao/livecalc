@@ -2540,5 +2540,17 @@
   "aboutApprovalMissing": "غير محدد (أضفه في «معلومات الامتثال» على الخادم)",
   "@aboutApprovalMissing": {},
   "mapApprovalPending": "رقم الاعتماد غير متوفر",
-  "@mapApprovalPending": {}
+  "@mapApprovalPending": {},
+  "aboutMobileVersion": "إصدار التطبيق",
+  "@aboutMobileVersion": {},
+  "aboutServerVersion": "إصدار الخادم",
+  "@aboutServerVersion": {},
+  "aboutProjectHomepage": "الصفحة الرئيسية للمشروع",
+  "@aboutProjectHomepage": {},
+  "aboutAuthorHomepage": "صفحة المؤلف",
+  "@aboutAuthorHomepage": {},
+  "aboutCopyright": "حقوق النشر",
+  "@aboutCopyright": {},
+  "aboutLinkOpenFailed": "تعذر فتح الرابط",
+  "@aboutLinkOpenFailed": {}
 }

@@ -2540,5 +2540,17 @@
   "aboutApprovalMissing": "Not set (add it under Compliance information on the server)",
   "@aboutApprovalMissing": {},
   "mapApprovalPending": "approval no. pending",
-  "@mapApprovalPending": {}
+  "@mapApprovalPending": {},
+  "aboutMobileVersion": "App version",
+  "@aboutMobileVersion": {},
+  "aboutServerVersion": "Server version",
+  "@aboutServerVersion": {},
+  "aboutProjectHomepage": "Project homepage",
+  "@aboutProjectHomepage": {},
+  "aboutAuthorHomepage": "Author homepage",
+  "@aboutAuthorHomepage": {},
+  "aboutCopyright": "Copyright",
+  "@aboutCopyright": {},
+  "aboutLinkOpenFailed": "Could not open the link",
+  "@aboutLinkOpenFailed": {}
 }

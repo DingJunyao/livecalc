@@ -1,8 +1,12 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, TargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/api/api_client.dart';
 import '../../../core/layout/shell_app_bar.dart';
@@ -25,6 +29,35 @@ class _AboutScreenState extends State<AboutScreen> {
   late final Future<PackageInfo> _packageFuture = PackageInfo.fromPlatform();
   late final Future<AppComplianceConfig?> _configFuture =
       ComplianceRepository().fetchAppConfig();
+  /// 随包的 app-info.json（与 Web/后端同源，由 scripts/sync_versions.py 生成）
+  late final Future<_AppInfo> _appInfoFuture = _loadAppInfo();
+
+  Future<_AppInfo> _loadAppInfo() async {
+    try {
+      final raw = await rootBundle.loadString('assets/app_info.json');
+      final data = json.decode(raw);
+      if (data is Map) return _AppInfo.fromJson(data.cast<String, dynamic>());
+    } catch (_) {
+      // 资源缺失/损坏时退回空信息，页面仍可用
+    }
+    return const _AppInfo();
+  }
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).aboutLinkOpenFailed)),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +75,7 @@ class _AboutScreenState extends State<AboutScreen> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildAppCard(theme, l10n),
+                _buildAppCard(theme, l10n, config),
                 const SizedBox(height: 12),
                 if (loading)
                   const Padding(
@@ -77,37 +110,101 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Widget _buildAppCard(ThemeData theme, AppLocalizations l10n) {
+  Widget _buildAppCard(
+      ThemeData theme, AppLocalizations l10n, AppComplianceConfig? config) {
     final server = ApiClient.instance.baseUrl;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.receipt_long_outlined,
-                    color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(l10n.appTitle, style: theme.textTheme.titleMedium),
+    return FutureBuilder<_AppInfo>(
+      future: _appInfoFuture,
+      builder: (context, snap) {
+        final info = snap.data ?? const _AppInfo();
+        return Card(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.receipt_long_outlined,
+                        color: theme.colorScheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            info.name.isNotEmpty ? info.name : l10n.appTitle,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          if (info.description.isNotEmpty)
+                            Text(
+                              info.description,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.outline),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 移动端版本：随包版本（与 Web/后端同一 app-info.json 同步）
+                    FutureBuilder<PackageInfo>(
+                      future: _packageFuture,
+                      builder: (context, pkg) {
+                        final data = pkg.data;
+                        final version = data != null
+                            ? '${data.version} (${data.buildNumber})'
+                            : info.version;
+                        return _kv(theme, l10n.aboutMobileVersion, version);
+                      },
+                    ),
+                    // 服务端版本：来自 /app/config，便于排查版本不一致
+                    _kv(
+                      theme,
+                      l10n.aboutServerVersion,
+                      config?.serverVersion.isNotEmpty == true
+                          ? config!.serverVersion
+                          : '—',
+                    ),
+                    if (server.isNotEmpty)
+                      _kv(theme, l10n.aboutServer, server),
+                    if (info.copyright.isNotEmpty)
+                      _kv(theme, l10n.aboutCopyright, info.copyright),
+                  ],
+                ),
+              ),
+              if (info.homepage.isNotEmpty) ...[
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.link),
+                  title: Text(l10n.aboutProjectHomepage),
+                  subtitle: Text(info.homepage,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => _openLink(info.homepage),
+                ),
               ],
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<PackageInfo>(
-              future: _packageFuture,
-              builder: (context, snap) {
-                final info = snap.data;
-                final version = info == null
-                    ? ''
-                    : '${info.version} (${info.buildNumber})';
-                return _kv(theme, l10n.aboutVersion, version);
-              },
-            ),
-            if (server.isNotEmpty) _kv(theme, l10n.aboutServer, server),
-          ],
-        ),
-      ),
+              if (info.authorHomepage.isNotEmpty)
+                ListTile(
+                  leading: const Icon(Icons.person_outline),
+                  title: Text(l10n.aboutAuthorHomepage),
+                  subtitle: Text(info.authorHomepage,
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: const Icon(Icons.open_in_new, size: 18),
+                  onTap: () => _openLink(info.authorHomepage),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -268,3 +365,37 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 }
+
+/// 随包的应用身份信息（assets/app_info.json，由 scripts/sync_versions.py 生成）。
+class _AppInfo {
+  final String name;
+  final String description;
+  final String version;
+  final String copyright;
+  final String homepage;
+  final String repository;
+  final String authorHomepage;
+
+  const _AppInfo({
+    this.name = '',
+    this.description = '',
+    this.version = '',
+    this.copyright = '',
+    this.homepage = '',
+    this.repository = '',
+    this.authorHomepage = '',
+  });
+
+  factory _AppInfo.fromJson(Map<String, dynamic> json) {
+    return _AppInfo(
+      name: '${json['name'] ?? ''}',
+      description: '${json['description'] ?? ''}',
+      version: '${json['version'] ?? ''}',
+      copyright: '${json['copyright'] ?? ''}',
+      homepage: '${json['homepage'] ?? ''}',
+      repository: '${json['repository'] ?? ''}',
+      authorHomepage: '${json['authorHomepage'] ?? ''}',
+    );
+  }
+}
+

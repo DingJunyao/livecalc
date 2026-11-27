@@ -1,8 +1,7 @@
 name: com_a4ding_livecalc
 description: 鐢熻 - Live Calculator App
 publish_to: 'none'
-version: 1.0.0+1
-
+version: 0.9.1+1
 environment:
   sdk: ^3.5.0
 
@@ -34,6 +33,8 @@ dependencies:
   image_cropper: ^12.2.1
   geolocator: ^14.1.1
   mobile_scanner: ^7.4.0
+  # 「关于」页打开项目/作者链接
+  url_launcher: ^6.3.0
 
 dependency_overrides:
   # package_info_plus 10.2.0+ 支持 Flutter Built-in Kotlin（10.2.2 修复仅在未启用内置 Kotlin
@@ -59,5 +60,7 @@ flutter:
     - assets/images/
     # 应用内隐私政策 / 用户协议（与商店提交的 HTML 版本同源维护）
     - assets/legal/
+    # 应用身份/版本/链接（scripts/sync_versions.py 从根 app-info.json 生成）
+    - assets/app_info.json
 
 

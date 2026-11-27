@@ -59,6 +59,8 @@ class MapProviderInfo {
 }
 
 class AppComplianceConfig {
+  /// 服务端版本（app-info.json 单一来源），与移动端版本并列展示
+  final String serverVersion;
   final bool requireInviteCode;
   final bool aiEnabled;
   final List<AiProviderInfo> aiProviders;
@@ -72,6 +74,7 @@ class AppComplianceConfig {
   final String legalUpdatedAt;
 
   const AppComplianceConfig({
+    this.serverVersion = '',
     this.requireInviteCode = false,
     this.aiEnabled = false,
     this.aiProviders = const [],
@@ -95,6 +98,7 @@ class AppComplianceConfig {
     }
 
     return AppComplianceConfig(
+      serverVersion: '${json['version'] ?? ''}',
       requireInviteCode: json['registration_require_invite_code'] == true,
       aiEnabled: ai['enabled'] == true,
       aiProviders: list(ai['providers'], AiProviderInfo.fromJson),

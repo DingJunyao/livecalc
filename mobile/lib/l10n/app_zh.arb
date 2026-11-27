@@ -2540,5 +2540,17 @@
   "aboutApprovalMissing": "未填写（请在服务器「合规信息」中补全）",
   "@aboutApprovalMissing": {},
   "mapApprovalPending": "审图号待补",
-  "@mapApprovalPending": {}
+  "@mapApprovalPending": {},
+  "aboutMobileVersion": "移动端版本",
+  "@aboutMobileVersion": {},
+  "aboutServerVersion": "服务端版本",
+  "@aboutServerVersion": {},
+  "aboutProjectHomepage": "项目主页",
+  "@aboutProjectHomepage": {},
+  "aboutAuthorHomepage": "作者主页",
+  "@aboutAuthorHomepage": {},
+  "aboutCopyright": "版权",
+  "@aboutCopyright": {},
+  "aboutLinkOpenFailed": "无法打开链接",
+  "@aboutLinkOpenFailed": {}
 }

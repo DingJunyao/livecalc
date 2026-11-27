@@ -3607,4 +3607,22 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get mapApprovalPending => 'رقم الاعتماد غير متوفر';
+
+  @override
+  String get aboutMobileVersion => 'إصدار التطبيق';
+
+  @override
+  String get aboutServerVersion => 'إصدار الخادم';
+
+  @override
+  String get aboutProjectHomepage => 'الصفحة الرئيسية للمشروع';
+
+  @override
+  String get aboutAuthorHomepage => 'صفحة المؤلف';
+
+  @override
+  String get aboutCopyright => 'حقوق النشر';
+
+  @override
+  String get aboutLinkOpenFailed => 'تعذر فتح الرابط';
 }

@@ -3630,4 +3630,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapApprovalPending => 'approval no. pending';
+
+  @override
+  String get aboutMobileVersion => 'App version';
+
+  @override
+  String get aboutServerVersion => 'Server version';
+
+  @override
+  String get aboutProjectHomepage => 'Project homepage';
+
+  @override
+  String get aboutAuthorHomepage => 'Author homepage';
+
+  @override
+  String get aboutCopyright => 'Copyright';
+
+  @override
+  String get aboutLinkOpenFailed => 'Could not open the link';
 }

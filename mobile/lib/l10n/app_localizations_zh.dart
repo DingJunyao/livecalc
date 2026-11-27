@@ -3524,4 +3524,22 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mapApprovalPending => '审图号待补';
+
+  @override
+  String get aboutMobileVersion => '移动端版本';
+
+  @override
+  String get aboutServerVersion => '服务端版本';
+
+  @override
+  String get aboutProjectHomepage => '项目主页';
+
+  @override
+  String get aboutAuthorHomepage => '作者主页';
+
+  @override
+  String get aboutCopyright => '版权';
+
+  @override
+  String get aboutLinkOpenFailed => '无法打开链接';
 }
