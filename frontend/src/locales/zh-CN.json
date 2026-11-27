@@ -870,6 +870,7 @@
     "filingNo": "备案号",
     "filingNoPlaceholder": "如：网信算备xxxxxxx号",
     "approvalNo": "审图号",
+    "approvalNoSatellite": "卫星审图号",
     "approvalNoPlaceholder": "如：GS(2024)xxxx号",
     "note": "备注",
     "privacyZh": "隐私政策（中文）",

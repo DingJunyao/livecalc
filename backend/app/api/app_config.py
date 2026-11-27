@@ -102,6 +102,7 @@ def _map_section(db: Session) -> dict:
             "key": key,
             "display_name": info.get("display_name") or key,
             "approval_no": info.get("approval_no") or "",
+            "approval_no_satellite": info.get("approval_no_satellite") or "",
             "note": info.get("note") or "",
         })
     # iOS 原生 MapKit（Apple 地图）不参与 available_maps：客户端按平台二选一展示，
@@ -115,6 +116,7 @@ def _map_section(db: Session) -> dict:
             "key": "apple",
             "display_name": apple.get("display_name") or "Apple 地图",
             "approval_no": apple.get("approval_no") or "",
+            "approval_no_satellite": apple.get("approval_no_satellite") or "",
             "note": apple.get("note") or "",
         },
     }

@@ -64,7 +64,8 @@
             <tr>
               <th style="width: 140px">{{ t('adminCompliance.providerKey') }}</th>
               <th style="width: 190px">{{ t('adminCompliance.displayName') }}</th>
-              <th style="width: 240px">{{ t('adminCompliance.approvalNo') }}</th>
+              <th style="width: 220px">{{ t('adminCompliance.approvalNo') }}</th>
+              <th style="width: 220px">{{ t('adminCompliance.approvalNoSatellite') }}</th>
               <th>{{ t('adminCompliance.note') }}</th>
             </tr>
           </thead>
@@ -77,6 +78,10 @@
               </td>
               <td>
                 <v-text-field v-model="info.approval_no" density="compact" variant="outlined"
+                  hide-details="auto" :placeholder="t('adminCompliance.approvalNoPlaceholder')" />
+              </td>
+              <td>
+                <v-text-field v-model="info.approval_no_satellite" density="compact" variant="outlined"
                   hide-details="auto" :placeholder="t('adminCompliance.approvalNoPlaceholder')" />
               </td>
               <td>
@@ -189,6 +194,7 @@ interface AiProviderInfo {
 interface MapProviderInfo {
   display_name: string
   approval_no: string
+  approval_no_satellite: string
   note: string
 }
 
