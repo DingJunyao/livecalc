@@ -3625,4 +3625,11 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get aboutLinkOpenFailed => 'تعذر فتح الرابط';
+
+  @override
+  String get aboutAppleMapName => 'خرائط Apple';
+
+  @override
+  String get aboutServerVersionMissing =>
+      'غير مُبلَّغ (إصدار الخادم قديم، يرجى ترقيته)';
 }

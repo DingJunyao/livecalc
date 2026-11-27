@@ -3648,4 +3648,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutLinkOpenFailed => 'Could not open the link';
+
+  @override
+  String get aboutAppleMapName => 'Apple Maps';
+
+  @override
+  String get aboutServerVersionMissing =>
+      'Not reported (the server is outdated, please upgrade it)';
 }

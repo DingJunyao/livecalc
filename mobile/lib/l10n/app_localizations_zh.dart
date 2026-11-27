@@ -3542,4 +3542,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get aboutLinkOpenFailed => '无法打开链接';
+
+  @override
+  String get aboutAppleMapName => 'Apple 地图';
+
+  @override
+  String get aboutServerVersionMissing => '未上报（服务端版本较旧，请升级后端）';
 }

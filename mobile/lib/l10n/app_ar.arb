@@ -2552,5 +2552,9 @@
   "aboutCopyright": "حقوق النشر",
   "@aboutCopyright": {},
   "aboutLinkOpenFailed": "تعذر فتح الرابط",
-  "@aboutLinkOpenFailed": {}
+  "@aboutLinkOpenFailed": {},
+  "aboutAppleMapName": "خرائط Apple",
+  "@aboutAppleMapName": {},
+  "aboutServerVersionMissing": "غير مُبلَّغ (إصدار الخادم قديم، يرجى ترقيته)",
+  "@aboutServerVersionMissing": {}
 }

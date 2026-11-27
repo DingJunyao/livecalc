@@ -6791,6 +6791,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'无法打开链接'**
   String get aboutLinkOpenFailed;
+
+  /// No description provided for @aboutAppleMapName.
+  ///
+  /// In zh, this message translates to:
+  /// **'Apple 地图'**
+  String get aboutAppleMapName;
+
+  /// No description provided for @aboutServerVersionMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'未上报（服务端版本较旧，请升级后端）'**
+  String get aboutServerVersionMissing;
 }
 
 class _AppLocalizationsDelegate

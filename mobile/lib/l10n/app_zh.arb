@@ -2552,5 +2552,9 @@
   "aboutCopyright": "版权",
   "@aboutCopyright": {},
   "aboutLinkOpenFailed": "无法打开链接",
-  "@aboutLinkOpenFailed": {}
+  "@aboutLinkOpenFailed": {},
+  "aboutAppleMapName": "Apple 地图",
+  "@aboutAppleMapName": {},
+  "aboutServerVersionMissing": "未上报（服务端版本较旧，请升级后端）",
+  "@aboutServerVersionMissing": {}
 }

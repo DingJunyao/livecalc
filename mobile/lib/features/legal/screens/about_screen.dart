@@ -159,13 +159,16 @@ class _AboutScreenState extends State<AboutScreen> {
                         return _kv(theme, l10n.aboutMobileVersion, version);
                       },
                     ),
-                    // 服务端版本：来自 /app/config，便于排查版本不一致
+                    // 服务端版本：来自 /app/config；旧版后端不返回该字段时明确提示升级
                     _kv(
                       theme,
                       l10n.aboutServerVersion,
                       config?.serverVersion.isNotEmpty == true
                           ? config!.serverVersion
-                          : '—',
+                          : l10n.aboutServerVersionMissing,
+                      valueColor: config?.serverVersion.isNotEmpty == true
+                          ? null
+                          : theme.colorScheme.error,
                     ),
                     if (server.isNotEmpty)
                       _kv(theme, l10n.aboutServer, server),
@@ -289,8 +292,15 @@ class _AboutScreenState extends State<AboutScreen> {
     final isIos = !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
     final List<MapProviderInfo> providers;
     if (isIos) {
-      final apple = config?.appleMap;
-      providers = apple == null ? const [] : [apple];
+      // iOS 实际就是 Apple 地图（MapKit）：服务端没配 apple 条目（旧版后端）时
+      // 也要展示一条，并把审图号标成「未填写」，提示管理员去补
+      providers = [
+        config?.appleMap ??
+            MapProviderInfo(
+              key: 'apple',
+              displayName: l10n.aboutAppleMapName,
+            ),
+      ];
     } else {
       providers = config?.mapProviders ?? const <MapProviderInfo>[];
     }
@@ -339,7 +349,8 @@ class _AboutScreenState extends State<AboutScreen> {
     );
   }
 
-  Widget _kv(ThemeData theme, String key, String value) {
+  Widget _kv(ThemeData theme, String key, String value,
+      {Color? valueColor}) {
     if (value.isEmpty) return const SizedBox.shrink();
     return Padding(
       padding: const EdgeInsets.only(top: 4),
@@ -352,7 +363,12 @@ class _AboutScreenState extends State<AboutScreen> {
                 style: theme.textTheme.bodyMedium
                     ?.copyWith(color: theme.colorScheme.outline)),
           ),
-          Expanded(child: SelectableText(value, style: theme.textTheme.bodyMedium)),
+          Expanded(
+            child: SelectableText(
+              value,
+              style: theme.textTheme.bodyMedium?.copyWith(color: valueColor),
+            ),
+          ),
         ],
       ),
     );

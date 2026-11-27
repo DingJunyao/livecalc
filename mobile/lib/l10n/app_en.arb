@@ -2552,5 +2552,9 @@
   "aboutCopyright": "Copyright",
   "@aboutCopyright": {},
   "aboutLinkOpenFailed": "Could not open the link",
-  "@aboutLinkOpenFailed": {}
+  "@aboutLinkOpenFailed": {},
+  "aboutAppleMapName": "Apple Maps",
+  "@aboutAppleMapName": {},
+  "aboutServerVersionMissing": "Not reported (the server is outdated, please upgrade it)",
+  "@aboutServerVersionMissing": {}
 }
