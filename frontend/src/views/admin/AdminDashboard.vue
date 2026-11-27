@@ -209,6 +209,17 @@
         </v-list-item>
 
         <v-list-item
+          prepend-icon="mdi-shield-check-outline"
+          :title="t('admin.dashboard.complianceTitle')"
+          :subtitle="t('admin.dashboard.complianceSubtitle')"
+          to="/admin/compliance"
+        >
+          <template #append>
+            <v-icon :icon="localeStore.isRtl ? 'mdi-chevron-left' : 'mdi-chevron-right'" />
+          </template>
+        </v-list-item>
+
+        <v-list-item
           prepend-icon="mdi-robot"
           :title="t('admin.dashboard.aiTitle')"
           :subtitle="t('admin.dashboard.aiSubtitle')"

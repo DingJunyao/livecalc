@@ -49,6 +49,7 @@ from app.api import calc_scopes  # 用户自定义计算范围（多地区组合
 from app.api import exchange_rates  # 币种汇率 API
 from app.api import storage_config  # 图片存储配置 API
 from app.api import barcode_config  # 条码服务配置 API
+from app.api import app_config  # 公开配置 / 法律文档 / 合规信息管理 API
 from app.core.database import Base, engine, get_db
 from app.core.exceptions import AppException, LocalizedAppException, LocalizedHTTPException
 from app.core.i18n import request_locale, translate, translate_format
@@ -843,6 +844,11 @@ app.include_router(calc_scopes.router, prefix="/api/v1/calc-scopes", tags=["自�
 app.include_router(exchange_rates.router, prefix="/api/v1", tags=["币种汇率"])
 app.include_router(storage_config.router, prefix="/api/v1")
 app.include_router(barcode_config.router, prefix="/api/v1")
+# 公开配置（App 启动读取）、法律文档 JSON 与管理端合规配置
+app.include_router(app_config.router, prefix="/api/v1", tags=["公开配置"])
+app.include_router(app_config.admin_router, prefix="/api/v1/admin", tags=["合规配置"])
+# 商店可直接填写的隐私政策 / 用户协议 HTML 页（/legal/privacy、/legal/terms）
+app.include_router(app_config.pages_router, tags=["公开页面"])
 
 
 @app.get("/")

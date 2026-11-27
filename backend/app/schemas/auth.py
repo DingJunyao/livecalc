@@ -182,3 +182,8 @@ class UserAccountResponse(BaseModel):
     user: UserResponse
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
+
+
+class AccountDeleteRequest(BaseModel):
+    """账号注销请求：需再次输入密码确认（与登录一致，前端已 SHA256）。"""
+    password_hash: str = Field(..., min_length=1)

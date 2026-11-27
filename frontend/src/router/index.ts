@@ -208,6 +208,12 @@ const router = createRouter({
           redirect: '/admin/ai-config',
         },
         {
+          path: 'admin/compliance',
+          name: 'admin-compliance',
+          meta: { adminOnly: true, titleKey: 'routes.adminCompliance' },
+          component: () => import('@/views/admin/ComplianceView.vue'),
+        },
+        {
           path: 'admin/users',
           name: 'admin-users',
           meta: { adminOnly: true, titleKey: 'routes.adminUsers' },
